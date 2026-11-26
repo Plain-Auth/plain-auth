@@ -584,6 +584,7 @@ func TestEnterpriseSAMLResponsePolicy(t *testing.T) {
 					"plain HTTP":    {service(saml.HTTPRedirectBinding, "http://identity.example.test/sso")},
 					"query":         {service(saml.HTTPRedirectBinding, samlPolicyIdP+"/sso?tenant=one")},
 					"two redirects": {service(saml.HTTPRedirectBinding, samlPolicyIdP+"/sso"), service(saml.HTTPRedirectBinding, samlPolicyIdP+"/other")},
+					"empty":         {},
 				} {
 					if code := register("refused", services); code != 400 {
 						t.Fatal("an unusable manual sign-in service was accepted", name, code)

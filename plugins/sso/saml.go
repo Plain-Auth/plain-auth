@@ -269,7 +269,7 @@ func DecodeSAMLConfig(raw []byte) (*SAMLConfig, error) {
 	// service needs a Redirect entry, where another runtime fails at sign-in.
 	if c.IDPMetadata.Metadata == "" {
 		redirect, _, err := ssoLocations(c.IDPMetadata.SingleSignOnService)
-		if err != nil || len(c.IDPMetadata.SingleSignOnService) > 0 && redirect == "" {
+		if err != nil || c.IDPMetadata.SingleSignOnService != nil && redirect == "" {
 			return nil, ErrInvalidSAML
 		}
 	}
@@ -431,12 +431,20 @@ func (o Options) samlMetadata(c auth.EndpointContext) (any, error) {
 	q := c.Request.URL.Query()
 	id := q.Get("providerId")
 	store, ok := c.Store().(BrowserStore)
-	if !ok || len(q["providerId"]) != 1 || !MutableProviderID(id) {
+	notFound := apiError(404, "No provider found for the given providerId")
+	if !ok || len(q["providerId"]) != 1 {
 		return nil, ErrMissing
+	}
+	if !MutableProviderID(id) {
+		return nil, notFound
 	}
 	p, err := store.FindBrowserProvider(c.Request.Context(), Selector{ProviderID: id, Protocol: "saml"})
 	if errors.Is(err, ErrMissing) {
-		return nil, apiError(404, "No provider found for the given providerId")
+		// A provider of the other protocol answers as another runtime does.
+		if _, other := store.FindBrowserProvider(c.Request.Context(), Selector{ProviderID: id}); other == nil {
+			return nil, apiError(400, "Invalid SAML configuration")
+		}
+		return nil, notFound
 	}
 	if err != nil {
 		return nil, err

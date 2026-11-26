@@ -100,8 +100,17 @@ func TestEnterpriseSAMLDefaults(t *testing.T) {
 					t.Fatal("a SAML registration carrying a private key was not refused", w.Code, w.Body.String())
 				}
 			}
-			if w := call("POST", "sso/update-provider", owner, map[string]any{"providerId": "acme", "samlConfig": map[string]any{"spMetadata": map[string]any{"privateKey": "PEM"}}}); w.Code != 400 || !strings.Contains(w.Body.String(), keyRefusal) {
-				t.Fatal("a SAML update carrying a private key was not refused", w.Code, w.Body.String())
+			for _, edit := range []func(map[string]any){
+				func(cfg map[string]any) { cfg["privateKey"] = "PEM" },
+				func(cfg map[string]any) { cfg["spMetadata"] = map[string]any{"encPrivateKey": "PEM"} },
+				func(cfg map[string]any) { cfg["idpMetadata"] = map[string]any{"privateKeyPass": "secret"} },
+				func(cfg map[string]any) { cfg["spMetadata"] = map[string]any{"privateKey": "PEM"} },
+			} {
+				patch := map[string]any{}
+				edit(patch)
+				if w := call("POST", "sso/update-provider", owner, map[string]any{"providerId": "acme", "samlConfig": patch}); w.Code != 400 || !strings.Contains(w.Body.String(), keyRefusal) {
+					t.Fatal("a SAML update carrying a private key was not refused", patch, w.Code, w.Body.String())
+				}
 			}
 			var ownerID string
 			must(store.db.QueryRowContext(ctx, store.bind(`SELECT "id" FROM "user" WHERE "email"=?`), "owner@example.test").Scan(&ownerID))
@@ -159,9 +168,19 @@ func TestEnterpriseSAMLDefaults(t *testing.T) {
 			if w := call("POST", "sso/update-provider", owner, map[string]any{"providerId": "acme", "samlConfig": map[string]any{"idpMetadata": map[string]any{"metadata": huge}}}); w.Code != 400 || !strings.Contains(w.Body.String(), tooLarge) {
 				t.Fatal("an oversized IdP metadata update did not name the limit", w.Code, w.Body.String())
 			}
+			// The size comes before the provider checks at registration and
+			// after them at update, as in another runtime.
+			if w := call("POST", "sso/register", owner, keyed("acme", func(cfg map[string]any) { cfg["idpMetadata"].(map[string]any)["metadata"] = huge })); w.Code != 400 || !strings.Contains(w.Body.String(), tooLarge) {
+				t.Fatal("an oversized registration for a taken providerId did not name the size first", w.Code, w.Body.String())
+			}
+			if w := call("POST", "sso/update-provider", owner, map[string]any{"providerId": "absent", "samlConfig": map[string]any{"idpMetadata": map[string]any{"metadata": huge}}}); w.Code != 404 {
+				t.Fatal("an oversized update for an unknown provider did not answer 404 first", w.Code, w.Body.String())
+			}
 			// The metadata route names an unknown provider and sandboxes its XML.
-			if w := call("GET", "sso/saml2/sp/metadata?providerId=unknown", "", nil); w.Code != 404 || !strings.Contains(w.Body.String(), "No provider found for the given providerId") {
-				t.Fatal("SP metadata for an unknown provider did not answer 404", w.Code, w.Body.String())
+			for _, id := range []string{"unknown", "credential"} {
+				if w := call("GET", "sso/saml2/sp/metadata?providerId="+id, "", nil); w.Code != 404 || !strings.Contains(w.Body.String(), "No provider found for the given providerId") {
+					t.Fatal("SP metadata for an unknown provider did not answer 404", id, w.Code, w.Body.String())
+				}
 			}
 			if w := call("GET", "sso/saml2/sp/metadata?providerId=acme", "", nil); w.Code != 200 || w.Header().Get("Content-Security-Policy") != "default-src 'none'; sandbox" {
 				t.Fatal("SP metadata was served without a sandboxing Content-Security-Policy", w.Code, w.Header())
@@ -211,6 +230,9 @@ func TestEnterpriseSAMLDefaults(t *testing.T) {
 				"oidcConfig": map[string]any{"clientId": "application", "clientSecret": "private", "skipDiscovery": true,
 					"authorizationEndpoint": "https://idp.example.test/authorize", "tokenEndpoint": "https://idp.example.test/token", "jwksEndpoint": "https://idp.example.test/keys"}}); w.Code != 200 {
 				t.Fatal("an OIDC provider did not register", w.Code, w.Body.String())
+			}
+			if w := call("GET", "sso/saml2/sp/metadata?providerId=oidc-one", "", nil); w.Code != 400 || !strings.Contains(w.Body.String(), "Invalid SAML configuration") {
+				t.Fatal("SP metadata for an OIDC provider did not answer 400", w.Code, w.Body.String())
 			}
 			for _, c := range []struct{ provider, kind, message string }{{"acme", "oidc", "OIDC provider is not configured"}, {"oidc-one", "saml", "SAML provider is not configured"}} {
 				w := call("POST", "sign-in/sso", "", map[string]any{"providerId": c.provider, "providerType": c.kind, "callbackURL": "/home"})

@@ -12751,6 +12751,11 @@
       "label": "Answer 404 'No provider found for the given providerId' for an unknown provider and serve the XML under a sandboxing Content-Security-Policy, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/sso_saml_defaults_test.go",
       "marker": "t.Fatal(\"SP metadata for an unknown provider did not answer 404\""
+    },
+    {
+      "label": "Answer 400 'Invalid SAML configuration' for an OIDC provider's SP metadata, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_defaults_test.go",
+      "marker": "t.Fatal(\"SP metadata for an OIDC provider did not answer 400\""
     }
   ],
   "plugin/sso/GET / POST /sso/saml2/sp/acs/:providerId": [
@@ -43326,7 +43331,7 @@
     {
       "label": "Refuse spMetadata.privateKey in a SAML update; requests are signed with the host-held RequestSigner, a documented deviation",
       "test": "adapters/sqlstore/sso_saml_defaults_test.go",
-      "marker": "t.Fatal(\"a SAML update carrying a private key was not refused\"",
+      "marker": "t.Fatal(\"a SAML update carrying a private key was not refused\", patch",
       "complete": true
     }
   ],
@@ -46375,6 +46380,11 @@
       "label": "Skip a stored SAML row that carries a private key in reads and sign-in",
       "test": "adapters/sqlstore/sso_saml_defaults_test.go",
       "marker": "t.Fatal(\"a stored SAML row carrying a private key started a sign-in\""
+    },
+    {
+      "label": "Refuse samlConfig.privateKey, spMetadata.encPrivateKey, idpMetadata.privateKeyPass and spMetadata.privateKey in an update, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_defaults_test.go",
+      "marker": "t.Fatal(\"a SAML update carrying a private key was not refused\", patch"
     }
   ]
 }

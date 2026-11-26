@@ -92,7 +92,7 @@ func hydrate(ctx context.Context, trusted func(string) bool, client *http.Client
 	// Discovery takes a customer-supplied URL. Only contact an independently
 	// trusted origin. Never forward it to a redirect target.
 	if !skip && !trusted(cfg.DiscoveryEndpoint) {
-		return discoveryError(400, "discovery_untrusted_origin", "The discovery endpoint origin is not trusted")
+		return untrustedDiscovery(cfg.DiscoveryEndpoint)
 	}
 	if !skip {
 		doc, err := fetchDiscovery(ctx, client, cfg.DiscoveryEndpoint)
@@ -200,7 +200,7 @@ func (o Options) withRuntimeDiscovery(ctx context.Context, host *auth.Auth, p Br
 		discovery = strings.TrimRight(cfg.Issuer, "/") + "/.well-known/openid-configuration"
 	}
 	if !trust(discovery) {
-		return p, discoveryError(400, "discovery_untrusted_origin", "The discovery endpoint origin is not trusted")
+		return p, untrustedDiscovery(discovery)
 	}
 	if err := hydrate(ctx, trust, o.HTTPClient, &cfg, false); err != nil {
 		return p, err
@@ -250,6 +250,17 @@ func fetchDiscovery(ctx context.Context, client *http.Client, endpoint string) (
 		return doc, discoveryError(400, "discovery_invalid_json", "Invalid discovery document")
 	}
 	return doc, nil
+}
+
+// untrustedDiscovery refuses a discovery URL outside the trusted origins
+// with another runtime's message, which also reaches the callback's
+// error_description.
+func untrustedDiscovery(raw string) error {
+	shown := raw
+	if u, err := url.Parse(raw); err == nil {
+		shown = u.String()
+	}
+	return discoveryError(400, "discovery_untrusted_origin", "The main discovery endpoint \""+shown+"\" is not trusted by your trusted origins configuration.")
 }
 
 // requestTrust trusts the exact origins configured for the request ctx

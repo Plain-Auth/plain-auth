@@ -205,6 +205,10 @@ func TestEnterpriseOIDCRequestTrustedEndpoints(t *testing.T) {
 					t.Fatal("a sign-in used endpoints the request did not trust", id, w.Code, w.Body.String())
 				}
 			}
+			untrusted := `The main discovery endpoint \"` + idp.URL + `/.well-known/openid-configuration\" is not trusted by your trusted origins configuration.`
+			if w := h.call("POST", "sign-in/sso", "", map[string]any{"providerId": "lazy", "callbackURL": "/home"}); !strings.Contains(w.Body.String(), untrusted) {
+				t.Fatal("an untrusted discovery origin did not name it as another runtime does", w.Body.String())
+			}
 			// A discovery URL derived from the issuer is checked only when
 			// it is fetched.
 			public := map[string]any{"providerId": "public", "issuer": idp.URL, "domain": "public.example", "oidcConfig": map[string]any{"clientId": "enterprise-client", "clientSecret": "oidc-secret", "skipDiscovery": true,

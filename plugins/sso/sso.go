@@ -312,6 +312,12 @@ func New(o Options) (auth.Plugin, error) {
 		if usesSAML && samlKeyFields(samlInput) {
 			return nil, errSAMLKeyMaterial
 		}
+		// The metadata size is checked first, as in another runtime.
+		if input, ok := samlInput["idpMetadata"].(map[string]any); ok && o.SAML != nil {
+			if doc, ok := input["metadata"].(string); ok && len(doc) > o.SAML.metadataLimit() {
+				return nil, metadataTooLarge(o.SAML.metadataLimit())
+			}
+		}
 		if (usesSAML && (ok || o.SAML == nil)) || (!usesSAML && (!ok || c.Body["samlConfig"] != nil)) {
 			return nil, apiError(400, "Supply an OpenID Connect configuration")
 		}
@@ -354,11 +360,6 @@ func New(o Options) (auth.Plugin, error) {
 			return nil, err
 		}
 		if usesSAML {
-			if input, ok := samlInput["idpMetadata"].(map[string]any); ok {
-				if doc, ok := input["metadata"].(string); ok && len(doc) > o.SAML.metadataLimit() {
-					return nil, metadataTooLarge(o.SAML.metadataLimit())
-				}
-			}
 			if input, ok := samlInput["spMetadata"].(map[string]any); ok {
 				if _, ok := input["metadata"]; ok {
 					return nil, errSPMetadataXML

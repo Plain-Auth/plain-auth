@@ -86,9 +86,6 @@ func (o Options) updateProvider(c auth.EndpointContext, store Store, actor Actor
 		if samlPatch, ok = raw.(map[string]any); !ok {
 			return nil, ErrInvalidSAML
 		}
-		if err := o.checkSAMLPatch(samlPatch); err != nil {
-			return nil, err
-		}
 	}
 	ctx := c.Request.Context()
 	visible, err := store.ReadSSOProviders(ctx, actor, id)
@@ -97,6 +94,11 @@ func (o Options) updateProvider(c auth.EndpointContext, store Store, actor Actor
 	}
 	if len(visible) != 1 {
 		return nil, ErrMissing
+	}
+	if samlPatch != nil {
+		if err := o.checkSAMLPatch(samlPatch); err != nil {
+			return nil, err
+		}
 	}
 	writer, ok := store.(ProviderUpdateStore)
 	if !ok {

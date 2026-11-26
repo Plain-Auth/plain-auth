@@ -44,9 +44,6 @@ func (o Options) updateSAMLMetadata(c auth.EndpointContext, store Store, actor A
 	}
 	metadata, _ := config["idpMetadata"].(map[string]any)
 	raw, _ := metadata["metadata"].(string)
-	if len(raw) > o.SAML.metadataLimit() {
-		return nil, metadataTooLarge(o.SAML.metadataLimit())
-	}
 	if len(c.Body) != 2 || len(config) != 1 || len(metadata) != 1 || raw == "" {
 		return nil, apiError(400, "Supply samlConfig.idpMetadata.metadata for this update")
 	}
@@ -57,6 +54,11 @@ func (o Options) updateSAMLMetadata(c auth.EndpointContext, store Store, actor A
 	}
 	if len(visible) != 1 || visible[0].SAML == nil {
 		return nil, ErrMissing
+	}
+	// The size is checked once the caller may see the provider, as in
+	// another runtime.
+	if len(raw) > o.SAML.metadataLimit() {
+		return nil, metadataTooLarge(o.SAML.metadataLimit())
 	}
 	current, err := store.(BrowserStore).FindBrowserProvider(ctx, Selector{ProviderID: id, Protocol: "saml"})
 	if err != nil {
