@@ -29,6 +29,9 @@ type samlPolicy struct {
 	idpKey  *rsa.PrivateKey
 	idpCert *x509.Certificate
 	idpPEM  string
+	// respond, when set, runs after the assertion is signed and before the
+	// response is, so a test can sign them differently.
+	respond func(*saml.IdpAuthnRequest)
 }
 
 const samlPolicyIdP = "https://identity.example.test"
@@ -148,6 +151,9 @@ func (p *samlPolicy) finish(h *auth.Auth, id string, req *saml.IdpAuthnRequest, 
 	if err := req.MakeAssertionEl(); err != nil {
 		p.t.Fatal(err)
 	}
+	if p.respond != nil {
+		p.respond(req)
+	}
 	form, err := req.PostBinding()
 	if err != nil {
 		p.t.Fatal(err)
@@ -198,6 +204,48 @@ func TestEnterpriseSAMLResponsePolicy(t *testing.T) {
 				w = p.finish(plain, "size", req, state, nil, nil, nil)
 				if location, session = samlOutcome(t, w); location.String() != "https://service.test/home" || !session {
 					t.Fatal("a SAMLResponse under the default limit was refused", w.Code, location)
+				}
+			})
+			t.Run("signature algorithms", func(t *testing.T) {
+				p := newSAMLPolicy(t, dialect)
+				p.directory("algorithms", nil)
+				def := p.host(sso.SAMLOptions{}, nil)
+				sigOnly := p.host(sso.SAMLOptions{Algorithms: sso.SAMLAlgorithms{AllowedSignatureAlgorithms: []sso.SignatureAlgorithm{sso.SignatureRSASHA256}}}, nil)
+				digestOnly := p.host(sso.SAMLOptions{Algorithms: sso.SAMLAlgorithms{AllowedDigestAlgorithms: []sso.DigestAlgorithm{sso.DigestSHA256}}}, nil)
+				signedWith := func(h *auth.Auth, method sso.SignatureAlgorithm) (*url.URL, bool) {
+					t.Helper()
+					req, state := p.start(h, "algorithms")
+					return samlOutcome(t, p.finish(h, "algorithms", req, state, func(idp *saml.IdentityProvider) { idp.SignatureMethod = string(method) }, nil, nil))
+				}
+				refused := func(location *url.URL, session bool, code, description string) bool {
+					return location.Path == "/retry" && location.Query().Get("error") == code && location.Query().Get("error_description") == description && !session
+				}
+				home := func(location *url.URL, session bool) bool {
+					return location.String() == "https://service.test/home" && session
+				}
+				if location, session := signedWith(def, sso.SignatureRSASHA1); !refused(location, session, "saml_deprecated_algorithm", "SAML response uses deprecated signature algorithm: http://www.w3.org/2000/09/xmldsig#rsa-sha1. Please configure your IdP to use SHA-256 or stronger.") {
+					t.Fatal("an RSA-SHA1 response did not fail with saml_deprecated_algorithm", location)
+				}
+				if location, session := signedWith(def, sso.SignatureRSASHA384); !home(location, session) {
+					t.Fatal("an RSA-SHA384 response was refused", location)
+				}
+				if location, session := signedWith(def, sso.SignatureRSASHA512); !home(location, session) {
+					t.Fatal("an RSA-SHA512 response was refused", location)
+				}
+				if location, session := signedWith(sigOnly, sso.SignatureRSASHA512); !refused(location, session, "saml_algorithm_not_allowed", "SAML signature algorithm not in allow-list: http://www.w3.org/2001/04/xmldsig-more#rsa-sha512") {
+					t.Fatal("the signature allow-list accepted an RSA-SHA512 response", location)
+				}
+				if location, session := signedWith(sigOnly, sso.SignatureRSASHA256); !home(location, session) {
+					t.Fatal("the signature allow-list refused an RSA-SHA256 response", location)
+				}
+				if location, session := signedWith(digestOnly, sso.SignatureRSASHA384); !refused(location, session, "saml_algorithm_not_allowed", "SAML digest algorithm not in allow-list: http://www.w3.org/2001/04/xmldsig-more#sha384") {
+					t.Fatal("the digest allow-list accepted a SHA-384 digest", location)
+				}
+				p.respond = func(req *saml.IdpAuthnRequest) { req.IDP.SignatureMethod = string(sso.SignatureRSASHA256) }
+				location, session := signedWith(sigOnly, sso.SignatureRSASHA512)
+				p.respond = nil
+				if !refused(location, session, "saml_algorithm_not_allowed", "SAML signature algorithm not in allow-list: http://www.w3.org/2001/04/xmldsig-more#rsa-sha512") {
+					t.Fatal("an RSA-SHA512 assertion inside an RSA-SHA256 response escaped the allow-list", location)
 				}
 			})
 			t.Run("timestamps", func(t *testing.T) {

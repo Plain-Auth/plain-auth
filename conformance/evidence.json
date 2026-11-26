@@ -44122,5 +44122,136 @@
       "test": "plugins/sso/saml_test.go",
       "marker": "AES-256-GCM URI differs from the decrypter's"
     }
+  ],
+  "plugin-symbol/sso/AlgorithmValidationOptions": [
+    {
+      "label": "Apply the signature and digest allow-lists and the deprecated and unknown algorithm checks to response and assertion signatures at the ACS, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "an RSA-SHA512 assertion inside an RSA-SHA256 response escaped the allow-list"
+    },
+    {
+      "label": "Refuse deprecated, unlisted and unknown signature methods and digests with their SAML_ codes, naming only exported URIs",
+      "test": "plugins/sso/saml_test.go",
+      "marker": "func TestSAMLResponseAlgorithmPolicy("
+    }
+  ],
+  "plugin-symbol/sso/AlgorithmValidationOptions/allowedSignatureAlgorithms": [
+    {
+      "label": "Refuse a response signed outside the signature allow-list with saml_algorithm_not_allowed and accept a listed one, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "the signature allow-list accepted an RSA-SHA512 response"
+    },
+    {
+      "label": "Refuse deprecated and short-form signature allow-list entries when building the plugin",
+      "test": "plugins/sso/saml_test.go",
+      "marker": "a short-form signature allow-list entry was accepted"
+    }
+  ],
+  "plugin-symbol/sso/AlgorithmValidationOptions/allowedDigestAlgorithms": [
+    {
+      "label": "Refuse a response whose signature digest is outside the digest allow-list, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "the digest allow-list accepted a SHA-384 digest"
+    },
+    {
+      "label": "Refuse a SHA-1 digest allow-list entry when building the plugin",
+      "test": "plugins/sso/saml_test.go",
+      "marker": "a SHA-1 digest allow-list entry was accepted"
+    }
+  ],
+  "docs/content/docs/plugins/sso/saml-security.mdx#L93/Signature": [
+    {
+      "label": "Refuse an RSA-SHA1 response with saml_deprecated_algorithm and accept RSA-SHA384 and RSA-SHA512 responses, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "an RSA-SHA1 response did not fail with saml_deprecated_algorithm"
+    },
+    {
+      "label": "Accept an RSA-SHA512 response",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "an RSA-SHA512 response was refused"
+    }
+  ],
+  "docs/content/docs/plugins/sso/saml-security.mdx#L94/Digest": [
+    {
+      "label": "Report a SHA-1 digest as deprecated",
+      "test": "plugins/sso/saml_test.go",
+      "marker": "a SHA-1 digest was not reported as deprecated"
+    },
+    {
+      "label": "Refuse an unknown digest method",
+      "test": "plugins/sso/saml_test.go",
+      "marker": "an unknown digest method was not refused"
+    },
+    {
+      "label": "Accept a response signed with a SHA-384 digest",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "an RSA-SHA384 response was refused"
+    }
+  ],
+  "docs/content/docs/plugins/sso/saml-security.mdx#L101/`\"reject\"`": [
+    {
+      "label": "Refuse an RSA-SHA1 response with saml_deprecated_algorithm, the only deprecated-algorithm mode",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "an RSA-SHA1 response did not fail with saml_deprecated_algorithm"
+    }
+  ],
+  "docs/content/docs/plugins/sso/saml-security.mdx#L127/`SAML_UNKNOWN_ALGORITHM`": [
+    {
+      "label": "Refuse an unknown signature method with SAML_UNKNOWN_ALGORITHM without echoing it",
+      "test": "plugins/sso/saml_test.go",
+      "marker": "an unknown signature method was not refused without echoing it"
+    },
+    {
+      "label": "Refuse ECDSA-SHA1 as an unrecognized signature method",
+      "test": "plugins/sso/saml_test.go",
+      "marker": "ECDSA-SHA1 was not refused as unrecognized"
+    }
+  ],
+  "docs/content/docs/plugins/sso/saml-security.mdx#L128/`SAML_ALGORITHM_NOT_ALLOWED`": [
+    {
+      "label": "Redirect a response signed outside the allow-list with saml_algorithm_not_allowed, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "the signature allow-list accepted an RSA-SHA512 response"
+    },
+    {
+      "label": "Apply the allow-list before the deprecation check",
+      "test": "plugins/sso/saml_test.go",
+      "marker": "the allow-list did not take precedence over the deprecation check"
+    }
+  ],
+  "docs/content/docs/plugins/sso/saml-security.mdx#L129/`SAML_DEPRECATED_ALGORITHM`": [
+    {
+      "label": "Redirect an RSA-SHA1 response with saml_deprecated_algorithm and its message, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "an RSA-SHA1 response did not fail with saml_deprecated_algorithm"
+    }
+  ],
+  "plugin-symbol/sso/AlgorithmValidationOptions/onDeprecated": [
+    {
+      "label": "Always reject deprecated algorithms: an RSA-SHA1 response fails with saml_deprecated_algorithm (there is no warn or allow mode)",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "an RSA-SHA1 response did not fail with saml_deprecated_algorithm"
+    }
+  ],
+  "plugin-symbol/sso/DeprecatedAlgorithmBehavior": [
+    {
+      "label": "Reject deprecated algorithms, the only behaviour offered",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "an RSA-SHA1 response did not fail with saml_deprecated_algorithm"
+    }
+  ],
+  "docs/content/docs/plugins/sso/saml-security.mdx#L100/`\"warn\"`": [
+    {
+      "label": "Refuse a deprecated algorithm rather than warn: an RSA-SHA1 response fails with saml_deprecated_algorithm",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "an RSA-SHA1 response did not fail with saml_deprecated_algorithm"
+    }
+  ],
+  "docs/content/docs/plugins/sso/saml-security.mdx#L102/`\"allow\"`": [
+    {
+      "label": "Refuse a deprecated algorithm rather than allow it: an RSA-SHA1 response fails with saml_deprecated_algorithm",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "an RSA-SHA1 response did not fail with saml_deprecated_algorithm"
+    }
   ]
 }

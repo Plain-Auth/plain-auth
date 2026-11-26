@@ -163,6 +163,8 @@ func domains(value string) (string, error) {
 func New(o Options) (auth.Plugin, error) {
 	if o.SAML != nil {
 		v := *o.SAML
+		v.Algorithms.AllowedSignatureAlgorithms = slices.Clone(v.Algorithms.AllowedSignatureAlgorithms)
+		v.Algorithms.AllowedDigestAlgorithms = slices.Clone(v.Algorithms.AllowedDigestAlgorithms)
 		if v.Encryption != nil {
 			keys := *v.Encryption
 			v.Encryption = &keys

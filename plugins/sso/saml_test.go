@@ -4,7 +4,9 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
+	"errors"
 	auth "github.com/Plain-Org/plain-auth"
+	"github.com/beevik/etree"
 	"github.com/crewjam/saml"
 	"github.com/crewjam/saml/xmlenc"
 	"math/big"
@@ -319,5 +321,93 @@ func TestSAMLAlgorithmURIs(t *testing.T) {
 	}
 	if string(DataEncryptionAES128GCM) != xmlenc.AES128GCM.Algorithm() || string(DataEncryptionAES256CBC) != xmlenc.AES256CBC.Algorithm() || string(DataEncryptionTripleDESCBC) != xmlenc.TripleDES.Algorithm() {
 		t.Fatal("block cipher URIs differ from the decrypter's")
+	}
+}
+
+// The signature policy refuses deprecated, unknown and unlisted signature
+// methods and digests with their SAML_ codes, names only exported URIs, and
+// checks a signed assertion behind a signed response.
+func TestSAMLResponseAlgorithmPolicy(t *testing.T) {
+	signed := func(tag, method, digest string) *etree.Element {
+		el := etree.NewElement("saml:" + tag)
+		el.CreateAttr("xmlns:saml", samlAssertionNS)
+		sig := el.CreateElement("ds:Signature")
+		sig.CreateAttr("xmlns:ds", signatureNS)
+		info := sig.CreateElement("ds:SignedInfo")
+		info.CreateElement("ds:SignatureMethod").CreateAttr("Algorithm", method)
+		info.CreateElement("ds:Reference").CreateElement("ds:DigestMethod").CreateAttr("Algorithm", digest)
+		return el
+	}
+	failure := func(err error) (string, string) {
+		var e *auth.APIError
+		if errors.As(err, &e) {
+			return e.Code, e.Message
+		}
+		return "", ""
+	}
+	sha256, rsa256 := string(DigestSHA256), string(SignatureRSASHA256)
+	onlyRSA256 := SAMLAlgorithms{AllowedSignatureAlgorithms: []SignatureAlgorithm{SignatureRSASHA256}}
+	if err := (SAMLAlgorithms{}).checkSignatures(signed("Assertion", rsa256, sha256)); err != nil {
+		t.Fatal("a SHA-256 signature was refused", err)
+	}
+	unsigned := etree.NewElement("saml:Assertion")
+	if err := (SAMLAlgorithms{}).checkSignatures(unsigned); err != nil {
+		t.Fatal("an unsigned element failed the algorithm policy", err)
+	}
+	if code, message := failure(onlyRSA256.checkSignatures(signed("Assertion", string(SignatureRSASHA512), sha256))); code != "SAML_ALGORITHM_NOT_ALLOWED" || message != "SAML signature algorithm not in allow-list: http://www.w3.org/2001/04/xmldsig-more#rsa-sha512" {
+		t.Fatal("the signature allow-list accepted RSA-SHA512", code, message)
+	}
+	if code, message := failure(onlyRSA256.checkSignatures(signed("Assertion", string(SignatureRSASHA1), sha256))); code != "SAML_ALGORITHM_NOT_ALLOWED" || !strings.HasSuffix(message, "rsa-sha1") {
+		t.Fatal("the allow-list did not take precedence over the deprecation check", code, message)
+	}
+	if code, message := failure(onlyRSA256.checkSignatures(signed("Assertion", "urn:example:signature", sha256))); code != "SAML_ALGORITHM_NOT_ALLOWED" || message != "SAML signature algorithm not in allow-list" {
+		t.Fatal("an unlisted unknown method was echoed", code, message)
+	}
+	if code, message := failure((SAMLAlgorithms{AllowedDigestAlgorithms: []DigestAlgorithm{DigestSHA256}}).checkSignatures(signed("Assertion", string(SignatureRSASHA384), string(DigestSHA384)))); code != "SAML_ALGORITHM_NOT_ALLOWED" || message != "SAML digest algorithm not in allow-list: http://www.w3.org/2001/04/xmldsig-more#sha384" {
+		t.Fatal("the digest allow-list accepted SHA-384", code, message)
+	}
+	if code, message := failure((SAMLAlgorithms{}).checkSignatures(signed("Assertion", rsa256, string(DigestSHA1)))); code != "SAML_DEPRECATED_ALGORITHM" || message != "SAML response uses deprecated digest algorithm: http://www.w3.org/2000/09/xmldsig#sha1. Please configure your IdP to use SHA-256 or stronger." {
+		t.Fatal("a SHA-1 digest was not reported as deprecated", code, message)
+	}
+	if code, message := failure((SAMLAlgorithms{}).checkSignatures(signed("Assertion", rsa256, "urn:example:digest"))); code != "SAML_UNKNOWN_ALGORITHM" || message != "SAML digest algorithm not recognized" {
+		t.Fatal("an unknown digest method was not refused", code, message)
+	}
+	if code, message := failure((SAMLAlgorithms{}).checkSignatures(signed("Assertion", "urn:example:signature", sha256))); code != "SAML_UNKNOWN_ALGORITHM" || message != "SAML signature algorithm not recognized" {
+		t.Fatal("an unknown signature method was not refused without echoing it", code, message)
+	}
+	if code, _ := failure((SAMLAlgorithms{}).checkSignatures(signed("Assertion", "http://www.w3.org/2001/04/xmldsig-more#ecdsa-sha1", sha256))); code != "SAML_UNKNOWN_ALGORITHM" {
+		t.Fatal("ECDSA-SHA1 was not refused as unrecognized", code)
+	}
+	response := signed("Response", rsa256, sha256)
+	assertion := signed("Assertion", string(SignatureRSASHA1), sha256)
+	response.AddChild(assertion)
+	if code, _ := failure((SAMLAlgorithms{}).checkSignatures(response, assertion)); code != "SAML_DEPRECATED_ALGORITHM" {
+		t.Fatal("an assertion signature behind a valid response signature escaped the policy", code)
+	}
+	foreign := signed("Assertion", string(SignatureRSASHA512), sha256)
+	foreign.CreateElement("x:Signature").CreateAttr("xmlns:x", "urn:other")
+	if err := onlyRSA256.checkSignatures(foreign); err == nil {
+		t.Fatal("a foreign Signature sibling hid the signature from the policy")
+	}
+}
+
+// New refuses deprecated and short-form allow-list entries and accepts the
+// supported URIs.
+func TestSAMLAlgorithmOptions(t *testing.T) {
+	refused := func(a SAMLAlgorithms) bool {
+		_, err := New(Options{SAML: &SAMLOptions{Algorithms: a}})
+		return err != nil
+	}
+	if !refused(SAMLAlgorithms{AllowedSignatureAlgorithms: []SignatureAlgorithm{SignatureRSASHA1}}) {
+		t.Fatal("a SHA-1 signature allow-list entry was accepted")
+	}
+	if !refused(SAMLAlgorithms{AllowedSignatureAlgorithms: []SignatureAlgorithm{"rsa-sha256"}}) {
+		t.Fatal("a short-form signature allow-list entry was accepted")
+	}
+	if !refused(SAMLAlgorithms{AllowedDigestAlgorithms: []DigestAlgorithm{DigestSHA1}}) {
+		t.Fatal("a SHA-1 digest allow-list entry was accepted")
+	}
+	if refused(SAMLAlgorithms{AllowedSignatureAlgorithms: []SignatureAlgorithm{SignatureRSASHA256, SignatureECDSASHA256}, AllowedDigestAlgorithms: []DigestAlgorithm{DigestSHA512}}) {
+		t.Fatal("a supported algorithm allow-list was refused")
 	}
 }

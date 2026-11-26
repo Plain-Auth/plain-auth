@@ -46,7 +46,10 @@ type SAMLOptions struct {
 	// RequireTimestamps refuses an assertion whose Conditions has neither
 	// NotBefore nor NotOnOrAfter. Without it such an assertion is accepted
 	// and a warning is logged through the auth Logger.
-	RequireTimestamps  bool
+	RequireTimestamps bool
+	// Algorithms narrows the signature and digest algorithms responses and
+	// directory configurations may use.
+	Algorithms         SAMLAlgorithms
 	RequestSigner      crypto.Signer
 	RequestCertificate *x509.Certificate
 	TrustEmailVerified bool
@@ -83,6 +86,9 @@ func (o SAMLOptions) validate() error {
 	}
 	if o.MaxMetadataSize < 0 || o.MaxMetadataSize > maxSAMLMetadataBytes {
 		return errors.New("sso: SAML metadata size must be between 1 byte and 1 MiB when set")
+	}
+	if err := o.Algorithms.validate(); err != nil {
+		return err
 	}
 	if o.ClockSkew < 0 || o.ClockSkew > defaultSAMLClockSkew {
 		return errors.New("sso: SAML clock skew must be between zero and three minutes")
@@ -243,6 +249,8 @@ func (o Options) samlSP(c auth.EndpointContext, p Provider) (*saml.ServiceProvid
 		if e != nil {
 			return nil, ErrInvalidSAML
 		}
+		// ECDSA directories are refused: the XML signature library checks
+		// ECDSA values in ASN.1 form, not the r||s form XML Signature uses.
 		key, ok := cert.PublicKey.(*rsa.PublicKey)
 		if !ok || key.N.BitLen() < 2048 {
 			return nil, ErrInvalidSAML

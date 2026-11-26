@@ -151,7 +151,7 @@ func inlineCipherValue(parent *etree.Element) bool {
 	return cd != nil && len(cd.ChildElements()) == 1 && value != nil && len(value.ChildElements()) == 0 && strings.TrimSpace(value.Text()) != ""
 }
 
-func encryptedAssertionID(raw []byte, acs, requestID string, key *rsa.PrivateKey) (string, error) {
+func encryptedAssertionID(raw []byte, acs, requestID string, key *rsa.PrivateKey, algorithms SAMLAlgorithms) (string, error) {
 	response, err := boundedSAMLTree(raw)
 	if err != nil || !namedElement(response, samlProtocolNS, "Response") || uniqueAttribute(response, "Destination") != acs || uniqueAttribute(response, "InResponseTo") != requestID {
 		return "", errSAMLResponse
@@ -185,6 +185,9 @@ func encryptedAssertionID(raw []byte, acs, requestID string, key *rsa.PrivateKey
 		uniqueAttribute(mgf, "Algorithm") != mgfSHA256 || len(mgf.ChildElements()) != 0 {
 		return "", errSAMLResponse
 	}
+	if err := algorithms.checkSignatures(response); err != nil {
+		return "", err
+	}
 	// The library accepts a signed outer response without an assertion signature.
 	// Inspect the decrypted shape here to require a directly signed assertion in
 	// both cases. ParseXMLResponse then verifies the original signatures, decrypts
@@ -202,14 +205,30 @@ func encryptedAssertionID(raw []byte, acs, requestID string, key *rsa.PrivateKey
 	if a != 1 || enc != 0 || data != 0 || keys != 0 || other != 0 || id == "" || len(id) > 512 {
 		return "", errSAMLResponse
 	}
+	if err := algorithms.checkSignatures(assertion); err != nil {
+		return "", err
+	}
 	return id, nil
 }
 
-func assertionDocumentID(raw []byte, sp *saml.ServiceProvider, requestID string) (string, error) {
+// assertionDocumentID checks the response envelope and the algorithms of
+// its signatures, and returns the one assertion's ID.
+func assertionDocumentID(raw []byte, sp *saml.ServiceProvider, requestID string, algorithms SAMLAlgorithms) (string, error) {
 	if sp.EncryptionKey != nil {
-		return encryptedAssertionID(raw, sp.AcsURL.String(), requestID, sp.EncryptionKey)
+		return encryptedAssertionID(raw, sp.AcsURL.String(), requestID, sp.EncryptionKey, algorithms)
 	}
-	return assertionEnvelope(raw, sp.AcsURL.String(), requestID)
+	id, err := assertionEnvelope(raw, sp.AcsURL.String(), requestID)
+	if err != nil {
+		return "", err
+	}
+	response, err := boundedSAMLTree(raw)
+	if err != nil {
+		return "", errSAMLResponse
+	}
+	if err := algorithms.checkSignatures(response, uniqueChild(response, samlAssertionNS, "Assertion")); err != nil {
+		return "", err
+	}
+	return id, nil
 }
 
 // The metadata model can name a key transport but cannot encode its digest or MGF.

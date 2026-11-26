@@ -392,7 +392,11 @@ func (o Options) samlFinish(c auth.EndpointContext) (any, error) {
 	case n > 1:
 		return enterpriseFailure(c, flow, "saml_multiple_assertions", fmt.Sprintf("SAML response contains %d assertions, expected exactly 1", n))
 	}
-	id, err := assertionDocumentID(raw, sp, requestID)
+	id, err := assertionDocumentID(raw, sp, requestID, o.SAML.Algorithms)
+	var policy *auth.APIError
+	if errors.As(err, &policy) && strings.HasPrefix(policy.Code, "SAML_") {
+		return enterpriseFailure(c, flow, strings.ToLower(policy.Code), policy.Message)
+	}
 	if err != nil {
 		return fail("invalid_saml_response")
 	}
