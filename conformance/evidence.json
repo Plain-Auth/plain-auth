@@ -45132,5 +45132,50 @@
       "marker": "t.Fatal(\"Basic authentication was not refused with a bearer challenge\", w.Code, w.Header().Get(\"WWW-Authenticate\"), w.Body.String())",
       "complete": true
     }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L205/An attribute or subattribute in a `POST` or `PUT` body": [
+    {
+      "label": "Drop null attributes, name parts and email subattributes on create and replace, and refuse a null userName, active or email entry, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "func TestSCIMUserAttributesOverHTTP(",
+      "complete": true
+    },
+    {
+      "label": "Drop a null Group externalId and member subattribute and empty the members on a null PUT",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "func TestSCIMGroupNullAttributesOverHTTP("
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L253/`name.middleName`, `name.honorificPrefix`, `name.honorificSuffix`": [
+    {
+      "label": "Store and return the middle name and honorifics, and replace them on PUT",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "t.Fatal(\"PUT did not replace the classic name parts\", n)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L519/Custom schema extensions": [
+    {
+      "label": "Refuse a User or Group with a custom schema extension as invalidValue",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "t.Fatal(\"a User with a custom schema extension was accepted\", body)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L520/`User.groups`": [
+    {
+      "label": "Ignore a supplied User groups value and leave groups out of the User schema",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "t.Fatal(\"the User schema advertised groups\", names)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L521/Passwords, instant messaging addresses, photos, or X.509 certificates": [
+    {
+      "label": "Never return or store a password, ims, photos or X.509 certificates",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "t.Fatal(\"an unsupported User attribute was stored\", needle)",
+      "complete": true
+    }
   ]
 }

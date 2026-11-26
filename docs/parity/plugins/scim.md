@@ -347,7 +347,9 @@
   - [ ] HTTP behavior
     - [ ] Null attribute values
       - [x] Reject active: null in a User replacement with 400 on both runtimes ([test](../../../conformance/scim-roles.mjs#L48))
-      - [ ] An attribute or subattribute in a `POST` or `PUT` body
+      - [x] An attribute or subattribute in a `POST` or `PUT` body ([test](../../../adapters/sqlstore/scim_attributes_test.go#L52))
+        - [x] Drop null attributes, name parts and email subattributes on create and replace, and refuse a null userName, active or email entry, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L52))
+        - [x] Drop a null Group externalId and member subattribute and empty the members on a null PUT ([test](../../../adapters/sqlstore/scim_attributes_test.go#L171))
       - [ ] The `value` of a PATCH `add` or `replace` operation
       - [ ] A key in a PATCH value that merges into the stored value: a pathless value, `name`, the Enterprise extension, `manager`, or a filtered value such as `addresses[type eq "work"]`
       - [ ] A subattribute of a value in a PATCH that adds or replaces whole values, such as `emails` or `addresses`
@@ -384,7 +386,8 @@
         - [x] Derive displayName from the given and family names when it is omitted, on both runtimes ([test](../../../conformance/scim-contract.mjs#L60))
       - [ ] `name.formatted`, `name.givenName`, `name.familyName`
         - [x] Derive the account name from given and family names when neither a formatted name nor displayName is sent ([test](../../../adapters/sqlstore/scim_test.go#L139))
-      - [ ] `name.middleName`, `name.honorificPrefix`, `name.honorificSuffix`
+      - [x] `name.middleName`, `name.honorificPrefix`, `name.honorificSuffix` ([test](../../../adapters/sqlstore/scim_attributes_test.go#L122))
+        - [x] Store and return the middle name and honorifics, and replace them on PUT ([test](../../../adapters/sqlstore/scim_attributes_test.go#L122))
       - [ ] `emails`
         - [x] Lowercase an email value and mark the only work email primary on both runtimes ([test](../../../conformance/scim-contract.mjs#L61))
       - [ ] `title`, `userType`, `preferredLanguage`, `locale`, `timezone`
@@ -473,9 +476,12 @@
       - [x] Refuse retiring a static connection under a different provisioning domain, then retire it before first use so its token answers 401 ([test](../../../adapters/sqlstore/scim_decommission_test.go#L73))
       - [x] Report a never-used directory retired by one runtime as complete with no batches from the other ([test](../../../conformance/scim-managed.mjs#L146))
   - [ ] Unsupported features
-    - [ ] Custom schema extensions
-    - [ ] `User.groups`
-    - [ ] Passwords, instant messaging addresses, photos, or X.509 certificates
+    - [x] Custom schema extensions ([test](../../../adapters/sqlstore/scim_attributes_test.go#L129))
+      - [x] Refuse a User or Group with a custom schema extension as invalidValue ([test](../../../adapters/sqlstore/scim_attributes_test.go#L129))
+    - [x] `User.groups` ([test](../../../adapters/sqlstore/scim_attributes_test.go#L147))
+      - [x] Ignore a supplied User groups value and leave groups out of the User schema ([test](../../../adapters/sqlstore/scim_attributes_test.go#L147))
+    - [x] Passwords, instant messaging addresses, photos, or X.509 certificates ([test](../../../adapters/sqlstore/scim_attributes_test.go#L162))
+      - [x] Never return or store a password, ims, photos or X.509 certificates ([test](../../../adapters/sqlstore/scim_attributes_test.go#L162))
     - [ ] Nested Groups or non-User Group members
       - [x] Reject a Group created with another Group as a member with 400 ([test](../../../adapters/sqlstore/scim_groups_test.go#L111))
       - [x] Reject adding a Group ID as a member with 400 invalidValue on both runtimes ([test](../../../conformance/scim-contract.mjs#L112))
