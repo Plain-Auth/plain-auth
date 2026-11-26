@@ -104,6 +104,8 @@ func TestAPIKeyErrorCodesAcrossEngines(t *testing.T) {
 			must(err)
 			_, err = visitor.GetAPIKey(ctx, teamKey.ID, "teams")
 			wantError(err, 403, "USER_NOT_MEMBER_OF_ORGANIZATION", "You are not a member of the organization that owns this API key.")
+			_, err = visitor.GetAPIKey(ctx, key.ID, "")
+			wantError(err, 404, "KEY_NOT_FOUND", "API Key not found")
 			plain, err := client.New(origin, &http.Client{Transport: guestTransport{host}})
 			must(err)
 			plainUser, err := plain.SignUpEmail(ctx, client.SignUpRequest{Name: "Plain", Email: "plain@example.test", Password: "errors-password"})

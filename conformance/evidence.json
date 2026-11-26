@@ -5725,9 +5725,14 @@
       "marker": "// Each counted wrong delivered code runs the update after hooks."
     },
     {
-      "label": "Refuse the right code with TOO_MANY_ATTEMPTS_REQUEST_NEW_CODE once its count reaches the default five",
+      "label": "Refuse the right code with TOO_MANY_ATTEMPTS_REQUEST_NEW_CODE once its count reaches the limit",
       "test": "adapters/sqlstore/twofactor_hooks_test.go",
-      "marker": "t.Fatal(\"a code that ran out answered\", w.Body.String())",
+      "marker": "t.Fatal(\"a code that ran out answered\", w.Body.String())"
+    },
+    {
+      "label": "Default the delivered code's allowed attempts to five",
+      "test": "twofactor_settings_test.go",
+      "marker": "delivered codes did not default to five attempts, six digits and three minutes",
       "complete": true
     }
   ],
@@ -5735,13 +5740,13 @@
     {
       "label": "Encode and verify plain, encrypted, hashed, and custom transformed codes",
       "test": "twofactor_settings_test.go",
-      "marker": "func TestDeliveredFactorStorageModes("
+      "marker": "func TestDeliveredFactorStorageModes(",
+      "complete": true
     },
     {
       "label": "Store a hashed delivered code as its SHA-256 digest over HTTP",
       "test": "adapters/sqlstore/twofactor_delivery_test.go",
-      "marker": "stored delivered OTP or expiry differs from configuration",
-      "complete": true
+      "marker": "stored delivered OTP or expiry differs from configuration"
     }
   ],
   "plugin-symbol/2fa/TOTPOptions/digits": [
@@ -7457,6 +7462,11 @@
       "label": "Refuse a signed-out read with 401 UNAUTHORIZED on both runtimes",
       "test": "conformance/core.test.mjs",
       "marker": "await refused(client.apiKey.get({ query: { id: \"missing\" } }), 401, \"UNAUTHORIZED\");"
+    },
+    {
+      "label": "Answer KEY_NOT_FOUND when another user reads a personal key",
+      "test": "adapters/sqlstore/apikey_errors_test.go",
+      "marker": "_, err = visitor.GetAPIKey(ctx, key.ID, \"\")"
     }
   ],
   "plugin/api-key/POST /api-key/update": [
@@ -7495,6 +7505,16 @@
       "label": "Refuse a signed-out update with 401 UNAUTHORIZED_SESSION on both runtimes",
       "test": "conformance/core.test.mjs",
       "marker": "await refused(client.apiKey.update({ keyId: \"missing\", name: \"Signed out\" }), 401, \"UNAUTHORIZED_SESSION\");"
+    },
+    {
+      "label": "Answer KEY_NOT_FOUND when another user updates a key, leaving it unchanged",
+      "test": "adapters/sqlstore/apikey_routes_test.go",
+      "marker": "another user updated a key they do not own"
+    },
+    {
+      "label": "Refuse an organization key update by a member without the update grant",
+      "test": "adapters/sqlstore/apikey_org_roles_test.go",
+      "marker": "a member without the update or read grant updated or listed organization keys"
     }
   ],
   "plugin/api-key/POST /api-key/delete": [
@@ -7523,6 +7543,16 @@
       "label": "Refuse a signed-out delete with 401 UNAUTHORIZED on both runtimes",
       "test": "conformance/core.test.mjs",
       "marker": "await refused(client.apiKey.delete({ keyId: \"missing\" }), 401, \"UNAUTHORIZED\");"
+    },
+    {
+      "label": "Answer KEY_NOT_FOUND when another user deletes a key, keeping it",
+      "test": "adapters/sqlstore/apikey_routes_test.go",
+      "marker": "another user's delete removed the key"
+    },
+    {
+      "label": "Refuse an organization key delete by a member without the delete grant",
+      "test": "adapters/sqlstore/apikey_session_test.go",
+      "marker": "code(reader.DeleteAPIKey(ctx, teamKey.ID, \"teams\"), \"INSUFFICIENT_API_KEY_PERMISSIONS\")"
     }
   ],
   "plugin/api-key/GET /api-key/list": [
@@ -7546,6 +7576,11 @@
       "label": "Refuse a signed-out list with 401 UNAUTHORIZED on both runtimes",
       "test": "conformance/core.test.mjs",
       "marker": "await refused(client.apiKey.list(), 401, \"UNAUTHORIZED\");"
+    },
+    {
+      "label": "Show another user none of the lister's keys in any listing",
+      "test": "adapters/sqlstore/apikey_list_test.go",
+      "marker": "a listing showed another user's keys"
     }
   ],
   "docs/content/docs/plugins/api-key/index.mdx#L89": [
@@ -7878,7 +7913,12 @@
     {
       "label": "Refuse custom lifetimes on create and update when they are disabled, and use the default lifetime",
       "test": "adapters/sqlstore/apikey_options_test.go",
-      "marker": "custom expiration was accepted while disabled, or the default lifetime was not used",
+      "marker": "custom expiration was accepted while disabled, or the default lifetime was not used"
+    },
+    {
+      "label": "Keep lifetimes within a configuration's own minimum and maximum, refusing shorter and longer ones",
+      "test": "adapters/sqlstore/apikey_options_test.go",
+      "marker": "configured expiration bounds were not enforced",
       "complete": true
     }
   ],
@@ -7891,7 +7931,12 @@
     {
       "label": "Accept every request of a configuration with rate limiting turned off",
       "test": "adapters/sqlstore/apikey_options_test.go",
-      "marker": "disabled rate limiting still refused a key",
+      "marker": "disabled rate limiting still refused a key"
+    },
+    {
+      "label": "Enforce a configuration's own rate maximum and window, and reset the window after its configured length, on three SQL engines",
+      "test": "adapters/sqlstore/apikey_options_test.go",
+      "marker": "a configuration's rate window did not reset after its own length",
       "complete": true
     }
   ],
@@ -8325,6 +8370,26 @@
       "label": "Let the organization's creator role manage keys without an apiKey grant of its own",
       "test": "adapters/sqlstore/apikey_org_roles_test.go",
       "marker": "the creator role without an apiKey grant could not manage keys"
+    },
+    {
+      "label": "Let the creator role read, list, update and delete keys without an apiKey grant when stored roles apply",
+      "test": "adapters/sqlstore/apikey_org_roles_test.go",
+      "marker": "the creator role without an apiKey grant could not read, list, update and delete keys"
+    },
+    {
+      "label": "Ignore stored roles when the linked organization service does not use dynamic access control",
+      "test": "adapters/sqlstore/apikey_org_roles_test.go",
+      "marker": "a linked policy without stored roles did not decide key access alone"
+    },
+    {
+      "label": "Refuse key management with INSUFFICIENT_API_KEY_PERMISSIONS while a stored role is invalid, the creator included",
+      "test": "adapters/sqlstore/apikey_org_roles_test.go",
+      "marker": "an invalid stored role did not refuse key management with INSUFFICIENT_API_KEY_PERMISSIONS"
+    },
+    {
+      "label": "Check a key operation that waited on the organization lock against the stored grants committed meanwhile",
+      "test": "adapters/sqlstore/apikey_org_roles_test.go",
+      "marker": "a key operation combined a current role with revoked stored grants"
     }
   ],
   "docs/content/docs/plugins/api-key/advanced.mdx#L369/Owner Access": [
@@ -9619,6 +9684,16 @@
       "label": "Discover Groups only when the store provides the Group operations",
       "test": "conformance/scim-contract.mjs",
       "marker": "export async function groupContract("
+    },
+    {
+      "label": "Serve the resource type list without a bearer credential",
+      "test": "adapters/sqlstore/scim_test.go",
+      "marker": "for _, path := range []string{\"ServiceProviderConfig\", \"ResourceTypes\""
+    },
+    {
+      "label": "List the Group resource type on both runtimes",
+      "test": "conformance/scim-contract.mjs",
+      "marker": "assert.ok(page.Resources.some(resource=>resource.id===name));"
     }
   ],
   "plugin/scim/GET /scim/v2/ResourceTypes/:resourceTypeId": [
@@ -9631,6 +9706,16 @@
       "label": "Retrieve the Group resource type on both implementations",
       "test": "conformance/scim-contract.mjs",
       "marker": "export async function groupContract("
+    },
+    {
+      "label": "Return 404 for the Group resource type when the store has no Group operations",
+      "test": "plugins/scim/http_test.go",
+      "marker": "{\"GET\", \"/identity/scim/v2/ResourceTypes/Group\", \"\", \"\", \"\", 404},"
+    },
+    {
+      "label": "Return the User resource type with the core User schema on both runtimes",
+      "test": "conformance/scim-contract.mjs",
+      "marker": "assert.equal(discovery.schema,userSchema);"
     }
   ],
   "plugin/scim/POST /scim/v2/Users": [
@@ -9660,6 +9745,17 @@
       "label": "Read canonical directory role arrays from SQLite records written by either implementation",
       "test": "conformance/scim-roles.mjs",
       "marker": "assert.deepEqual((await shared(\"GET\",path,200)).roles,longRoles)"
+    },
+    {
+      "label": "Return 404 when another connection reads the User",
+      "test": "adapters/sqlstore/scim_test.go",
+      "marker": "call(b, \"GET\", path, \"other\", nil, 404)",
+      "complete": true
+    },
+    {
+      "label": "Omit an excluded role subattribute when reading one User on both runtimes",
+      "test": "conformance/scim-roles.mjs",
+      "marker": "?excludedAttributes=roles.value"
     }
   ],
   "plugin/scim/GET /scim/v2/Users": [
@@ -9689,6 +9785,11 @@
       "label": "Reject a directory profile exceeding the MySQL text capacity without changing the saved profile",
       "test": "adapters/sqlstore/scim_roles_test.go",
       "marker": "incorrect database text bound:"
+    },
+    {
+      "label": "Clear roles omitted from a replacement User on both runtimes",
+      "test": "conformance/scim-roles.mjs",
+      "marker": "assert.equal((await call(\"PUT\",path,200,login)).roles,undefined);"
     }
   ],
   "plugin/scim/PATCH /scim/v2/Users/:userId": [
@@ -9718,6 +9819,11 @@
       "label": "Revoke existing sessions, retain the stable external identity and isolate another directory",
       "test": "adapters/sqlstore/scim_test.go",
       "marker": "func TestSCIMDirectoryLifecycle("
+    },
+    {
+      "label": "Remove a deleted User from its Group while keeping the Group and its other members",
+      "test": "adapters/sqlstore/scim_groups_test.go",
+      "marker": "call(replica, \"DELETE\", \"Users/\"+one, \"first\", nil, 204)"
     }
   ],
   "plugin-symbol/scim/SCIMBearerCredentialOptions/token": [
@@ -9725,6 +9831,22 @@
       "label": "Reject unknown, ambiguous and duplicate static bearer credentials",
       "test": "plugins/scim/http_test.go",
       "marker": "func TestSCIMProtocolAndCredentialConfiguration("
+    },
+    {
+      "label": "Authenticate a static credential sent as a Bearer token",
+      "test": "adapters/sqlstore/scim_dynamic_test.go",
+      "marker": "call(a, \"GET\", \"Users\", \"static\", nil, 200)",
+      "complete": true
+    },
+    {
+      "label": "Refuse a token changed in the options after the handler was built",
+      "test": "plugins/scim/http_test.go",
+      "marker": "{\"GET\", \"/identity/scim/v2/Users/id\", \"mutated-after-install\", \"\", \"\", 401},"
+    },
+    {
+      "label": "Refuse a request that sends two Authorization headers",
+      "test": "plugins/scim/http_test.go",
+      "marker": "t.Fatal(\"multiple Authorization headers accepted\")"
     }
   ],
   "plugin-symbol/scim/SCIMBearerCredentialOptions/scopes": [
@@ -9732,6 +9854,22 @@
       "label": "Require a write scope for changes and a read scope for retrieval",
       "test": "adapters/sqlstore/scim_test.go",
       "marker": "func TestSCIMDirectoryLifecycle("
+    },
+    {
+      "label": "Create, read, patch and delete Users with a credential configured without scopes on both runtimes",
+      "test": "conformance/scim-contract.mjs",
+      "marker": "const user=await call(\"POST\",\"Users\",201,create);",
+      "complete": true
+    },
+    {
+      "label": "Create, patch, replace and delete Groups with a credential configured without scopes on both runtimes",
+      "test": "conformance/scim-contract.mjs",
+      "marker": "const group=await call(\"POST\",\"Groups\",201,profile(\"Sales\",\"org-02\",[one.id,one.id]));"
+    },
+    {
+      "label": "Refuse an unsupported scope, an empty token or a reused token when the handler is built",
+      "test": "plugins/scim/http_test.go",
+      "marker": "for _, cs := range [][]Connection{{conn(\"ba_scim_connection_managed\", \"a\")}"
     }
   ],
   "plugin-symbol/scim/SCIMBearerCredentialOptions/expiresAt": [
@@ -9739,6 +9877,12 @@
       "label": "Return a bearer challenge for an expired credential",
       "test": "adapters/sqlstore/scim_test.go",
       "marker": "func TestSCIMDirectoryLifecycle("
+    },
+    {
+      "label": "Answer 401 with a bearer challenge for a credential past its expiry while the directory's other credentials still work",
+      "test": "adapters/sqlstore/scim_test.go",
+      "marker": "call(a, \"GET\", \"Users\", \"expired\", nil, 401)",
+      "complete": true
     }
   ],
   "plugin-symbol/scim/SCIMConnectionOptions/provisioningDomainId": [
@@ -9746,6 +9890,11 @@
       "label": "Persist the first directory domain and reject later reassignment",
       "test": "adapters/sqlstore/scim_test.go",
       "marker": "func TestSCIMDirectoryLifecycle("
+    },
+    {
+      "label": "Answer 409 when a directory's provisioning domain differs from the one recorded on first use",
+      "test": "adapters/sqlstore/scim_test.go",
+      "marker": "call(build(second, \"moved\"), \"GET\", \"Users\", \"writer\", nil, 409)"
     }
   ],
   "plugin-symbol/scim/SCIMConnectionOptions/id": [
@@ -9753,6 +9902,17 @@
       "label": "Isolate two directory identifiers differing only in case on every SQL engine",
       "test": "adapters/sqlstore/scim_test.go",
       "marker": "func TestSCIMDirectoryLifecycle("
+    },
+    {
+      "label": "Hide a User created by one directory from a directory whose ID differs only in case",
+      "test": "adapters/sqlstore/scim_test.go",
+      "marker": "call(b, \"GET\", path, \"other\", nil, 404)",
+      "complete": true
+    },
+    {
+      "label": "Refuse a duplicate static connection ID or one that uses the reserved managed prefix",
+      "test": "plugins/scim/http_test.go",
+      "marker": "for _, cs := range [][]Connection{{conn(\"ba_scim_connection_managed\", \"a\")}"
     }
   ],
   "plugin-symbol/scim/SCIMConnectionOptions/credentials": [
@@ -9760,6 +9920,12 @@
       "label": "Resolve separate scoped credentials for one directory",
       "test": "adapters/sqlstore/scim_test.go",
       "marker": "func TestSCIMDirectoryLifecycle("
+    },
+    {
+      "label": "Accept several credentials on one directory, each with its own scopes, and refuse the expired one",
+      "test": "adapters/sqlstore/scim_test.go",
+      "marker": "c.Credentials = append(c.Credentials, scim.Credential{ID: \"read\", Token: \"reader\", Scopes: []string{scim.UsersRead}}, scim.Credential{ID: \"dead\", Token: \"expired\", ExpiresAt: now.Add(-time.Minute)}, scim.Credential{ID: \"write-only\", Token: \"write-only\", Scopes: []string{scim.UsersWrite}})",
+      "complete": true
     }
   ],
   "plugin/phone-number/POST /sign-in/phone-number": [
@@ -10275,6 +10441,16 @@
       "label": "Replace a Group profile and its member set and retain the underlying Users",
       "test": "adapters/sqlstore/scim_groups_test.go",
       "marker": "func TestSCIMGroupMembershipLifecycle("
+    },
+    {
+      "label": "Replace a Group's member set so a member the replacement omits is no longer listed",
+      "test": "adapters/sqlstore/scim_groups_test.go",
+      "marker": "call(h, \"PUT\", path, \"first\", profile(\"Replacement\", \"new\", one, two), 200)"
+    },
+    {
+      "label": "Replace a Group's display name on both runtimes",
+      "test": "conformance/scim-contract.mjs",
+      "marker": "assert.equal(replaced.displayName,\"Replaced\");"
     }
   ],
   "plugin/scim/PATCH /scim/v2/Groups/:groupId": [
@@ -10358,6 +10534,12 @@
       "label": "Verify callback credentials per request with scoped identities and prospective revocation",
       "test": "conformance/scim-contract.mjs",
       "marker": "export async function dynamicContract("
+    },
+    {
+      "label": "Refuse a token on both instances once the application verifier stops accepting it",
+      "test": "adapters/sqlstore/scim_dynamic_test.go",
+      "marker": "call(b, \"GET\", \"Users\", \"active\", nil, 401)",
+      "complete": true
     }
   ],
   "plugin-symbol/scim/SCIMOptions/authentication": [
@@ -10372,6 +10554,17 @@
       "label": "Resolve a declared directory ID and reject unknown or ambiguous connection claims",
       "test": "adapters/sqlstore/scim_dynamic_test.go",
       "marker": "func TestSCIMDynamicBearer("
+    },
+    {
+      "label": "Authenticate a verifier result that names a declared directory and expose that directory's domain and the credential ID",
+      "test": "adapters/sqlstore/scim_dynamic_test.go",
+      "marker": "if p.Kind != \"oauth-bearer\" || p.ID != \"declared\" || p.ProvisioningDomainID != \"assigned\" || p.CredentialID != \"external\" {",
+      "complete": true
+    },
+    {
+      "label": "Answer 401 when the verifier's result is expired, names an unknown directory, both names and supplies one, or has an invalid credential ID or scopes",
+      "test": "adapters/sqlstore/scim_dynamic_test.go",
+      "marker": "for _, token := range []string{\"stale\", \"collision\", \"reserved\", \"unknown-conn\", \"bad-domain\", \"ambiguous\", \"bad-id\", \"duplicate\", \"bad-scope\", \"absent-scopes\", \"unknown\"} {"
     }
   ],
   "plugin-symbol/scim/SCIMResolvedConnectionVerificationResult": [
@@ -10386,6 +10579,17 @@
       "label": "Supply the trusted verifier with the bearer value, HTTP method, route template and copied request headers",
       "test": "adapters/sqlstore/scim_dynamic_test.go",
       "marker": "func TestSCIMDynamicBearer("
+    },
+    {
+      "label": "Give the verifier the request method and the route template of an item route",
+      "test": "adapters/sqlstore/scim_dynamic_test.go",
+      "marker": "if in.Method == \"GET\" && in.Path == \"/scim/v2/Users/:userId\" {",
+      "complete": true
+    },
+    {
+      "label": "Give the verifier the bearer token together with the request's Authorization header",
+      "test": "adapters/sqlstore/scim_dynamic_test.go",
+      "marker": "if in.Headers.Get(\"Authorization\") != \"Bearer \"+in.Token {"
     }
   ],
   "plugin-symbol/scim/SCIMOAuthBearerPrincipal": [
@@ -10400,6 +10604,11 @@
       "label": "Keep static principals and reserved managed credentials out of the application verifier",
       "test": "adapters/sqlstore/scim_dynamic_test.go",
       "marker": "func TestSCIMDynamicBearer("
+    },
+    {
+      "label": "Expose the static-bearer kind and credential ID of a code-defined token through request context",
+      "test": "adapters/sqlstore/scim_dynamic_test.go",
+      "marker": "if p.Kind != \"static-bearer\" || p.CredentialID != \"key\" {"
     }
   ],
   "plugin-symbol/passkey/passkeyClient": [
@@ -10501,6 +10710,11 @@
       "label": "Issue a finite scoped bearer once under concurrent creates with the same request ID",
       "test": "adapters/sqlstore/scim_managed_test.go",
       "marker": "func TestSCIMManagedCredentials("
+    },
+    {
+      "label": "Refuse issuance without a future expiry or with empty or repeated scopes",
+      "test": "adapters/sqlstore/scim_managed_test.go",
+      "marker": "t.Fatal(\"invalid issuance\")"
     }
   ],
   "plugin/scim/ listSCIMManagedConnections (server API only)": [
@@ -10569,6 +10783,11 @@
       "label": "Preserve terminal state and report the persisted retry time while another worker owns a live lease",
       "test": "adapters/sqlstore/scim_decommission_test.go",
       "marker": "func TestSCIMDirectoryRetirement("
+    },
+    {
+      "label": "Report the complete state when retiring a managed directory that was never used",
+      "test": "adapters/sqlstore/scim_decommission_test.go",
+      "marker": "if z.Connection.Status != \"decommissioned\" || z.Decommission.Status != \"complete\" || z.Decommission.Batches != 0 || z.Decommission.ReconciledUsers != 0 || z.Credentials[0].Status != \"decommissioned\" {"
     }
   ],
   "plugin/organization/ addMember (server API only)": [
@@ -10904,6 +11123,11 @@
       "label": "Return public OIDC fields and reject unauthenticated or foreign users without revealing the client secret",
       "test": "conformance/sso-providers.mjs",
       "marker": "export async function providerCatalog("
+    },
+    {
+      "label": "Answer 404 for a providerId that differs only in case",
+      "test": "adapters/sqlstore/sso_test.go",
+      "marker": "check(call(one, single+\"CORP\", owner, nil), 404)"
     }
   ],
   "plugin-symbol/sso/SSOOptions/providersLimit": [
@@ -10911,6 +11135,11 @@
       "label": "Reject disabled registration and serialize concurrent requests for the final account slot",
       "test": "adapters/sqlstore/sso_test.go",
       "marker": "func TestEnterpriseProviderManagement("
+    },
+    {
+      "label": "Refuse registration with 403 when the provider limit is zero",
+      "test": "adapters/sqlstore/sso_test.go",
+      "marker": "check(call(build(b, 0), path, other, makeBody(\"disabled\", \"\", \"/discovery\")), 403)"
     }
   ],
   "plugin-symbol/sso/discoverOIDCConfig": [
@@ -10918,6 +11147,16 @@
       "label": "Hydrate the tenant’s authorization, token and JWKS locations and select the advertised secret authentication method",
       "test": "conformance/sso-providers.mjs",
       "marker": "export async function providerCatalog("
+    },
+    {
+      "label": "Resolve the relative authorization, token and JWKS URLs of a discovery document against the issuer path and select client_secret_basic",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "if cfg.TokenEndpoint != issuer+\"/token\" || cfg.JWKSEndpoint != issuer+\"/keys\""
+    },
+    {
+      "label": "Reject a registration whose configured discovery endpoint returns a document with a different issuer",
+      "test": "adapters/sqlstore/sso_test.go",
+      "marker": "check(call(two, path, owner, makeBody(\"wrong\", \"\", \"/mismatch\")), 400)"
     }
   ],
   "plugin-symbol/sso/fetchDiscoveryDocument": [
@@ -10925,6 +11164,11 @@
       "label": "Require an exact discovery origin and enforce the deadline, issuer match and bounded response",
       "test": "plugins/sso/discovery_test.go",
       "marker": "func TestDiscoveryOriginAndBoundedTransport("
+    },
+    {
+      "label": "Fail a registration with 400 after a single request when the discovery endpoint answers with a redirect",
+      "test": "adapters/sqlstore/sso_test.go",
+      "marker": "t.Fatal(\"discovery followed redirect\")"
     }
   ],
   "published/sso/.": [
@@ -11184,6 +11428,16 @@
       "label": "Require an explicit signup request for new enterprise users and enforce host-wide signup controls",
       "test": "adapters/sqlstore/sso_browser_test.go",
       "marker": "implicit := host(other, false, false, true)"
+    },
+    {
+      "label": "Refuse an IdP-initiated SAML sign-in for a new user with signup_disabled when implicit sign-up is off",
+      "test": "adapters/sqlstore/sso_saml_portal_test.go",
+      "marker": "rejected(send(existingOnly, proof, origin, \"\", \"document\"), \"signup_disabled\")"
+    },
+    {
+      "label": "Let an existing SAML user return through the portal when implicit sign-up is off",
+      "test": "adapters/sqlstore/sso_saml_portal_test.go",
+      "marker": "if returned := send(existingOnly, issue(nil), origin, \"\", \"document\"); returned.session == nil"
     }
   ],
   "plugin-symbol/sso/SSOOptions/organizationProvisioning": [
@@ -11191,6 +11445,11 @@
       "label": "Preserve existing roles and pending invitations, serialize competing removal and roll back new identities at capacity",
       "test": "adapters/sqlstore/sso_browser_test.go",
       "marker": "membership denial left partial identity rows"
+    },
+    {
+      "label": "Add a new enterprise user to the provider's organization with the member role",
+      "test": "adapters/sqlstore/sso_browser_test.go",
+      "marker": "t.Fatal(\"missing membership\")"
     }
   ],
   "plugin-symbol/sso/SSOOptions/redirectURI": [
@@ -11205,6 +11464,11 @@
       "label": "Redeem codes through confidential client-secret basic and POST authentication",
       "test": "adapters/sqlstore/sso_browser_test.go",
       "marker": "basic != (grant.style == \"client_secret_basic\")"
+    },
+    {
+      "label": "Store client_secret_post when discovery advertises only that method",
+      "test": "adapters/sqlstore/sso_test.go",
+      "marker": "read[\"oidcConfig\"].(map[string]any)[\"tokenEndpointAuthentication\"] != \"client_secret_post\""
     }
   ],
   "plugin-symbol/sso/OIDCConfig/userInfoEndpoint": [
@@ -11290,6 +11554,11 @@
       "label": "Deny enterprise provider deletion from an impersonated session after the administrative schema is added on another node",
       "test": "adapters/sqlstore/admin_live_schema_test.go",
       "marker": "cold deletion node accepted a delegated login"
+    },
+    {
+      "label": "Answer 404 when deleting a provider that was already deleted, through the released client on both runtimes",
+      "test": "conformance/sso-providers.mjs",
+      "marker": "assert.equal((await other.sso.deleteProvider({providerId})).error.status,404);"
     }
   ],
   "plugin-symbol/sso/SSOOptions/guardProviderMutation": [
@@ -11297,6 +11566,11 @@
       "label": "Inspect the locked OIDC provider and linked-account count before deletion, and roll back a rejected mutation with a private conflict response",
       "test": "adapters/sqlstore/sso_delete_test.go",
       "marker": "guard did not preserve links or exposed its error"
+    },
+    {
+      "label": "Give the guard a locked metadata update of a linked SAML directory, with its record, reference, linked-account count and a changed authentication boundary, and reject the update when the guard refuses",
+      "test": "adapters/sqlstore/sso_saml_metadata_test.go",
+      "marker": "t.Fatal(\"mutation guard did not receive locked authorization\", e)"
     }
   ],
   "plugin-symbol/custom-session/customSessionClient": [
@@ -11352,6 +11626,11 @@
       "label": "Return a live token without hooks and run a new token's verification create hooks; a declined reissue changes nothing",
       "test": "adapters/sqlstore/sso_hooks_test.go",
       "marker": "// A declined reissue leaves the earlier token and proof as they were."
+    },
+    {
+      "label": "Answer DOMAIN_VERIFIED after the domain is proved, through the released client on both runtimes",
+      "test": "conformance/sso-domains.mjs",
+      "marker": "assert.equal((await api.sso.requestDomainVerification({providerId})).error.code,\"DOMAIN_VERIFIED\");"
     }
   ],
   "plugin/sso/POST /sso/verify-domain": [
@@ -11379,6 +11658,11 @@
       "label": "Verify and delete a provider without verification hooks",
       "test": "adapters/sqlstore/sso_hooks_test.go",
       "marker": "// Verifying and deleting a provider run no verification hooks."
+    },
+    {
+      "label": "Answer 404 NO_PENDING_VERIFICATION once the challenge has expired",
+      "test": "adapters/sqlstore/sso_domain_test.go",
+      "marker": "status(one.VerifySSODomain(ctx, \"corp\"), 404, \"NO_PENDING_VERIFICATION\")"
     }
   ],
   "plugin-symbol/sso/SSOOptions/domainVerification": [
@@ -11396,6 +11680,17 @@
       "label": "Domain tokens run the verification create hooks",
       "test": "adapters/sqlstore/sso_hooks_test.go",
       "marker": "func TestVerificationHooksAroundSSODomains(t *testing.T) {"
+    },
+    {
+      "label": "Publish and verify the TXT record under a configured tenant-proof token prefix on both runtimes",
+      "test": "conformance/sso-domains.mjs",
+      "marker": "const providerId=\"dns-\"+index, label=\"_tenant-proof-\"+providerId;",
+      "complete": true
+    },
+    {
+      "label": "Default the TXT record name to the plain-auth-token prefix and reject a prefix that spans more than one DNS label",
+      "test": "plugins/sso/domain_test.go",
+      "marker": "opts.identifier(\"company\") != \"_plain-auth-token-company\""
     }
   ],
   "docs/content/docs/plugins/sso/domain-verification.mdx#L8": [
@@ -11403,6 +11698,16 @@
       "label": "Migrate a populated enterprise provider to the DNS profile and compare 24 profile selections on all three SQL dialects",
       "test": "conformance/schema.test.mjs",
       "marker": "test(\"enterprise DNS verification extends"
+    },
+    {
+      "label": "Answer HTTP 401 to sign-in through a new unverified provider on a node with DNS verification and on one without the option",
+      "test": "adapters/sqlstore/sso_domain_test.go",
+      "marker": "start := client.SSOSignInRequest{Domain: \"team.proof.example\", CallbackURL: \"/home\"}"
+    },
+    {
+      "label": "Link a verified local user to a new enterprise identity only under a proved domain or subdomain",
+      "test": "adapters/sqlstore/sso_domain_test.go",
+      "marker": "t.Fatal(\"proved subdomain failed to link verified existing identity\""
     }
   ],
   "docs/content/docs/plugins/sso/domain-verification.mdx#L74": [
@@ -11410,6 +11715,17 @@
       "label": "Read a seven-day registration challenge with the released client and return HTTP 201 for a repeated request",
       "test": "conformance/sso-domains.mjs",
       "marker": "const req=seen.at(-1)"
+    },
+    {
+      "label": "Read a 24-character token from the registration response and receive the same token from request-domain-verification on both runtimes",
+      "test": "conformance/sso-domains.mjs",
+      "marker": "assert.equal(token.length,24);",
+      "complete": true
+    },
+    {
+      "label": "Issue one new token after the earlier one expires, shared by two concurrent requests",
+      "test": "adapters/sqlstore/sso_domain_test.go",
+      "marker": "t.Fatal(\"concurrent renewal returned different challenge tokens\")"
     }
   ],
   "docs/content/docs/plugins/sso/domain-verification.mdx#L80": [
@@ -11417,6 +11733,22 @@
       "label": "Require each domain to publish the token and accept split TXT character strings and labeled values",
       "test": "conformance/sso-domains.mjs",
       "marker": "ok(await api.sso.verifyDomain({providerId})); assert.equal"
+    },
+    {
+      "label": "Require the token at the prefixed record on every listed domain and accept split character strings and the labeled value on both runtimes",
+      "test": "conformance/sso-domains.mjs",
+      "marker": "const names=domain.split(\",\").map(d=>label+\".\"+d);",
+      "complete": true
+    },
+    {
+      "label": "Reject a record label longer than 63 characters with IDENTIFIER_TOO_LONG before any DNS lookup",
+      "test": "adapters/sqlstore/sso_domain_test.go",
+      "marker": "{strings.Repeat(\"a\", 46), \"long.example\", \"IDENTIFIER_TOO_LONG\"},"
+    },
+    {
+      "label": "Verify a provider whose token is published at the default _plain-auth-token-{providerId} name on both of its domains on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_domain_test.go",
+      "marker": "const label = \"_plain-auth-token-corp\""
     }
   ],
   "docs/content/docs/plugins/sso/domain-verification.mdx#L88": [
@@ -11424,6 +11756,12 @@
       "label": "Recheck the manager’s tenant role after DNS answers and before committing the proof",
       "test": "adapters/sqlstore/sso_domain_test.go",
       "marker": "status(<-errs, 403, \"\")"
+    },
+    {
+      "label": "Return HTTP 204 with an empty body from verify-domain once both domains publish the token, on both runtimes",
+      "test": "conformance/sso-domains.mjs",
+      "marker": "ok(await api.sso.verifyDomain({providerId})); assert.equal",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/sso/domain-verification.mdx#L112": [
@@ -11431,6 +11769,16 @@
       "label": "Replace an expired challenge once across two database instances",
       "test": "adapters/sqlstore/sso_domain_test.go",
       "marker": "concurrent renewal returned different challenge tokens"
+    },
+    {
+      "label": "Return the live token from a second database instance instead of issuing another",
+      "test": "adapters/sqlstore/sso_domain_test.go",
+      "marker": "t.Fatal(\"second store replaced active challenge\")"
+    },
+    {
+      "label": "Store a token that expires seven days after it is created",
+      "test": "adapters/sqlstore/sso_domain_test.go",
+      "marker": "t.Fatal(\"challenge lifetime\", expires.Sub(created))"
     }
   ],
   "plugin/bearer": [
@@ -11656,6 +12004,11 @@
       "label": "Map an active direct Group to source-owned role candidates and roll back mapping failures",
       "test": "adapters/sqlstore/scim_projection_test.go",
       "marker": "fixture mapping error"
+    },
+    {
+      "label": "Rebuild a Group-mapped grant row with the same connection, domain, user, SCIM user, source and role values as the other runtime after Go reactivates the User",
+      "test": "conformance/scim-contract.mjs",
+      "marker": "assert.equal(restored[field],initial[field],field);"
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L468": [
@@ -11663,6 +12016,12 @@
       "label": "Check returned roles against the application catalog and replay changes to its contents",
       "test": "adapters/sqlstore/scim_projection_test.go",
       "marker": "fixture role catalog error"
+    },
+    {
+      "label": "Withdraw a mapped role on replay after the application catalog stops confirming it",
+      "test": "adapters/sqlstore/scim_projection_test.go",
+      "marker": "DELETE FROM \"hostRole\" WHERE \"role\"='editor'",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L472": [
@@ -11675,6 +12034,11 @@
       "label": "Keep the MySQL domain lock until transaction completion and discard ambiguous physical sessions",
       "test": "adapters/sqlstore/scim_projection_mysql_test.go",
       "marker": "func TestSCIMMySQLProjectionPoolLifecycle("
+    },
+    {
+      "label": "Roll back a Group replacement and the application's own writes when reconciliation fails",
+      "test": "adapters/sqlstore/scim_projection_test.go",
+      "marker": "call(two, \"PUT\", \"Groups/\"+a, \"north\", group(\"failed change\", \"directory-editors\", n), 500)"
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L484": [
@@ -40177,6 +40541,11 @@
       "label": "Sort a missing enabled or rate-limit flag as true in the store and in a merged listing",
       "test": "adapters/sqlstore/apikey_list_test.go",
       "marker": "a missing %s did not sort as true under %q"
+    },
+    {
+      "label": "Tie a missing request count with zero, and sort by id, configuration and owner",
+      "test": "adapters/sqlstore/apikey_list_test.go",
+      "marker": "a missing request count did not tie with zero in %s order: %s"
     }
   ],
   "docs/content/docs/plugins/api-key/index.mdx#L380/Parameter `sortDirection` (optional)": [
@@ -40541,8 +40910,7 @@
     {
       "label": "Read plain-stored backup codes back through ViewBackupCodes",
       "test": "adapters/sqlstore/twofactor_delivery_test.go",
-      "marker": "trusted backup code listing failed",
-      "complete": true
+      "marker": "trusted backup code listing failed"
     },
     {
       "label": "Read backup codes stored through the application's cipher",
@@ -40553,6 +40921,12 @@
       "label": "Decrypt default encrypted backup codes to accept one at sign-in",
       "test": "adapters/sqlstore/twofactor_test.go",
       "marker": "resetProof := request(first, \"two-factor/verify-backup-code\""
+    },
+    {
+      "label": "Read default encrypted backup codes back through ViewBackupCodes",
+      "test": "adapters/sqlstore/twofactor_test.go",
+      "marker": "default encrypted backup codes did not read back through ViewBackupCodes",
+      "complete": true
     }
   ],
   "plugin-symbol/2fa/TwoFactorOptions/issuer": [
@@ -40713,6 +41087,2542 @@
       "test": "providers/entra_test.go",
       "marker": "func TestEntraCodeExchangeSendsTheSecret(",
       "complete": true
+    }
+  ],
+  "plugin-symbol/sso/DEFAULT_MAX_SAML_METADATA_SIZE": [
+    {
+      "label": "Resolve an unset SAML metadata size limit to 100 KiB, and refuse a negative limit or one above 1 MiB when building the plugin",
+      "test": "plugins/sso/saml_test.go",
+      "marker": "want = 100 * 1024",
+      "complete": true
+    },
+    {
+      "label": "Refuse an inline IdP metadata update padded past 100 KiB on a host with the default limit",
+      "test": "adapters/sqlstore/sso_saml_metadata_test.go",
+      "marker": "strings.Repeat(\" \", 100*1024) + oldDoc,"
+    }
+  ],
+  "plugin-symbol/sso/sso": [
+    {
+      "label": "Build enterprise hosts with sso.New and complete OIDC sign-in through per-provider and shared callbacks on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_browser_test.go",
+      "marker": "p, e := sso.New(sso.Options{SharedCallback: shared, DisableImplicitSignUp: implicit})"
+    },
+    {
+      "label": "Build SAML hosts with sso.New, including single logout, IdP-initiated policy, decryption keys and domain verification, and complete SAML sign-in on three SQL engines",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "plug, e := sso.New(sso.Options{DisableImplicitSignUp: disableSignup, SAML: &sso.SAMLOptions{"
+    }
+  ],
+  "plugin-symbol/sso/computeDiscoveryUrl": [
+    {
+      "label": "Fetch {issuer}/.well-known/openid-configuration when no discovery endpoint is configured",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "if r.URL.String() != issuer+\"/.well-known/openid-configuration\" {"
+    }
+  ],
+  "plugin-symbol/sso/normalizeDiscoveryUrls": [
+    {
+      "label": "Resolve relative discovered authorization, token and JWKS URLs against the issuer path",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "if cfg.TokenEndpoint != issuer+\"/token\" || cfg.JWKSEndpoint != issuer+\"/keys\""
+    },
+    {
+      "label": "Reject a discovered JWKS URL on a loopback address with discovery_private_host",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "{strings.Replace(raw, \"/keys\", \"http://127.0.0.1/keys\", 1), \"discovery_private_host\"},"
+    }
+  ],
+  "plugin-symbol/sso/normalizeUrl": [
+    {
+      "label": "Resolve '/authorize', 'token' and '/keys' against an issuer with a path, keeping that path",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "if cfg.TokenEndpoint != issuer+\"/token\" || cfg.JWKSEndpoint != issuer+\"/keys\""
+    }
+  ],
+  "plugin-symbol/sso/selectTokenEndpointAuthMethod": [
+    {
+      "label": "Select client_secret_basic when the discovery document advertises both secret methods",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "if cfg.TokenEndpoint != issuer+\"/token\" || cfg.JWKSEndpoint != issuer+\"/keys\""
+    },
+    {
+      "label": "Select client_secret_post when the discovery document advertises only that method, on both runtimes",
+      "test": "conformance/sso-providers.mjs",
+      "marker": "assert.equal(record.oidcConfig.tokenEndpointAuthentication, \"client_secret_post\");"
+    }
+  ],
+  "plugin-symbol/sso/validateDiscoveryDocument": [
+    {
+      "label": "Reject an empty discovery document with discovery_incomplete",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "{\"null\", \"discovery_incomplete\"}"
+    },
+    {
+      "label": "Reject a discovery document whose issuer differs from the configured issuer with issuer_mismatch",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "{strings.Replace(raw, \"https://login.example.test/tenant\", \"https://other.example.test/tenant\", 1), \"issuer_mismatch\"},"
+    }
+  ],
+  "plugin-symbol/sso/validateDiscoveryUrl": [
+    {
+      "label": "Refuse discovery at an origin that is not explicitly trusted with discovery_untrusted_origin, without sending a request",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "t.Fatal(\"contacted browser-only origin\")"
+    }
+  ],
+  "plugin-symbol/sso/DiscoverOIDCConfigParams": [
+    {
+      "label": "Bound each discovery fetch with a deadline no more than ten seconds away",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "if !set || time.Until(deadline) > 10*time.Second {"
+    },
+    {
+      "label": "Register providers whose oidcConfig names a discovery endpoint path on the issuer host",
+      "test": "adapters/sqlstore/sso_test.go",
+      "marker": "cfg := map[string]any{\"clientId\": \"long-client-1234\", \"clientSecret\": \"only-the-sso-issuer-and-creator\", \"discoveryEndpoint\": idp.URL + path}"
+    }
+  ],
+  "plugin-symbol/sso/DiscoveryError": [
+    {
+      "label": "Report discovery failures as API errors carrying a machine-readable code and an HTTP status",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "if !errors.As(err, &e) || e.Code != want || e.Status != status {"
+    }
+  ],
+  "plugin-symbol/sso/DiscoveryErrorCode": [
+    {
+      "label": "Return discovery_timeout with 502 when the discovery request outlives its deadline",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "code(hydrate(context.Background(), host, client, &cfg, false), \"discovery_timeout\", 502)"
+    },
+    {
+      "label": "Return discovery_private_host for shared-address, documentation and cloud-metadata endpoints",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "code(checkEndpoint(host, endpoint), \"discovery_private_host\", 400)"
+    }
+  ],
+  "plugin-symbol/sso/HydratedOIDCConfig": [
+    {
+      "label": "Hydrate the authorization, token and JWKS endpoints and the authentication method from a discovery document",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "if cfg.TokenEndpoint != issuer+\"/token\" || cfg.JWKSEndpoint != issuer+\"/keys\""
+    }
+  ],
+  "plugin-symbol/sso/HydratedOIDCConfig/issuer": [
+    {
+      "label": "Reject a discovery document whose issuer differs from the configured issuer",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "{strings.Replace(raw, \"https://login.example.test/tenant\", \"https://other.example.test/tenant\", 1), \"issuer_mismatch\"},",
+      "complete": true
+    },
+    {
+      "label": "Hydrate a provider whose discovery document names the configured issuer",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "if cfg.TokenEndpoint != issuer+\"/token\" || cfg.JWKSEndpoint != issuer+\"/keys\""
+    }
+  ],
+  "plugin-symbol/sso/HydratedOIDCConfig/discoveryEndpoint": [
+    {
+      "label": "Use {issuer}/.well-known/openid-configuration as the discovery URL by default",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "if r.URL.String() != issuer+\"/.well-known/openid-configuration\" {"
+    },
+    {
+      "label": "Fetch the discovery document from a configured discovery endpoint",
+      "test": "adapters/sqlstore/sso_test.go",
+      "marker": "cfg := map[string]any{\"clientId\": \"long-client-1234\", \"clientSecret\": \"only-the-sso-issuer-and-creator\", \"discoveryEndpoint\": idp.URL + path}"
+    }
+  ],
+  "plugin-symbol/sso/HydratedOIDCConfig/authorizationEndpoint": [
+    {
+      "label": "Store the issuer-relative authorization endpoint from a discovery document as an absolute URL",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "if cfg.TokenEndpoint != issuer+\"/token\" || cfg.JWKSEndpoint != issuer+\"/keys\"",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/sso/HydratedOIDCConfig/tokenEndpoint": [
+    {
+      "label": "Store the token endpoint from a discovery document as an absolute URL under the issuer path",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "if cfg.TokenEndpoint != issuer+\"/token\" || cfg.JWKSEndpoint != issuer+\"/keys\"",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/sso/HydratedOIDCConfig/jwksEndpoint": [
+    {
+      "label": "Store the JWKS endpoint from a discovery document as an absolute URL under the issuer path",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "if cfg.TokenEndpoint != issuer+\"/token\" || cfg.JWKSEndpoint != issuer+\"/keys\"",
+      "complete": true
+    },
+    {
+      "label": "Return the discovered JWKS endpoint resolved against the issuer, on both runtimes",
+      "test": "conformance/sso-providers.mjs",
+      "marker": "assert.equal(fetched.oidcConfig.jwksEndpoint, issuer + \"/keys\");"
+    }
+  ],
+  "plugin-symbol/sso/HydratedOIDCConfig/tokenEndpointAuthentication": [
+    {
+      "label": "Hydrate client_secret_basic when both secret methods are advertised",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "if cfg.TokenEndpoint != issuer+\"/token\" || cfg.JWKSEndpoint != issuer+\"/keys\""
+    },
+    {
+      "label": "Hydrate client_secret_post when only that method is advertised, on both runtimes",
+      "test": "conformance/sso-providers.mjs",
+      "marker": "assert.equal(record.oidcConfig.tokenEndpointAuthentication, \"client_secret_post\");"
+    }
+  ],
+  "plugin-symbol/sso/OIDCDiscoveryDocument": [
+    {
+      "label": "Read issuer, authorization_endpoint, token_endpoint, jwks_uri and token_endpoint_auth_methods_supported from a discovery document",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "\"token_endpoint_auth_methods_supported\":[\"client_secret_basic\",\"client_secret_post\"]"
+    }
+  ],
+  "plugin-symbol/sso/REQUIRED_DISCOVERY_FIELDS": [
+    {
+      "label": "Reject a discovery document that lacks the required fields with discovery_incomplete",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "{\"null\", \"discovery_incomplete\"}"
+    }
+  ],
+  "plugin-symbol/sso/deriveSAMLIdentityProviderEntityID": [
+    {
+      "label": "Take the IdP entity ID from a registration that supplies only IdP metadata XML",
+      "test": "adapters/sqlstore/sso_saml_metadata_test.go",
+      "marker": "t.Fatal(\"wrong imported authority\")"
+    },
+    {
+      "label": "Reject a signed assertion whose issuer differs from the manually configured IdP entity ID",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "\"issuer\": func(a *saml.Assertion) { a.Issuer.Value = \"https://another.example.test/idp\" },"
+    }
+  ],
+  "plugin-symbol/sso/SAMLConditions": [
+    {
+      "label": "Reject a signed assertion whose NotBefore is an hour in the future",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "\"not-before\": func(a *saml.Assertion) { a.Conditions.NotBefore = time.Now().Add(time.Hour) },"
+    },
+    {
+      "label": "Reject a signed assertion whose NotOnOrAfter passed an hour ago",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "\"expiry\":     func(a *saml.Assertion) { a.Conditions.NotOnOrAfter = time.Now().Add(-time.Hour) },"
+    }
+  ],
+  "plugin-symbol/sso/validateSAMLTimestamp": [
+    {
+      "label": "Reject a signed assertion whose NotOnOrAfter passed an hour ago",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "\"expiry\":     func(a *saml.Assertion) { a.Conditions.NotOnOrAfter = time.Now().Add(-time.Hour) },"
+    },
+    {
+      "label": "Reject a signed assertion whose NotBefore is an hour in the future",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "\"not-before\": func(a *saml.Assertion) { a.Conditions.NotBefore = time.Now().Add(time.Hour) },"
+    }
+  ],
+  "plugin-symbol/sso/OIDCConfig": [
+    {
+      "label": "Sign in through a stored OIDC configuration with client credentials, explicit endpoints, PKCE and a secret authentication method on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_browser_test.go",
+      "marker": "cfg := sso.Config{Issuer: idp.URL, ClientID: \"enterprise-client\", ClientSecret: \"oidc-secret\""
+    }
+  ],
+  "plugin-symbol/sso/OIDCConfig/issuer": [
+    {
+      "label": "Reject an enterprise ID token whose issuer differs from the provider issuer, among other invalid ID tokens",
+      "test": "adapters/sqlstore/sso_browser_test.go",
+      "marker": "for _, mode := range []string{\"azp\", \"nonce\", \"future\", \"expired\", \"mismatch\", \"missing-sub\", \"signature\"} {"
+    },
+    {
+      "label": "Reject a discovery document whose issuer differs from the provider issuer",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "{strings.Replace(raw, \"https://login.example.test/tenant\", \"https://other.example.test/tenant\", 1), \"issuer_mismatch\"},"
+    }
+  ],
+  "plugin-symbol/sso/OIDCConfig/pkce": [
+    {
+      "label": "Send an S256 code challenge in each enterprise authorization request",
+      "test": "adapters/sqlstore/sso_browser_test.go",
+      "marker": "q.Get(\"code_challenge_method\") != \"S256\""
+    },
+    {
+      "label": "Default pkce to true at registration on both runtimes",
+      "test": "conformance/sso-providers.mjs",
+      "marker": "assert.equal(record.oidcConfig.pkce, true);"
+    },
+    {
+      "label": "Store and return pkce false for a provider registered with it off",
+      "test": "conformance/sso-providers.mjs",
+      "marker": "assert.equal(manual.oidcConfig.pkce, false);"
+    }
+  ],
+  "plugin-symbol/sso/OIDCConfig/clientId": [
+    {
+      "label": "Send the registered client ID and secret in the code exchange, which the test token endpoint requires before it issues an ID token",
+      "test": "adapters/sqlstore/sso_browser_test.go",
+      "marker": "uid != \"enterprise-client\" || secret != \"oidc-secret\""
+    },
+    {
+      "label": "Return only the last four characters of the client ID",
+      "test": "conformance/sso-providers.mjs",
+      "marker": "assert.equal(fetched.oidcConfig.clientIdLastFour, \"****5678\");"
+    }
+  ],
+  "plugin-symbol/sso/OIDCConfig/clientSecret": [
+    {
+      "label": "Send the registered client secret in the code exchange, which the test token endpoint requires before it issues an ID token",
+      "test": "adapters/sqlstore/sso_browser_test.go",
+      "marker": "uid != \"enterprise-client\" || secret != \"oidc-secret\""
+    },
+    {
+      "label": "Keep the client secret out of the provider read",
+      "test": "conformance/sso-providers.mjs",
+      "marker": "assert.ok(!JSON.stringify(fetched).includes(oidcConfig.clientSecret));"
+    }
+  ],
+  "plugin-symbol/sso/OIDCConfig/authorizationEndpoint": [
+    {
+      "label": "Fill the authorization endpoint from discovery when it is omitted",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "if cfg.TokenEndpoint != issuer+\"/token\" || cfg.JWKSEndpoint != issuer+\"/keys\""
+    },
+    {
+      "label": "Send the browser to the origin of the stored authorization endpoint",
+      "test": "conformance/sso-browser.mjs",
+      "marker": "assert.equal(authz.origin,issuer);"
+    }
+  ],
+  "plugin-symbol/sso/OIDCConfig/discoveryEndpoint": [
+    {
+      "label": "Register providers through an oidcConfig discoveryEndpoint on the issuer host",
+      "test": "adapters/sqlstore/sso_test.go",
+      "marker": "cfg := map[string]any{\"clientId\": \"long-client-1234\", \"clientSecret\": \"only-the-sso-issuer-and-creator\", \"discoveryEndpoint\": idp.URL + path}",
+      "complete": true
+    },
+    {
+      "label": "Default the discovery URL to {issuer}/.well-known/openid-configuration",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "if r.URL.String() != issuer+\"/.well-known/openid-configuration\" {"
+    }
+  ],
+  "plugin-symbol/sso/OIDCConfig/scopes": [
+    {
+      "label": "Store and return the registered scopes on both runtimes",
+      "test": "conformance/sso-providers.mjs",
+      "marker": "assert.deepEqual(fetched.oidcConfig.scopes, oidcConfig.scopes);"
+    }
+  ],
+  "plugin-symbol/sso/OIDCConfig/tokenEndpoint": [
+    {
+      "label": "Fill the token endpoint from discovery when it is omitted",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "if cfg.TokenEndpoint != issuer+\"/token\" || cfg.JWKSEndpoint != issuer+\"/keys\"",
+      "complete": true
+    },
+    {
+      "label": "Redeem the authorization code at the stored token endpoint with the registered client credentials",
+      "test": "adapters/sqlstore/sso_browser_test.go",
+      "marker": "uid != \"enterprise-client\" || secret != \"oidc-secret\""
+    }
+  ],
+  "plugin-symbol/sso/OIDCConfig/jwksEndpoint": [
+    {
+      "label": "Reject an enterprise ID token signed by a key outside the provider JWKS, among other invalid ID tokens",
+      "test": "adapters/sqlstore/sso_browser_test.go",
+      "marker": "for _, mode := range []string{\"azp\", \"nonce\", \"future\", \"expired\", \"mismatch\", \"missing-sub\", \"signature\"} {",
+      "complete": true
+    },
+    {
+      "label": "Fill the JWKS endpoint from discovery when it is omitted",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "if cfg.TokenEndpoint != issuer+\"/token\" || cfg.JWKSEndpoint != issuer+\"/keys\""
+    }
+  ],
+  "plugin-symbol/sso/SAMLConfig": [
+    {
+      "label": "Register a SAML directory with entry point, IdP entity ID, signing certificate, SP entity ID, signed requests and landing pages, and sign in on three SQL engines",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "cfg := sso.SAMLConfig{IDPInitiatedCallbackURL: \"/company-portal\""
+    }
+  ],
+  "plugin-symbol/sso/SAMLConfig/issuer": [
+    {
+      "label": "Return the registration issuer in samlConfig on both runtimes",
+      "test": "conformance/sso-saml.mjs",
+      "marker": "assert.equal(registration.samlConfig.issuer,issuer);"
+    }
+  ],
+  "plugin-symbol/sso/SAMLConfig/entryPoint": [
+    {
+      "label": "Send the SAML request to the IdP sign-in URL, from entryPoint or, when IdP metadata XML is registered with a placeholder entryPoint, from the document",
+      "test": "conformance/sso-saml.mjs",
+      "marker": "assert.equal(url.origin+url.pathname,entryPoint);"
+    }
+  ],
+  "plugin-symbol/sso/SAMLConfig/cert": [
+    {
+      "label": "Accept a single certificate string or a list of certificates in samlConfig.cert",
+      "test": "plugins/sso/saml_test.go",
+      "marker": "for _, cert := range []string{`\"first\"`, `[\"first\",\"second\"]`} {"
+    },
+    {
+      "label": "Return the registered signing certificate on both runtimes",
+      "test": "conformance/sso-saml.mjs",
+      "marker": "else assert.equal(registration.samlConfig.cert,cert);"
+    }
+  ],
+  "plugin-symbol/sso/SAMLConfig/audience": [
+    {
+      "label": "Reject a signed assertion addressed to a different audience",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "a.Conditions.AudienceRestrictions[0].Audience.Value = \"https://other.example.test/sp\""
+    }
+  ],
+  "plugin-symbol/sso/SAMLConfig/idpInitiatedCallbackUrl": [
+    {
+      "label": "Send an approved IdP-initiated sign-in to the directory's idpInitiatedCallbackUrl rather than the host-wide fallback",
+      "test": "adapters/sqlstore/sso_saml_portal_test.go",
+      "marker": "if one.session == nil || one.status != 302 || one.location != home+\"/company-portal\" {"
+    },
+    {
+      "label": "Land a portal sign-in on the directory's relative idpInitiatedCallbackUrl, and on the host-wide landing page when the directory names an untrusted absolute URL, on both runtimes",
+      "test": "conformance/sso-saml.mjs",
+      "marker": "assert.equal(new URL(response.headers.get(\"location\"),runtime.baseURL).href,runtime.baseURL+(encrypted ? \"/global-landing\" : \"/staff-portal\"));"
+    },
+    {
+      "label": "Use a trusted absolute URL as the portal landing page",
+      "test": "plugins/sso/saml_unsolicited_test.go",
+      "marker": "{[]string{\"https://app.example.test\" + path}, \"https://app.example.test\" + path},"
+    }
+  ],
+  "plugin-symbol/sso/SAMLConfig/idpMetadata": [
+    {
+      "label": "Take the IdP entity ID from a registration that supplies only IdP metadata XML",
+      "test": "adapters/sqlstore/sso_saml_metadata_test.go",
+      "marker": "t.Fatal(\"wrong imported authority\")"
+    },
+    {
+      "label": "Return the submitted IdP metadata XML in the registration on both runtimes",
+      "test": "conformance/sso-saml.mjs",
+      "marker": "if (inline) assert.equal(registration.samlConfig.idpMetadata.metadata"
+    }
+  ],
+  "plugin-symbol/sso/SAMLConfig/spMetadata": [
+    {
+      "label": "Publish SP metadata under spMetadata.entityID",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "if metadata.EntityID != cfg.SPMetadata.EntityID"
+    }
+  ],
+  "plugin-symbol/sso/SAMLConfig/wantAssertionsSigned": [
+    {
+      "label": "Register a directory with wantAssertionsSigned true and sign in with a signed assertion on both runtimes",
+      "test": "conformance/sso-saml.mjs",
+      "marker": "wantAssertionsSigned:true};"
+    },
+    {
+      "label": "Refuse an encrypted response whose assertion is unsigned, among other unsupported protection modes",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "for _, mode := range []string{\"plaintext\", \"AES-128-GCM\", \"AES-256-CBC\", \"legacy RSA-OAEP\", \"RSA-OAEP SHA-384\""
+    }
+  ],
+  "plugin-symbol/sso/SAMLConfig/authnRequestsSigned": [
+    {
+      "label": "Sign the HTTP-Redirect AuthnRequest when the directory sets authnRequestsSigned, and have the IdP verify it",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "if !out.Redirect || r.URL.Query().Get(\"Signature\") == \"\" {"
+    }
+  ],
+  "plugin-symbol/sso/SAMLConfig/mapping": [
+    {
+      "label": "Fill the user name from the displayName attribute by default on both runtimes",
+      "test": "conformance/sso-saml.mjs",
+      "marker": "assert.equal(current.user.name,\"Enterprise Employee\");"
+    },
+    {
+      "label": "A SAML profile carries the raw attributes, one value as a string and several as a list, with the email lower-cased",
+      "test": "plugins/sso/saml_test.go",
+      "marker": "func TestSAMLProfileRawAttributes(t *testing.T) {"
+    }
+  ],
+  "plugin-symbol/sso/SAMLIdentityProviderMetadata": [
+    {
+      "label": "Use the entity ID from submitted IdP metadata XML",
+      "test": "adapters/sqlstore/sso_saml_metadata_test.go",
+      "marker": "t.Fatal(\"wrong imported authority\")"
+    },
+    {
+      "label": "Reject an assertion from an issuer other than the manually configured entityID",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "\"issuer\": func(a *saml.Assertion) { a.Issuer.Value = \"https://another.example.test/idp\" },"
+    }
+  ],
+  "plugin-symbol/sso/SSOOIDCUserResolutionInput": [
+    {
+      "label": "ValidateUserInfo receives method sso-oidc, the provider ID, the raw claims with sub and the user email for an enterprise OIDC sign-up",
+      "test": "adapters/sqlstore/sso_user_validation_test.go",
+      "marker": "if check.Action != auth.UserInfoCreateUser || check.Method != \"sso-oidc\""
+    }
+  ],
+  "plugin-symbol/sso/SSOOptions": [
+    {
+      "label": "Configure the provider limit through sso.Options, including zero to disable registration",
+      "test": "adapters/sqlstore/sso_test.go",
+      "marker": "plugin, e := sso.New(sso.Options{ProvidersLimit: &limit})"
+    },
+    {
+      "label": "Configure shared callbacks and implicit sign-up through sso.Options",
+      "test": "adapters/sqlstore/sso_browser_test.go",
+      "marker": "p, e := sso.New(sso.Options{SharedCallback: shared, DisableImplicitSignUp: implicit})"
+    }
+  ],
+  "plugin-symbol/sso/SSOOptions/resolveUser": [
+    {
+      "label": "A ValidateUserInfo refusal of an enterprise OIDC sign-up returns to the error callback with error and error_description",
+      "test": "adapters/sqlstore/sso_user_validation_test.go",
+      "marker": "if got := signIn(); got != \"https://service.test/retry?error=sso_blocked&error_description=Not+allowed\" {"
+    },
+    {
+      "label": "ValidateUserInfo runs again when the enterprise user returns",
+      "test": "adapters/sqlstore/sso_user_validation_test.go",
+      "marker": "if check := checks[len(checks)-1]; check.Action != auth.UserInfoSignIn"
+    }
+  ],
+  "plugin-symbol/sso/SSOOptions/trustEmailVerified": [
+    {
+      "label": "Store a new enterprise OIDC user as unverified although the ID token says email_verified true",
+      "test": "adapters/sqlstore/sso_browser_test.go",
+      "marker": "if session.User.Email != \"employee@example.test\" || session.User.EmailVerified || session.Session.Token == \"\" {"
+    },
+    {
+      "label": "Store a new SAML user as unverified by default on both runtimes",
+      "test": "conformance/sso-saml.mjs",
+      "marker": "assert.equal(current.user.emailVerified,false);"
+    }
+  ],
+  "plugin-symbol/sso/SSOOptions/saml": [
+    {
+      "label": "Run SP-initiated SAML sign-in, single logout and reviewed IdP portal sign-in under the plugin's SAML options on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "SAML: &sso.SAMLOptions{EnableSingleLogout: logout, EnableIDPInitiatedLogout: logout, AllowIDPInitiated: policy"
+    },
+    {
+      "label": "Default the inline IdP metadata limit to 100 KiB and reject a negative limit or one above 1 MiB",
+      "test": "plugins/sso/saml_test.go",
+      "marker": "func TestInlineSAMLMetadataSizeOption("
+    }
+  ],
+  "plugin-symbol/sso/SSOProvider": [
+    {
+      "label": "Return the registered provider's record with its provider ID, OIDC configuration and redirect URI to the released client on both runtimes",
+      "test": "conformance/sso-providers.mjs",
+      "marker": "assert.equal(record.providerId, providerId);"
+    }
+  ],
+  "plugin-symbol/sso/SSOProviderMutationGuardInput": [
+    {
+      "label": "Pass the delete action, record ID, provider ID, organization, linked-account count and configuration reference of the locked provider to the guard",
+      "test": "adapters/sqlstore/sso_delete_test.go",
+      "marker": "if m.Action != \"delete\" || m.ID != p.ID"
+    },
+    {
+      "label": "Pass the update action, locked record, configuration reference and an authentication boundary change to the guard when IdP metadata is replaced",
+      "test": "adapters/sqlstore/sso_saml_metadata_test.go",
+      "marker": "observed = m.Action == \"update\""
+    }
+  ],
+  "plugin-symbol/sso/SSOProviderReference": [
+    {
+      "label": "Redirect a callback with invalid_state before the token exchange when the provider's configuration changed after sign-in started",
+      "test": "adapters/sqlstore/sso_browser_test.go",
+      "marker": "t.Fatal(\"changed provider reached token endpoint\")"
+    },
+    {
+      "label": "Stop accepting a captured provider reference after the provider's identity source changes",
+      "test": "adapters/sqlstore/sso_domain_test.go",
+      "marker": "t.Fatal(\"stale identity source borrowed the replacement proof before exchange\")"
+    }
+  ],
+  "plugin-symbol/sso/AuthnRequestRecord": [
+    {
+      "label": "Reject a signed assertion whose InResponseTo names a different request than the one the browser started, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "a.Subject.SubjectConfirmations[0].SubjectConfirmationData.InResponseTo = \"_otherRequest\""
+    }
+  ],
+  "plugin-symbol/sso/SAMLSessionRecord": [
+    {
+      "label": "Sign the logout request with the NameID and SessionIndex recorded at the SAML login and revoke exactly that login",
+      "test": "adapters/sqlstore/sso_saml_logout_test.go",
+      "marker": "indices[0].Value != \"idp-index\"",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/sso/domain-verification.mdx#L94/`POST /sso/verify-domain`": [
+    {
+      "label": "Mark the provider verified only after both domains publish the token, then sign in with an email under its domain on both runtimes",
+      "test": "conformance/sso-domains.mjs",
+      "marker": "assert.equal(ok(await api.signIn.sso({email:\"member@dept.primary\"+index+\".example\",callbackURL:\"/home\"})).redirect,true);"
+    },
+    {
+      "label": "Answer 409 SSO_PROVIDER_CHANGED when the provider's domains change while the DNS lookup is pending",
+      "test": "adapters/sqlstore/sso_domain_test.go",
+      "marker": "exec(`UPDATE \"ssoProvider\" SET \"domain\"=? WHERE \"id\"=?`, \"new.example\", reg.ID)"
+    }
+  ],
+  "docs/content/docs/plugins/sso/domain-verification.mdx#L100/Parameter `providerId`": [
+    {
+      "label": "Mark the provider named by providerId verified through the released client on both runtimes",
+      "test": "conformance/sso-domains.mjs",
+      "marker": "assert.equal(ok(await api.sso.getProvider({query:{providerId}})).domainVerified,true);",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/sso/domain-verification.mdx#L114/`POST /sso/request-domain-verification`": [
+    {
+      "label": "Return the current token with HTTP 201 through the released client on both runtimes",
+      "test": "conformance/sso-domains.mjs",
+      "marker": "const req=seen.at(-1);assert.equal(req[1],201);",
+      "complete": true
+    },
+    {
+      "label": "Answer 401 to a token request without a session",
+      "test": "adapters/sqlstore/sso_domain_test.go",
+      "marker": "_, e = sdk(first).RequestSSODomainVerification(ctx, \"corp\")"
+    }
+  ],
+  "docs/content/docs/plugins/sso/domain-verification.mdx#L120/Parameter `providerId`": [
+    {
+      "label": "Return the token of the provider named by providerId",
+      "test": "conformance/sso-domains.mjs",
+      "marker": "assert.equal(ok(await api.sso.requestDomainVerification({providerId})).domainVerificationToken,token);",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/sso/domain-verification.mdx#L129": [
+    {
+      "label": "Answer 403 to a signed-in user who does not manage the provider and 401 without a session when a token is requested",
+      "test": "adapters/sqlstore/sso_domain_test.go",
+      "marker": "status(e, 403, \"\")"
+    }
+  ],
+  "docs/content/docs/plugins/sso/domain-verification.mdx#L135/`DOMAIN_VERIFIED`": [
+    {
+      "label": "Answer 409 DOMAIN_VERIFIED to a second verification and to a token request once the provider is verified",
+      "test": "adapters/sqlstore/sso_domain_test.go",
+      "marker": "status(e2, 409, \"DOMAIN_VERIFIED\")",
+      "complete": true
+    },
+    {
+      "label": "Answer DOMAIN_VERIFIED to a token request for a verified provider on both runtimes",
+      "test": "conformance/sso-domains.mjs",
+      "marker": "assert.equal((await api.sso.requestDomainVerification({providerId})).error.code,\"DOMAIN_VERIFIED\");"
+    }
+  ],
+  "docs/content/docs/plugins/sso/domain-verification.mdx#L136/`NO_PENDING_VERIFICATION`": [
+    {
+      "label": "Answer 404 NO_PENDING_VERIFICATION to verification after the token expires",
+      "test": "adapters/sqlstore/sso_domain_test.go",
+      "marker": "status(one.VerifySSODomain(ctx, \"corp\"), 404, \"NO_PENDING_VERIFICATION\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/sso/domain-verification.mdx#L137/`IDENTIFIER_TOO_LONG`": [
+    {
+      "label": "Answer 400 IDENTIFIER_TOO_LONG to registration, token request and verification when the record label exceeds 63 characters",
+      "test": "adapters/sqlstore/sso_domain_test.go",
+      "marker": "{strings.Repeat(\"a\", 46), \"long.example\", \"IDENTIFIER_TOO_LONG\"},",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/sso/domain-verification.mdx#L138/`INVALID_DOMAIN`": [
+    {
+      "label": "Fail the DNS target check with INVALID_DOMAIN when a domain entry is a URL",
+      "test": "plugins/sso/domain_test.go",
+      "marker": "{\"id\", \"_tenant-id\", \"example.org,https://other.example/\", \"INVALID_DOMAIN\"},",
+      "complete": true
+    },
+    {
+      "label": "Answer 400 INVALID_DOMAIN to registration, token request and verification when a domain makes the record name longer than 253 characters",
+      "test": "adapters/sqlstore/sso_domain_test.go",
+      "marker": "\"oversized\", strings.Repeat(\"a\", 63)"
+    }
+  ],
+  "docs/content/docs/plugins/sso/domain-verification.mdx#L139/`DOMAIN_VERIFICATION_FAILED`": [
+    {
+      "label": "Answer 502 DOMAIN_VERIFICATION_FAILED while a listed domain lacks the token or publishes a wrong labeled value",
+      "test": "adapters/sqlstore/sso_domain_test.go",
+      "marker": "status(e, 502, \"DOMAIN_VERIFICATION_FAILED\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/sso/domain-verification.mdx#L140/`SSO_PROVIDER_CHANGED`": [
+    {
+      "label": "Answer 409 SSO_PROVIDER_CHANGED when the provider's domains change during the DNS lookup",
+      "test": "adapters/sqlstore/sso_domain_test.go",
+      "marker": "exec(`UPDATE \"ssoProvider\" SET \"domain\"=? WHERE \"id\"=?`, \"new.example\", reg.ID)"
+    }
+  ],
+  "docs/content/docs/plugins/sso/index.mdx#L18/OIDC discovery of provider endpoints": [
+    {
+      "label": "Fill the provider's endpoints and client authentication method from the issuer's discovery document at registration on both runtimes",
+      "test": "conformance/sso-providers.mjs",
+      "marker": "assert.equal(fetched.oidcConfig.jwksEndpoint, issuer + \"/keys\");",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/sso/index.mdx#L20/SAML 2.0 SP-initiated and IdP-initiated sign-in": [
+    {
+      "label": "Complete an SP-initiated SAML sign-in twice into the same account through the released client on both runtimes",
+      "test": "conformance/sso-saml.mjs",
+      "marker": "export async function compareEnterpriseSAML(",
+      "complete": true
+    },
+    {
+      "label": "Sign in from a reviewed IdP portal with a signed assertion and reject its replay on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "test(\"enterprise SAML performs reviewed IdP-initiated sign-in"
+    }
+  ],
+  "docs/content/docs/plugins/sso/index.mdx#L21/SAML response validation": [
+    {
+      "label": "Reject assertions with a wrong issuer, audience, recipient, request, expiry or start time on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "// Independent signed fixtures exercise"
+    },
+    {
+      "label": "Let only one of two concurrent logins carrying the same assertion ID succeed",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "t.Fatal(\"assertion replay results\""
+    }
+  ],
+  "docs/content/docs/plugins/sso/index.mdx#L22/SAML Single Logout": [
+    {
+      "label": "Start a signed SP-initiated logout for the recorded SAML login and accept the IdP's signed response on three SQL engines",
+      "test": "adapters/sqlstore/sso_saml_logout_test.go",
+      "marker": "func testSAMLLogout(",
+      "complete": true
+    },
+    {
+      "label": "Accept a signed IdP logout request once across replicas and revoke the matching sessions",
+      "test": "adapters/sqlstore/sso_saml_idp_logout_test.go",
+      "marker": "t.Fatal(\"incoming logout replay race\""
+    }
+  ],
+  "docs/content/docs/plugins/sso/index.mdx#L24/Organization provisioning": [
+    {
+      "label": "Add a new enterprise user to the provider's organization with the member role",
+      "test": "adapters/sqlstore/sso_browser_test.go",
+      "marker": "t.Fatal(\"missing membership\")"
+    }
+  ],
+  "docs/content/docs/plugins/sso/index.mdx#L25/DNS domain verification": [
+    {
+      "label": "Register, verify over DNS and sign in through a domain-verified provider on both runtimes",
+      "test": "conformance/sso-domains.mjs",
+      "marker": "export async function compareSSODomains(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/sso/index.mdx#L93": [
+    {
+      "label": "Register providers up to the creator limit across two nodes, refuse registration when the limit is zero, and return the provider's redirect URI",
+      "test": "adapters/sqlstore/sso_test.go",
+      "marker": "func TestEnterpriseProviderManagement("
+    }
+  ],
+  "docs/content/docs/plugins/sso/index.mdx#L100/Your customers, each for their own domain": [
+    {
+      "label": "Refuse sign-in with HTTP 401 through a new provider until verify-domain succeeds, then sign in by email domain on both runtimes",
+      "test": "conformance/sso-domains.mjs",
+      "marker": "assert.equal((await api.signIn.sso({providerId,callbackURL:\"/home\"})).error.status,401);",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/sso/index.mdx#L113/`providerId`": [
+    {
+      "label": "Reject a duplicate provider ID, a built-in sign-in method name and a trusted provider name in another case with 422",
+      "test": "adapters/sqlstore/sso_test.go",
+      "marker": "check(call(one, path, other, makeBody(\"partner\", \"\", \"/discovery\")), 422)"
+    }
+  ],
+  "docs/content/docs/plugins/sso/index.mdx#L114/`issuer`": [
+    {
+      "label": "Reject an OIDC registration whose discovered issuer differs from the submitted issuer",
+      "test": "adapters/sqlstore/sso_test.go",
+      "marker": "check(call(two, path, owner, makeBody(\"wrong\", \"\", \"/mismatch\")), 400)"
+    }
+  ],
+  "docs/content/docs/plugins/sso/index.mdx#L115/`domain`": [
+    {
+      "label": "Store comma-separated domains lowercased and without duplicates at registration",
+      "test": "adapters/sqlstore/sso_test.go",
+      "marker": "data[\"domain\"] != \"example.com,subs.example.org\"",
+      "complete": true
+    },
+    {
+      "label": "Reject a wildcard, URL, email address or empty label as a provider domain",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "for _, input := range []string{\"*.example.com\", \"https://example.com\", \"user@example.com\", \"abc..example.com\"} {"
+    }
+  ],
+  "docs/content/docs/plugins/sso/index.mdx#L178": [
+    {
+      "label": "Start an OIDC sign-in by provider ID, organization slug, email or domain on a custom auth mount and return the IdP URL",
+      "test": "adapters/sqlstore/sso_browser_test.go",
+      "marker": "func TestEnterpriseOIDCBrowser("
+    }
+  ],
+  "docs/content/docs/plugins/sso/index.mdx#L219/`POST /sign-in/sso`": [
+    {
+      "label": "Start a sign-in by email with the released client and finish it through the provider's callback on both runtimes",
+      "test": "conformance/sso-browser.mjs",
+      "marker": "export async function compareEnterpriseBrowser("
+    }
+  ],
+  "docs/content/docs/plugins/sso/index.mdx#L225/Parameter `email` (optional)": [
+    {
+      "label": "Select the provider whose domain is a suffix of the email's domain",
+      "test": "adapters/sqlstore/sso_browser_test.go",
+      "marker": "map[string]any{\"email\": \"hello@sub.acme.example\"}",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/sso/index.mdx#L229/Parameter `organizationSlug` (optional)": [
+    {
+      "label": "Select the provider linked to the organization with the given slug",
+      "test": "adapters/sqlstore/sso_browser_test.go",
+      "marker": "map[string]any{\"organizationSlug\": \"company\"}",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/sso/index.mdx#L233/Parameter `providerId` (optional)": [
+    {
+      "label": "Select the provider named by providerId and send its own callback as redirect_uri",
+      "test": "adapters/sqlstore/sso_browser_test.go",
+      "marker": "parsed.Query().Get(\"redirect_uri\") != \"https://service.test/identity/sso/callback/staff\"",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/sso/index.mdx#L237/Parameter `domain` (optional)": [
+    {
+      "label": "Select the provider whose domain list contains the domain passed at sign-in",
+      "test": "adapters/sqlstore/sso_browser_test.go",
+      "marker": "map[string]any{\"domain\": \"staff.example\"}",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/sso/index.mdx#L253/Parameter `scopes` (optional)": [
+    {
+      "label": "Request only the scopes passed at sign-in",
+      "test": "adapters/sqlstore/sso_browser_test.go",
+      "marker": "parsed.Query().Get(\"scope\") != \"openid\""
+    }
+  ],
+  "docs/content/docs/plugins/sso/index.mdx#L257/Parameter `loginHint` (optional)": [
+    {
+      "label": "Send loginHint to the OIDC provider as login_hint",
+      "test": "adapters/sqlstore/sso_browser_test.go",
+      "marker": "q.Get(\"login_hint\") != \"employee\"",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/sso/index.mdx#L261/Parameter `additionalParams` (optional)": [
+    {
+      "label": "Add a prompt parameter to the OIDC authorization request and reject a reserved state parameter",
+      "test": "adapters/sqlstore/sso_browser_test.go",
+      "marker": "\"additionalParams\": map[string]any{\"state\": \"x\"}"
+    }
+  ],
+  "docs/content/docs/plugins/sso/index.mdx#L265/Parameter `requestSignUp` (optional)": [
+    {
+      "label": "Create a new user when requestSignUp is true although implicit sign-up is disabled",
+      "test": "adapters/sqlstore/sso_browser_test.go",
+      "marker": "map[string]any{\"providerId\": \"acme\", \"requestSignUp\": true}"
+    }
+  ],
+  "docs/content/docs/plugins/sso/index.mdx#L269/Parameter `providerType` (optional)": [
+    {
+      "label": "Start a SAML sign-in for the directory named by providerId when providerType is saml",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "ProviderType: \"saml\", CallbackURL: \"/home\", NewUserCallbackURL: \"/welcome\", ErrorCallbackURL: \"/failed\""
+    }
+  ],
+  "docs/content/docs/plugins/sso/index.mdx#L274": [
+    {
+      "label": "Return the provider with a masked client ID and no secret, list it for its manager, and refuse a foreign user with 403 on both runtimes",
+      "test": "conformance/sso-providers.mjs",
+      "marker": "assert.equal(fetched.oidcConfig.clientIdLastFour, \"****5678\");"
+    }
+  ],
+  "docs/content/docs/plugins/sso/index.mdx#L278/`POST /sso/update-provider`": [
+    {
+      "label": "Replace a directory's IdP metadata to rotate its signing certificate, and refuse a different authority with 409, on both runtimes",
+      "test": "conformance/sso-saml.mjs",
+      "marker": "const updated=ok(await change(inlineIdP([cert,rotating.cert])))"
+    }
+  ],
+  "docs/content/docs/plugins/sso/index.mdx#L284/Parameter `providerId`": [
+    {
+      "label": "Update the directory named by providerId with replacement IdP metadata through the released client",
+      "test": "conformance/sso-saml.mjs",
+      "marker": "const change=xml=>admin.sso.updateProvider({providerId:\"work\",samlConfig:{idpMetadata:{metadata:xml}}});",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/sso/index.mdx#L312/`POST /sso/delete-provider`": [
+    {
+      "label": "Delete a provider by ID with its account links, keep another provider's links and the caller's session, on both runtimes",
+      "test": "conformance/sso-providers.mjs",
+      "marker": "assert.deepEqual(success(await other.sso.deleteProvider("
+    }
+  ],
+  "docs/content/docs/plugins/sso/index.mdx#L329/`action`": [
+    {
+      "label": "Pass the delete action to the guard on provider deletion",
+      "test": "adapters/sqlstore/sso_delete_test.go",
+      "marker": "if m.Action != \"delete\" || m.ID != p.ID",
+      "complete": true
+    },
+    {
+      "label": "Pass the update action to the guard when IdP metadata is replaced",
+      "test": "adapters/sqlstore/sso_saml_metadata_test.go",
+      "marker": "observed = m.Action == \"update\""
+    }
+  ],
+  "docs/content/docs/plugins/sso/index.mdx#L330/`provider`": [
+    {
+      "label": "Pass the locked row's record ID, provider ID and organization ID to the guard",
+      "test": "adapters/sqlstore/sso_delete_test.go",
+      "marker": "if m.Action != \"delete\" || m.ID != p.ID",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/sso/index.mdx#L331/`providerReference`": [
+    {
+      "label": "Pass the guard the configuration reference of the locked provider row",
+      "test": "adapters/sqlstore/sso_delete_test.go",
+      "marker": "if m.Action != \"delete\" || m.ID != p.ID",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/sso/oidc.mdx": [
+    {
+      "label": "Require S256 PKCE, reject invalid ID tokens and a disagreeing UserInfo subject, and sign the same provider subject back into one account",
+      "test": "adapters/sqlstore/sso_browser_test.go",
+      "marker": "for _, mode := range []string{\"azp\", \"nonce\", \"future\", \"expired\", \"mismatch\", \"missing-sub\", \"signature\"} {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/sso/oidc.mdx#L10": [
+    {
+      "label": "Register discovered and manual OIDC clients with PKCE on by default, keep pkce false when submitted, and return the per-provider redirect URI on both runtimes",
+      "test": "conformance/sso-providers.mjs",
+      "marker": "export async function providerCatalog("
+    }
+  ],
+  "docs/content/docs/plugins/sso/oidc.mdx#L56": [
+    {
+      "label": "Resolve relative discovered endpoints under the issuer path and choose client_secret_basic from the advertised methods",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "if cfg.TokenEndpoint != issuer+\"/token\" || cfg.JWKSEndpoint != issuer+\"/keys\""
+    },
+    {
+      "label": "Fill the JWKS location and client authentication method from discovery at registration on both runtimes",
+      "test": "conformance/sso-providers.mjs",
+      "marker": "assert.equal(fetched.oidcConfig.jwksEndpoint, issuer + \"/keys\");"
+    }
+  ],
+  "docs/content/docs/plugins/sso/oidc.mdx#L66": [
+    {
+      "label": "Refuse discovery from an origin trusted only for browser redirects without contacting it",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "t.Fatal(\"contacted browser-only origin\")"
+    },
+    {
+      "label": "Keep a wildcard browser origin from granting server-side transport to an unlisted host",
+      "test": "plugins/sso/identity_test.go",
+      "marker": "t.Fatal(\"browser wildcard granted confidential transport\")"
+    }
+  ],
+  "docs/content/docs/plugins/sso/oidc.mdx#L108": [
+    {
+      "label": "Reject registration when the discovery URL redirects, without requesting the redirect target",
+      "test": "adapters/sqlstore/sso_test.go",
+      "marker": "t.Fatal(\"discovery followed redirect\")"
+    },
+    {
+      "label": "Refuse a redirecting identity provider response on the enterprise HTTP client without following it",
+      "test": "plugins/sso/identity_test.go",
+      "marker": "t.Fatal(\"followed provider redirect\")"
+    }
+  ],
+  "docs/content/docs/plugins/sso/oidc.mdx#L114/`issuer_mismatch`": [
+    {
+      "label": "Reject a discovery document whose issuer differs from the configured issuer with 400 issuer_mismatch",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "\"issuer_mismatch\"},"
+    }
+  ],
+  "docs/content/docs/plugins/sso/oidc.mdx#L115/`discovery_incomplete`": [
+    {
+      "label": "Reject a JSON null discovery document with 400 discovery_incomplete",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "{\"null\", \"discovery_incomplete\"}"
+    }
+  ],
+  "docs/content/docs/plugins/sso/oidc.mdx#L117/`discovery_timeout`": [
+    {
+      "label": "Return 502 discovery_timeout when the discovery request exceeds its deadline",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "code(hydrate(context.Background(), host, client, &cfg, false), \"discovery_timeout\", 502)"
+    }
+  ],
+  "docs/content/docs/plugins/sso/oidc.mdx#L119/`discovery_untrusted_origin`": [
+    {
+      "label": "Reject a discovery URL on an untrusted origin with 400 discovery_untrusted_origin before contacting it",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "code(hydrate(t.Context(), host, client, &cfg, false), \"discovery_untrusted_origin\", 400)"
+    }
+  ],
+  "docs/content/docs/plugins/sso/oidc.mdx#L120/`discovery_private_host`": [
+    {
+      "label": "Reject private, reserved and cloud metadata endpoint hosts that are not explicitly trusted, including a discovered private JWKS URL, with 400 discovery_private_host",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "for _, endpoint := range []string{\"https://100.64.0.1/keys\", \"https://[2001:db8::1]/keys\", \"https://metadata.goog/keys\"} {",
+      "complete": true
+    },
+    {
+      "label": "Register a provider through discovery from a loopback IdP origin listed in trusted origins on both runtimes",
+      "test": "conformance/sso-providers.mjs",
+      "marker": "trustedOrigins: [origin],"
+    }
+  ],
+  "docs/content/docs/plugins/sso/oidc.mdx#L121/`discovery_invalid_json`": [
+    {
+      "label": "Reject a malformed or oversized discovery response with 400 discovery_invalid_json",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "{`{broken`, \"discovery_invalid_json\"}"
+    }
+  ],
+  "docs/content/docs/plugins/sso/oidc.mdx#L122/`oidc_endpoint_redirect`": [
+    {
+      "label": "Reject registration with HTTP 400 when the discovery URL answers with a redirect, without following it",
+      "test": "adapters/sqlstore/sso_test.go",
+      "marker": "check(call(one, path, owner, makeBody(\"redirect\", \"\", \"/error\")), 400)"
+    }
+  ],
+  "docs/content/docs/plugins/sso/oidc.mdx#L145": [
+    {
+      "label": "Send the shared or provider-specific callback as redirect_uri and complete sign-in through it on both runtimes",
+      "test": "conformance/sso-browser.mjs",
+      "marker": "assert.equal(target.href,relative+\"/api/auth/sso/callback\"+(shared?\"\":\"/company\"));"
+    },
+    {
+      "label": "Reject a code delivered to another provider's callback path with state_mismatch",
+      "test": "adapters/sqlstore/sso_browser_test.go",
+      "marker": "bad.path = strings.Replace(bad.path, \"/acme?\", \"/staff?\", 1)"
+    }
+  ],
+  "docs/content/docs/plugins/sso/provisioning.mdx#L10": [
+    {
+      "label": "Link a new enterprise identity to a verified local user only under a proved domain or subdomain with implicit linking on, and redirect with account_not_linked otherwise",
+      "test": "adapters/sqlstore/sso_domain_test.go",
+      "marker": "t.Fatal(\"proved subdomain failed to link verified existing identity\""
+    }
+  ],
+  "docs/content/docs/plugins/sso/provisioning.mdx#L34": [
+    {
+      "label": "Redirect with signup_disabled for a new OIDC user when implicit sign-up is off, and create the user when requestSignUp is true",
+      "test": "adapters/sqlstore/sso_browser_test.go",
+      "marker": "implicit := host(other, false, false, true)"
+    }
+  ],
+  "docs/content/docs/plugins/sso/provisioning.mdx#L162": [
+    {
+      "label": "Require organization membership (400) and an owner or admin role (403) to register a provider for an organization, and let current organization admins read it",
+      "test": "adapters/sqlstore/sso_test.go",
+      "marker": "check(call(one, path, member, makeBody(\"member-reg\", orgID, \"/discovery\")), 403)"
+    }
+  ],
+  "docs/content/docs/plugins/sso/provisioning.mdx#L181": [
+    {
+      "label": "Add a provider-linked sign-in as a member, keep an existing role and skip a user with a pending invitation",
+      "test": "adapters/sqlstore/sso_browser_test.go",
+      "marker": "t.Fatal(\"pending invite ignored\")"
+    }
+  ],
+  "docs/content/docs/plugins/sso/reference.mdx#L494/`POST /sso/register`": [
+    {
+      "label": "Answer 401 to a provider registration without a session",
+      "test": "plugins/openapi/sso_directory_test.go",
+      "marker": "wire.call(\"POST\", \"/sso/register\", obj{}, anon, 401)",
+      "complete": true
+    },
+    {
+      "label": "Register an OIDC provider linked to an organization for its signed-in owner",
+      "test": "adapters/sqlstore/sso_test.go",
+      "marker": "data := check(call(one, path, owner, makeBody(\"corp\", orgID, \"/discovery\")), 200)"
+    }
+  ],
+  "docs/content/docs/plugins/sso/reference.mdx#L495/`POST /sign-in/sso`": [
+    {
+      "label": "Start an SSO sign-in by email domain without a session and return the provider's authorization URL",
+      "test": "plugins/openapi/sso_directory_test.go",
+      "marker": "start := wire.call(\"POST\", \"/sign-in/sso\", obj{\"domain\": \"example.org\", \"callbackURL\": \"/done\", \"errorCallbackURL\": \"/problem\"}, anon, 200)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/sso/reference.mdx#L498/`GET / POST /sso/saml2/sp/acs/:providerId`": [
+    {
+      "label": "Sign in from a signed SAML response posted to the ACS by the browser that started the request",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "t.Fatalf(\"first login %d %v %s\", status, headers, string(data))"
+    }
+  ],
+  "docs/content/docs/plugins/sso/reference.mdx#L499/`GET /sso/saml2/sp/metadata?providerId=`": [
+    {
+      "label": "Serve a provider's SP metadata as application/xml to a request without a session",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "if status != 200 || headers.Get(\"Content-Type\") != \"application/xml\" {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/sso/reference.mdx#L500/`GET / POST /sso/saml2/sp/slo/:providerId`": [
+    {
+      "label": "Accept a signed IdP LogoutRequest at the SLO route exactly once across two instances",
+      "test": "adapters/sqlstore/sso_saml_idp_logout_test.go",
+      "marker": "t.Fatal(\"incoming logout replay race\""
+    },
+    {
+      "label": "Accept a signed LogoutResponse at the SLO route exactly once across two instances",
+      "test": "adapters/sqlstore/sso_saml_logout_test.go",
+      "marker": "t.Fatal(\"non-atomic logout acknowledgement\", statuses)"
+    }
+  ],
+  "docs/content/docs/plugins/sso/reference.mdx#L501/`POST /sso/saml2/logout/:providerId`": [
+    {
+      "label": "Start SP-initiated logout from the current SAML session, end it and redirect to the IdP with a signed LogoutRequest",
+      "test": "adapters/sqlstore/sso_saml_logout_test.go",
+      "marker": "func testSAMLLogout("
+    },
+    {
+      "label": "Refuse SP-initiated logout from a password session",
+      "test": "adapters/sqlstore/sso_saml_logout_test.go",
+      "marker": "t.Fatal(\"password session initiated SAML logout\")"
+    },
+    {
+      "label": "List the logout start and SLO routes in the generated OpenAPI document only when single logout is enabled",
+      "test": "plugins/openapi/sso_directory_test.go",
+      "marker": "t.Fatal(\"logout route availability\", mode, route)"
+    }
+  ],
+  "docs/content/docs/plugins/sso/reference.mdx#L502/`GET /sso/providers`": [
+    {
+      "label": "Answer 401 to the provider list and provider lookup without a session",
+      "test": "plugins/openapi/sso_directory_test.go",
+      "marker": "for _, path := range []string{\"/sso/providers\", \"/sso/get-provider?providerId=tenant\"} {",
+      "complete": true
+    },
+    {
+      "label": "Drop organization providers from the list once the caller is demoted from admin",
+      "test": "adapters/sqlstore/sso_test.go",
+      "marker": "t.Fatal(\"list visibility leaked\", l)"
+    }
+  ],
+  "docs/content/docs/plugins/sso/reference.mdx#L503/`GET /sso/get-provider`": [
+    {
+      "label": "Answer 401 to the provider list and provider lookup without a session",
+      "test": "plugins/openapi/sso_directory_test.go",
+      "marker": "for _, path := range []string{\"/sso/providers\", \"/sso/get-provider?providerId=tenant\"} {",
+      "complete": true
+    },
+    {
+      "label": "Return one provider by providerId to its owner without the client secret",
+      "test": "plugins/openapi/sso_directory_test.go",
+      "marker": "view := wire.decode(wire.call(\"GET\", \"/sso/get-provider?providerId=tenant\", nil, authorized, 200))"
+    }
+  ],
+  "docs/content/docs/plugins/sso/reference.mdx#L504/`POST /sso/update-provider`": [
+    {
+      "label": "Replace a SAML provider's IdP metadata and reject responses signed by the removed certificate",
+      "test": "adapters/sqlstore/sso_saml_metadata_test.go",
+      "marker": "t.Fatal(\"retired certificate accepted\", target)"
+    },
+    {
+      "label": "Refuse a metadata update from a user who does not manage the provider",
+      "test": "adapters/sqlstore/sso_saml_metadata_test.go",
+      "marker": "t.Fatal(\"another manager changed a personal IdP\")"
+    }
+  ],
+  "docs/content/docs/plugins/sso/reference.mdx#L505/`POST /sso/delete-provider`": [
+    {
+      "label": "Answer 401 to a provider deletion without a session",
+      "test": "plugins/openapi/sso_directory_test.go",
+      "marker": "wire.call(\"POST\", \"/sso/delete-provider\", obj{\"providerId\": \"tenant\"}, anon, 401)",
+      "complete": true
+    },
+    {
+      "label": "Delete a provider through the route with the owner's bearer session, answer success and drop it from the list",
+      "test": "plugins/openapi/sso_directory_test.go",
+      "marker": "del := wire.decode(wire.call(\"POST\", \"/sso/delete-provider\", obj{\"providerId\": \"tenant\"}, authorized, 200))"
+    },
+    {
+      "label": "Remove a provider's linked accounts when the SQL store deletes it, and issue no session to a sign-in racing the deletion",
+      "test": "adapters/sqlstore/sso_delete_test.go",
+      "marker": "t.Fatal(\"removed provider left a link or issued a session\")"
+    }
+  ],
+  "docs/content/docs/plugins/sso/reference.mdx#L506/`POST /sso/request-domain-verification`": [
+    {
+      "label": "Answer 404 on both DNS routes when domain verification is off",
+      "test": "plugins/openapi/sso_domain_test.go",
+      "marker": "call(\"POST\", path, obj{\"providerId\": \"company\"}, nil, 404)",
+      "complete": true
+    },
+    {
+      "label": "Answer 401 on both DNS routes without a session",
+      "test": "plugins/openapi/sso_domain_test.go",
+      "marker": "call(\"POST\", path, obj{\"providerId\": \"company\"}, nil, 401)"
+    },
+    {
+      "label": "Return the registration's DNS token again with HTTP 201 through the released client on both runtimes",
+      "test": "conformance/sso-domains.mjs",
+      "marker": "const req=seen.at(-1)"
+    }
+  ],
+  "docs/content/docs/plugins/sso/reference.mdx#L507/`POST /sso/verify-domain`": [
+    {
+      "label": "Answer 404 on both DNS routes when domain verification is off",
+      "test": "plugins/openapi/sso_domain_test.go",
+      "marker": "call(\"POST\", path, obj{\"providerId\": \"company\"}, nil, 404)",
+      "complete": true
+    },
+    {
+      "label": "Answer 401 on both DNS routes without a session",
+      "test": "plugins/openapi/sso_domain_test.go",
+      "marker": "call(\"POST\", path, obj{\"providerId\": \"company\"}, nil, 401)"
+    },
+    {
+      "label": "Verify a provider's domains once each publishes the token, and answer 204",
+      "test": "conformance/sso-domains.mjs",
+      "marker": "ok(await api.sso.verifyDomain({providerId})); assert.equal"
+    }
+  ],
+  "docs/content/docs/plugins/sso/reference.mdx#L533": [
+    {
+      "label": "Emit the same SQL as the other runtime for every SSO and DNS-verification profile combination on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"the CLI emits the pinned plugin schema across exhaustive base combinations",
+      "complete": true
+    },
+    {
+      "label": "Add the domainVerified column only with DNS verification, and match the other runtime's SQLite schema after an upgrade",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"enterprise DNS verification extends"
+    },
+    {
+      "label": "Match the other runtime's SQLite schema after adding plugin profiles to a populated database",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"adding plugin profiles to a populated SQLite database preserves existing accounts and matches a fresh schema\""
+    }
+  ],
+  "docs/content/docs/plugins/sso/reference.mdx#L557/`saml-authn-request:`": [
+    {
+      "label": "Store a started SAML sign-in as one oauth-state verification record keyed by its RelayState",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "t.Fatal(\"the RelayState's create hooks saw\", recs)"
+    }
+  ],
+  "docs/content/docs/plugins/sso/reference.mdx#L558/`saml-used-assertion:`": [
+    {
+      "label": "Let only one of two concurrent SAML sign-ins that reuse one assertion ID succeed",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "t.Fatal(\"assertion replay results\", pathsOut)"
+    }
+  ],
+  "docs/content/docs/plugins/sso/reference.mdx#L559/`saml-session:`": [
+    {
+      "label": "Send the NameID and SessionIndex recorded at SAML sign-in in the SP-initiated LogoutRequest",
+      "test": "adapters/sqlstore/sso_saml_logout_test.go",
+      "marker": "t.Fatal(\"incorrect signed logout identity\")"
+    }
+  ],
+  "docs/content/docs/plugins/sso/reference.mdx#L560/`saml-session-by-id:`": [
+    {
+      "label": "Find a SAML sign-in's logout record by its session ID and give it the session's expiry",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "t.Fatal(\"the binding expires at\", bindingEnd, \"for a session that expires at\", sessionEnd)"
+    }
+  ],
+  "docs/content/docs/plugins/sso/reference.mdx#L561/`saml-logout-request:`": [
+    {
+      "label": "Reject a LogoutResponse once its stored logout request has expired",
+      "test": "adapters/sqlstore/sso_saml_logout_test.go",
+      "marker": "t.Fatal(\"expired logout accepted\", status)"
+    }
+  ],
+  "docs/content/docs/plugins/sso/reference.mdx#L562/`_{tokenPrefix}-{providerId}`": [
+    {
+      "label": "Store a provider's DNS token in a verification row named by the token prefix and provider ID, valid for seven days",
+      "test": "adapters/sqlstore/sso_domain_test.go",
+      "marker": "t.Fatal(\"challenge lifetime\", expires.Sub(created))",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/sso/saml-security.mdx#L12/Signature": [
+    {
+      "label": "Reject a SAML response signed by a key other than the provider's certificate",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "t.Fatal(\"unknown signing authority\", head)"
+    },
+    {
+      "label": "Reject an encrypted assertion whose only signature is on the response",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "t.Fatal(\"unexpected session or redirect for\", mode, status)"
+    }
+  ],
+  "docs/content/docs/plugins/sso/saml-security.mdx#L13/Algorithms": [
+    {
+      "label": "Reject encrypted assertions that use AES-128-GCM, AES-256-CBC, legacy RSA-OAEP or RSA-OAEP with SHA-384",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "for _, mode := range []string{\"plaintext\", \"AES-128-GCM\", \"AES-256-CBC\", \"legacy RSA-OAEP\", \"RSA-OAEP SHA-384\", \"different recipient certificate\", \"only the response is signed\"} {"
+    }
+  ],
+  "docs/content/docs/plugins/sso/saml-security.mdx#L14/Timestamps": [
+    {
+      "label": "Reject a signed assertion whose NotBefore is an hour ahead",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "a.Conditions.NotBefore = time.Now().Add(time.Hour) },",
+      "complete": true
+    },
+    {
+      "label": "Reject a signed assertion whose NotOnOrAfter passed an hour ago",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "a.Conditions.NotOnOrAfter = time.Now().Add(-time.Hour) },"
+    }
+  ],
+  "docs/content/docs/plugins/sso/saml-security.mdx#L15/Audience, recipient, and destination": [
+    {
+      "label": "Reject a signed assertion with another audience or another bearer recipient",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "// Independent signed fixtures exercise the ordinary validation contracts.",
+      "complete": true
+    },
+    {
+      "label": "Reject a SAML response addressed to another provider's ACS",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "t.Fatal(\"other ACS destination\", head)"
+    }
+  ],
+  "docs/content/docs/plugins/sso/saml-security.mdx#L16/InResponseTo": [
+    {
+      "label": "Reject an assertion whose bearer confirmation answers another request ID",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "a.Subject.SubjectConfirmations[0].SubjectConfirmationData.InResponseTo = \"_otherRequest\""
+    },
+    {
+      "label": "Redirect with error=unsolicited_response for an IdP-initiated response when no directory policy allows it",
+      "test": "adapters/sqlstore/sso_saml_portal_test.go",
+      "marker": "rejected(send(disabled, proof, origin, \"\", \"document\"), \"unsolicited_response\")"
+    }
+  ],
+  "docs/content/docs/plugins/sso/saml-security.mdx#L17/Replay": [
+    {
+      "label": "Let only one of two concurrent SAML sign-ins that reuse one assertion ID succeed",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "t.Fatal(\"assertion replay results\", pathsOut)",
+      "complete": true
+    },
+    {
+      "label": "Reject the second of two concurrent IdP-initiated posts of one assertion",
+      "test": "adapters/sqlstore/sso_saml_portal_test.go",
+      "marker": "rejected(two, \"replay_detected\")"
+    }
+  ],
+  "docs/content/docs/plugins/sso/saml-security.mdx#L21": [
+    {
+      "label": "Redirect with error=invalid_saml_response for a correlated response posted without its RelayState",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "t.Fatal(\"a correlated reply was accepted without its state\", status)"
+    },
+    {
+      "label": "Reject an unsolicited response whose assertion cites a request ID",
+      "test": "adapters/sqlstore/sso_saml_portal_test.go",
+      "marker": "a.Subject.SubjectConfirmations[0].SubjectConfirmationData.InResponseTo = \"_requested-elsewhere\""
+    }
+  ],
+  "docs/content/docs/plugins/sso/saml-security.mdx#L45/`invalid_saml_response`": [
+    {
+      "label": "Redirect with error=invalid_saml_response when the assertion's bearer confirmation answers another request ID",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "a.Subject.SubjectConfirmations[0].SubjectConfirmationData.InResponseTo = \"_otherRequest\""
+    },
+    {
+      "label": "Redirect with error=invalid_saml_response for a correlated response posted without its RelayState",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "t.Fatal(\"a correlated reply was accepted without its state\", status)"
+    }
+  ],
+  "docs/content/docs/plugins/sso/saml-security.mdx#L47/`unsolicited_response`": [
+    {
+      "label": "Redirect with error=unsolicited_response for an IdP-initiated response when no directory policy allows it",
+      "test": "adapters/sqlstore/sso_saml_portal_test.go",
+      "marker": "rejected(send(disabled, proof, origin, \"\", \"document\"), \"unsolicited_response\")"
+    },
+    {
+      "label": "Redirect with error=unsolicited_response for a portal response to a re-registered provider the policy has not approved",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "t.Fatal(\"portal approval adopted a replacement registration\", st)"
+    }
+  ],
+  "docs/content/docs/plugins/sso/saml-security.mdx#L48/`invalid_state`": [
+    {
+      "label": "Redirect with error=invalid_state when the provider's stored configuration changed after sign-in started",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "t.Fatal(\"changed provider accepted response\", head)"
+    },
+    {
+      "label": "Redirect with error=invalid_state for a request started before a certificate rotation",
+      "test": "adapters/sqlstore/sso_saml_metadata_test.go",
+      "marker": "t.Fatal(\"old request survived certificate rotation\", target)"
+    }
+  ],
+  "docs/content/docs/plugins/sso/saml-security.mdx#L50": [
+    {
+      "label": "Let only one of two concurrent SAML sign-ins that reuse one assertion ID succeed",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "t.Fatal(\"assertion replay results\", pathsOut)"
+    },
+    {
+      "label": "Redirect a repeated IdP-initiated assertion with error=replay_detected on both runtimes",
+      "test": "conformance/sso-saml.mjs",
+      "marker": "assert.equal(new URL(duplicate.headers.get(\"location\"),runtime.baseURL).searchParams.get(\"error\"),\"replay_detected\");"
+    }
+  ],
+  "docs/content/docs/plugins/sso/saml-security.mdx#L60/`replay_detected`": [
+    {
+      "label": "Reject the second of two concurrent IdP-initiated posts of one assertion with error=replay_detected",
+      "test": "adapters/sqlstore/sso_saml_portal_test.go",
+      "marker": "rejected(two, \"replay_detected\")"
+    },
+    {
+      "label": "Redirect a repeated IdP-initiated assertion with error=replay_detected on both runtimes",
+      "test": "conformance/sso-saml.mjs",
+      "marker": "assert.equal(new URL(duplicate.headers.get(\"location\"),runtime.baseURL).searchParams.get(\"error\"),\"replay_detected\");"
+    }
+  ],
+  "docs/content/docs/plugins/sso/saml-security.mdx#L62": [
+    {
+      "label": "Reject a signed assertion whose NotOnOrAfter passed an hour ago",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "a.Conditions.NotOnOrAfter = time.Now().Add(-time.Hour) },"
+    },
+    {
+      "label": "Reject a signed assertion whose NotBefore is an hour ahead",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "a.Conditions.NotBefore = time.Now().Add(time.Hour) },"
+    }
+  ],
+  "docs/content/docs/plugins/sso/saml-security.mdx#L95/Key encryption": [
+    {
+      "label": "Sign in on both runtimes with an assertion whose key is wrapped with RSA-OAEP using SHA-256",
+      "test": "conformance/core.test.mjs",
+      "marker": "test(\"enterprise SAML accepts an independently encrypted signed assertion"
+    }
+  ],
+  "docs/content/docs/plugins/sso/saml-security.mdx#L96/Data encryption": [
+    {
+      "label": "Sign in on both runtimes with an assertion encrypted with AES-256-GCM",
+      "test": "conformance/core.test.mjs",
+      "marker": "test(\"enterprise SAML accepts an independently encrypted signed assertion"
+    }
+  ],
+  "docs/content/docs/plugins/sso/saml-security.mdx#L132": [
+    {
+      "label": "Reject an IdP metadata update larger than the default 100 KiB limit",
+      "test": "adapters/sqlstore/sso_saml_metadata_test.go",
+      "marker": "strings.Repeat(\" \", 100*1024) + oldDoc,"
+    },
+    {
+      "label": "Refuse a negative or over-1 MiB MaxMetadataSize and default it to 100 KiB",
+      "test": "plugins/sso/saml_test.go",
+      "marker": "func TestInlineSAMLMetadataSizeOption(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/plugins/sso/saml.mdx#L10/Service provider (SP)": [
+    {
+      "label": "Start SAML sign-in with a signed Redirect AuthnRequest that a local IdP parses and validates",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "return nil, errors.New(\"missing signed Redirect binding\")",
+      "complete": true
+    },
+    {
+      "label": "Start SAML sign-in through the released client and send an AuthnRequest naming the ACS and SP entity ID on both runtimes",
+      "test": "conformance/sso-saml.mjs",
+      "marker": "const result=ok(await browser.signIn.sso({providerId:\"work\",providerType:\"saml\",callbackURL:runtime.baseURL+\"/home\",newUserCallbackURL:runtime.baseURL+\"/welcome\"}));"
+    }
+  ],
+  "docs/content/docs/plugins/sso/saml.mdx#L11/Identity provider (IdP)": [
+    {
+      "label": "Sign in from a signed SAML response posted to the ACS",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "t.Fatalf(\"first login %d %v %s\", status, headers, string(data))",
+      "complete": true
+    },
+    {
+      "label": "POST a separately signed browser assertion, receive the application session and reuse the original account",
+      "test": "conformance/sso-saml.mjs",
+      "marker": "const callback=await send(new Request(acs"
+    }
+  ],
+  "docs/content/docs/plugins/sso/saml.mdx#L19/ACS URL": [
+    {
+      "label": "Advertise the ACS at the auth mount's /sso/saml2/sp/acs/{providerId} in SP metadata",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "if metadata.EntityID != cfg.SPMetadata.EntityID || len(metadata.SPSSODescriptors) != 1 || metadata.SPSSODescriptors[0].AssertionConsumerServices[0].Location != api+\"/sso/saml2/sp/acs/work\" {",
+      "complete": true
+    },
+    {
+      "label": "Advertise the mounted ACS location in SP metadata on both runtimes",
+      "test": "conformance/sso-saml.mjs",
+      "marker": "assert.ok(descriptor.includes('Location=\"'+acs+'\"'));"
+    }
+  ],
+  "docs/content/docs/plugins/sso/saml.mdx#L24": [
+    {
+      "label": "Register a SAML provider from IdP metadata XML through the released client and return the XML",
+      "test": "conformance/sso-saml.mjs",
+      "marker": "if (inline) assert.equal(registration.samlConfig.idpMetadata.metadata"
+    },
+    {
+      "label": "Register a SAML provider from an IdP entity ID and signing certificate through the released client and return the certificate",
+      "test": "conformance/sso-saml.mjs",
+      "marker": "else assert.equal(registration.samlConfig.cert,cert);"
+    },
+    {
+      "label": "Take the IdP entity ID from registered metadata XML",
+      "test": "adapters/sqlstore/sso_saml_metadata_test.go",
+      "marker": "t.Fatal(\"wrong imported authority\")"
+    }
+  ],
+  "docs/content/docs/plugins/sso/saml.mdx#L92": [
+    {
+      "label": "Generate SP metadata with the configured SP entity ID and the provider's ACS",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "t.Fatal(\"wrong SP metadata\", string(data))"
+    }
+  ],
+  "docs/content/docs/plugins/sso/saml.mdx#L98": [
+    {
+      "label": "Redirect with error=invalid_saml_response when an encrypted assertion lacks its own signature",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "t.Fatal(\"unexpected session or redirect for\", mode, status)"
+    }
+  ],
+  "docs/content/docs/plugins/sso/saml.mdx#L104": [
+    {
+      "label": "Sign the Redirect AuthnRequest so a local IdP validates it against the SP metadata",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "return nil, errors.New(\"missing signed Redirect binding\")"
+    },
+    {
+      "label": "Publish the host's request-signing certificate in SP metadata",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "t.Fatal(\"wrong request-signing certificate\")"
+    }
+  ],
+  "docs/content/docs/plugins/sso/saml.mdx#L119": [
+    {
+      "label": "Publish an encryption certificate in SP metadata only for a provider that sets isAssertionEncrypted",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "t.Fatal(\"encryption-key visibility does not match provider policy\")"
+    },
+    {
+      "label": "Refuse to register an encrypted provider when the host has no decryption key",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "t.Fatal(\"encrypted registration on a keyless host\""
+    },
+    {
+      "label": "Sign in with an independently encrypted signed assertion through the released client on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "test(\"enterprise SAML accepts an independently encrypted signed assertion"
+    }
+  ],
+  "docs/content/docs/plugins/sso/saml.mdx#L125": [
+    {
+      "label": "Accept responses signed by either certificate while IdP metadata lists both",
+      "test": "adapters/sqlstore/sso_saml_metadata_test.go",
+      "marker": "t.Fatal(\"cert overlap\", target)"
+    },
+    {
+      "label": "Rotate a directory's signing certificate through the released client and keep the existing user on both runtimes",
+      "test": "conformance/sso-saml.mjs",
+      "marker": "const updated=ok(await change(inlineIdP([cert,rotating.cert])))"
+    }
+  ],
+  "docs/content/docs/plugins/sso/saml.mdx#L150": [
+    {
+      "label": "Link a SAML sign-in to the existing verified user whose email matches under a verified domain",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "t.Fatal(\"verified domain link\", hd)"
+    },
+    {
+      "label": "Fill a new user's email and name from the email and displayName attributes",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "if status != 200 || !bytes.Contains(data, []byte(\"worker@staff.example\")) || !bytes.Contains(data, []byte(\"Local Employee\")) {"
+    }
+  ],
+  "docs/content/docs/plugins/sso/saml.mdx#L156/`email`": [
+    {
+      "label": "Fill a new user's email from the default email attribute",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "if status != 200 || !bytes.Contains(data, []byte(\"worker@staff.example\")) || !bytes.Contains(data, []byte(\"Local Employee\")) {"
+    }
+  ],
+  "docs/content/docs/plugins/sso/saml.mdx#L157/`name`": [
+    {
+      "label": "Fill a new user's name from displayName when no given name or surname is sent",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "if status != 200 || !bytes.Contains(data, []byte(\"worker@staff.example\")) || !bytes.Contains(data, []byte(\"Local Employee\")) {"
+    },
+    {
+      "label": "Fill the user's name from displayName on both runtimes",
+      "test": "conformance/sso-saml.mjs",
+      "marker": "assert.equal(current.user.name,\"Enterprise Employee\");"
+    }
+  ],
+  "docs/content/docs/plugins/sso/saml.mdx#L175": [
+    {
+      "label": "Land an IdP-initiated sign-in on the provider's idpInitiatedCallbackUrl",
+      "test": "adapters/sqlstore/sso_saml_portal_test.go",
+      "marker": "if one.session == nil || one.status != 302 || one.location != home+\"/company-portal\" {"
+    },
+    {
+      "label": "Fall back to the plugin's IdP-initiated landing page when the provider's is not a trusted origin, on both runtimes",
+      "test": "conformance/sso-saml.mjs",
+      "marker": "assert.equal(new URL(response.headers.get(\"location\"),runtime.baseURL).href,runtime.baseURL+(encrypted ? \"/global-landing\" : \"/staff-portal\"));"
+    },
+    {
+      "label": "Reject a signed assertion with another audience or another bearer recipient",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "// Independent signed fixtures exercise the ordinary validation contracts."
+    }
+  ],
+  "docs/content/docs/plugins/sso/saml.mdx#L199": [
+    {
+      "label": "Redirect with error=unsolicited_response for an IdP-initiated response when no directory policy allows it",
+      "test": "adapters/sqlstore/sso_saml_portal_test.go",
+      "marker": "rejected(send(disabled, proof, origin, \"\", \"document\"), \"unsolicited_response\")"
+    },
+    {
+      "label": "Sign in from an IdP-initiated response through the released client and land on the configured page on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "test(\"enterprise SAML performs reviewed IdP-initiated sign-in"
+    }
+  ],
+  "docs/content/docs/plugins/sso/saml.mdx#L217": [
+    {
+      "label": "Serve a provider's SP metadata as application/xml to a request without a session",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "if status != 200 || headers.Get(\"Content-Type\") != \"application/xml\" {",
+      "complete": true
+    },
+    {
+      "label": "Read public XML metadata with the configured entity ID and mounted HTTP-POST ACS on both runtimes",
+      "test": "conformance/sso-saml.mjs",
+      "marker": "const descriptor=await metadata.text();"
+    }
+  ],
+  "docs/content/docs/plugins/sso/saml.mdx#L228": [
+    {
+      "label": "End the current SAML session, send a signed LogoutRequest to the IdP and finish on its signed LogoutResponse",
+      "test": "adapters/sqlstore/sso_saml_logout_test.go",
+      "marker": "func testSAMLLogout("
+    },
+    {
+      "label": "Revoke the matching sessions for a signed IdP LogoutRequest and answer with a signed LogoutResponse",
+      "test": "adapters/sqlstore/sso_saml_idp_logout_test.go",
+      "marker": "func testSAMLIDPLogout("
+    },
+    {
+      "label": "Advertise the SLO route in generated SP metadata when single logout is on",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "t.Fatal(\"wrong SP logout service\", endpoints)"
+    }
+  ],
+  "docs/content/docs/plugins/sso/saml.mdx#L238/`saml.logoutRequestTTL`": [
+    {
+      "label": "Give the logout browser binding the default five-minute lifetime",
+      "test": "conformance/sso-saml.mjs",
+      "marker": "for (const attr of [\"Secure\",\"HttpOnly\",\"SameSite=Lax\",\"Max-Age=300\"])"
+    },
+    {
+      "label": "Reject a LogoutResponse once its stored logout request has expired",
+      "test": "adapters/sqlstore/sso_saml_logout_test.go",
+      "marker": "t.Fatal(\"expired logout accepted\", status)"
+    }
+  ],
+  "plugin-symbol/scim/SCIMAuthorizationSource": [
+    {
+      "label": "Hand each SCIM Group to the role mapper with its externalId, which selects the mapped roles",
+      "test": "adapters/sqlstore/scim_projection_test.go",
+      "marker": "if in.Group.ExternalID == \"directory-readers\" {"
+    }
+  ],
+  "plugin-symbol/scim/SCIMBearerCredentialOptions/id": [
+    {
+      "label": "Report the static credential's ID on the principal the store receives",
+      "test": "adapters/sqlstore/scim_dynamic_test.go",
+      "marker": "if p.Kind != \"static-bearer\" || p.CredentialID != \"key\" {",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/scim/SCIMBearerTokenVerification": [
+    {
+      "label": "Answer 401 when the verifier's result is expired, names an unknown directory, both names and supplies one, or has an invalid credential ID or scopes",
+      "test": "adapters/sqlstore/scim_dynamic_test.go",
+      "marker": "for _, token := range []string{\"stale\", \"collision\", \"reserved\", \"unknown-conn\", \"bad-domain\", \"ambiguous\", \"bad-id\", \"duplicate\", \"bad-scope\", \"absent-scopes\", \"unknown\"} {",
+      "complete": true
+    },
+    {
+      "label": "Expose the directory, credential ID, scopes and expiry from an application-resolved verifier result",
+      "test": "adapters/sqlstore/scim_dynamic_test.go",
+      "marker": "if !itemPath.Load() || p.CredentialID != good.CredentialID || p.ID != good.Connection.ID || !p.ExpiresAt.Equal(future) || !slices.Equal(p.Scopes, good.Scopes) {"
+    },
+    {
+      "label": "Authenticate a verifier result that names a declared directory and expose that directory's domain and the credential ID",
+      "test": "adapters/sqlstore/scim_dynamic_test.go",
+      "marker": "if p.Kind != \"oauth-bearer\" || p.ID != \"declared\" || p.ProvisioningDomainID != \"assigned\" || p.CredentialID != \"external\" {"
+    }
+  ],
+  "plugin-symbol/scim/SCIMCanonicalEmail": [
+    {
+      "label": "Return a created User's email lowercased, with its type and primary set to true, on both runtimes",
+      "test": "conformance/scim-contract.mjs",
+      "marker": "assert.deepEqual(user.emails,[{value:\"person@example.test\",type:\"work\",primary:true}]);",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/scim/SCIMCanonicalName": [
+    {
+      "label": "Derive a created User's display name from its given and family names on both runtimes",
+      "test": "conformance/scim-contract.mjs",
+      "marker": "assert.equal(user.displayName,\"Rae Doe\");"
+    },
+    {
+      "label": "Name the linked account from the User's given and family names",
+      "test": "adapters/sqlstore/scim_test.go",
+      "marker": "if account.Name != \"Rae Doe\" || account.EmailVerified {"
+    }
+  ],
+  "plugin-symbol/scim/SCIMCanonicalRole": [
+    {
+      "label": "Return created roles trimmed, with lowercased type, boolean primary and display, on both runtimes",
+      "test": "conformance/scim-roles.mjs",
+      "marker": "let expected = [{value:\"admin\",type:\"work\",primary:true,display:\"Work\"},{value:\"member\"},{value:\"member\"}];",
+      "complete": true
+    },
+    {
+      "label": "Return the stored roles of a created User with their value, type and primary flag",
+      "test": "adapters/sqlstore/scim_roles_test.go",
+      "marker": "assigned := []any{map[string]any{\"value\": \"owner\", \"type\": \"work\", \"primary\": true}, map[string]any{\"value\": \"read\"}}"
+    }
+  ],
+  "plugin-symbol/scim/SCIMCanonicalUser": [
+    {
+      "label": "Return a created User with its derived display name, normalized emails and active state on both runtimes",
+      "test": "conformance/scim-contract.mjs",
+      "marker": "const user=await call(\"POST\",\"Users\",201,create);"
+    }
+  ],
+  "plugin-symbol/scim/SCIMCompatibilityOptions/microsoftEntra": [
+    {
+      "label": "Create a Group whose schemas include the classic Entra marker when AcceptLegacyEntraGroupSchema is on",
+      "test": "adapters/sqlstore/scim_groups_test.go",
+      "marker": "g[\"schemas\"] = []string{scim.GroupSchema, \"http://schemas.microsoft.com/2006/11/ResourceManagement/ADSCIM/2.0/Group\"}"
+    }
+  ],
+  "plugin-symbol/scim/SCIMConnection": [
+    {
+      "label": "Expose the authenticated directory ID and provisioning domain on the request's principal",
+      "test": "adapters/sqlstore/scim_dynamic_test.go",
+      "marker": "if p.Kind != \"oauth-bearer\" || p.ID != \"declared\" || p.ProvisioningDomainID != \"assigned\" || p.CredentialID != \"external\" {",
+      "complete": true
+    },
+    {
+      "label": "Hand the store the same directory that the request authenticated",
+      "test": "adapters/sqlstore/scim_dynamic_test.go",
+      "marker": "if !ok || p.Directory != d {"
+    }
+  ],
+  "plugin-symbol/scim/SCIMEmail": [
+    {
+      "label": "Make the work address the primary email of a created User whose emails carry types",
+      "test": "adapters/sqlstore/scim_test.go",
+      "marker": "account, e := first.FindAccountUser(ctx, \"primary@example.test\")"
+    }
+  ],
+  "plugin-symbol/scim/SCIMOptions": [
+    {
+      "label": "Refuse to install a reserved or duplicate connection ID, an empty, whitespace or reused token and an unsupported scope",
+      "test": "plugins/scim/http_test.go",
+      "marker": "t.Fatal(\"accepted invalid connection\")"
+    }
+  ],
+  "plugin-symbol/scim/SCIMOptions/connections": [
+    {
+      "label": "Serve a verifier-resolved directory when no code-defined connection is configured",
+      "test": "adapters/sqlstore/scim_dynamic_test.go",
+      "marker": "only := build(second, nil)"
+    },
+    {
+      "label": "Authenticate managed credentials when no code-defined connection is configured",
+      "test": "adapters/sqlstore/scim_managed_test.go",
+      "marker": "scim.Options{Store: st, Managed:"
+    }
+  ],
+  "plugin-symbol/scim/SCIMProjection": [
+    {
+      "label": "Roll back the directory change and the application's writes when the projection reconciler fails",
+      "test": "adapters/sqlstore/scim_projection_test.go",
+      "marker": "return errors.New(\"fixture application error after writes\")"
+    }
+  ],
+  "plugin-symbol/scim/SCIMRoleProjection": [
+    {
+      "label": "Grant one reader role per Group source when the mapper returns a padded copy, a repeat, an unknown role and an empty value",
+      "test": "adapters/sqlstore/scim_projection_test.go",
+      "marker": "return []string{\" reader \", \"reader\", \"missing\", \"\"}, nil"
+    },
+    {
+      "label": "Restore the same trimmed role in the native runtime's grant when its mapper returns padded, repeated and unknown roles",
+      "test": "conformance/scim-contract.mjs",
+      "marker": "assert.equal(restored[field],initial[field],field);"
+    }
+  ],
+  "plugin/scim/ reconcileSCIMProjection (server API only)": [
+    {
+      "label": "Replay a domain from either instance after the application's role catalog changes",
+      "test": "adapters/sqlstore/scim_projection_test.go",
+      "marker": "must(second.ReconcileSCIMProjection(ctx, domain))"
+    },
+    {
+      "label": "Replay one domain without removing a role projected in another domain",
+      "test": "adapters/sqlstore/scim_projection_test.go",
+      "marker": "t.Fatal(\"tenant replay removed another domain's role\")"
+    }
+  ],
+  "docs/content/docs/plugins/scim/groups-and-roles.mdx#L31": [
+    {
+      "label": "Project mapped Group roles inside the directory transaction while preserving a manually assigned role",
+      "test": "adapters/sqlstore/scim_projection_test.go",
+      "marker": "t.Fatal(\"manual role was removed\")"
+    }
+  ],
+  "docs/content/docs/plugins/scim/groups-and-roles.mdx#L79/`roles.exists`": [
+    {
+      "label": "Confirm each candidate role against the application's role table before granting it",
+      "test": "adapters/sqlstore/scim_projection_test.go",
+      "marker": "SELECT COUNT(*) FROM \"hostRole\" WHERE \"role\"=?"
+    }
+  ],
+  "docs/content/docs/plugins/scim/groups-and-roles.mdx#L80/`reconcileUser`": [
+    {
+      "label": "Deliver each account's full desired grant set, so a reconciler that replaces its SCIM-owned roles in the domain matches the expected roles after every change",
+      "test": "adapters/sqlstore/scim_projection_test.go",
+      "marker": "DELETE FROM \"hostAssignment\" WHERE ",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/groups-and-roles.mdx#L96/`active`": [
+    {
+      "label": "Keep the remaining active source's role after another source is deactivated and restore the role on reprovisioning",
+      "test": "adapters/sqlstore/scim_projection_test.go",
+      "marker": "call(two, \"PATCH\", \"Users/\"+n, \"north\", change(\"replace\", \"active\", false), 200)"
+    }
+  ],
+  "docs/content/docs/plugins/scim/groups-and-roles.mdx#L104": [
+    {
+      "label": "Replay the domain from either instance after the application's role catalog changes",
+      "test": "adapters/sqlstore/scim_projection_test.go",
+      "marker": "must(second.ReconcileSCIMProjection(ctx, domain))"
+    },
+    {
+      "label": "Withdraw every projected role by disabling the policy and keep them when the reconciler fails",
+      "test": "adapters/sqlstore/scim_projection_test.go",
+      "marker": "t.Fatal(\"failed withdrawal committed\")"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L14/`connections`": [
+    {
+      "label": "Serve a verifier-resolved directory when no code-defined connection is configured",
+      "test": "adapters/sqlstore/scim_dynamic_test.go",
+      "marker": "only := build(second, nil)"
+    },
+    {
+      "label": "Authenticate managed credentials when no code-defined connection is configured",
+      "test": "adapters/sqlstore/scim_managed_test.go",
+      "marker": "scim.Options{Store: st, Managed:"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L26/`credentials`": [
+    {
+      "label": "Accept a connection with no static credentials when a bearer verifier is configured",
+      "test": "adapters/sqlstore/scim_dynamic_test.go",
+      "marker": "{Directory: scim.Directory{ID: \"declared\", ProvisioningDomainID: \"assigned\"}}"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L27/`provisioningDomainId`": [
+    {
+      "label": "Keep the first provisioning domain and reject a changed one with 409",
+      "test": "adapters/sqlstore/scim_test.go",
+      "marker": "call(build(second, \"moved\"), \"GET\", \"Users\", \"writer\", nil, 409)"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L36/`id`": [
+    {
+      "label": "Expose a static credential's ID in the directory principal the store receives",
+      "test": "adapters/sqlstore/scim_dynamic_test.go",
+      "marker": "if p.Kind != \"static-bearer\" || p.CredentialID != \"key\" {"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L37/`token`": [
+    {
+      "label": "Refuse an empty token, a token with whitespace and one token shared by two connections when building the handler",
+      "test": "plugins/scim/http_test.go",
+      "marker": "conn(\"a\", \"two words\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L38/`scopes`": [
+    {
+      "label": "Refuse Group creation to credentials scoped to Group reads or to Users, while a credential without scopes provisions both Users and Groups",
+      "test": "adapters/sqlstore/scim_groups_test.go",
+      "marker": "for _, token := range []string{\"\", \"readgroups\", \"usersonly\"} {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L39/`expiresAt`": [
+    {
+      "label": "Answer 401 for a static credential whose expiry time has passed",
+      "test": "adapters/sqlstore/scim_test.go",
+      "marker": "call(a, \"GET\", \"Users\", \"expired\", nil, 401)"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L43": [
+    {
+      "label": "Accept declared and application-resolved connections from the verifier, answer 401 for expired, ambiguous, colliding, reserved or malformed results, keep the first domain binding with 409, and report a verifier failure as 500",
+      "test": "adapters/sqlstore/scim_dynamic_test.go",
+      "marker": "func TestSCIMDynamicBearer("
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L114": [
+    {
+      "label": "Store only a keyed digest of an issued token, answer 401 under another digest secret and throttle last-use writes",
+      "test": "adapters/sqlstore/scim_managed_test.go",
+      "marker": "t.Fatal(\"did not throttle last-use update\")"
+    },
+    {
+      "label": "Issue tokens in the reserved credential namespace that both runtimes accept",
+      "test": "conformance/scim-managed.mjs",
+      "marker": "assert.match(initial.token, /^ba_scim_credential_[A-Za-z0-9_-]{32}\\.[A-Za-z0-9_-]{48}$/);"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L163/`createSCIMManagedConnection`": [
+    {
+      "label": "Create one managed connection with a working initial token under two concurrent calls and refuse the reused creation request ID without returning a token",
+      "test": "adapters/sqlstore/scim_managed_test.go",
+      "marker": "!errors.Is(r.err, scim.ErrCreationRequestConflict) || r.issued.Token != \"\"",
+      "complete": true
+    },
+    {
+      "label": "Refuse a reused creation request ID with 409 and no token from the Go catalog",
+      "test": "conformance/scim-managed.mjs",
+      "marker": "assert.equal(duplicate.token, undefined);"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L164/`listSCIMManagedConnections`": [
+    {
+      "label": "List only the managed connections of the exact, case-sensitive provisioning domain",
+      "test": "adapters/sqlstore/scim_managed_test.go",
+      "marker": "t.Fatal(\"directory leak\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L165/`getSCIMManagedConnection`": [
+    {
+      "label": "Return managed connection and credential metadata without the token or its stored digest, and not-found for another domain",
+      "test": "adapters/sqlstore/scim_managed_test.go",
+      "marker": "t.Fatal(\"secret in public state\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L166/`rotateSCIMManagedCredential`": [
+    {
+      "label": "Issue exactly one extra credential under four concurrent rotations at the active-credential cap while the earlier token keeps working",
+      "test": "adapters/sqlstore/scim_managed_test.go",
+      "marker": "t.Fatal(\"rotation cap\", wins)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L167/`revokeSCIMManagedCredential`": [
+    {
+      "label": "Answer 401 for a revoked credential, including a request already in flight when the revocation commits",
+      "test": "adapters/sqlstore/scim_managed_test.go",
+      "marker": "t.Fatalf(\"revoked in-flight request: %d %s\", w.Code, w.Body.String())",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L168/`listSCIMManagedConnectionEvents`": [
+    {
+      "label": "Return contiguous lifecycle events and page them by limit, offset and ascending or descending order",
+      "test": "adapters/sqlstore/scim_managed_test.go",
+      "marker": "t.Fatal(\"non-contiguous audit\")"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L169/`decommissionSCIMManagedConnection`": [
+    {
+      "label": "Disable a managed connection's credentials, resume an interrupted reconciliation on another server and record it as decommissioned",
+      "test": "adapters/sqlstore/scim_decommission_test.go",
+      "marker": "*done.Connection.DecommissionStartedBy != \"first-admin\"",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L177/`scim.users.read`": [
+    {
+      "label": "Refuse User listing to a write-only credential while a read-only credential lists and reads Users",
+      "test": "adapters/sqlstore/scim_test.go",
+      "marker": "call(a, \"GET\", \"Users\", \"write-only\", nil, 403)"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L178/`scim.users.write`": [
+    {
+      "label": "Refuse User creation to a read-only credential with 403",
+      "test": "adapters/sqlstore/scim_test.go",
+      "marker": "call(a, \"POST\", \"Users\", \"reader\", nil, 403)"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L179/`scim.groups.read`": [
+    {
+      "label": "Refuse Group listing to a write-only credential while a groups.read credential lists and reads Groups",
+      "test": "adapters/sqlstore/scim_groups_test.go",
+      "marker": "call(h, \"GET\", \"Groups\", \"writegroups\", nil, 403)"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L180/`scim.groups.write`": [
+    {
+      "label": "Refuse Group creation to read-only and Users-only credentials with 403",
+      "test": "adapters/sqlstore/scim_groups_test.go",
+      "marker": "call(h, \"POST\", \"Groups\", token, nil, want)"
+    },
+    {
+      "label": "Refuse Group deletion to a read-only credential with 403",
+      "test": "adapters/sqlstore/scim_projection_test.go",
+      "marker": "call(one, \"DELETE\", \"Groups/\"+a, \"north-read\", nil, 403)"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L199": [
+    {
+      "label": "Reject active: null in a User replacement with 400 on both runtimes",
+      "test": "conformance/scim-roles.mjs",
+      "marker": "await call(\"PUT\",path,400,{...login,roles:[{value:\"kept\"}],active:null});"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L212": [
+    {
+      "label": "Create a Group whose schema list carries the classic Entra marker when the compatibility option is on",
+      "test": "adapters/sqlstore/scim_groups_test.go",
+      "marker": "g[\"schemas\"] = []string{scim.GroupSchema, \"http://schemas.microsoft.com/2006/11/ResourceManagement/ADSCIM/2.0/Group\"}"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L231": [
+    {
+      "label": "Drop a deleted User from the member list of its Group",
+      "test": "adapters/sqlstore/scim_groups_test.go",
+      "marker": "call(replica, \"DELETE\", \"Users/\"+one, \"first\", nil, 204)",
+      "complete": true
+    },
+    {
+      "label": "Withdraw the projected role grants of a deleted User",
+      "test": "adapters/sqlstore/scim_projection_test.go",
+      "marker": "call(two, \"DELETE\", \"Users/\"+s, \"south\", nil, 204)"
+    },
+    {
+      "label": "Revoke the account's sessions when its directory User is deleted",
+      "test": "adapters/sqlstore/scim_test.go",
+      "marker": "t.Fatal(\"session survived deletion\")"
+    },
+    {
+      "label": "Attach a User recreated with the same externalId after deletion to the original account",
+      "test": "adapters/sqlstore/scim_test.go",
+      "marker": "t.Fatal(\"canonical identity was replaced\")"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L235/`POST /scim/v2/Users`": [
+    {
+      "label": "Create a User with 201 and reprovision an inactive User posted again with the same externalId under the same ID",
+      "test": "adapters/sqlstore/scim_test.go",
+      "marker": "if again[\"id\"] != id || again[\"active\"] != true {"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L236/`GET /scim/v2/Users`": [
+    {
+      "label": "Return an empty ListResponse to a connection that owns none of the provisioned Users",
+      "test": "adapters/sqlstore/scim_test.go",
+      "marker": "call(b, \"GET\", \"Users\", \"other\", nil, 200)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L237/`GET /scim/v2/Users/:userId`": [
+    {
+      "label": "Answer 404 when another connection reads a User it does not own",
+      "test": "adapters/sqlstore/scim_test.go",
+      "marker": "call(b, \"GET\", path, \"other\", nil, 404)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L238/`PUT /scim/v2/Users/:userId`": [
+    {
+      "label": "Replace a User with 200, keep its account and apply the new email and name while clearing email verification",
+      "test": "adapters/sqlstore/scim_test.go",
+      "marker": "if updated.ID != account.ID || updated.EmailVerified || updated.Name != \"Updated\" {",
+      "complete": true
+    },
+    {
+      "label": "Clear roles left out of a User replacement on both runtimes",
+      "test": "conformance/scim-roles.mjs",
+      "marker": "assert.equal((await call(\"PUT\",path,200,login)).roles,undefined);"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L239/`PATCH /scim/v2/Users/:userId`": [
+    {
+      "label": "Leave a User unchanged when a later operation in the same PATCH fails",
+      "test": "adapters/sqlstore/scim_test.go",
+      "marker": "t.Fatal(\"partial mutation\", got)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L240/`DELETE /scim/v2/Users/:userId`": [
+    {
+      "label": "Delete a User with 204 and answer 404 for it afterwards while its account remains for reprovisioning",
+      "test": "adapters/sqlstore/scim_test.go",
+      "marker": "call(b, \"DELETE\", path, \"writer\", nil, 204)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L244": [
+    {
+      "label": "Refuse a User whose primary email another account already uses with 409",
+      "test": "adapters/sqlstore/scim_test.go",
+      "marker": "call(a, \"POST\", \"Users\", \"writer\", req(existing.Email, \"existing\"), 409)"
+    },
+    {
+      "label": "Use the lowercased work email as the account email when no email is marked primary",
+      "test": "adapters/sqlstore/scim_test.go",
+      "marker": "account, e := first.FindAccountUser(ctx, \"primary@example.test\")"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L248/`userName`": [
+    {
+      "label": "Keep the supplied userName casing in responses while a lowercase userName filter matches it, on both runtimes",
+      "test": "conformance/scim-contract.mjs",
+      "marker": "assert.deepEqual(page.Resources,[{id:user.id,schemas:[userSchema],userName:\"Directory-01\"}]);"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L249/`externalId`": [
+    {
+      "label": "Reprovision the inactive User when its externalId is posted again, on both runtimes",
+      "test": "conformance/scim-contract.mjs",
+      "marker": "assert.equal((await call(\"POST\",\"Users\",201,create)).id,user.id);"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L250/`active`": [
+    {
+      "label": "Default a created User's active state to true on both runtimes",
+      "test": "conformance/scim-contract.mjs",
+      "marker": "assert.equal(user.active,true);",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L251/`displayName`": [
+    {
+      "label": "Derive displayName from the given and family names when it is omitted, on both runtimes",
+      "test": "conformance/scim-contract.mjs",
+      "marker": "assert.equal(user.displayName,\"Rae Doe\");",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L252/`name.formatted`, `name.givenName`, `name.familyName`": [
+    {
+      "label": "Derive the account name from given and family names when neither a formatted name nor displayName is sent",
+      "test": "adapters/sqlstore/scim_test.go",
+      "marker": "if account.Name != \"Rae Doe\" || account.EmailVerified {"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L254/`emails`": [
+    {
+      "label": "Lowercase an email value and mark the only work email primary on both runtimes",
+      "test": "conformance/scim-contract.mjs",
+      "marker": "assert.deepEqual(user.emails,[{value:\"person@example.test\",type:\"work\",primary:true}]);"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L255/`title`, `userType`, `preferredLanguage`, `locale`, `timezone`": [
+    {
+      "label": "Return a title sent in a User replacement on both runtimes",
+      "test": "conformance/scim-contract.mjs",
+      "marker": "assert.equal(replaced.title,\"Manager\")"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L295": [
+    {
+      "label": "Refuse a Group name differing only in case, a reused externalId, a member from another connection and a nested Group",
+      "test": "adapters/sqlstore/scim_groups_test.go",
+      "marker": "call(h, \"POST\", \"Groups\", \"first\", profile(\"ENGINEERING\", \"other\"), 409)"
+    },
+    {
+      "label": "Refuse adding a member to a Group that already has 1,000 direct members",
+      "test": "adapters/sqlstore/scim_groups_test.go",
+      "marker": "call(h, \"PATCH\", bp, \"first\", patch(op(\"add\", \"members\", values(two))), 400)"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L299/`POST /scim/v2/Groups`": [
+    {
+      "label": "Create a Group with 201 and return one collapsed member with its display name, User type and reference",
+      "test": "adapters/sqlstore/scim_groups_test.go",
+      "marker": "m[\"$ref\"] != \"https://directory.test\"+directoryPath+\"Users/\"+one",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L300/`GET /scim/v2/Groups`": [
+    {
+      "label": "List only the calling connection's Groups when another connection has a Group with the same name and externalId",
+      "test": "adapters/sqlstore/scim_groups_test.go",
+      "marker": "`displayName eq \"ENGINEERING\" and externalId eq \"dept\"`",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L301/`GET /scim/v2/Groups/:groupId`": [
+    {
+      "label": "Answer 404 when another connection reads a Group it does not own",
+      "test": "adapters/sqlstore/scim_groups_test.go",
+      "marker": "call(replica, \"GET\", path, \"second\", nil, 404)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L302/`PUT /scim/v2/Groups/:groupId`": [
+    {
+      "label": "Replace a Group's name and whole member set so a member left out is dropped, on both runtimes",
+      "test": "conformance/scim-contract.mjs",
+      "marker": "assert.equal(replaced.displayName,\"Replaced\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L303/`PATCH /scim/v2/Groups/:groupId`": [
+    {
+      "label": "Reject a Group PATCH whose later member addition is invalid and keep the earlier name change from applying",
+      "test": "adapters/sqlstore/scim_groups_test.go",
+      "marker": "op(\"replace\", \"displayName\", \"rollback\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L304/`DELETE /scim/v2/Groups/:groupId`": [
+    {
+      "label": "Delete a Group with 204 and remove its membership rows",
+      "test": "adapters/sqlstore/scim_groups_test.go",
+      "marker": "t.Fatal(\"membership survived delete\")",
+      "complete": true
+    },
+    {
+      "label": "Remove a Group's projected grant rows when Go deletes the Group",
+      "test": "conformance/scim-contract.mjs",
+      "marker": "await native(\"DELETE\",uri,204);"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L314/`GET /scim/v2/ServiceProviderConfig`": [
+    {
+      "label": "Report filter support with a 100-result maximum and PATCH support from the public configuration on both runtimes",
+      "test": "conformance/scim-contract.mjs",
+      "marker": "assert.deepEqual(meta.filter, {supported:true,maxResults:100});"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L316/`GET /scim/v2/Schemas/:schemaId`": [
+    {
+      "label": "Return the same public User schema roles descriptor from both runtimes",
+      "test": "conformance/scim-roles.mjs",
+      "marker": "if (discovery) assert.deepEqual(descriptor, discovery);"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L317/`GET /scim/v2/ResourceTypes`": [
+    {
+      "label": "List the Group resource type and Group schema in public discovery collections and fetch each by ID on both runtimes",
+      "test": "conformance/scim-contract.mjs",
+      "marker": "for (const [collection, name] of [[\"ResourceTypes\",\"Group\"],[\"Schemas\",groupSchema]]) {"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L318/`GET /scim/v2/ResourceTypes/:resourceTypeId`": [
+    {
+      "label": "Return the User resource type naming the core User schema from public discovery on both runtimes",
+      "test": "conformance/scim-contract.mjs",
+      "marker": "const discovery=await call(\"GET\",\"ResourceTypes/User\",200,undefined,false);",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L320": [
+    {
+      "label": "Return an empty page for count=0 and report startIndex 1 for a nonpositive startIndex",
+      "test": "adapters/sqlstore/scim_test.go",
+      "marker": "call(a, \"GET\", \"Users?count=0&startIndex=-2\", \"reader\", nil, 200)"
+    },
+    {
+      "label": "Return an empty Group page past the last result with the requested startIndex on both runtimes",
+      "test": "conformance/scim-contract.mjs",
+      "marker": "const beyond=await call(\"GET\",\"Groups?startIndex=2&count=1\",200);"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L326/User": [
+    {
+      "label": "Find a User by case-insensitive userName with externalId, by work email value and by any email value",
+      "test": "adapters/sqlstore/scim_test.go",
+      "marker": "userName eq \"OPERATOR\" and externalId eq \"ID01\""
+    },
+    {
+      "label": "Find a User by lowercase userName and an uppercase work email value on both runtimes",
+      "test": "conformance/scim-contract.mjs",
+      "marker": "userName eq \"directory-01\" and emails[type eq \"work\"].value eq \"PERSON@example.test\""
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L327/Group": [
+    {
+      "label": "Find a Group by lowercase displayName and externalId on both runtimes",
+      "test": "conformance/scim-contract.mjs",
+      "marker": "displayName eq \"sales\" and externalId eq \"org-02\""
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L374/`active`": [
+    {
+      "label": "Deactivate a User by patching active with the string false and revoke its sessions",
+      "test": "adapters/sqlstore/scim_test.go",
+      "marker": "call(a, \"PATCH\", path, \"writer\", patch(replace(\"active\", \"false\")), 200)"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L380/`title`, `userType`, `preferredLanguage`, `locale`, `timezone`": [
+    {
+      "label": "Replace title and locale through concurrent PATCH requests on two servers without losing either",
+      "test": "adapters/sqlstore/scim_test.go",
+      "marker": "t.Fatal(\"lost update\", merged)"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L395/`displayName`": [
+    {
+      "label": "Replace a Group displayName sent as a one-element array through PATCH",
+      "test": "adapters/sqlstore/scim_groups_test.go",
+      "marker": "if updated[\"displayName\"] != \"Updated\" || len(updated[\"members\"].([]any)) != 2 {"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L397/`members`": [
+    {
+      "label": "Add members from concurrent PATCH requests on two servers without losing either",
+      "test": "adapters/sqlstore/scim_groups_test.go",
+      "marker": "t.Fatal(\"lost additions\", got)"
+    },
+    {
+      "label": "Remove one supplied member and add another in one PATCH at the 1,000 member limit",
+      "test": "adapters/sqlstore/scim_groups_test.go",
+      "marker": "t.Fatal(\"wrong membership boundary\")"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L400/`members[value eq \"<scim-user-id>\"]`": [
+    {
+      "label": "Remove one member selected by its User ID through a member filter path",
+      "test": "adapters/sqlstore/scim_groups_test.go",
+      "marker": "`members[value eq \"`",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L496": [
+    {
+      "label": "Refuse retiring a static connection under a different provisioning domain, then retire it before first use so its token answers 401",
+      "test": "adapters/sqlstore/scim_decommission_test.go",
+      "marker": "two.Decommission(ctx, scim.Directory{ID: \"static\", ProvisioningDomainID: \"foreign\"})"
+    },
+    {
+      "label": "Report a never-used directory retired by one runtime as complete with no batches from the other",
+      "test": "conformance/scim-managed.mjs",
+      "marker": "assert.equal(observed.batches, 0);"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L522/Nested Groups or non-User Group members": [
+    {
+      "label": "Reject a Group created with another Group as a member with 400",
+      "test": "adapters/sqlstore/scim_groups_test.go",
+      "marker": "profile(\"nested\", \"nested\", id)"
+    },
+    {
+      "label": "Reject adding a Group ID as a member with 400 invalidValue on both runtimes",
+      "test": "conformance/scim-contract.mjs",
+      "marker": "const bad=await call(\"PATCH\",path,400,patch({op:\"add\",path:\"members\",value:[{value:group.id}]}));"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L524/Operators other than equality and logical `and`": [
+    {
+      "label": "Reject a User filter using the co operator with 400",
+      "test": "adapters/sqlstore/scim_test.go",
+      "marker": "userName co \"operator\""
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L526/HTTP management endpoints, SCIM request audit records, or webhooks": [
+    {
+      "label": "Answer 404 for a catalog method name requested under the SCIM HTTP path",
+      "test": "adapters/sqlstore/scim_managed_test.go",
+      "marker": "call(one, \"POST\", \"createSCIMManagedConnection\", next.Token, nil, 404)"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L530": [
+    {
+      "label": "Emit the SCIM and managed SCIM tables from the schema CLI exactly as the other runtime's migration on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"the CLI emits the pinned plugin schema across exhaustive base combinations and SCIM and organization billing witnesses on three dialects\"",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L536/`scimConnectionBinding`": [
+    {
+      "label": "Emit the scimConnectionBinding table from the schema CLI exactly as the other runtime's migration",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"the CLI emits the pinned plugin schema across exhaustive base combinations and SCIM and organization billing witnesses on three dialects\"",
+      "complete": true
+    },
+    {
+      "label": "Keep a connection bound to the provisioning domain of its first authenticated request and refuse a changed domain with 409",
+      "test": "adapters/sqlstore/scim_test.go",
+      "marker": "call(build(second, \"moved\"), \"GET\", \"Users\", \"writer\", nil, 409)"
+    },
+    {
+      "label": "Refuse requests once the connection binding records a completed decommission",
+      "test": "adapters/sqlstore/scim_test.go",
+      "marker": "call(b, \"GET\", \"Users\", \"reader\", nil, 401)"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L537/`scimUser`": [
+    {
+      "label": "Emit the scimUser table from the schema CLI exactly as the other runtime's migration",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"the CLI emits the pinned plugin schema across exhaustive base combinations and SCIM and organization billing witnesses on three dialects\"",
+      "complete": true
+    },
+    {
+      "label": "Persist a User's roles in the serialized attributes of its scimUser row",
+      "test": "adapters/sqlstore/scim_roles_test.go",
+      "marker": "t.Fatal(\"roles did not persist in canonical profile JSON\")"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L538/`scimGroup`": [
+    {
+      "label": "Emit the scimGroup table from the schema CLI exactly as the other runtime's migration",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"the CLI emits the pinned plugin schema across exhaustive base combinations and SCIM and organization billing witnesses on three dialects\"",
+      "complete": true
+    },
+    {
+      "label": "Read a Group written by Go from the shared database through the other runtime",
+      "test": "conformance/scim-contract.mjs",
+      "marker": "const before=await a(\"GET\",path,200);assert.equal(before.members[0].display,\"Third\");"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L539/`scimGroupMember`": [
+    {
+      "label": "Emit the scimGroupMember table from the schema CLI exactly as the other runtime's migration",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"the CLI emits the pinned plugin schema across exhaustive base combinations and SCIM and organization billing witnesses on three dialects\"",
+      "complete": true
+    },
+    {
+      "label": "Read direct memberships added by both runtimes from the shared membership rows",
+      "test": "conformance/scim-contract.mjs",
+      "marker": "const both=await b(\"GET\",path+\"?attributes=members.value\",200);"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L540/`scimSubject`": [
+    {
+      "label": "Emit the scimSubject table from the schema CLI exactly as the other runtime's migration",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"the CLI emits the pinned plugin schema across exhaustive base combinations and SCIM and organization billing witnesses on three dialects\"",
+      "complete": true
+    },
+    {
+      "label": "Release a retired directory's profile authority in the subject row while another source keeps the account's sessions",
+      "test": "adapters/sqlstore/scim_decommission_test.go",
+      "marker": "\"profileSourceId\" IS NULL`, sharedOwner, 1}"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L541/`scimIdentityTombstone`": [
+    {
+      "label": "Emit the scimIdentityTombstone table from the schema CLI exactly as the other runtime's migration",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"the CLI emits the pinned plugin schema across exhaustive base combinations and SCIM and organization billing witnesses on three dialects\"",
+      "complete": true
+    },
+    {
+      "label": "Link a User recreated after deletion with the same externalId to the original account",
+      "test": "adapters/sqlstore/scim_test.go",
+      "marker": "t.Fatal(\"canonical identity was replaced\")"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L542/`scimProjectionGrant`": [
+    {
+      "label": "Emit the scimProjectionGrant table from the schema CLI exactly as the other runtime's migration",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"the CLI emits the pinned plugin schema across exhaustive base combinations and SCIM and organization billing witnesses on three dialects\"",
+      "complete": true
+    },
+    {
+      "label": "Record each validated role grant for its domain and user in the grant ledger",
+      "test": "adapters/sqlstore/scim_projection_test.go",
+      "marker": "t.Fatalf(\"ledger %s=%d want %d\", x.role, n, x.n)"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L548/`scimManagedConnection`": [
+    {
+      "label": "Emit the scimManagedConnection table from the schema CLI exactly as the other runtime's migration",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"the CLI emits the pinned plugin schema across exhaustive base combinations and SCIM and organization billing witnesses on three dialects\"",
+      "complete": true
+    },
+    {
+      "label": "Keep a managed connection in the decommissioning state with unusable credentials after an interrupted retirement",
+      "test": "adapters/sqlstore/scim_decommission_test.go",
+      "marker": "openState.Connection.Status != \"decommissioning\""
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L549/`scimManagedCredential`": [
+    {
+      "label": "Persist only a fixed-length keyed digest of a managed token, never the token or its credential ID",
+      "test": "adapters/sqlstore/scim_managed_test.go",
+      "marker": "t.Fatal(\"unexpected persisted digest\")",
+      "complete": true
+    },
+    {
+      "label": "Report revoked, expired and active managed credentials with distinct statuses",
+      "test": "adapters/sqlstore/scim_managed_test.go",
+      "marker": "statuses[i.Credential.CredentialID] != \"revoked\""
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L550/`scimManagedConnectionEvent`": [
+    {
+      "label": "Emit the scimManagedConnectionEvent table from the schema CLI exactly as the other runtime's migration",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"the CLI emits the pinned plugin schema across exhaustive base combinations and SCIM and organization billing witnesses on three dialects\""
+    },
+    {
+      "label": "Record connection creation, issuance, rotation and revocation events in sequence order",
+      "test": "adapters/sqlstore/scim_managed_test.go",
+      "marker": "\"connection.created\", \"credential.issued\""
     }
   ]
 }

@@ -998,6 +998,128 @@
         "Upgrading existing deployments"
       ],
       "reason": "not applicable: cutover notes for the other runtime's earlier releases and their proxy state format; this library has no earlier proxy format to upgrade from"
+    },
+    {
+      "page": "plugins/sso.md",
+      "section": "Interfaces",
+      "labels": [
+        "`ssoClient`"
+      ],
+      "reason": "not applicable: JavaScript only. ssoClient is the browser SDK plugin: $InferServerPlugin typing for the domainVerification and additional-field options, plus GET path methods for /sso/providers and /sso/get-provider. A Go server only serves those routes, and the Go caller is client/sso.go."
+    },
+    {
+      "page": "plugins/sso.md",
+      "section": "Interfaces",
+      "labels": [
+        "`SSOPlugin`"
+      ],
+      "reason": "not applicable: TypeScript type. SSOPlugin is the inferred shape of the sso() return value (id, version, endpoints, schema, $Infer) that the client reads for type inference; a Go host gets a plainauth.Plugin from sso.New."
+    },
+    {
+      "page": "plugins/sso.md",
+      "section": "Interfaces",
+      "labels": [
+        "`NormalizedSSOProfile`"
+      ],
+      "reason": "not applicable: TypeScript type. It is the internal profile shape the other runtime passes to its organization-assignment helper; no host API takes or returns it, and Go hands an auth.OAuthProfile to its store."
+    },
+    {
+      "page": "plugins/sso.md",
+      "section": "Interfaces",
+      "labels": [
+        "`RequiredDiscoveryField`"
+      ],
+      "reason": "not applicable: TypeScript type. It is the string-literal union derived from REQUIRED_DISCOVERY_FIELDS for type checking; the required fields themselves are tracked under REQUIRED_DISCOVERY_FIELDS."
+    },
+    {
+      "page": "plugins/sso.md",
+      "section": "Interfaces",
+      "labels": [
+        "`SAMLAssertionExtract`"
+      ],
+      "reason": "not applicable: TypeScript type for the fields the samlify JavaScript library extracts from a login response; it cannot apply to a Go server library."
+    },
+    {
+      "page": "plugins/sso.md",
+      "section": "Interfaces",
+      "labels": [
+        "`SSOProviderAdditionalFieldsInput`"
+      ],
+      "reason": "not applicable: TypeScript type inference of additional fields."
+    },
+    {
+      "page": "plugins/sso.md",
+      "section": "Interfaces",
+      "labels": [
+        "`InferSSOProvider`"
+      ],
+      "reason": "not applicable: TypeScript type inference."
+    },
+    {
+      "page": "plugins/sso.md",
+      "section": "Interfaces",
+      "labels": [
+        "`SSOProviderSchema`"
+      ],
+      "reason": "not applicable: TypeScript schema typing, consistent with the OrganizationSchema not-applicable rule."
+    },
+    {
+      "page": "plugins/sso.md",
+      "section": "Interfaces",
+      "labels": [
+        "`Member`"
+      ],
+      "reason": "not applicable: plain TypeScript interface, consistent with the organization Member not-applicable rule."
+    },
+    {
+      "page": "plugins/scim.md",
+      "section": "Interfaces",
+      "labels": [
+        "`type`"
+      ],
+      "reason": "not applicable: TypeScript only. It is a type tag the other runtime never checks, and a Go scim.Credential is always a static bearer credential. Confirmed: packages/scim/src/index.ts validates id, token, scopes and expiresAt but never reads credential.type.",
+      "within": "`SCIMBearerCredentialOptions`"
+    },
+    {
+      "page": "plugins/scim.md",
+      "section": "Interfaces",
+      "labels": [
+        "`SCIMBearerTokenVerificationContext`"
+      ],
+      "reason": "not applicable: JavaScript only. It hands the verifier a JavaScript database adapter, while a Go VerifyBearerToken receives a context.Context and reads the application's own store. Its only member is Pick<DBAdapter, findOne|update>, which matches the existing scope.json rule that the JavaScript DBAdapter interface does not apply to Go stores."
+    },
+    {
+      "page": "plugins/scim.md",
+      "section": "Interfaces",
+      "labels": [
+        "`SCIMPlugin`"
+      ],
+      "reason": "not applicable: TypeScript type (ReturnType<typeof createSCIMPlugin>), consistent with the UsernamePlugin and OrganizationPlugin rules in scope.json"
+    },
+    {
+      "page": "plugins/scim.md",
+      "section": "Interfaces",
+      "labels": [
+        "`SCIMEndpoints`"
+      ],
+      "reason": "not applicable: TypeScript type alias (SCIMPlugin[\"endpoints\"]) with no runtime behaviour"
+    },
+    {
+      "page": "plugins/scim.md",
+      "section": "Interfaces",
+      "labels": [
+        "`SCIM_REQUIRES_NATIVE_TRANSACTIONS`"
+      ],
+      "reason": "not applicable: JavaScript adapter capability; the only Go SCIM store runs every directory change in a native database/sql transaction, so there is no non-transactional adapter to refuse"
+    },
+    {
+      "page": "plugins/scim.md",
+      "section": "SCIM reference",
+      "labels": [
+        "`type`"
+      ],
+      "reason": "not applicable: TypeScript credential discriminant; the other runtime declares the \"bearer\" literal only in its option type (packages/scim/src/configuration.ts) and never reads it at run time, and Go credentials are a bearer-only struct with no type field",
+      "within": "Bearer credential options"
     }
   ],
   "backlog": [

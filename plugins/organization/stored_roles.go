@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"slices"
 
 	"github.com/Plain-Org/plain-auth/plugins/access"
@@ -19,14 +20,18 @@ type StoredRoleGrants struct {
 func DecodeStoredRoleGrants(raw string) (access.Statements, error) {
 	var value any
 	if err := json.Unmarshal([]byte(raw), &value); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %w", ErrInvalidStoredRole, err)
 	}
 	grants, ok := permissionStatements(value)
 	if !ok {
-		return nil, errors.New("organization: invalid stored role permissions")
+		return nil, ErrInvalidStoredRole
 	}
 	return grants, nil
 }
+
+// ErrInvalidStoredRole reports a stored role whose permission value is not a
+// statement object.
+var ErrInvalidStoredRole = errors.New("organization: invalid stored role permissions")
 
 // WithStoredRoles returns the effective policy for a single organization. Each
 // stored row extends only the role it names. The host's base policy stays immutable.

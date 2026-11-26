@@ -2,16 +2,16 @@
 
 ## Verification progress
 
-**2,356 of 6,435 inventory entries are fully verified (36.6%).**
+**2,456 of 6,420 inventory entries are fully verified (38.3%).**
 
 | Inventory status | Entries |
 | --- | ---: |
-| Fully verified | 2,356 |
-| Partially verified | 1,466 |
-| No linked test evidence | 2,613 |
-| Not applicable to a Go server | 590 |
+| Fully verified | 2,456 |
+| Partially verified | 1,634 |
+| No linked test evidence | 2,330 |
+| Not applicable to a Go server | 605 |
 
-The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 6,392 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
+The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 6,851 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
 
 Entries that exist only for JavaScript clients, frameworks or runtimes are listed as not applicable, with the reason, and are left out of the totals. Backlog entries stay open on the roadmap but are not scheduled.
 
@@ -89,12 +89,12 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 
 | Checklist | Checked | Open | Not applicable |
 | --- | ---: | ---: | ---: |
-| [Two-factor authentication](plugins/2fa.md) | 269 | 77 | 6 |
+| [Two-factor authentication](plugins/2fa.md) | 271 | 77 | 6 |
 | [Access](plugins/access.md) | 25 | 1 | 4 |
 | [Additional fields](plugins/additional-fields.md) | 0 | 0 | 2 |
 | [Admin](plugins/admin.md) | 315 | 56 | 6 |
 | [Anonymous](plugins/anonymous.md) | 87 | 7 | 0 |
-| [API keys](plugins/api-key.md) | 500 | 99 | 1 |
+| [API keys](plugins/api-key.md) | 513 | 99 | 1 |
 | [Bearer](plugins/bearer.md) | 30 | 0 | 0 |
 | [Captcha](plugins/captcha.md) | 153 | 26 | 0 |
 | [Client ID metadata documents](plugins/cimd.md) | 0 | 48 | 0 |
@@ -120,9 +120,9 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Organization](plugins/organization.md) | 1044 | 73 | 41 |
 | [Passkey](plugins/passkey.md) | 168 | 45 | 10 |
 | [Phone number](plugins/phone-number.md) | 148 | 30 | 0 |
-| [SCIM provisioning](plugins/scim.md) | 67 | 257 | 0 |
+| [SCIM provisioning](plugins/scim.md) | 274 | 203 | 6 |
 | [Sign in with Ethereum](plugins/siwe.md) | 122 | 7 | 0 |
-| [Single sign-on](plugins/sso.md) | 107 | 314 | 0 |
+| [Single sign-on](plugins/sso.md) | 444 | 253 | 9 |
 | [Stripe](plugins/stripe.md) | 206 | 175 | 0 |
 | [Test utils](plugins/test-utils.md) | 86 | 10 | 1 |
 | [Username](plugins/username.md) | 126 | 23 | 2 |

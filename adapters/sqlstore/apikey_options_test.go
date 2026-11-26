@@ -465,6 +465,23 @@ func TestAPIKeyConfigurations(t *testing.T) {
 					t.Fatal("a configuration's own rate maximum was not enforced", c.max, err)
 				}
 			}
+			// Past the configured hour, though within the default day, the
+			// window resets.
+			_, err = store.db.ExecContext(ctx, store.bind(`UPDATE "apikey" SET "lastRequest"=? WHERE "id"=?`), store.date(time.Now().Add(-2*time.Hour)), pub.ID)
+			must(err)
+			if v, err := public.Verify(ctx, pub.Secret, nil); err != nil || !v.Valid {
+				t.Fatal("a configuration's rate window did not reset after its own length", err, v.Error)
+			}
+
+			bounded, err := ak.New(ak.Options{Store: store, ConfigID: "bounded", MinExpiration: time.Hour, MaxExpiration: 48 * time.Hour})
+			must(err)
+			owner := pub.ReferenceID
+			for expires, code := range map[time.Duration]string{59 * time.Minute: "EXPIRES_IN_IS_TOO_SMALL", time.Hour: "", 48 * time.Hour: "", 49 * time.Hour: "EXPIRES_IN_IS_TOO_LARGE"} {
+				k, err := bounded.Create(ctx, owner, ak.CreateInput{ExpiresIn: expires})
+				if keyErrorCode(err) != code || code == "" && (err != nil || k.ExpiresAt.Sub(k.CreatedAt).Round(time.Second) != expires) {
+					t.Fatal("configured expiration bounds were not enforced", expires, err)
+				}
+			}
 		})
 	}
 }

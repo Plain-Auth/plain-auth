@@ -110,9 +110,14 @@ func (s *Store) authorizeKeyOrganization(ctx context.Context, tx *sql.Tx, owner 
 	}
 	allowed := owner.Organization.Allows(role, owner.Action)
 	// Linked organization roles include those the organization stored,
-	// read in this transaction under the member lock.
+	// read with a locking read so they are as current as the member row.
 	if policy, stored, ok := owner.Organization.OrganizationRoles(); ok && stored {
-		merged, err := s.withStoredOrganizationRoles(ctx, tx, owner.OrganizationID, policy)
+		merged, err := s.withStoredOrganizationRoles(ctx, tx, owner.OrganizationID, policy, true)
+		// An invalid stored role refuses the action, as a permission
+		// check that cannot be evaluated does on the other runtime.
+		if errors.Is(err, org.ErrInvalidStoredRole) {
+			return ak.ErrPermission
+		}
 		if err != nil {
 			return err
 		}

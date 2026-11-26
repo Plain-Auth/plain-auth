@@ -87,3 +87,17 @@ func TestFactorSettingsRejectInvalidCombinations(t *testing.T) {
 		}
 	}
 }
+
+// Unset factor options take their documented defaults.
+func TestFactorSettingsDefaults(t *testing.T) {
+	var o TwoFactorOptions
+	if err := o.setDefaults(); err != nil {
+		t.Fatal(err)
+	}
+	if o.OTP.AllowedAttempts != 5 || o.OTP.Digits != 6 || o.OTP.Period != 3*time.Minute {
+		t.Fatal("delivered codes did not default to five attempts, six digits and three minutes", o.OTP)
+	}
+	if o.TOTP.Digits != 6 || o.TOTP.Period != 30*time.Second || o.Backup.Amount != 10 || o.Backup.Length != 10 {
+		t.Fatal("authenticator or backup code defaults changed", o.TOTP, o.Backup)
+	}
+}

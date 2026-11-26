@@ -102,7 +102,7 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
   - [x] `signInEmail` (`POST /sign-in/email`) ([test](../../conformance/goapi/credential_contract_test.go#L58))
     - [x] Reject the wrong password and issue a fresh session for valid credentials ([test](../../conformance/core.test.mjs#L207))
     - [x] Apply configured email-verification gates ([test](../../conformance/goapi/account_lifecycle_test.go#L15))
-    - [x] Require an enrolled second factor for native and HTTP credential sign-in ([test](../../adapters/sqlstore/twofactor_test.go#L145))
+    - [x] Require an enrolled second factor for native and HTTP credential sign-in ([test](../../adapters/sqlstore/twofactor_test.go#L149))
     - [x] Run the configured password derivation for an unknown account and accept preexisting hashes on three SQL engines ([test](../../adapters/sqlstore/password_codec_test.go#L14))
     - [x] Read the issuing runtime’s public scalar user fields on credential signin with the released client ([test](../../conformance/user-fields.mjs#L51))
     - [x] Sign-in answers INVALID_EMAIL for an address outside the reference format, refuses a callback of the wrong type with the reference's answers, and answers an account without a password like an unknown address after one hash ([test](../../conformance/goapi/credential_contract_test.go#L58))

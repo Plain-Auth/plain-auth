@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -137,6 +138,9 @@ func TestTwoFactorAcrossAuthInstances(t *testing.T) {
 			}
 			activated := request(second, "two-factor/verify-totp", fmt.Sprintf(`{"code":%q}`, code), firstCookie)
 			check(activated, 200)
+			if view, err := second.ViewBackupCodes(ctx, reg.User.ID); err != nil || !slices.Equal(view, enrollment.BackupCodes) {
+				t.Fatal("default encrypted backup codes did not read back through ViewBackupCodes", err)
+			}
 			management := getCookie(activated, ".session_token")
 			// Direct callers and even an instance opened without factor middleware
 			// must not mint sessions for an enrolled account after a password alone.

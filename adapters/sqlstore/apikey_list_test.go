@@ -150,6 +150,16 @@ func TestAPIKeyListPaging(t *testing.T) {
 				}
 			}
 
+			stranger, err := client.New(origin, &http.Client{Transport: guestTransport{host}})
+			must(err)
+			_, err = stranger.SignUpEmail(ctx, client.SignUpRequest{Name: "Stranger", Email: "stranger@example.test", Password: "list-password"})
+			must(err)
+			for _, config := range []string{"", "default", "extra"} {
+				if p, err := stranger.ListAPIKeys(ctx, config, ak.PageOptions{}); err != nil || p.Total != 0 || len(p.Keys) != 0 {
+					t.Fatal("a listing showed another user's keys", config, err)
+				}
+			}
+
 			// A single configuration lists in the database's order with or
 			// without configId, mixed-case names included.
 			solo, err := plainauth.New(plainauth.Options{Store: store, BaseURL: origin, Secret: strings.Repeat("l", 32), EmailAndPassword: true, RateLimit: &off, Plugins: []plainauth.Plugin{keys.Plugin(), orgs}})
@@ -296,6 +306,39 @@ func TestAPIKeyListSortFields(t *testing.T) {
 				if got, down := order("", f.field, "asc"), order("", f.field, "desc"); got != "a,c,b" || down != "b,c,a" {
 					t.Fatalf("merged keys did not sort by %s: %s / %s", f.field, got, down)
 				}
+			}
+			// A missing request count ties with zero, so the id decides both
+			// ways, in the store and in a merged listing.
+			_, err = store.db.ExecContext(ctx, store.bind(`UPDATE "apikey" SET "requestCount"=? WHERE "id"=?`), 0, a)
+			must(err)
+			_, err = store.db.ExecContext(ctx, store.bind(`UPDATE "apikey" SET "requestCount"=? WHERE "id"=?`), nil, b)
+			must(err)
+			_, err = store.db.ExecContext(ctx, store.bind(`UPDATE "apikey" SET "requestCount"=? WHERE "id"=?`), 5, c)
+			must(err)
+			byID := "a,b"
+			if b < a {
+				byID = "b,a"
+			}
+			for _, direction := range []string{"asc", "desc"} {
+				if got := order("default", "requestCount", direction); got != byID {
+					t.Fatalf("a missing request count did not tie with zero in %s order: %s", direction, got)
+				}
+			}
+			if got := order("", "requestCount", "asc"); got != byID+",c" {
+				t.Fatal("a merged listing did not tie a missing request count with zero", got)
+			}
+			ids := []string{a, b}
+			if b < a {
+				ids = []string{b, a}
+			}
+			if got, down := order("default", "id", "asc"), order("default", "id", "desc"); got != names[ids[0]]+","+names[ids[1]] || down != names[ids[1]]+","+names[ids[0]] {
+				t.Fatal("keys did not sort by id", got, down)
+			}
+			if got, down := order("", "configId", "asc"), order("", "configId", "desc"); !strings.HasSuffix(got, ",c") || !strings.HasPrefix(down, "c,") {
+				t.Fatal("merged keys did not sort by configuration", got, down)
+			}
+			if got, down := order("default", "referenceId", "asc"), order("default", "referenceId", "desc"); got != byID || down != byID {
+				t.Fatal("keys of one owner did not keep the id order when sorted by referenceId", got, down)
 			}
 			for _, field := range []string{"enabled", "rateLimitEnabled"} {
 				for id, value := range map[string]any{a: false, b: nil, c: true} {

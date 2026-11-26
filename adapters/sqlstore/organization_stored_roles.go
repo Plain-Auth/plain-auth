@@ -27,13 +27,20 @@ func (s *Store) resolveOrganizationRoles(ctx context.Context, tx *sql.Tx, group 
 	if !s.dynamicOrganizationRoles {
 		return s.organizationRoles, nil
 	}
-	return s.withStoredOrganizationRoles(ctx, tx, group, s.organizationRoles)
+	return s.withStoredOrganizationRoles(ctx, tx, group, s.organizationRoles, false)
 }
 
 // withStoredOrganizationRoles merges the roles organization group stored
-// with dynamic access control into base.
-func (s *Store) withStoredOrganizationRoles(ctx context.Context, tx *sql.Tx, group string, base org.RolePolicy) (org.RolePolicy, error) {
-	rows, err := tx.QueryContext(ctx, s.bind(`SELECT "role","permission" FROM "organizationRole" WHERE "organizationId"=`+s.exactSQLValue("?")), group)
+// with dynamic access control into base. A locking read sees the latest
+// committed roles, as the member row read under lock does, where a plain
+// read in a repeatable-read transaction sees its first snapshot.
+func (s *Store) withStoredOrganizationRoles(ctx context.Context, tx *sql.Tx, group string, base org.RolePolicy, locking bool) (org.RolePolicy, error) {
+	query := `SELECT "role","permission" FROM "organizationRole" WHERE "organizationId"=` + s.exactSQLValue("?")
+	bound := s.bind(query)
+	if locking {
+		bound = s.readForUpdate(query)
+	}
+	rows, err := tx.QueryContext(ctx, bound, group)
 	if err != nil {
 		return org.RolePolicy{}, err
 	}

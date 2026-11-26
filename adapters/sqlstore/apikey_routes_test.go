@@ -88,6 +88,15 @@ func TestAPIKeyUpdateFields(t *testing.T) {
 				t.Fatal("metadata was accepted while it is off", err)
 			}
 
+			outsider, err := client.New(origin, &http.Client{Transport: guestTransport{host}})
+			must(err)
+			_, err = outsider.SignUpEmail(ctx, client.SignUpRequest{Name: "Outsider", Email: "outsider@example.test", Password: "update-password"})
+			must(err)
+			taken := "taken"
+			if _, err := outsider.UpdateAPIKey(ctx, client.UpdateAPIKeyRequest{KeyID: key.ID, Name: &taken}); keyErrorCode(err) != "KEY_NOT_FOUND" || *get().Name != "first" {
+				t.Fatal("another user updated a key they do not own", err)
+			}
+
 			no := false
 			if up, err := member.UpdateAPIKey(ctx, client.UpdateAPIKeyRequest{KeyID: key.ID, Enabled: &no}); err != nil || up.Enabled || get().Enabled {
 				t.Fatal("a key was not switched off", err)
@@ -139,6 +148,16 @@ func TestAPIKeyDeleteScopeAndBan(t *testing.T) {
 			}
 			if _, err := member.GetAPIKey(ctx, key.ID, ""); err != nil {
 				t.Fatal("a delete under another configuration removed the key", err)
+			}
+			outsider, err := client.New(origin, &http.Client{Transport: guestTransport{host}})
+			must(err)
+			_, err = outsider.SignUpEmail(ctx, client.SignUpRequest{Name: "Outsider", Email: "outsider@example.test", Password: "delete-password"})
+			must(err)
+			if err := outsider.DeleteAPIKey(ctx, key.ID, ""); keyErrorCode(err) != "KEY_NOT_FOUND" {
+				t.Fatal("another user's delete was not answered KEY_NOT_FOUND", err)
+			}
+			if _, err := member.GetAPIKey(ctx, key.ID, ""); err != nil {
+				t.Fatal("another user's delete removed the key", err)
 			}
 
 			ban := func(banned bool) {
