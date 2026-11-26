@@ -19,6 +19,9 @@ import (
 func discoveryError(status int, code, msg string) error {
 	return &auth.APIError{Status: status, Code: code, Message: msg}
 }
+
+// endpointURL follows the documented URL rules and is stricter than another
+// runtime's code: credentials, a fragment and a backslash are refused too.
 func endpointURL(raw string) (*url.URL, error) {
 	u, err := url.Parse(raw)
 	if err != nil || len(raw) > 4096 || u.Hostname() == "" || u.User != nil || u.Fragment != "" || (u.Scheme != "https" && u.Scheme != "http") || strings.Contains(raw, "\\") {
@@ -109,6 +112,13 @@ func hydrate(ctx context.Context, host *auth.Auth, client *http.Client, cfg *Con
 			if err = checkEndpoint(host, raw); err != nil {
 				return err
 			}
+			// A discovered endpoint must sit on a trusted origin, so a
+			// document cannot send the client secret elsewhere. Trust uses
+			// exact TrustedOrigins entries only; another runtime also honours
+			// wildcard patterns.
+			if !host.ExplicitlyTrustedOrigin(raw) {
+				return discoveryError(400, "discovery_untrusted_origin", "A discovered endpoint origin is not trusted")
+			}
 			if *f.stored == "" {
 				*f.stored = raw
 			}
@@ -167,7 +177,7 @@ func fetchDiscovery(ctx context.Context, client *http.Client, endpoint string) (
 	}
 	const bound = 1 << 20
 	data, e := io.ReadAll(io.LimitReader(res.Body, bound+1))
-	if e != nil || len(data) > bound || json.Unmarshal(data, &doc) != nil {
+	if e != nil || len(data) > bound || strings.TrimSpace(string(data)) == "null" || json.Unmarshal(data, &doc) != nil {
 		return doc, discoveryError(400, "discovery_invalid_json", "Invalid discovery document")
 	}
 	return doc, nil

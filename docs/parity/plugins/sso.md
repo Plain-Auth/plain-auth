@@ -21,10 +21,10 @@
   - [ ] `discoverOIDCConfig`
     - [x] Hydrate the tenant’s authorization, token and JWKS locations and select the advertised secret authentication method ([test](../../../conformance/sso-providers.mjs#L12))
     - [x] Resolve the relative authorization, token and JWKS URLs of a discovery document against the issuer path and select client_secret_basic ([test](../../../plugins/sso/discovery_test.go#L61))
-    - [x] Reject a registration whose configured discovery endpoint returns a document with a different issuer ([test](../../../adapters/sqlstore/sso_test.go#L235))
+    - [x] Reject a registration whose configured discovery endpoint returns a document with a different issuer ([test](../../../adapters/sqlstore/sso_test.go#L241))
   - [ ] `fetchDiscoveryDocument`
     - [x] Require an exact discovery origin and enforce the deadline, issuer match and bounded response ([test](../../../plugins/sso/discovery_test.go#L20))
-    - [x] Fail a registration with 400 after a single request when the discovery endpoint answers with a redirect ([test](../../../adapters/sqlstore/sso_test.go#L239))
+    - [x] Fail a registration with 400 after a single request when the discovery endpoint answers with a redirect ([test](../../../adapters/sqlstore/sso_test.go#L247))
   - [ ] `needsRuntimeDiscovery`
   - [ ] `normalizeDiscoveryUrls`
     - [x] Resolve relative discovered authorization, token and JWKS URLs against the issuer path ([test](../../../plugins/sso/discovery_test.go#L61))
@@ -35,13 +35,13 @@
     - [x] Select client_secret_basic when the discovery document advertises both secret methods ([test](../../../plugins/sso/discovery_test.go#L61))
     - [x] Select client_secret_post when the discovery document advertises only that method, on both runtimes ([test](../../../conformance/sso-providers.mjs#L67))
   - [ ] `validateDiscoveryDocument`
-    - [x] Reject an empty discovery document with discovery_incomplete ([test](../../../plugins/sso/discovery_test.go#L65))
+    - [x] Reject a JSON null discovery document with discovery_invalid_json ([test](../../../plugins/sso/discovery_test.go#L65))
     - [x] Reject a discovery document whose issuer differs from the configured issuer with issuer_mismatch ([test](../../../plugins/sso/discovery_test.go#L66))
   - [ ] `validateDiscoveryUrl`
     - [x] Refuse discovery at an origin that is not explicitly trusted with discovery_untrusted_origin, without sending a request ([test](../../../plugins/sso/discovery_test.go#L52))
   - [ ] `DiscoverOIDCConfigParams`
     - [x] Bound each discovery fetch with a deadline no more than ten seconds away ([test](../../../plugins/sso/discovery_test.go#L31))
-    - [x] Register providers whose oidcConfig names a discovery endpoint path on the issuer host ([test](../../../adapters/sqlstore/sso_test.go#L159))
+    - [x] Register providers whose oidcConfig names a discovery endpoint path on the issuer host ([test](../../../adapters/sqlstore/sso_test.go#L165))
   - [ ] `DiscoveryError`
     - [x] Report discovery failures as API errors carrying a machine-readable code and an HTTP status ([test](../../../plugins/sso/discovery_test.go#L42))
   - [ ] `DiscoveryErrorCode`
@@ -54,7 +54,7 @@
       - [x] Hydrate a provider whose discovery document names the configured issuer ([test](../../../plugins/sso/discovery_test.go#L61))
     - [ ] `discoveryEndpoint`
       - [x] Use {issuer}/.well-known/openid-configuration as the discovery URL by default ([test](../../../plugins/sso/discovery_test.go#L34))
-      - [x] Fetch the discovery document from a configured discovery endpoint ([test](../../../adapters/sqlstore/sso_test.go#L159))
+      - [x] Fetch the discovery document from a configured discovery endpoint ([test](../../../adapters/sqlstore/sso_test.go#L165))
     - [x] `authorizationEndpoint` ([test](../../../plugins/sso/discovery_test.go#L61))
       - [x] Store the issuer-relative authorization endpoint from a discovery document as an absolute URL ([test](../../../plugins/sso/discovery_test.go#L61))
     - [x] `tokenEndpoint` ([test](../../../plugins/sso/discovery_test.go#L61))
@@ -62,7 +62,11 @@
     - [x] `jwksEndpoint` ([test](../../../plugins/sso/discovery_test.go#L61))
       - [x] Store the JWKS endpoint from a discovery document as an absolute URL under the issuer path ([test](../../../plugins/sso/discovery_test.go#L61))
       - [x] Return the discovered JWKS endpoint resolved against the issuer, on both runtimes ([test](../../../conformance/sso-providers.mjs#L75))
-    - [ ] `userInfoEndpoint`
+    - [x] `userInfoEndpoint` ([test](../../../plugins/sso/discovery_test.go#L208))
+      - [x] Store an issuer-relative userinfo_endpoint from the discovery document as an absolute URL under the issuer path ([test](../../../plugins/sso/discovery_test.go#L208))
+      - [x] Keep a UserInfo endpoint set in oidcConfig over the discovered one ([test](../../../plugins/sso/discovery_test.go#L217))
+      - [x] Leave the UserInfo endpoint empty when the document advertises none ([test](../../../plugins/sso/discovery_test.go#L222))
+      - [x] Refuse a private discovered userinfo_endpoint with discovery_private_host ([test](../../../plugins/sso/discovery_test.go#L228))
     - [ ] `tokenEndpointAuthentication`
       - [x] Hydrate client_secret_basic when both secret methods are advertised ([test](../../../plugins/sso/discovery_test.go#L61))
       - [x] Hydrate client_secret_post when only that method is advertised, on both runtimes ([test](../../../conformance/sso-providers.mjs#L67))
@@ -70,7 +74,7 @@
   - [ ] `OIDCDiscoveryDocument`
     - [x] Read issuer, authorization_endpoint, token_endpoint, jwks_uri and token_endpoint_auth_methods_supported from a discovery document ([test](../../../plugins/sso/discovery_test.go#L26))
   - [ ] `REQUIRED_DISCOVERY_FIELDS`
-    - [x] Reject a discovery document that lacks the required fields with discovery_incomplete ([test](../../../plugins/sso/discovery_test.go#L65))
+    - [x] Reject a discovery document without jwks_uri with 400 discovery_incomplete ([test](../../../plugins/sso/discovery_test.go#L164))
   - `RequiredDiscoveryField` — *not applicable: TypeScript type. It is the string-literal union derived from REQUIRED_DISCOVERY_FIELDS for type checking; the required fields themselves are tracked under REQUIRED_DISCOVERY_FIELDS.*
   - [ ] `POST /sso/request-domain-verification`
     - [x] Read a seven-day registration challenge with the released client and return HTTP 201 for a repeated request ([test](../../../conformance/sso-domains.mjs#L86))
@@ -94,7 +98,7 @@
     - [x] Grant organization visibility to current administrators and remove it after demotion ([test](../../../adapters/sqlstore/sso_test.go#L23))
   - [ ] `GET /sso/get-provider`
     - [x] Return public OIDC fields and reject unauthenticated or foreign users without revealing the client secret ([test](../../../conformance/sso-providers.mjs#L12))
-    - [x] Answer 404 for a providerId that differs only in case ([test](../../../adapters/sqlstore/sso_test.go#L233))
+    - [x] Answer 404 for a providerId that differs only in case ([test](../../../adapters/sqlstore/sso_test.go#L239))
   - [ ] `POST /sso/update-provider`
     - [x] Rotate a directory’s signing certificate through the released client and retain the existing subject on both runtimes ([test](../../../conformance/sso-saml.mjs#L361))
     - [x] Authorize metadata replacement under a current manager session and reject stale competing revisions on three SQL engines ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L178))
@@ -213,8 +217,8 @@
     - [ ] `authorizationEndpoint`
       - [x] Fill the authorization endpoint from discovery when it is omitted ([test](../../../plugins/sso/discovery_test.go#L61))
       - [x] Send the browser to the origin of the stored authorization endpoint ([test](../../../conformance/sso-browser.mjs#L81))
-    - [x] `discoveryEndpoint` ([test](../../../adapters/sqlstore/sso_test.go#L159))
-      - [x] Register providers through an oidcConfig discoveryEndpoint on the issuer host ([test](../../../adapters/sqlstore/sso_test.go#L159))
+    - [x] `discoveryEndpoint` ([test](../../../adapters/sqlstore/sso_test.go#L165))
+      - [x] Register providers through an oidcConfig discoveryEndpoint on the issuer host ([test](../../../adapters/sqlstore/sso_test.go#L165))
       - [x] Default the discovery URL to {issuer}/.well-known/openid-configuration ([test](../../../plugins/sso/discovery_test.go#L34))
     - [ ] `userInfoEndpoint`
       - [x] Resolve the subject through UserInfo and reject disagreement with a signed ID token ([test](../../../adapters/sqlstore/sso_browser_test.go#L291))
@@ -226,7 +230,7 @@
       - [x] Redeem the authorization code at the stored token endpoint with the registered client credentials ([test](../../../adapters/sqlstore/sso_browser_test.go#L79))
     - [ ] `tokenEndpointAuthentication`
       - [x] Redeem codes through confidential client-secret basic and POST authentication ([test](../../../adapters/sqlstore/sso_browser_test.go#L79))
-      - [x] Store client_secret_post when discovery advertises only that method ([test](../../../adapters/sqlstore/sso_test.go#L229))
+      - [x] Store client_secret_post when discovery advertises only that method ([test](../../../adapters/sqlstore/sso_test.go#L235))
     - [ ] `privateKeyId`
     - [ ] `privateKeyAlgorithm`
     - [x] `jwksEndpoint` ([test](../../../adapters/sqlstore/sso_browser_test.go#L293))
@@ -273,7 +277,7 @@
   - [ ] `SSOOIDCUserResolutionInput`
     - [x] ValidateUserInfo receives method sso-oidc, the provider ID, the raw claims with sub and the user email for an enterprise OIDC sign-up ([test](../../../adapters/sqlstore/sso_user_validation_test.go#L101))
   - [ ] `SSOOptions`
-    - [x] Configure the provider limit through sso.Options, including zero to disable registration ([test](../../../adapters/sqlstore/sso_test.go#L73))
+    - [x] Configure the provider limit through sso.Options, including zero to disable registration ([test](../../../adapters/sqlstore/sso_test.go#L79))
     - [x] Configure shared callbacks and implicit sign-up through sso.Options ([test](../../../adapters/sqlstore/sso_browser_test.go#L145))
     - [ ] `resolveUser`
       - [x] A ValidateUserInfo refusal of an enterprise OIDC sign-up returns to the error callback with error and error_description ([test](../../../adapters/sqlstore/sso_user_validation_test.go#L97))
@@ -297,7 +301,7 @@
     - [ ] `schema`
     - [ ] `providersLimit`
       - [x] Reject disabled registration and serialize concurrent requests for the final account slot ([test](../../../adapters/sqlstore/sso_test.go#L23))
-      - [x] Refuse registration with 403 when the provider limit is zero ([test](../../../adapters/sqlstore/sso_test.go#L175))
+      - [x] Refuse registration with 403 when the provider limit is zero ([test](../../../adapters/sqlstore/sso_test.go#L181))
     - [ ] `trustEmailVerified`
       - [x] Store a new enterprise OIDC user as unverified although the ID token says email_verified true ([test](../../../adapters/sqlstore/sso_browser_test.go#L256))
       - [x] Store a new SAML user as unverified by default on both runtimes ([test](../../../conformance/sso-saml.mjs#L293))
@@ -418,11 +422,11 @@
       - [x] Refuse sign-in with HTTP 401 through a new provider until verify-domain succeeds, then sign in by email domain on both runtimes ([test](../../../conformance/sso-domains.mjs#L87))
     - [ ] Nobody at runtime
     - [ ] `providerId`
-      - [x] Reject a duplicate provider ID, a built-in sign-in method name and a trusted provider name in another case with 422 ([test](../../../adapters/sqlstore/sso_test.go#L174))
+      - [x] Reject a duplicate provider ID, a built-in sign-in method name and a trusted provider name in another case with 422 ([test](../../../adapters/sqlstore/sso_test.go#L180))
     - [ ] `issuer`
-      - [x] Reject an OIDC registration whose discovered issuer differs from the submitted issuer ([test](../../../adapters/sqlstore/sso_test.go#L235))
-    - [x] `domain` ([test](../../../adapters/sqlstore/sso_test.go#L220))
-      - [x] Store comma-separated domains lowercased and without duplicates at registration ([test](../../../adapters/sqlstore/sso_test.go#L220))
+      - [x] Reject an OIDC registration whose discovered issuer differs from the submitted issuer ([test](../../../adapters/sqlstore/sso_test.go#L241))
+    - [x] `domain` ([test](../../../adapters/sqlstore/sso_test.go#L226))
+      - [x] Store comma-separated domains lowercased and without duplicates at registration ([test](../../../adapters/sqlstore/sso_test.go#L226))
       - [x] Reject a wildcard, URL, email address or empty label as a provider domain ([test](../../../plugins/sso/discovery_test.go#L83))
     - [ ] Configure providers in code
   - [ ] Sign in
@@ -486,26 +490,41 @@
       - [x] Refuse discovery from an origin trusted only for browser redirects without contacting it ([test](../../../plugins/sso/discovery_test.go#L52))
       - [x] Keep a wildcard browser origin from granting server-side transport to an unlisted host ([test](../../../plugins/sso/identity_test.go#L71))
     - [ ] Discovery errors
-      - [x] Reject registration when the discovery URL redirects, without requesting the redirect target ([test](../../../adapters/sqlstore/sso_test.go#L239))
+      - [x] Reject registration when the discovery URL redirects, without requesting the redirect target ([test](../../../adapters/sqlstore/sso_test.go#L247))
       - [x] Refuse a redirecting identity provider response on the enterprise HTTP client without following it ([test](../../../plugins/sso/identity_test.go#L65))
-      - [ ] `issuer_mismatch`
+      - [x] `issuer_mismatch` ([test](../../../plugins/sso/discovery_test.go#L167))
         - [x] Reject a discovery document whose issuer differs from the configured issuer with 400 issuer_mismatch ([test](../../../plugins/sso/discovery_test.go#L66))
-      - [ ] `discovery_incomplete`
-        - [x] Reject a JSON null discovery document with 400 discovery_incomplete ([test](../../../plugins/sso/discovery_test.go#L65))
-      - [ ] `discovery_not_found`
-      - [ ] `discovery_timeout`
+        - [x] Return 400 issuer_mismatch for a discovered issuer that differs only by a trailing slash ([test](../../../plugins/sso/discovery_test.go#L167))
+      - [x] `discovery_incomplete` ([test](../../../plugins/sso/discovery_test.go#L102))
+        - [x] Reject a discovery document without jwks_uri with 400 discovery_incomplete ([test](../../../plugins/sso/discovery_test.go#L164))
+        - [x] Return 400 discovery_incomplete for a document without jwks_uri, alongside the missing-field checks ([test](../../../plugins/sso/discovery_test.go#L102))
+      - [x] `discovery_not_found` ([test](../../../adapters/sqlstore/sso_test.go#L250))
+        - [x] Return 400 discovery_not_found when the discovery URL answers 404 ([test](../../../plugins/sso/discovery_test.go#L146))
+        - [x] Answer a registration whose discovery document is missing with HTTP 400 discovery_not_found on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_test.go#L250))
+      - [x] `discovery_timeout` ([test](../../../plugins/sso/discovery_test.go#L158))
         - [x] Return 502 discovery_timeout when the discovery request exceeds its deadline ([test](../../../plugins/sso/discovery_test.go#L79))
-      - [ ] `discovery_invalid_url`
-      - [ ] `discovery_untrusted_origin`
+        - [x] Return 502 discovery_timeout for a 408 discovery response ([test](../../../plugins/sso/discovery_test.go#L158))
+      - [x] `discovery_invalid_url` ([test](../../../adapters/sqlstore/sso_test.go#L259))
+        - [x] Return 400 discovery_invalid_url for a non-HTTP, hostless, credential-bearing or unparsable issuer or discovery URL without contacting the provider ([test](../../../plugins/sso/discovery_test.go#L183))
+        - [x] Return 400 discovery_invalid_url for a malformed endpoint supplied with skipDiscovery ([test](../../../plugins/sso/discovery_test.go#L188))
+        - [x] Return 400 discovery_invalid_url for a discovered endpoint that does not use http or https ([test](../../../plugins/sso/discovery_test.go#L173))
+        - [x] Refuse registration of a non-HTTP issuer with 400 discovery_invalid_url before discovery on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_test.go#L259))
+      - [x] `discovery_untrusted_origin` ([test](../../../plugins/sso/discovery_test.go#L170))
         - [x] Reject a discovery URL on an untrusted origin with 400 discovery_untrusted_origin before contacting it ([test](../../../plugins/sso/discovery_test.go#L50))
+        - [x] Return 400 discovery_untrusted_origin for a discovered token endpoint outside the trusted origins ([test](../../../plugins/sso/discovery_test.go#L170))
       - [x] `discovery_private_host` ([test](../../../plugins/sso/discovery_test.go#L54))
         - [x] Reject private, reserved and cloud metadata endpoint hosts that are not explicitly trusted, including a discovered private JWKS URL, with 400 discovery_private_host ([test](../../../plugins/sso/discovery_test.go#L54))
         - [x] Register a provider through discovery from a loopback IdP origin listed in trusted origins on both runtimes ([test](../../../conformance/sso-providers.mjs#L35))
-      - [ ] `discovery_invalid_json`
+      - [x] `discovery_invalid_json` ([test](../../../plugins/sso/discovery_test.go#L161))
         - [x] Reject a malformed or oversized discovery response with 400 discovery_invalid_json ([test](../../../plugins/sso/discovery_test.go#L65))
-      - [ ] `oidc_endpoint_redirect`
-        - [x] Reject registration with HTTP 400 when the discovery URL answers with a redirect, without following it ([test](../../../adapters/sqlstore/sso_test.go#L237))
-      - [ ] `discovery_unexpected_error`
+        - [x] Return 400 discovery_invalid_json for an empty discovery document ([test](../../../plugins/sso/discovery_test.go#L161))
+      - [x] `oidc_endpoint_redirect` ([test](../../../adapters/sqlstore/sso_test.go#L244))
+        - [x] Reject registration with HTTP 400 when the discovery URL answers with a redirect, without following it ([test](../../../adapters/sqlstore/sso_test.go#L243))
+        - [x] Answer a registration whose discovery endpoint redirects with 400 oidc_endpoint_redirect, without following it, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_test.go#L244))
+      - [x] `discovery_unexpected_error` ([test](../../../adapters/sqlstore/sso_test.go#L253))
+        - [x] Return 502 discovery_unexpected_error for a 500 or 410 discovery response ([test](../../../plugins/sso/discovery_test.go#L149))
+        - [x] Return 502 discovery_unexpected_error when the discovery request fails in transport ([test](../../../plugins/sso/discovery_test.go#L155))
+        - [x] Answer a registration whose discovery endpoint fails with HTTP 502 discovery_unexpected_error on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_test.go#L253))
   - [ ] Token endpoint authentication
   - [ ] Shared redirect URI
     - [x] Send the shared or provider-specific callback as redirect_uri and complete sign-in through it on both runtimes ([test](../../../conformance/sso-browser.mjs#L90))
@@ -530,7 +549,7 @@
     - [ ] `providerReference`
   - [ ] User provisioning
   - [ ] Link a provider to an organization
-    - [x] Require organization membership (400) and an owner or admin role (403) to register a provider for an organization, and let current organization admins read it ([test](../../../adapters/sqlstore/sso_test.go#L169))
+    - [x] Require organization membership (400) and an owner or admin role (403) to register a provider for an organization, and let current organization admins read it ([test](../../../adapters/sqlstore/sso_test.go#L175))
   - [ ] Organization provisioning
     - [x] Add a provider-linked sign-in as a member, keep an existing role and skip a user with a pending invitation ([test](../../../adapters/sqlstore/sso_browser_test.go#L279))
 
@@ -550,7 +569,7 @@
   - [ ] Endpoints
     - [x] `POST /sso/register` ([test](../../../plugins/openapi/sso_directory_test.go#L101))
       - [x] Answer 401 to a provider registration without a session ([test](../../../plugins/openapi/sso_directory_test.go#L101))
-      - [x] Register an OIDC provider linked to an organization for its signed-in owner ([test](../../../adapters/sqlstore/sso_test.go#L212))
+      - [x] Register an OIDC provider linked to an organization for its signed-in owner ([test](../../../adapters/sqlstore/sso_test.go#L218))
     - [x] `POST /sign-in/sso` ([test](../../../plugins/openapi/sso_directory_test.go#L127))
       - [x] Start an SSO sign-in by email domain without a session and return the provider's authorization URL ([test](../../../plugins/openapi/sso_directory_test.go#L127))
     - [x] `GET /sso/callback/:providerId` ([test](../../../conformance/oauth-enterprise-authorization.mjs#L37))
@@ -570,7 +589,7 @@
       - [x] List the logout start and SLO routes in the generated OpenAPI document only when single logout is enabled ([test](../../../plugins/openapi/sso_directory_test.go#L214))
     - [x] `GET /sso/providers` ([test](../../../plugins/openapi/sso_directory_test.go#L98))
       - [x] Answer 401 to the provider list and provider lookup without a session ([test](../../../plugins/openapi/sso_directory_test.go#L98))
-      - [x] Drop organization providers from the list once the caller is demoted from admin ([test](../../../adapters/sqlstore/sso_test.go#L271))
+      - [x] Drop organization providers from the list once the caller is demoted from admin ([test](../../../adapters/sqlstore/sso_test.go#L291))
     - [x] `GET /sso/get-provider` ([test](../../../plugins/openapi/sso_directory_test.go#L98))
       - [x] Answer 401 to the provider list and provider lookup without a session ([test](../../../plugins/openapi/sso_directory_test.go#L98))
       - [x] Return one provider by providerId to its owner without the client secret ([test](../../../plugins/openapi/sso_directory_test.go#L121))

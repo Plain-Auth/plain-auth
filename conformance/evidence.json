@@ -41187,9 +41187,9 @@
   ],
   "plugin-symbol/sso/validateDiscoveryDocument": [
     {
-      "label": "Reject an empty discovery document with discovery_incomplete",
+      "label": "Reject a JSON null discovery document with discovery_invalid_json",
       "test": "plugins/sso/discovery_test.go",
-      "marker": "{\"null\", \"discovery_incomplete\"}"
+      "marker": "{\"null\", \"discovery_invalid_json\"}"
     },
     {
       "label": "Reject a discovery document whose issuer differs from the configured issuer with issuer_mismatch",
@@ -41317,9 +41317,9 @@
   ],
   "plugin-symbol/sso/REQUIRED_DISCOVERY_FIELDS": [
     {
-      "label": "Reject a discovery document that lacks the required fields with discovery_incomplete",
+      "label": "Reject a discovery document without jwks_uri with 400 discovery_incomplete",
       "test": "plugins/sso/discovery_test.go",
-      "marker": "{\"null\", \"discovery_incomplete\"}"
+      "marker": "a discovery document without jwks_uri did not answer 400 discovery_incomplete"
     }
   ],
   "plugin-symbol/sso/deriveSAMLIdentityProviderEntityID": [
@@ -42100,13 +42100,25 @@
       "label": "Reject a discovery document whose issuer differs from the configured issuer with 400 issuer_mismatch",
       "test": "plugins/sso/discovery_test.go",
       "marker": "\"issuer_mismatch\"},"
+    },
+    {
+      "label": "Return 400 issuer_mismatch for a discovered issuer that differs only by a trailing slash",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "an issuer differing by a trailing slash did not answer 400 issuer_mismatch",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/sso/oidc.mdx#L115/`discovery_incomplete`": [
     {
-      "label": "Reject a JSON null discovery document with 400 discovery_incomplete",
+      "label": "Reject a discovery document without jwks_uri with 400 discovery_incomplete",
       "test": "plugins/sso/discovery_test.go",
-      "marker": "{\"null\", \"discovery_incomplete\"}"
+      "marker": "a discovery document without jwks_uri did not answer 400 discovery_incomplete"
+    },
+    {
+      "label": "Return 400 discovery_incomplete for a document without jwks_uri, alongside the missing-field checks",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "func TestDiscoveryErrorCodes(",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/sso/oidc.mdx#L117/`discovery_timeout`": [
@@ -42114,6 +42126,12 @@
       "label": "Return 502 discovery_timeout when the discovery request exceeds its deadline",
       "test": "plugins/sso/discovery_test.go",
       "marker": "code(hydrate(context.Background(), host, client, &cfg, false), \"discovery_timeout\", 502)"
+    },
+    {
+      "label": "Return 502 discovery_timeout for a 408 discovery response",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "a 408 discovery response did not answer 502 discovery_timeout",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/sso/oidc.mdx#L119/`discovery_untrusted_origin`": [
@@ -42121,6 +42139,12 @@
       "label": "Reject a discovery URL on an untrusted origin with 400 discovery_untrusted_origin before contacting it",
       "test": "plugins/sso/discovery_test.go",
       "marker": "code(hydrate(t.Context(), host, client, &cfg, false), \"discovery_untrusted_origin\", 400)"
+    },
+    {
+      "label": "Return 400 discovery_untrusted_origin for a discovered token endpoint outside the trusted origins",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "a discovered token endpoint on an untrusted origin did not answer 400 discovery_untrusted_origin",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/sso/oidc.mdx#L120/`discovery_private_host`": [
@@ -42141,6 +42165,12 @@
       "label": "Reject a malformed or oversized discovery response with 400 discovery_invalid_json",
       "test": "plugins/sso/discovery_test.go",
       "marker": "{`{broken`, \"discovery_invalid_json\"}"
+    },
+    {
+      "label": "Return 400 discovery_invalid_json for an empty discovery document",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "an empty discovery document did not answer 400 discovery_invalid_json",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/sso/oidc.mdx#L122/`oidc_endpoint_redirect`": [
@@ -42148,6 +42178,12 @@
       "label": "Reject registration with HTTP 400 when the discovery URL answers with a redirect, without following it",
       "test": "adapters/sqlstore/sso_test.go",
       "marker": "check(call(one, path, owner, makeBody(\"redirect\", \"\", \"/error\")), 400)"
+    },
+    {
+      "label": "Answer a registration whose discovery endpoint redirects with 400 oidc_endpoint_redirect, without following it, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_test.go",
+      "marker": "registration answered a redirecting discovery endpoint without oidc_endpoint_redirect",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/sso/oidc.mdx#L145": [
@@ -43791,6 +43827,83 @@
       "label": "Configure four twelve-character codes stored plain, a host generator and a host cipher, and observe each at enrollment, in the stored column and through ViewBackupCodes",
       "test": "adapters/sqlstore/twofactor_delivery_test.go",
       "marker": "Backup:  twofactor.BackupOptions{Amount: 4, Length: 12, Store: \"plain\"},",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/sso/HydratedOIDCConfig/userInfoEndpoint": [
+    {
+      "label": "Store an issuer-relative userinfo_endpoint from the discovery document as an absolute URL under the issuer path",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "discovery did not store the issuer-relative userinfo_endpoint",
+      "complete": true
+    },
+    {
+      "label": "Keep a UserInfo endpoint set in oidcConfig over the discovered one",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "discovery replaced a configured UserInfo endpoint"
+    },
+    {
+      "label": "Leave the UserInfo endpoint empty when the document advertises none",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "discovery invented a UserInfo endpoint"
+    },
+    {
+      "label": "Refuse a private discovered userinfo_endpoint with discovery_private_host",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "discovery stored a private userinfo_endpoint"
+    }
+  ],
+  "docs/content/docs/plugins/sso/oidc.mdx#L116/`discovery_not_found`": [
+    {
+      "label": "Return 400 discovery_not_found when the discovery URL answers 404",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "a 404 discovery document did not answer 400 discovery_not_found"
+    },
+    {
+      "label": "Answer a registration whose discovery document is missing with HTTP 400 discovery_not_found on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_test.go",
+      "marker": "registration answered a missing discovery document without discovery_not_found",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/sso/oidc.mdx#L118/`discovery_invalid_url`": [
+    {
+      "label": "Return 400 discovery_invalid_url for a non-HTTP, hostless, credential-bearing or unparsable issuer or discovery URL without contacting the provider",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "a malformed issuer or discovery URL did not answer 400 discovery_invalid_url"
+    },
+    {
+      "label": "Return 400 discovery_invalid_url for a malformed endpoint supplied with skipDiscovery",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "a malformed configured endpoint did not answer 400 discovery_invalid_url"
+    },
+    {
+      "label": "Return 400 discovery_invalid_url for a discovered endpoint that does not use http or https",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "a discovered ftp token endpoint did not answer 400 discovery_invalid_url"
+    },
+    {
+      "label": "Refuse registration of a non-HTTP issuer with 400 discovery_invalid_url before discovery on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_test.go",
+      "marker": "registration accepted or fetched for a non-HTTP issuer",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/sso/oidc.mdx#L123/`discovery_unexpected_error`": [
+    {
+      "label": "Return 502 discovery_unexpected_error for a 500 or 410 discovery response",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "a 500 discovery response did not answer 502 discovery_unexpected_error"
+    },
+    {
+      "label": "Return 502 discovery_unexpected_error when the discovery request fails in transport",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "a transport failure did not answer 502 discovery_unexpected_error"
+    },
+    {
+      "label": "Answer a registration whose discovery endpoint fails with HTTP 502 discovery_unexpected_error on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_test.go",
+      "marker": "registration answered a failing discovery endpoint without discovery_unexpected_error",
       "complete": true
     }
   ]

@@ -60,6 +60,12 @@ func TestEnterpriseProviderManagement(t *testing.T) {
 				case "/error":
 					http.Redirect(w, r, "/not-requested", http.StatusTemporaryRedirect)
 					return
+				case "/missing":
+					http.NotFound(w, r)
+					return
+				case "/broken":
+					http.Error(w, "unavailable", http.StatusInternalServerError)
+					return
 				}
 				issuer := idp.URL
 				if r.URL.Path == "/mismatch" {
@@ -234,9 +240,23 @@ func TestEnterpriseProviderManagement(t *testing.T) {
 			check(call(two, path, other, makeBody("corp", "", "/discovery")), 422)
 			check(call(two, path, owner, makeBody("wrong", "", "/mismatch")), 400)
 			beforeFetch := fetched.Load()
-			check(call(one, path, owner, makeBody("redirect", "", "/error")), 400)
+			if body := check(call(one, path, owner, makeBody("redirect", "", "/error")), 400); body["code"] != "oidc_endpoint_redirect" {
+				t.Fatal("registration answered a redirecting discovery endpoint without oidc_endpoint_redirect", body)
+			}
 			if fetched.Load() != beforeFetch+1 {
 				t.Fatal("discovery followed redirect")
+			}
+			if body := check(call(two, path, owner, makeBody("missing", "", "/missing")), 400); body["code"] != "discovery_not_found" {
+				t.Fatal("registration answered a missing discovery document without discovery_not_found", body)
+			}
+			if body := check(call(two, path, owner, makeBody("broken", "", "/broken")), 502); body["code"] != "discovery_unexpected_error" {
+				t.Fatal("registration answered a failing discovery endpoint without discovery_unexpected_error", body)
+			}
+			ftp := makeBody("ftp-issuer", "", "/discovery")
+			ftp["issuer"] = "ftp://idp.example.test/tenant"
+			beforeFTP := fetched.Load()
+			if body := check(call(two, path, owner, ftp), 400); body["code"] != "discovery_invalid_url" || fetched.Load() != beforeFTP {
+				t.Fatal("registration accepted or fetched for a non-HTTP issuer", body)
 			}
 			// Four unique IDs compete for one remaining creator slot across processes.
 			results := make(chan response, 4)

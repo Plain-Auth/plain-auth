@@ -62,7 +62,7 @@ func TestDiscoveryOriginAndBoundedTransport(t *testing.T) {
 		t.Fatal(cfg)
 	}
 	for _, body := range []struct{ value, code string }{
-		{"null", "discovery_incomplete"}, {`{broken`, "discovery_invalid_json"},
+		{"null", "discovery_invalid_json"}, {`{broken`, "discovery_invalid_json"},
 		{strings.Replace(raw, "https://login.example.test/tenant", "https://other.example.test/tenant", 1), "issuer_mismatch"},
 		{strings.Replace(raw, "/keys", "http://127.0.0.1/keys", 1), "discovery_private_host"},
 		{strings.Repeat(" ", (1<<20)+1), "discovery_invalid_json"},
@@ -84,5 +84,147 @@ func TestDiscoveryOriginAndBoundedTransport(t *testing.T) {
 		if _, err := domains(input); err == nil {
 			t.Fatal(input)
 		}
+	}
+}
+
+// discoveryHost trusts only the provider origin login.example.test.
+func discoveryHost(t *testing.T) *auth.Auth {
+	t.Helper()
+	host, err := auth.New(auth.Options{Store: memory.New(), BaseURL: "https://accounts.test", Secret: strings.Repeat("k", 40), TrustedOrigins: []string{"https://login.example.test"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return host
+}
+
+// Discovery answers each failure with the documented status and code, and a
+// malformed URL is refused without contacting the provider.
+func TestDiscoveryErrorCodes(t *testing.T) {
+	host := discoveryHost(t)
+	const issuer = "https://login.example.test/tenant"
+	doc := `{"issuer":"https://login.example.test/tenant","authorization_endpoint":"/authorize","token_endpoint":"/token","jwks_uri":"/keys"}`
+	requests := 0
+	client := &http.Client{Transport: transportFunc(func(r *http.Request) (*http.Response, error) {
+		requests++
+		status, body := 200, doc
+		switch r.URL.Path {
+		case "/tenant/missing":
+			status = 404
+		case "/tenant/failing":
+			status = 500
+		case "/tenant/gone":
+			status = 410
+		case "/tenant/slow":
+			status = 408
+		case "/tenant/empty":
+			body = ""
+		case "/tenant/partial":
+			body = strings.Replace(doc, `,"jwks_uri":"/keys"`, "", 1)
+		case "/tenant/slash":
+			body = strings.Replace(doc, issuer+`"`, issuer+`/"`, 1)
+		case "/tenant/elsewhere":
+			body = strings.Replace(doc, `"/token"`, `"https://elsewhere.example.test/token"`, 1)
+		case "/tenant/unreachable":
+			return nil, errors.New("connection refused")
+		case "/tenant/ftp-token":
+			body = strings.Replace(doc, `"/token"`, `"ftp://login.example.test/token"`, 1)
+		}
+		return &http.Response{Request: r, StatusCode: status, Body: io.NopCloser(strings.NewReader(body)), Header: http.Header{}}, nil
+	})}
+	reply := func(err error) (int, string) {
+		var e *auth.APIError
+		if errors.As(err, &e) {
+			return e.Status, e.Code
+		}
+		return 0, ""
+	}
+	fetch := func(path string) error {
+		cfg := Config{Issuer: issuer, DiscoveryEndpoint: issuer + path}
+		return hydrate(t.Context(), host, client, &cfg, false)
+	}
+	if status, code := reply(fetch("/missing")); status != 400 || code != "discovery_not_found" {
+		t.Fatal("a 404 discovery document did not answer 400 discovery_not_found", status, code)
+	}
+	if status, code := reply(fetch("/failing")); status != 502 || code != "discovery_unexpected_error" {
+		t.Fatal("a 500 discovery response did not answer 502 discovery_unexpected_error", status, code)
+	}
+	if status, code := reply(fetch("/gone")); status != 502 || code != "discovery_unexpected_error" {
+		t.Fatal("a 410 discovery response did not answer 502 discovery_unexpected_error", status, code)
+	}
+	if status, code := reply(fetch("/unreachable")); status != 502 || code != "discovery_unexpected_error" {
+		t.Fatal("a transport failure did not answer 502 discovery_unexpected_error", status, code)
+	}
+	if status, code := reply(fetch("/slow")); status != 502 || code != "discovery_timeout" {
+		t.Fatal("a 408 discovery response did not answer 502 discovery_timeout", status, code)
+	}
+	if status, code := reply(fetch("/empty")); status != 400 || code != "discovery_invalid_json" {
+		t.Fatal("an empty discovery document did not answer 400 discovery_invalid_json", status, code)
+	}
+	if status, code := reply(fetch("/partial")); status != 400 || code != "discovery_incomplete" {
+		t.Fatal("a discovery document without jwks_uri did not answer 400 discovery_incomplete", status, code)
+	}
+	if status, code := reply(fetch("/slash")); status != 400 || code != "issuer_mismatch" {
+		t.Fatal("an issuer differing by a trailing slash did not answer 400 issuer_mismatch", status, code)
+	}
+	if status, code := reply(fetch("/elsewhere")); status != 400 || code != "discovery_untrusted_origin" {
+		t.Fatal("a discovered token endpoint on an untrusted origin did not answer 400 discovery_untrusted_origin", status, code)
+	}
+	if status, code := reply(fetch("/ftp-token")); status != 400 || code != "discovery_invalid_url" {
+		t.Fatal("a discovered ftp token endpoint did not answer 400 discovery_invalid_url", status, code)
+	}
+	fetched := requests
+	for _, cfg := range []Config{
+		{Issuer: "ftp://login.example.test/tenant"},
+		{Issuer: "not-a-url"},
+		{Issuer: issuer, DiscoveryEndpoint: "https://login.example.test/%zz"},
+		{Issuer: issuer, DiscoveryEndpoint: "https://admin@login.example.test/tenant/.well-known/openid-configuration"},
+	} {
+		if status, code := reply(hydrate(t.Context(), host, client, &cfg, false)); status != 400 || code != "discovery_invalid_url" {
+			t.Fatal("a malformed issuer or discovery URL did not answer 400 discovery_invalid_url", cfg.Issuer, cfg.DiscoveryEndpoint, status, code)
+		}
+	}
+	manual := Config{Issuer: issuer, AuthorizationEndpoint: "not-a-url", TokenEndpoint: issuer + "/token", JWKSEndpoint: issuer + "/keys"}
+	if status, code := reply(hydrate(t.Context(), host, client, &manual, true)); status != 400 || code != "discovery_invalid_url" {
+		t.Fatal("a malformed configured endpoint did not answer 400 discovery_invalid_url", status, code)
+	}
+	if requests != fetched {
+		t.Fatal("discovery contacted the provider for a malformed URL")
+	}
+}
+
+// Discovery stores an advertised UserInfo endpoint, relative to the issuer
+// or absolute on a trusted origin, unless oidcConfig already sets one.
+func TestDiscoveryHydratesUserInfoEndpoint(t *testing.T) {
+	host := discoveryHost(t)
+	const issuer = "https://login.example.test/tenant"
+	userinfo := ""
+	client := &http.Client{Transport: transportFunc(func(r *http.Request) (*http.Response, error) {
+		body := `{"issuer":"` + issuer + `","authorization_endpoint":"/authorize","token_endpoint":"/token","jwks_uri":"/keys"` + userinfo + `}`
+		return &http.Response{Request: r, StatusCode: 200, Body: io.NopCloser(strings.NewReader(body)), Header: http.Header{}}, nil
+	})}
+	userinfo = `,"userinfo_endpoint":"/userinfo"`
+	cfg := Config{Issuer: issuer}
+	if err := hydrate(t.Context(), host, client, &cfg, false); err != nil || cfg.UserInfoEndpoint != issuer+"/userinfo" {
+		t.Fatal("discovery did not store the issuer-relative userinfo_endpoint", cfg.UserInfoEndpoint, err)
+	}
+	userinfo = `,"userinfo_endpoint":"https://login.example.test/profile/me"`
+	cfg = Config{Issuer: issuer}
+	if err := hydrate(t.Context(), host, client, &cfg, false); err != nil || cfg.UserInfoEndpoint != "https://login.example.test/profile/me" {
+		t.Fatal("discovery did not store an absolute userinfo_endpoint", cfg.UserInfoEndpoint, err)
+	}
+	cfg = Config{Issuer: issuer, UserInfoEndpoint: "https://login.example.test/claims"}
+	if err := hydrate(t.Context(), host, client, &cfg, false); err != nil || cfg.UserInfoEndpoint != "https://login.example.test/claims" {
+		t.Fatal("discovery replaced a configured UserInfo endpoint", cfg.UserInfoEndpoint, err)
+	}
+	userinfo = ""
+	cfg = Config{Issuer: issuer}
+	if err := hydrate(t.Context(), host, client, &cfg, false); err != nil || cfg.UserInfoEndpoint != "" {
+		t.Fatal("discovery invented a UserInfo endpoint the document does not advertise", cfg.UserInfoEndpoint, err)
+	}
+	userinfo = `,"userinfo_endpoint":"https://10.0.0.5/userinfo"`
+	cfg = Config{Issuer: issuer}
+	var e *auth.APIError
+	if err := hydrate(t.Context(), host, client, &cfg, false); !errors.As(err, &e) || e.Status != 400 || e.Code != "discovery_private_host" || cfg.UserInfoEndpoint != "" {
+		t.Fatal("discovery stored a private userinfo_endpoint", err)
 	}
 }
