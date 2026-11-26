@@ -76,7 +76,7 @@ func TestEnterpriseProviderLimitResolver(t *testing.T) {
 			}
 			providers := func() int {
 				var n int
-				must(store.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM "ssoProvider"`).Scan(&n))
+				must(store.db.QueryRowContext(ctx, store.bind(`SELECT COUNT(*) FROM "ssoProvider"`)).Scan(&n))
 				return n
 			}
 			if err := register(member, "member-one"); !refused(err, 403, "SSO provider registration is disabled") {
