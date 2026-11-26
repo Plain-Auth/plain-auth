@@ -27,4 +27,12 @@ err = editor.Authorize(access.All,
 
 This request requires permission to edit projects and either read or publish reports. Use `access.Any` as the first argument when one matching resource is enough. If a check fails, `errors.Is(err, access.ErrDenied)` is true. A role definition containing an unknown action or resource fails at startup. The catalog and each role copy their inputs, so multiple handlers can safely share them.
 
+`Statements` returns a copy of a role's grants. To build a role that extends another, change the copy and pass it to `NewRole`; the original role keeps its grants.
+
+```go
+grants := editor.Statements()
+grants["project"] = append(grants["project"], "archive")
+owner, err := catalog.NewRole(grants)
+```
+
 For a simple resource-to-actions map, `grants.AllowsAll(request)` requires every requested action on every resource. An empty request or an empty action list grants no permission. The administration plugin applies this same check independently to each assigned role. [Administration](admin.md) · [Permission tests](../plugins/access/access_test.go)

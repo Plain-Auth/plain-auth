@@ -7232,6 +7232,12 @@
       "label": "Compare nested permission decisions with the pinned client using the same test cases",
       "test": "conformance/access.test.mjs",
       "marker": "test(\"role permission decisions match"
+    },
+    {
+      "label": "A role reports a copy of its grants that a new role can extend without changing the original",
+      "test": "plugins/access/access_test.go",
+      "marker": "func TestRoleStatements(t *testing.T) {",
+      "complete": true
     }
   ],
   "plugin-symbol/access/RoleAuthorizeRequest": [
@@ -8547,6 +8553,12 @@
       "label": "Compare nested permission decisions with the pinned client using the same test cases",
       "test": "conformance/access.test.mjs",
       "marker": "test(\"role permission decisions match"
+    },
+    {
+      "label": "Statements returns a copy of a role's grants; changing it leaves the role's grants and decisions unchanged, and a role built from an extended copy gains the added actions",
+      "test": "plugins/access/access_test.go",
+      "marker": "func TestRoleStatements(t *testing.T) {",
+      "complete": true
     }
   ],
   "sql-dialect/SQLite": [

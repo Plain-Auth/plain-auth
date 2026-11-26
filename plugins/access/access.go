@@ -31,6 +31,10 @@ type Control struct{ vocabulary Statements }
 // Role holds an immutable selection of grants. A role is safe for concurrent use.
 type Role struct{ grants Statements }
 
+// Statements returns a copy of the role's grants. Change the copy and pass
+// it to NewRole to derive another role; the original role is unaffected.
+func (r Role) Statements() Statements { return clone(r.grants) }
+
 // ErrDenied identifies authorization failures, including empty requests.
 var ErrDenied = errors.New("permission denied")
 

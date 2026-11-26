@@ -276,8 +276,8 @@
     - [ ] Custom Permissions
       - [x] Define custom roles and evaluate each role’s entire grant ([test](../../../plugins/admin/admin_test.go#L23))
       - [x] Configure custom operator and reader roles and enforce their grants on the administrative routes ([test](../../../adapters/sqlstore/admin_test.go#L50))
-      - [x] Create Access Control ([test](../../../plugins/access/access_test.go#L44))
-        - [x] Create an access controller from a resource and action vocabulary and refuse roles outside it ([test](../../../plugins/access/access_test.go#L44))
+      - [x] Create Access Control ([test](../../../plugins/access/access_test.go#L45))
+        - [x] Create an access controller from a resource and action vocabulary and refuse roles outside it ([test](../../../plugins/access/access_test.go#L45))
       - [ ] Create Roles
         - [x] Define reader and manager roles with their own grants and evaluate each one separately ([test](../../../plugins/admin/admin_test.go#L18))
       - [ ] Pass Roles to the Plugin
