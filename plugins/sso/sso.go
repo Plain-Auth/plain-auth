@@ -352,7 +352,12 @@ func New(o Options) (auth.Plugin, error) {
 		if usesSAML {
 			if input, ok := samlInput["idpMetadata"].(map[string]any); ok {
 				if doc, ok := input["metadata"].(string); ok && len(doc) > o.SAML.metadataLimit() {
-					return nil, ErrInvalidSAML
+					return nil, metadataTooLarge(o.SAML.metadataLimit())
+				}
+			}
+			if input, ok := samlInput["spMetadata"].(map[string]any); ok {
+				if _, ok := input["metadata"]; ok {
+					return nil, errSPMetadataXML
 				}
 			}
 			raw, e := json.Marshal(samlInput)

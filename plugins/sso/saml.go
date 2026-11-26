@@ -10,6 +10,7 @@ import (
 	"encoding/pem"
 	"encoding/xml"
 	"errors"
+	"fmt"
 	"io"
 	"net/url"
 	"strings"
@@ -196,6 +197,20 @@ type SAMLIDPMetadata struct {
 type SAMLSPMetadata struct {
 	IsAssertionEncrypted bool   `json:"isAssertionEncrypted,omitempty"`
 	EntityID             string `json:"entityID,omitempty"`
+	// Binding is stored but unused, as in another runtime.
+	Binding string `json:"binding,omitempty"`
+}
+
+// errSPMetadataXML refuses SP metadata XML. This host generates its SP
+// metadata from the directory's settings and its own keys; another runtime
+// serves registrant XML unchanged from the auth origin, which a browser can
+// run script from. Each policy the XML carries has a setting here.
+var errSPMetadataXML = &auth.APIError{Status: 400, Code: "SAML_INVALID_SP_METADATA", Message: "SP metadata XML is not accepted; set spMetadata.entityID, identifierFormat, wantAssertionsSigned and authnRequestsSigned instead"}
+
+// metadataTooLarge answers an IdP metadata document over the size limit
+// with another runtime's message.
+func metadataTooLarge(limit int) error {
+	return apiError(400, fmt.Sprintf("IdP metadata exceeds maximum allowed size (%d bytes)", limit))
 }
 
 type SAMLConfig struct {
@@ -423,6 +438,9 @@ func (o Options) samlMetadata(c auth.EndpointContext) (any, error) {
 		return nil, ErrMissing
 	}
 	p, err := store.FindBrowserProvider(c.Request.Context(), Selector{ProviderID: id, Protocol: "saml"})
+	if errors.Is(err, ErrMissing) {
+		return nil, apiError(404, "No provider found for the given providerId")
+	}
 	if err != nil {
 		return nil, err
 	}

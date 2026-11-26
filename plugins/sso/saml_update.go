@@ -43,7 +43,10 @@ func (o Options) updateSAMLMetadata(c auth.EndpointContext, store Store, actor A
 	}
 	metadata, _ := config["idpMetadata"].(map[string]any)
 	raw, _ := metadata["metadata"].(string)
-	if len(c.Body) != 2 || len(config) != 1 || len(metadata) != 1 || raw == "" || len(raw) > o.SAML.metadataLimit() {
+	if len(raw) > o.SAML.metadataLimit() {
+		return nil, metadataTooLarge(o.SAML.metadataLimit())
+	}
+	if len(c.Body) != 2 || len(config) != 1 || len(metadata) != 1 || raw == "" {
 		return nil, apiError(400, "Supply samlConfig.idpMetadata.metadata for this update")
 	}
 	ctx := c.Request.Context()

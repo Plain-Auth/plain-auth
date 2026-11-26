@@ -112,6 +112,29 @@ func TestEnterpriseSAMLDefaults(t *testing.T) {
 			if w := call("POST", "sign-in/sso", "", map[string]any{"providerId": "stored-key", "providerType": "saml", "callbackURL": "/home"}); w.Code != 404 {
 				t.Fatal("a stored SAML row carrying a private key started a sign-in", w.Code, w.Body.String())
 			}
+			// SP metadata XML is refused; spMetadata.binding is stored.
+			if w := call("POST", "sso/register", owner, keyed("custom-sp", func(cfg map[string]any) { cfg["spMetadata"].(map[string]any)["metadata"] = "<EntityDescriptor/>" })); w.Code != 400 || !strings.Contains(w.Body.String(), `"code":"SAML_INVALID_SP_METADATA"`) || rows("custom-sp") != 0 {
+				t.Fatal("a registration with SP metadata XML was not refused", w.Code, w.Body.String())
+			}
+			if w := call("POST", "sso/register", owner, keyed("bound", func(cfg map[string]any) { cfg["spMetadata"].(map[string]any)["binding"] = saml.HTTPPostBinding })); w.Code != 200 {
+				t.Fatal("a registration with spMetadata.binding was refused", w.Code, w.Body.String())
+			}
+			// Oversized IdP metadata names the limit at registration and update.
+			const tooLarge = "IdP metadata exceeds maximum allowed size (102400 bytes)"
+			huge := strings.Repeat(" ", 100*1024+1)
+			if w := call("POST", "sso/register", owner, keyed("huge", func(cfg map[string]any) { cfg["idpMetadata"].(map[string]any)["metadata"] = huge })); w.Code != 400 || !strings.Contains(w.Body.String(), tooLarge) {
+				t.Fatal("an oversized IdP metadata registration did not name the limit", w.Code, w.Body.String())
+			}
+			if w := call("POST", "sso/update-provider", owner, map[string]any{"providerId": "acme", "samlConfig": map[string]any{"idpMetadata": map[string]any{"metadata": huge}}}); w.Code != 400 || !strings.Contains(w.Body.String(), tooLarge) {
+				t.Fatal("an oversized IdP metadata update did not name the limit", w.Code, w.Body.String())
+			}
+			// The metadata route names an unknown provider and sandboxes its XML.
+			if w := call("GET", "sso/saml2/sp/metadata?providerId=unknown", "", nil); w.Code != 404 || !strings.Contains(w.Body.String(), "No provider found for the given providerId") {
+				t.Fatal("SP metadata for an unknown provider did not answer 404", w.Code, w.Body.String())
+			}
+			if w := call("GET", "sso/saml2/sp/metadata?providerId=acme", "", nil); w.Code != 200 || w.Header().Get("Content-Security-Policy") != "default-src 'none'; sandbox" {
+				t.Fatal("SP metadata was served without a sandboxing Content-Security-Policy", w.Code, w.Header())
+			}
 			// Each provider holds one protocol, with SAML on or off, and a
 			// stored row holding both is not served.
 			oidcOnly, err := sso.New(sso.Options{})

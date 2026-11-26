@@ -11207,6 +11207,11 @@
       "label": "Run the domain token's verification create hooks; a declined token registers the provider as pending",
       "test": "adapters/sqlstore/sso_hooks_test.go",
       "marker": "// A declined token registers the provider, and verification answers 404."
+    },
+    {
+      "label": "Name the size limit for an oversized IdP metadata document at registration and update, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_defaults_test.go",
+      "marker": "t.Fatal(\"an oversized IdP metadata registration did not name the limit\""
     }
   ],
   "plugin/sso/GET /sso/providers": [
@@ -12731,6 +12736,11 @@
       "label": "Advertise a single HTTP-Redirect logout service and the signed request key for a configured directory",
       "test": "adapters/sqlstore/sso_saml_test.go",
       "marker": "t.Fatal(\"wrong SP logout service\""
+    },
+    {
+      "label": "Answer 404 'No provider found for the given providerId' for an unknown provider and serve the XML under a sandboxing Content-Security-Policy, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_defaults_test.go",
+      "marker": "t.Fatal(\"SP metadata for an unknown provider did not answer 404\""
     }
   ],
   "plugin/sso/GET / POST /sso/saml2/sp/acs/:providerId": [
@@ -41881,6 +41891,11 @@
       "label": "Publish SP metadata under spMetadata.entityID",
       "test": "adapters/sqlstore/sso_saml_test.go",
       "marker": "if metadata.EntityID != cfg.SPMetadata.EntityID"
+    },
+    {
+      "label": "Refuse spMetadata.metadata with 400 SAML_INVALID_SP_METADATA and store spMetadata.binding; this host generates its SP metadata, a documented deviation, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_defaults_test.go",
+      "marker": "t.Fatal(\"a registration with SP metadata XML was not refused\""
     }
   ],
   "plugin-symbol/sso/SAMLConfig/wantAssertionsSigned": [

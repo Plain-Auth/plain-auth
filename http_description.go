@@ -10,7 +10,8 @@ import (
 // HTMLPage is trusted HTML returned by an endpoint. Escape all dynamic text before constructing it.
 type HTMLPage string
 
-// XMLDocument is an XML representation encoded by a trusted plugin.
+// XMLDocument is an XML representation encoded by a trusted plugin, served
+// with a sandboxing Content-Security-Policy.
 type XMLDocument []byte
 
 // HTTPRoute describes one registered, enabled HTTP operation. OpenAPI is a private copy for the caller.

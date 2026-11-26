@@ -228,6 +228,9 @@ func (a *Auth) writeResult(w http.ResponseWriter, r *http.Request, status int, r
 	if doc, ok := result.(XMLDocument); ok {
 		w.Header().Set("Content-Type", "application/xml")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
+		// A browser renders XML and can run XHTML script inside it, so the
+		// document gets no script, style or network access.
+		w.Header().Set("Content-Security-Policy", "default-src 'none'; sandbox")
 		w.WriteHeader(status)
 		_, _ = w.Write(doc)
 		return

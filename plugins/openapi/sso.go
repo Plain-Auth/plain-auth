@@ -17,7 +17,7 @@ func samlConfigSchema() object {
 	idp["properties"].(object)["singleLogoutService"] = array(responseObject(object{"Binding": text, "Location": object{"type": "string", "format": "uri"}}, "Binding", "Location"))
 	idp["properties"].(object)["singleSignOnService"] = array(responseObject(object{"Binding": text, "Location": object{"type": "string", "format": "uri"}}, "Binding", "Location"))
 	idp["additionalProperties"] = false
-	sp := responseObject(object{"entityID": text, "isAssertionEncrypted": encryption})
+	sp := responseObject(object{"entityID": text, "isAssertionEncrypted": encryption, "binding": text})
 	sp["additionalProperties"] = false
 	idp["anyOf"] = []object{{"required": []string{"entityID"}}, {"required": []string{"metadata"}}}
 	config := responseObject(object{"callbackUrl": text, "idpInitiatedCallbackUrl": text, "entryPoint": object{"type": "string", "format": "uri"}, "cert": cert, "audience": text, "idpMetadata": idp, "spMetadata": sp, "wantAssertionsSigned": object{"type": "boolean"}, "authnRequestsSigned": object{"type": "boolean"}, "identifierFormat": text, "mapping": modelSchema(reflect.TypeFor[sso.SAMLMapping]()),
