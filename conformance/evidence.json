@@ -44731,6 +44731,11 @@
       "label": "Accept only complete continue, link and reject decisions",
       "test": "plugins/sso/resolve_test.go",
       "marker": "func TestUserResolutionDecisions("
+    },
+    {
+      "label": "Refuse a SCIM requirement on a decision that is not a link",
+      "test": "plugins/sso/resolve_test.go",
+      "marker": "t.Fatal(\"a SCIM requirement without a link was accepted\")"
     }
   ],
   "plugin-symbol/sso/SSOUserResolutionInput": [
@@ -44973,6 +44978,46 @@
       "label": "Answer 409 for a link to a missing account and create on an empty decision",
       "test": "adapters/sqlstore/scim_identity_test.go",
       "marker": "t.Fatal(\"an empty SCIM resolution did not create an account\", w.Code, w.Body.String())",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/scim/SCIMActiveUserLink": [
+    {
+      "label": "Find the active SCIM User and account for an exact connection and externalId, and nothing for another case, another connection, an inactive or a deleted User, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_scim_link_test.go",
+      "marker": "func TestEnterpriseSignInGatedBySCIM(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/scim/SCIMActiveUserLinkContext": [
+    {
+      "label": "Check the SCIM User again inside the sign-in transaction and refuse one deactivated while the resolver ran, without a session",
+      "test": "adapters/sqlstore/sso_scim_link_test.go",
+      "marker": "t.Fatal(\"a sign-in whose SCIM User was deactivated during resolution was not refused\", got)",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/scim/SCIMUserExternalIdReference": [
+    {
+      "label": "Match the connection ID and externalId exactly and case-sensitively",
+      "test": "adapters/sqlstore/sso_scim_link_test.go",
+      "marker": "t.Fatal(\"an active link matched an externalId in another case\", err)",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/scim/acquireActiveSCIMUserLink": [
+    {
+      "label": "Sign an active SCIM User in through the paired provider and refuse an inactive or deleted one",
+      "test": "adapters/sqlstore/sso_scim_link_test.go",
+      "marker": "t.Fatal(\"an active SCIM User could not sign in through the paired provider\", got)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/index.mdx#L220": [
+    {
+      "label": "Authenticate only active provisioned users through an SSO resolver gated on the SCIM User",
+      "test": "adapters/sqlstore/sso_scim_link_test.go",
+      "marker": "t.Fatal(\"the gated sign-in did not link the provisioned account\", account, owner)",
       "complete": true
     }
   ]

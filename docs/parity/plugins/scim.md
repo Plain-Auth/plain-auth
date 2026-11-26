@@ -171,10 +171,14 @@
   - [ ] `DELETE /scim/v2/Groups/:groupId`
     - [x] Physically remove the scoped membership edges without deleting Users or another directory's Group ([test](../../../adapters/sqlstore/scim_groups_test.go#L20))
     - [x] Remove one directory grant while another connection changes the same subject ([test](../../../adapters/sqlstore/scim_projection_test.go#L274))
-  - [ ] `SCIMActiveUserLink`
-  - [ ] `SCIMActiveUserLinkContext`
-  - [ ] `SCIMUserExternalIdReference`
-  - [ ] `acquireActiveSCIMUserLink`
+  - [x] `SCIMActiveUserLink` ([test](../../../adapters/sqlstore/sso_scim_link_test.go#L23))
+    - [x] Find the active SCIM User and account for an exact connection and externalId, and nothing for another case, another connection, an inactive or a deleted User, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_scim_link_test.go#L23))
+  - [x] `SCIMActiveUserLinkContext` ([test](../../../adapters/sqlstore/sso_scim_link_test.go#L125))
+    - [x] Check the SCIM User again inside the sign-in transaction and refuse one deactivated while the resolver ran, without a session ([test](../../../adapters/sqlstore/sso_scim_link_test.go#L125))
+  - [x] `SCIMUserExternalIdReference` ([test](../../../adapters/sqlstore/sso_scim_link_test.go#L111))
+    - [x] Match the connection ID and externalId exactly and case-sensitively ([test](../../../adapters/sqlstore/sso_scim_link_test.go#L111))
+  - [x] `acquireActiveSCIMUserLink` ([test](../../../adapters/sqlstore/sso_scim_link_test.go#L99))
+    - [x] Sign an active SCIM User in through the paired provider and refuse an inactive or deleted one ([test](../../../adapters/sqlstore/sso_scim_link_test.go#L99))
   - [ ] `scim`
   - `SCIMPlugin` — *not applicable: TypeScript type (ReturnType<typeof createSCIMPlugin>), consistent with the UsernamePlugin and OrganizationPlugin rules in scope.json*
   - `SCIMEndpoints` — *not applicable: TypeScript type alias (SCIMPlugin["endpoints"]) with no runtime behaviour*
@@ -272,7 +276,8 @@
         - [x] Hand the linked account's email and name to the managing source, unverify a changed email, and refuse a second managing source ([test](../../../adapters/sqlstore/scim_identity_test.go#L146))
       - [x] `{ action: "link", userId, profile: "preserve" }` ([test](../../../adapters/sqlstore/scim_identity_test.go#L132))
         - [x] Keep a linked account's email and name across PATCH, refuse two links from one connection and allow one per connection ([test](../../../adapters/sqlstore/scim_identity_test.go#L132))
-  - [ ] Authenticate provisioned users with SSO
+  - [x] Authenticate provisioned users with SSO ([test](../../../adapters/sqlstore/sso_scim_link_test.go#L105))
+    - [x] Authenticate only active provisioned users through an SSO resolver gated on the SCIM User ([test](../../../adapters/sqlstore/sso_scim_link_test.go#L105))
   - [ ] Handle activation and deletion
 
 ## SCIM reference

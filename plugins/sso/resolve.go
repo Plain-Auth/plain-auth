@@ -38,9 +38,16 @@ type UserResolution struct {
 	UserID        string
 	Profile       string
 	Code, Message string
+	// RequireActiveSCIMUser, on a link, makes the sign-in transaction
+	// confirm that this SCIM User is still active and links to UserID;
+	// otherwise the sign-in fails with SSO_USER_RESOLUTION_FAILED.
+	RequireActiveSCIMUser *auth.SCIMUserReference
 }
 
 func (r UserResolution) valid() bool {
+	if ref := r.RequireActiveSCIMUser; ref != nil && (r.Action != ResolveLink || ref.ConnectionID == "" || ref.ExternalID == "") {
+		return false
+	}
 	switch r.Action {
 	case ResolveContinue:
 		return true
@@ -56,6 +63,7 @@ func (r UserResolution) apply(opts *auth.OAuthLoginOptions) {
 	if r.Action == ResolveLink {
 		opts.SelectUserID = r.UserID
 		opts.UpdateSelectedProfile = r.Profile == "update"
+		opts.RequireActiveSCIMUser = r.RequireActiveSCIMUser
 	}
 }
 
@@ -164,6 +172,9 @@ func resolutionFailure(c auth.EndpointContext, flow auth.OAuthFlow, r UserResolu
 		return out, e, true
 	case errors.Is(err, auth.ErrOAuthAccountAlreadyLinked):
 		out, e := enterpriseFailure(c, flow, "account_ownership_conflict", "Account is already linked to another user")
+		return out, e, true
+	case errors.Is(err, auth.ErrSCIMUserInactive):
+		out, e := enterpriseFailure(c, flow, errResolution.Code, errResolution.Message)
 		return out, e, true
 	}
 	return nil, nil, false

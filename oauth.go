@@ -216,6 +216,11 @@ type OAuthLoginOptions struct {
 	// the selected user; a changed email takes the provider's verification.
 	// Without it the selected user's profile is kept.
 	UpdateSelectedProfile bool
+	// RequireActiveSCIMUser, with SelectUserID, makes the store confirm under
+	// the selected user's lock that this SCIM User is still active, links to
+	// SelectUserID and belongs to an active connection, or refuse with
+	// ErrSCIMUserInactive.
+	RequireActiveSCIMUser *SCIMUserReference
 	// ProfileFields carries an enterprise sign-in's prepared user fields to
 	// its store: Create for a new user and, when set, Update for a returning
 	// owner whose profile the provider overrides.
@@ -293,6 +298,14 @@ type OAuthLinkRefreshStore interface {
 var ErrOAuthLinkingDisabled = errors.New("account linking is disabled")
 var ErrOAuthAccountAlreadyLinked = errors.New("social identity belongs to another account")
 var ErrOAuthProfileConflict = errors.New("provider profile conflicts with an existing profile")
+
+// SCIMUserReference names one SCIM connection's User by its exact,
+// case-sensitive externalId.
+type SCIMUserReference struct{ ConnectionID, ExternalID string }
+
+// ErrSCIMUserInactive refuses a sign-in whose required SCIM User is no
+// longer active.
+var ErrSCIMUserInactive = errors.New("the SCIM user the sign-in relies on is no longer active")
 var ErrOAuthEmailUnverified = errors.New("OAuth account requires email verification")
 
 var ErrOAuthSignupDisabled = errors.New("OAuth account creation disabled")

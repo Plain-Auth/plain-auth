@@ -269,6 +269,13 @@ func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tok
 				return u, false, err
 			}
 		}
+		if options.RequireActiveSCIMUser != nil {
+			if err := s.requireActiveSCIMUser(ctx, tx, *options.RequireActiveSCIMUser, options.SelectUserID); err != nil {
+				return u, false, err
+			}
+		}
+	} else if options.RequireActiveSCIMUser != nil {
+		return u, false, errors.New("sqlstore: RequireActiveSCIMUser needs SelectUserID")
 	}
 	created := false
 	emailLink := false

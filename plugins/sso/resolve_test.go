@@ -1,6 +1,10 @@
 package sso
 
-import "testing"
+import (
+	"testing"
+
+	auth "github.com/Plain-Org/plain-auth"
+)
 
 // A ResolveUser decision must be complete to take effect.
 func TestUserResolutionDecisions(t *testing.T) {
@@ -21,5 +25,12 @@ func TestUserResolutionDecisions(t *testing.T) {
 	}
 	if (UserResolution{}).valid() {
 		t.Fatal("an empty decision was accepted")
+	}
+	ref := auth.SCIMUserReference{ConnectionID: "workforce", ExternalID: "employee"}
+	if (UserResolution{Action: ResolveReject, Code: "x", RequireActiveSCIMUser: &ref}).valid() {
+		t.Fatal("a SCIM requirement without a link was accepted")
+	}
+	if !(UserResolution{Action: ResolveLink, UserID: "u", Profile: "preserve", RequireActiveSCIMUser: &ref}).valid() {
+		t.Fatal("a link with a SCIM requirement was refused")
 	}
 }

@@ -143,6 +143,26 @@ scim.Options{Identity: &scim.Identity{ResolveUser: func(ctx context.Context, in 
 
 The input carries the `ConnectionID`, the `ProvisioningDomainID` and a copy of the normalized User in `Resource`: userName, displayName, externalId, primary email, active and the canonical attributes. Never link by an unverified email match. `ResolveUser` runs before the directory transaction, so read through the store or your own database. It does not run for a POST whose externalId reclaims an inactive SCIM User or a deleted User's account, and `ValidateUserInfo` still checks every POST, linked or not. A link to an account that does not exist answers 409 `The resolved user does not exist`. An error, a panic or an invalid decision answers 500 `SCIM identity resolution failed`, and a `*scim.Error` is answered as is; another runtime reads an invalid decision as a preserved link. A link the data no longer allows when the transaction runs, such as an externalId reclaimed meanwhile, answers 409. It needs a store implementing `scim.IdentityStore`, as the SQL store does. A lifecycle reconciler for linked accounts is not available yet. [Identity tests](../adapters/sqlstore/scim_identity_test.go)
 
+## Sign in provisioned users with SSO
+
+To let only provisioned, active directory Users sign in through an enterprise provider, pair the SCIM connection with the provider's [user resolver](sso.md#resolve-enterprise-users). Configure the directory to send the provider's immutable, case-exact subject as `externalId`. The resolver looks the User up with the SQL store's `SCIMActiveUserLink` and links the sign-in to its account:
+
+```go
+sso.Options{ResolveUser: func(ctx context.Context, in sso.UserResolutionInput) (sso.UserResolution, error) {
+	ref := scim.UserExternalIDReference{ConnectionID: "workforce", ExternalID: in.AccountKey.AccountID}
+	link, err := store.SCIMActiveUserLink(ctx, ref)
+	if errors.Is(err, scim.ErrNotFound) {
+		return sso.UserResolution{Action: sso.ResolveReject, Code: "SCIM_USER_NOT_ACTIVE"}, nil
+	}
+	if err != nil {
+		return sso.UserResolution{}, err
+	}
+	return sso.UserResolution{Action: sso.ResolveLink, UserID: link.UserID, Profile: "preserve", RequireActiveSCIMUser: &ref}, nil
+}}
+```
+
+`SCIMActiveUserLink` matches the connection ID and externalId exactly and never falls back to the userName, an email, another connection or a deleted User; it answers `scim.ErrNotFound` for a missing, inactive, tombstoned or orphaned User or a retired connection. The lookup runs outside the sign-in transaction; with `RequireActiveSCIMUser`, the store checks the SCIM User again under the account's lock in the transaction that links the identity and creates the session, where another runtime fences it inside one transaction. A User deactivated in between fails the sign-in with `error=SSO_USER_RESOLUTION_FAILED`; such a sign-in creates no account or session, and the user starts a fresh sign-in. [Gated sign-in tests](../adapters/sqlstore/sso_scim_link_test.go)
+
 ## User queries and updates
 
 Collections accept one-based `startIndex` and `count` up to 100. Use equality filters on `id`, `userName`, `externalId`, `emails.value` and `emails[type eq "work"].value`. Combine up to ten conditions with `and`. Choose `attributes` or `excludedAttributes` for a comma-separated list of top-level fields or individual role fields such as `roles.value`. Responses always include `id` and `schemas`.
@@ -200,7 +220,7 @@ PUT replaces the Group profile and its direct member set. PATCH supports scalar 
 
 To accept Microsoft's classic Entra Group schema marker on creation, set `AcceptLegacyEntraGroupSchema: true` in `scim.Options`. The response and discovery documents use the core Group schema. [Group lifecycle and concurrency tests](../adapters/sqlstore/scim_groups_test.go) · [Group PATCH and compatibility tests](../plugins/scim/groups_test.go)
 
-The checklist tracks Group-to-application role mapping, Enterprise User attributes, additional nested User attribute selections and PATCH paths, and SSO identity linking. [Provisioning checklist](parity/plugins/scim.md) · [SQL ownership and concurrency tests](../adapters/sqlstore/scim_test.go) · [Cross-runtime directory tests](../conformance/scim-contract.mjs)
+The checklist tracks Group-to-application role mapping, Enterprise User attributes, and additional nested User attribute selections and PATCH paths. [Provisioning checklist](parity/plugins/scim.md) · [SQL ownership and concurrency tests](../adapters/sqlstore/scim_test.go) · [Cross-runtime directory tests](../conformance/scim-contract.mjs)
 
 ## Project Group memberships into application roles
 

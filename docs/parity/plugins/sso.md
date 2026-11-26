@@ -409,7 +409,8 @@
   - [x] `SSOUserResolution` ([test](../../../adapters/sqlstore/sso_resolve_user_test.go#L20))
     - [x] Link an enterprise identity to a selected user without email matching or sign-up rules, keep or copy the profile, and refuse an identity another user owns or a missing user, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_selected_user_test.go#L17))
     - [x] Continue, link with preserve or update, and reject an OIDC sign-in from a ResolveUser decision, and fail closed on an error, panic or invalid decision, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_resolve_user_test.go#L20))
-    - [x] Accept only complete continue, link and reject decisions ([test](../../../plugins/sso/resolve_test.go#L6))
+    - [x] Accept only complete continue, link and reject decisions ([test](../../../plugins/sso/resolve_test.go#L10))
+    - [x] Refuse a SCIM requirement on a decision that is not a link ([test](../../../plugins/sso/resolve_test.go#L31))
   - [ ] `SSOUserResolutionContext`
     - [x] Run the resolver outside the sign-in transaction, so it can read through the store ([test](../../../adapters/sqlstore/sso_resolve_user_test.go#L119))
   - [x] `SSOUserResolutionInput` ([test](../../../adapters/sqlstore/sso_saml_resolve_user_test.go#L81))
