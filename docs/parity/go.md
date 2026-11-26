@@ -12,6 +12,14 @@ These checks exercise the Go HTTP client, router mounts and SQL drivers.
   - [x] Use typed client methods for all nine team endpoints over HTTP ([test](../../adapters/sqlstore/organization_teams_test.go#L99))
   - [x] Manage and revoke administrative sessions through the typed cookie-backed client ([test](../../adapters/sqlstore/admin_test.go#L21))
   - [x] Use the typed client to register, sign in, rename a public handle and query availability ([test](../../adapters/sqlstore/username_test.go#L23))
+  - [x] A machine client requests a device code and polls for its token while a browser client verifies, approves or denies it; OAuth errors reach the caller and the token response sets no browser cookies ([test](../../client/deviceauthorization_test.go#L19))
+  - [x] The typed client reads the JWKS anonymously, is refused a JWT without a session and receives one after sign-up ([test](../../client/jwt_test.go#L15))
+  - [x] The typed client sends, checks and verifies email codes, signs in with one into its cookie jar, resets a password with a code once and requests an email-change code ([test](../../client/emailotp_test.go#L16))
+  - [x] The typed client requests a magic link whose sender gets body-free request metadata, verifies it into its cookie jar, and a second verification fails ([test](../../client/magiclink_test.go#L18))
+  - [x] One typed client generates a one-time token for its session, another redeems it once and keeps the bound cookie, and a second verification fails ([test](../../client/onetimetoken_test.go#L17))
+  - [x] The typed client enables a delivered second factor, sends and verifies its code during sign-in, and keeps the remembered-browser grant in its cookie jar ([test](../../client/twofactor_delivery_test.go#L17))
+  - [x] The typed client's anonymous sign-in refuses an invalid generated guest email, then signs a guest in with the default name, and signing up ends the guest session ([test](../../client/anonymous_test.go#L17))
+  - [x] WithBearerToken sends a signed bearer credential without cookies, keeps bearer and cookie identities apart, and refuses a revoked or malformed bearer ([test](../../client/bearer_test.go#L16))
 - [ ] Environment configuration
   - [x] Ignore unrelated host settings when resolving the signing key, public URL, origins and runtime mode ([test](../../env_test.go#L46))
   - [x] Resolve public URL and mount path from explicit options and process settings ([test](../../env_test.go#L20))
@@ -24,6 +32,7 @@ These checks exercise the Go HTTP client, router mounts and SQL drivers.
   - [x] Verify startup key selection, mount, trusted origins and client destination in an isolated Go process ([test](../../conformance/env.test.mjs#L10))
   - [x] Resolve the native client destination from an explicit URL or AUTH_URL while ignoring unrelated host settings ([test](../../client/environment_test.go#L17))
   - [x] Protect records with a purpose and an explicitly configured key version ([test](../../twofactor_test.go#L22))
+  - [x] With AUTH_ENV=production and no ErrorPage, the default error page at <mount>/error redirects to / with the error code ([test](../../error_page_test.go#L39))
 - [ ] HTTP framework mounts
   - [x] ServeMux signup, session lookup and sign-out with multiple cookies ([test](../../integrations/routers/routers_test.go#L49))
   - [x] chi signup, session lookup and sign-out with multiple cookies ([test](../../integrations/routers/routers_test.go#L57))
@@ -32,7 +41,8 @@ These checks exercise the Go HTTP client, router mounts and SQL drivers.
   - [x] Fiber signup, session lookup and sign-out with multiple cookies ([test](../../integrations/routers/routers_test.go#L89))
   - [x] Echo v5 signup, session lookup and sign-out with multiple cookies ([test](../../integrations/routers/routers_test.go#L81))
   - [x] Use the same session on a host-owned route with all six routers and reject its cookie after sign-out ([test](../../integrations/routers/routers_test.go#L191))
-- [ ] SQL engine contracts
+  - [x] The handler mounted on ServeMux, chi, Gorilla Mux, Gin, Echo v5 and Fiber v3 serves sign-up, get-session, organization and role operations as JSON and a host-owned route that reads the session, and sign-out returns at least two Set-Cookie headers and revokes the session ([test](../../integrations/routers/routers_test.go#L36))
+- [x] SQL engine contracts ([test](../../adapters/sqlstore/engines_test.go#L24))
   - [x] Reopen the SQLite database and read stored credentials and sessions ([test](../../adapters/sqlstore/sqlite_test.go#L85))
   - [x] Roll back registration if creating the initial session fails ([test](../../adapters/sqlstore/sqlite_test.go#L125))
   - [x] Resolve concurrent same-email signups across two database connections ([test](../../adapters/sqlstore/sqlite_test.go#L153))
@@ -46,3 +56,5 @@ These checks exercise the Go HTTP client, router mounts and SQL drivers.
   - [x] Require database-enforced unique usernames and reject a partial unique index ([test](../../adapters/sqlstore/username_test.go#L474))
   - [x] Backfill populated date columns with the correct UTC instant and check existing timestamp precision ([test](../../adapters/sqlstore/date_fields_test.go#L102))
   - [x] Keep computed defaults out of schema migrations and preserve existing nullable values across three SQL engines ([test](../../adapters/sqlstore/computed_fields_test.go#L120))
+  - [x] On SQLite, PostgreSQL and MySQL the store round-trips a credential by case-insensitive email, refuses a duplicate email, rolls back a failed session insert, reopens a populated schema, and serves sign-up, sign-in, get-session, revoke-other-sessions and sign-out over HTTP ([test](../../adapters/sqlstore/engines_test.go#L24))
+  - [x] The read-only schema check on SQLite, PostgreSQL and MySQL reports missing tables, missing columns and extra required columns, includes view columns and honours cancellation ([test](../../adapters/sqlstore/check_test.go#L17))

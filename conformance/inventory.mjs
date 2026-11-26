@@ -129,12 +129,18 @@ for (const file of tracked.filter((f) => f.startsWith("packages/cli/src/commands
   for (const cmd of text.matchAll(/new Command\("([^"]+)"\)/g)) {
     runtime.push(pending(link(file, inline(cmd[1])), 1));
     addEvidence(runtime, "cli/" + cmd[1], runtimePage, 2);
-    for (const sub of text.matchAll(/\.command\("([^"]+)"\)/g)) runtime.push(pending(inline(cmd[1] + " " + sub[1]), 2));
+    for (const sub of text.matchAll(/\.command\("([^"]+)"\)/g)) {
+      runtime.push(pending(inline(cmd[1] + " " + sub[1]), 2));
+      addEvidence(runtime, "cli/" + cmd[1] + " " + sub[1], runtimePage, 3);
+    }
     // Login and logout are the only command declarations sharing one source file.
     const end = text.indexOf('new Command("', cmd.index + cmd[0].length);
     const declaration = text.slice(cmd.index, end < 0 ? text.length : end);
     const flags = new Set([...declaration.matchAll(/\.option\(\s*["']([^"']+)["']/g)].map((m) => m[1]));
-    for (const flag of flags) runtime.push(pending(inline(flag), 2));
+    for (const flag of flags) {
+      runtime.push(pending(inline(flag), 2));
+      addEvidence(runtime, "cli/" + cmd[1] + "/" + flag, runtimePage, 3);
+    }
   }
 }
 

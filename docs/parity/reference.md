@@ -521,6 +521,7 @@
       - [x] On both runtimes, with storeIdentifier hashed, a custom hasher or a reset-password override, reset links, hashed magic links and hashed one-time tokens redeem once, a reset refuses its stored value as a token, and both store the same hash of the purpose-prefixed identifier, Go keeping the prefix in front ([test](../../conformance/verification-identifiers.mjs#L22))
       - [x] A StoreVerificationIdentifier hash that fails, panics or outlives its context leaves sign-up with its session and no Set-Ott header, and fails explicit one-time token issuance and redemption without leaking the failure ([test](../../client/onetimetoken_contract_test.go#L20))
     - [ ] `storeInDatabase`
+      - [x] On SQLite with SecondaryStorage holding sessions, DPoP replay records stay in the database: a second issuer sharing it refuses a replayed proof and the storage receives no reservation ([test](../../adapters/sqlstore/dpop_secondary_storage_test.go#L26))
   - [ ] `rateLimit`
     - [x] Select the production rate limit by default and honor an explicit override ([test](../../env_test.go#L122))
     - [x] `enabled` ([test](../../conformance/goapi/http_test.go#L145))

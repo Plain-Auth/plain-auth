@@ -270,6 +270,52 @@
       "label": "Report mapped wallet drift through the process exit code and JSON findings on three SQL engines",
       "test": "cmd/authctl/wallet_schema_test.go",
       "marker": "read-only check missed mapped wallet table"
+    },
+    {
+      "label": "Report missing tables, missing columns and extra required columns on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/check_test.go",
+      "marker": "func TestReadOnlySchemaCheck(t *testing.T) {",
+      "complete": true
+    },
+    {
+      "label": "Check a combined plugin deployment using each live SQL catalog",
+      "test": "adapters/sqlstore/check_test.go",
+      "marker": "func TestCheckSchemaSelectedProfiles(t *testing.T) {"
+    },
+    {
+      "label": "Resolve PostgreSQL tables in the connection's search path",
+      "test": "adapters/sqlstore/check_test.go",
+      "marker": "func TestCheckSchemaPostgresSearchPath(t *testing.T) {"
+    },
+    {
+      "label": "Return distinct success, drift and operational exit codes with JSON findings and redacted connection errors",
+      "test": "cmd/authctl/check_test.go",
+      "marker": "func TestCheckSchemaProcess(t *testing.T) {"
+    },
+    {
+      "label": "Report an uninstalled Polar profile and an empty finding list after provisioning",
+      "test": "cmd/authctl/main_test.go",
+      "marker": "t.Fatal(\"pending billing setup not reported\", err, out.String())"
+    },
+    {
+      "label": "Report missing or incompatible configured session columns on all three engines without changing the database",
+      "test": "adapters/sqlstore/check_session_fields_test.go",
+      "marker": "t.Fatal(\"check mutated a populated target\", got)"
+    },
+    {
+      "label": "Report missing, incompatible and generated user columns in read-only JSON checks across all three engines",
+      "test": "cmd/authctl/user_fields_test.go",
+      "marker": "t.Fatal(\"generated user column accepted as writable\")"
+    },
+    {
+      "label": "Reject malformed user configuration before opening a target database",
+      "test": "cmd/authctl/user_fields_test.go",
+      "marker": "func TestUserFieldCommandsValidateBeforeConnecting(t *testing.T) {"
+    },
+    {
+      "label": "Report mapped wallet drift through the process exit code and JSON findings on three SQL engines",
+      "test": "cmd/authctl/wallet_schema_test.go",
+      "marker": "t.Fatal(\"read-only check missed mapped wallet table\")"
     }
   ],
   "cli/generate": [
@@ -312,6 +358,41 @@
       "label": "Generate typed date columns for both models on each SQL dialect and reject invalid static timestamps",
       "test": "cmd/authctl/user_fields_test.go",
       "marker": "func TestGenerateDateFieldDDL("
+    },
+    {
+      "label": "Emit SQL DDL for SQLite, PostgreSQL and MySQL",
+      "test": "cmd/authctl/main_test.go",
+      "marker": "if err := runCommand(\"generate\", \"--dialect\", dialect); err != nil {"
+    },
+    {
+      "label": "The Go schema generator behind authctl generate prints the same DDL as the other runtime for every verified plugin combination on three dialects, and the authctl binary prints that DDL for no plugin or a single plugin",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"the CLI emits the pinned plugin schema across exhaustive base combinations and SCIM and organization billing witnesses on three dialects\", async () => {"
+    },
+    {
+      "label": "Generate the optional Polar checkout and delivery tables on every SQL dialect",
+      "test": "cmd/authctl/main_test.go",
+      "marker": "func TestPolarSchemaCommands(t *testing.T) {"
+    },
+    {
+      "label": "Emit physical columns from a JSON field definition for each supported SQL dialect",
+      "test": "cmd/authctl/session_fields_test.go",
+      "marker": "func TestSessionFieldCommands(t *testing.T) {"
+    },
+    {
+      "label": "Generate the selected plugin schema with independent user and session JSON declarations on all three dialects",
+      "test": "cmd/authctl/user_fields_test.go",
+      "marker": "t.Fatal(\"generated combined schema\", err)"
+    },
+    {
+      "label": "Generate the configured wallet model alongside user and session fields from one portable JSON declaration",
+      "test": "cmd/authctl/wallet_schema_test.go",
+      "marker": "t.Fatal(\"wallet CLI generated different SQL than the configured public API\")"
+    },
+    {
+      "label": "Generate typed date columns for both models on each SQL dialect and reject invalid static timestamps",
+      "test": "cmd/authctl/user_fields_test.go",
+      "marker": "func TestGenerateDateFieldDDL(t *testing.T) {"
     }
   ],
   "cli/migrate": [
@@ -354,6 +435,61 @@
       "label": "Replay the mapped wallet schema with profile fields and the API-key ledger while retaining a populated wallet",
       "test": "cmd/authctl/wallet_schema_test.go",
       "marker": "repeated CLI migration lost mapped wallet ownership"
+    },
+    {
+      "label": "Initialize the SQLite schema and repeat the migration",
+      "test": "cmd/authctl/main_test.go",
+      "marker": "if err := runCommand(\"migrate\", \"--dialect\", \"sqlite\"); err != nil {"
+    },
+    {
+      "label": "Apply the selected profiles twice on populated SQLite while retaining the user",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"adding plugin profiles to a populated SQLite database preserves existing accounts and matches a fresh schema\", async () => {"
+    },
+    {
+      "label": "Upgrade existing PostgreSQL and MySQL schemas with combined team, billing and factor profiles",
+      "test": "adapters/sqlstore/profiles_test.go",
+      "marker": "func TestServerPluginSchemaUpgrade(t *testing.T) {"
+    },
+    {
+      "label": "Reopen a populated SCIM profile twice on SQLite, PostgreSQL and MySQL and retain the original account",
+      "test": "adapters/sqlstore/scim_test.go",
+      "marker": "func TestSCIMDirectoryLifecycle(t *testing.T) {"
+    },
+    {
+      "label": "Preserve Polar delivery receipts and their uniqueness across repeated CLI-compatible migrations on three SQL engines",
+      "test": "integrations/polar/schema_test.go",
+      "marker": "func TestCheckoutLedgerSchemaMigration(t *testing.T) {"
+    },
+    {
+      "label": "Backfill existing sessions, preserve the owner's data and report incompatible definitions on live servers",
+      "test": "cmd/authctl/session_fields_live_test.go",
+      "marker": "t.Fatal(\"old row lost its default\", err)"
+    },
+    {
+      "label": "Upgrade a populated account with zero, false and null values while preserving its original fields and session schema",
+      "test": "cmd/authctl/user_fields_test.go",
+      "marker": "t.Fatalf(\"populated account backfill: %#v\", physical)"
+    },
+    {
+      "label": "Replay the mapped wallet schema with profile fields and the API-key ledger while retaining a populated wallet",
+      "test": "cmd/authctl/wallet_schema_test.go",
+      "marker": "t.Fatal(\"repeated CLI migration lost mapped wallet ownership\", owner, err)"
+    },
+    {
+      "label": "Refuse to add a required account column to populated rows without a default, then backfill it once a default is declared, on three SQL engines",
+      "test": "cmd/authctl/account_fields_test.go",
+      "marker": "t.Fatal(\"added required column to populated accounts without a backfill\")"
+    },
+    {
+      "label": "Refuse to migrate a configured session column whose existing type is incompatible, on PostgreSQL and MySQL",
+      "test": "cmd/authctl/session_fields_live_test.go",
+      "marker": "t.Fatal(\"migration rewrote an incompatible field\")"
+    },
+    {
+      "label": "Return an error from migrate when AUTH_DSN is empty",
+      "test": "cmd/authctl/main_test.go",
+      "marker": "t.Fatal(\"accepted missing DSN\")"
     }
   ],
   "docs/content/docs/concepts/cookies.mdx#L62": [
@@ -451,6 +587,22 @@
       "label": "Roll back a failed initialization atomically",
       "test": "adapters/sqlstore/sqlite_test.go",
       "marker": "func TestFailedSchemaInitializationIsAtomic("
+    },
+    {
+      "label": "Emit table DDL from authctl generate for PostgreSQL, MySQL and SQLite",
+      "test": "cmd/authctl/main_test.go",
+      "marker": "if err := runCommand(\"generate\", \"--dialect\", dialect); err != nil {",
+      "complete": true
+    },
+    {
+      "label": "Run authctl migrate twice against a SQLite file",
+      "test": "cmd/authctl/main_test.go",
+      "marker": "if err := runCommand(\"migrate\", \"--dialect\", \"sqlite\"); err != nil {"
+    },
+    {
+      "label": "Generate the configured schema with authctl, apply it with authctl migrate and pass authctl check on SQLite, PostgreSQL and MySQL",
+      "test": "cmd/authctl/user_fields_test.go",
+      "marker": "func TestUserFieldCommandsAcrossEngines(t *testing.T) {"
     }
   ],
   "docs/content/docs/authentication/email-password.mdx#L38": [
@@ -591,6 +743,11 @@
       "label": "Use the same session on a host-owned route with all six routers and reject its cookie after sign-out",
       "test": "integrations/routers/routers_test.go",
       "marker": "application route received incorrect account"
+    },
+    {
+      "label": "The handler mounted on ServeMux, chi, Gorilla Mux, Gin, Echo v5 and Fiber v3 serves sign-up, get-session, organization and role operations as JSON and a host-owned route that reads the session, and sign-out returns at least two Set-Cookie headers and revokes the session",
+      "test": "integrations/routers/routers_test.go",
+      "marker": "func TestFrameworkMounts("
     }
   ],
   "go/client": [
@@ -628,6 +785,46 @@
       "label": "Use the typed client to register, sign in, rename a public handle and query availability",
       "test": "adapters/sqlstore/username_test.go",
       "marker": "func TestUsernameLifecycleAcrossStores("
+    },
+    {
+      "label": "A machine client requests a device code and polls for its token while a browser client verifies, approves or denies it; OAuth errors reach the caller and the token response sets no browser cookies",
+      "test": "client/deviceauthorization_test.go",
+      "marker": "func TestNativeDeviceClient("
+    },
+    {
+      "label": "The typed client reads the JWKS anonymously, is refused a JWT without a session and receives one after sign-up",
+      "test": "client/jwt_test.go",
+      "marker": "func TestNativeJWTClient("
+    },
+    {
+      "label": "The typed client sends, checks and verifies email codes, signs in with one into its cookie jar, resets a password with a code once and requests an email-change code",
+      "test": "client/emailotp_test.go",
+      "marker": "func TestNativeEmailOTPClient("
+    },
+    {
+      "label": "The typed client requests a magic link whose sender gets body-free request metadata, verifies it into its cookie jar, and a second verification fails",
+      "test": "client/magiclink_test.go",
+      "marker": "func TestNativeMagicLinkClient("
+    },
+    {
+      "label": "One typed client generates a one-time token for its session, another redeems it once and keeps the bound cookie, and a second verification fails",
+      "test": "client/onetimetoken_test.go",
+      "marker": "func TestNativeOneTimeTokenClient("
+    },
+    {
+      "label": "The typed client enables a delivered second factor, sends and verifies its code during sign-in, and keeps the remembered-browser grant in its cookie jar",
+      "test": "client/twofactor_delivery_test.go",
+      "marker": "func TestNativeDeliveredFactorClient("
+    },
+    {
+      "label": "The typed client's anonymous sign-in refuses an invalid generated guest email, then signs a guest in with the default name, and signing up ends the guest session",
+      "test": "client/anonymous_test.go",
+      "marker": "func TestGuestClientOnMemoryStore("
+    },
+    {
+      "label": "WithBearerToken sends a signed bearer credential without cookies, keeps bearer and cookie identities apart, and refuses a revoked or malformed bearer",
+      "test": "client/bearer_test.go",
+      "marker": "func TestSignedBearerClient("
     }
   ],
   "go/databases": [
@@ -695,6 +892,17 @@
       "label": "Keep computed defaults out of schema migrations and preserve existing nullable values across three SQL engines",
       "test": "adapters/sqlstore/computed_fields_test.go",
       "marker": "func TestComputedDefaultsDuringMigration("
+    },
+    {
+      "label": "On SQLite, PostgreSQL and MySQL the store round-trips a credential by case-insensitive email, refuses a duplicate email, rolls back a failed session insert, reopens a populated schema, and serves sign-up, sign-in, get-session, revoke-other-sessions and sign-out over HTTP",
+      "test": "adapters/sqlstore/engines_test.go",
+      "marker": "func TestEngineContract(",
+      "complete": true
+    },
+    {
+      "label": "The read-only schema check on SQLite, PostgreSQL and MySQL reports missing tables, missing columns and extra required columns, includes view columns and honours cancellation",
+      "test": "adapters/sqlstore/check_test.go",
+      "marker": "func TestReadOnlySchemaCheck("
     }
   ],
   "cli/secret": [
@@ -1500,6 +1708,11 @@
       "label": "Protect records with a purpose and an explicitly configured key version",
       "test": "twofactor_test.go",
       "marker": "func TestEncryptedRecordsRequirePurposeAndExplicitKeyVersion("
+    },
+    {
+      "label": "With AUTH_ENV=production and no ErrorPage, the default error page at <mount>/error redirects to / with the error code",
+      "test": "error_page_test.go",
+      "marker": "func TestAuthErrorPageInput("
     }
   ],
   "docs/content/docs/reference/options.mdx#L22": [
@@ -1795,6 +2008,16 @@
       "label": "Write a private environment file once and preserve an existing file",
       "test": "cmd/authctl/setup_test.go",
       "marker": "func TestInitializeEnvironment("
+    },
+    {
+      "label": "Write a new environment file holding a 64-character AUTH_SECRET value and the quoted public URL, keep that AUTH_SECRET line out of standard output, and refuse to replace or alter an existing file",
+      "test": "cmd/authctl/setup_test.go",
+      "marker": "func TestInitializeEnvironment(t *testing.T) {"
+    },
+    {
+      "label": "Reject unusable public URLs without writing an environment file",
+      "test": "cmd/authctl/setup_test.go",
+      "marker": "func TestInitRejectsUnusablePublicURL(t *testing.T) {"
     }
   ],
   "core/error": [
@@ -5266,6 +5489,31 @@
       "label": "Create the first administrator in an existing database using a password supplied on standard input",
       "test": "cmd/authctl/admin_test.go",
       "marker": "func TestCreateAdminCommand("
+    },
+    {
+      "label": "Create the first administrator in an existing database using a password supplied on standard input",
+      "test": "cmd/authctl/admin_test.go",
+      "marker": "func TestCreateAdminCommand(t *testing.T) {"
+    },
+    {
+      "label": "Refuse to run when the target has no admin schema, without creating a database at the AUTH_DSN path",
+      "test": "cmd/authctl/admin_test.go",
+      "marker": "t.Fatal(\"bootstrap created a database at the wrong target\", err)"
+    },
+    {
+      "label": "Let the created administrator sign in with the admin role and list users through the admin service",
+      "test": "cmd/authctl/admin_test.go",
+      "marker": "t.Fatal(\"provisioned administrator cannot operate\", err)"
+    },
+    {
+      "label": "Hash the bootstrapped administrator's password with the instance's configured hasher and refuse a second bootstrap",
+      "test": "adapters/sqlstore/password_codec_test.go",
+      "marker": "t.Fatalf(\"bootstrap credential %v\", err)"
+    },
+    {
+      "label": "Apply the application's user-create database hook when it bootstraps the administrator through its Auth instance",
+      "test": "adapters/sqlstore/database_hooks_test.go",
+      "marker": "t.Fatal(\"the bootstrap ignored the user hook\", root.Name, stored.Name)"
     }
   ],
   "plugin-symbol/last-login-method/LastLoginMethodOptions/maxAge": [
@@ -7003,6 +7251,11 @@
       "label": "Sessions are copied into SecondaryStorage; verification records stay in the database",
       "test": "adapters/sqlstore/secondary_sessions_test.go",
       "marker": "func TestSecondaryStorageSessions(t *testing.T) {"
+    },
+    {
+      "label": "With SecondaryStorage and no RateLimitStorage, two replicas share each rate limit through Increment counters opened with the rule's window",
+      "test": "conformance/goapi/secondary_rate_limits_test.go",
+      "marker": "func TestRateLimitsInSecondaryStorage(t *testing.T) {"
     }
   ],
   "docs/content/docs/concepts/database.mdx#L177": [
@@ -7082,6 +7335,22 @@
       "label": "Run the account and session lifecycle against SQLite",
       "test": "adapters/sqlstore/account_contract_test.go",
       "marker": "func TestAccountEngineContract("
+    },
+    {
+      "label": "Run the user, credential and session store contract against SQLite, including reopening a populated schema",
+      "test": "adapters/sqlstore/engines_test.go",
+      "marker": "func TestEngineContract(",
+      "complete": true
+    },
+    {
+      "label": "Generate SQL for every dialect and migrate a SQLite file twice with authctl",
+      "test": "cmd/authctl/main_test.go",
+      "marker": "func TestCommands("
+    },
+    {
+      "label": "Generate, migrate and check a SQLite schema with authctl, then sign up against the migrated database",
+      "test": "cmd/authctl/user_fields_test.go",
+      "marker": "func TestUserFieldCommandsAcrossEngines("
     }
   ],
   "sql-dialect/PostgreSQL": [
@@ -7089,6 +7358,22 @@
       "label": "Run the account and session lifecycle against PostgreSQL",
       "test": "adapters/sqlstore/account_contract_test.go",
       "marker": "func TestAccountEngineContract("
+    },
+    {
+      "label": "Run the user, credential and session store contract against PostgreSQL, including reopening a populated schema",
+      "test": "adapters/sqlstore/engines_test.go",
+      "marker": "func TestEngineContract(",
+      "complete": true
+    },
+    {
+      "label": "Generate, migrate and check a PostgreSQL schema with authctl, then sign up against the migrated database",
+      "test": "cmd/authctl/user_fields_test.go",
+      "marker": "func TestUserFieldCommandsAcrossEngines("
+    },
+    {
+      "label": "Compare the core PostgreSQL tables that Open migrates with a fresh install of the other runtime's pinned SQL",
+      "test": "adapters/sqlstore/schema_test.go",
+      "marker": "func TestServerSchemaMatchesUpstream("
     }
   ],
   "sql-dialect/MySQL": [
@@ -7096,6 +7381,22 @@
       "label": "Run the account and session lifecycle against MySQL",
       "test": "adapters/sqlstore/account_contract_test.go",
       "marker": "func TestAccountEngineContract("
+    },
+    {
+      "label": "Run the user, credential and session store contract against MySQL, including reopening a populated schema",
+      "test": "adapters/sqlstore/engines_test.go",
+      "marker": "func TestEngineContract(",
+      "complete": true
+    },
+    {
+      "label": "Generate, migrate and check a MySQL schema with authctl, then sign up against the migrated database",
+      "test": "cmd/authctl/user_fields_test.go",
+      "marker": "func TestUserFieldCommandsAcrossEngines("
+    },
+    {
+      "label": "Compare the core MySQL tables that Open migrates with a fresh install of the other runtime's pinned SQL",
+      "test": "adapters/sqlstore/schema_test.go",
+      "marker": "func TestServerSchemaMatchesUpstream("
     }
   ],
   "plugin-symbol/generic-oauth/auth0": [
@@ -11997,6 +12298,17 @@
       "label": "Evaluate application defaults when creating a record and preserve explicit writable input and nulls",
       "test": "conformance/computed-fields.mjs",
       "marker": "export async function compareComputedFields("
+    },
+    {
+      "label": "On both runtimes sign-up fills omitted fields with their defaults, including server-owned ones, and the field columns match the other runtime's in type, nullability and database default",
+      "test": "conformance/user-fields.mjs",
+      "marker": "export async function compareUserFields(",
+      "complete": true
+    },
+    {
+      "label": "A default fills an omitted writable field and replaces a client value for a server-owned field on memory, SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/user_fields_test.go",
+      "marker": "func TestConfiguredUserFieldsAcrossStores(t *testing.T) {"
     }
   ],
   "provider-option/shared/overrideUserInfoOnSignIn": [
@@ -12161,6 +12473,21 @@
       "label": "Generate, inspect and migrate declared provider account fields across SQLite, PostgreSQL and MySQL",
       "test": "cmd/authctl/account_fields_test.go",
       "marker": "func TestAccountFieldCommands("
+    },
+    {
+      "label": "authctl generate, migrate and check schema apply user and session field declarations on SQLite, PostgreSQL and MySQL, adding new columns to a populated user table",
+      "test": "cmd/authctl/user_fields_test.go",
+      "marker": "func TestUserFieldCommandsAcrossEngines(t *testing.T) {"
+    },
+    {
+      "label": "On both runtimes declared user fields share one column shape and round-trip through sign-up, sign-in, update-user and get-session: a required field is enforced, defaults apply, hidden fields stay out of sign-up, sign-in and get-session responses, the renamed column persists, and update-user refuses a client write to a server-owned field",
+      "test": "conformance/user-fields.mjs",
+      "marker": "export async function compareUserFields("
+    },
+    {
+      "label": "On both runtimes declared session fields get the same column shape as the other runtime's, apply defaults, omit non-returned fields and persist updateSession writes",
+      "test": "conformance/session-fields.mjs",
+      "marker": "export async function compareSessionFields(t, { reference, goFixture, instrument }) {"
     }
   ],
   "provider-option/shared/getAccountFields": [
@@ -21171,6 +21498,11 @@
       "test": "conformance/goapi/user_validation_test.go",
       "marker": "func TestValidateUserInfoIDTokenLinks(t *testing.T) {",
       "label": "ID-token sign-ups and links are checked with the provider ID and raw claims, and a refusal answers 403 with the app's code"
+    },
+    {
+      "label": "ValidateUserInfo runs on the social callback under both the database and the cookie state strategy",
+      "test": "conformance/goapi/oauth_additional_data_test.go",
+      "marker": "func TestOAuthAdditionalData(t *testing.T) {"
     }
   ],
   "docs/content/docs/concepts/rate-limit.mdx#L44/`/sign-in/email`": [
@@ -21588,6 +21920,21 @@
       "label": "get-access-token with useAccountCookie returns the signed-in account's token, and refuses two selectors, another user's or an altered cookie, and no session",
       "test": "conformance/goapi/account_cookie_test.go",
       "marker": "if status != 200 || out[\"accessToken\"] != \"access-ada\" {"
+    },
+    {
+      "label": "get-access-token by account record ID returns the stored token and answers 401 without a session, the same on both runtimes",
+      "test": "conformance/provider-credentials.mjs",
+      "marker": "export async function providerCredentials("
+    },
+    {
+      "label": "Concurrent Go GetAccessToken calls with a userId and no session headers refresh an expiring token once and return the new token",
+      "test": "adapters/sqlstore/provider_credentials_test.go",
+      "marker": "t.Fatalf(\"automatic refreshes %d\", count.Load())"
+    },
+    {
+      "label": "A Go call with neither session headers nor a userId answers USER_ID_OR_SESSION_REQUIRED",
+      "test": "conformance/goapi/provider_contract_test.go",
+      "marker": "t.Fatal(\"a server call without a session or user answered\", err)"
     }
   ],
   "docs/content/docs/concepts/oauth.mdx#L152": [
@@ -21595,6 +21942,21 @@
       "label": "refresh-token with useAccountCookie refreshes the signed-in account's tokens",
       "test": "conformance/goapi/account_cookie_test.go",
       "marker": "status, out = call(ada, \"POST\", \"/refresh-token\", `{\"useAccountCookie\":true}`)"
+    },
+    {
+      "label": "refresh-token by account record ID refreshes right away and returns the rotated tokens, the same on both runtimes",
+      "test": "conformance/provider-credentials.mjs",
+      "marker": "assert.equal(output[1].refreshToken, \"rotated-refresh\");"
+    },
+    {
+      "label": "refresh-token by accountId returns the rotated refresh token, the stored scope and a refresh-token expiry",
+      "test": "adapters/sqlstore/provider_credentials_test.go",
+      "marker": "t.Fatalf(\"rotated response %d %s\", res.Code, res.Body)"
+    },
+    {
+      "label": "refresh-token refuses another user's account with ACCOUNT_NOT_FOUND",
+      "test": "adapters/sqlstore/provider_credentials_test.go",
+      "marker": "t.Fatalf(\"account isolation %d %s\", res.Code, res.Body)"
     }
   ],
   "docs/content/docs/concepts/oauth.mdx#L173": [
@@ -21602,6 +21964,22 @@
       "label": "account-info with useAccountCookie returns the signed-in account's provider identity",
       "test": "conformance/goapi/account_cookie_test.go",
       "marker": "status, out = call(ada, \"GET\", \"/account-info?useAccountCookie=true\", \"\")"
+    },
+    {
+      "label": "account-info by account record ID returns the same account, user and data object on both runtimes, with the provider key in account.accountId",
+      "test": "conformance/provider-credentials.mjs",
+      "marker": "assert.equal(output[2].account.accountId, \"provider-person\");",
+      "complete": true
+    },
+    {
+      "label": "account-info by accountId returns the provider subject without the access token",
+      "test": "adapters/sqlstore/provider_credentials_test.go",
+      "marker": "t.Fatalf(\"account-info %d %s\", res.Code, res.Body)"
+    },
+    {
+      "label": "A Go AccountInfo call by account record ID returns the raw profile as data for every catalog provider except WeChat",
+      "test": "providers/catalog_test.go",
+      "marker": "info, err := h.AccountInfo(context.Background(), nil, auth.AccountSelection{AccountID: linked[0].ID, UserID: actual.ID})"
     }
   ],
   "docs/content/docs/reference/errors/state_not_found.mdx#L6": [
@@ -22516,6 +22894,1421 @@
       "label": "Each font family reaches the page or the code font with its quotes kept",
       "test": "conformance/goapi/error_page_test.go",
       "marker": "func TestErrorPageThemeValues(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/adapters/mysql.mdx": [
+    {
+      "label": "Open the MySQL store from a go-sql-driver DSN, round-trip creation timestamps at millisecond precision, reopen the populated schema and serve sign-up, sign-in, get-session, revocation and sign-out over HTTP",
+      "test": "adapters/sqlstore/engines_test.go",
+      "marker": "func TestEngineContract(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/adapters/mysql.mdx#L45": [
+    {
+      "label": "Emit table DDL from authctl generate for PostgreSQL, MySQL and SQLite",
+      "test": "cmd/authctl/main_test.go",
+      "marker": "if err := runCommand(\"generate\", \"--dialect\", dialect); err != nil {",
+      "complete": true
+    },
+    {
+      "label": "Generate the configured schema with authctl, apply it with authctl migrate and pass authctl check on SQLite, PostgreSQL and MySQL",
+      "test": "cmd/authctl/user_fields_test.go",
+      "marker": "func TestUserFieldCommandsAcrossEngines(t *testing.T) {"
+    },
+    {
+      "label": "Run authctl migrate twice on PostgreSQL and MySQL, add a configured session column to a populated table and report drift with authctl check",
+      "test": "cmd/authctl/session_fields_live_test.go",
+      "marker": "func TestSessionFieldCommandsOnServers(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/adapters/other-relational-databases.mdx#L11": [
+    {
+      "label": "Open SQLite, PostgreSQL and MySQL stores and run registration, credential lookup, reopening and the HTTP session lifecycle against each",
+      "test": "adapters/sqlstore/engines_test.go",
+      "marker": "func TestEngineContract(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/adapters/postgresql.mdx": [
+    {
+      "label": "Open the PostgreSQL store from a pgx connection string, reopen the populated schema and serve sign-up, sign-in, get-session, revocation and sign-out over HTTP",
+      "test": "adapters/sqlstore/engines_test.go",
+      "marker": "func TestEngineContract(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/adapters/postgresql.mdx#L31": [
+    {
+      "label": "Emit table DDL from authctl generate for PostgreSQL, MySQL and SQLite",
+      "test": "cmd/authctl/main_test.go",
+      "marker": "if err := runCommand(\"generate\", \"--dialect\", dialect); err != nil {",
+      "complete": true
+    },
+    {
+      "label": "Generate the configured schema with authctl, apply it with authctl migrate and pass authctl check on SQLite, PostgreSQL and MySQL",
+      "test": "cmd/authctl/user_fields_test.go",
+      "marker": "func TestUserFieldCommandsAcrossEngines(t *testing.T) {"
+    },
+    {
+      "label": "Run authctl migrate twice on PostgreSQL and MySQL, add a configured session column to a populated table and report drift with authctl check",
+      "test": "cmd/authctl/session_fields_live_test.go",
+      "marker": "func TestSessionFieldCommandsOnServers(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/adapters/postgresql.mdx#L149": [
+    {
+      "label": "Resolve the read-only schema check's PostgreSQL tables through the connection's search_path order",
+      "test": "adapters/sqlstore/check_test.go",
+      "marker": "func TestCheckSchemaPostgresSearchPath(t *testing.T) {"
+    },
+    {
+      "label": "Migrate and check a pre-created PostgreSQL schema named by search_path in the connection string from the CLI, then read the same tables through a store opened on that schema",
+      "test": "cmd/authctl/wallet_schema_test.go",
+      "marker": "q.Set(\"search_path\", name)"
+    }
+  ],
+  "docs/content/docs/adapters/sqlite.mdx": [
+    {
+      "label": "Open a SQLite file store, reopen it and serve sign-up, sign-in, get-session, revocation and sign-out over HTTP",
+      "test": "adapters/sqlstore/engines_test.go",
+      "marker": "func TestEngineContract(t *testing.T) {",
+      "complete": true
+    },
+    {
+      "label": "Reopen a SQLite file and read back the stored credential and session, then revoke the session",
+      "test": "adapters/sqlstore/sqlite_test.go",
+      "marker": "func TestReopenCredentialAndSession(t *testing.T) {"
+    }
+  ],
+  "database/DBAdapterFactoryConfig/supportsJSON": [
+    {
+      "label": "Keep JSON string, boolean, number, object, empty-array and null values of an organization role field intact on SQLite text, PostgreSQL jsonb and MySQL json columns",
+      "test": "adapters/sqlstore/organization_role_fields_test.go",
+      "marker": "t.Fatalf(\"stored JSON or array lost its logical type: %#v; want %#v\", extra, want)"
+    }
+  ],
+  "database/DBAdapterFactoryConfig/supportsDates": [
+    {
+      "label": "Store date fields at UTC millisecond precision and read them back as ISO strings on memory, SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/date_fields_test.go",
+      "marker": "func TestDateFieldsAcrossStores(",
+      "complete": true
+    },
+    {
+      "label": "Write user and session date fields through either runtime on one shared SQLite database, then read the same ISO instants through the other runtime and from the stored column",
+      "test": "conformance/date-fields.mjs",
+      "marker": "export async function compareDateFields(t, {reference, goFixture, instrument}) {"
+    }
+  ],
+  "database/DBAdapterFactoryConfig/supportsBooleans": [
+    {
+      "label": "Set a boolean session field to false through either runtime on a SQLite database both runtimes share, find 0 in the stored row, and read it back as false",
+      "test": "conformance/session-fields.mjs",
+      "marker": "preferred_locale: \"es\", count: 7, flag: 0, privateNote: \"persist privately\", internalRisk: 9,"
+    },
+    {
+      "label": "Read a migrated boolean user column backfilled with false as a Go false on SQLite, PostgreSQL and MySQL",
+      "test": "cmd/authctl/user_fields_test.go",
+      "marker": "want := map[string]any{\"preferred_locale\": \"\", \"accountClass\": \"standard\", \"quota\": int64(0), \"flag\": false, \"memo\": nil}"
+    }
+  ],
+  "database/DBAdapterFactoryConfig/supportsArrays": [
+    {
+      "label": "Return string[] and number[] organization role fields as typed arrays from SQLite text, PostgreSQL jsonb and MySQL json columns, and reject mistyped elements",
+      "test": "adapters/sqlstore/organization_role_fields_test.go",
+      "marker": "func TestOrganizationRoleStructuredFields("
+    }
+  ],
+  "database/DBAdapterFactoryConfig/transaction": [
+    {
+      "label": "Roll back a registration whose initial session insert fails, leaving no user, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/engines_test.go",
+      "marker": "partial registration after failed session insert"
+    },
+    {
+      "label": "Roll back an email-code sign-up whose required session field is missing, then succeed on retry, on memory, SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/emailotp_user_fields_test.go",
+      "marker": "func TestEmailOTPProfileSignupRollsBackSessionFailure("
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L7": [
+    {
+      "label": "Open a SQLite, PostgreSQL or MySQL store, pass it as Options.Store and serve sign-up, sign-in, session reads, revocation and sign-out over HTTP",
+      "test": "adapters/sqlstore/engines_test.go",
+      "marker": "func TestEngineContract(t *testing.T) {"
+    },
+    {
+      "label": "memory.New() serves sign-up, session reads and sign-out in one process without a database",
+      "test": "adapters/memory/memory_test.go",
+      "marker": "func TestInProcessSessions(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L21": [
+    {
+      "label": "authctl migrate runs twice without error on a new SQLite file, with and without plugin profiles, and fails without AUTH_DSN",
+      "test": "cmd/authctl/main_test.go",
+      "marker": "if err := runCommand(\"migrate\", \"--dialect\", \"sqlite\"); err != nil"
+    },
+    {
+      "label": "authctl migrate adds the column a newly selected profile needs to an existing user table, after which check schema passes",
+      "test": "cmd/authctl/check_test.go",
+      "marker": "command(dsn, 0, \"migrate\", \"--dialect\", \"sqlite\", \"--plugins\", \"last-login-method\")"
+    },
+    {
+      "label": "Adding plugin profiles to a populated SQLite database, with authctl migrate for single profiles and the store's schema migration for combinations, keeps the existing user and matches the other runtime's fresh migrations",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"adding plugin profiles"
+    },
+    {
+      "label": "Reopening populated PostgreSQL and MySQL databases twice with twelve plugin profiles keeps the existing user and gives the same columns, indexes and foreign keys as running the generated DDL on a fresh database",
+      "test": "adapters/sqlstore/profiles_test.go",
+      "marker": "func TestServerPluginSchemaUpgrade(t *testing.T) {"
+    },
+    {
+      "label": "Through a PostgreSQL connection whose search_path names a separate schema, and on MySQL, authctl migrate adds declared session columns to a populated table and check schema then reports no drift",
+      "test": "cmd/authctl/session_fields_live_test.go",
+      "marker": "func TestSessionFieldCommandsOnServers(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L33": [
+    {
+      "label": "authctl generate writes CREATE TABLE statements for PostgreSQL, MySQL and SQLite and refuses an unknown profile and an unsupported dialect",
+      "test": "cmd/authctl/main_test.go",
+      "marker": "if err := runCommand(\"generate\", \"--dialect\", dialect)",
+      "complete": true
+    },
+    {
+      "label": "The Go schema generator's DDL equals the other runtime's compiled migration SQL for every verified profile combination on SQLite, PostgreSQL and MySQL, and authctl generate prints the same DDL with no profile or with a single one",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"the CLI emits"
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L49": [
+    {
+      "label": "OpenWithSchema, run twice, upgrades a PostgreSQL or MySQL core schema holding a user to twelve plugin profiles, keeps the user, and matches the catalog of a database built directly from the same generated DDL",
+      "test": "adapters/sqlstore/profiles_test.go",
+      "marker": "func TestServerPluginSchemaUpgrade(t *testing.T) {"
+    },
+    {
+      "label": "OpenWithSchema, run twice over a populated SQLite database for each verified profile combination, keeps the existing user and yields the schema the other runtime's migrations create",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"adding plugin profiles to a populated SQLite database"
+    },
+    {
+      "label": "CheckSchema reports the tables and columns still missing on SQLite, PostgreSQL and MySQL without writing to the database",
+      "test": "adapters/sqlstore/check_test.go",
+      "marker": "func TestReadOnlySchemaCheck(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L126": [
+    {
+      "label": "authctl check schema returns [] and exit 0 on a matching database, missing-column findings and exit 1 on drift, and exit 2 without creating an unreadable target",
+      "test": "cmd/authctl/check_test.go",
+      "marker": "func TestCheckSchemaProcess(t *testing.T) {"
+    },
+    {
+      "label": "CheckSchema reports missing tables, missing columns and extra required columns read-only on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/check_test.go",
+      "marker": "func TestReadOnlySchemaCheck(t *testing.T) {"
+    },
+    {
+      "label": "Opening a SQLite store over an incompatible existing session table fails and leaves no user table behind",
+      "test": "adapters/sqlstore/sqlite_test.go",
+      "marker": "func TestFailedSchemaInitializationIsAtomic(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L330": [
+    {
+      "label": "Fresh and repeated authctl migrations on SQLite create the user table with the other runtime's columns, types, defaults, keys, indexes and foreign keys",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"fresh and repeated Go SQLite migrations",
+      "complete": true
+    },
+    {
+      "label": "The Go generator's user table DDL is identical to the other runtime's compiled migration SQL on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()"
+    },
+    {
+      "label": "Stores opened on PostgreSQL and MySQL give the user table the same columns, indexes and foreign keys as the store's embedded baseline SQL run directly",
+      "test": "adapters/sqlstore/schema_test.go",
+      "marker": "func TestServerSchemaMatchesUpstream(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L336/`userTableFields.id`": [
+    {
+      "label": "The generated user.id column, a not-null string primary key, is identical to the other runtime's DDL on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    },
+    {
+      "label": "Stores opened on PostgreSQL and MySQL give user.id the same type, nullability, default and keys as the store's embedded baseline SQL run directly",
+      "test": "adapters/sqlstore/schema_test.go",
+      "marker": "func TestServerSchemaMatchesUpstream(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L342/`userTableFields.name`": [
+    {
+      "label": "The generated user.name column, a not-null string column, is identical to the other runtime's DDL on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    },
+    {
+      "label": "Stores opened on PostgreSQL and MySQL give user.name the same type, nullability, default and keys as the store's embedded baseline SQL run directly",
+      "test": "adapters/sqlstore/schema_test.go",
+      "marker": "func TestServerSchemaMatchesUpstream(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L347/`userTableFields.email`": [
+    {
+      "label": "The generated user.email column, a not-null unique string column, is identical to the other runtime's DDL on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    },
+    {
+      "label": "Stores opened on PostgreSQL and MySQL give user.email the same type, nullability, default and keys as the store's embedded baseline SQL run directly",
+      "test": "adapters/sqlstore/schema_test.go",
+      "marker": "func TestServerSchemaMatchesUpstream(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L353/`userTableFields.emailVerified`": [
+    {
+      "label": "The generated user.emailVerified column, a not-null boolean column (integer on SQLite), is identical to the other runtime's DDL on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    },
+    {
+      "label": "Stores opened on PostgreSQL and MySQL give user.emailVerified the same type, nullability, default and keys as the store's embedded baseline SQL run directly",
+      "test": "adapters/sqlstore/schema_test.go",
+      "marker": "func TestServerSchemaMatchesUpstream(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L358/`userTableFields.image`": [
+    {
+      "label": "The generated user.image column, a nullable text column, is identical to the other runtime's DDL on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    },
+    {
+      "label": "Stores opened on PostgreSQL and MySQL give user.image the same type, nullability, default and keys as the store's embedded baseline SQL run directly",
+      "test": "adapters/sqlstore/schema_test.go",
+      "marker": "func TestServerSchemaMatchesUpstream(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L364/`userTableFields.createdAt`": [
+    {
+      "label": "The generated user.createdAt column, a not-null timestamp column (date on SQLite), is identical to the other runtime's DDL on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    },
+    {
+      "label": "Stores opened on PostgreSQL and MySQL give user.createdAt the same type, nullability, default and keys as the store's embedded baseline SQL run directly",
+      "test": "adapters/sqlstore/schema_test.go",
+      "marker": "func TestServerSchemaMatchesUpstream(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L369/`userTableFields.updatedAt`": [
+    {
+      "label": "The generated user.updatedAt column, a not-null timestamp column (date on SQLite), is identical to the other runtime's DDL on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    },
+    {
+      "label": "Stores opened on PostgreSQL and MySQL give user.updatedAt the same type, nullability, default and keys as the store's embedded baseline SQL run directly",
+      "test": "adapters/sqlstore/schema_test.go",
+      "marker": "func TestServerSchemaMatchesUpstream(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L377": [
+    {
+      "label": "Fresh and repeated authctl migrations on SQLite create the session table with the other runtime's columns, types, defaults, keys, indexes and foreign keys",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"fresh and repeated Go SQLite migrations",
+      "complete": true
+    },
+    {
+      "label": "The Go generator's session table DDL is identical to the other runtime's compiled migration SQL on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()"
+    },
+    {
+      "label": "Stores opened on PostgreSQL and MySQL give the session table the same columns, indexes and foreign keys as the store's embedded baseline SQL run directly",
+      "test": "adapters/sqlstore/schema_test.go",
+      "marker": "func TestServerSchemaMatchesUpstream(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L383/`sessionTableFields.id`": [
+    {
+      "label": "The generated session.id column, a not-null string primary key, is identical to the other runtime's DDL on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    },
+    {
+      "label": "Stores opened on PostgreSQL and MySQL give session.id the same type, nullability, default and keys as the store's embedded baseline SQL run directly",
+      "test": "adapters/sqlstore/schema_test.go",
+      "marker": "func TestServerSchemaMatchesUpstream(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L389/`sessionTableFields.userId`": [
+    {
+      "label": "The generated session.userId column, a not-null indexed foreign key to user.id with cascading delete, is identical to the other runtime's DDL on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    },
+    {
+      "label": "Stores opened on PostgreSQL and MySQL give session.userId the same type, nullability, index and foreign key as the store's embedded baseline SQL run directly",
+      "test": "adapters/sqlstore/schema_test.go",
+      "marker": "func TestServerSchemaMatchesUpstream(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L397/`sessionTableFields.token`": [
+    {
+      "label": "The generated session.token column, a not-null unique string column, is identical to the other runtime's DDL on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    },
+    {
+      "label": "Stores opened on PostgreSQL and MySQL give session.token the same type, nullability, default and keys as the store's embedded baseline SQL run directly",
+      "test": "adapters/sqlstore/schema_test.go",
+      "marker": "func TestServerSchemaMatchesUpstream(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L403/`sessionTableFields.expiresAt`": [
+    {
+      "label": "The generated session.expiresAt column, a not-null timestamp column (date on SQLite), is identical to the other runtime's DDL on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    },
+    {
+      "label": "Stores opened on PostgreSQL and MySQL give session.expiresAt the same type, nullability, default and keys as the store's embedded baseline SQL run directly",
+      "test": "adapters/sqlstore/schema_test.go",
+      "marker": "func TestServerSchemaMatchesUpstream(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L408/`sessionTableFields.ipAddress`": [
+    {
+      "label": "The generated session.ipAddress column, a nullable text column, is identical to the other runtime's DDL on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    },
+    {
+      "label": "Stores opened on PostgreSQL and MySQL give session.ipAddress the same type, nullability, default and keys as the store's embedded baseline SQL run directly",
+      "test": "adapters/sqlstore/schema_test.go",
+      "marker": "func TestServerSchemaMatchesUpstream(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L414/`sessionTableFields.userAgent`": [
+    {
+      "label": "The generated session.userAgent column, a nullable text column, is identical to the other runtime's DDL on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    },
+    {
+      "label": "Stores opened on PostgreSQL and MySQL give session.userAgent the same type, nullability, default and keys as the store's embedded baseline SQL run directly",
+      "test": "adapters/sqlstore/schema_test.go",
+      "marker": "func TestServerSchemaMatchesUpstream(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L420/`sessionTableFields.createdAt`": [
+    {
+      "label": "The generated session.createdAt column, a not-null timestamp column (date on SQLite), is identical to the other runtime's DDL on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    },
+    {
+      "label": "Stores opened on PostgreSQL and MySQL give session.createdAt the same type, nullability, default and keys as the store's embedded baseline SQL run directly",
+      "test": "adapters/sqlstore/schema_test.go",
+      "marker": "func TestServerSchemaMatchesUpstream(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L425/`sessionTableFields.updatedAt`": [
+    {
+      "label": "The generated session.updatedAt column, a not-null timestamp column (date on SQLite), is identical to the other runtime's DDL on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    },
+    {
+      "label": "Stores opened on PostgreSQL and MySQL give session.updatedAt the same type, nullability, default and keys as the store's embedded baseline SQL run directly",
+      "test": "adapters/sqlstore/schema_test.go",
+      "marker": "func TestServerSchemaMatchesUpstream(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L433": [
+    {
+      "label": "Fresh and repeated authctl migrations on SQLite create the account table with the other runtime's columns, types, defaults, keys, indexes and foreign keys",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"fresh and repeated Go SQLite migrations"
+    },
+    {
+      "label": "The Go generator's account table DDL is identical to the other runtime's compiled migration SQL on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()"
+    },
+    {
+      "label": "Stores opened on PostgreSQL and MySQL give the account table the same columns, indexes and foreign keys as the store's embedded baseline SQL run directly",
+      "test": "adapters/sqlstore/schema_test.go",
+      "marker": "func TestServerSchemaMatchesUpstream(t *testing.T) {"
+    },
+    {
+      "label": "account-info takes the local account row id as accountId and answers with the provider-side subject",
+      "test": "adapters/sqlstore/provider_credentials_test.go",
+      "marker": "httpCall(\"account-info?accountId=\"+id, \"\", cookie); res.Code != 200"
+    },
+    {
+      "label": "unlink-account given the credential account's local id from list-accounts recognizes it and refuses it as the last account before any account hook runs",
+      "test": "conformance/goapi/delete_user_test.go",
+      "marker": "id := accountsOf(t, hooked.sessionClient, cookie)[\"credential\"]"
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L441/`accountTableFields.id`": [
+    {
+      "label": "The generated account.id column, a not-null string primary key, is identical to the other runtime's DDL on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    },
+    {
+      "label": "Stores opened on PostgreSQL and MySQL give account.id the same type, nullability, default and keys as the store's embedded baseline SQL run directly",
+      "test": "adapters/sqlstore/schema_test.go",
+      "marker": "func TestServerSchemaMatchesUpstream(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L447/`accountTableFields.userId`": [
+    {
+      "label": "The generated account.userId column, a not-null indexed foreign key to user.id with cascading delete, is identical to the other runtime's DDL on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    },
+    {
+      "label": "Stores opened on PostgreSQL and MySQL give account.userId the same type, nullability, index and foreign key as the store's embedded baseline SQL run directly",
+      "test": "adapters/sqlstore/schema_test.go",
+      "marker": "func TestServerSchemaMatchesUpstream(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L455/`accountTableFields.accountId`": [
+    {
+      "label": "The generated account.accountId column, a not-null text column, is identical to the other runtime's DDL on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    },
+    {
+      "label": "Stores opened on PostgreSQL and MySQL give account.accountId the same type, nullability, default and keys as the store's embedded baseline SQL run directly",
+      "test": "adapters/sqlstore/schema_test.go",
+      "marker": "func TestServerSchemaMatchesUpstream(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L460/`accountTableFields.providerId`": [
+    {
+      "label": "The generated account.providerId column, a not-null text column, is identical to the other runtime's DDL on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    },
+    {
+      "label": "Stores opened on PostgreSQL and MySQL give account.providerId the same type, nullability, default and keys as the store's embedded baseline SQL run directly",
+      "test": "adapters/sqlstore/schema_test.go",
+      "marker": "func TestServerSchemaMatchesUpstream(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L465/`accountTableFields.accessToken`": [
+    {
+      "label": "The generated account.accessToken column, a nullable text column, is identical to the other runtime's DDL on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    },
+    {
+      "label": "Stores opened on PostgreSQL and MySQL give account.accessToken the same type, nullability, default and keys as the store's embedded baseline SQL run directly",
+      "test": "adapters/sqlstore/schema_test.go",
+      "marker": "func TestServerSchemaMatchesUpstream(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L471/`accountTableFields.refreshToken`": [
+    {
+      "label": "The generated account.refreshToken column, a nullable text column, is identical to the other runtime's DDL on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    },
+    {
+      "label": "Stores opened on PostgreSQL and MySQL give account.refreshToken the same type, nullability, default and keys as the store's embedded baseline SQL run directly",
+      "test": "adapters/sqlstore/schema_test.go",
+      "marker": "func TestServerSchemaMatchesUpstream(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L477/`accountTableFields.accessTokenExpiresAt`": [
+    {
+      "label": "The generated account.accessTokenExpiresAt column, a nullable timestamp column (date on SQLite), is identical to the other runtime's DDL on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    },
+    {
+      "label": "Stores opened on PostgreSQL and MySQL give account.accessTokenExpiresAt the same type, nullability, default and keys as the store's embedded baseline SQL run directly",
+      "test": "adapters/sqlstore/schema_test.go",
+      "marker": "func TestServerSchemaMatchesUpstream(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L483/`accountTableFields.refreshTokenExpiresAt`": [
+    {
+      "label": "The generated account.refreshTokenExpiresAt column, a nullable timestamp column (date on SQLite), is identical to the other runtime's DDL on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    },
+    {
+      "label": "Stores opened on PostgreSQL and MySQL give account.refreshTokenExpiresAt the same type, nullability, default and keys as the store's embedded baseline SQL run directly",
+      "test": "adapters/sqlstore/schema_test.go",
+      "marker": "func TestServerSchemaMatchesUpstream(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L489/`accountTableFields.scope`": [
+    {
+      "label": "The generated account.scope column, a nullable text column, equals the other runtime's generated DDL on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    },
+    {
+      "label": "Opened PostgreSQL and MySQL stores give account.scope the same type, nullability, default and keys as a separately installed copy of the embedded schema script",
+      "test": "adapters/sqlstore/schema_test.go",
+      "marker": "func TestServerSchemaMatchesUpstream(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L495/`accountTableFields.idToken`": [
+    {
+      "label": "The generated account.idToken column, a nullable text column, equals the other runtime's generated DDL on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    },
+    {
+      "label": "Opened PostgreSQL and MySQL stores give account.idToken the same type, nullability, default and keys as a separately installed copy of the embedded schema script",
+      "test": "adapters/sqlstore/schema_test.go",
+      "marker": "func TestServerSchemaMatchesUpstream(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L501/`accountTableFields.password`": [
+    {
+      "label": "The generated account.password column, a nullable text column, equals the other runtime's generated DDL on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    },
+    {
+      "label": "Opened PostgreSQL and MySQL stores give account.password the same type, nullability, default and keys as a separately installed copy of the embedded schema script",
+      "test": "adapters/sqlstore/schema_test.go",
+      "marker": "func TestServerSchemaMatchesUpstream(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L508/`accountTableFields.createdAt`": [
+    {
+      "label": "The generated account.createdAt column, a not-null date column, equals the other runtime's generated DDL on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    },
+    {
+      "label": "Opened PostgreSQL and MySQL stores give account.createdAt the same type, nullability, default and keys as a separately installed copy of the embedded schema script",
+      "test": "adapters/sqlstore/schema_test.go",
+      "marker": "func TestServerSchemaMatchesUpstream(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L513/`accountTableFields.updatedAt`": [
+    {
+      "label": "The generated account.updatedAt column, a not-null date column, equals the other runtime's generated DDL on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    },
+    {
+      "label": "Opened PostgreSQL and MySQL stores give account.updatedAt the same type, nullability, default and keys as a separately installed copy of the embedded schema script",
+      "test": "adapters/sqlstore/schema_test.go",
+      "marker": "func TestServerSchemaMatchesUpstream(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L523": [
+    {
+      "label": "Fresh and repeated authctl migrations on SQLite create a verification table whose columns, types, defaults, keys and indexes equal those the other runtime's migration creates",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"fresh and repeated Go SQLite migrations",
+      "complete": true
+    },
+    {
+      "label": "The generated verification table DDL, with its identifier index, equals the other runtime's generated DDL on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()"
+    },
+    {
+      "label": "Opened PostgreSQL and MySQL stores give the verification table the same columns, indexes and foreign keys as a separately installed copy of the embedded schema script",
+      "test": "adapters/sqlstore/schema_test.go",
+      "marker": "func TestServerSchemaMatchesUpstream(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L529/`verificationTableFields.id`": [
+    {
+      "label": "The generated verification.id column, a not-null string primary key, equals the other runtime's generated DDL on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    },
+    {
+      "label": "Opened PostgreSQL and MySQL stores give verification.id the same type, nullability, default and keys as a separately installed copy of the embedded schema script",
+      "test": "adapters/sqlstore/schema_test.go",
+      "marker": "func TestServerSchemaMatchesUpstream(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L535/`verificationTableFields.identifier`": [
+    {
+      "label": "The generated verification.identifier column, a not-null indexed string column, equals the other runtime's generated DDL on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    },
+    {
+      "label": "Opened PostgreSQL and MySQL stores give verification.identifier the same type, nullability, default and keys as a separately installed copy of the embedded schema script",
+      "test": "adapters/sqlstore/schema_test.go",
+      "marker": "func TestServerSchemaMatchesUpstream(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L541/`verificationTableFields.value`": [
+    {
+      "label": "The generated verification.value column, a not-null text column, equals the other runtime's generated DDL on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    },
+    {
+      "label": "Opened PostgreSQL and MySQL stores give verification.value the same type, nullability, default and keys as a separately installed copy of the embedded schema script",
+      "test": "adapters/sqlstore/schema_test.go",
+      "marker": "func TestServerSchemaMatchesUpstream(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L546/`verificationTableFields.expiresAt`": [
+    {
+      "label": "The generated verification.expiresAt column, a not-null date column, equals the other runtime's generated DDL on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    },
+    {
+      "label": "Opened PostgreSQL and MySQL stores give verification.expiresAt the same type, nullability, default and keys as a separately installed copy of the embedded schema script",
+      "test": "adapters/sqlstore/schema_test.go",
+      "marker": "func TestServerSchemaMatchesUpstream(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L551/`verificationTableFields.createdAt`": [
+    {
+      "label": "The generated verification.createdAt column, a not-null date column, equals the other runtime's generated DDL on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    },
+    {
+      "label": "Opened PostgreSQL and MySQL stores give verification.createdAt the same type, nullability, default and keys as a separately installed copy of the embedded schema script",
+      "test": "adapters/sqlstore/schema_test.go",
+      "marker": "func TestServerSchemaMatchesUpstream(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L556/`verificationTableFields.updatedAt`": [
+    {
+      "label": "The generated verification.updatedAt column, a not-null date column, equals the other runtime's generated DDL on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    },
+    {
+      "label": "Opened PostgreSQL and MySQL stores give verification.updatedAt the same type, nullability, default and keys as a separately installed copy of the embedded schema script",
+      "test": "adapters/sqlstore/schema_test.go",
+      "marker": "func TestServerSchemaMatchesUpstream(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L623/`type`": [
+    {
+      "label": "String and number user fields round-trip, a boolean field clears to null, and a number field refuses fractions, booleans and out-of-range values with VALIDATION_ERROR, on memory, SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/user_fields_test.go",
+      "marker": "func TestConfiguredUserFieldsAcrossStores(t *testing.T) {"
+    },
+    {
+      "label": "String, number and boolean user fields get the same column types as the other runtime's and round-trip between both runtimes",
+      "test": "conformance/user-fields.mjs",
+      "marker": "export async function compareUserFields("
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L624/`required`": [
+    {
+      "label": "Sign-up without a required user field answers MISSING_FIELD on memory, SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/user_fields_test.go",
+      "marker": "func TestConfiguredUserFieldsAcrossStores(t *testing.T) {",
+      "complete": true
+    },
+    {
+      "label": "Sign-up without a required user field answers MISSING_FIELD on both runtimes",
+      "test": "conformance/user-fields.mjs",
+      "marker": "export async function compareUserFields("
+    },
+    {
+      "label": "Social registration whose profile mapping lacks a required field fails with MISSING_FIELD and stores nothing on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_user_fields_test.go",
+      "marker": "func TestOAuthRegistrationUserFields(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L626/`input`": [
+    {
+      "label": "On both runtimes sign-up ignores a client value for an input: false field, update-user refuses it with FIELD_NOT_ALLOWED and ignores false, zero, empty and null",
+      "test": "conformance/user-fields.mjs",
+      "marker": "export async function compareUserFields(",
+      "complete": true
+    },
+    {
+      "label": "On both runtimes provider profile mapping supplies writable fields while values for input: false fields are ignored in favour of their defaults",
+      "test": "conformance/social-user-fields.mjs",
+      "marker": "export async function compareSocialUserFields("
+    },
+    {
+      "label": "Through the released client on both runtimes updateSession persists writable session fields and refuses input: false ones",
+      "test": "conformance/session-fields.mjs",
+      "marker": "export async function compareSessionFields(t, { reference, goFixture, instrument }) {"
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L627/`returned`": [
+    {
+      "label": "On both runtimes a returned: false field accepts client input at sign-up and update-user, is stored, and is left out of sign-up, sign-in and get-session responses",
+      "test": "conformance/user-fields.mjs",
+      "marker": "export async function compareUserFields(",
+      "complete": true
+    },
+    {
+      "label": "A hidden user field written by its owner at sign-up and update-user is left out of the sign-up response and the get-session JSON on memory, SQLite, PostgreSQL and MySQL, and its value is stored on the SQL engines",
+      "test": "adapters/sqlstore/user_fields_test.go",
+      "marker": "func TestConfiguredUserFieldsAcrossStores(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L682/`{ input: true, returned: true }`": [
+    {
+      "label": "On both runtimes a writable public field supplied at sign-up and update-user is stored and returned",
+      "test": "conformance/user-fields.mjs",
+      "marker": "export async function compareUserFields(",
+      "complete": true
+    },
+    {
+      "label": "On both runtimes a writable public field supplied by provider profile mapping is stored and returned",
+      "test": "conformance/social-user-fields.mjs",
+      "marker": "export async function compareSocialUserFields("
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L683/`{ input: true, returned: false }`": [
+    {
+      "label": "On both runtimes a writable hidden field supplied at sign-up and update-user is stored but omitted from responses",
+      "test": "conformance/user-fields.mjs",
+      "marker": "export async function compareUserFields(",
+      "complete": true
+    },
+    {
+      "label": "On both runtimes a writable hidden field supplied by provider profile mapping is stored but omitted from responses",
+      "test": "conformance/social-user-fields.mjs",
+      "marker": "export async function compareSocialUserFields("
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L684/`{ input: false, returned: true }`": [
+    {
+      "label": "On both runtimes a server-owned public field ignores a sign-up value, refuses an update-user value with FIELD_NOT_ALLOWED, starts at its default and is returned",
+      "test": "conformance/user-fields.mjs",
+      "marker": "export async function compareUserFields(",
+      "complete": true
+    },
+    {
+      "label": "On both runtimes provider mapping cannot set a server-owned public field, which starts at its default and is returned",
+      "test": "conformance/social-user-fields.mjs",
+      "marker": "export async function compareSocialUserFields("
+    },
+    {
+      "label": "UpdateTrustedUserFields sets a server-owned field that update-user refuses with FIELD_NOT_ALLOWED, and later reads return it",
+      "test": "adapters/sqlstore/user_fields_test.go",
+      "marker": "func TestConfiguredUserFieldsAcrossStores(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L685/`{ input: false, returned: false }`": [
+    {
+      "label": "On both runtimes a server-owned hidden field starts at its default in storage and is omitted from responses",
+      "test": "conformance/user-fields.mjs",
+      "marker": "export async function compareUserFields(",
+      "complete": true
+    },
+    {
+      "label": "On both runtimes provider mapping cannot set a server-owned hidden field, which keeps its default in storage and stays out of responses",
+      "test": "conformance/social-user-fields.mjs",
+      "marker": "export async function compareSocialUserFields("
+    },
+    {
+      "label": "An administrator's API request supplying a server-owned hidden field is refused with FIELD_NOT_ALLOWED and stores nothing",
+      "test": "adapters/sqlstore/admin_user_fields_test.go",
+      "marker": "browser.Data[\"internalLabel\"] = \"host-only\""
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L689/Example: Mapping Profile to User For `firstName` and `lastName`": [
+    {
+      "label": "On both runtimes a provider resolver maps profile values into declared user fields at registration",
+      "test": "conformance/social-user-fields.mjs",
+      "marker": "export async function compareSocialUserFields("
+    },
+    {
+      "label": "A provider resolver's AdditionalFields populate declared user fields at social registration on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_user_fields_test.go",
+      "marker": "func TestOAuthRegistrationUserFields(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L1010/`twoFactorEnabled`": [
+    {
+      "label": "The Go schema generator's DDL equals the other runtime's migration for every base profile combination, two-factor included, on SQLite, PostgreSQL and MySQL, and authctl generate prints the same DDL for single profiles, so the two-factor profile adds user.twoFactorEnabled",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"the CLI emits",
+      "complete": true
+    },
+    {
+      "label": "After a verified TOTP enrollment, the session user reports twoFactorEnabled true on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(ok(await client.getSession()).user.twoFactorEnabled, true);"
+    },
+    {
+      "label": "An anonymous sign-in on a store with the two-factor plugin returns a user whose TwoFactorEnabled is false",
+      "test": "adapters/sqlstore/admin_factor_test.go",
+      "marker": "guest.User.TwoFactorEnabled == nil || *guest.User.TwoFactorEnabled {"
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L1011/`twoFactorSecret`": [
+    {
+      "label": "The Go schema generator's two-factor DDL equals the other runtime's migration on SQLite, PostgreSQL and MySQL, which keeps the TOTP secret in a twoFactor.secret column rather than on the user table",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"the CLI emits",
+      "complete": true
+    },
+    {
+      "label": "After two-factor/enable, the twoFactor row's secret column is set and does not contain the plaintext TOTP secret",
+      "test": "adapters/sqlstore/twofactor_test.go",
+      "marker": "SELECT \"secret\",\"backupCodes\" FROM \"twoFactor\" WHERE \"userId\"=?"
+    },
+    {
+      "label": "A code generated from the provisioned secret verifies the enrollment through a second instance",
+      "test": "adapters/sqlstore/twofactor_test.go",
+      "marker": "activated := request(second, \"two-factor/verify-totp\", fmt.Sprintf(`{\"code\":%q}`, code), firstCookie)"
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L1012/`twoFactorBackupCodes`": [
+    {
+      "label": "The Go schema generator's two-factor DDL equals the other runtime's migration on SQLite, PostgreSQL and MySQL, which keeps backup codes in a twoFactor.backupCodes column",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"the CLI emits",
+      "complete": true
+    },
+    {
+      "label": "After two-factor/enable, the twoFactor row's backupCodes column does not contain the first plaintext backup code",
+      "test": "adapters/sqlstore/twofactor_test.go",
+      "marker": "SELECT \"secret\",\"backupCodes\" FROM \"twoFactor\" WHERE \"userId\"=?"
+    },
+    {
+      "label": "A backup code completes a two-factor sign-in once, the used code is then refused and a spare one still works, on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "test(\"authenticator enrollment and backup challenges work through the public client\""
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L1016/`CLI`": [
+    {
+      "label": "On a populated SQLite base schema, each profile combination migrated through the Go store (single profiles first through authctl migrate --plugins) keeps the existing user and gives the same schema as the other runtime's migration",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"adding plugin profiles"
+    },
+    {
+      "label": "authctl check reports a plugin's missing user column after a base migration and passes once migrate --plugins adds it",
+      "test": "cmd/authctl/check_test.go",
+      "marker": "command(dsn, 0, \"migrate\", \"--dialect\", \"sqlite\", \"--plugins\", \"last-login-method\")"
+    },
+    {
+      "label": "On an existing SQLite database, authctl check reports the seven missing OAuth provider tables, authctl migrate --plugins oauth-provider adds them to match the other runtime's migration, and a rerun keeps an existing client and checks clean",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"authctl installs the OAuth provider schema"
+    },
+    {
+      "label": "authctl generate prints the DDL for each single profile on SQLite, PostgreSQL and MySQL, equal to the other runtime's migration",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"the CLI emits"
+    },
+    {
+      "label": "Upgrading a populated PostgreSQL or MySQL base schema through the store with a full plugin set, two-factor included, adds their tables and columns and keeps the existing user",
+      "test": "adapters/sqlstore/profiles_test.go",
+      "marker": "func TestServerPluginSchemaUpgrade(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L1017/`Manual Method`": [
+    {
+      "label": "Running the generated DDL for a full plugin set, two-factor included, directly in a separate PostgreSQL or MySQL database gives the same columns, indexes and foreign keys as upgrading a populated base schema through the store",
+      "test": "adapters/sqlstore/profiles_test.go",
+      "marker": "if _, err := db.ExecContext(ctx, statement); err != nil {",
+      "complete": true
+    },
+    {
+      "label": "The Go schema generator's DDL equals the other runtime's migration for every base profile combination on SQLite, PostgreSQL and MySQL, and authctl generate prints it for single profiles",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"the CLI emits"
+    }
+  ],
+  "docs/content/docs/concepts/oauth.mdx#L15": [
+    {
+      "label": "Each catalog provider built with a client ID and secret sends both in its code exchange (form fields or Basic auth) and then signs the browser in",
+      "test": "providers/catalog_test.go",
+      "marker": "if id != \"fixture-client\" || secret != \"fixture-secret\" || r.Form.Get(\"grant_type\") != \"authorization_code\" || r.Form.Get(\"code\") != \"fixture-code\" {",
+      "complete": true
+    },
+    {
+      "label": "A provider configured with a ClientID and ClientSecret completes a browser sign-in",
+      "test": "conformance/goapi/oauth_test.go",
+      "marker": "func TestOAuthBrowserFlow(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/oauth.mdx#L37": [
+    {
+      "label": "POST /sign-in/social answers the provider URL with PKCE and a browser-bound state, and the callback signs that browser in",
+      "test": "conformance/goapi/oauth_test.go",
+      "marker": "func TestOAuthBrowserFlow(t *testing.T) {"
+    },
+    {
+      "label": "The Go client's SignInSocial starts a browser sign-in that the callback completes at the callback URL, and a direct ID-token sign-in that returns a session token",
+      "test": "conformance/goapi/oauth_signup_test.go",
+      "marker": "out, err := c.SignInSocial(t.Context(), in)"
+    }
+  ],
+  "docs/content/docs/concepts/oauth.mdx#L57": [
+    {
+      "label": "The Go client's LinkSocial starts a link for the signed-in browser, and the callback adds the provider account without issuing a new session",
+      "test": "adapters/sqlstore/oauth_link_session_test.go",
+      "marker": "// A live session links without a new session."
+    },
+    {
+      "label": "/link-social needs a session and a known provider, and answers the authorization URL, redirecting unless disableRedirect is set",
+      "test": "conformance/goapi/provider_contract_test.go",
+      "marker": "func TestLinkSocialContract(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/oauth.mdx#L226": [
+    {
+      "label": "additionalParams on signIn.social and linkSocial reach the authorization URL, and state, client_id, redirect_uri, response_type, code_challenge, code_challenge_method, nonce and scope each answer 400, on both runtimes",
+      "test": "conformance/social-signup.mjs",
+      "marker": "export async function authorizationParameters("
+    }
+  ],
+  "docs/content/docs/concepts/oauth.mdx#L411": [
+    {
+      "label": "A provider profile without an email redirects to the error callback with error=email_not_found and issues no session",
+      "test": "conformance/goapi/oauth_callback_errors_test.go",
+      "marker": "{\"/retry\", url.Values{\"code\": {\"no-email\"}}, \"/retry?error=email_not_found\"},"
+    }
+  ],
+  "docs/content/docs/concepts/oauth.mdx#L419/Apple": [
+    {
+      "label": "A native Apple ID token resolves to its sub claim as the account subject",
+      "test": "providers/apple_microsoft_test.go",
+      "marker": "if err != nil || profile.Subject != \"apple-subject\" {"
+    },
+    {
+      "label": "A browser Apple sign-in requests only the token endpoint (no user-info request), takes the email from the ID token and the name from Apple's first-consent user field",
+      "test": "providers/apple_microsoft_test.go",
+      "marker": "func TestAppleFormPostAndNativeToken(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/oauth.mdx#L420/Discord": [
+    {
+      "label": "A browser sign-in through the Discord preset gives the same email, name, image and emailVerified (true from the verified field) as the other runtime's provider",
+      "test": "providers/catalog_test.go",
+      "marker": "if actual.Email != want.Email || actual.EmailVerified != want.EmailVerified || actual.Name != want.Name || !reflect.DeepEqual(actual.Image, want.Image) {"
+    },
+    {
+      "label": "The catalog's Discord profile mapping, called directly, returns the id snowflake as subject, equal to the other runtime's account subject",
+      "test": "providers/catalog_test.go",
+      "marker": "if err != nil || mapped.Subject != want.Subject {"
+    }
+  ],
+  "docs/content/docs/concepts/oauth.mdx#L421/Facebook": [
+    {
+      "label": "A browser sign-in through the Facebook preset gives the same email, name and image as the other runtime's provider, with the email unverified",
+      "test": "providers/catalog_test.go",
+      "marker": "if actual.Email != want.Email || actual.EmailVerified != want.EmailVerified || actual.Name != want.Name || !reflect.DeepEqual(actual.Image, want.Image) {"
+    },
+    {
+      "label": "The catalog's Facebook profile mapping, called directly, returns the app-scoped id as subject, equal to the other runtime's account subject",
+      "test": "providers/catalog_test.go",
+      "marker": "if err != nil || mapped.Subject != want.Subject {"
+    }
+  ],
+  "docs/content/docs/concepts/oauth.mdx#L422/GitHub": [
+    {
+      "label": "When /user returns a null email, the preset takes the primary address from /user/emails, copies its verified flag either way and uses the numeric id as subject",
+      "test": "providers/providers_test.go",
+      "marker": "func TestGitHubVerifiedEmail(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/oauth.mdx#L423/Kakao": [
+    {
+      "label": "A browser sign-in through the Kakao preset gives the same email, name and image as the other runtime's provider, with the email verified",
+      "test": "providers/catalog_test.go",
+      "marker": "if actual.Email != want.Email || actual.EmailVerified != want.EmailVerified || actual.Name != want.Name || !reflect.DeepEqual(actual.Image, want.Image) {"
+    },
+    {
+      "label": "The catalog's Kakao profile mapping, called directly, returns the numeric id as subject, equal to the other runtime's account subject",
+      "test": "providers/catalog_test.go",
+      "marker": "if err != nil || mapped.Subject != want.Subject {"
+    },
+    {
+      "label": "A Kakao address flagged is_email_valid=false stays unverified even when is_email_verified is true",
+      "test": "providers/catalog_test.go",
+      "marker": "{\"kakao\", `{\"id\":28,\"kakao_account\":{\"is_email_valid\":false,\"is_email_verified\":true,\"email\":\"person@example.org\"}}`, \"\", \"\", true, false},"
+    }
+  ],
+  "docs/content/docs/concepts/oauth.mdx#L424/LinkedIn": [
+    {
+      "label": "A browser sign-in through the LinkedIn preset gives the same email, name and image as the other runtime's provider, with email_verified copied as verified",
+      "test": "providers/catalog_test.go",
+      "marker": "if actual.Email != want.Email || actual.EmailVerified != want.EmailVerified || actual.Name != want.Name || !reflect.DeepEqual(actual.Image, want.Image) {"
+    },
+    {
+      "label": "The catalog's LinkedIn profile mapping, called directly, returns sub as subject, equal to the other runtime's account subject",
+      "test": "providers/catalog_test.go",
+      "marker": "if err != nil || mapped.Subject != want.Subject {"
+    }
+  ],
+  "docs/content/docs/concepts/oauth.mdx#L425/Microsoft Entra ID": [
+    {
+      "label": "The Microsoft provider uses the oid claim as subject and marks the email verified only when verified_primary_email lists it, per tenant mode",
+      "test": "providers/apple_microsoft_test.go",
+      "marker": "if err != nil || actual.Subject != \"object-id\" || actual.EmailVerified != tc.verified {"
+    },
+    {
+      "label": "An email without Microsoft's verification claim is unverified",
+      "test": "providers/apple_microsoft_test.go",
+      "marker": "if err != nil || claims.EmailVerified {"
+    },
+    {
+      "label": "The single-tenant Entra preset keys accounts by oid within the tenant and, when no email is reachable, falls back to an unverified <oid>@microsoft-entra-id.placeholder.invalid address",
+      "test": "providers/entra_test.go",
+      "marker": "func TestSingleTenantEntraProfile(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/oauth.mdx#L426/Roblox": [
+    {
+      "label": "A browser sign-in through the Roblox preset with a profile that has no email gives the same <sub>@roblox.placeholder.invalid address, name and image as the other runtime's provider, with the email unverified",
+      "test": "providers/catalog_test.go",
+      "marker": "if actual.Email != want.Email || actual.EmailVerified != want.EmailVerified || actual.Name != want.Name || !reflect.DeepEqual(actual.Image, want.Image) {",
+      "complete": true
+    },
+    {
+      "label": "The catalog's Roblox profile mapping, called directly, returns sub as subject, equal to the other runtime's account subject",
+      "test": "providers/catalog_test.go",
+      "marker": "if err != nil || mapped.Subject != want.Subject {"
+    }
+  ],
+  "docs/content/docs/concepts/oauth.mdx#L468/Apple": [
+    {
+      "label": "A browser Apple sign-in requests only the token endpoint (no user-info request), takes the email from the ID token and the name from Apple's first-consent user field",
+      "test": "providers/apple_microsoft_test.go",
+      "marker": "func TestAppleFormPostAndNativeToken(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/oauth.mdx#L469/GitHub": [
+    {
+      "label": "When /user returns a null email, the preset reads the primary address from /user/emails and copies its verified flag",
+      "test": "providers/providers_test.go",
+      "marker": "func TestGitHubVerifiedEmail(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/oauth.mdx#L470/Microsoft Entra ID": [
+    {
+      "label": "The Microsoft provider anchors the account on oid and leaves the email unverified unless Microsoft lists it as a verified address",
+      "test": "providers/apple_microsoft_test.go",
+      "marker": "if err != nil || actual.Subject != \"object-id\" || actual.EmailVerified != tc.verified {",
+      "complete": true
+    },
+    {
+      "label": "The Entra preset requires an oid within the configured tenant and refuses tokens without one, from another tenant or for another audience",
+      "test": "providers/entra_test.go",
+      "marker": "func TestSingleTenantEntraProfile(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/oauth.mdx#L471/Facebook": [
+    {
+      "label": "A browser sign-in through the Facebook preset stores the Facebook email unverified, as the other runtime's provider does",
+      "test": "providers/catalog_test.go",
+      "marker": "if actual.Email != want.Email || actual.EmailVerified != want.EmailVerified || actual.Name != want.Name || !reflect.DeepEqual(actual.Image, want.Image) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/oauth.mdx#L503": [
+    {
+      "label": "A provider's Config.Scopes is the scope of the sign-in authorization request",
+      "test": "conformance/goapi/provider_contract_test.go",
+      "marker": "if q := start(\"/sign-in/social\", \"\"); q.Get(\"scope\") != \"openid\" || q.Get(\"prompt\") != \"select_account consent\" {",
+      "complete": true
+    },
+    {
+      "label": "Each catalog preset requests its configured scopes in the authorization URL",
+      "test": "providers/catalog_test.go",
+      "marker": "if target.String() != settings.Authorization || q.Get(\"scope\") != strings.Join(settings.Scopes, \" \") {"
+    }
+  ],
+  "docs/content/docs/concepts/oauth.mdx#L541": [
+    {
+      "label": "A provider with DisableSignUp declines a new user even with requestSignUp, for both browser and ID-token sign-in",
+      "test": "conformance/goapi/oauth_signup_test.go",
+      "marker": "if got := signin(\"closed\", \"fourth\", true); got != \"declined\" {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/oauth.mdx#L549": [
+    {
+      "label": "A VerifyIDToken set on the Google preset replaces the built-in check, receives the raw token and nonce, and its profile signs the user in",
+      "test": "conformance/goapi/provider_contract_test.go",
+      "marker": "if seen != \"ada|n\" || c.user(cookie) != \"ada@example.test\" {"
+    },
+    {
+      "label": "A refusal from the replaced verifier answers INVALID_TOKEN without a session",
+      "test": "conformance/goapi/provider_contract_test.go",
+      "marker": "for token, code := range map[string]string{\"refused\": \"INVALID_TOKEN\", \"no-email\": \"USER_EMAIL_NOT_FOUND\"} {"
+    }
+  ],
+  "docs/content/docs/concepts/oauth.mdx#L628": [
+    {
+      "label": "At sign-up, a provider's mapped claims are stored for input fields, required mapped fields are enforced and input:false fields are ignored, on both runtimes",
+      "test": "conformance/social-user-fields.mjs",
+      "marker": "export async function compareSocialUserFields(",
+      "complete": true
+    },
+    {
+      "label": "With OverrideUserInfoOnSignIn, a returning sign-in applies the mapped input fields and ignores the input:false ones",
+      "test": "conformance/social-user-fields.mjs",
+      "marker": "export async function compareSocialProfileSync("
+    },
+    {
+      "label": "Linking a new identity by email copies only its writable mapped fields and copies nothing from a profile that fails validation",
+      "test": "adapters/sqlstore/oauth_link_profile_test.go",
+      "marker": "func TestOAuthLinkProfileUserFields(t *testing.T) {"
+    },
+    {
+      "label": "Each catalog provider takes the account subject from its documented profile field, separately from the user ID",
+      "test": "providers/catalog_test.go",
+      "marker": "if err != nil || mapped.Subject != want.Subject {"
+    }
+  ],
+  "docs/content/docs/concepts/oauth.mdx#L662": [
+    {
+      "label": "Provider mappings of the input:false accountClass and internalRisk fields are ignored: accountClass keeps its default and is returned, and internalRisk stays 9 and is not returned, on both runtimes",
+      "test": "conformance/social-user-fields.mjs",
+      "marker": "const expected={locale:defaults?\"en\":\"fr\",count:defaults?4:0,flag:defaults?null:false,accountClass:\"standard\"};",
+      "complete": true
+    },
+    {
+      "label": "With HostedDomain set, One Tap refuses a Google ID token from another Workspace domain or with no hd claim",
+      "test": "adapters/sqlstore/onetap_test.go",
+      "marker": "for _, bad := range []jwt.MapClaims{{\"aud\": \"other\"}, {\"azp\": \"other\"}, {\"iss\": \"https://other.example\"}, {\"nonce\": \"other\"}, {\"hd\": \"elsewhere.org\"}, {\"hd\": nil}"
+    },
+    {
+      "label": "A provider resolver that refuses the profile answers error=unable_to_get_user_info without a session",
+      "test": "conformance/goapi/oauth_callback_errors_test.go",
+      "marker": "{\"/retry\", url.Values{\"code\": {\"unreadable\"}}, \"/retry?error=unable_to_get_user_info\"},"
+    }
+  ],
+  "docs/content/docs/concepts/oauth.mdx#L726": [
+    {
+      "label": "A custom Refresh receives the stored refresh token; refresh-token returns its rotated refresh token and get-access-token then returns its new access token, the same on both runtimes",
+      "test": "conformance/provider-credentials.mjs",
+      "marker": "assert.equal(output[1].refreshToken, \"rotated-refresh\");",
+      "complete": true
+    },
+    {
+      "label": "A custom Refresh that returns no refresh token keeps the stored one and its expiry",
+      "test": "adapters/sqlstore/provider_credentials_test.go",
+      "marker": "t.Fatalf(\"a refresh without rotation answered %d %s\", res.Code, res.Body)"
+    }
+  ],
+  "docs/content/docs/concepts/oauth.mdx#L750": [
+    {
+      "label": "The TikTok preset sends its client key, passed as the provider's client ID, as client_key rather than client_id in the authorization URL",
+      "test": "providers/catalog_test.go",
+      "marker": "if name == \"tiktok\" && (q.Get(\"client_key\") != \"fixture-client\" || q.Has(\"client_id\")) {",
+      "complete": true
+    },
+    {
+      "label": "The TikTok code exchange sends client_key and no client_id",
+      "test": "providers/catalog_test.go",
+      "marker": "id = r.Form.Get(\"client_key\")"
+    }
+  ],
+  "docs/content/docs/concepts/oauth.mdx#L768": [
+    {
+      "label": "A custom Resolve fetches the profile with the access token, and its result becomes the session user",
+      "test": "conformance/goapi/oauth_test.go",
+      "marker": "res, err := oauth2.NewClient(ctx, oauth2.StaticTokenSource(tok)).Get(provider.URL + \"/userinfo\")",
+      "complete": true
+    },
+    {
+      "label": "account-info returns the user and data a custom Resolve produced, the same as the other runtime",
+      "test": "conformance/provider-credentials.mjs",
+      "marker": "assert.deepEqual(await run(goDB, go.baseURL, go.send), expected);"
+    }
+  ],
+  "docs/content/docs/concepts/oauth.mdx#L804": [
+    {
+      "label": "With DisableImplicitSignUp, a new user is declined unless sign-in sets requestSignUp (signup_disabled on the browser callback, OAUTH_LINK_ERROR for an ID token), and a returning user signs in",
+      "test": "conformance/goapi/oauth_signup_test.go",
+      "marker": "func TestOAuthExplicitRegistration(t *testing.T) {",
+      "complete": true
+    },
+    {
+      "label": "The released client sees the same decline, explicit registration and returning sign-in on both runtimes",
+      "test": "conformance/social-signup.mjs",
+      "marker": "export async function explicitSignup("
+    }
+  ],
+  "docs/content/docs/concepts/oauth.mdx#L823": [
+    {
+      "label": "A provider's AuthorizationParams prompt (select_account consent) reaches the sign-in authorization URL",
+      "test": "conformance/goapi/provider_contract_test.go",
+      "marker": "if q := start(\"/sign-in/social\", \"\"); q.Get(\"scope\") != \"openid\" || q.Get(\"prompt\") != \"select_account consent\" {",
+      "complete": true
+    },
+    {
+      "label": "The same prompt reaches the link authorization URL",
+      "test": "conformance/goapi/provider_contract_test.go",
+      "marker": "if q := start(\"/link-social\", cookie); q.Get(\"prompt\") != \"select_account consent\" || q.Get(\"scope\") != \"openid\" {"
+    }
+  ],
+  "docs/content/docs/concepts/oauth.mdx#L842": [
+    {
+      "label": "The Apple preset's AuthorizationParams request response_mode=form_post",
+      "test": "providers/apple_microsoft_test.go",
+      "marker": "if u.Host != \"appleid.apple.com\" || q.Get(\"scope\") != \"email name\" || q.Get(\"response_type\") != \"code id_token\" || q.Get(\"response_mode\") != \"form_post\" || challenge == \"\" {",
+      "complete": true
+    },
+    {
+      "label": "A form_post callback is accepted and finishes the sign-in",
+      "test": "providers/apple_microsoft_test.go",
+      "marker": "req = httptest.NewRequest(\"POST\", base+\"/api/auth/callback/apple\", strings.NewReader(values.Encode()))"
+    },
+    {
+      "label": "The default query-mode callback completes a browser sign-in",
+      "test": "conformance/goapi/oauth_test.go",
+      "marker": "func TestOAuthBrowserFlow(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/oauth.mdx#L861": [
+    {
+      "label": "Replacing the Google preset's Config.Scopes (openid profile email) with openid requests scope=openid alone on sign-in",
+      "test": "conformance/goapi/provider_contract_test.go",
+      "marker": "if q := start(\"/sign-in/social\", \"\"); q.Get(\"scope\") != \"openid\" || q.Get(\"prompt\") != \"select_account consent\" {",
+      "complete": true
+    },
+    {
+      "label": "The link authorization URL also requests only the configured scope",
+      "test": "conformance/goapi/provider_contract_test.go",
+      "marker": "if q := start(\"/link-social\", cookie); q.Get(\"prompt\") != \"select_account consent\" || q.Get(\"scope\") != \"openid\" {"
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L583/`storeInDatabase`": [
+    {
+      "label": "On SQLite with SecondaryStorage holding sessions, DPoP replay records stay in the database: a second issuer sharing it refuses a replayed proof and the storage receives no reservation",
+      "test": "adapters/sqlstore/dpop_secondary_storage_test.go",
+      "marker": "func TestDPoPProofsStayInDatabaseWithSecondaryStorage("
+    }
+  ],
+  "cli/check schema": [
+    {
+      "label": "Run check schema against a missing SQLite file: status 2, no DSN in the error and no file created; after migration it prints an empty JSON list",
+      "test": "cmd/authctl/check_test.go",
+      "marker": "check := []string{\"check\", \"schema\", \"--dialect\", \"sqlite\", \"--json\"}",
+      "complete": true
+    },
+    {
+      "label": "Exit 2 with only a stderr diagnostic when check schema cannot read SQLite, PostgreSQL or MySQL targets in a child process",
+      "test": "cmd/authctl/check_test.go",
+      "marker": "out, stderr := command(tc.target, 2, \"check\", \"schema\", \"--dialect\", tc.dialect, \"--json\")"
+    },
+    {
+      "label": "Exit 0 with an empty JSON list and no diagnostics for a passing check schema --json run in a child process",
+      "test": "cmd/authctl/check_test.go",
+      "marker": "out, stderr := command(dsn, 0, \"check\", \"schema\", \"--dialect\", \"sqlite\", \"--json\")"
+    },
+    {
+      "label": "Exit 0 for check schema --help",
+      "test": "cmd/authctl/check_test.go",
+      "marker": "command(dsn, 0, \"check\", \"schema\", \"--help\")"
+    },
+    {
+      "label": "Return an error and name the missing Polar table from check schema --json",
+      "test": "cmd/authctl/main_test.go",
+      "marker": "t.Fatal(\"pending billing setup not reported\", err, out.String())"
+    }
+  ],
+  "cli/create-admin/--email <email>": [
+    {
+      "label": "Create the administrator under the --email address and sign in with that address",
+      "test": "cmd/authctl/admin_test.go",
+      "marker": "login, err := service.SignInEmail(ctx, authn.SignInInput{Email: \"ops@example.test\", Password: password}, authn.RequestMeta{})"
+    },
+    {
+      "label": "Refuse to bootstrap with an email an existing account already uses, instead of promoting that account, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "t.Fatal(\"existing account was eligible for promotion\", err)"
+    }
+  ],
+  "cli/create-admin/--password <password>": [
+    {
+      "label": "Accept the administrator password on standard input with --password-stdin, including a trailing CRLF, and keep it out of command output",
+      "test": "cmd/authctl/admin_test.go",
+      "marker": "if !strings.Contains(out.String(), \"ops@example.test\") || strings.Contains(out.String()+diagnostics.String(), password) {"
+    },
+    {
+      "label": "Reject short, multi-line, blank and oversized passwords read from standard input",
+      "test": "cmd/authctl/admin_test.go",
+      "marker": "for _, invalid := range []string{\"short\", \"first-line\\nsecond-line\", \"                    \", strings.Repeat(\"a\", 520)} {"
+    }
+  ],
+  "cli/create-admin/--force": [
+    {
+      "label": "Create the first administrator while a member account already exists, leaving exactly one admin and both credentials, on three SQL engines",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "if admins != 1 || locks != 0 || accounts != 2 {"
+    }
+  ],
+  "cli/create-admin/-y, --yes": [
+    {
+      "label": "Create the first administrator while a member account already exists, leaving exactly one admin and both credentials, on three SQL engines",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "if admins != 1 || locks != 0 || accounts != 2 {"
+    }
+  ],
+  "cli/generate/--dialect <dialect>": [
+    {
+      "label": "Generate prints output containing CREATE TABLE for --dialect postgres, mysql and sqlite before the test configures any database",
+      "test": "cmd/authctl/main_test.go",
+      "marker": "if err := runCommand(\"generate\", \"--dialect\", dialect); err != nil {"
+    },
+    {
+      "label": "Reject an unsupported --dialect value",
+      "test": "cmd/authctl/main_test.go",
+      "marker": "if err := runCommand(\"generate\", \"--dialect\", \"invalid\"); err == nil {"
     }
   ]
 }

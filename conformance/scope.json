@@ -408,6 +408,357 @@
         "`radiusLg`"
       ],
       "reason": "not applicable: declared as a theme size but never read by the page"
+    },
+    {
+      "page": "adapters.md",
+      "section": "Community Adapters",
+      "labels": [
+        "Browse Community Adapters"
+      ],
+      "reason": "not applicable: JavaScript only; each listed adapter is tracked under Community database adapters"
+    },
+    {
+      "page": "adapters.md",
+      "section": "MongoDB Adapter",
+      "labels": [
+        "Joins"
+      ],
+      "reason": "not applicable: JavaScript database adapter option"
+    },
+    {
+      "page": "adapters.md",
+      "section": "MS SQL",
+      "labels": [
+        "Joins"
+      ],
+      "reason": "not applicable: JavaScript database adapter option"
+    },
+    {
+      "page": "adapters.md",
+      "section": "MySQL",
+      "labels": [
+        "Joins"
+      ],
+      "reason": "not applicable: JavaScript database adapter option"
+    },
+    {
+      "page": "adapters.md",
+      "section": "PostgreSQL",
+      "labels": [
+        "Joins"
+      ],
+      "reason": "not applicable: JavaScript database adapter option"
+    },
+    {
+      "page": "adapters.md",
+      "section": "SQLite",
+      "labels": [
+        "Joins"
+      ],
+      "reason": "not applicable: JavaScript database adapter option"
+    },
+    {
+      "page": "adapters.md",
+      "section": "Create a Database Adapter",
+      "labels": [
+        "Adapter"
+      ],
+      "reason": "not applicable: JavaScript adapter factory API; Go custom stores implement typed store interfaces"
+    },
+    {
+      "page": "adapters.md",
+      "section": "Create a Database Adapter",
+      "labels": [
+        "Config"
+      ],
+      "reason": "not applicable: the JavaScript createAdapterFactory config object; Go custom stores implement typed plainauth.Store and per-feature interfaces with no adapter config"
+    },
+    {
+      "page": "adapters.md",
+      "section": "Database adapter operations",
+      "labels": [
+        "Database adapter operations"
+      ],
+      "reason": "not applicable: JavaScript DBAdapter interface; Go stores expose typed methods (plainauth.Store and per-feature interfaces), not generic model/where operations (docs/databases.md)"
+    },
+    {
+      "page": "adapters.md",
+      "section": "Adapter capabilities and data representation",
+      "labels": [
+        "`adapterName`"
+      ],
+      "reason": "not applicable: JavaScript adapter factory option; the other runtime uses the name only to prefix factory debug logs and errors, while a Go store is a concrete value passed as Options.Store that no factory names"
+    },
+    {
+      "page": "adapters.md",
+      "section": "Adapter capabilities and data representation",
+      "labels": [
+        "`adapterId`"
+      ],
+      "reason": "not applicable: JavaScript adapter factory option; the other runtime reads the id for telemetry, a memory-store misconfiguration warning, CLI generator selection and schema-check messages, while Go stores are concrete types with no adapter registry or telemetry and authctl takes --dialect"
+    },
+    {
+      "page": "adapters.md",
+      "section": "Adapter capabilities and data representation",
+      "labels": [
+        "`mapKeysTransformInput`"
+      ],
+      "reason": "not applicable: JavaScript database adapter option; Go stores write each field to its own column or document key in typed code"
+    },
+    {
+      "page": "adapters.md",
+      "section": "Adapter capabilities and data representation",
+      "labels": [
+        "`mapKeysTransformOutput`"
+      ],
+      "reason": "not applicable: JavaScript database adapter option; Go stores scan rows straight into typed values"
+    },
+    {
+      "page": "adapters.md",
+      "section": "Adapter capabilities and data representation",
+      "labels": [
+        "`customTransformInput`",
+        "`customTransformOutput`"
+      ],
+      "reason": "not applicable: JavaScript database adapter option; it hooks the generic adapter pipeline, which Go stores do not have"
+    },
+    {
+      "page": "adapters.md",
+      "section": "Adapter capabilities and data representation",
+      "labels": [
+        "`disableTransformOutput`",
+        "`disableTransformInput`"
+      ],
+      "reason": "not applicable: JavaScript database adapter option; it switches off the generic adapter pipeline, which Go stores do not have"
+    },
+    {
+      "page": "adapters.md",
+      "section": "Adapter capabilities and data representation",
+      "labels": [
+        "`disableTransformJoin`"
+      ],
+      "reason": "not applicable: JavaScript database adapter option; Go stores write their own SQL joins and have no generic join pipeline"
+    },
+    {
+      "page": "adapters.md",
+      "section": "SQL dialect integrations",
+      "labels": [
+        "AWS S3 Select"
+      ],
+      "reason": "not applicable: S3 Select only runs SELECT queries over stored objects, so it cannot write auth data"
+    },
+    {
+      "page": "adapters.md",
+      "section": "Community database adapters",
+      "labels": [
+        "Convex (get-convex)"
+      ],
+      "reason": "not applicable: JavaScript only; it runs the auth server inside Convex's JavaScript runtime, and scope.json already treats the Convex Integration as a JavaScript framework"
+    },
+    {
+      "page": "adapters.md",
+      "section": "Community database adapters",
+      "labels": [
+        "Payload CMS (payload-auth)",
+        "Payload CMS (delmaredigital)"
+      ],
+      "reason": "not applicable: JavaScript only; it is a plugin for the Node.js Payload CMS"
+    },
+    {
+      "page": "adapters.md",
+      "section": "Community database adapters",
+      "labels": [
+        "Remult (nerdfolio)"
+      ],
+      "reason": "not applicable: JavaScript only; Remult is a TypeScript ORM"
+    },
+    {
+      "page": "adapters.md",
+      "section": "Community database adapters",
+      "labels": [
+        "ZenStack (zenstackhq)"
+      ],
+      "reason": "not applicable: JavaScript only; ZenStack is a TypeScript ORM toolkit"
+    },
+    {
+      "page": "adapters.md",
+      "section": "Community database adapters",
+      "labels": [
+        "Strapi CMS (strapi-community)"
+      ],
+      "reason": "not applicable: JavaScript only; it is a plugin for the Node.js Strapi CMS"
+    },
+    {
+      "page": "adapters.md",
+      "section": "Community database adapters",
+      "labels": [
+        "MikroORM (lubiah)",
+        "MikroORM (octet-stream)",
+        "MikroORM (a77ay)"
+      ],
+      "reason": "not applicable: JavaScript only; MikroORM is a TypeScript ORM"
+    },
+    {
+      "page": "adapters.md",
+      "section": "Community database adapters",
+      "labels": [
+        "Mongoose (AshwinSathian)"
+      ],
+      "reason": "not applicable: JavaScript only; Mongoose is a Node.js ODM, and MongoDB itself is covered by the planned MongoDB adapter"
+    },
+    {
+      "page": "adapters.md",
+      "section": "Community database adapters",
+      "labels": [
+        "Bun SQL (ilbertt)"
+      ],
+      "reason": "not applicable: JavaScript runtime; Bun SQL is the Bun runtime's built-in SQL client"
+    },
+    {
+      "page": "adapters.md",
+      "section": "Community database adapters",
+      "labels": [
+        "TypeSQL (ismailkarsli)"
+      ],
+      "reason": "not applicable: JavaScript only; TypeSQL is a TypeScript library for typed raw SQL on PostgreSQL, SQLite and MySQL (confirmed from its repository), and Go reaches those databases through the SQL stores"
+    },
+    {
+      "page": "concepts.md",
+      "section": "Database",
+      "labels": [
+        "Joins"
+      ],
+      "reason": "not applicable: JavaScript database adapter option"
+    },
+    {
+      "page": "runtime.md",
+      "section": "CLI",
+      "labels": [
+        "`ai`"
+      ],
+      "reason": "not applicable: JavaScript tooling. The interactive setup installs the npm agent CLI and agent skills with npm and npx, registers an npx-launched MCP server in AI editors, and scaffolds a TypeScript server config for the npm agent-auth plugin. A Go application configures agent auth in Go code."
+    },
+    {
+      "page": "runtime.md",
+      "section": "CLI",
+      "within": "`check`",
+      "labels": [
+        "`-c, --cwd <cwd>`"
+      ],
+      "reason": "not applicable: selects where the JavaScript CLI looks for its auth.ts configuration. authctl reads the schema configuration from --dialect, --plugins, the JSON field-definition flags and AUTH_DSN, and resolves file paths against the process working directory."
+    },
+    {
+      "page": "runtime.md",
+      "section": "CLI",
+      "within": "`check`",
+      "labels": [
+        "`--config <config>`"
+      ],
+      "reason": "not applicable: path to the JavaScript or TypeScript auth configuration module the CLI imports. Go configuration is compiled code; authctl takes the schema settings from --dialect, --plugins and the JSON field-definition flags instead."
+    },
+    {
+      "page": "runtime.md",
+      "section": "CLI",
+      "within": "`create-admin`",
+      "labels": [
+        "`-c, --cwd <cwd>`"
+      ],
+      "reason": "not applicable: selects where the JavaScript CLI looks for its auth.ts configuration. authctl create-admin targets the database named by --dialect and AUTH_DSN."
+    },
+    {
+      "page": "runtime.md",
+      "section": "CLI",
+      "within": "`create-admin`",
+      "labels": [
+        "`--config <config>`"
+      ],
+      "reason": "not applicable: path to the JavaScript auth configuration that supplies the database and admin plugin. authctl targets the database named by --dialect and AUTH_DSN and checks that its admin schema is installed."
+    },
+    {
+      "page": "runtime.md",
+      "section": "CLI",
+      "within": "`create-admin`",
+      "labels": [
+        "`--y`"
+      ],
+      "reason": "not applicable: deprecated Commander alias of -y. Go's flag package parses --y and -y as the same flag, so this has no behaviour separate from the -y, --yes item."
+    },
+    {
+      "page": "runtime.md",
+      "section": "CLI",
+      "within": "`generate`",
+      "labels": [
+        "`-c, --cwd <cwd>`"
+      ],
+      "reason": "not applicable: selects where the JavaScript CLI looks for its auth.ts configuration and resolves --output. authctl generate takes its configuration from flags and JSON field-definition files and writes to standard output, so the process working directory is the only base it needs."
+    },
+    {
+      "page": "runtime.md",
+      "section": "CLI",
+      "within": "`generate`",
+      "labels": [
+        "`--config <config>`"
+      ],
+      "reason": "not applicable: path to the JavaScript or TypeScript auth configuration module the CLI imports to learn the adapter, plugins and schema customizations. Go configuration is compiled code; authctl takes the same schema inputs from --dialect, --plugins and the JSON field-definition flags."
+    },
+    {
+      "page": "runtime.md",
+      "section": "CLI",
+      "labels": [
+        "`--adapter <adapter>`"
+      ],
+      "reason": "not applicable: chooses the Prisma, Drizzle or Kysely schema generator, which are JavaScript ORM and query-builder formats. authctl has one SQL DDL generator, chosen by --dialect."
+    },
+    {
+      "page": "runtime.md",
+      "section": "CLI",
+      "within": "`info`",
+      "labels": [
+        "`--config <config>`"
+      ],
+      "reason": "not applicable: loads the TypeScript auth configuration module to print its redacted options; Go options are plainauth.Options compiled into the host program, with no configuration file a separate tool can load"
+    },
+    {
+      "page": "runtime.md",
+      "section": "CLI",
+      "within": "`init`",
+      "labels": [
+        "`--config <config>`"
+      ],
+      "reason": "not applicable: path of the TypeScript auth configuration module the wizard creates or edits; Go configuration is plainauth.Options in the host's own code, with no configuration file"
+    },
+    {
+      "page": "runtime.md",
+      "section": "CLI",
+      "labels": [
+        "`--package-manager <package-manager>`"
+      ],
+      "reason": "not applicable: chooses npm, pnpm, yarn or bun to install JavaScript packages; Go modules are added with go get"
+    },
+    {
+      "page": "runtime.md",
+      "section": "CLI",
+      "within": "`migrate`",
+      "labels": [
+        "`--config <config>`"
+      ],
+      "reason": "not applicable: loads the JavaScript or TypeScript auth configuration that supplies the database and plugins; Go options are compiled into the host program, and authctl takes the schema from --dialect, AUTH_DSN, --plugins and the field-definition files"
+    },
+    {
+      "page": "runtime.md",
+      "section": "CLI",
+      "labels": [
+        "`upgrade`"
+      ],
+      "reason": "not applicable: npm package management; it rewrites package.json for the synchronized npm release train and runs the package manager, while Go module versions are upgraded with go get"
+    },
+    {
+      "page": "plugins/additional-fields.md",
+      "section": "Interfaces",
+      "labels": [
+        "Additional fields endpoints, types and options"
+      ],
+      "reason": "not applicable: TypeScript type inference; the plugin consists only of the client-side inferAdditionalFields helper (client.ts), with no endpoints or server behaviour"
     }
   ],
   "backlog": [

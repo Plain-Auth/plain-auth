@@ -2,16 +2,16 @@
 
 ## Verification progress
 
-**1,188 of 6,636 inventory entries are fully verified (17.9%).**
+**1,265 of 6,485 inventory entries are fully verified (19.5%).**
 
 | Inventory status | Entries |
 | --- | ---: |
-| Fully verified | 1,188 |
-| Partially verified | 1,032 |
-| No linked test evidence | 4,416 |
-| Not applicable to a Go server | 389 |
+| Fully verified | 1,265 |
+| Partially verified | 1,066 |
+| No linked test evidence | 4,154 |
+| Not applicable to a Go server | 540 |
 
-The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 3,572 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
+The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 3,889 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
 
 Entries that exist only for JavaScript clients, frameworks or runtimes are listed as not applicable, with the reason, and are left out of the totals. Backlog entries stay open on the roadmap but are not scheduled.
 
@@ -75,15 +75,15 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 
 | Checklist | Checked | Open | Not applicable |
 | --- | ---: | ---: | ---: |
-| [Published package interfaces](packages.md) | 94 | 116 | 43 |
-| [Native Go client, routers and databases](go.md) | 38 | 4 | 0 |
-| [Core API, sign-in providers and CLI](runtime.md) | 230 | 238 | 13 |
-| [Database adapters](adapters.md) | 32 | 193 | 31 |
+| [Published package interfaces](packages.md) | 110 | 116 | 43 |
+| [Native Go client, routers and databases](go.md) | 51 | 3 | 0 |
+| [Core API, sign-in providers and CLI](runtime.md) | 279 | 220 | 29 |
+| [Database adapters](adapters.md) | 73 | 53 | 163 |
 | [Authentication](authentication.md) | 128 | 366 | 0 |
-| [Core concepts](concepts.md) | 512 | 340 | 0 |
+| [Core concepts](concepts.md) | 786 | 273 | 1 |
 | [Managed infrastructure](infrastructure.md) | 0 | 528 | 0 |
 | [Framework integrations](integrations.md) | 7 | 24 | 201 |
-| [Reference and configuration](reference.md) | 468 | 227 | 6 |
+| [Reference and configuration](reference.md) | 469 | 227 | 6 |
 
 ## Plugins and integrations
 
@@ -91,7 +91,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | --- | ---: | ---: | ---: |
 | [Two-factor authentication](plugins/2fa.md) | 47 | 141 | 0 |
 | [Access](plugins/access.md) | 7 | 14 | 0 |
-| [Additional fields](plugins/additional-fields.md) | 0 | 2 | 0 |
+| [Additional fields](plugins/additional-fields.md) | 0 | 0 | 2 |
 | [Admin](plugins/admin.md) | 75 | 141 | 0 |
 | [Anonymous](plugins/anonymous.md) | 28 | 25 | 0 |
 | [API keys](plugins/api-key.md) | 114 | 210 | 0 |

@@ -138,14 +138,30 @@
 
 - [ ] Database
   - [ ] Adapters
+    - [x] Open a SQLite, PostgreSQL or MySQL store, pass it as Options.Store and serve sign-up, sign-in, session reads, revocation and sign-out over HTTP ([test](../../adapters/sqlstore/engines_test.go#L24))
+    - [x] memory.New() serves sign-up, session reads and sign-out in one process without a database ([test](../../adapters/memory/memory_test.go#L47))
   - [ ] CLI
     - [ ] Running Migrations
-    - [ ] Generating Schema
+      - [x] authctl migrate runs twice without error on a new SQLite file, with and without plugin profiles, and fails without AUTH_DSN ([test](../../cmd/authctl/main_test.go#L38))
+      - [x] authctl migrate adds the column a newly selected profile needs to an existing user table, after which check schema passes ([test](../../cmd/authctl/check_test.go#L99))
+      - [x] Adding plugin profiles to a populated SQLite database, with authctl migrate for single profiles and the store's schema migration for combinations, keeps the existing user and matches the other runtime's fresh migrations ([test](../../conformance/schema.test.mjs#L129))
+      - [x] Reopening populated PostgreSQL and MySQL databases twice with twelve plugin profiles keeps the existing user and gives the same columns, indexes and foreign keys as running the generated DDL on a fresh database ([test](../../adapters/sqlstore/profiles_test.go#L14))
+      - [x] Through a PostgreSQL connection whose search_path names a separate schema, and on MySQL, authctl migrate adds declared session columns to a populated table and check schema then reports no drift ([test](../../cmd/authctl/session_fields_live_test.go#L71))
+    - [x] Generating Schema ([test](../../cmd/authctl/main_test.go#L29))
+      - [x] authctl generate writes CREATE TABLE statements for PostgreSQL, MySQL and SQLite and refuses an unknown profile and an unsupported dialect ([test](../../cmd/authctl/main_test.go#L29))
+      - [x] The Go schema generator's DDL equals the other runtime's compiled migration SQL for every verified profile combination on SQLite, PostgreSQL and MySQL, and authctl generate prints the same DDL with no profile or with a single one ([test](../../conformance/schema.test.mjs#L106))
     - [ ] Programmatic Migrations
+      - [x] OpenWithSchema, run twice, upgrades a PostgreSQL or MySQL core schema holding a user to twelve plugin profiles, keeps the user, and matches the catalog of a database built directly from the same generated DDL ([test](../../adapters/sqlstore/profiles_test.go#L14))
+      - [x] OpenWithSchema, run twice over a populated SQLite database for each verified profile combination, keeps the existing user and yields the schema the other runtime's migrations create ([test](../../conformance/schema.test.mjs#L129))
+      - [x] CheckSchema reports the tables and columns still missing on SQLite, PostgreSQL and MySQL without writing to the database ([test](../../adapters/sqlstore/check_test.go#L17))
   - [ ] Schema Validation
+    - [x] authctl check schema returns [] and exit 0 on a matching database, missing-column findings and exit 1 on drift, and exit 2 without creating an unreadable target ([test](../../cmd/authctl/check_test.go#L42))
+    - [x] CheckSchema reports missing tables, missing columns and extra required columns read-only on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/check_test.go#L17))
+    - [x] Opening a SQLite store over an incompatible existing session table fails and leaves no user table behind ([test](../../adapters/sqlstore/sqlite_test.go#L49))
   - [ ] Secondary Storage
     - [x] Store expiring values and enforce distributed rate limits using the optional Redis module ([test](../../adapters/redis/storage_test.go#L299))
     - [x] Sessions are copied into SecondaryStorage; verification records stay in the database ([test](../../adapters/sqlstore/secondary_sessions_test.go#L102))
+    - [x] With SecondaryStorage and no RateLimitStorage, two replicas share each rate limit through Increment counters opened with the rule's window ([test](../../conformance/goapi/secondary_rate_limits_test.go#L24))
     - [x] Implementation ([test](../../adapters/sqlstore/secondary_sessions_test.go#L102))
       - [x] Options.SecondaryStorage takes a five-method Get, Set, Delete, GetAndDelete and Increment store; a custom in-memory one serves sessions across replicas on three SQL engines ([test](../../adapters/sqlstore/secondary_sessions_test.go#L102))
     - [x] Redis Storage ([test](../../adapters/redis/sessions_test.go#L22))
@@ -157,59 +173,168 @@
       - [x] Custom Implementations ([test](../../adapters/sqlstore/secondary_sessions_test.go#L295))
         - [x] A custom SecondaryStorage implementation receives each session copy and its deletions under concurrent reads, renames and revocation ([test](../../adapters/sqlstore/secondary_sessions_test.go#L295))
   - [ ] Core Schema
-    - [ ] User
-      - [ ] `userTableFields.id`
-      - [ ] `userTableFields.name`
-      - [ ] `userTableFields.email`
-      - [ ] `userTableFields.emailVerified`
-      - [ ] `userTableFields.image`
-      - [ ] `userTableFields.createdAt`
-      - [ ] `userTableFields.updatedAt`
-    - [ ] Session
-      - [ ] `sessionTableFields.id`
-      - [ ] `sessionTableFields.userId`
-      - [ ] `sessionTableFields.token`
-      - [ ] `sessionTableFields.expiresAt`
-      - [ ] `sessionTableFields.ipAddress`
-      - [ ] `sessionTableFields.userAgent`
-      - [ ] `sessionTableFields.createdAt`
-      - [ ] `sessionTableFields.updatedAt`
+    - [x] User ([test](../../conformance/schema.test.mjs#L37))
+      - [x] Fresh and repeated authctl migrations on SQLite create the user table with the other runtime's columns, types, defaults, keys, indexes and foreign keys ([test](../../conformance/schema.test.mjs#L37))
+      - [x] The Go generator's user table DDL is identical to the other runtime's compiled migration SQL on SQLite, PostgreSQL and MySQL ([test](../../conformance/schema.test.mjs#L116))
+      - [x] Stores opened on PostgreSQL and MySQL give the user table the same columns, indexes and foreign keys as the store's embedded baseline SQL run directly ([test](../../adapters/sqlstore/schema_test.go#L18))
+      - [x] `userTableFields.id` ([test](../../conformance/schema.test.mjs#L116))
+        - [x] The generated user.id column, a not-null string primary key, is identical to the other runtime's DDL on SQLite, PostgreSQL and MySQL ([test](../../conformance/schema.test.mjs#L116))
+        - [x] Stores opened on PostgreSQL and MySQL give user.id the same type, nullability, default and keys as the store's embedded baseline SQL run directly ([test](../../adapters/sqlstore/schema_test.go#L18))
+      - [x] `userTableFields.name` ([test](../../conformance/schema.test.mjs#L116))
+        - [x] The generated user.name column, a not-null string column, is identical to the other runtime's DDL on SQLite, PostgreSQL and MySQL ([test](../../conformance/schema.test.mjs#L116))
+        - [x] Stores opened on PostgreSQL and MySQL give user.name the same type, nullability, default and keys as the store's embedded baseline SQL run directly ([test](../../adapters/sqlstore/schema_test.go#L18))
+      - [x] `userTableFields.email` ([test](../../conformance/schema.test.mjs#L116))
+        - [x] The generated user.email column, a not-null unique string column, is identical to the other runtime's DDL on SQLite, PostgreSQL and MySQL ([test](../../conformance/schema.test.mjs#L116))
+        - [x] Stores opened on PostgreSQL and MySQL give user.email the same type, nullability, default and keys as the store's embedded baseline SQL run directly ([test](../../adapters/sqlstore/schema_test.go#L18))
+      - [x] `userTableFields.emailVerified` ([test](../../conformance/schema.test.mjs#L116))
+        - [x] The generated user.emailVerified column, a not-null boolean column (integer on SQLite), is identical to the other runtime's DDL on SQLite, PostgreSQL and MySQL ([test](../../conformance/schema.test.mjs#L116))
+        - [x] Stores opened on PostgreSQL and MySQL give user.emailVerified the same type, nullability, default and keys as the store's embedded baseline SQL run directly ([test](../../adapters/sqlstore/schema_test.go#L18))
+      - [x] `userTableFields.image` ([test](../../conformance/schema.test.mjs#L116))
+        - [x] The generated user.image column, a nullable text column, is identical to the other runtime's DDL on SQLite, PostgreSQL and MySQL ([test](../../conformance/schema.test.mjs#L116))
+        - [x] Stores opened on PostgreSQL and MySQL give user.image the same type, nullability, default and keys as the store's embedded baseline SQL run directly ([test](../../adapters/sqlstore/schema_test.go#L18))
+      - [x] `userTableFields.createdAt` ([test](../../conformance/schema.test.mjs#L116))
+        - [x] The generated user.createdAt column, a not-null timestamp column (date on SQLite), is identical to the other runtime's DDL on SQLite, PostgreSQL and MySQL ([test](../../conformance/schema.test.mjs#L116))
+        - [x] Stores opened on PostgreSQL and MySQL give user.createdAt the same type, nullability, default and keys as the store's embedded baseline SQL run directly ([test](../../adapters/sqlstore/schema_test.go#L18))
+      - [x] `userTableFields.updatedAt` ([test](../../conformance/schema.test.mjs#L116))
+        - [x] The generated user.updatedAt column, a not-null timestamp column (date on SQLite), is identical to the other runtime's DDL on SQLite, PostgreSQL and MySQL ([test](../../conformance/schema.test.mjs#L116))
+        - [x] Stores opened on PostgreSQL and MySQL give user.updatedAt the same type, nullability, default and keys as the store's embedded baseline SQL run directly ([test](../../adapters/sqlstore/schema_test.go#L18))
+    - [x] Session ([test](../../conformance/schema.test.mjs#L37))
+      - [x] Fresh and repeated authctl migrations on SQLite create the session table with the other runtime's columns, types, defaults, keys, indexes and foreign keys ([test](../../conformance/schema.test.mjs#L37))
+      - [x] The Go generator's session table DDL is identical to the other runtime's compiled migration SQL on SQLite, PostgreSQL and MySQL ([test](../../conformance/schema.test.mjs#L116))
+      - [x] Stores opened on PostgreSQL and MySQL give the session table the same columns, indexes and foreign keys as the store's embedded baseline SQL run directly ([test](../../adapters/sqlstore/schema_test.go#L18))
+      - [x] `sessionTableFields.id` ([test](../../conformance/schema.test.mjs#L116))
+        - [x] The generated session.id column, a not-null string primary key, is identical to the other runtime's DDL on SQLite, PostgreSQL and MySQL ([test](../../conformance/schema.test.mjs#L116))
+        - [x] Stores opened on PostgreSQL and MySQL give session.id the same type, nullability, default and keys as the store's embedded baseline SQL run directly ([test](../../adapters/sqlstore/schema_test.go#L18))
+      - [x] `sessionTableFields.userId` ([test](../../conformance/schema.test.mjs#L116))
+        - [x] The generated session.userId column, a not-null indexed foreign key to user.id with cascading delete, is identical to the other runtime's DDL on SQLite, PostgreSQL and MySQL ([test](../../conformance/schema.test.mjs#L116))
+        - [x] Stores opened on PostgreSQL and MySQL give session.userId the same type, nullability, index and foreign key as the store's embedded baseline SQL run directly ([test](../../adapters/sqlstore/schema_test.go#L18))
+      - [x] `sessionTableFields.token` ([test](../../conformance/schema.test.mjs#L116))
+        - [x] The generated session.token column, a not-null unique string column, is identical to the other runtime's DDL on SQLite, PostgreSQL and MySQL ([test](../../conformance/schema.test.mjs#L116))
+        - [x] Stores opened on PostgreSQL and MySQL give session.token the same type, nullability, default and keys as the store's embedded baseline SQL run directly ([test](../../adapters/sqlstore/schema_test.go#L18))
+      - [x] `sessionTableFields.expiresAt` ([test](../../conformance/schema.test.mjs#L116))
+        - [x] The generated session.expiresAt column, a not-null timestamp column (date on SQLite), is identical to the other runtime's DDL on SQLite, PostgreSQL and MySQL ([test](../../conformance/schema.test.mjs#L116))
+        - [x] Stores opened on PostgreSQL and MySQL give session.expiresAt the same type, nullability, default and keys as the store's embedded baseline SQL run directly ([test](../../adapters/sqlstore/schema_test.go#L18))
+      - [x] `sessionTableFields.ipAddress` ([test](../../conformance/schema.test.mjs#L116))
+        - [x] The generated session.ipAddress column, a nullable text column, is identical to the other runtime's DDL on SQLite, PostgreSQL and MySQL ([test](../../conformance/schema.test.mjs#L116))
+        - [x] Stores opened on PostgreSQL and MySQL give session.ipAddress the same type, nullability, default and keys as the store's embedded baseline SQL run directly ([test](../../adapters/sqlstore/schema_test.go#L18))
+      - [x] `sessionTableFields.userAgent` ([test](../../conformance/schema.test.mjs#L116))
+        - [x] The generated session.userAgent column, a nullable text column, is identical to the other runtime's DDL on SQLite, PostgreSQL and MySQL ([test](../../conformance/schema.test.mjs#L116))
+        - [x] Stores opened on PostgreSQL and MySQL give session.userAgent the same type, nullability, default and keys as the store's embedded baseline SQL run directly ([test](../../adapters/sqlstore/schema_test.go#L18))
+      - [x] `sessionTableFields.createdAt` ([test](../../conformance/schema.test.mjs#L116))
+        - [x] The generated session.createdAt column, a not-null timestamp column (date on SQLite), is identical to the other runtime's DDL on SQLite, PostgreSQL and MySQL ([test](../../conformance/schema.test.mjs#L116))
+        - [x] Stores opened on PostgreSQL and MySQL give session.createdAt the same type, nullability, default and keys as the store's embedded baseline SQL run directly ([test](../../adapters/sqlstore/schema_test.go#L18))
+      - [x] `sessionTableFields.updatedAt` ([test](../../conformance/schema.test.mjs#L116))
+        - [x] The generated session.updatedAt column, a not-null timestamp column (date on SQLite), is identical to the other runtime's DDL on SQLite, PostgreSQL and MySQL ([test](../../conformance/schema.test.mjs#L116))
+        - [x] Stores opened on PostgreSQL and MySQL give session.updatedAt the same type, nullability, default and keys as the store's embedded baseline SQL run directly ([test](../../adapters/sqlstore/schema_test.go#L18))
     - [ ] Account
-      - [ ] `accountTableFields.id`
-      - [ ] `accountTableFields.userId`
-      - [ ] `accountTableFields.accountId`
-      - [ ] `accountTableFields.providerId`
-      - [ ] `accountTableFields.accessToken`
-      - [ ] `accountTableFields.refreshToken`
-      - [ ] `accountTableFields.accessTokenExpiresAt`
-      - [ ] `accountTableFields.refreshTokenExpiresAt`
-      - [ ] `accountTableFields.scope`
-      - [ ] `accountTableFields.idToken`
-      - [ ] `accountTableFields.password`
-      - [ ] `accountTableFields.createdAt`
-      - [ ] `accountTableFields.updatedAt`
-    - [ ] Verification
-      - [ ] `verificationTableFields.id`
-      - [ ] `verificationTableFields.identifier`
-      - [ ] `verificationTableFields.value`
-      - [ ] `verificationTableFields.expiresAt`
-      - [ ] `verificationTableFields.createdAt`
-      - [ ] `verificationTableFields.updatedAt`
+      - [x] Fresh and repeated authctl migrations on SQLite create the account table with the other runtime's columns, types, defaults, keys, indexes and foreign keys ([test](../../conformance/schema.test.mjs#L37))
+      - [x] The Go generator's account table DDL is identical to the other runtime's compiled migration SQL on SQLite, PostgreSQL and MySQL ([test](../../conformance/schema.test.mjs#L116))
+      - [x] Stores opened on PostgreSQL and MySQL give the account table the same columns, indexes and foreign keys as the store's embedded baseline SQL run directly ([test](../../adapters/sqlstore/schema_test.go#L18))
+      - [x] account-info takes the local account row id as accountId and answers with the provider-side subject ([test](../../adapters/sqlstore/provider_credentials_test.go#L162))
+      - [x] unlink-account given the credential account's local id from list-accounts recognizes it and refuses it as the last account before any account hook runs ([test](../../conformance/goapi/delete_user_test.go#L228))
+      - [x] `accountTableFields.id` ([test](../../conformance/schema.test.mjs#L116))
+        - [x] The generated account.id column, a not-null string primary key, is identical to the other runtime's DDL on SQLite, PostgreSQL and MySQL ([test](../../conformance/schema.test.mjs#L116))
+        - [x] Stores opened on PostgreSQL and MySQL give account.id the same type, nullability, default and keys as the store's embedded baseline SQL run directly ([test](../../adapters/sqlstore/schema_test.go#L18))
+      - [x] `accountTableFields.userId` ([test](../../conformance/schema.test.mjs#L116))
+        - [x] The generated account.userId column, a not-null indexed foreign key to user.id with cascading delete, is identical to the other runtime's DDL on SQLite, PostgreSQL and MySQL ([test](../../conformance/schema.test.mjs#L116))
+        - [x] Stores opened on PostgreSQL and MySQL give account.userId the same type, nullability, index and foreign key as the store's embedded baseline SQL run directly ([test](../../adapters/sqlstore/schema_test.go#L18))
+      - [x] `accountTableFields.accountId` ([test](../../conformance/schema.test.mjs#L116))
+        - [x] The generated account.accountId column, a not-null text column, is identical to the other runtime's DDL on SQLite, PostgreSQL and MySQL ([test](../../conformance/schema.test.mjs#L116))
+        - [x] Stores opened on PostgreSQL and MySQL give account.accountId the same type, nullability, default and keys as the store's embedded baseline SQL run directly ([test](../../adapters/sqlstore/schema_test.go#L18))
+      - [x] `accountTableFields.providerId` ([test](../../conformance/schema.test.mjs#L116))
+        - [x] The generated account.providerId column, a not-null text column, is identical to the other runtime's DDL on SQLite, PostgreSQL and MySQL ([test](../../conformance/schema.test.mjs#L116))
+        - [x] Stores opened on PostgreSQL and MySQL give account.providerId the same type, nullability, default and keys as the store's embedded baseline SQL run directly ([test](../../adapters/sqlstore/schema_test.go#L18))
+      - [x] `accountTableFields.accessToken` ([test](../../conformance/schema.test.mjs#L116))
+        - [x] The generated account.accessToken column, a nullable text column, is identical to the other runtime's DDL on SQLite, PostgreSQL and MySQL ([test](../../conformance/schema.test.mjs#L116))
+        - [x] Stores opened on PostgreSQL and MySQL give account.accessToken the same type, nullability, default and keys as the store's embedded baseline SQL run directly ([test](../../adapters/sqlstore/schema_test.go#L18))
+      - [x] `accountTableFields.refreshToken` ([test](../../conformance/schema.test.mjs#L116))
+        - [x] The generated account.refreshToken column, a nullable text column, is identical to the other runtime's DDL on SQLite, PostgreSQL and MySQL ([test](../../conformance/schema.test.mjs#L116))
+        - [x] Stores opened on PostgreSQL and MySQL give account.refreshToken the same type, nullability, default and keys as the store's embedded baseline SQL run directly ([test](../../adapters/sqlstore/schema_test.go#L18))
+      - [x] `accountTableFields.accessTokenExpiresAt` ([test](../../conformance/schema.test.mjs#L116))
+        - [x] The generated account.accessTokenExpiresAt column, a nullable timestamp column (date on SQLite), is identical to the other runtime's DDL on SQLite, PostgreSQL and MySQL ([test](../../conformance/schema.test.mjs#L116))
+        - [x] Stores opened on PostgreSQL and MySQL give account.accessTokenExpiresAt the same type, nullability, default and keys as the store's embedded baseline SQL run directly ([test](../../adapters/sqlstore/schema_test.go#L18))
+      - [x] `accountTableFields.refreshTokenExpiresAt` ([test](../../conformance/schema.test.mjs#L116))
+        - [x] The generated account.refreshTokenExpiresAt column, a nullable timestamp column (date on SQLite), is identical to the other runtime's DDL on SQLite, PostgreSQL and MySQL ([test](../../conformance/schema.test.mjs#L116))
+        - [x] Stores opened on PostgreSQL and MySQL give account.refreshTokenExpiresAt the same type, nullability, default and keys as the store's embedded baseline SQL run directly ([test](../../adapters/sqlstore/schema_test.go#L18))
+      - [x] `accountTableFields.scope` ([test](../../conformance/schema.test.mjs#L116))
+        - [x] The generated account.scope column, a nullable text column, equals the other runtime's generated DDL on SQLite, PostgreSQL and MySQL ([test](../../conformance/schema.test.mjs#L116))
+        - [x] Opened PostgreSQL and MySQL stores give account.scope the same type, nullability, default and keys as a separately installed copy of the embedded schema script ([test](../../adapters/sqlstore/schema_test.go#L18))
+      - [x] `accountTableFields.idToken` ([test](../../conformance/schema.test.mjs#L116))
+        - [x] The generated account.idToken column, a nullable text column, equals the other runtime's generated DDL on SQLite, PostgreSQL and MySQL ([test](../../conformance/schema.test.mjs#L116))
+        - [x] Opened PostgreSQL and MySQL stores give account.idToken the same type, nullability, default and keys as a separately installed copy of the embedded schema script ([test](../../adapters/sqlstore/schema_test.go#L18))
+      - [x] `accountTableFields.password` ([test](../../conformance/schema.test.mjs#L116))
+        - [x] The generated account.password column, a nullable text column, equals the other runtime's generated DDL on SQLite, PostgreSQL and MySQL ([test](../../conformance/schema.test.mjs#L116))
+        - [x] Opened PostgreSQL and MySQL stores give account.password the same type, nullability, default and keys as a separately installed copy of the embedded schema script ([test](../../adapters/sqlstore/schema_test.go#L18))
+      - [x] `accountTableFields.createdAt` ([test](../../conformance/schema.test.mjs#L116))
+        - [x] The generated account.createdAt column, a not-null date column, equals the other runtime's generated DDL on SQLite, PostgreSQL and MySQL ([test](../../conformance/schema.test.mjs#L116))
+        - [x] Opened PostgreSQL and MySQL stores give account.createdAt the same type, nullability, default and keys as a separately installed copy of the embedded schema script ([test](../../adapters/sqlstore/schema_test.go#L18))
+      - [x] `accountTableFields.updatedAt` ([test](../../conformance/schema.test.mjs#L116))
+        - [x] The generated account.updatedAt column, a not-null date column, equals the other runtime's generated DDL on SQLite, PostgreSQL and MySQL ([test](../../conformance/schema.test.mjs#L116))
+        - [x] Opened PostgreSQL and MySQL stores give account.updatedAt the same type, nullability, default and keys as a separately installed copy of the embedded schema script ([test](../../adapters/sqlstore/schema_test.go#L18))
+    - [x] Verification ([test](../../conformance/schema.test.mjs#L37))
+      - [x] Fresh and repeated authctl migrations on SQLite create a verification table whose columns, types, defaults, keys and indexes equal those the other runtime's migration creates ([test](../../conformance/schema.test.mjs#L37))
+      - [x] The generated verification table DDL, with its identifier index, equals the other runtime's generated DDL on SQLite, PostgreSQL and MySQL ([test](../../conformance/schema.test.mjs#L116))
+      - [x] Opened PostgreSQL and MySQL stores give the verification table the same columns, indexes and foreign keys as a separately installed copy of the embedded schema script ([test](../../adapters/sqlstore/schema_test.go#L18))
+      - [x] `verificationTableFields.id` ([test](../../conformance/schema.test.mjs#L116))
+        - [x] The generated verification.id column, a not-null string primary key, equals the other runtime's generated DDL on SQLite, PostgreSQL and MySQL ([test](../../conformance/schema.test.mjs#L116))
+        - [x] Opened PostgreSQL and MySQL stores give verification.id the same type, nullability, default and keys as a separately installed copy of the embedded schema script ([test](../../adapters/sqlstore/schema_test.go#L18))
+      - [x] `verificationTableFields.identifier` ([test](../../conformance/schema.test.mjs#L116))
+        - [x] The generated verification.identifier column, a not-null indexed string column, equals the other runtime's generated DDL on SQLite, PostgreSQL and MySQL ([test](../../conformance/schema.test.mjs#L116))
+        - [x] Opened PostgreSQL and MySQL stores give verification.identifier the same type, nullability, default and keys as a separately installed copy of the embedded schema script ([test](../../adapters/sqlstore/schema_test.go#L18))
+      - [x] `verificationTableFields.value` ([test](../../conformance/schema.test.mjs#L116))
+        - [x] The generated verification.value column, a not-null text column, equals the other runtime's generated DDL on SQLite, PostgreSQL and MySQL ([test](../../conformance/schema.test.mjs#L116))
+        - [x] Opened PostgreSQL and MySQL stores give verification.value the same type, nullability, default and keys as a separately installed copy of the embedded schema script ([test](../../adapters/sqlstore/schema_test.go#L18))
+      - [x] `verificationTableFields.expiresAt` ([test](../../conformance/schema.test.mjs#L116))
+        - [x] The generated verification.expiresAt column, a not-null date column, equals the other runtime's generated DDL on SQLite, PostgreSQL and MySQL ([test](../../conformance/schema.test.mjs#L116))
+        - [x] Opened PostgreSQL and MySQL stores give verification.expiresAt the same type, nullability, default and keys as a separately installed copy of the embedded schema script ([test](../../adapters/sqlstore/schema_test.go#L18))
+      - [x] `verificationTableFields.createdAt` ([test](../../conformance/schema.test.mjs#L116))
+        - [x] The generated verification.createdAt column, a not-null date column, equals the other runtime's generated DDL on SQLite, PostgreSQL and MySQL ([test](../../conformance/schema.test.mjs#L116))
+        - [x] Opened PostgreSQL and MySQL stores give verification.createdAt the same type, nullability, default and keys as a separately installed copy of the embedded schema script ([test](../../adapters/sqlstore/schema_test.go#L18))
+      - [x] `verificationTableFields.updatedAt` ([test](../../conformance/schema.test.mjs#L116))
+        - [x] The generated verification.updatedAt column, a not-null date column, equals the other runtime's generated DDL on SQLite, PostgreSQL and MySQL ([test](../../conformance/schema.test.mjs#L116))
+        - [x] Opened PostgreSQL and MySQL stores give verification.updatedAt the same type, nullability, default and keys as a separately installed copy of the embedded schema script ([test](../../adapters/sqlstore/schema_test.go#L18))
   - [ ] Custom Tables
     - [ ] Custom Table Names
     - [ ] Extending Core Schema
       - [x] Generate, inspect and migrate declared provider account fields across SQLite, PostgreSQL and MySQL ([test](../../cmd/authctl/account_fields_test.go#L13))
+      - [x] authctl generate, migrate and check schema apply user and session field declarations on SQLite, PostgreSQL and MySQL, adding new columns to a populated user table ([test](../../cmd/authctl/user_fields_test.go#L67))
+      - [x] On both runtimes declared user fields share one column shape and round-trip through sign-up, sign-in, update-user and get-session: a required field is enforced, defaults apply, hidden fields stay out of sign-up, sign-in and get-session responses, the renamed column persists, and update-user refuses a client write to a server-owned field ([test](../../conformance/user-fields.mjs#L32))
+      - [x] On both runtimes declared session fields get the same column shape as the other runtime's, apply defaults, omit non-returned fields and persist updateSession writes ([test](../../conformance/session-fields.mjs#L22))
       - [ ] `type`
-      - [ ] `required`
-      - [ ] `defaultValue`
+        - [x] String and number user fields round-trip, a boolean field clears to null, and a number field refuses fractions, booleans and out-of-range values with VALIDATION_ERROR, on memory, SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/user_fields_test.go#L47))
+        - [x] String, number and boolean user fields get the same column types as the other runtime's and round-trip between both runtimes ([test](../../conformance/user-fields.mjs#L32))
+      - [x] `required` ([test](../../adapters/sqlstore/user_fields_test.go#L47))
+        - [x] Sign-up without a required user field answers MISSING_FIELD on memory, SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/user_fields_test.go#L47))
+        - [x] Sign-up without a required user field answers MISSING_FIELD on both runtimes ([test](../../conformance/user-fields.mjs#L32))
+        - [x] Social registration whose profile mapping lacks a required field fails with MISSING_FIELD and stores nothing on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/oauth_user_fields_test.go#L112))
+      - [x] `defaultValue` ([test](../../conformance/user-fields.mjs#L32))
         - [x] Evaluate application defaults when creating a record and preserve explicit writable input and nulls ([test](../../conformance/computed-fields.mjs#L4))
-      - [ ] `input`
-      - [ ] `returned`
-      - [ ] `{ input: true, returned: true }`
-      - [ ] `{ input: true, returned: false }`
-      - [ ] `{ input: false, returned: true }`
-      - [ ] `{ input: false, returned: false }`
+        - [x] On both runtimes sign-up fills omitted fields with their defaults, including server-owned ones, and the field columns match the other runtime's in type, nullability and database default ([test](../../conformance/user-fields.mjs#L32))
+        - [x] A default fills an omitted writable field and replaces a client value for a server-owned field on memory, SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/user_fields_test.go#L47))
+      - [x] `input` ([test](../../conformance/user-fields.mjs#L32))
+        - [x] On both runtimes sign-up ignores a client value for an input: false field, update-user refuses it with FIELD_NOT_ALLOWED and ignores false, zero, empty and null ([test](../../conformance/user-fields.mjs#L32))
+        - [x] On both runtimes provider profile mapping supplies writable fields while values for input: false fields are ignored in favour of their defaults ([test](../../conformance/social-user-fields.mjs#L110))
+        - [x] Through the released client on both runtimes updateSession persists writable session fields and refuses input: false ones ([test](../../conformance/session-fields.mjs#L22))
+      - [x] `returned` ([test](../../conformance/user-fields.mjs#L32))
+        - [x] On both runtimes a returned: false field accepts client input at sign-up and update-user, is stored, and is left out of sign-up, sign-in and get-session responses ([test](../../conformance/user-fields.mjs#L32))
+        - [x] A hidden user field written by its owner at sign-up and update-user is left out of the sign-up response and the get-session JSON on memory, SQLite, PostgreSQL and MySQL, and its value is stored on the SQL engines ([test](../../adapters/sqlstore/user_fields_test.go#L47))
+      - [x] `{ input: true, returned: true }` ([test](../../conformance/user-fields.mjs#L32))
+        - [x] On both runtimes a writable public field supplied at sign-up and update-user is stored and returned ([test](../../conformance/user-fields.mjs#L32))
+        - [x] On both runtimes a writable public field supplied by provider profile mapping is stored and returned ([test](../../conformance/social-user-fields.mjs#L110))
+      - [x] `{ input: true, returned: false }` ([test](../../conformance/user-fields.mjs#L32))
+        - [x] On both runtimes a writable hidden field supplied at sign-up and update-user is stored but omitted from responses ([test](../../conformance/user-fields.mjs#L32))
+        - [x] On both runtimes a writable hidden field supplied by provider profile mapping is stored but omitted from responses ([test](../../conformance/social-user-fields.mjs#L110))
+      - [x] `{ input: false, returned: true }` ([test](../../conformance/user-fields.mjs#L32))
+        - [x] On both runtimes a server-owned public field ignores a sign-up value, refuses an update-user value with FIELD_NOT_ALLOWED, starts at its default and is returned ([test](../../conformance/user-fields.mjs#L32))
+        - [x] On both runtimes provider mapping cannot set a server-owned public field, which starts at its default and is returned ([test](../../conformance/social-user-fields.mjs#L110))
+        - [x] UpdateTrustedUserFields sets a server-owned field that update-user refuses with FIELD_NOT_ALLOWED, and later reads return it ([test](../../adapters/sqlstore/user_fields_test.go#L47))
+      - [x] `{ input: false, returned: false }` ([test](../../conformance/user-fields.mjs#L32))
+        - [x] On both runtimes a server-owned hidden field starts at its default in storage and is omitted from responses ([test](../../conformance/user-fields.mjs#L32))
+        - [x] On both runtimes provider mapping cannot set a server-owned hidden field, which keeps its default in storage and stays out of responses ([test](../../conformance/social-user-fields.mjs#L110))
+        - [x] An administrator's API request supplying a server-owned hidden field is refused with FIELD_NOT_ALLOWED and stores nothing ([test](../../adapters/sqlstore/admin_user_fields_test.go#L119))
       - [ ] Example: Mapping Profile to User For `firstName` and `lastName`
+        - [x] On both runtimes a provider resolver maps profile values into declared user fields at registration ([test](../../conformance/social-user-fields.mjs#L110))
+        - [x] A provider resolver's AdditionalFields populate declared user fields at social registration on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/oauth_user_fields_test.go#L112))
     - [ ] ID Generation
       - [ ] Option 1: Let Database Generate IDs
       - [ ] Option 2: Custom ID Generation Function
@@ -306,12 +431,28 @@
         - [x] Pass the endpoint call to hooks during HTTP requests and nil for direct Go calls ([test](../../conformance/goapi/database_hooks_test.go#L288))
         - [x] Read the signed-in caller from the endpoint context in an update hook ([test](../../conformance/goapi/database_session_hooks_test.go#L47))
   - [ ] Plugins Schema
-    - [ ] `twoFactorEnabled`
-    - [ ] `twoFactorSecret`
-    - [ ] `twoFactorBackupCodes`
+    - [x] `twoFactorEnabled` ([test](../../conformance/schema.test.mjs#L106))
+      - [x] The Go schema generator's DDL equals the other runtime's migration for every base profile combination, two-factor included, on SQLite, PostgreSQL and MySQL, and authctl generate prints the same DDL for single profiles, so the two-factor profile adds user.twoFactorEnabled ([test](../../conformance/schema.test.mjs#L106))
+      - [x] After a verified TOTP enrollment, the session user reports twoFactorEnabled true on both runtimes ([test](../../conformance/core.test.mjs#L297))
+      - [x] An anonymous sign-in on a store with the two-factor plugin returns a user whose TwoFactorEnabled is false ([test](../../adapters/sqlstore/admin_factor_test.go#L89))
+    - [x] `twoFactorSecret` ([test](../../conformance/schema.test.mjs#L106))
+      - [x] The Go schema generator's two-factor DDL equals the other runtime's migration on SQLite, PostgreSQL and MySQL, which keeps the TOTP secret in a twoFactor.secret column rather than on the user table ([test](../../conformance/schema.test.mjs#L106))
+      - [x] After two-factor/enable, the twoFactor row's secret column is set and does not contain the plaintext TOTP secret ([test](../../adapters/sqlstore/twofactor_test.go#L135))
+      - [x] A code generated from the provisioned secret verifies the enrollment through a second instance ([test](../../adapters/sqlstore/twofactor_test.go#L138))
+    - [x] `twoFactorBackupCodes` ([test](../../conformance/schema.test.mjs#L106))
+      - [x] The Go schema generator's two-factor DDL equals the other runtime's migration on SQLite, PostgreSQL and MySQL, which keeps backup codes in a twoFactor.backupCodes column ([test](../../conformance/schema.test.mjs#L106))
+      - [x] After two-factor/enable, the twoFactor row's backupCodes column does not contain the first plaintext backup code ([test](../../adapters/sqlstore/twofactor_test.go#L135))
+      - [x] A backup code completes a two-factor sign-in once, the used code is then refused and a spare one still works, on both runtimes ([test](../../conformance/core.test.mjs#L287))
     - [ ] `CLI`
-    - [ ] `Manual Method`
-  - [ ] Joins
+      - [x] On a populated SQLite base schema, each profile combination migrated through the Go store (single profiles first through authctl migrate --plugins) keeps the existing user and gives the same schema as the other runtime's migration ([test](../../conformance/schema.test.mjs#L129))
+      - [x] authctl check reports a plugin's missing user column after a base migration and passes once migrate --plugins adds it ([test](../../cmd/authctl/check_test.go#L99))
+      - [x] On an existing SQLite database, authctl check reports the seven missing OAuth provider tables, authctl migrate --plugins oauth-provider adds them to match the other runtime's migration, and a rerun keeps an existing client and checks clean ([test](../../conformance/schema.test.mjs#L417))
+      - [x] authctl generate prints the DDL for each single profile on SQLite, PostgreSQL and MySQL, equal to the other runtime's migration ([test](../../conformance/schema.test.mjs#L106))
+      - [x] Upgrading a populated PostgreSQL or MySQL base schema through the store with a full plugin set, two-factor included, adds their tables and columns and keeps the existing user ([test](../../adapters/sqlstore/profiles_test.go#L14))
+    - [x] `Manual Method` ([test](../../adapters/sqlstore/profiles_test.go#L55))
+      - [x] Running the generated DDL for a full plugin set, two-factor included, directly in a separate PostgreSQL or MySQL database gives the same columns, indexes and foreign keys as upgrading a populated base schema through the store ([test](../../adapters/sqlstore/profiles_test.go#L55))
+      - [x] The Go schema generator's DDL equals the other runtime's migration for every base profile combination on SQLite, PostgreSQL and MySQL, and authctl generate prints it for single profiles ([test](../../conformance/schema.test.mjs#L106))
+  - Joins — *not applicable: JavaScript database adapter option*
 
 ## Email
 
@@ -416,22 +557,39 @@
 ## OAuth
 
 - [ ] OAuth
-  - [ ] Configuring Social Providers
+  - [x] Configuring Social Providers ([test](../../providers/catalog_test.go#L79))
+    - [x] Each catalog provider built with a client ID and secret sends both in its code exchange (form fields or Basic auth) and then signs the browser in ([test](../../providers/catalog_test.go#L79))
+    - [x] A provider configured with a ClientID and ClientSecret completes a browser sign-in ([test](../../conformance/goapi/oauth_test.go#L21))
   - [ ] Usage
     - [ ] Sign In
+      - [x] POST /sign-in/social answers the provider URL with PKCE and a browser-bound state, and the callback signs that browser in ([test](../../conformance/goapi/oauth_test.go#L21))
+      - [x] The Go client's SignInSocial starts a browser sign-in that the callback completes at the callback URL, and a direct ID-token sign-in that returns a session token ([test](../../conformance/goapi/oauth_signup_test.go#L76))
     - [ ] Link account
+      - [x] The Go client's LinkSocial starts a link for the signed-in browser, and the callback adds the provider account without issuing a new session ([test](../../adapters/sqlstore/oauth_link_session_test.go#L151))
+      - [x] /link-social needs a session and a known provider, and answers the authorization URL, redirecting unless disableRedirect is set ([test](../../conformance/goapi/provider_contract_test.go#L164))
     - [ ] Validate OAuth User Info
       - [x] A browser social sign-up, a returning sign-in and an email link are checked with the provider ID and raw profile, and a refusal returns to the error callback with error and error_description ([test](../../conformance/goapi/user_validation_test.go#L267))
       - [x] ID-token sign-ups and links are checked with the provider ID and raw claims, and a refusal answers 403 with the app's code ([test](../../conformance/goapi/user_validation_test.go#L338))
+      - [x] ValidateUserInfo runs on the social callback under both the database and the cookie state strategy ([test](../../conformance/goapi/oauth_additional_data_test.go#L27))
     - [ ] Get Access Token
       - [x] get-access-token with useAccountCookie returns the signed-in account's token, and refuses two selectors, another user's or an altered cookie, and no session ([test](../../conformance/goapi/account_cookie_test.go#L195))
+      - [x] get-access-token by account record ID returns the stored token and answers 401 without a session, the same on both runtimes ([test](../../conformance/provider-credentials.mjs#L8))
+      - [x] Concurrent Go GetAccessToken calls with a userId and no session headers refresh an expiring token once and return the new token ([test](../../adapters/sqlstore/provider_credentials_test.go#L152))
+      - [x] A Go call with neither session headers nor a userId answers USER_ID_OR_SESSION_REQUIRED ([test](../../conformance/goapi/provider_contract_test.go#L155))
     - [ ] Refresh Access Token
       - [x] refresh-token with useAccountCookie refreshes the signed-in account's tokens ([test](../../conformance/goapi/account_cookie_test.go#L206))
-    - [ ] Get Account Info Provided by the provider
+      - [x] refresh-token by account record ID refreshes right away and returns the rotated tokens, the same on both runtimes ([test](../../conformance/provider-credentials.mjs#L70))
+      - [x] refresh-token by accountId returns the rotated refresh token, the stored scope and a refresh-token expiry ([test](../../adapters/sqlstore/provider_credentials_test.go#L160))
+      - [x] refresh-token refuses another user's account with ACCOUNT_NOT_FOUND ([test](../../adapters/sqlstore/provider_credentials_test.go#L137))
+    - [x] Get Account Info Provided by the provider ([test](../../conformance/provider-credentials.mjs#L71))
       - [x] account-info with useAccountCookie returns the signed-in account's provider identity ([test](../../conformance/goapi/account_cookie_test.go#L201))
+      - [x] account-info by account record ID returns the same account, user and data object on both runtimes, with the provider key in account.accountId ([test](../../conformance/provider-credentials.mjs#L71))
+      - [x] account-info by accountId returns the provider subject without the access token ([test](../../adapters/sqlstore/provider_credentials_test.go#L163))
+      - [x] A Go AccountInfo call by account record ID returns the raw profile as data for every catalog provider except WeChat ([test](../../providers/catalog_test.go#L215))
     - [x] Requesting Additional Scopes ([test](../../conformance/social-user-fields.mjs#L307))
       - [x] Request additional scopes as the signed-in owner and merge the approved grant once across both servers ([test](../../conformance/social-user-fields.mjs#L307))
     - [ ] Customizing the Authorization URL
+      - [x] additionalParams on signIn.social and linkSocial reach the authorization URL, and state, client_id, redirect_uri, response_type, code_challenge, code_challenge_method, nonce and scope each answer 400, on both runtimes ([test](../../conformance/social-signup.mjs#L39))
     - [ ] Passing Additional Data Through OAuth Flow
       - [x] additionalData on /sign-in/social and /link-social is kept with the browser flow, under the database and the cookie state strategy, and reaches the callback; a value that is not an object, exceeds 8 KiB or holds a number no float64 holds answers 400 VALIDATION_ERROR before a flow is stored ([test](../../conformance/goapi/oauth_additional_data_test.go#L27))
       - [ ] Accessing Additional Data in Hooks
@@ -457,45 +615,95 @@
       - [ ] Passing Server-Trusted Data
         - [x] Keep the signed issuer request in server-owned provider state and ignore client-supplied issuer context ([test](../../conformance/oauth-social-authorization.mjs#L32))
   - [ ] Handling Providers Without Email
+    - [x] A provider profile without an email redirects to the error callback with error=email_not_found and issues no session ([test](../../conformance/goapi/oauth_callback_errors_test.go#L108))
     - [ ] Apple
+      - [x] A native Apple ID token resolves to its sub claim as the account subject ([test](../../providers/apple_microsoft_test.go#L78))
+      - [x] A browser Apple sign-in requests only the token endpoint (no user-info request), takes the email from the ID token and the name from Apple's first-consent user field ([test](../../providers/apple_microsoft_test.go#L40))
     - [ ] Discord
+      - [x] A browser sign-in through the Discord preset gives the same email, name, image and emailVerified (true from the verified field) as the other runtime's provider ([test](../../providers/catalog_test.go#L203))
+      - [x] The catalog's Discord profile mapping, called directly, returns the id snowflake as subject, equal to the other runtime's account subject ([test](../../providers/catalog_test.go#L242))
     - [ ] Facebook
+      - [x] A browser sign-in through the Facebook preset gives the same email, name and image as the other runtime's provider, with the email unverified ([test](../../providers/catalog_test.go#L203))
+      - [x] The catalog's Facebook profile mapping, called directly, returns the app-scoped id as subject, equal to the other runtime's account subject ([test](../../providers/catalog_test.go#L242))
     - [ ] GitHub
+      - [x] When /user returns a null email, the preset takes the primary address from /user/emails, copies its verified flag either way and uses the numeric id as subject ([test](../../providers/providers_test.go#L57))
     - [ ] Kakao
+      - [x] A browser sign-in through the Kakao preset gives the same email, name and image as the other runtime's provider, with the email verified ([test](../../providers/catalog_test.go#L203))
+      - [x] The catalog's Kakao profile mapping, called directly, returns the numeric id as subject, equal to the other runtime's account subject ([test](../../providers/catalog_test.go#L242))
+      - [x] A Kakao address flagged is_email_valid=false stays unverified even when is_email_verified is true ([test](../../providers/catalog_test.go#L257))
     - [ ] LinkedIn
+      - [x] A browser sign-in through the LinkedIn preset gives the same email, name and image as the other runtime's provider, with email_verified copied as verified ([test](../../providers/catalog_test.go#L203))
+      - [x] The catalog's LinkedIn profile mapping, called directly, returns sub as subject, equal to the other runtime's account subject ([test](../../providers/catalog_test.go#L242))
     - [ ] Microsoft Entra ID
-    - [ ] Roblox
+      - [x] The Microsoft provider uses the oid claim as subject and marks the email verified only when verified_primary_email lists it, per tenant mode ([test](../../providers/apple_microsoft_test.go#L170))
+      - [x] An email without Microsoft's verification claim is unverified ([test](../../providers/apple_microsoft_test.go#L177))
+      - [x] The single-tenant Entra preset keys accounts by oid within the tenant and, when no email is reachable, falls back to an unverified <oid>@microsoft-entra-id.placeholder.invalid address ([test](../../providers/entra_test.go#L20))
+    - [x] Roblox ([test](../../providers/catalog_test.go#L203))
+      - [x] A browser sign-in through the Roblox preset with a profile that has no email gives the same <sub>@roblox.placeholder.invalid address, name and image as the other runtime's provider, with the email unverified ([test](../../providers/catalog_test.go#L203))
+      - [x] The catalog's Roblox profile mapping, called directly, returns sub as subject, equal to the other runtime's account subject ([test](../../providers/catalog_test.go#L242))
     - [ ] Create a placeholder email with `mapProfileToUser`
     - [ ] Provider-specific notes
       - [ ] Apple
+        - [x] A browser Apple sign-in requests only the token endpoint (no user-info request), takes the email from the ID token and the name from Apple's first-consent user field ([test](../../providers/apple_microsoft_test.go#L40))
       - [ ] GitHub
-      - [ ] Microsoft Entra ID
-      - [ ] Facebook
+        - [x] When /user returns a null email, the preset reads the primary address from /user/emails and copies its verified flag ([test](../../providers/providers_test.go#L57))
+      - [x] Microsoft Entra ID ([test](../../providers/apple_microsoft_test.go#L170))
+        - [x] The Microsoft provider anchors the account on oid and leaves the email unverified unless Microsoft lists it as a verified address ([test](../../providers/apple_microsoft_test.go#L170))
+        - [x] The Entra preset requires an oid within the configured tenant and refuses tokens without one, from another tenant or for another audience ([test](../../providers/entra_test.go#L20))
+      - [x] Facebook ([test](../../providers/catalog_test.go#L203))
+        - [x] A browser sign-in through the Facebook preset stores the Facebook email unverified, as the other runtime's provider does ([test](../../providers/catalog_test.go#L203))
   - [ ] Provider Options
     - [ ] clientId
-    - [ ] scope
+    - [x] scope ([test](../../conformance/goapi/provider_contract_test.go#L67))
+      - [x] A provider's Config.Scopes is the scope of the sign-in authorization request ([test](../../conformance/goapi/provider_contract_test.go#L67))
+      - [x] Each catalog preset requests its configured scopes in the authorization URL ([test](../../providers/catalog_test.go#L162))
     - [x] redirectURI ([test](../../conformance/goapi/oauth_redirect_uri_test.go#L22))
       - [x] A provider's Config.RedirectURL replaces the callback route in the authorization request and the code exchange, an application route forwards it to the callback, and a relative or non-HTTP URL is refused ([test](../../conformance/goapi/oauth_redirect_uri_test.go#L22))
-    - [ ] disableSignUp
+    - [x] disableSignUp ([test](../../conformance/goapi/oauth_signup_test.go#L131))
+      - [x] A provider with DisableSignUp declines a new user even with requestSignUp, for both browser and ID-token sign-in ([test](../../conformance/goapi/oauth_signup_test.go#L131))
     - [x] disableIdTokenSignIn ([test](../../conformance/apple-native.mjs#L51))
       - [x] Decline signed client ID tokens for sign-in and account linking while preserving browser authorization ([test](../../conformance/apple-native.mjs#L51))
     - [ ] verifyIdToken
+      - [x] A VerifyIDToken set on the Google preset replaces the built-in check, receives the raw token and nonce, and its profile signs the user in ([test](../../conformance/goapi/provider_contract_test.go#L92))
+      - [x] A refusal from the replaced verifier answers INVALID_TOKEN without a session ([test](../../conformance/goapi/provider_contract_test.go#L70))
     - [x] overrideUserInfoOnSignIn ([test](../../conformance/social-user-fields.mjs#L145))
       - [x] Refresh a returning profile with either server, preserve protected fields and use the new mailbox verification status ([test](../../conformance/social-user-fields.mjs#L145))
     - [x] requireEmailVerification ([test](../../conformance/social-user-fields.mjs#L200))
       - [x] Withhold sessions for unverified social accounts, honor mail delivery settings and accept confirmation by either server ([test](../../conformance/social-user-fields.mjs#L200))
-    - [ ] mapProfileToUser
-      - [ ] Server-Owned Fields and Authorization Claims
+    - [x] mapProfileToUser ([test](../../conformance/social-user-fields.mjs#L110))
+      - [x] At sign-up, a provider's mapped claims are stored for input fields, required mapped fields are enforced and input:false fields are ignored, on both runtimes ([test](../../conformance/social-user-fields.mjs#L110))
+      - [x] With OverrideUserInfoOnSignIn, a returning sign-in applies the mapped input fields and ignores the input:false ones ([test](../../conformance/social-user-fields.mjs#L145))
+      - [x] Linking a new identity by email copies only its writable mapped fields and copies nothing from a profile that fails validation ([test](../../adapters/sqlstore/oauth_link_profile_test.go#L37))
+      - [x] Each catalog provider takes the account subject from its documented profile field, separately from the user ID ([test](../../providers/catalog_test.go#L242))
+      - [x] Server-Owned Fields and Authorization Claims ([test](../../conformance/social-user-fields.mjs#L128))
+        - [x] Provider mappings of the input:false accountClass and internalRisk fields are ignored: accountClass keeps its default and is returned, and internalRisk stays 9 and is not returned, on both runtimes ([test](../../conformance/social-user-fields.mjs#L128))
+        - [x] With HostedDomain set, One Tap refuses a Google ID token from another Workspace domain or with no hd claim ([test](../../adapters/sqlstore/onetap_test.go#L146))
+        - [x] A provider resolver that refuses the profile answers error=unable_to_get_user_info without a session ([test](../../conformance/goapi/oauth_callback_errors_test.go#L106))
     - [x] getAccountFields ([test](../../conformance/apple-native.mjs#L87))
       - [x] Map signed provider account fields across both servers, preserve credentials and explicitly reauthorize an existing link ([test](../../conformance/apple-native.mjs#L87))
       - [x] Map browser grants on first links and verified email linking, keep identity bindings and reject invalid updates atomically ([test](../../conformance/account-fields.mjs#L25))
-    - [ ] refreshAccessToken
-    - [ ] clientKey
-    - [ ] getUserInfo
-    - [ ] disableImplicitSignUp
-    - [ ] prompt
-    - [ ] responseMode
-    - [ ] disableDefaultScope
+    - [x] refreshAccessToken ([test](../../conformance/provider-credentials.mjs#L70))
+      - [x] A custom Refresh receives the stored refresh token; refresh-token returns its rotated refresh token and get-access-token then returns its new access token, the same on both runtimes ([test](../../conformance/provider-credentials.mjs#L70))
+      - [x] A custom Refresh that returns no refresh token keeps the stored one and its expiry ([test](../../adapters/sqlstore/provider_credentials_test.go#L215))
+    - [x] clientKey ([test](../../providers/catalog_test.go#L173))
+      - [x] The TikTok preset sends its client key, passed as the provider's client ID, as client_key rather than client_id in the authorization URL ([test](../../providers/catalog_test.go#L173))
+      - [x] The TikTok code exchange sends client_key and no client_id ([test](../../providers/catalog_test.go#L70))
+    - [x] getUserInfo ([test](../../conformance/goapi/oauth_test.go#L85))
+      - [x] A custom Resolve fetches the profile with the access token, and its result becomes the session user ([test](../../conformance/goapi/oauth_test.go#L85))
+      - [x] account-info returns the user and data a custom Resolve produced, the same as the other runtime ([test](../../conformance/provider-credentials.mjs#L76))
+    - [x] disableImplicitSignUp ([test](../../conformance/goapi/oauth_signup_test.go#L20))
+      - [x] With DisableImplicitSignUp, a new user is declined unless sign-in sets requestSignUp (signup_disabled on the browser callback, OAUTH_LINK_ERROR for an ID token), and a returning user signs in ([test](../../conformance/goapi/oauth_signup_test.go#L20))
+      - [x] The released client sees the same decline, explicit registration and returning sign-in on both runtimes ([test](../../conformance/social-signup.mjs#L4))
+    - [x] prompt ([test](../../conformance/goapi/provider_contract_test.go#L67))
+      - [x] A provider's AuthorizationParams prompt (select_account consent) reaches the sign-in authorization URL ([test](../../conformance/goapi/provider_contract_test.go#L67))
+      - [x] The same prompt reaches the link authorization URL ([test](../../conformance/goapi/provider_contract_test.go#L95))
+    - [x] responseMode ([test](../../providers/apple_microsoft_test.go#L102))
+      - [x] The Apple preset's AuthorizationParams request response_mode=form_post ([test](../../providers/apple_microsoft_test.go#L102))
+      - [x] A form_post callback is accepted and finishes the sign-in ([test](../../providers/apple_microsoft_test.go#L116))
+      - [x] The default query-mode callback completes a browser sign-in ([test](../../conformance/goapi/oauth_test.go#L21))
+    - [x] disableDefaultScope ([test](../../conformance/goapi/provider_contract_test.go#L67))
+      - [x] Replacing the Google preset's Config.Scopes (openid profile email) with openid requests scope=openid alone on sign-in ([test](../../conformance/goapi/provider_contract_test.go#L67))
+      - [x] The link authorization URL also requests only the configured scope ([test](../../conformance/goapi/provider_contract_test.go#L95))
     - [ ] Other Provider Configurations
 
 ## Plugins
