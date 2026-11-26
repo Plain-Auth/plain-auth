@@ -334,9 +334,10 @@
     - [ ] `modelName`
     - [ ] `fields`
     - [ ] `schema`
-    - [ ] `providersLimit`
+    - [x] `providersLimit` ([test](../../../adapters/sqlstore/sso_limit_test.go#L20))
       - [x] Reject disabled registration and serialize concurrent requests for the final account slot ([test](../../../adapters/sqlstore/sso_test.go#L23))
       - [x] Refuse registration with 403 when the provider limit is zero ([test](../../../adapters/sqlstore/sso_test.go#L181))
+      - [x] Resolve the registration quota per signed-in user, refuse zero with 403, count a negative number as reached and fail on a resolver error ([test](../../../adapters/sqlstore/sso_limit_test.go#L20))
     - [ ] `trustEmailVerified`
       - [x] Store a new enterprise OIDC user as unverified although the ID token says email_verified true ([test](../../../adapters/sqlstore/sso_browser_test.go#L256))
       - [x] Store a new SAML user as unverified by default on both runtimes ([test](../../../conformance/sso-saml.mjs#L293))
@@ -453,6 +454,7 @@
   - [ ] Register a provider
     - [x] Register providers up to the creator limit across two nodes, refuse registration when the limit is zero, and return the provider's redirect URI ([test](../../../adapters/sqlstore/sso_test.go#L23))
     - [ ] Only your administrators
+      - [x] Return zero from the per-user quota for everyone but administrators ([test](../../../adapters/sqlstore/sso_limit_test.go#L83))
     - [x] Your customers, each for their own domain ([test](../../../conformance/sso-domains.mjs#L87))
       - [x] Refuse sign-in with HTTP 401 through a new provider until verify-domain succeeds, then sign in by email domain on both runtimes ([test](../../../conformance/sso-domains.mjs#L87))
     - [ ] Nobody at runtime

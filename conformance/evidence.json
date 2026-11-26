@@ -11150,6 +11150,12 @@
       "label": "Refuse registration with 403 when the provider limit is zero",
       "test": "adapters/sqlstore/sso_test.go",
       "marker": "check(call(build(b, 0), path, other, makeBody(\"disabled\", \"\", \"/discovery\")), 403)"
+    },
+    {
+      "label": "Resolve the registration quota per signed-in user, refuse zero with 403, count a negative number as reached and fail on a resolver error",
+      "test": "adapters/sqlstore/sso_limit_test.go",
+      "marker": "func TestEnterpriseProviderLimitResolver(",
+      "complete": true
     }
   ],
   "plugin-symbol/sso/discoverOIDCConfig": [
@@ -44357,6 +44363,13 @@
       "label": "Advertise the directory's identifierFormat in the SP metadata",
       "test": "adapters/sqlstore/sso_saml_policy_test.go",
       "marker": "SP metadata did not advertise the directory's identifierFormat"
+    }
+  ],
+  "docs/content/docs/plugins/sso/index.mdx#L99/Only your administrators": [
+    {
+      "label": "Return zero from the per-user quota for everyone but administrators",
+      "test": "adapters/sqlstore/sso_limit_test.go",
+      "marker": "t.Fatal(\"the resolver's zero limit did not disable registration\", err)"
     }
   ]
 }

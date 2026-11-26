@@ -33,6 +33,11 @@ type Options struct {
 	DisableOrganizationProvisioning bool
 	// A nil ProvidersLimit allows ten registrations per creator. Zero disables registration.
 	ProvidersLimit *int
+	// ResolveProvidersLimit returns how many providers the signed-in user may
+	// register, in place of ProvidersLimit. Zero refuses that user's
+	// registrations with 403 and a negative number counts as reached. It runs
+	// before the store's transaction; an error fails the registration.
+	ResolveProvidersLimit func(context.Context, auth.User) (int, error)
 	// HTTPClient supplies discovery transport and optional TLS settings.
 	HTTPClient *http.Client
 }
@@ -108,6 +113,7 @@ type PublicProvider struct {
 type Actor struct {
 	UserID, SessionID string
 	SessionToken      string `json:"-"`
+	user              auth.User
 }
 type Store interface {
 	CheckSSORegistration(context.Context, Actor, Provider, int) error
@@ -190,6 +196,9 @@ func New(o Options) (auth.Plugin, error) {
 	if limit < 0 {
 		return auth.Plugin{}, errors.New("sso: provider limit must be nonnegative")
 	}
+	if o.ProvidersLimit != nil && o.ResolveProvidersLimit != nil {
+		return auth.Plugin{}, errors.New("sso: choose ProvidersLimit or ResolveProvidersLimit")
+	}
 	type operation func(auth.EndpointContext, Store, Actor) (any, error)
 	endpoint := func(path, method string, fn operation) auth.Endpoint {
 		return auth.Endpoint{Path: path, Method: method, Handler: func(c auth.EndpointContext) (any, error) {
@@ -200,7 +209,7 @@ func New(o Options) (auth.Plugin, error) {
 			if session == nil {
 				return nil, ErrUnauthenticated
 			}
-			actor := Actor{UserID: session.User.ID, SessionID: session.Session.ID}
+			actor := Actor{UserID: session.User.ID, SessionID: session.Session.ID, user: session.User}
 			if method == http.MethodPost {
 				if err := session.Session.RequireOwner(); err != nil {
 					return nil, err
@@ -213,6 +222,10 @@ func New(o Options) (auth.Plugin, error) {
 		}}
 	}
 	register := func(c auth.EndpointContext, store Store, actor Actor) (any, error) {
+		limit, err := o.providerLimit(c.Request.Context(), actor.user, limit)
+		if err != nil {
+			return nil, err
+		}
 		if limit == 0 {
 			return nil, ErrDisabled
 		}
@@ -234,7 +247,7 @@ func New(o Options) (auth.Plugin, error) {
 			return nil, apiError(422, "This providerId is reserved and cannot be used for an SSO provider")
 		}
 		domain, _ := c.Body["domain"].(string)
-		domain, err := domains(domain)
+		domain, err = domains(domain)
 		if err != nil {
 			return nil, err
 		}
@@ -458,4 +471,20 @@ func sanitized(c auth.EndpointContext, p Provider) PublicProvider {
 		out.OIDC = &PublicConfig{ClientIDLastFour: masked, DiscoveryEndpoint: cfg.DiscoveryEndpoint, AuthorizationEndpoint: cfg.AuthorizationEndpoint, TokenEndpoint: cfg.TokenEndpoint, JWKSEndpoint: cfg.JWKSEndpoint, UserInfoEndpoint: cfg.UserInfoEndpoint, TokenEndpointAuthentication: cfg.TokenEndpointAuthentication, PKCE: cfg.PKCE, Scopes: cfg.Scopes}
 	}
 	return out
+}
+
+// providerLimit resolves the signed-in user's registration quota before the
+// store's transaction, so the host's resolver never runs inside it.
+func (o Options) providerLimit(ctx context.Context, user auth.User, fixed int) (int, error) {
+	if o.ResolveProvidersLimit == nil {
+		return fixed, nil
+	}
+	n, err := o.ResolveProvidersLimit(ctx, user)
+	if err != nil {
+		return 0, err
+	}
+	if n < 0 {
+		return 0, ErrLimit
+	}
+	return n, nil
 }
