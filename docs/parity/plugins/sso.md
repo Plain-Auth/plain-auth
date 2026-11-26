@@ -114,6 +114,7 @@
   - [ ] `deriveSAMLIdentityProviderEntityID`
     - [x] Take the IdP entity ID from a registration that supplies only IdP metadata XML ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L62))
     - [x] Reject a signed assertion whose issuer differs from the manually configured IdP entity ID ([test](../../../adapters/sqlstore/sso_saml_test.go#L603))
+    - [x] Refuse a SAML configuration whose IdP metadata names no entity ID and carries no metadata XML ([test](../../../plugins/sso/saml_test.go#L480))
   - [ ] `deriveSAMLServiceProviderPolicy`
   - [ ] `SAMLServiceProviderPolicy`
   - [ ] `GET /sso/providers`
@@ -226,7 +227,7 @@
     - [ ] `allowedDigestAlgorithms`
       - [x] Refuse a response whose signature digest is outside the digest allow-list, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L254))
       - [x] Refuse a SHA-1 digest allow-list entry when building the plugin ([test](../../../plugins/sso/saml_test.go#L464))
-      - [x] Apply the digest allow-list to a directory's digestAlgorithm ([test](../../../plugins/sso/saml_test.go#L517))
+      - [x] Apply the digest allow-list to a directory's digestAlgorithm ([test](../../../plugins/sso/saml_test.go#L521))
     - [ ] `allowedKeyEncryptionAlgorithms`
     - [ ] `allowedDataEncryptionAlgorithms`
   - [x] `DataEncryptionAlgorithm` ([test](../../../plugins/sso/saml_test.go#L336))
@@ -346,10 +347,10 @@
       - [x] Sign the HTTP-Redirect AuthnRequest when the directory sets authnRequestsSigned, and have the IdP verify it ([test](../../../adapters/sqlstore/sso_saml_test.go#L249))
     - [x] `signatureAlgorithm` ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L375))
       - [x] Register, store and return a directory's signatureAlgorithm, refusing deprecated, unknown and unlisted values with their codes and storing nothing, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L375))
-      - [x] Accept short forms in any case and full URIs for signatureAlgorithm ([test](../../../plugins/sso/saml_test.go#L499))
+      - [x] Accept short forms in any case and full URIs for signatureAlgorithm ([test](../../../plugins/sso/saml_test.go#L503))
     - [x] `digestAlgorithm` ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L352))
       - [x] Register and return a directory's digestAlgorithm and refuse a deprecated one, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L352))
-      - [x] Refuse an unknown or unlisted digestAlgorithm ([test](../../../plugins/sso/saml_test.go#L517))
+      - [x] Refuse an unknown or unlisted digestAlgorithm ([test](../../../plugins/sso/saml_test.go#L521))
     - [x] `identifierFormat` ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L391))
       - [x] Advertise the directory's identifierFormat in the SP metadata, request it in the AuthnRequest and sign in with a persistent NameID the IdP enforces, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L391))
       - [x] Advertise the directory's identifierFormat in the SP metadata ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L387))
@@ -394,6 +395,7 @@
       - [x] Require an explicit signup request for new enterprise users and enforce host-wide signup controls ([test](../../../adapters/sqlstore/sso_browser_test.go#L345))
       - [x] Refuse an IdP-initiated SAML sign-in for a new user with signup_disabled when implicit sign-up is off ([test](../../../adapters/sqlstore/sso_saml_portal_test.go#L77))
       - [x] Let an existing SAML user return through the portal when implicit sign-up is off ([test](../../../adapters/sqlstore/sso_saml_portal_test.go#L123))
+      - [x] Refuse a SAML sign-up under DisableImplicitSignUp even with requestSignUp ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L243))
     - [ ] `modelName`
     - [ ] `fields`
     - [ ] `schema`
@@ -887,7 +889,7 @@
       - [x] Redirect an RSA 1.5 key transport with saml_deprecated_algorithm whatever the content cipher, before naming Triple DES ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L295))
     - [ ] `SAML_DEPRECATED_CONFIG_ALGORITHM`
       - [x] Refuse registration with a deprecated signatureAlgorithm with 400 SAML_DEPRECATED_CONFIG_ALGORITHM and its message, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L349))
-      - [x] Name a deprecated digestAlgorithm in SAML_DEPRECATED_CONFIG_ALGORITHM ([test](../../../plugins/sso/saml_test.go#L523))
+      - [x] Name a deprecated digestAlgorithm in SAML_DEPRECATED_CONFIG_ALGORITHM ([test](../../../plugins/sso/saml_test.go#L527))
   - [ ] Size limits
     - [x] Reject an IdP metadata update larger than the default 100 KiB limit ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L81))
     - [x] Refuse a negative or over-1 MiB MaxMetadataSize and default it to 100 KiB ([test](../../../plugins/sso/saml_test.go#L48))
@@ -911,11 +913,11 @@
       - [x] Publish the registered issuer as the SP entity ID when spMetadata.entityID is unset ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L103))
       - [x] Send the registered issuer as the AuthnRequest issuer ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L120))
       - [x] Accept an assertion addressed to the default SP entity ID and refuse one for another audience, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L188))
-  - [x] Register a SAML provider ([test](../../../plugins/sso/saml_test.go#L485))
+  - [x] Register a SAML provider ([test](../../../plugins/sso/saml_test.go#L489))
     - [x] Register a SAML provider from IdP metadata XML through the released client and return the XML ([test](../../../conformance/sso-saml.mjs#L205))
     - [x] Register a SAML provider from an IdP entity ID and signing certificate through the released client and return the certificate ([test](../../../conformance/sso-saml.mjs#L206))
     - [x] Take the IdP entity ID from registered metadata XML ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L62))
-    - [x] Refuse a SAML configuration without cert, idpMetadata.cert or metadata XML with CERT_SOURCE_MISSING ([test](../../../plugins/sso/saml_test.go#L485))
+    - [x] Refuse a SAML configuration without cert, idpMetadata.cert or metadata XML with CERT_SOURCE_MISSING ([test](../../../plugins/sso/saml_test.go#L489))
     - [x] Refuse a SAML registration without a certificate source with CERT_SOURCE_MISSING over HTTP ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L76))
   - [ ] Service provider settings
     - [x] Generate SP metadata with the configured SP entity ID and the provider's ACS ([test](../../../adapters/sqlstore/sso_saml_test.go#L191))

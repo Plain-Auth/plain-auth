@@ -475,6 +475,10 @@ func TestSAMLConfigAlgorithms(t *testing.T) {
 	if err != nil || cfg.SignatureAlgorithm != "rsa-sha256" || cfg.DigestAlgorithm != "sha256" {
 		t.Fatal("DecodeSAMLConfig refused or dropped the configured algorithms", err)
 	}
+	// Without an entity ID or metadata XML the IdP cannot be identified.
+	if _, err := DecodeSAMLConfig([]byte(`{"entryPoint":"https://idp.example/sso","cert":"pem","idpMetadata":{}}`)); err == nil {
+		t.Fatal("a SAML configuration without an IdP entity ID or metadata was accepted")
+	}
 	// A configuration without any signing certificate source names the gap.
 	var missing *auth.APIError
 	bare, err := DecodeSAMLConfig([]byte(`{"entryPoint":"https://idp.example/sso","idpMetadata":{"entityID":"https://idp.example"}}`))

@@ -11582,6 +11582,11 @@
       "label": "Let an existing SAML user return through the portal when implicit sign-up is off",
       "test": "adapters/sqlstore/sso_saml_portal_test.go",
       "marker": "if returned := send(existingOnly, issue(nil), origin, \"\", \"document\"); returned.session == nil"
+    },
+    {
+      "label": "Refuse a SAML sign-up under DisableImplicitSignUp even with requestSignUp",
+      "test": "adapters/sqlstore/sso_saml_defaults_test.go",
+      "marker": "t.Fatal(\"requestSignUp let a SAML sign-up past DisableImplicitSignUp\", location)"
     }
   ],
   "plugin-symbol/sso/SSOOptions/organizationProvisioning": [
@@ -41605,6 +41610,11 @@
       "label": "Reject a signed assertion whose issuer differs from the manually configured IdP entity ID",
       "test": "adapters/sqlstore/sso_saml_test.go",
       "marker": "\"issuer\": func(a *saml.Assertion) { a.Issuer.Value = \"https://another.example.test/idp\" },"
+    },
+    {
+      "label": "Refuse a SAML configuration whose IdP metadata names no entity ID and carries no metadata XML",
+      "test": "plugins/sso/saml_test.go",
+      "marker": "t.Fatal(\"a SAML configuration without an IdP entity ID or metadata was accepted\")"
     }
   ],
   "plugin-symbol/sso/SAMLConditions": [
