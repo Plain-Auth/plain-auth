@@ -74,6 +74,17 @@ func TestProviderContracts(t *testing.T) {
 	if err = json.Unmarshal(data, &fixtures); err != nil {
 		t.Fatal(err)
 	}
+	overridden := map[captcha.Provider]bool{}
+	for _, f := range fixtures {
+		if f.Override != "" && f.Sent != nil && f.Sent.URL == f.Override {
+			overridden[f.Provider] = true
+		}
+	}
+	for _, p := range []captcha.Provider{captcha.GoogleRecaptcha, captcha.CloudflareTurnstile, captcha.HCaptcha, captcha.CaptchaFox} {
+		if !overridden[p] {
+			t.Fatalf("no fixture sends %s verification to an override address", p)
+		}
+	}
 	for _, f := range fixtures {
 		t.Run(f.Name, func(t *testing.T) {
 			sent := false
@@ -266,5 +277,15 @@ func TestProviderVerificationCancellation(t *testing.T) {
 	h.ServeHTTP(w, r)
 	if w.Code != 500 || !strings.Contains(w.Body.String(), "UNKNOWN_ERROR") {
 		t.Fatalf("%d %s", w.Code, w.Body)
+	}
+}
+
+// New refuses a verification override that is not an absolute http or https
+// address with a host, or that carries credentials or a fragment.
+func TestOverrideAddressChecks(t *testing.T) {
+	for _, address := range []string{"/relative", "ftp://verify.example.org", "https:///verify", "https://user:pass@verify.example.org/", "https://verify.example.org/#part"} {
+		if _, err := captcha.New(captcha.Options{Provider: captcha.GoogleRecaptcha, SecretKey: "k", SiteVerifyURLOverride: address}); err == nil {
+			t.Fatal("New accepted the verification address", address)
+		}
 	}
 }

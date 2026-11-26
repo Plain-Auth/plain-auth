@@ -23,6 +23,9 @@ cases.push(
   { name: "turnstile-host", provider: "cloudflare-turnstile", reply: { success: true, action: "login" } },
   { name: "turnstile-action", provider: "cloudflare-turnstile", reply: { success: true, hostname: "app.example.org" } },
   { name: "override-url", provider: "captchafox", override: "https://custom.example.org/verify", reply: valid },
+  { name: "google-override-url", provider: "google-recaptcha", override: "https://custom.example.org/google/verify", reply: valid },
+  { name: "turnstile-override-url", provider: "cloudflare-turnstile", override: "https://custom.example.org/turnstile/verify", reply: valid },
+  { name: "hcaptcha-override-url", provider: "hcaptcha", override: "https://custom.example.org/hcaptcha/verify", reply: valid },
 );
 const originalFetch = globalThis.fetch;
 const results = [];

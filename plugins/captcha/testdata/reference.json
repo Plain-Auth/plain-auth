@@ -476,5 +476,75 @@
     "expected": {
       "status": 200
     }
+  },
+  {
+    "name": "google-override-url",
+    "provider": "google-recaptcha",
+    "override": "https://custom.example.org/google/verify",
+    "reply": {
+      "success": true,
+      "action": "login",
+      "hostname": "app.example.org"
+    },
+    "sent": {
+      "url": "https://custom.example.org/google/verify",
+      "method": "POST",
+      "type": "application/x-www-form-urlencoded",
+      "fields": {
+        "secret": "fixture-secret",
+        "response": "fixture-token",
+        "remoteip": "203.0.113.4"
+      }
+    },
+    "expected": {
+      "status": 200
+    }
+  },
+  {
+    "name": "turnstile-override-url",
+    "provider": "cloudflare-turnstile",
+    "override": "https://custom.example.org/turnstile/verify",
+    "reply": {
+      "success": true,
+      "action": "login",
+      "hostname": "app.example.org"
+    },
+    "sent": {
+      "url": "https://custom.example.org/turnstile/verify",
+      "method": "POST",
+      "type": "application/json",
+      "fields": {
+        "secret": "fixture-secret",
+        "response": "fixture-token",
+        "remoteip": "203.0.113.4"
+      }
+    },
+    "expected": {
+      "status": 200
+    }
+  },
+  {
+    "name": "hcaptcha-override-url",
+    "provider": "hcaptcha",
+    "override": "https://custom.example.org/hcaptcha/verify",
+    "reply": {
+      "success": true,
+      "action": "login",
+      "hostname": "app.example.org"
+    },
+    "sent": {
+      "url": "https://custom.example.org/hcaptcha/verify",
+      "method": "POST",
+      "type": "application/x-www-form-urlencoded",
+      "fields": {
+        "secret": "fixture-secret",
+        "response": "fixture-token",
+        "sitekey": "site-key",
+        "remoteip": "203.0.113.4"
+      }
+    },
+    "expected": {
+      "status": 200
+    }
   }
 ]

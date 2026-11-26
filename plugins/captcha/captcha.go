@@ -67,6 +67,9 @@ func New(o Options) (authn.Plugin, error) {
 	if o.Provider == VercelBotID && o.CheckBotID == nil {
 		return authn.Plugin{}, errors.New("captcha: BotID requires a check callback")
 	}
+	// Deviation for safety: a malformed override is refused at startup instead
+	// of failing every verification, and the secret is never sent to an
+	// address with credentials or a fragment.
 	if o.SiteVerifyURLOverride != "" {
 		u, err := url.Parse(o.SiteVerifyURLOverride)
 		if err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Hostname() == "" || u.User != nil || u.Fragment != "" {
@@ -90,6 +93,9 @@ func New(o Options) (authn.Plugin, error) {
 			return authn.Plugin{}, errors.New("captcha: invalid minimum score")
 		}
 	}
+	// Deviation for safety: verification never follows a redirect, so the
+	// secret and token are not posted again to another address; a redirect
+	// answers 500.
 	client := &http.Client{Transport: o.Transport, Timeout: verificationTimeout, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 	// A host BotID callback may block even after its context expires. Bound
 	// outstanding callbacks while ensuring the auth request meets its deadline.
