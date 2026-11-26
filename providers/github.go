@@ -15,11 +15,17 @@ import (
 )
 
 // GitHub resolves the stable numeric user ID and verifies ownership of the
-// chosen email address through GitHub's authenticated email API.
+// chosen email address through GitHub's authenticated email API. A GitHub App
+// needs the read-only "Email addresses" permission; without it only a public
+// email, unverified, is available.
 func GitHub(clientID, clientSecret string) authn.OAuthProvider {
+	// The client secret goes in the form, so the single-use code is never
+	// sent twice to find the authentication style.
+	endpoint := endpoints.GitHub
+	endpoint.AuthStyle = oauth2.AuthStyleInParams
 	return authn.OAuthProvider{
-		Config:                 oauth2.Config{ClientID: clientID, ClientSecret: clientSecret, Endpoint: endpoints.GitHub, Scopes: []string{"read:user", "user:email"}},
-		AllowVerifiedEmailLink: true, Resolve: githubProfile,
+		Config:                 oauth2.Config{ClientID: clientID, ClientSecret: clientSecret, Endpoint: endpoint, Scopes: []string{"read:user", "user:email"}},
+		AllowVerifiedEmailLink: true, Resolve: githubProfile, OmitNonce: true,
 	}
 }
 
@@ -64,8 +70,10 @@ func githubProfile(ctx context.Context, t *oauth2.Token, _ string) (authn.OAuthP
 	if p.ID <= 0 {
 		return authn.OAuthProfile{}, errors.New("missing GitHub subject")
 	}
-	if err := read("/user/emails", &emails); err != nil && p.Email == "" {
-		return authn.OAuthProfile{}, err
+	// Without the email permission the list is refused; the public email,
+	// if any, is then used unverified, and none answers email_not_found.
+	if err := read("/user/emails", &emails); err != nil {
+		emails = nil
 	}
 	if p.Email == "" && len(emails) > 0 {
 		p.Email = emails[0].Email

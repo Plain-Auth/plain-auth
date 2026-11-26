@@ -30123,5 +30123,109 @@
       "marker": "func TestCatalogPresetEndpoints(t *testing.T) {",
       "complete": true
     }
+  ],
+  "docs/content/docs/authentication/cloudflare.mdx#L132": [
+    {
+      "label": "A Cloudflare client without a secret keeps PKCE, sends neither a client secret nor a Basic header, and refreshes with only client_id, grant_type and refresh_token",
+      "test": "providers/provider_flows_test.go",
+      "marker": "func TestCloudflarePublicClient(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "provider-option/cognito/requireClientSecret": [
+    {
+      "label": "RequireClientSecret refuses a Cognito provider without a secret, while a public client builds without one",
+      "test": "providers/provider_flows_test.go",
+      "marker": "func TestCognitoAuthorizationOptions(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "provider-option/cognito/identityProvider": [
+    {
+      "label": "IdentityProvider is sent as identity_provider, and a call's additionalParams override it",
+      "test": "providers/provider_flows_test.go",
+      "marker": "func TestCognitoAuthorizationOptions(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/authentication/cognito.mdx#L88/`phone`": [
+    {
+      "label": "The phone scope added to the configured or requested scopes reaches the hosted authorize URL",
+      "test": "providers/provider_flows_test.go",
+      "marker": "func TestCognitoAuthorizationOptions(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/authentication/cognito.mdx#L89/`aws.cognito.signin.user.admin`": [
+    {
+      "label": "The aws.cognito.signin.user.admin scope reaches the hosted authorize URL with %20 between scopes",
+      "test": "providers/provider_flows_test.go",
+      "marker": "func TestCognitoAuthorizationOptions(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/authentication/cognito.mdx#L95/`identityProvider`": [
+    {
+      "label": "The configured identity provider reaches the hosted authorize URL, and a call can override it",
+      "test": "providers/provider_flows_test.go",
+      "marker": "func TestCognitoAuthorizationOptions(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "provider-option/github/clientId": [
+    {
+      "label": "The GitHub client ID reaches the authorize URL and, with the secret in the form, the single token request",
+      "test": "providers/provider_flows_test.go",
+      "marker": "func TestGitHubBrowserSignIn(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/authentication/github.mdx#L9": [
+    {
+      "label": "A GitHub OAuth app signs in through the browser with its client ID and secret and the read:user and user:email scopes",
+      "test": "providers/provider_flows_test.go",
+      "marker": "func TestGitHubBrowserSignIn(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/authentication/github.mdx#L19": [
+    {
+      "label": "providers.GitHub registered in SocialProviders sends its client ID and secret in the code exchange",
+      "test": "providers/provider_flows_test.go",
+      "marker": "func TestGitHubBrowserSignIn(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/authentication/github.mdx#L38": [
+    {
+      "label": "A browser sign-in through providers.GitHub stores the numeric account ID and the verified primary email",
+      "test": "providers/provider_flows_test.go",
+      "marker": "func TestGitHubBrowserSignIn(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/authentication/github.mdx#L42/`provider`": [
+    {
+      "label": "Posting provider github to /sign-in/social starts the GitHub authorization",
+      "test": "providers/provider_flows_test.go",
+      "marker": "func TestGitHubBrowserSignIn(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/authentication/github.mdx#L75": [
+    {
+      "label": "A token response without a refresh token or expiry is kept as it is: get-access-token returns it without an expiry and refresh-token answers REFRESH_TOKEN_NOT_FOUND",
+      "test": "providers/provider_flows_test.go",
+      "marker": "func TestGitHubBrowserSignIn(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/authentication/github.mdx#L59": [
+    {
+      "label": "When GitHub refuses the email list, a user without a public email gets email_not_found and no session, and a public email signs in unverified",
+      "test": "providers/provider_flows_test.go",
+      "marker": "func TestGitHubWithoutEmailPermission(t *testing.T) {",
+      "complete": true
+    }
   ]
 }

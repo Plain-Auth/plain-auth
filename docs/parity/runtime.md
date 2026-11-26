@@ -356,8 +356,10 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
       - [x] A code-exchange ID token from the user pool issuer built from the region and user pool ID is verified with keys fetched from that pool's JWKS URL ([test](../../providers/issuer_test.go#L70))
     - [x] `userPoolId` ([test](../../providers/issuer_test.go#L70))
       - [x] A code-exchange ID token from the user pool issuer built from the region and user pool ID is verified with keys fetched from that pool's JWKS URL ([test](../../providers/issuer_test.go#L70))
-    - [ ] `requireClientSecret`
-    - [ ] `identityProvider`
+    - [x] `requireClientSecret` ([test](../../providers/provider_flows_test.go#L239))
+      - [x] RequireClientSecret refuses a Cognito provider without a secret, while a public client builds without one ([test](../../providers/provider_flows_test.go#L239))
+    - [x] `identityProvider` ([test](../../providers/provider_flows_test.go#L239))
+      - [x] IdentityProvider is sent as identity_provider, and a call's additionalParams override it ([test](../../providers/provider_flows_test.go#L239))
   - [ ] `discord`
     - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
       - [x] The client ID given to providers.New reaches the token exchange through real /sign-in/social and callback requests ([test](../../providers/catalog_test.go#L79))
@@ -384,7 +386,8 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
     - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
       - [x] The client ID given to providers.New reaches the token exchange through real /sign-in/social and callback requests ([test](../../providers/catalog_test.go#L79))
   - [ ] `github`
-    - [ ] `clientId`
+    - [x] `clientId` ([test](../../providers/provider_flows_test.go#L88))
+      - [x] The GitHub client ID reaches the authorize URL and, with the secret in the form, the single token request ([test](../../providers/provider_flows_test.go#L88))
   - [ ] `gitlab`
     - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
       - [x] The client ID given to providers.New reaches the token exchange through real /sign-in/social and callback requests ([test](../../providers/catalog_test.go#L79))

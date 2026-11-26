@@ -16,7 +16,15 @@ import (
 )
 
 // CognitoOptions identifies an Amazon Cognito user pool and hosted sign-in domain.
-type CognitoOptions struct{ Domain, Region, UserPoolID, IdentityProvider string }
+type CognitoOptions struct {
+	Domain, Region, UserPoolID string
+	// IdentityProvider is sent as identity_provider to skip the hosted UI's
+	// provider choice; a call's additionalParams override it.
+	IdentityProvider string
+	// RequireClientSecret refuses a confidential app client configured
+	// without its secret.
+	RequireClientSecret bool
+}
 
 var awsRegion = regexp.MustCompile(`^[a-z]{2}(-[a-z0-9]+)+-[0-9]+$`)
 var poolSuffix = regexp.MustCompile(`^[a-zA-Z0-9]+$`)
@@ -29,6 +37,9 @@ func Cognito(id, secret string, options CognitoOptions) (auth.OAuthProvider, err
 	suffix, ok := strings.CutPrefix(options.UserPoolID, options.Region+"_")
 	if err != nil || domain == "" || host.Hostname() != domain || host.User != nil || host.Path != "" || host.RawQuery != "" || host.Fragment != "" || !awsRegion.MatchString(options.Region) || !ok || !poolSuffix.MatchString(suffix) {
 		return auth.OAuthProvider{}, errors.New("invalid Cognito domain, region or user pool ID")
+	}
+	if options.RequireClientSecret && secret == "" {
+		return auth.OAuthProvider{}, errors.New("cognito: client secret required")
 	}
 	issuer := "https://cognito-idp." + options.Region + ".amazonaws.com/" + options.UserPoolID
 	return issuerBrowser("cognito", id, secret, issuer, host.String(), issuer+"/.well-known/jwks.json", options.IdentityProvider, nil), nil

@@ -71,7 +71,8 @@
     - [ ] Token authentication method
       - [x] In the cloudflare subtest, with a client secret the code exchange uses HTTP Basic client authentication ([test](../../providers/catalog_test.go#L58))
       - [x] Each catalog provider's refresh, cloudflare's included, uses its listed client authentication style, which is HTTP Basic with the client ID and secret for cloudflare ([test](../../providers/catalog_test.go#L309))
-    - [ ] Clients without a secret
+    - [x] Clients without a secret ([test](../../providers/provider_flows_test.go#L189))
+      - [x] A Cloudflare client without a secret keeps PKCE, sends neither a client secret nor a Basic header, and refreshes with only client_id, grant_type and refresh_token ([test](../../providers/provider_flows_test.go#L189))
     - [ ] Client visibility
     - [ ] Refresh tokens
       - [x] In the cloudflare subtest, sign-in requests only user-details.read, so offline_access is not requested by default ([test](../../providers/catalog_test.go#L162))
@@ -102,12 +103,15 @@
     - [x] `email` ([test](../../providers/issuer_test.go#L135))
       - [x] In the cognito subtest, the session user's email and verification flag come from the ID token's email and email_verified claims ([test](../../providers/issuer_test.go#L135))
       - [x] Without an ID token, the Cognito provider's Resolve reads the hosted /oauth2/userinfo with the bearer token and counts email_verified "true" as verified ([test](../../providers/issuer_test.go#L142))
-    - [ ] `phone`
-    - [ ] `aws.cognito.signin.user.admin`
+    - [x] `phone` ([test](../../providers/provider_flows_test.go#L239))
+      - [x] The phone scope added to the configured or requested scopes reaches the hosted authorize URL ([test](../../providers/provider_flows_test.go#L239))
+    - [x] `aws.cognito.signin.user.admin` ([test](../../providers/provider_flows_test.go#L239))
+      - [x] The aws.cognito.signin.user.admin scope reaches the hosted authorize URL with %20 between scopes ([test](../../providers/provider_flows_test.go#L239))
     - [ ] `getUserInfo`
       - [x] Without an ID token, the Cognito provider's Resolve reads the hosted /oauth2/userinfo with the bearer token and maps sub, username and the verification flag ([test](../../providers/issuer_test.go#L142))
       - [x] A provider's own Resolve function fetches the profile with the access token, and after the browser sign-in the session user has the email it returned ([test](../../conformance/goapi/oauth_test.go#L177))
-    - [ ] `identityProvider`
+    - [x] `identityProvider` ([test](../../providers/provider_flows_test.go#L239))
+      - [x] The configured identity provider reaches the hosted authorize URL, and a call can override it ([test](../../providers/provider_flows_test.go#L239))
     - [x] `refreshAccessToken` ([test](../../conformance/provider-credentials.mjs#L70))
       - [x] Through POST /refresh-token, a provider's custom refresh function receives the stored refresh token and its rotated refresh token is returned, matching the other runtime ([test](../../conformance/provider-credentials.mjs#L70))
   - [ ] Refresh tokens
@@ -321,13 +325,19 @@
 ## GitHub
 
 - [ ] GitHub
-  - [ ] Get your GitHub credentials
-  - [ ] Configure the provider
-  - [ ] Sign In with GitHub
-    - [ ] `provider`
+  - [x] Get your GitHub credentials ([test](../../providers/provider_flows_test.go#L88))
+    - [x] A GitHub OAuth app signs in through the browser with its client ID and secret and the read:user and user:email scopes ([test](../../providers/provider_flows_test.go#L88))
+  - [x] Configure the provider ([test](../../providers/provider_flows_test.go#L88))
+    - [x] providers.GitHub registered in SocialProviders sends its client ID and secret in the code exchange ([test](../../providers/provider_flows_test.go#L88))
+  - [x] Sign In with GitHub ([test](../../providers/provider_flows_test.go#L88))
+    - [x] A browser sign-in through providers.GitHub stores the numeric account ID and the verified primary email ([test](../../providers/provider_flows_test.go#L88))
+    - [x] `provider` ([test](../../providers/provider_flows_test.go#L88))
+      - [x] Posting provider github to /sign-in/social starts the GitHub authorization ([test](../../providers/provider_flows_test.go#L88))
   - [ ] Usage
-    - [ ] Setting up your Github app
-    - [ ] Why don't I have a refresh token?
+    - [x] Setting up your Github app ([test](../../providers/provider_flows_test.go#L151))
+      - [x] When GitHub refuses the email list, a user without a public email gets email_not_found and no session, and a public email signs in unverified ([test](../../providers/provider_flows_test.go#L151))
+    - [x] Why don't I have a refresh token? ([test](../../providers/provider_flows_test.go#L88))
+      - [x] A token response without a refresh token or expiry is kept as it is: get-access-token returns it without an expiry and refresh-token answers REFRESH_TOKEN_NOT_FOUND ([test](../../providers/provider_flows_test.go#L88))
 
 ## GitLab
 
