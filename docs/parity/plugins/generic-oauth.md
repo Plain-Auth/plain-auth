@@ -10,14 +10,14 @@
       - [x] For every catalog provider, the client ID passed to New reaches the token exchange through /sign-in/social and /callback requests ([test](../../../providers/catalog_test.go#L79))
     - [ ] `clientSecret`
       - [x] For every catalog provider, the client secret passed to New is sent in the token exchange, by basic auth or form fields as the provider requires ([test](../../../providers/catalog_test.go#L80))
-    - [x] `tokenEndpointAuth` ([test](../../../conformance/goapi/oauth_token_auth_test.go#L158))
-      - [x] TokenEndpointAuth on the OAuthProvider every preset returns selects Basic, form secret, a public client, a private_key_jwt assertion or a custom authentication for the code exchange and refresh, and a Method overrides the preset's own AuthStyle ([test](../../../conformance/goapi/oauth_token_auth_test.go#L158))
+    - [x] `tokenEndpointAuth` ([test](../../../conformance/goapi/oauth_token_auth_test.go#L159))
+      - [x] TokenEndpointAuth on a hand-configured OAuthProvider selects Basic, form secret, a public client, a private_key_jwt assertion or a custom authentication for the code exchange and refresh, and a Method overrides the preset's own AuthStyle ([test](../../../conformance/goapi/oauth_token_auth_test.go#L159))
     - [ ] `scopes`
       - [x] On both servers, a provider configured with the scope profile sends exactly that scope when the sign-in request adds none ([test](../../../conformance/social-signup.mjs#L60))
       - [x] For every catalog provider, the authorization URL carries exactly the provider's default scopes, including none ([test](../../../providers/catalog_test.go#L163))
     - [ ] `redirectURI`
       - [x] A provider's Config.RedirectURL replaces the callback route in the authorization request and the code exchange, an application route forwards it to the callback, and a relative or non-HTTP URL is refused ([test](../../../conformance/goapi/oauth_redirect_uri_test.go#L22))
-      - [x] With BasePath /identity, each profile preset sends https://app.example/identity/callback/<provider> as redirect_uri in the authorization URL and the code exchange ([test](../../../providers/profile_presets_test.go#L53))
+      - [x] With BasePath /identity, each profile preset sends https://app.example/identity/callback/<provider> as redirect_uri in the authorization URL and the code exchange ([test](../../../providers/profile_presets_test.go#L67))
     - [x] `endSessionEndpoint` ([test](../../../conformance/goapi/oauth_logout_test.go#L71))
       - [x] Provider sign-out revokes the local session and returns the configured EndSessionEndpoint with its own query, the ID token hint, state, client ID and post-logout return URI ([test](../../../conformance/goapi/oauth_logout_test.go#L71))
       - [x] OpenIDConnect discovery, as used by the Auth0, Keycloak and Okta presets, sets EndSessionEndpoint from the issuer's end_session_endpoint ([test](../../../providers/enterprise_oidc_test.go#L71))
@@ -46,8 +46,8 @@
       - [x] The Auth0, Keycloak and Okta presets send the configured client ID and secret by basic auth in the code exchange ([test](../../../providers/enterprise_oidc_test.go#L51))
     - [ ] `clientSecret`
       - [x] The Auth0, Keycloak and Okta presets send the configured client ID and secret by basic auth in the code exchange ([test](../../../providers/enterprise_oidc_test.go#L51))
-    - [x] `tokenEndpointAuth` ([test](../../../conformance/goapi/oauth_token_auth_test.go#L158))
-      - [x] TokenEndpointAuth on the OAuthProvider every preset returns selects Basic, form secret, a public client, a private_key_jwt assertion or a custom authentication for the code exchange and refresh, and a Method overrides the preset's own AuthStyle ([test](../../../conformance/goapi/oauth_token_auth_test.go#L158))
+    - [ ] `tokenEndpointAuth`
+      - [x] The preset keeps the standard token requests, so a TokenEndpointAuth method applies as on any provider; not yet exercised against this preset ([test](../../../conformance/goapi/oauth_token_auth_test.go#L159))
     - [ ] `scopes`
       - [x] The Auth0, Keycloak and Okta presets request openid profile email with a nonce and an S256 code challenge at the discovered authorization endpoint ([test](../../../providers/enterprise_oidc_test.go#L95))
       - [x] On both servers, a provider configured with the scope profile sends exactly that scope when the sign-in request adds none ([test](../../../conformance/social-signup.mjs#L60))
@@ -76,17 +76,17 @@
     - [x] Match the Auth0 tenant discovery location and default scopes with the published preset ([test](../../../conformance/enterprise-oidc.test.mjs#L6))
   - [ ] `GumroadOptions`
     - [ ] `clientId`
-      - [x] The Gumroad, HubSpot, LINE, Patreon, Slack and Yandex presets post the configured client ID and secret with the code, callback redirect URI and PKCE verifier ([test](../../../providers/profile_presets_test.go#L63))
+      - [x] The Gumroad, HubSpot, LINE, Patreon, Slack and Yandex presets post the configured client ID and secret with the code, callback redirect URI and PKCE verifier ([test](../../../providers/profile_presets_test.go#L77))
     - [ ] `clientSecret`
-      - [x] The Gumroad, HubSpot, LINE, Patreon, Slack and Yandex presets post the configured client ID and secret with the code, callback redirect URI and PKCE verifier ([test](../../../providers/profile_presets_test.go#L63))
-    - [x] `tokenEndpointAuth` ([test](../../../conformance/goapi/oauth_token_auth_test.go#L158))
-      - [x] TokenEndpointAuth on the OAuthProvider every preset returns selects Basic, form secret, a public client, a private_key_jwt assertion or a custom authentication for the code exchange and refresh, and a Method overrides the preset's own AuthStyle ([test](../../../conformance/goapi/oauth_token_auth_test.go#L158))
+      - [x] The Gumroad, HubSpot, LINE, Patreon, Slack and Yandex presets post the configured client ID and secret with the code, callback redirect URI and PKCE verifier ([test](../../../providers/profile_presets_test.go#L77))
+    - [x] `tokenEndpointAuth` ([test](../../../providers/profile_presets_test.go#L32))
+      - [x] The preset's own code exchange authenticates the way TokenEndpointAuth.Method says, such as HTTP Basic instead of its form secret, in a full browser sign-in; the refresh uses the same client authentication ([test](../../../providers/profile_presets_test.go#L32))
     - [ ] `scopes`
-      - [x] The Gumroad, HubSpot, LINE, Patreon, Slack and Yandex presets send their default scopes, the callback redirect URI and an S256 challenge in the authorization URL ([test](../../../providers/profile_presets_test.go#L112))
+      - [x] The Gumroad, HubSpot, LINE, Patreon, Slack and Yandex presets send their default scopes, the callback redirect URI and an S256 challenge in the authorization URL ([test](../../../providers/profile_presets_test.go#L126))
       - [x] On both servers, a provider configured with the scope profile sends exactly that scope when the sign-in request adds none ([test](../../../conformance/social-signup.mjs#L60))
     - [ ] `redirectURI`
       - [x] A provider's Config.RedirectURL replaces the callback route in the authorization request and the code exchange, an application route forwards it to the callback, and a relative or non-HTTP URL is refused ([test](../../../conformance/goapi/oauth_redirect_uri_test.go#L22))
-      - [x] With BasePath /identity, each profile preset sends https://app.example/identity/callback/<provider> as redirect_uri in the authorization URL and the code exchange ([test](../../../providers/profile_presets_test.go#L53))
+      - [x] With BasePath /identity, each profile preset sends https://app.example/identity/callback/<provider> as redirect_uri in the authorization URL and the code exchange ([test](../../../providers/profile_presets_test.go#L67))
     - [ ] `endSessionEndpoint`
       - [x] Provider sign-out revokes the local session and returns the configured EndSessionEndpoint with its own query, the ID token hint, state, client ID and post-logout return URI ([test](../../../conformance/goapi/oauth_logout_test.go#L71))
     - [ ] `postLogoutRedirectURI`
@@ -94,7 +94,7 @@
     - [x] `disableProviderLogout` ([test](../../../conformance/goapi/oauth_logout_test.go#L87))
       - [x] With DisableProviderLogout on the provider, which every preset returns as an OAuthProvider, sign-out ends the local session and returns no provider logout URL, also when another configured provider offers logout ([test](../../../conformance/goapi/oauth_logout_test.go#L87))
     - [ ] `pkce`
-      - [x] The Gumroad, HubSpot, LINE, Patreon, Slack and Yandex presets send their default scopes, the callback redirect URI and an S256 challenge in the authorization URL ([test](../../../providers/profile_presets_test.go#L112))
+      - [x] The Gumroad, HubSpot, LINE, Patreon, Slack and Yandex presets send their default scopes, the callback redirect URI and an S256 challenge in the authorization URL ([test](../../../providers/profile_presets_test.go#L126))
       - [x] For every catalog provider, the authorization URL carries a code challenge exactly when the provider uses PKCE, and providers built with DisablePKCE send none ([test](../../../providers/catalog_test.go#L178))
     - [ ] `disableImplicitSignUp`
       - [x] With DisableImplicitSignUp, a new account is refused unless requestSignUp is sent, and created when it is, for browser and ID-token sign-in ([test](../../../conformance/goapi/oauth_signup_test.go#L118))
@@ -104,24 +104,24 @@
       - [x] With profile override on, a returning sign-in through either server updates the name, email, image and writable mapped fields, keeps fields marked not writable, and takes the provider's verification status for a changed email ([test](../../../conformance/social-user-fields.mjs#L145))
       - [x] With profile override off, a returning sign-in through either server keeps the mapped user fields stored at registration ([test](../../../conformance/social-user-fields.mjs#L110))
   - [ ] `gumroad`
-    - [x] Complete authorization-code sign-in, bind the provider subject and read the linked account profile ([test](../../../providers/profile_presets_test.go#L22))
+    - [x] Complete authorization-code sign-in, bind the provider subject and read the linked account profile ([test](../../../providers/profile_presets_test.go#L32))
     - [x] Compare default scopes, authenticated profile fields and subject with the published provider preset ([test](../../../conformance/profile-presets.test.mjs#L6))
   - [ ] `HubSpotOptions`
     - [ ] `scopes`
-      - [x] The Gumroad, HubSpot, LINE, Patreon, Slack and Yandex presets send their default scopes, the callback redirect URI and an S256 challenge in the authorization URL ([test](../../../providers/profile_presets_test.go#L112))
+      - [x] The Gumroad, HubSpot, LINE, Patreon, Slack and Yandex presets send their default scopes, the callback redirect URI and an S256 challenge in the authorization URL ([test](../../../providers/profile_presets_test.go#L126))
       - [x] On both servers, a provider configured with the scope profile sends exactly that scope when the sign-in request adds none ([test](../../../conformance/social-signup.mjs#L60))
     - [ ] `clientId`
-      - [x] The Gumroad, HubSpot, LINE, Patreon, Slack and Yandex presets post the configured client ID and secret with the code, callback redirect URI and PKCE verifier ([test](../../../providers/profile_presets_test.go#L63))
-      - [x] HubSpot posts the configured client ID and secret with the access token to token introspection ([test](../../../providers/profile_presets_test.go#L79))
-      - [x] An introspected HubSpot token issued to a different client is rejected ([test](../../../providers/profile_presets_test.go#L191))
+      - [x] The Gumroad, HubSpot, LINE, Patreon, Slack and Yandex presets post the configured client ID and secret with the code, callback redirect URI and PKCE verifier ([test](../../../providers/profile_presets_test.go#L77))
+      - [x] HubSpot posts the configured client ID and secret with the access token to token introspection ([test](../../../providers/profile_presets_test.go#L93))
+      - [x] An introspected HubSpot token issued to a different client is rejected ([test](../../../providers/profile_presets_test.go#L206))
     - [ ] `clientSecret`
-      - [x] The Gumroad, HubSpot, LINE, Patreon, Slack and Yandex presets post the configured client ID and secret with the code, callback redirect URI and PKCE verifier ([test](../../../providers/profile_presets_test.go#L63))
-      - [x] HubSpot posts the configured client ID and secret with the access token to token introspection ([test](../../../providers/profile_presets_test.go#L79))
-    - [x] `tokenEndpointAuth` ([test](../../../conformance/goapi/oauth_token_auth_test.go#L158))
-      - [x] TokenEndpointAuth on the OAuthProvider every preset returns selects Basic, form secret, a public client, a private_key_jwt assertion or a custom authentication for the code exchange and refresh, and a Method overrides the preset's own AuthStyle ([test](../../../conformance/goapi/oauth_token_auth_test.go#L158))
+      - [x] The Gumroad, HubSpot, LINE, Patreon, Slack and Yandex presets post the configured client ID and secret with the code, callback redirect URI and PKCE verifier ([test](../../../providers/profile_presets_test.go#L77))
+      - [x] HubSpot posts the configured client ID and secret with the access token to token introspection ([test](../../../providers/profile_presets_test.go#L93))
+    - [x] `tokenEndpointAuth` ([test](../../../providers/profile_presets_test.go#L32))
+      - [x] The preset's own code exchange authenticates the way TokenEndpointAuth.Method says, such as HTTP Basic instead of its form secret, in a full browser sign-in; the refresh uses the same client authentication ([test](../../../providers/profile_presets_test.go#L32))
     - [ ] `redirectURI`
       - [x] A provider's Config.RedirectURL replaces the callback route in the authorization request and the code exchange, an application route forwards it to the callback, and a relative or non-HTTP URL is refused ([test](../../../conformance/goapi/oauth_redirect_uri_test.go#L22))
-      - [x] With BasePath /identity, each profile preset sends https://app.example/identity/callback/<provider> as redirect_uri in the authorization URL and the code exchange ([test](../../../providers/profile_presets_test.go#L53))
+      - [x] With BasePath /identity, each profile preset sends https://app.example/identity/callback/<provider> as redirect_uri in the authorization URL and the code exchange ([test](../../../providers/profile_presets_test.go#L67))
     - [ ] `endSessionEndpoint`
       - [x] Provider sign-out revokes the local session and returns the configured EndSessionEndpoint with its own query, the ID token hint, state, client ID and post-logout return URI ([test](../../../conformance/goapi/oauth_logout_test.go#L71))
     - [ ] `postLogoutRedirectURI`
@@ -129,7 +129,7 @@
     - [x] `disableProviderLogout` ([test](../../../conformance/goapi/oauth_logout_test.go#L87))
       - [x] With DisableProviderLogout on the provider, which every preset returns as an OAuthProvider, sign-out ends the local session and returns no provider logout URL, also when another configured provider offers logout ([test](../../../conformance/goapi/oauth_logout_test.go#L87))
     - [ ] `pkce`
-      - [x] The Gumroad, HubSpot, LINE, Patreon, Slack and Yandex presets send their default scopes, the callback redirect URI and an S256 challenge in the authorization URL ([test](../../../providers/profile_presets_test.go#L112))
+      - [x] The Gumroad, HubSpot, LINE, Patreon, Slack and Yandex presets send their default scopes, the callback redirect URI and an S256 challenge in the authorization URL ([test](../../../providers/profile_presets_test.go#L126))
       - [x] For every catalog provider, the authorization URL carries a code challenge exactly when the provider uses PKCE, and providers built with DisablePKCE send none ([test](../../../providers/catalog_test.go#L178))
     - [ ] `disableImplicitSignUp`
       - [x] With DisableImplicitSignUp, a new account is refused unless requestSignUp is sent, and created when it is, for browser and ID-token sign-in ([test](../../../conformance/goapi/oauth_signup_test.go#L118))
@@ -139,9 +139,9 @@
       - [x] With profile override on, a returning sign-in through either server updates the name, email, image and writable mapped fields, keeps fields marked not writable, and takes the provider's verification status for a changed email ([test](../../../conformance/social-user-fields.mjs#L145))
       - [x] With profile override off, a returning sign-in through either server keeps the mapped user fields stored at registration ([test](../../../conformance/social-user-fields.mjs#L110))
   - [ ] `hubspot`
-    - [x] Complete authorization-code sign-in, bind the provider subject and read the linked account profile ([test](../../../providers/profile_presets_test.go#L22))
+    - [x] Complete authorization-code sign-in, bind the provider subject and read the linked account profile ([test](../../../providers/profile_presets_test.go#L32))
     - [x] Compare default scopes, authenticated profile fields and subject with the published provider preset ([test](../../../conformance/profile-presets.test.mjs#L6))
-    - [x] Validate the introspected token’s registered client, active status and access-token use ([test](../../../providers/profile_presets_test.go#L178))
+    - [x] Validate the introspected token’s registered client, active status and access-token use ([test](../../../providers/profile_presets_test.go#L193))
   - [ ] `KeycloakOptions`
     - [ ] `issuer`
       - [x] Build the Keycloak preset from a realm issuer with a trailing slash, discover its endpoints under that realm and complete a verified sign-in ([test](../../../providers/enterprise_oidc_test.go#L23))
@@ -150,8 +150,8 @@
       - [x] The Auth0, Keycloak and Okta presets send the configured client ID and secret by basic auth in the code exchange ([test](../../../providers/enterprise_oidc_test.go#L51))
     - [ ] `clientSecret`
       - [x] The Auth0, Keycloak and Okta presets send the configured client ID and secret by basic auth in the code exchange ([test](../../../providers/enterprise_oidc_test.go#L51))
-    - [x] `tokenEndpointAuth` ([test](../../../conformance/goapi/oauth_token_auth_test.go#L158))
-      - [x] TokenEndpointAuth on the OAuthProvider every preset returns selects Basic, form secret, a public client, a private_key_jwt assertion or a custom authentication for the code exchange and refresh, and a Method overrides the preset's own AuthStyle ([test](../../../conformance/goapi/oauth_token_auth_test.go#L158))
+    - [ ] `tokenEndpointAuth`
+      - [x] The preset keeps the standard token requests, so a TokenEndpointAuth method applies as on any provider; not yet exercised against this preset ([test](../../../conformance/goapi/oauth_token_auth_test.go#L159))
     - [ ] `scopes`
       - [x] The Auth0, Keycloak and Okta presets request openid profile email with a nonce and an S256 code challenge at the discovered authorization endpoint ([test](../../../providers/enterprise_oidc_test.go#L95))
       - [x] On both servers, a provider configured with the scope profile sends exactly that scope when the sign-in request adds none ([test](../../../conformance/social-signup.mjs#L60))
@@ -181,17 +181,17 @@
   - [ ] `LineOptions`
     - [ ] `providerId`
     - [ ] `clientId`
-      - [x] The Gumroad, HubSpot, LINE, Patreon, Slack and Yandex presets post the configured client ID and secret with the code, callback redirect URI and PKCE verifier ([test](../../../providers/profile_presets_test.go#L63))
+      - [x] The Gumroad, HubSpot, LINE, Patreon, Slack and Yandex presets post the configured client ID and secret with the code, callback redirect URI and PKCE verifier ([test](../../../providers/profile_presets_test.go#L77))
     - [ ] `clientSecret`
-      - [x] The Gumroad, HubSpot, LINE, Patreon, Slack and Yandex presets post the configured client ID and secret with the code, callback redirect URI and PKCE verifier ([test](../../../providers/profile_presets_test.go#L63))
-    - [x] `tokenEndpointAuth` ([test](../../../conformance/goapi/oauth_token_auth_test.go#L158))
-      - [x] TokenEndpointAuth on the OAuthProvider every preset returns selects Basic, form secret, a public client, a private_key_jwt assertion or a custom authentication for the code exchange and refresh, and a Method overrides the preset's own AuthStyle ([test](../../../conformance/goapi/oauth_token_auth_test.go#L158))
+      - [x] The Gumroad, HubSpot, LINE, Patreon, Slack and Yandex presets post the configured client ID and secret with the code, callback redirect URI and PKCE verifier ([test](../../../providers/profile_presets_test.go#L77))
+    - [x] `tokenEndpointAuth` ([test](../../../providers/profile_presets_test.go#L32))
+      - [x] The preset's own code exchange authenticates the way TokenEndpointAuth.Method says, such as HTTP Basic instead of its form secret, in a full browser sign-in; the refresh uses the same client authentication ([test](../../../providers/profile_presets_test.go#L32))
     - [ ] `scopes`
-      - [x] The Gumroad, HubSpot, LINE, Patreon, Slack and Yandex presets send their default scopes, the callback redirect URI and an S256 challenge in the authorization URL ([test](../../../providers/profile_presets_test.go#L112))
+      - [x] The Gumroad, HubSpot, LINE, Patreon, Slack and Yandex presets send their default scopes, the callback redirect URI and an S256 challenge in the authorization URL ([test](../../../providers/profile_presets_test.go#L126))
       - [x] On both servers, a provider configured with the scope profile sends exactly that scope when the sign-in request adds none ([test](../../../conformance/social-signup.mjs#L60))
     - [ ] `redirectURI`
       - [x] A provider's Config.RedirectURL replaces the callback route in the authorization request and the code exchange, an application route forwards it to the callback, and a relative or non-HTTP URL is refused ([test](../../../conformance/goapi/oauth_redirect_uri_test.go#L22))
-      - [x] With BasePath /identity, each profile preset sends https://app.example/identity/callback/<provider> as redirect_uri in the authorization URL and the code exchange ([test](../../../providers/profile_presets_test.go#L53))
+      - [x] With BasePath /identity, each profile preset sends https://app.example/identity/callback/<provider> as redirect_uri in the authorization URL and the code exchange ([test](../../../providers/profile_presets_test.go#L67))
     - [ ] `endSessionEndpoint`
       - [x] Provider sign-out revokes the local session and returns the configured EndSessionEndpoint with its own query, the ID token hint, state, client ID and post-logout return URI ([test](../../../conformance/goapi/oauth_logout_test.go#L71))
     - [ ] `postLogoutRedirectURI`
@@ -199,7 +199,7 @@
     - [x] `disableProviderLogout` ([test](../../../conformance/goapi/oauth_logout_test.go#L87))
       - [x] With DisableProviderLogout on the provider, which every preset returns as an OAuthProvider, sign-out ends the local session and returns no provider logout URL, also when another configured provider offers logout ([test](../../../conformance/goapi/oauth_logout_test.go#L87))
     - [ ] `pkce`
-      - [x] The Gumroad, HubSpot, LINE, Patreon, Slack and Yandex presets send their default scopes, the callback redirect URI and an S256 challenge in the authorization URL ([test](../../../providers/profile_presets_test.go#L112))
+      - [x] The Gumroad, HubSpot, LINE, Patreon, Slack and Yandex presets send their default scopes, the callback redirect URI and an S256 challenge in the authorization URL ([test](../../../providers/profile_presets_test.go#L126))
       - [x] For every catalog provider, the authorization URL carries a code challenge exactly when the provider uses PKCE, and providers built with DisablePKCE send none ([test](../../../providers/catalog_test.go#L178))
     - [ ] `disableImplicitSignUp`
       - [x] With DisableImplicitSignUp, a new account is refused unless requestSignUp is sent, and created when it is, for browser and ID-token sign-in ([test](../../../conformance/goapi/oauth_signup_test.go#L118))
@@ -210,7 +210,7 @@
       - [x] Apply the provider profile-update policy on direct sign-in, Google One Tap and permitted automatic links across three SQL engines ([test](../../../adapters/sqlstore/oauth_profile_sync_test.go#L16))
   - [ ] `line`
     - [x] Use channel-bound verification for ID tokens and reject the wrong issuer, audience, nonce or validity period ([test](../../../providers/line_test.go#L16))
-    - [x] Complete access-token sign-in and persist the authenticated LINE subject and unverified email ([test](../../../providers/profile_presets_test.go#L22))
+    - [x] Complete access-token sign-in and persist the authenticated LINE subject and unverified email ([test](../../../providers/profile_presets_test.go#L32))
     - [x] Match the LINE default scopes, UserInfo mapping and subject with the published preset ([test](../../../conformance/profile-presets.test.mjs#L6))
   - [ ] `MicrosoftEntraIdOptions`
     - [x] `tenantId` ([test](../../../providers/entra_test.go#L52))
@@ -220,8 +220,8 @@
     - [ ] `clientId`
       - [x] Reject an Entra ID token issued for an audience other than the configured client ID ([test](../../../providers/entra_test.go#L93))
     - [ ] `clientSecret`
-    - [x] `tokenEndpointAuth` ([test](../../../conformance/goapi/oauth_token_auth_test.go#L158))
-      - [x] TokenEndpointAuth on the OAuthProvider every preset returns selects Basic, form secret, a public client, a private_key_jwt assertion or a custom authentication for the code exchange and refresh, and a Method overrides the preset's own AuthStyle ([test](../../../conformance/goapi/oauth_token_auth_test.go#L158))
+    - [x] `tokenEndpointAuth` ([test](../../../providers/microsoft_test.go#L243))
+      - [x] The Microsoft preset's code exchange and refresh authenticate with a private_key_jwt assertion through TokenEndpointAuth instead of a secret ([test](../../../providers/microsoft_test.go#L243))
     - [x] `scopes` ([test](../../../providers/entra_test.go#L61))
       - [x] Default the Entra scopes to openid, profile and email ([test](../../../providers/entra_test.go#L61))
       - [x] Replace a preset's default scopes with the configured list in sign-in and link authorization requests ([test](../../../conformance/goapi/provider_contract_test.go#L68))
@@ -255,8 +255,8 @@
       - [x] Authenticate an enterprise preset's code exchange, Okta included, with the configured client ID by HTTP Basic ([test](../../../providers/enterprise_oidc_test.go#L48))
     - [x] `clientSecret` ([test](../../../providers/enterprise_oidc_test.go#L48))
       - [x] Authenticate an enterprise preset's code exchange, Okta included, with the configured client secret by HTTP Basic ([test](../../../providers/enterprise_oidc_test.go#L48))
-    - [x] `tokenEndpointAuth` ([test](../../../conformance/goapi/oauth_token_auth_test.go#L158))
-      - [x] TokenEndpointAuth on the OAuthProvider every preset returns selects Basic, form secret, a public client, a private_key_jwt assertion or a custom authentication for the code exchange and refresh, and a Method overrides the preset's own AuthStyle ([test](../../../conformance/goapi/oauth_token_auth_test.go#L158))
+    - [ ] `tokenEndpointAuth`
+      - [x] The preset keeps the standard token requests, so a TokenEndpointAuth method applies as on any provider; not yet exercised against this preset ([test](../../../conformance/goapi/oauth_token_auth_test.go#L159))
     - [x] `scopes` ([test](../../../providers/enterprise_oidc_test.go#L94))
       - [x] Request openid, profile and email by default for discovered enterprise presets, Okta included ([test](../../../providers/enterprise_oidc_test.go#L94))
       - [x] Replace a preset's default scopes with the configured list in sign-in and link authorization requests ([test](../../../conformance/goapi/provider_contract_test.go#L68))
@@ -284,17 +284,17 @@
     - [x] Discover a configured Okta organization or custom authorization server and authenticate with a signed ID token at a custom mount ([test](../../../providers/enterprise_oidc_test.go#L23))
     - [x] Match the Okta organization or custom authorization server discovery location and default scopes with the published preset ([test](../../../conformance/enterprise-oidc.test.mjs#L6))
   - [ ] `PatreonOptions`
-    - [x] `clientId` ([test](../../../providers/profile_presets_test.go#L62))
-      - [x] Send the configured client ID and secret as form fields in each profile preset's code exchange ([test](../../../providers/profile_presets_test.go#L62))
-    - [x] `clientSecret` ([test](../../../providers/profile_presets_test.go#L62))
-      - [x] Send the configured client ID and secret as form fields in each profile preset's code exchange ([test](../../../providers/profile_presets_test.go#L62))
-    - [x] `tokenEndpointAuth` ([test](../../../conformance/goapi/oauth_token_auth_test.go#L158))
-      - [x] TokenEndpointAuth on the OAuthProvider every preset returns selects Basic, form secret, a public client, a private_key_jwt assertion or a custom authentication for the code exchange and refresh, and a Method overrides the preset's own AuthStyle ([test](../../../conformance/goapi/oauth_token_auth_test.go#L158))
-    - [x] `scopes` ([test](../../../providers/profile_presets_test.go#L111))
-      - [x] Request each profile preset's default scopes in the authorization URL ([test](../../../providers/profile_presets_test.go#L111))
+    - [x] `clientId` ([test](../../../providers/profile_presets_test.go#L76))
+      - [x] Send the configured client ID and secret as form fields in each profile preset's code exchange ([test](../../../providers/profile_presets_test.go#L76))
+    - [x] `clientSecret` ([test](../../../providers/profile_presets_test.go#L76))
+      - [x] Send the configured client ID and secret as form fields in each profile preset's code exchange ([test](../../../providers/profile_presets_test.go#L76))
+    - [x] `tokenEndpointAuth` ([test](../../../providers/profile_presets_test.go#L32))
+      - [x] The preset's own code exchange authenticates the way TokenEndpointAuth.Method says, such as HTTP Basic instead of its form secret, in a full browser sign-in; the refresh uses the same client authentication ([test](../../../providers/profile_presets_test.go#L32))
+    - [x] `scopes` ([test](../../../providers/profile_presets_test.go#L125))
+      - [x] Request each profile preset's default scopes in the authorization URL ([test](../../../providers/profile_presets_test.go#L125))
       - [x] Replace a preset's default scopes with the configured list in sign-in and link authorization requests ([test](../../../conformance/goapi/provider_contract_test.go#L68))
-    - [x] `redirectURI` ([test](../../../providers/profile_presets_test.go#L111))
-      - [x] Send the default callback under a custom auth mount in each profile preset's authorization URL ([test](../../../providers/profile_presets_test.go#L111))
+    - [x] `redirectURI` ([test](../../../providers/profile_presets_test.go#L125))
+      - [x] Send the default callback under a custom auth mount in each profile preset's authorization URL ([test](../../../providers/profile_presets_test.go#L125))
       - [x] Use a provider's own redirect URL in the authorization request and code exchange, forward it to the callback, and refuse a relative or non-HTTP URL ([test](../../../conformance/goapi/oauth_redirect_uri_test.go#L22))
     - [x] `endSessionEndpoint` ([test](../../../conformance/goapi/oauth_logout_test.go#L17))
       - [x] Send the signed-out user to the configured end-session endpoint, keeping its query and adding the ID token hint, state and client ID ([test](../../../conformance/goapi/oauth_logout_test.go#L17))
@@ -302,8 +302,8 @@
       - [x] Send the configured post-logout return URI, or the sign-out's own callback URL, to the end-session endpoint and refuse an untrusted one ([test](../../../conformance/goapi/oauth_logout_test.go#L70))
     - [x] `disableProviderLogout` ([test](../../../conformance/goapi/oauth_logout_test.go#L87))
       - [x] With DisableProviderLogout on the provider, which every preset returns as an OAuthProvider, sign-out ends the local session and returns no provider logout URL, also when another configured provider offers logout ([test](../../../conformance/goapi/oauth_logout_test.go#L87))
-    - [x] `pkce` ([test](../../../providers/profile_presets_test.go#L111))
-      - [x] Send an S256 code challenge in each profile preset's authorization URL ([test](../../../providers/profile_presets_test.go#L111))
+    - [x] `pkce` ([test](../../../providers/profile_presets_test.go#L125))
+      - [x] Send an S256 code challenge in each profile preset's authorization URL ([test](../../../providers/profile_presets_test.go#L125))
       - [x] Omit the code challenge for catalog providers configured without PKCE ([test](../../../providers/catalog_test.go#L177))
     - [x] `disableImplicitSignUp` ([test](../../../conformance/goapi/oauth_signup_test.go#L118))
       - [x] Refuse a new account unless the sign-in sends requestSignUp, and create it when it does, in browser and ID-token sign-in ([test](../../../conformance/goapi/oauth_signup_test.go#L118))
@@ -313,20 +313,20 @@
       - [x] Refresh a returning profile with either server, preserve protected fields and use the new mailbox verification status ([test](../../../conformance/social-user-fields.mjs#L145))
       - [x] Apply the provider profile-update policy on direct sign-in, Google One Tap and permitted automatic links across three SQL engines ([test](../../../adapters/sqlstore/oauth_profile_sync_test.go#L16))
   - [ ] `patreon`
-    - [x] Complete authorization-code sign-in, bind the provider subject and read the linked account profile ([test](../../../providers/profile_presets_test.go#L22))
+    - [x] Complete authorization-code sign-in, bind the provider subject and read the linked account profile ([test](../../../providers/profile_presets_test.go#L32))
     - [x] Compare default scopes, authenticated profile fields and subject with the published provider preset ([test](../../../conformance/profile-presets.test.mjs#L6))
   - [ ] `SlackOptions`
-    - [x] `clientId` ([test](../../../providers/profile_presets_test.go#L62))
-      - [x] Send the configured client ID and secret as form fields in each profile preset's code exchange ([test](../../../providers/profile_presets_test.go#L62))
-    - [x] `clientSecret` ([test](../../../providers/profile_presets_test.go#L62))
-      - [x] Send the configured client ID and secret as form fields in each profile preset's code exchange ([test](../../../providers/profile_presets_test.go#L62))
-    - [x] `tokenEndpointAuth` ([test](../../../conformance/goapi/oauth_token_auth_test.go#L158))
-      - [x] TokenEndpointAuth on the OAuthProvider every preset returns selects Basic, form secret, a public client, a private_key_jwt assertion or a custom authentication for the code exchange and refresh, and a Method overrides the preset's own AuthStyle ([test](../../../conformance/goapi/oauth_token_auth_test.go#L158))
-    - [x] `scopes` ([test](../../../providers/profile_presets_test.go#L111))
-      - [x] Request each profile preset's default scopes in the authorization URL ([test](../../../providers/profile_presets_test.go#L111))
+    - [x] `clientId` ([test](../../../providers/profile_presets_test.go#L76))
+      - [x] Send the configured client ID and secret as form fields in each profile preset's code exchange ([test](../../../providers/profile_presets_test.go#L76))
+    - [x] `clientSecret` ([test](../../../providers/profile_presets_test.go#L76))
+      - [x] Send the configured client ID and secret as form fields in each profile preset's code exchange ([test](../../../providers/profile_presets_test.go#L76))
+    - [x] `tokenEndpointAuth` ([test](../../../providers/profile_presets_test.go#L32))
+      - [x] The preset's own code exchange authenticates the way TokenEndpointAuth.Method says, such as HTTP Basic instead of its form secret, in a full browser sign-in; the refresh uses the same client authentication ([test](../../../providers/profile_presets_test.go#L32))
+    - [x] `scopes` ([test](../../../providers/profile_presets_test.go#L125))
+      - [x] Request each profile preset's default scopes in the authorization URL ([test](../../../providers/profile_presets_test.go#L125))
       - [x] Replace a preset's default scopes with the configured list in sign-in and link authorization requests ([test](../../../conformance/goapi/provider_contract_test.go#L68))
-    - [x] `redirectURI` ([test](../../../providers/profile_presets_test.go#L111))
-      - [x] Send the default callback under a custom auth mount in each profile preset's authorization URL ([test](../../../providers/profile_presets_test.go#L111))
+    - [x] `redirectURI` ([test](../../../providers/profile_presets_test.go#L125))
+      - [x] Send the default callback under a custom auth mount in each profile preset's authorization URL ([test](../../../providers/profile_presets_test.go#L125))
       - [x] Use a provider's own redirect URL in the authorization request and code exchange, forward it to the callback, and refuse a relative or non-HTTP URL ([test](../../../conformance/goapi/oauth_redirect_uri_test.go#L22))
     - [x] `endSessionEndpoint` ([test](../../../conformance/goapi/oauth_logout_test.go#L17))
       - [x] Send the signed-out user to the configured end-session endpoint, keeping its query and adding the ID token hint, state and client ID ([test](../../../conformance/goapi/oauth_logout_test.go#L17))
@@ -334,8 +334,8 @@
       - [x] Send the configured post-logout return URI, or the sign-out's own callback URL, to the end-session endpoint and refuse an untrusted one ([test](../../../conformance/goapi/oauth_logout_test.go#L70))
     - [x] `disableProviderLogout` ([test](../../../conformance/goapi/oauth_logout_test.go#L87))
       - [x] With DisableProviderLogout on the provider, which every preset returns as an OAuthProvider, sign-out ends the local session and returns no provider logout URL, also when another configured provider offers logout ([test](../../../conformance/goapi/oauth_logout_test.go#L87))
-    - [x] `pkce` ([test](../../../providers/profile_presets_test.go#L111))
-      - [x] Send an S256 code challenge in each profile preset's authorization URL ([test](../../../providers/profile_presets_test.go#L111))
+    - [x] `pkce` ([test](../../../providers/profile_presets_test.go#L125))
+      - [x] Send an S256 code challenge in each profile preset's authorization URL ([test](../../../providers/profile_presets_test.go#L125))
       - [x] Omit the code challenge for catalog providers configured without PKCE ([test](../../../providers/catalog_test.go#L177))
     - [x] `disableImplicitSignUp` ([test](../../../conformance/goapi/oauth_signup_test.go#L118))
       - [x] Refuse a new account unless the sign-in sends requestSignUp, and create it when it does, in browser and ID-token sign-in ([test](../../../conformance/goapi/oauth_signup_test.go#L118))
@@ -345,20 +345,20 @@
       - [x] Refresh a returning profile with either server, preserve protected fields and use the new mailbox verification status ([test](../../../conformance/social-user-fields.mjs#L145))
       - [x] Apply the provider profile-update policy on direct sign-in, Google One Tap and permitted automatic links across three SQL engines ([test](../../../adapters/sqlstore/oauth_profile_sync_test.go#L16))
   - [ ] `slack`
-    - [x] Complete authorization-code sign-in, bind the provider subject and read the linked account profile ([test](../../../providers/profile_presets_test.go#L22))
+    - [x] Complete authorization-code sign-in, bind the provider subject and read the linked account profile ([test](../../../providers/profile_presets_test.go#L32))
     - [x] Compare default scopes, authenticated profile fields and subject with the published provider preset ([test](../../../conformance/profile-presets.test.mjs#L6))
   - [ ] `YandexOptions`
-    - [x] `clientId` ([test](../../../providers/profile_presets_test.go#L62))
-      - [x] Send the configured client ID and secret as form fields in each profile preset's code exchange ([test](../../../providers/profile_presets_test.go#L62))
-    - [x] `clientSecret` ([test](../../../providers/profile_presets_test.go#L62))
-      - [x] Send the configured client ID and secret as form fields in each profile preset's code exchange ([test](../../../providers/profile_presets_test.go#L62))
-    - [x] `tokenEndpointAuth` ([test](../../../conformance/goapi/oauth_token_auth_test.go#L158))
-      - [x] TokenEndpointAuth on the OAuthProvider every preset returns selects Basic, form secret, a public client, a private_key_jwt assertion or a custom authentication for the code exchange and refresh, and a Method overrides the preset's own AuthStyle ([test](../../../conformance/goapi/oauth_token_auth_test.go#L158))
-    - [x] `scopes` ([test](../../../providers/profile_presets_test.go#L111))
-      - [x] Request each profile preset's default scopes in the authorization URL ([test](../../../providers/profile_presets_test.go#L111))
+    - [x] `clientId` ([test](../../../providers/profile_presets_test.go#L76))
+      - [x] Send the configured client ID and secret as form fields in each profile preset's code exchange ([test](../../../providers/profile_presets_test.go#L76))
+    - [x] `clientSecret` ([test](../../../providers/profile_presets_test.go#L76))
+      - [x] Send the configured client ID and secret as form fields in each profile preset's code exchange ([test](../../../providers/profile_presets_test.go#L76))
+    - [x] `tokenEndpointAuth` ([test](../../../providers/profile_presets_test.go#L32))
+      - [x] The preset's own code exchange authenticates the way TokenEndpointAuth.Method says, such as HTTP Basic instead of its form secret, in a full browser sign-in; the refresh uses the same client authentication ([test](../../../providers/profile_presets_test.go#L32))
+    - [x] `scopes` ([test](../../../providers/profile_presets_test.go#L125))
+      - [x] Request each profile preset's default scopes in the authorization URL ([test](../../../providers/profile_presets_test.go#L125))
       - [x] Replace a preset's default scopes with the configured list in sign-in and link authorization requests ([test](../../../conformance/goapi/provider_contract_test.go#L68))
-    - [x] `redirectURI` ([test](../../../providers/profile_presets_test.go#L111))
-      - [x] Send the default callback under a custom auth mount in each profile preset's authorization URL ([test](../../../providers/profile_presets_test.go#L111))
+    - [x] `redirectURI` ([test](../../../providers/profile_presets_test.go#L125))
+      - [x] Send the default callback under a custom auth mount in each profile preset's authorization URL ([test](../../../providers/profile_presets_test.go#L125))
       - [x] Use a provider's own redirect URL in the authorization request and code exchange, forward it to the callback, and refuse a relative or non-HTTP URL ([test](../../../conformance/goapi/oauth_redirect_uri_test.go#L22))
     - [x] `endSessionEndpoint` ([test](../../../conformance/goapi/oauth_logout_test.go#L17))
       - [x] Send the signed-out user to the configured end-session endpoint, keeping its query and adding the ID token hint, state and client ID ([test](../../../conformance/goapi/oauth_logout_test.go#L17))
@@ -366,8 +366,8 @@
       - [x] Send the configured post-logout return URI, or the sign-out's own callback URL, to the end-session endpoint and refuse an untrusted one ([test](../../../conformance/goapi/oauth_logout_test.go#L70))
     - [x] `disableProviderLogout` ([test](../../../conformance/goapi/oauth_logout_test.go#L87))
       - [x] With DisableProviderLogout on the provider, which every preset returns as an OAuthProvider, sign-out ends the local session and returns no provider logout URL, also when another configured provider offers logout ([test](../../../conformance/goapi/oauth_logout_test.go#L87))
-    - [x] `pkce` ([test](../../../providers/profile_presets_test.go#L111))
-      - [x] Send an S256 code challenge in each profile preset's authorization URL ([test](../../../providers/profile_presets_test.go#L111))
+    - [x] `pkce` ([test](../../../providers/profile_presets_test.go#L125))
+      - [x] Send an S256 code challenge in each profile preset's authorization URL ([test](../../../providers/profile_presets_test.go#L125))
       - [x] Omit the code challenge for catalog providers configured without PKCE ([test](../../../providers/catalog_test.go#L177))
     - [x] `disableImplicitSignUp` ([test](../../../conformance/goapi/oauth_signup_test.go#L118))
       - [x] Refuse a new account unless the sign-in sends requestSignUp, and create it when it does, in browser and ID-token sign-in ([test](../../../conformance/goapi/oauth_signup_test.go#L118))
@@ -376,17 +376,17 @@
     - [x] `overrideUserInfo` ([test](../../../conformance/social-user-fields.mjs#L145))
       - [x] Refresh a returning profile with either server, preserve protected fields and use the new mailbox verification status ([test](../../../conformance/social-user-fields.mjs#L145))
       - [x] Apply the provider profile-update policy on direct sign-in, Google One Tap and permitted automatic links across three SQL engines ([test](../../../adapters/sqlstore/oauth_profile_sync_test.go#L16))
-  - [x] `yandex` ([test](../../../providers/profile_presets_test.go#L147))
-    - [x] Complete authorization-code sign-in, bind the provider subject and read the linked account profile ([test](../../../providers/profile_presets_test.go#L22))
+  - [x] `yandex` ([test](../../../providers/profile_presets_test.go#L162))
+    - [x] Complete authorization-code sign-in, bind the provider subject and read the linked account profile ([test](../../../providers/profile_presets_test.go#L32))
     - [x] Compare default scopes, authenticated profile fields and subject with the published provider preset ([test](../../../conformance/profile-presets.test.mjs#L6))
-    - [x] Refuse an empty token or a profile without a subject, and a Yandex profile without an email ([test](../../../providers/profile_presets_test.go#L147))
+    - [x] Refuse an empty token or a profile without a subject, and a Yandex profile without an email ([test](../../../providers/profile_presets_test.go#L162))
   - [ ] `GenericOAuthConfig`
     - [ ] `providerId`
-      - [x] Build the authorization and code-exchange callback from the provider's registered key under the auth mount ([test](../../../providers/profile_presets_test.go#L111))
+      - [x] Build the authorization and code-exchange callback from the provider's registered key under the auth mount ([test](../../../providers/profile_presets_test.go#L125))
     - [x] `name` ([test](../../../conformance/goapi/oauth_provider_options_test.go#L161))
       - [x] A provider's Name defaults to its SocialProviders key and OAuthProviderName returns it ([test](../../../conformance/goapi/oauth_provider_options_test.go#L161))
     - [ ] `accountSubject`
-      - [x] Store the subject each profile preset reads from its id or sub field as the linked account ID ([test](../../../providers/profile_presets_test.go#L140))
+      - [x] Store the subject each profile preset reads from its id or sub field as the linked account ID ([test](../../../providers/profile_presets_test.go#L154))
     - [ ] `discoveryUrl`
       - [x] Read the authorization, token, key and end-session endpoints from issuer discovery, sign in with a verified ID token and reject another issuer's token ([test](../../../providers/enterprise_oidc_test.go#L23))
       - [x] Accept a direct ID token verified against discovered keys once, and reject a reused token or a mismatched nonce ([test](../../../providers/oidc_test.go#L22))
@@ -410,8 +410,8 @@
       - [x] Send the configured client ID in every catalog provider's code exchange through real sign-in and callback requests ([test](../../../providers/catalog_test.go#L79))
     - [x] `clientSecret` ([test](../../../providers/catalog_test.go#L80))
       - [x] Send the configured client secret in every catalog provider's code exchange, by HTTP Basic or form fields as the provider requires ([test](../../../providers/catalog_test.go#L80))
-    - [x] `tokenEndpointAuth` ([test](../../../conformance/goapi/oauth_token_auth_test.go#L158))
-      - [x] TokenEndpointAuth on the OAuthProvider every preset returns selects Basic, form secret, a public client, a private_key_jwt assertion or a custom authentication for the code exchange and refresh, and a Method overrides the preset's own AuthStyle ([test](../../../conformance/goapi/oauth_token_auth_test.go#L158))
+    - [x] `tokenEndpointAuth` ([test](../../../conformance/goapi/oauth_token_auth_test.go#L159))
+      - [x] TokenEndpointAuth on a hand-configured OAuthProvider selects Basic, form secret, a public client, a private_key_jwt assertion or a custom authentication for the code exchange and refresh, and a Method overrides the preset's own AuthStyle ([test](../../../conformance/goapi/oauth_token_auth_test.go#L159))
     - [ ] `scopes`
       - [x] Request only the configured scopes on sign-in and link authorization URLs, replacing a preset's defaults ([test](../../../conformance/goapi/provider_contract_test.go#L67))
       - [x] Request each catalog provider's configured scopes on the authorization URL, and no scope for providers configured without any ([test](../../../providers/catalog_test.go#L162))
@@ -451,7 +451,7 @@
       - [x] Refuse a new account from a provider with sign-up disabled even when requestSignUp is set, for browser and ID-token sign-in ([test](../../../conformance/goapi/oauth_signup_test.go#L131))
     - [ ] `authentication`
       - [x] Send client credentials in a Basic header or in the token form, as each catalog provider is configured ([test](../../../providers/catalog_test.go#L59))
-      - [x] HTTP Basic client authentication without a secret is refused when the instance is built ([test](../../../conformance/goapi/oauth_token_auth_test.go#L234))
+      - [x] HTTP Basic client authentication without a secret is refused when the instance is built ([test](../../../conformance/goapi/oauth_token_auth_test.go#L238))
     - [ ] `discoveryHeaders`
     - [x] `authorizationHeaders` ([test](../../../conformance/goapi/oauth_token_requests_test.go#L53))
       - [x] TokenHeaders reach the code exchange and the refresh at the token endpoint's origin, not profile requests, and never replace a header the request sets such as Basic authentication (deviation: the library's own headers win); New refuses invalid headers and ExchangeCode or Refresh ([test](../../../conformance/goapi/oauth_token_requests_test.go#L53))
@@ -539,8 +539,8 @@
         - [x] Send the configured client ID and secret with the authorization-code grant at each catalog provider's token endpoint ([test](../../../providers/catalog_test.go#L80))
       - [ ] clientSecret
         - [x] Send the configured client ID and secret with the authorization-code grant at each catalog provider's token endpoint ([test](../../../providers/catalog_test.go#L80))
-      - [x] tokenEndpointAuth ([test](../../../conformance/goapi/oauth_token_auth_test.go#L158))
-        - [x] TokenEndpointAuth on the OAuthProvider every preset returns selects Basic, form secret, a public client, a private_key_jwt assertion or a custom authentication for the code exchange and refresh, and a Method overrides the preset's own AuthStyle ([test](../../../conformance/goapi/oauth_token_auth_test.go#L158))
+      - [x] tokenEndpointAuth ([test](../../../conformance/goapi/oauth_token_auth_test.go#L159))
+        - [x] TokenEndpointAuth on a hand-configured OAuthProvider selects Basic, form secret, a public client, a private_key_jwt assertion or a custom authentication for the code exchange and refresh, and a Method overrides the preset's own AuthStyle ([test](../../../conformance/goapi/oauth_token_auth_test.go#L159))
       - [ ] scopes
         - [x] Request only the configured scopes on sign-in and link authorization URLs, replacing a preset's defaults ([test](../../../conformance/goapi/provider_contract_test.go#L67))
       - [ ] redirectURI
@@ -580,7 +580,7 @@
         - [x] Refuse a new account from a provider with sign-up disabled even when requestSignUp is set, for browser and ID-token sign-in ([test](../../../conformance/goapi/oauth_signup_test.go#L131))
       - [ ] authentication
         - [x] Send client credentials in a Basic header or in the token form, as each catalog provider is configured ([test](../../../providers/catalog_test.go#L59))
-        - [x] HTTP Basic client authentication without a secret is refused when the instance is built ([test](../../../conformance/goapi/oauth_token_auth_test.go#L234))
+        - [x] HTTP Basic client authentication without a secret is refused when the instance is built ([test](../../../conformance/goapi/oauth_token_auth_test.go#L238))
       - [ ] discoveryHeaders
       - [x] authorizationHeaders ([test](../../../conformance/goapi/oauth_token_requests_test.go#L53))
         - [x] TokenHeaders reach the code exchange and the refresh at the token endpoint's origin, not profile requests, and never replace a header the request sets such as Basic authentication (deviation: the library's own headers win); New refuses invalid headers and ExchangeCode or Refresh ([test](../../../conformance/goapi/oauth_token_requests_test.go#L53))

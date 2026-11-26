@@ -5,8 +5,10 @@ import (
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"io"
 	"math/big"
 	"net/http"
@@ -18,6 +20,7 @@ import (
 	auth "github.com/Plain-Org/plain-auth"
 	"github.com/Plain-Org/plain-auth/adapters/sqlite"
 	"github.com/coreos/go-oidc/v3/oidc"
+	"github.com/go-jose/go-jose/v4"
 	"golang.org/x/oauth2"
 )
 
@@ -243,22 +246,47 @@ func TestMicrosoftClientAssertion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var grants []string
-	assertion := func(_ context.Context, r auth.TokenRequest) (string, error) {
-		grants = append(grants, r.GrantType)
-		return "signed-" + r.GrantType, nil
+	clientKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
 	}
+	cert := certificatePEM(t, clientKey)
+	block, _ := pem.Decode(cert)
+	thumbprint := sha256.Sum256(block.Bytes)
+	signer, err := PrivateKeyJWT(PrivateKeyJWTOptions{PrivateKeyPEM: pkcs8PEM(t, clientKey), CertificatePEM: cert})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var grants []string
+	assertion := func(ctx context.Context, r auth.TokenRequest) (string, error) {
+		grants = append(grants, r.GrantType)
+		return signer(ctx, r)
+	}
+	tokenURL := microsoftAuthority + "/" + tid + "/oauth2/v2.0/token"
+	const callback = "https://app.example.org/api/auth/callback/microsoft"
 	p := microsoftProvider("client", "", tid, MicrosoftOptions{DisableProfilePhoto: true, ClientAssertion: assertion}, &oidc.StaticKeySet{PublicKeys: []crypto.PublicKey{&key.PublicKey}})
 	var nonce string
 	p.CustomizeAuthorization = func(u *url.URL) { nonce = u.Query().Get("nonce") }
 	p.HTTPClient = &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
-		if r.URL.String() != microsoftAuthority+"/"+tid+"/oauth2/v2.0/token" {
+		if r.URL.String() != tokenURL {
 			t.Fatalf("unexpected request %s", r.URL)
 		}
 		_ = r.ParseForm()
-		grant := r.PostForm.Get("grant_type")
-		if r.PostForm.Get("client_id") != "client" || r.PostForm.Has("client_secret") || r.PostForm.Get("client_assertion_type") != "urn:ietf:params:oauth:client-assertion-type:jwt-bearer" || r.PostForm.Get("client_assertion") != "signed-"+grant {
+		if r.PostForm.Get("client_id") != "client" || r.PostForm.Has("client_secret") || r.PostForm.Get("client_assertion_type") != "urn:ietf:params:oauth:client-assertion-type:jwt-bearer" {
 			t.Fatal("the Microsoft token request is not assertion-authenticated:", r.PostForm)
+		}
+		if r.PostForm.Get("grant_type") == "authorization_code" && r.PostForm.Get("redirect_uri") != callback {
+			t.Fatal("the code exchange sent redirect_uri", r.PostForm.Get("redirect_uri"))
+		}
+		signed, err := jose.ParseSigned(r.PostForm.Get("client_assertion"), []jose.SignatureAlgorithm{jose.RS256})
+		if err != nil {
+			t.Fatal(err)
+		}
+		payload, err := signed.Verify(&clientKey.PublicKey)
+		var claims struct{ Iss, Sub, Aud string }
+		if err != nil || json.Unmarshal(payload, &claims) != nil || claims.Iss != "client" || claims.Sub != "client" || claims.Aud != tokenURL ||
+			signed.Signatures[0].Header.ExtraHeaders["x5t#S256"] != base64.RawURLEncoding.EncodeToString(thumbprint[:]) {
+			t.Fatal("the client assertion is not one Entra ID accepts:", claims, err)
 		}
 		raw := signedClaims(t, key, microsoftAuthority+"/"+tid+"/v2.0", "sub", nonce, map[string]any{"oid": "oid", "tid": tid, "email": "person@example.org", "verified_primary_email": []string{"person@example.org"}})
 		return jsonResponse(t, map[string]any{"access_token": "access", "refresh_token": "refresh", "token_type": "bearer", "expires_in": 3600, "id_token": raw}), nil
@@ -266,6 +294,9 @@ func TestMicrosoftClientAssertion(t *testing.T) {
 	f := runBrowserFlow(t, "microsoft", p)
 	if f.callback.Header().Get("Location") != "/done" {
 		t.Fatal("the sign-in failed:", f.callback.Header().Get("Location"))
+	}
+	if f.authorize.Query().Get("redirect_uri") != callback {
+		t.Fatal("the authorization sent redirect_uri", f.authorize.Query().Get("redirect_uri"))
 	}
 	var accounts []struct{ ID string }
 	f.call(t, "GET", "/list-accounts", "", &accounts)

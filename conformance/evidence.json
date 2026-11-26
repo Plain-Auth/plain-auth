@@ -29997,7 +29997,7 @@
       "marker": "func TestMicrosoftBrowserSignIn(t *testing.T) {"
     },
     {
-      "label": "A Microsoft app signs in with a client assertion instead of a secret",
+      "label": "A Microsoft app with a client assertion credential instead of a secret signs in through the registered callback URL, sent on the authorization and the code exchange, with an assertion naming its certificate",
       "test": "providers/microsoft_test.go",
       "marker": "func TestMicrosoftClientAssertion(t *testing.T) {",
       "complete": true
@@ -30289,7 +30289,7 @@
   ],
   "plugin-symbol/generic-oauth/BaseOAuthProviderOptions/tokenEndpointAuth": [
     {
-      "label": "TokenEndpointAuth on the OAuthProvider every preset returns selects Basic, form secret, a public client, a private_key_jwt assertion or a custom authentication for the code exchange and refresh, and a Method overrides the preset's own AuthStyle",
+      "label": "TokenEndpointAuth on a hand-configured OAuthProvider selects Basic, form secret, a public client, a private_key_jwt assertion or a custom authentication for the code exchange and refresh, and a Method overrides the preset's own AuthStyle",
       "test": "conformance/goapi/oauth_token_auth_test.go",
       "marker": "func TestTokenEndpointAuthMethods(t *testing.T) {",
       "complete": true
@@ -30297,7 +30297,7 @@
   ],
   "plugin-symbol/generic-oauth/GenericOAuthConfig/tokenEndpointAuth": [
     {
-      "label": "TokenEndpointAuth on the OAuthProvider every preset returns selects Basic, form secret, a public client, a private_key_jwt assertion or a custom authentication for the code exchange and refresh, and a Method overrides the preset's own AuthStyle",
+      "label": "TokenEndpointAuth on a hand-configured OAuthProvider selects Basic, form secret, a public client, a private_key_jwt assertion or a custom authentication for the code exchange and refresh, and a Method overrides the preset's own AuthStyle",
       "test": "conformance/goapi/oauth_token_auth_test.go",
       "marker": "func TestTokenEndpointAuthMethods(t *testing.T) {",
       "complete": true
@@ -30305,7 +30305,7 @@
   ],
   "docs/content/docs/plugins/generic-oauth.mdx#L274/tokenEndpointAuth": [
     {
-      "label": "TokenEndpointAuth on the OAuthProvider every preset returns selects Basic, form secret, a public client, a private_key_jwt assertion or a custom authentication for the code exchange and refresh, and a Method overrides the preset's own AuthStyle",
+      "label": "TokenEndpointAuth on a hand-configured OAuthProvider selects Basic, form secret, a public client, a private_key_jwt assertion or a custom authentication for the code exchange and refresh, and a Method overrides the preset's own AuthStyle",
       "test": "conformance/goapi/oauth_token_auth_test.go",
       "marker": "func TestTokenEndpointAuthMethods(t *testing.T) {",
       "complete": true
@@ -30313,90 +30313,86 @@
   ],
   "plugin-symbol/generic-oauth/Auth0Options/tokenEndpointAuth": [
     {
-      "label": "TokenEndpointAuth on the OAuthProvider every preset returns selects Basic, form secret, a public client, a private_key_jwt assertion or a custom authentication for the code exchange and refresh, and a Method overrides the preset's own AuthStyle",
+      "label": "The preset keeps the standard token requests, so a TokenEndpointAuth method applies as on any provider; not yet exercised against this preset",
       "test": "conformance/goapi/oauth_token_auth_test.go",
-      "marker": "func TestTokenEndpointAuthMethods(t *testing.T) {",
-      "complete": true
+      "marker": "func TestTokenEndpointAuthMethods(t *testing.T) {"
     }
   ],
   "plugin-symbol/generic-oauth/KeycloakOptions/tokenEndpointAuth": [
     {
-      "label": "TokenEndpointAuth on the OAuthProvider every preset returns selects Basic, form secret, a public client, a private_key_jwt assertion or a custom authentication for the code exchange and refresh, and a Method overrides the preset's own AuthStyle",
+      "label": "The preset keeps the standard token requests, so a TokenEndpointAuth method applies as on any provider; not yet exercised against this preset",
       "test": "conformance/goapi/oauth_token_auth_test.go",
-      "marker": "func TestTokenEndpointAuthMethods(t *testing.T) {",
-      "complete": true
+      "marker": "func TestTokenEndpointAuthMethods(t *testing.T) {"
     }
   ],
   "plugin-symbol/generic-oauth/OktaOptions/tokenEndpointAuth": [
     {
-      "label": "TokenEndpointAuth on the OAuthProvider every preset returns selects Basic, form secret, a public client, a private_key_jwt assertion or a custom authentication for the code exchange and refresh, and a Method overrides the preset's own AuthStyle",
+      "label": "The preset keeps the standard token requests, so a TokenEndpointAuth method applies as on any provider; not yet exercised against this preset",
       "test": "conformance/goapi/oauth_token_auth_test.go",
-      "marker": "func TestTokenEndpointAuthMethods(t *testing.T) {",
-      "complete": true
+      "marker": "func TestTokenEndpointAuthMethods(t *testing.T) {"
     }
   ],
   "plugin-symbol/generic-oauth/MicrosoftEntraIdOptions/tokenEndpointAuth": [
     {
-      "label": "TokenEndpointAuth on the OAuthProvider every preset returns selects Basic, form secret, a public client, a private_key_jwt assertion or a custom authentication for the code exchange and refresh, and a Method overrides the preset's own AuthStyle",
-      "test": "conformance/goapi/oauth_token_auth_test.go",
-      "marker": "func TestTokenEndpointAuthMethods(t *testing.T) {",
+      "label": "The Microsoft preset's code exchange and refresh authenticate with a private_key_jwt assertion through TokenEndpointAuth instead of a secret",
+      "test": "providers/microsoft_test.go",
+      "marker": "func TestMicrosoftClientAssertion(t *testing.T) {",
       "complete": true
     }
   ],
   "plugin-symbol/generic-oauth/GumroadOptions/tokenEndpointAuth": [
     {
-      "label": "TokenEndpointAuth on the OAuthProvider every preset returns selects Basic, form secret, a public client, a private_key_jwt assertion or a custom authentication for the code exchange and refresh, and a Method overrides the preset's own AuthStyle",
-      "test": "conformance/goapi/oauth_token_auth_test.go",
-      "marker": "func TestTokenEndpointAuthMethods(t *testing.T) {",
+      "label": "The preset's own code exchange authenticates the way TokenEndpointAuth.Method says, such as HTTP Basic instead of its form secret, in a full browser sign-in; the refresh uses the same client authentication",
+      "test": "providers/profile_presets_test.go",
+      "marker": "func TestProfilePresetBrowserSignIn(t *testing.T) {",
       "complete": true
     }
   ],
   "plugin-symbol/generic-oauth/HubSpotOptions/tokenEndpointAuth": [
     {
-      "label": "TokenEndpointAuth on the OAuthProvider every preset returns selects Basic, form secret, a public client, a private_key_jwt assertion or a custom authentication for the code exchange and refresh, and a Method overrides the preset's own AuthStyle",
-      "test": "conformance/goapi/oauth_token_auth_test.go",
-      "marker": "func TestTokenEndpointAuthMethods(t *testing.T) {",
+      "label": "The preset's own code exchange authenticates the way TokenEndpointAuth.Method says, such as HTTP Basic instead of its form secret, in a full browser sign-in; the refresh uses the same client authentication",
+      "test": "providers/profile_presets_test.go",
+      "marker": "func TestProfilePresetBrowserSignIn(t *testing.T) {",
       "complete": true
     }
   ],
   "plugin-symbol/generic-oauth/LineOptions/tokenEndpointAuth": [
     {
-      "label": "TokenEndpointAuth on the OAuthProvider every preset returns selects Basic, form secret, a public client, a private_key_jwt assertion or a custom authentication for the code exchange and refresh, and a Method overrides the preset's own AuthStyle",
-      "test": "conformance/goapi/oauth_token_auth_test.go",
-      "marker": "func TestTokenEndpointAuthMethods(t *testing.T) {",
+      "label": "The preset's own code exchange authenticates the way TokenEndpointAuth.Method says, such as HTTP Basic instead of its form secret, in a full browser sign-in; the refresh uses the same client authentication",
+      "test": "providers/profile_presets_test.go",
+      "marker": "func TestProfilePresetBrowserSignIn(t *testing.T) {",
       "complete": true
     }
   ],
   "plugin-symbol/generic-oauth/PatreonOptions/tokenEndpointAuth": [
     {
-      "label": "TokenEndpointAuth on the OAuthProvider every preset returns selects Basic, form secret, a public client, a private_key_jwt assertion or a custom authentication for the code exchange and refresh, and a Method overrides the preset's own AuthStyle",
-      "test": "conformance/goapi/oauth_token_auth_test.go",
-      "marker": "func TestTokenEndpointAuthMethods(t *testing.T) {",
+      "label": "The preset's own code exchange authenticates the way TokenEndpointAuth.Method says, such as HTTP Basic instead of its form secret, in a full browser sign-in; the refresh uses the same client authentication",
+      "test": "providers/profile_presets_test.go",
+      "marker": "func TestProfilePresetBrowserSignIn(t *testing.T) {",
       "complete": true
     }
   ],
   "plugin-symbol/generic-oauth/SlackOptions/tokenEndpointAuth": [
     {
-      "label": "TokenEndpointAuth on the OAuthProvider every preset returns selects Basic, form secret, a public client, a private_key_jwt assertion or a custom authentication for the code exchange and refresh, and a Method overrides the preset's own AuthStyle",
-      "test": "conformance/goapi/oauth_token_auth_test.go",
-      "marker": "func TestTokenEndpointAuthMethods(t *testing.T) {",
+      "label": "The preset's own code exchange authenticates the way TokenEndpointAuth.Method says, such as HTTP Basic instead of its form secret, in a full browser sign-in; the refresh uses the same client authentication",
+      "test": "providers/profile_presets_test.go",
+      "marker": "func TestProfilePresetBrowserSignIn(t *testing.T) {",
       "complete": true
     }
   ],
   "plugin-symbol/generic-oauth/YandexOptions/tokenEndpointAuth": [
     {
-      "label": "TokenEndpointAuth on the OAuthProvider every preset returns selects Basic, form secret, a public client, a private_key_jwt assertion or a custom authentication for the code exchange and refresh, and a Method overrides the preset's own AuthStyle",
-      "test": "conformance/goapi/oauth_token_auth_test.go",
-      "marker": "func TestTokenEndpointAuthMethods(t *testing.T) {",
+      "label": "The preset's own code exchange authenticates the way TokenEndpointAuth.Method says, such as HTTP Basic instead of its form secret, in a full browser sign-in; the refresh uses the same client authentication",
+      "test": "providers/profile_presets_test.go",
+      "marker": "func TestProfilePresetBrowserSignIn(t *testing.T) {",
       "complete": true
     }
   ],
   "docs/content/docs/authentication/other-social-providers.mdx#L140/`tokenEndpointAuth`": [
     {
-      "label": "TokenEndpointAuth on the OAuthProvider every preset returns selects Basic, form secret, a public client, a private_key_jwt assertion or a custom authentication for the code exchange and refresh, and a Method overrides the preset's own AuthStyle",
-      "test": "conformance/goapi/oauth_token_auth_test.go",
-      "marker": "func TestTokenEndpointAuthMethods(t *testing.T) {",
-      "complete": true
+      "label": "The helper presets that keep the standard token requests take each TokenEndpointAuth method, and Notion, VK, TikTok and WeChat refuse one; Auth0, Keycloak and Okta are not yet exercised",
+      "test": "providers/token_auth_test.go",
+      "marker": "func TestPresetsTakeTokenEndpointAuth(t *testing.T) {"
     }
   ],
   "provider-option/cloudflare/tokenEndpointAuth": [
@@ -30449,7 +30445,7 @@
   ],
   "docs/content/docs/authentication/microsoft.mdx#L44/Client assertions": [
     {
-      "label": "A client assertion callback authenticates Microsoft's code exchange and refresh instead of a client secret",
+      "label": "A client assertion authenticates Microsoft's code exchange and refresh instead of a client secret; PrivateKeyJWT with the certificate signs one with the token endpoint as audience and the x5t#S256 thumbprint",
       "test": "providers/microsoft_test.go",
       "marker": "func TestMicrosoftClientAssertion(t *testing.T) {",
       "complete": true

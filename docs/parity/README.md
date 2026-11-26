@@ -2,12 +2,12 @@
 
 ## Verification progress
 
-**1,668 of 6,478 inventory entries are fully verified (25.7%).**
+**1,664 of 6,478 inventory entries are fully verified (25.7%).**
 
 | Inventory status | Entries |
 | --- | ---: |
-| Fully verified | 1,668 |
-| Partially verified | 1,384 |
+| Fully verified | 1,664 |
+| Partially verified | 1,388 |
 | No linked test evidence | 3,426 |
 | Not applicable to a Go server | 547 |
 
@@ -79,7 +79,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Native Go client, routers and databases](go.md) | 51 | 3 | 0 |
 | [Core API, sign-in providers and CLI](runtime.md) | 549 | 107 | 32 |
 | [Database adapters](adapters.md) | 82 | 49 | 163 |
-| [Authentication](authentication.md) | 753 | 188 | 4 |
+| [Authentication](authentication.md) | 752 | 189 | 4 |
 | [Core concepts](concepts.md) | 808 | 262 | 1 |
 | [Managed infrastructure](infrastructure.md) | 0 | 528 | 0 |
 | [Framework integrations](integrations.md) | 7 | 24 | 201 |
@@ -103,7 +103,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Electron](plugins/electron.md) | 0 | 12 | 40 |
 | [Email otp](plugins/email-otp.md) | 46 | 95 | 0 |
 | [Expo](plugins/expo.md) | 0 | 5 | 14 |
-| [Generic OAuth](plugins/generic-oauth.md) | 434 | 158 | 0 |
+| [Generic OAuth](plugins/generic-oauth.md) | 431 | 161 | 0 |
 | [Have I Been Pwned](plugins/have-i-been-pwned.md) | 46 | 0 | 0 |
 | [Internationalization](plugins/i18n.md) | 116 | 36 | 0 |
 | [JSON Web Tokens](plugins/jwt.md) | 13 | 75 | 0 |

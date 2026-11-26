@@ -429,21 +429,21 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
     - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
       - [x] Authenticate each catalog provider's browser code exchange with the configured client ID and secret ([test](../../providers/catalog_test.go#L79))
   - [ ] `microsoft`
-    - [x] `clientId` ([test](../../providers/microsoft_test.go#L37))
-      - [x] A directly submitted ID token may name the client ID or an AdditionalClientIDs entry as its audience; another audience is refused and the code exchange accepts the client ID only ([test](../../providers/microsoft_test.go#L37))
-    - [x] `tenantId` ([test](../../providers/microsoft_test.go#L221))
+    - [x] `clientId` ([test](../../providers/microsoft_test.go#L40))
+      - [x] A directly submitted ID token may name the client ID or an AdditionalClientIDs entry as its audience; another audience is refused and the code exchange accepts the client ID only ([test](../../providers/microsoft_test.go#L40))
+    - [x] `tenantId` ([test](../../providers/microsoft_test.go#L224))
       - [x] Accept organization tokens and refuse consumer tokens under organizations, do the reverse under consumers, refuse a common-tenant token whose tid differs from its issuer, and accept a single-tenant token from that tenant ([test](../../providers/apple_microsoft_test.go#L146))
-      - [x] Without options Microsoft uses the common tenant endpoint, and a configured authority keeps the tenant segment in its endpoints ([test](../../providers/microsoft_test.go#L221))
-    - [x] `authority` ([test](../../providers/microsoft_test.go#L37))
-      - [x] Authority moves the authorize, token and key endpoints and the issuer check to an External ID origin; tokens from the default authority or another tenant are refused ([test](../../providers/microsoft_test.go#L37))
-    - [x] `clientAssertion` ([test](../../providers/microsoft_test.go#L240))
-      - [x] With ClientAssertion, the Microsoft code exchange and refresh send the client ID and a jwt-bearer assertion and no secret, and combining it with a secret is refused ([test](../../providers/microsoft_test.go#L240))
-    - [x] `profilePhotoSize` ([test](../../providers/microsoft_test.go#L37))
-      - [x] The Graph photo is fetched at 48 pixels by default, from the Graph of the authority's cloud ([test](../../providers/microsoft_test.go#L158))
-      - [x] ProfilePhotoSize 96 fetches the 96x96 Graph photo during a browser sign-in ([test](../../providers/microsoft_test.go#L37))
-      - [x] An unsupported photo size is refused when the provider is built ([test](../../providers/microsoft_test.go#L221))
-    - [x] `disableProfilePhoto` ([test](../../providers/microsoft_test.go#L158))
-      - [x] DisableProfilePhoto makes no Graph request and keeps the token's picture; by default the photo is fetched, and a missing or oversized photo keeps the token's picture ([test](../../providers/microsoft_test.go#L158))
+      - [x] Without options Microsoft uses the common tenant endpoint, and a configured authority keeps the tenant segment in its endpoints ([test](../../providers/microsoft_test.go#L224))
+    - [x] `authority` ([test](../../providers/microsoft_test.go#L40))
+      - [x] Authority moves the authorize, token and key endpoints and the issuer check to an External ID origin; tokens from the default authority or another tenant are refused ([test](../../providers/microsoft_test.go#L40))
+    - [x] `clientAssertion` ([test](../../providers/microsoft_test.go#L243))
+      - [x] With ClientAssertion, the Microsoft code exchange and refresh send the client ID and a jwt-bearer assertion and no secret, and combining it with a secret is refused ([test](../../providers/microsoft_test.go#L243))
+    - [x] `profilePhotoSize` ([test](../../providers/microsoft_test.go#L40))
+      - [x] The Graph photo is fetched at 48 pixels by default, from the Graph of the authority's cloud ([test](../../providers/microsoft_test.go#L161))
+      - [x] ProfilePhotoSize 96 fetches the 96x96 Graph photo during a browser sign-in ([test](../../providers/microsoft_test.go#L40))
+      - [x] An unsupported photo size is refused when the provider is built ([test](../../providers/microsoft_test.go#L224))
+    - [x] `disableProfilePhoto` ([test](../../providers/microsoft_test.go#L161))
+      - [x] DisableProfilePhoto makes no Graph request and keeps the token's picture; by default the photo is fetched, and a missing or oversized photo keeps the token's picture ([test](../../providers/microsoft_test.go#L161))
   - [ ] `naver`
     - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
       - [x] Authenticate each catalog provider's browser code exchange with the configured client ID and secret ([test](../../providers/catalog_test.go#L79))
@@ -513,9 +513,9 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
   - [ ] `vercel`
     - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
       - [x] Authenticate each catalog provider's browser code exchange with the configured client ID and secret ([test](../../providers/catalog_test.go#L79))
-    - [x] `tokenEndpointAuth` ([test](../../providers/token_auth_test.go#L119))
+    - [x] `tokenEndpointAuth` ([test](../../providers/token_auth_test.go#L123))
       - [x] Send client_id and client_secret in the form body, without HTTP Basic, for catalog providers that use body authentication such as Vercel ([test](../../providers/catalog_test.go#L62))
-      - [x] Vercel's secretless client authenticates its code exchange through a custom hook or a client assertion, and a secret method without a secret is refused ([test](../../providers/token_auth_test.go#L119))
+      - [x] Vercel's secretless client authenticates its code exchange through a custom hook or a client assertion, and a secret method without a secret is refused ([test](../../providers/token_auth_test.go#L123))
   - [ ] `vk`
     - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
       - [x] Authenticate each catalog provider's browser code exchange with the configured client ID and secret ([test](../../providers/catalog_test.go#L79))
@@ -538,8 +538,8 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
       - [x] Check that the other runtime builds the same discovery URL from the shared Auth0 domain fixture ([test](../../conformance/enterprise-oidc.test.mjs#L6))
   - [ ] gumroad
   - [ ] hubspot
-    - [x] `scopes` ([test](../../providers/profile_presets_test.go#L111))
-      - [x] Request the default oauth scope on the HubSpot preset's authorization URL ([test](../../providers/profile_presets_test.go#L111))
+    - [x] `scopes` ([test](../../providers/profile_presets_test.go#L125))
+      - [x] Request the default oauth scope on the HubSpot preset's authorization URL ([test](../../providers/profile_presets_test.go#L125))
       - [x] Replace the Google provider's default scopes through Config.Scopes on the sign-in and link authorization URLs ([test](../../conformance/goapi/provider_contract_test.go#L41))
   - [ ] keycloak
     - [x] `issuer` ([test](../../providers/enterprise_oidc_test.go#L23))
@@ -548,7 +548,7 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
       - [x] Check that the other runtime builds the same discovery URL from the shared Keycloak issuer fixture ([test](../../conformance/enterprise-oidc.test.mjs#L6))
   - [ ] line
     - [ ] `providerId`
-      - [x] Register the LINE channel preset under the line key and use that key's callback URL in the authorization request and the code exchange ([test](../../providers/profile_presets_test.go#L22))
+      - [x] Register the LINE channel preset under the line key and use that key's callback URL in the authorization request and the code exchange ([test](../../providers/profile_presets_test.go#L32))
   - [ ] microsoft-entra-id
     - [x] `tenantId` ([test](../../providers/entra_test.go#L20))
       - [x] Refuse an empty, multi-tenant or malformed Entra tenant ID, lower-case an upper-case GUID and authorize at that tenant's endpoint ([test](../../providers/entra_test.go#L20))

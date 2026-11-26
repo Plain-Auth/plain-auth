@@ -51,6 +51,10 @@ func TestCloudflareTokenEndpointAuth(t *testing.T) {
 			u, p, ok := (&http.Request{Header: h}).BasicAuth()
 			return ok && u == "client" && p == "secret" && !f.Has("client_secret")
 		}},
+		{"explicit Basic", "secret", auth.TokenAuthClientSecretBasic, func(f url.Values, h http.Header) bool {
+			u, p, ok := (&http.Request{Header: h}).BasicAuth()
+			return ok && u == "client" && p == "secret" && !f.Has("client_secret")
+		}},
 		{"post", "secret", auth.TokenAuthClientSecretPost, func(f url.Values, h http.Header) bool {
 			return h.Get("Authorization") == "" && f.Get("client_id") == "client" && f.Get("client_secret") == "secret"
 		}},
@@ -188,6 +192,40 @@ func TestVercelClientAuthentication(t *testing.T) {
 		public.TokenEndpointAuth.Method = method
 		if err := newProviderAuth(t, "vercel", public); err == nil {
 			t.Fatal("New accepted", method, "without a secret")
+		}
+	}
+}
+
+// The helper presets that keep the standard token requests take a
+// TokenEndpointAuth method; Notion, which has its own refresh, and VK, TikTok
+// and WeChat, which have their own code exchange, refuse one.
+func TestPresetsTakeTokenEndpointAuth(t *testing.T) {
+	microsoft, err := Microsoft("client", "secret", MicrosoftOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	built := map[string]auth.OAuthProvider{"line": LINE("channel", "secret"), "microsoft": microsoft}
+	for _, name := range []string{"gumroad", "hubspot", "patreon", "slack-oidc", "yandex"} {
+		if built[name], err = New(name, "client", "secret"); err != nil {
+			t.Fatal(name, err)
+		}
+	}
+	for name, p := range built {
+		for _, method := range []auth.TokenAuthMethod{auth.TokenAuthClientSecretBasic, auth.TokenAuthClientSecretPost} {
+			p.TokenEndpointAuth = auth.TokenEndpointAuth{Method: method}
+			if err := newProviderAuth(t, name, p); err != nil {
+				t.Fatal(name, method, err)
+			}
+		}
+	}
+	for _, name := range []string{"notion", "vk", "tiktok", "wechat"} {
+		p, err := New(name, "client", "secret")
+		if err != nil {
+			t.Fatal(name, err)
+		}
+		p.TokenEndpointAuth = auth.TokenEndpointAuth{Method: auth.TokenAuthClientSecretPost}
+		if err := newProviderAuth(t, name, p); err == nil || !strings.Contains(err.Error(), "ExchangeCode or Refresh") {
+			t.Fatal(name, "took a method:", err)
 		}
 	}
 }

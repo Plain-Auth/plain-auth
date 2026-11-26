@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/http/cookiejar"
@@ -200,6 +201,9 @@ func TestTokenEndpointAuthMethods(t *testing.T) {
 			return r.header.Get("X-Client-Auth") == "custom" && r.header.Get("Authorization") == "" && r.form.Get("client_id") == "client" &&
 				r.form.Get("client_assertion") == "workload-token" && !r.form.Has("client_secret")
 		}},
+		{"custom with a secret", workProvider(srv, "custom-client-secret-value", auth.TokenEndpointAuth{Method: auth.TokenAuthCustom, CustomizeRequest: custom}), func(r tokenRecord) bool {
+			return r.header.Get("X-Client-Auth") == "custom" && r.header.Get("Authorization") == "" && r.form.Get("client_id") == "client" && !r.form.Has("client_secret")
+		}},
 	} {
 		n, err := newTokenAuthNode(t, tc.provider)
 		if err != nil {
@@ -266,7 +270,8 @@ func TestTokenEndpointAuthRefusals(t *testing.T) {
 
 // A failed assertion, a hook that changes a grant field or adds half an
 // assertion, and a failing refresh assertion send nothing to the token
-// endpoint, and no secret or assertion reaches a response or the log.
+// endpoint, and no secret, assertion or callback error reaches a response
+// or the log.
 func TestTokenEndpointAuthFailuresSendNothing(t *testing.T) {
 	srv, received := tokenProvider(t)
 	failing := func(context.Context, auth.TokenRequest) (string, error) {
@@ -291,18 +296,23 @@ func TestTokenEndpointAuthFailuresSendNothing(t *testing.T) {
 			return errors.New("workload token unavailable")
 		}},
 	} {
-		n, err := newTokenAuthNode(t, workProvider(srv, "", method))
+		secret := ""
+		if method.Method == auth.TokenAuthCustom {
+			secret = "custom-client-secret-value"
+		}
+		n, err := newTokenAuthNode(t, workProvider(srv, secret, method))
 		if err != nil {
 			t.Fatal(name, err)
 		}
-		if to := n.signIn(t); !strings.Contains(to, "error=invalid_code") {
+		if to := n.signIn(t); to != "/oops?error=invalid_code" {
 			t.Fatalf("%s: the callback went to %s", name, to)
 		}
 		if got := received(); len(got) != 0 {
 			t.Fatalf("%s: the token endpoint was called %d times", name, len(got))
 		}
-		if strings.Contains(n.logs.String(), "private key service down") || strings.Contains(n.logs.String(), "workload token unavailable") {
-			t.Fatalf("%s: the callback's error reached the log", name)
+		if strings.Contains(n.logs.String(), "private key service down") || strings.Contains(n.logs.String(), "workload token unavailable") ||
+			secret != "" && strings.Contains(n.logs.String(), secret) {
+			t.Fatalf("%s: the callback's error or the secret reached the log", name)
 		}
 	}
 	var fail bool
@@ -326,8 +336,10 @@ func TestTokenEndpointAuthFailuresSendNothing(t *testing.T) {
 	mu.Lock()
 	fail = true
 	mu.Unlock()
-	if status := n.refresh(t); status != 400 {
-		t.Fatal("a refresh with a failing assertion answered", status)
+	res := n.post(t, "/refresh-token", `{"accountId":"`+n.accountID(t)+`"}`)
+	body, _ := io.ReadAll(res.Body)
+	if res.StatusCode != 400 || strings.Contains(string(body), "signed-assertion") || strings.Contains(string(body), "signing key rotated away") {
+		t.Fatal("a refresh with a failing assertion answered", res.StatusCode, string(body))
 	}
 	if got := received(); len(got) != 0 {
 		t.Fatal("a failing refresh assertion still called the token endpoint")

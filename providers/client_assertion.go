@@ -1,11 +1,15 @@
 package providers
 
 import (
+	"bytes"
 	"context"
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha1"
+	"crypto/sha256"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
 	"errors"
@@ -24,8 +28,14 @@ type PrivateKeyJWTOptions struct {
 	// KeyID is sent as the kid header; it defaults to the JWK's kid.
 	KeyID string
 	// Algorithm is RS256, RS384, RS512, PS256, PS384, PS512, ES256, ES384,
-	// ES512 or EdDSA. It defaults to the JWK's alg, then RS256.
+	// ES512 or EdDSA. It defaults to the JWK's alg, then RS256; one that
+	// differs from the JWK's alg is refused.
 	Algorithm string
+	// CertificatePEM is the key's X.509 certificate as one CERTIFICATE
+	// block. When set, each assertion names it by its x5t#S256 and x5t
+	// thumbprints, as Microsoft Entra ID requires for certificate
+	// credentials.
+	CertificatePEM []byte
 	// ValidFor is each assertion's lifetime in whole seconds, from one
 	// second to five minutes; it defaults to two minutes.
 	ValidFor time.Duration
@@ -43,8 +53,9 @@ func PrivateKeyJWT(o PrivateKeyJWTOptions) (auth.ClientAssertionFunc, error) {
 	keyID, alg := o.KeyID, o.Algorithm
 	switch {
 	case len(o.PrivateKeyPEM) > 0 && len(o.PrivateKeyJWK) == 0:
-		block, rest := pem.Decode(o.PrivateKeyPEM)
-		if block == nil || block.Type != "PRIVATE KEY" || len(rest) != 0 {
+		source := bytes.TrimSpace(o.PrivateKeyPEM)
+		block, rest := pem.Decode(source)
+		if !bytes.HasPrefix(source, []byte("-----BEGIN PRIVATE KEY-----")) || block == nil || block.Type != "PRIVATE KEY" || len(bytes.TrimSpace(rest)) != 0 {
 			return nil, errors.New("private key JWT: the PEM must be one PKCS#8 PRIVATE KEY block")
 		}
 		parsed, err := x509.ParsePKCS8PrivateKey(block.Bytes)
@@ -94,6 +105,20 @@ func PrivateKeyJWT(o PrivateKeyJWTOptions) (auth.ClientAssertionFunc, error) {
 	options := (&jose.SignerOptions{}).WithType("JWT")
 	if keyID != "" {
 		options = options.WithHeader("kid", keyID)
+	}
+	if len(o.CertificatePEM) > 0 {
+		source := bytes.TrimSpace(o.CertificatePEM)
+		block, rest := pem.Decode(source)
+		if !bytes.HasPrefix(source, []byte("-----BEGIN CERTIFICATE-----")) || block == nil || block.Type != "CERTIFICATE" || len(bytes.TrimSpace(rest)) != 0 {
+			return nil, errors.New("private key JWT: the certificate must be one CERTIFICATE block")
+		}
+		cert, err := x509.ParseCertificate(block.Bytes)
+		public, ok := key.Public().(interface{ Equal(crypto.PublicKey) bool })
+		if err != nil || !ok || !public.Equal(cert.PublicKey) {
+			return nil, errors.New("private key JWT: the certificate does not hold the key's public key")
+		}
+		sha256Print, sha1Print := sha256.Sum256(cert.Raw), sha1.Sum(cert.Raw)
+		options = options.WithHeader("x5t#S256", base64.RawURLEncoding.EncodeToString(sha256Print[:])).WithHeader("x5t", base64.RawURLEncoding.EncodeToString(sha1Print[:]))
 	}
 	sign := func(claims map[string]any) (string, error) {
 		signer, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.SignatureAlgorithm(alg), Key: key}, options)

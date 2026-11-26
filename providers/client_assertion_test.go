@@ -8,9 +8,15 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha1"
+	"crypto/sha256"
 	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
+	"math/big"
+	"slices"
 	"testing"
 	"time"
 
@@ -36,6 +42,47 @@ func privateJWK(t *testing.T, key crypto.Signer, kid, alg string) []byte {
 	return raw
 }
 
+func certificatePEM(t *testing.T, key crypto.Signer) []byte {
+	t.Helper()
+	template := &x509.Certificate{SerialNumber: big.NewInt(1), Subject: pkix.Name{CommonName: "client"}, NotBefore: time.Now(), NotAfter: time.Now().Add(time.Hour)}
+	der, err := x509.CreateCertificate(rand.Reader, template, template, key.Public(), key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})
+}
+
+// With CertificatePEM, each assertion names the certificate by its SHA-256
+// and SHA-1 thumbprints; a certificate for another key is refused.
+func TestPrivateKeyJWTCertificate(t *testing.T) {
+	key, _ := rsa.GenerateKey(rand.Reader, 2048)
+	other, _ := rsa.GenerateKey(rand.Reader, 2048)
+	cert := certificatePEM(t, key)
+	sign, err := PrivateKeyJWT(PrivateKeyJWTOptions{PrivateKeyPEM: pkcs8PEM(t, key), CertificatePEM: append(slices.Clone(cert), '\n')})
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := sign(context.Background(), auth.TokenRequest{ClientID: "client", TokenURL: "https://login.example/token"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	parsed, err := jose.ParseSigned(raw, []jose.SignatureAlgorithm{jose.RS256})
+	if err != nil {
+		t.Fatal(err)
+	}
+	block, _ := pem.Decode(cert)
+	want256, want1 := sha256.Sum256(block.Bytes), sha1.Sum(block.Bytes)
+	header := parsed.Signatures[0].Header.ExtraHeaders
+	if header["x5t#S256"] != base64.RawURLEncoding.EncodeToString(want256[:]) || header["x5t"] != base64.RawURLEncoding.EncodeToString(want1[:]) {
+		t.Fatal("the thumbprints are", header)
+	}
+	for name, certificate := range map[string][]byte{"another key's": certificatePEM(t, other), "not a certificate": pkcs8PEM(t, key), "two blocks": append(slices.Clone(cert), cert...)} {
+		if _, err := PrivateKeyJWT(PrivateKeyJWTOptions{PrivateKeyPEM: pkcs8PEM(t, key), CertificatePEM: certificate}); err == nil {
+			t.Fatal("PrivateKeyJWT accepted", name, "certificate")
+		}
+	}
+}
+
 // PrivateKeyJWT signs a fresh assertion for each token request, with the
 // client ID as issuer and subject, the token endpoint as audience, the
 // configured lifetime and a new jti, from an RSA, EC or Ed25519 key in PEM
@@ -56,6 +103,7 @@ func TestPrivateKeyJWT(t *testing.T) {
 		{"EC JWK", PrivateKeyJWTOptions{PrivateKeyJWK: privateJWK(t, ecKey, "ec-1", "ES256"), ValidFor: time.Minute}, &ecKey.PublicKey, "ES256", "ec-1", 60},
 		{"explicit kid over the JWK's", PrivateKeyJWTOptions{PrivateKeyJWK: privateJWK(t, ecKey, "ec-1", "ES256"), KeyID: "override"}, &ecKey.PublicKey, "ES256", "override", 120},
 		{"Ed25519 PEM", PrivateKeyJWTOptions{PrivateKeyPEM: pkcs8PEM(t, edKey), Algorithm: "EdDSA"}, edKey.Public(), "EdDSA", "", 120},
+		{"PEM with trailing blank lines", PrivateKeyJWTOptions{PrivateKeyPEM: append(pkcs8PEM(t, rsaKey), "\r\n  \n"...)}, &rsaKey.PublicKey, "RS256", "", 120},
 	} {
 		sign, err := PrivateKeyJWT(tc.options)
 		if err != nil {
@@ -113,6 +161,8 @@ func TestPrivateKeyJWTRefusals(t *testing.T) {
 		"P-384 with ES256":   {PrivateKeyPEM: pkcs8PEM(t, p384), Algorithm: "ES256"},
 		"EC with RS256":      {PrivateKeyPEM: pkcs8PEM(t, p256)},
 		"both sources":       {PrivateKeyPEM: pem, PrivateKeyJWK: privateJWK(t, rsaKey, "k", "RS256")},
+		"a second block":     {PrivateKeyPEM: append(pkcs8PEM(t, rsaKey), certificatePEM(t, rsaKey)...)},
+		"leading text":       {PrivateKeyPEM: append([]byte("key:\n"), pem...)},
 		"no source":          {},
 		"RSA-1024":           {PrivateKeyPEM: pkcs8PEM(t, small)},
 		"fractional seconds": {PrivateKeyPEM: pem, ValidFor: 1500 * time.Millisecond},
