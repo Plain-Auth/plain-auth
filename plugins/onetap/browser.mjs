@@ -30,6 +30,11 @@ function localURL(value) {
   return url;
 }
 
+// Requests stay same-origin, send same-origin credentials and refuse
+// redirects, so the challenge cookie and the Google credential never leave the
+// page's origin. Only fetchOptions.headers and fetchOptions.signal shape the
+// request; the credential callback also runs fetchOptions.onSuccess. Other
+// fetchOptions keys are ignored.
 async function post(url, body, signal, fetchOptions = {}) {
   const headers = new Headers(fetchOptions.headers);
   headers.set("Content-Type", "application/json");
@@ -40,11 +45,15 @@ async function post(url, body, signal, fetchOptions = {}) {
     body: JSON.stringify(body),
   });
   if (!response.ok) throw new Error("One Tap request failed (HTTP " + response.status + ")");
-  return response.json();
+  return { data: await response.json(), response };
 }
 
-const sdkOptions = new Set(["color_scheme", "prompt_parent_id", "itp_support", "login_hint", "hd",
-  "use_fedcm_for_button", "button_auto_select"]);
+// The module takes Google's audience and nonce from the server challenge and
+// owns the credential callback, redirect receiver and delivery mode. An
+// override could bind the credential to another challenge or deliver it
+// elsewhere, so these keys are refused. Every other initialize option passes
+// through unchanged.
+const ownedOptions = new Set(["client_id", "nonce", "callback", "login_uri", "ux_mode"]);
 
 // Start once per document. A host nonce must first be bound server-side.
 export async function startOneTap({
@@ -65,12 +74,14 @@ export async function startOneTap({
     throw new Error("A host nonce requires a clientId and a single challenge source");
   }
   const { baseDelay = 1000, maxAttempts = 5 } = promptOptions;
+  // Whole numbers within these bounds keep retries finite and well inside the
+  // five-minute challenge.
   if (!Number.isSafeInteger(baseDelay) || baseDelay < 0 || baseDelay > 60_000 ||
       !Number.isSafeInteger(maxAttempts) || maxAttempts < 0 || maxAttempts > 10) {
     throw new Error("Invalid One Tap prompt retry settings");
   }
   for (const key of Object.keys(additionalOptions)) {
-    if (!sdkOptions.has(key)) throw new Error("Unsupported One Tap SDK option: " + key);
+    if (ownedOptions.has(key)) throw new Error("One Tap controls the Google " + key + " option");
   }
   let element;
   if (button) {
@@ -96,7 +107,7 @@ export async function startOneTap({
   try {
     signal.throwIfAborted();
     const challengeSource = nonce ? { nonce, clientId, expiresAt: nonceExpiresAt } : getChallenge
-      ? getChallenge({ signal }) : post(base + "/one-tap/nonce", {}, signal, fetchOptions);
+      ? getChallenge({ signal }) : post(base + "/one-tap/nonce", {}, signal, fetchOptions).then(({ data }) => data);
     const [challenge, sdk] = await Promise.all([challengeSource, loadGoogle(scriptNonce)]);
     signal.throwIfAborted();
     if (!challenge?.clientId || !challenge.nonce || (clientId && clientId !== challenge.clientId)) {
@@ -107,8 +118,9 @@ export async function startOneTap({
     if (!Number.isFinite(deadline) || deadline <= now) throw new Error("The One Tap browser challenge has expired");
     id = sdk;
     id.initialize({
-      ...additionalOptions, client_id: challenge.clientId, nonce: challenge.nonce, auto_select: autoSelect,
-      cancel_on_tap_outside: cancelOnTapOutside, context, ux_mode: uxMode,
+      auto_select: autoSelect, cancel_on_tap_outside: cancelOnTapOutside, context, itp_support: true,
+      ...additionalOptions,
+      client_id: challenge.clientId, nonce: challenge.nonce, ux_mode: uxMode,
       ...(uxMode === "redirect" ? {login_uri: receiver} : {}),
       callback: async (response) => {
         if (used || signal.aborted) return;
@@ -118,8 +130,12 @@ export async function startOneTap({
           if (typeof response?.credential !== "string" || !response.credential) throw new Error("Google did not return a credential");
           const body = { idToken: response.credential };
           if (redirect) body.callbackURL = redirect;
-          const account = await post(base + "/one-tap/callback", body, signal, fetchOptions);
+          const { data: account, response: reply } = await post(base + "/one-tap/callback", body, signal, fetchOptions);
           if (signal.aborted) return;
+          await fetchOptions.onSuccess?.({ data: account, response: reply });
+          if (signal.aborted) return;
+          // Without callbackURL the page stays where it is: result and
+          // fetchOptions.onSuccess deliver the session and the host decides.
           if (redirect) window.location.assign(redirect);
           resolve(account);
         } catch (error) { reject(error); }
@@ -172,7 +188,7 @@ export async function startOneTap({
 export async function signOutOneTap({ authPath = "/api/auth", promptOptions = {}, fetchOptions = {} } = {}) {
   const mount = localURL(authPath);
   if (mount.search || mount.hash) throw new Error("The auth mount must be a path");
-  const response = await post(mount.href.replace(/\/$/, "") + "/sign-out", {}, fetchOptions.signal, fetchOptions);
+  const { data: response } = await post(mount.href.replace(/\/$/, "") + "/sign-out", {}, fetchOptions.signal, fetchOptions);
   // Browser policy can reject these optional operations after the local
   // session has already been revoked.
   const resets = [() => globalThis.google?.accounts?.id?.disableAutoSelect?.()];

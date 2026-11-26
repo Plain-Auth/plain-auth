@@ -39,6 +39,7 @@ test("One Tap binds the prompt and optional button to the server nonce and check
   assert.equal(typeof notification, "function");
   assert.deepEqual([config.client_id, config.nonce, config.ux_mode, config.context, config.auto_select, config.cancel_on_tap_outside],
     ["audience", "browser-nonce", "popup", "signup", true, false]);
+  assert.equal(config.itp_support, true);
   await assert.rejects(startOneTap(), /already started/);
   await config.callback({ credential: "signed-credential" });
   await config.callback({ credential: "second-credential" });
@@ -138,8 +139,8 @@ test("redirect buttons pin the same-origin receiver and preserve the host-issued
   globalThis.google={accounts:{id:{initialize(x){cfg=x;},renderButton(el,style){button={el,style};},prompt(){assert.fail("button-only mode prompted")},cancel(){}}}};
   t.after(()=>{delete globalThis.window;delete globalThis.document;delete globalThis.google;});
   await assert.rejects(startOneTap({uxMode:"redirect",redirectURI:"https://other.example/cb",button:{container:element}}),/same-origin/);
-  await assert.rejects(startOneTap({additionalOptions:{login_uri:"https://other.example"}}),/Unsupported/);
-  await assert.rejects(startOneTap({additionalOptions:{nonce:"foreign"}}),/Unsupported/);
+  await assert.rejects(startOneTap({additionalOptions:{login_uri:"https://other.example"}}),/controls the Google/);
+  await assert.rejects(startOneTap({additionalOptions:{nonce:"foreign"}}),/controls the Google/);
   const flow=await startOneTap({clientId:"audience",nonce,uxMode:"redirect",redirectURI:"/google/return",
     button:{container:"#sign-in",config:{theme:"outline"}},additionalOptions:{use_fedcm_for_button:true,button_auto_select:false,itp_support:true}});
   assert.deepEqual([cfg.nonce,cfg.client_id,cfg.ux_mode,cfg.login_uri,cfg.use_fedcm_for_button,cfg.button_auto_select],
@@ -168,4 +169,109 @@ test("an expired host nonce cannot start a new Google prompt", async(t)=>{
   globalThis.google={accounts:{id:{initialize(){assert.fail("expired challenge initialized Google");}}}};
   t.after(()=>{delete globalThis.window;delete globalThis.google;});
   await assert.rejects(startOneTap({clientId:"client",nonce:"host-challenge",nonceExpiresAt:Date.now()-100}),/expired/);
+});
+
+test("One Tap passes other Google options through and refuses to override its audience, nonce or receiver", async (t) => {
+  const { startOneTap } = await import(moduleURL.href + "?sdk-options");
+  let cfg, challenges = 0;
+  globalThis.window = { location: { href: "https://app.test/", origin: "https://app.test" } };
+  globalThis.google = { accounts: { id: { initialize(x) { cfg = x; }, prompt() {}, cancel() {} } } };
+  t.after(() => { delete globalThis.window; delete globalThis.google; });
+  const getChallenge = async () => { challenges++; return { nonce: "bound", clientId: "audience" }; };
+  for (const key of ["client_id", "nonce", "callback", "login_uri", "ux_mode"]) {
+    await assert.rejects(startOneTap({ getChallenge, additionalOptions: { [key]: "foreign" } }), /controls the Google/);
+  }
+  assert.deepEqual([challenges, cfg], [0, undefined]);
+  const close = () => {};
+  const flow = await startOneTap({ getChallenge, context: "signup", additionalOptions: { state_cookie_domain: "app.test", allowed_parent_origin: ["https://app.test"],
+    intermediate_iframe_close_callback: close, use_fedcm_for_prompt: true, itp_support: false, auto_select: true, context: "use", cancel_on_tap_outside: false } });
+  assert.deepEqual({ ...cfg, callback: typeof cfg.callback }, { client_id: "audience", nonce: "bound", ux_mode: "popup", callback: "function", cancel_on_tap_outside: false,
+    state_cookie_domain: "app.test", allowed_parent_origin: ["https://app.test"], intermediate_iframe_close_callback: close, use_fedcm_for_prompt: true,
+    itp_support: false, auto_select: true, context: "use" });
+  flow.cancel();
+  await assert.rejects(flow.result, { name: "AbortError" });
+});
+
+test("One Tap sends fetchOptions headers to both auth requests and runs onSuccess before navigating", async (t) => {
+  const { startOneTap } = await import(moduleURL.href + "?fetch-options");
+  let config;
+  const events = [], requests = [];
+  globalThis.window = { location: { href: "https://app.test/", origin: "https://app.test", assign: (u) => events.push("navigate " + u) } };
+  globalThis.google = { accounts: { id: { initialize(o) { config = o; }, prompt() {}, cancel() {} } } };
+  t.after(() => { delete globalThis.window; delete globalThis.google; });
+  t.mock.method(globalThis, "fetch", async (url, options) => {
+    requests.push({ url, options, body: JSON.parse(options.body) });
+    return url.endsWith("/nonce") ? Response.json({ nonce: "n", clientId: "id" }) : Response.json({ user: { name: "Owner" } }, { headers: { "X-Session-Note": "issued" } });
+  });
+  await assert.rejects(startOneTap({ fetchOptions: { signal: AbortSignal.abort() } }), { name: "AbortError" });
+  assert.equal(requests.length, 0);
+  const flow = await startOneTap({ callbackURL: "/home", fetchOptions: { headers: { "X-Tenant": "blue", "Content-Type": "text/plain" }, credentials: "include", mode: "cors",
+    onSuccess: (ctx) => events.push(["success", ctx.data.user.name, ctx.response.headers.get("x-session-note")]) } });
+  await config.callback({ credential: "signed" });
+  assert.deepEqual(requests.map((r) => [new URL(r.url).pathname, r.options.headers.get("x-tenant"), r.options.headers.get("content-type"), r.options.credentials, r.options.mode]),
+    [["/api/auth/one-tap/nonce", "blue", "application/json", "same-origin", "same-origin"], ["/api/auth/one-tap/callback", "blue", "application/json", "same-origin", "same-origin"]]);
+  assert.deepEqual(requests[1].body, { idToken: "signed", callbackURL: "https://app.test/home" });
+  assert.deepEqual(events, [["success", "Owner", "issued"], "navigate https://app.test/home"]);
+  assert.equal((await flow.result).user.name, "Owner");
+});
+
+test("aborting the fetchOptions signal ends One Tap without posting a later credential", async (t) => {
+  const { startOneTap } = await import(moduleURL.href + "?fetch-abort");
+  let config, nonceSignal, canceled = 0, succeeded = 0;
+  const paths = [], navigations = [];
+  globalThis.window = { location: { href: "https://app.test/", origin: "https://app.test", assign: (u) => navigations.push(u) } };
+  globalThis.google = { accounts: { id: { initialize(o) { config = o; }, prompt() {}, cancel() { canceled++; } } } };
+  t.after(() => { delete globalThis.window; delete globalThis.google; });
+  t.mock.method(globalThis, "fetch", async (url, options) => {
+    paths.push(new URL(url).pathname);
+    nonceSignal = options.signal;
+    assert.equal(options.signal.aborted, false);
+    return Response.json({ nonce: "n", clientId: "id" });
+  });
+  const host = new AbortController();
+  const flow = await startOneTap({ callbackURL: "/home", fetchOptions: { signal: host.signal, onSuccess: () => { succeeded++; } } });
+  host.abort();
+  await assert.rejects(flow.result, { name: "AbortError" });
+  assert.equal(nonceSignal.aborted, true);
+  await config.callback({ credential: "late" });
+  assert.deepEqual([paths, navigations, canceled, succeeded], [["/api/auth/one-tap/nonce"], [], 1, 0]);
+});
+
+test("One Tap backs off from 1, 2, 4, 8 and 16 seconds by default and honours a caller's retry settings", async (t) => {
+  const prompts = [], notes = [];
+  globalThis.window = { location: { href: "https://app.test/", origin: "https://app.test" } };
+  globalThis.google = { accounts: { id: { initialize() {}, prompt(notify) { prompts.push(notify); }, cancel() {} } } };
+  t.after(() => { delete globalThis.window; delete globalThis.google; });
+  let challenges = 0;
+  const getChallenge = async () => { challenges++; return { nonce: "bound", clientId: "id" }; };
+  const dismissed = () => ({ isDismissedMoment: () => true, getDismissedReason: () => "flow_restarted" });
+  const { startOneTap } = await import(moduleURL.href + "?backoff");
+  for (const promptOptions of [{ baseDelay: -1 }, { baseDelay: 60_001 }, { baseDelay: 1.5 }, { maxAttempts: 11 }, { maxAttempts: 1.5 }]) {
+    await assert.rejects(startOneTap({ getChallenge, promptOptions }), /retry settings/);
+  }
+  assert.equal(challenges, 0);
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const backOff = async (start, delays) => {
+    prompts.length = 0; notes.length = 0;
+    const flow = await start();
+    assert.equal(prompts.length, 1);
+    for (const delay of delays) {
+      prompts.at(-1)(dismissed());
+      const count = prompts.length;
+      t.mock.timers.tick(delay - 1);
+      assert.equal(prompts.length, count);
+      t.mock.timers.tick(1);
+      assert.equal(prompts.length, count + 1);
+    }
+    assert.equal(notes.length, 0);
+    const last = dismissed();
+    prompts.at(-1)(last);
+    assert.deepEqual([notes.length, notes[0]], [1, last]);
+    assert.equal(await flow.result, null);
+    t.mock.timers.tick(60_000);
+    assert.equal(prompts.length, delays.length + 1);
+  };
+  await backOff(() => startOneTap({ getChallenge, onPromptNotification: (n) => notes.push(n) }), [1000, 2000, 4000, 8000, 16000]);
+  const custom = await import(moduleURL.href + "?backoff-custom");
+  await backOff(() => custom.startOneTap({ getChallenge, promptOptions: { baseDelay: 250, maxAttempts: 2 }, onPromptNotification: (n) => notes.push(n) }), [250, 500]);
 });

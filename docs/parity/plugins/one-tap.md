@@ -7,7 +7,7 @@
 - [ ] One tap endpoints, types and options
   - [ ] `GsiButtonConfiguration`
     - [x] Forward the button size option unchanged to Google's button renderer ([test](../../../conformance/one-tap-browser.test.mjs#L37))
-    - [x] Forward the button theme option unchanged to Google's button renderer ([test](../../../conformance/one-tap-browser.test.mjs#L147))
+    - [x] Forward the button theme option unchanged to Google's button renderer ([test](../../../conformance/one-tap-browser.test.mjs#L148))
   - [ ] `GoogleOneTapOptions`
     - [x] `clientId` ([test](../../../conformance/core.test.mjs#L643))
       - [x] Validate the configured browser audience against the host-issued challenge ([test](../../../conformance/core.test.mjs#L643))
@@ -20,14 +20,22 @@
       - [x] Deliver a redirect-mode form through the same first-party protected callback in headless Chrome ([test](../../../plugins/onetap/redirect_test.go#L64))
     - [x] `context` ([test](../../../conformance/one-tap-browser.test.mjs#L13))
       - [x] Set the prompt context ([test](../../../conformance/one-tap-browser.test.mjs#L13))
-    - [ ] `additionalOptions`
-      - [x] Forward vetted Google SDK options while protecting receiver and nonce controls ([test](../../../conformance/one-tap-browser.test.mjs#L132))
-    - [ ] `promptOptions`
-      - [x] Retry eligible dismissals with a bounded backoff and stop on FedCM skips ([test](../../../conformance/one-tap-browser.test.mjs#L113))
-      - [x] Clear supported browser selection state after successful sign-out ([test](../../../conformance/one-tap-browser.test.mjs#L151))
+    - [x] `additionalOptions` ([test](../../../conformance/one-tap-browser.test.mjs#L174))
+      - [x] Forward the button's FedCM and automatic-selection settings in redirect mode with a pinned same-origin receiver ([test](../../../conformance/one-tap-browser.test.mjs#L133))
+      - [x] Pass other Google initialize options through unchanged, let them override the prompt settings, and refuse overrides of the audience, nonce, credential callback, redirect receiver or delivery mode (deviation: those five keys are refused) ([test](../../../conformance/one-tap-browser.test.mjs#L174))
+      - [x] Turn on Google's ITP support when the caller leaves it unset ([test](../../../conformance/one-tap-browser.test.mjs#L42))
+    - [x] `promptOptions` ([test](../../../conformance/one-tap-browser.test.mjs#L240))
+      - [x] Retry eligible dismissals with a bounded backoff and stop on FedCM skips ([test](../../../conformance/one-tap-browser.test.mjs#L114))
+      - [x] Clear supported browser selection state after successful sign-out ([test](../../../conformance/one-tap-browser.test.mjs#L152))
+      - [x] Wait 1, 2, 4, 8 and 16 seconds between retries by default, honour a caller's delay and retry count, and notify once when the last retry is dismissed ([test](../../../conformance/one-tap-browser.test.mjs#L240))
+      - [x] Refuse retry delays and counts that are not whole numbers from 0 to 60000 ms and 0 to 10 retries before contacting the server ([test](../../../conformance/one-tap-browser.test.mjs#L250))
   - [ ] `GoogleOneTapActionOptions`
-    - [ ] `fetchOptions`
+    - [x] `fetchOptions` ([test](../../../conformance/one-tap-browser.test.mjs#L218))
       - [x] Keep authentication fetches on the configured origin ([test](../../../conformance/one-tap-browser.test.mjs#L13))
+      - [x] Send caller headers on the challenge and credential requests while keeping the JSON content type and same-origin mode and credentials ([test](../../../conformance/one-tap-browser.test.mjs#L195))
+      - [x] Run the success callback with the account and response before navigating to the callback URL ([test](../../../conformance/one-tap-browser.test.mjs#L214))
+      - [x] Refuse to start with an already-aborted signal without contacting the server ([test](../../../conformance/one-tap-browser.test.mjs#L206))
+      - [x] Cancel the prompt and pending requests when the caller's signal aborts and ignore a later credential (deviation: only headers, signal and onSuccess are read) ([test](../../../conformance/one-tap-browser.test.mjs#L218))
     - [ ] `callbackURL`
       - [x] Navigate to the validated same-origin URL after a successful callback ([test](../../../conformance/one-tap-browser.test.mjs#L13))
       - [x] Refuse an untrusted callbackURL on the One Tap callback with 403 ([test](../../../adapters/sqlstore/onetap_test.go#L145))
@@ -44,20 +52,21 @@
       - [x] Forward outside-click dismissal from the start call to the Google prompt ([test](../../../conformance/one-tap-browser.test.mjs#L13))
     - [x] `uxMode` ([test](../../../conformance/one-tap-browser.test.mjs#L13))
       - [x] Default to popup credential delivery when the start call names no mode ([test](../../../conformance/one-tap-browser.test.mjs#L13))
-      - [x] Pass redirect mode with a pinned same-origin receiver ([test](../../../conformance/one-tap-browser.test.mjs#L132))
+      - [x] Pass redirect mode with a pinned same-origin receiver ([test](../../../conformance/one-tap-browser.test.mjs#L133))
       - [x] Relay a redirect-mode credential form from the same-origin receiver to a stubbed callback and reach the success page in headless Chrome ([test](../../../plugins/onetap/redirect_test.go#L64))
     - [ ] `context`
       - [x] Forward the prompt context from the start call to the Google prompt ([test](../../../conformance/one-tap-browser.test.mjs#L13))
-    - [ ] `additionalOptions`
-      - [x] Forward allow-listed Google SDK options from the start call and reject receiver or nonce overrides ([test](../../../conformance/one-tap-browser.test.mjs#L132))
+    - [x] `additionalOptions` ([test](../../../conformance/one-tap-browser.test.mjs#L174))
+      - [x] Forward Google SDK options from the start call with a pinned same-origin redirect receiver ([test](../../../conformance/one-tap-browser.test.mjs#L133))
+      - [x] Pass other Google initialize options from the start call through unchanged and refuse audience, nonce or receiver overrides ([test](../../../conformance/one-tap-browser.test.mjs#L174))
   - [ ] `oneTapClient`
-    - [x] Submit a stubbed Google credential and send the HttpOnly browser cookie in headless Chrome ([test](../../../conformance/one-tap-browser.test.mjs#L65))
-    - [x] Cancel without processing credentials from a delayed callback ([test](../../../conformance/one-tap-browser.test.mjs#L50))
+    - [x] Submit a stubbed Google credential and send the HttpOnly browser cookie in headless Chrome ([test](../../../conformance/one-tap-browser.test.mjs#L66))
+    - [x] Cancel without processing credentials from a delayed callback ([test](../../../conformance/one-tap-browser.test.mjs#L51))
     - [x] Sign in with a host-generated, browser-bound nonce using the pinned client ([test](../../../conformance/core.test.mjs#L643))
-    - [x] Refuse a second start on the same page while a prompt is active ([test](../../../conformance/one-tap-browser.test.mjs#L42))
-    - [x] Render a sign-in button in a selector-addressed container without showing the prompt ([test](../../../conformance/one-tap-browser.test.mjs#L138))
-    - [x] Retry a dismissed prompt and stop on a later skip, passing it to the notification callback ([test](../../../conformance/one-tap-browser.test.mjs#L113))
-    - [x] Clear supported browser selection state only after the server revokes the session ([test](../../../conformance/one-tap-browser.test.mjs#L151))
+    - [x] Refuse a second start on the same page while a prompt is active ([test](../../../conformance/one-tap-browser.test.mjs#L43))
+    - [x] Render a sign-in button in a selector-addressed container without showing the prompt ([test](../../../conformance/one-tap-browser.test.mjs#L139))
+    - [x] Retry a dismissed prompt and stop on a later skip, passing it to the notification callback ([test](../../../conformance/one-tap-browser.test.mjs#L114))
+    - [x] Clear supported browser selection state only after the server revokes the session ([test](../../../conformance/one-tap-browser.test.mjs#L152))
   - [ ] `POST /one-tap/callback`
     - [x] Verify Google-issued claims with a local RSA signing key and enforce Workspace ownership ([test](../../../adapters/sqlstore/onetap_test.go#L149))
     - [x] Consume a browser challenge once, including concurrent tokens signed for the same nonce ([test](../../../adapters/sqlstore/onetap_test.go#L164))
@@ -84,4 +93,4 @@
 
 - [ ] One Tap
   - [x] Sign in to Go through the pinned One Tap client with a host-issued nonce and a locally signed Google credential ([test](../../../conformance/core.test.mjs#L665))
-  - [x] Complete a stubbed prompt sign-in with the bundled browser module in headless Chrome ([test](../../../conformance/one-tap-browser.test.mjs#L65))
+  - [x] Complete a stubbed prompt sign-in with the bundled browser module in headless Chrome ([test](../../../conformance/one-tap-browser.test.mjs#L66))

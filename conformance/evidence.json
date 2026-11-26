@@ -5342,9 +5342,20 @@
   ],
   "plugin-symbol/one-tap/GoogleOneTapOptions/additionalOptions": [
     {
-      "label": "Forward vetted Google SDK options while protecting receiver and nonce controls",
+      "label": "Forward the button's FedCM and automatic-selection settings in redirect mode with a pinned same-origin receiver",
       "test": "conformance/one-tap-browser.test.mjs",
       "marker": "redirect buttons pin the same-origin receiver"
+    },
+    {
+      "label": "Pass other Google initialize options through unchanged, let them override the prompt settings, and refuse overrides of the audience, nonce, credential callback, redirect receiver or delivery mode (deviation: those five keys are refused)",
+      "test": "conformance/one-tap-browser.test.mjs",
+      "marker": "One Tap passes other Google options through and refuses to override its audience, nonce or receiver",
+      "complete": true
+    },
+    {
+      "label": "Turn on Google's ITP support when the caller leaves it unset",
+      "test": "conformance/one-tap-browser.test.mjs",
+      "marker": "assert.equal(config.itp_support, true);"
     }
   ],
   "plugin-symbol/one-tap/GoogleOneTapOptions/promptOptions": [
@@ -5357,6 +5368,17 @@
       "label": "Clear supported browser selection state after successful sign-out",
       "test": "conformance/one-tap-browser.test.mjs",
       "marker": "sign-out clears supported FedCM selection"
+    },
+    {
+      "label": "Wait 1, 2, 4, 8 and 16 seconds between retries by default, honour a caller's delay and retry count, and notify once when the last retry is dismissed",
+      "test": "conformance/one-tap-browser.test.mjs",
+      "marker": "One Tap backs off from 1, 2, 4, 8 and 16 seconds by default",
+      "complete": true
+    },
+    {
+      "label": "Refuse retry delays and counts that are not whole numbers from 0 to 60000 ms and 0 to 10 retries before contacting the server",
+      "test": "conformance/one-tap-browser.test.mjs",
+      "marker": "await assert.rejects(startOneTap({ getChallenge, promptOptions }), /retry settings/);"
     }
   ],
   "plugin-symbol/one-tap/GoogleOneTapActionOptions/fetchOptions": [
@@ -5364,6 +5386,27 @@
       "label": "Keep authentication fetches on the configured origin",
       "test": "conformance/one-tap-browser.test.mjs",
       "marker": "One Tap binds the prompt and optional button"
+    },
+    {
+      "label": "Send caller headers on the challenge and credential requests while keeping the JSON content type and same-origin mode and credentials",
+      "test": "conformance/one-tap-browser.test.mjs",
+      "marker": "One Tap sends fetchOptions headers to both auth requests and runs onSuccess before navigating"
+    },
+    {
+      "label": "Run the success callback with the account and response before navigating to the callback URL",
+      "test": "conformance/one-tap-browser.test.mjs",
+      "marker": "assert.deepEqual(events, [[\"success\", \"Owner\", \"issued\"], \"navigate https://app.test/home\"]);"
+    },
+    {
+      "label": "Refuse to start with an already-aborted signal without contacting the server",
+      "test": "conformance/one-tap-browser.test.mjs",
+      "marker": "await assert.rejects(startOneTap({ fetchOptions: { signal: AbortSignal.abort() } }), { name: \"AbortError\" });"
+    },
+    {
+      "label": "Cancel the prompt and pending requests when the caller's signal aborts and ignore a later credential (deviation: only headers, signal and onSuccess are read)",
+      "test": "conformance/one-tap-browser.test.mjs",
+      "marker": "aborting the fetchOptions signal ends One Tap without posting a later credential",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/admin.mdx#L698": [
@@ -32968,9 +33011,15 @@
   ],
   "plugin-symbol/one-tap/GoogleOneTapActionOptions/additionalOptions": [
     {
-      "label": "Forward allow-listed Google SDK options from the start call and reject receiver or nonce overrides",
+      "label": "Forward Google SDK options from the start call with a pinned same-origin redirect receiver",
       "test": "conformance/one-tap-browser.test.mjs",
       "marker": "redirect buttons pin the same-origin receiver"
+    },
+    {
+      "label": "Pass other Google initialize options from the start call through unchanged and refuse audience, nonce or receiver overrides",
+      "test": "conformance/one-tap-browser.test.mjs",
+      "marker": "One Tap passes other Google options through and refuses to override its audience, nonce or receiver",
+      "complete": true
     }
   ],
   "plugin-symbol/one-tap/OneTapOptions": [
