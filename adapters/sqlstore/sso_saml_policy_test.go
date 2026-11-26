@@ -82,7 +82,13 @@ func (p *samlPolicy) directory(id string, edit func(*sso.SAMLConfig)) {
 
 func (p *samlPolicy) host(opts sso.SAMLOptions, logger *slog.Logger) *auth.Auth {
 	p.t.Helper()
-	plugin, err := sso.New(sso.Options{SAML: &opts})
+	return p.pluginHost(sso.Options{SAML: &opts}, logger)
+}
+
+// pluginHost builds a host with the full plugin options.
+func (p *samlPolicy) pluginHost(o sso.Options, logger *slog.Logger) *auth.Auth {
+	p.t.Helper()
+	plugin, err := sso.New(o)
 	if err != nil {
 		p.t.Fatal(err)
 	}

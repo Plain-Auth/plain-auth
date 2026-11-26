@@ -44663,6 +44663,12 @@
       "label": "Pass the protocol, provider, account key, provider profile, claims, ID token claims and provider reference to ResolveUser",
       "test": "adapters/sqlstore/sso_resolve_user_test.go",
       "marker": "t.Fatal(\"the resolver did not receive the accepted provider reference\")"
+    },
+    {
+      "label": "Pass a SAML input with the protocol saml and the directory's provider ID",
+      "test": "adapters/sqlstore/sso_saml_resolve_user_test.go",
+      "marker": "t.Fatal(\"the SAML resolver input named the wrong protocol or provider\", in.Protocol, in.ProviderID)",
+      "complete": true
     }
   ],
   "plugin-symbol/sso/SSOProviderUserProfile": [
@@ -44691,6 +44697,11 @@
       "label": "Link a verified OIDC identity to a chosen user without email matching, and reject or continue it",
       "test": "adapters/sqlstore/sso_resolve_user_test.go",
       "marker": "t.Fatal(\"the enterprise identity was not linked to the resolved user\")"
+    },
+    {
+      "label": "Link a SAML identity to a chosen user and reject a sign-in from the resolver",
+      "test": "adapters/sqlstore/sso_saml_resolve_user_test.go",
+      "marker": "t.Fatal(\"a rejected SAML sign-in did not reach the error callback\", location)"
     }
   ],
   "docs/content/docs/plugins/sso/provisioning.mdx#L108/`accountKey.issuer`": [
@@ -44698,6 +44709,12 @@
       "label": "Use the ID token issuer as the OIDC account key issuer",
       "test": "adapters/sqlstore/sso_resolve_user_test.go",
       "marker": "t.Fatal(\"the OIDC account key issuer was not the ID token issuer\", in.AccountKey)"
+    },
+    {
+      "label": "Use the IdP entity ID as the SAML account key issuer",
+      "test": "adapters/sqlstore/sso_saml_resolve_user_test.go",
+      "marker": "t.Fatal(\"the SAML account key issuer was not the IdP entity ID\", in.AccountKey)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/sso/provisioning.mdx#L109/`accountKey.accountId`": [
@@ -44705,6 +44722,12 @@
       "label": "Use the ID token subject as the OIDC account key ID",
       "test": "adapters/sqlstore/sso_resolve_user_test.go",
       "marker": "t.Fatal(\"the OIDC account key ID was not the ID token subject\", in.AccountKey)"
+    },
+    {
+      "label": "Use the signed NameID as the SAML account key ID",
+      "test": "adapters/sqlstore/sso_saml_resolve_user_test.go",
+      "marker": "t.Fatal(\"the SAML account key ID was not the signed NameID\", in.AccountKey)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/sso/provisioning.mdx#L110/`providerUser`": [
@@ -44744,6 +44767,22 @@
       "label": "Resolve an OIDC sign-in to a chosen user with ResolveUser",
       "test": "adapters/sqlstore/sso_resolve_user_test.go",
       "marker": "t.Fatal(\"an update link did not copy the provider profile to the resolved user\", name, email, verified)"
+    }
+  ],
+  "plugin-symbol/sso/SSOSAMLUserResolutionInput": [
+    {
+      "label": "Give the SAML resolver the IdP entity ID and NameID as the account key, the verified attributes and no ID token claims, and link or reject the sign-in, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_resolve_user_test.go",
+      "marker": "func TestEnterpriseSAMLResolveUser(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/sso/provisioning.mdx#L113/`providerAttributes`": [
+    {
+      "label": "Pass the verified assertion attributes, one value as a string and several as a list, to the SAML resolver",
+      "test": "adapters/sqlstore/sso_saml_resolve_user_test.go",
+      "marker": "t.Fatal(\"the resolver did not receive the verified assertion attributes\", in.Claims)",
+      "complete": true
     }
   ]
 }

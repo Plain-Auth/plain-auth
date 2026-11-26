@@ -456,7 +456,21 @@ func (o Options) samlFinish(c auth.EndpointContext) (any, error) {
 	if err != nil {
 		return fail("invalid_saml_response")
 	}
+	var resolved UserResolution
+	if o.ResolveUser != nil {
+		// The resolver runs before the sign-in transaction, never inside it;
+		// the store rechecks the selected user and the identity under lock.
+		resolved, err = o.resolveUser(c, UserResolutionInput{Protocol: "saml", ProviderID: p.ProviderID, AccountKey: AccountKey{Issuer: a.Issuer.Value, AccountID: profile.Subject},
+			User: providerUser(profile), Claims: cloneClaims(profile.Data), ProviderReference: p.Reference})
+		if err != nil {
+			return enterpriseFailure(c, flow, errResolution.Code, errResolution.Message)
+		}
+		if resolved.Action == ResolveReject {
+			return enterpriseFailure(c, flow, resolved.Code, resolved.Message)
+		}
+	}
 	complete := func(ctx context.Context, provider, subject string, _ auth.OAuthTokens, u auth.User, session auth.StoredSession, opts auth.OAuthLoginOptions) (auth.User, bool, error) {
+		resolved.apply(&opts)
 		ctx, cancel := context.WithDeadline(ctx, deadline)
 		defer cancel()
 		receipt := AssertionReceipt{Issuer: a.Issuer.Value, ID: id}
@@ -470,6 +484,9 @@ func (o Options) samlFinish(c auth.EndpointContext) (any, error) {
 	result, err := c.CompleteEnterpriseFlow(flow, "sso-saml", profile, auth.OAuthTokens{}, o.DisableImplicitSignUp && !flow.RequestSignUp, complete)
 	if refused := auth.UserInfoRefusal(err); refused != nil {
 		return enterpriseFailure(c, flow, refused.Code, refused.Message)
+	}
+	if out, e, ok := resolutionFailure(c, flow, resolved, err); ok {
+		return out, e
 	}
 	switch {
 	case errors.Is(err, context.DeadlineExceeded):
