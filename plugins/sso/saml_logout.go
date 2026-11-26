@@ -11,6 +11,7 @@ import (
 	"time"
 
 	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/internal/httporigin"
 	"github.com/crewjam/saml"
 )
 
@@ -227,6 +228,9 @@ func (o Options) startLogout(c auth.EndpointContext, _ Store, actor Actor) (any,
 // finishLogout accepts only a signed logout response. IdP logout messages
 // must be signed; another runtime accepts unsigned ones unless
 // wantLogoutResponseSigned is set, which lets any page end a user's sessions.
+// Logout uses HTTP-Redirect only, the binding the SP metadata advertises:
+// another runtime also accepts HTTP-POST, which would need this path exempt
+// from the cross-site check and a SameSite=None logout cookie.
 func (o Options) finishLogout(c auth.EndpointContext) (any, error) {
 	if !o.SAML.EnableSingleLogout {
 		return nil, errLogoutDisabled
@@ -236,6 +240,13 @@ func (o Options) finishLogout(c auth.EndpointContext) (any, error) {
 		return nil, ErrSAMLLogoutResponse
 	}
 	q, e := url.ParseQuery(c.Request.URL.RawQuery)
+	// A request with neither message redirects with another runtime's error,
+	// to a trusted RelayState or the application origin, before any provider
+	// lookup.
+	if e == nil && !q.Has("SAMLRequest") && !q.Has("SAMLResponse") {
+		self, _ := c.CallbackURL(c.Request.URL.Path)
+		return c.Redirect(httporigin.SetQuery(samlLanding(c, self, q.Get("RelayState")), url.Values{"error": {"invalid_request"}, "error_description": {"missing_logout_data"}}))
+	}
 	if e == nil && q.Has("SAMLRequest") && o.SAML.EnableIDPInitiatedLogout {
 		return o.receiveIDPLogout(c, q, store)
 	}

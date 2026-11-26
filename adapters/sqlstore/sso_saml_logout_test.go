@@ -138,6 +138,14 @@ func testSAMLLogout(t *testing.T, first, second *Store, idp *saml.IdentityProvid
 			t.Fatal("the SLO route did not answer an unknown provider with SAML_PROVIDER_NOT_FOUND", query, res.StatusCode, string(body))
 		}
 	}
+	// A request with neither message redirects with missing_logout_data to
+	// a trusted RelayState, or the application origin, before any lookup.
+	for relay, want := range map[string]string{"": application + "/", "?RelayState=" + url.QueryEscape(application+"/signed-out"): application + "/signed-out", "?RelayState=" + url.QueryEscape("https://elsewhere.example/"): application + "/"} {
+		status, location := code(newBrowser(), api+"/sso/saml2/sp/slo/absent"+relay)
+		if status != 302 || location != want+"?error=invalid_request&error_description=missing_logout_data" {
+			t.Fatal("a logout request without a message did not redirect with missing_logout_data", relay, status, location)
+		}
+	}
 	another := newBrowser()
 	login(t, another, "employee", nil)
 	a, e := sdk(h).GetSession(ctx)

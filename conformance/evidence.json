@@ -13638,6 +13638,11 @@
       "label": "Answer an IdP logout request for an unknown provider with 404 SAML_PROVIDER_NOT_FOUND",
       "test": "adapters/sqlstore/sso_saml_logout_test.go",
       "marker": "t.Fatal(\"the SLO route did not answer an unknown provider with SAML_PROVIDER_NOT_FOUND\", query, res.StatusCode, string(body))"
+    },
+    {
+      "label": "Redirect a logout request with neither message with missing_logout_data before any provider lookup, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_logout_test.go",
+      "marker": "t.Fatal(\"a logout request without a message did not redirect with missing_logout_data\""
     }
   ],
   "docs/content/docs/plugins/test-utils.mdx#L77": [
@@ -42732,6 +42737,12 @@
       "label": "Accept a JSON SAML response at the ACS",
       "test": "adapters/sqlstore/sso_saml_defaults_test.go",
       "marker": "t.Fatal(\"a JSON SAML response did not sign in\", done.Code, done.Header().Get(\"Location\"))"
+    },
+    {
+      "label": "Return the browser from a GET to the ACS as another runtime does, beside the posted form and JSON responses, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_defaults_test.go",
+      "marker": "t.Fatal(\"a GET to the ACS did not return the browser as another runtime does\"",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/sso/reference.mdx#L499/`GET /sso/saml2/sp/metadata?providerId=`": [
@@ -42752,6 +42763,11 @@
       "label": "Accept a signed LogoutResponse at the SLO route exactly once across two instances",
       "test": "adapters/sqlstore/sso_saml_logout_test.go",
       "marker": "t.Fatal(\"non-atomic logout acknowledgement\", statuses)"
+    },
+    {
+      "label": "Redirect a logout request with neither message to a trusted RelayState or the application origin with missing_logout_data; logout uses HTTP-Redirect only, a documented deviation, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_logout_test.go",
+      "marker": "t.Fatal(\"a logout request without a message did not redirect with missing_logout_data\""
     }
   ],
   "docs/content/docs/plugins/sso/reference.mdx#L501/`POST /sso/saml2/logout/:providerId`": [

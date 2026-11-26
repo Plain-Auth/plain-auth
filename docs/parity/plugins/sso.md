@@ -202,7 +202,7 @@
     - [x] Sign in from a JSON SAML response and answer a GET by returning a signed-in browser to a trusted RelayState, the origin otherwise, and others to the error page ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L365))
     - [x] Read JSON SAML responses by exact key, so a lowercased SAMLResponse is not taken for an unsolicited response ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L389))
   - [ ] `GET / POST /sso/saml2/sp/slo/:providerId`
-    - [x] Accept a signed HTTP-Redirect acknowledgement once across replicas and preserve a newer login during the round trip ([test](../../../adapters/sqlstore/sso_saml_logout_test.go#L243))
+    - [x] Accept a signed HTTP-Redirect acknowledgement once across replicas and preserve a newer login during the round trip ([test](../../../adapters/sqlstore/sso_saml_logout_test.go#L251))
     - [x] Complete the strict Go Redirect return with an independent IdP and capture the pinned reference’s signed-response rejection ([test](../../../conformance/core.test.mjs#L1638))
     - [x] Accept a signed directory LogoutRequest once across replicas, revoke sessions for the exact qualified NameID and SessionIndex, and preserve another immutable registration on three SQL engines ([test](../../../adapters/sqlstore/sso_saml_idp_logout_test.go#L231))
     - [x] Expire a request waiting on a directory lock and keep a renewed SAML session bound past its original TTL ([test](../../../adapters/sqlstore/sso_saml_idp_logout_test.go#L170))
@@ -211,6 +211,7 @@
     - [x] An IdP LogoutRequest runs the verification delete hooks of every binding it ends, in one pass ([test](../../../adapters/sqlstore/sso_saml_hooks_test.go#L273))
     - [x] Answer 400 SINGLE_LOGOUT_NOT_ENABLED on the SLO route while single logout is off ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L197))
     - [x] Answer an IdP logout request for an unknown provider with 404 SAML_PROVIDER_NOT_FOUND ([test](../../../adapters/sqlstore/sso_saml_logout_test.go#L138))
+    - [x] Redirect a logout request with neither message with missing_logout_data before any provider lookup, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_logout_test.go#L146))
   - [ ] `POST /sso/saml2/logout/:providerId`
     - [x] Use the native SDK to revoke exactly the recorded local SAML login and sign the original IdP NameID and SessionIndex on three SQL engines ([test](../../../adapters/sqlstore/sso_saml_logout_test.go#L31))
     - [x] Revoke the current local login through the released client on both runtimes and verify the Go request’s RSA-SHA256 Redirect signature ([test](../../../conformance/sso-saml.mjs#L342))
@@ -771,14 +772,16 @@
       - [x] Complete an OIDC exchange on the directory-specific return path and issue the employee’s session ([test](../../../conformance/oauth-enterprise-authorization.mjs#L37))
     - [x] `GET /sso/callback` ([test](../../../conformance/oauth-enterprise-authorization.mjs#L37))
       - [x] Complete an OIDC exchange on the shared return path and issue the employee’s session ([test](../../../conformance/oauth-enterprise-authorization.mjs#L37))
-    - [ ] `GET / POST /sso/saml2/sp/acs/:providerId`
+    - [x] `GET / POST /sso/saml2/sp/acs/:providerId` ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L365))
       - [x] Sign in from a signed SAML response posted to the ACS by the browser that started the request ([test](../../../adapters/sqlstore/sso_saml_test.go#L506))
       - [x] Accept a JSON SAML response at the ACS ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L352))
+      - [x] Return the browser from a GET to the ACS as another runtime does, beside the posted form and JSON responses, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L365))
     - [x] `GET /sso/saml2/sp/metadata?providerId=` ([test](../../../adapters/sqlstore/sso_saml_test.go#L185))
       - [x] Serve a provider's SP metadata as application/xml to a request without a session ([test](../../../adapters/sqlstore/sso_saml_test.go#L185))
     - [ ] `GET / POST /sso/saml2/sp/slo/:providerId`
       - [x] Accept a signed IdP LogoutRequest at the SLO route exactly once across two instances ([test](../../../adapters/sqlstore/sso_saml_idp_logout_test.go#L231))
-      - [x] Accept a signed LogoutResponse at the SLO route exactly once across two instances ([test](../../../adapters/sqlstore/sso_saml_logout_test.go#L243))
+      - [x] Accept a signed LogoutResponse at the SLO route exactly once across two instances ([test](../../../adapters/sqlstore/sso_saml_logout_test.go#L251))
+      - [x] Redirect a logout request with neither message to a trusted RelayState or the application origin with missing_logout_data; logout uses HTTP-Redirect only, a documented deviation, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_logout_test.go#L146))
     - [ ] `POST /sso/saml2/logout/:providerId`
       - [x] Start SP-initiated logout from the current SAML session, end it and redirect to the IdP with a signed LogoutRequest ([test](../../../adapters/sqlstore/sso_saml_logout_test.go#L31))
       - [x] Refuse SP-initiated logout from a password session ([test](../../../adapters/sqlstore/sso_saml_logout_test.go#L119))
@@ -822,7 +825,7 @@
         - [x] Find a SAML sign-in's logout record by its session ID and give it the session's expiry ([test](../../../adapters/sqlstore/sso_saml_test.go#L411))
         - [x] Find a SAML login's logout record by its session ID, give it the session's expiry and refuse another session's record ([test](../../../adapters/sqlstore/sso_saml_test.go#L65))
       - [x] `saml-logout-request:` ([test](../../../adapters/sqlstore/sso_saml_test.go#L65))
-        - [x] Reject a LogoutResponse once its stored logout request has expired ([test](../../../adapters/sqlstore/sso_saml_logout_test.go#L251))
+        - [x] Reject a LogoutResponse once its stored logout request has expired ([test](../../../adapters/sqlstore/sso_saml_logout_test.go#L259))
         - [x] Store each SP-initiated LogoutRequest once and refuse responses to another, an expired or an already spent request ([test](../../../adapters/sqlstore/sso_saml_test.go#L65))
       - [x] `_{tokenPrefix}-{providerId}` ([test](../../../adapters/sqlstore/sso_domain_test.go#L184))
         - [x] Store a provider's DNS token in a verification row named by the token prefix and provider ID, valid for seven days ([test](../../../adapters/sqlstore/sso_domain_test.go#L184))
@@ -1002,4 +1005,4 @@
     - [x] Advertise the SLO route in generated SP metadata when single logout is on ([test](../../../adapters/sqlstore/sso_saml_test.go#L196))
     - [ ] `saml.logoutRequestTTL`
       - [x] Give the logout browser binding the default five-minute lifetime ([test](../../../conformance/sso-saml.mjs#L338))
-      - [x] Reject a LogoutResponse once its stored logout request has expired ([test](../../../adapters/sqlstore/sso_saml_logout_test.go#L251))
+      - [x] Reject a LogoutResponse once its stored logout request has expired ([test](../../../adapters/sqlstore/sso_saml_logout_test.go#L259))
