@@ -332,7 +332,7 @@ func TestVerificationHooksAroundPasskeyChallenges(t *testing.T) {
 				}
 			}
 			// A failed assertion still spends the challenge.
-			login(b, "https://untrusted.example.test", 401)
+			login(b, "https://untrusted.example.test", 400)
 			got, _ = drain()
 			same(got, "v-delete-before:passkey-authentication", "v-delete-after:passkey-authentication")
 

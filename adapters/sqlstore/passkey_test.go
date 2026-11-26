@@ -26,6 +26,7 @@ type softwareKey struct {
 	key    *ecdsa.PrivateKey
 	id     []byte
 	handle string
+	aaguid []byte // the authenticator model reported at registration; nil reports the all-zero AAGUID
 }
 
 func newSoftwareKey(t *testing.T) *softwareKey {
@@ -60,7 +61,11 @@ func (k *softwareKey) response(t *testing.T, challenge, origin, rp string, count
 		if err != nil {
 			t.Fatal(err)
 		}
-		data = append(data, make([]byte, 16)...)
+		aaguid := k.aaguid
+		if aaguid == nil {
+			aaguid = make([]byte, 16)
+		}
+		data = append(data, aaguid...)
 		data = binary.BigEndian.AppendUint16(data, uint16(len(k.id)))
 		data = append(data, k.id...)
 		data = append(data, key...)
@@ -248,8 +253,8 @@ func TestPasskeySoftwareAuthenticator(t *testing.T) {
 			login(0, origin, 200)
 			login(0, origin, 200)
 			login(1, origin, 200)
-			login(1, origin, 401)
-			login(2, "https://untrusted.example.test", 401)
+			login(1, origin, 400)
+			login(2, "https://untrusted.example.test", 400)
 			login(2, origin, 200)
 			optsAuth, cs := request(first, "generate-authenticate-options", nil, 200)
 			_, err = s.db.ExecContext(ctx, s.bind(`UPDATE "verification" SET "expiresAt"=? WHERE "identifier" LIKE 'passkey:%'`), s.date(time.Now().Add(-time.Hour)))
@@ -262,8 +267,8 @@ func TestPasskeySoftwareAuthenticator(t *testing.T) {
 				t.Fatal("foreign passkeys listed")
 			}
 			mutation := map[string]any{"id": row["id"], "name": "Renamed"}
-			request(first, "update-passkey", mutation, 401, foreign)
-			request(first, "delete-passkey", mutation, 401, foreign)
+			request(first, "update-passkey", mutation, 404, foreign)
+			request(first, "delete-passkey", mutation, 404, foreign)
 			updated, _ := request(first, "update-passkey", mutation, 200, session)
 			if updated["passkey"].(map[string]any)["name"] != "Renamed" {
 				t.Fatal("rename failed")

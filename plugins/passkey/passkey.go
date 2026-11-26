@@ -84,6 +84,8 @@ func challengeRecord(id, kind string, state ceremony, expiresAt time.Time) authn
 
 type Options struct {
 	Registration RegistrationOptions
+	// Authentication configures passkey sign-in.
+	Authentication AuthenticationOptions
 	// AuthenticatorSelection chooses the authenticators that registration
 	// options ask for. User verification stays RequireUserVerification.
 	AuthenticatorSelection  AuthenticatorSelection
@@ -112,10 +114,19 @@ type AuthenticatorSelection struct {
 }
 
 type service struct {
-	registration RegistrationOptions
-	web          *wa.WebAuthn
-	ttl          time.Duration
+	registration   RegistrationOptions
+	authentication AuthenticationOptions
+	web            *wa.WebAuthn
+	ttl            time.Duration
 }
+
+// ceremony is the challenge value this plugin stores for an in-flight
+// ceremony, under a digest of its cookie's nonce. It keeps go-webauthn's
+// whole SessionData, including the random user handle a first-use
+// registration is verified against and the extensions it requested, so it
+// deliberately differs from the other runtime's stored challenge value,
+// which carries neither. Any instance of this library sharing the store can
+// finish the ceremony; another runtime cannot.
 type ceremony struct {
 	PreAuth           bool
 	Context           *string
@@ -151,17 +162,35 @@ func problem(status int, code, msg string) *authn.APIError {
 }
 
 var (
-	ErrChallenge      = problem(400, "CHALLENGE_NOT_FOUND", "Challenge not found")
-	ErrRegistration   = problem(400, "FAILED_TO_VERIFY_REGISTRATION", "Failed to verify registration")
-	ErrAuthentication = problem(401, "AUTHENTICATION_FAILED", "Authentication failed")
+	ErrChallenge    = problem(400, "CHALLENGE_NOT_FOUND", "Challenge not found")
+	ErrRegistration = problem(400, "FAILED_TO_VERIFY_REGISTRATION", "Failed to verify registration")
+	// ErrAuthentication answers a refused assertion. As on the other
+	// runtime, it is 400, and 401 only for a signature that does not verify.
+	ErrAuthentication = problem(400, "AUTHENTICATION_FAILED", "Authentication failed")
 	ErrMissing        = problem(401, "PASSKEY_NOT_FOUND", "Passkey not found")
 	ErrSession        = problem(401, "SESSION_REQUIRED", "Passkey registration requires an authenticated session")
-	ErrDuplicate      = problem(400, "PREVIOUSLY_REGISTERED", "Previously registered")
+	// ErrDuplicate answers a credential that is already stored. The other
+	// runtime's server stores it again, and only its browser client reports
+	// this code.
+	ErrDuplicate = problem(400, "PREVIOUSLY_REGISTERED", "Previously registered")
+	// ErrUserNotFound answers a registration whose account does not exist.
+	// A RegistrationStore returns it when the account the record names is
+	// missing and is not created with it.
+	ErrUserNotFound = problem(500, "USER_NOT_FOUND", "User not found")
+	// ErrSessionCreation answers a verification whose new session a session
+	// create hook skipped. Nothing is stored: a registration rolls back, and
+	// a sign-in leaves the passkey's counter unchanged.
+	ErrSessionCreation = problem(500, "UNABLE_TO_CREATE_SESSION", "Unable to create session")
+
+	errSignature    = problem(401, "AUTHENTICATION_FAILED", "Authentication failed")
+	errUnauthorized = problem(401, "UNAUTHORIZED", "Unauthorized")
+	errNotOwned     = problem(404, "PASSKEY_NOT_FOUND", "Passkey not found")
 )
 
 // New constructs the plugin with an explicit relying-party ID and exact list
 // of allowed browser origins. Loopback HTTP is supported for local development.
 func New(o Options) (authn.Plugin, error) {
+	// Origins are required, so no request finds its origin unconfigured.
 	if o.RPID == "" || o.RPName == "" || len(o.Origins) == 0 {
 		return authn.Plugin{}, errors.New("passkey: RPID, RPName and Origins are required")
 	}
@@ -205,9 +234,13 @@ func New(o Options) (authn.Plugin, error) {
 		selection.RequireResidentKey = protocol.ResidentKeyRequired()
 	}
 	timeout := wa.TimeoutConfig{Enforce: true, Timeout: o.ChallengeLifetime, TimeoutUVD: o.ChallengeLifetime}
+	// Client extension outputs the server did not request are ignored, as on
+	// the other runtime: the browser client may add extensions of its own,
+	// and the server acts on none of their outputs.
 	web, err := wa.New(&wa.Config{RPID: o.RPID, RPDisplayName: o.RPName, RPOrigins: origins,
-		AuthenticatorSelection: selection,
-		Timeouts:               wa.TimeoutsConfig{Registration: timeout, Login: timeout}})
+		AuthenticatorSelection:            selection,
+		Timeouts:                          wa.TimeoutsConfig{Registration: timeout, Login: timeout},
+		ExtensionsUnsolicitedOutputPolicy: protocol.UnsolicitedOutputPolicyIgnore})
 	if err != nil {
 		return authn.Plugin{}, err
 	}
@@ -215,7 +248,7 @@ func New(o Options) (authn.Plugin, error) {
 	if o.Registration.AllowWithoutSession {
 		enrollmentMetadata = json.RawMessage(`{"security":[{},{"apiKeyCookie":[]}]}`)
 	}
-	s := service{web: web, ttl: o.ChallengeLifetime, registration: o.Registration}
+	s := service{web: web, ttl: o.ChallengeLifetime, registration: o.Registration, authentication: o.Authentication}
 	return authn.Plugin{ID: "passkey", ValidateStore: func(store authn.Store) error {
 		backend, ok := store.(Store)
 		if !ok {
@@ -250,10 +283,15 @@ func session(c authn.EndpointContext) (*authn.SessionResult, error) {
 		return nil, err
 	}
 	if u == nil {
-		return nil, ErrSession
+		return nil, errUnauthorized
 	}
 	return u, u.Session.RequireOwner()
 }
+
+// challengeCookie is the ceremony's signed challenge cookie,
+// <CookiePrefix>.passkey_challenge. It is renamed with the core
+// Options.Cookies["passkey_challenge"] override rather than a plugin
+// setting, so its name gets the same checks as every other cookie.
 func challengeCookie(c authn.EndpointContext, token string, age int) *http.Cookie {
 	return c.Auth.SignedCookie("passkey_challenge", token, age)
 }
@@ -397,6 +435,16 @@ func (s service) beginRegistration(c authn.EndpointContext) (any, error) {
 		cfg.AuthenticatorAttachment = protocol.AuthenticatorAttachment(attachment)
 		opts = append(opts, wa.WithAuthenticatorSelection(cfg))
 	}
+	var inputs protocol.AuthenticationExtensions
+	if resolve := s.registration.Extensions; resolve != nil {
+		if inputs, err = resolve(c); err != nil {
+			return nil, err
+		}
+	}
+	// As on the other runtime, whose WebAuthn library always asks for
+	// credProps at registration.
+	inputs.CredProps = true
+	opts = append(opts, wa.WithExtensions(wa.WithExtensionInputs(inputs)))
 	creation, data, err := s.web.BeginRegistration(user, opts...)
 	if err != nil {
 		return nil, err
@@ -498,6 +546,13 @@ func (s service) beginLogin(c authn.EndpointContext) (any, error) {
 			opts = append(opts, wa.WithAllowedCredentials(credentials.CredentialDescriptors()))
 		}
 	}
+	if resolve := s.authentication.Extensions; resolve != nil {
+		inputs, err := resolve(c)
+		if err != nil {
+			return nil, err
+		}
+		opts = append(opts, wa.WithAssertionExtensions(wa.WithExtensionInputs(inputs)))
+	}
 	assertion, data, err := s.web.BeginDiscoverableLogin(opts...)
 	if err != nil {
 		return nil, err
@@ -557,9 +612,25 @@ func (s service) finishLogin(c authn.EndpointContext) (any, error) {
 		return user, nil
 	}, state.Data, response)
 	if err != nil || verified.Authenticator.CloneWarning {
+		var refused *protocol.Error
+		if errors.As(err, &refused) && refused.Type == protocol.ErrAssertionSignature.Type {
+			return nil, errSignature
+		}
 		return nil, ErrAuthentication
 	}
-	return c.IssueSession(user.ID, func(ctx context.Context, ss authn.StoredSession) (authn.User, error) {
+	if after := s.authentication.AfterVerification; after != nil {
+		if err := after(c, VerifiedAuthentication{Passkey: record, Credential: *verified, Response: json.RawMessage(raw)}); err != nil {
+			var refusal *authn.APIError
+			if errors.As(err, &refusal) {
+				return nil, err
+			}
+			// As with any other refused assertion, a host error answers
+			// AUTHENTICATION_FAILED.
+			c.Auth.Logger().ErrorContext(c.Request.Context(), "passkey: AfterVerification refused a sign-in", "error", err)
+			return nil, ErrAuthentication
+		}
+	}
+	return c.IssueSessionOr(ErrSessionCreation, user.ID, func(ctx context.Context, ss authn.StoredSession) (authn.User, error) {
 		return store.FinishPasskeyLogin(ctx, record, verified.Authenticator.SignCount, verified.Flags.BackupState, ss)
 	})
 }
@@ -591,6 +662,12 @@ func (s service) manage(c authn.EndpointContext, rename bool) (any, error) {
 		name = &value
 	}
 	r, err := c.Store().(Store).ManagePasskey(c.Request.Context(), ss.User.ID, ss.Session.Token, id, name, time.Now())
+	if errors.Is(err, ErrMissing) {
+		// An unknown ID and another account's answer the same 404, so the
+		// answer never confirms another account's passkey; the other
+		// runtime answers 401 for another account's.
+		return nil, errNotOwned
+	}
 	if err != nil {
 		return nil, err
 	}

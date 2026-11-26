@@ -22,6 +22,11 @@ type RegistrationOptions struct {
 	AllowWithoutSession bool
 	ResolveUser         func(auth.EndpointContext, *string) (RegistrationUser, error)
 	AfterVerification   func(auth.EndpointContext, VerifiedRegistration) (RegistrationDecision, error)
+	// Extensions adds WebAuthn extension inputs to each GET
+	// /passkey/generate-register-options response. Registration always asks
+	// for credProps as well. An authentication-only input such as AppID
+	// fails the request. See ExtensionsResolver.
+	Extensions ExtensionsResolver
 }
 
 // VerifiedRegistration contains the saved identity context and successfully verified authenticator data.
@@ -29,7 +34,12 @@ type VerifiedRegistration struct {
 	User       RegistrationUser
 	Context    *string
 	Credential wa.Credential
-	Response   json.RawMessage
+	// AAGUID identifies the authenticator model, in the canonical lowercase
+	// form stored on the passkey (Record.AAGUID). It is the all-zero AAGUID
+	// when the authenticator does not name its model, and empty when the
+	// response carries none. Pass it to AuthenticatorName for a default label.
+	AAGUID   string
+	Response json.RawMessage
 }
 
 // RegistrationDecision chooses the account and optional label for a verified credential.
@@ -46,6 +56,7 @@ type RegistrationAccount struct{ Name, Email string }
 
 // RegistrationStore persists the credential and optional new user/session in one transaction.
 // Implementations must revalidate the source session, if present, and enforce credential uniqueness.
+// It returns ErrUserNotFound when the record's account does not exist and create is nil.
 type RegistrationStore interface {
 	CommitPasskeyRegistration(ctx context.Context, record Record, sourceToken string, create *auth.User, session *auth.StoredSession, now time.Time) (auth.User, error)
 }
@@ -121,7 +132,11 @@ func (s service) persistRegistration(c auth.EndpointContext, state ceremony, ss 
 	d := RegistrationDecision{}
 	if s.registration.AfterVerification != nil {
 		var err error
-		d, err = s.registration.AfterVerification(c, VerifiedRegistration{User: RegistrationUser{state.UserID, state.Name, state.DisplayName}, Context: state.Context, Credential: *cred, Response: json.RawMessage(raw)})
+		aaguid := ""
+		if r.AAGUID != nil {
+			aaguid = *r.AAGUID
+		}
+		d, err = s.registration.AfterVerification(c, VerifiedRegistration{User: RegistrationUser{state.UserID, state.Name, state.DisplayName}, Context: state.Context, Credential: *cred, AAGUID: aaguid, Response: json.RawMessage(raw)})
 		if err != nil {
 			return nil, err
 		}
@@ -177,7 +192,7 @@ func (s service) persistRegistration(c auth.EndpointContext, state ceremony, ss 
 		_, err := store.CommitPasskeyRegistration(c.Request.Context(), r, source, fresh, nil, now)
 		return r, err
 	}
-	result, err := c.IssueSession(r.UserID, func(ctx context.Context, newSession auth.StoredSession) (auth.User, error) {
+	result, err := c.IssueSessionOr(ErrSessionCreation, r.UserID, func(ctx context.Context, newSession auth.StoredSession) (auth.User, error) {
 		return store.CommitPasskeyRegistration(ctx, r, source, fresh, &newSession, now)
 	})
 	if err != nil {

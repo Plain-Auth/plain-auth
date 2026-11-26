@@ -181,7 +181,7 @@ func (s *Store) CommitPasskeyRegistration(ctx context.Context, r pk.Record, sour
 			if source != "" {
 				return pk.ErrSession, nil
 			}
-			return &auth.APIError{Status: 500, Code: "USER_NOT_FOUND", Message: "User not found"}, nil
+			return pk.ErrUserNotFound, nil
 		}
 		if err != nil {
 			return nil, err

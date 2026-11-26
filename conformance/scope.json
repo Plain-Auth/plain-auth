@@ -972,6 +972,14 @@
         "`ApiKeyClientPlugin`"
       ],
       "reason": "not applicable: TypeScript type"
+    },
+    {
+      "page": "plugins/passkey.md",
+      "section": "Interfaces",
+      "labels": [
+        "`WebAuthnChallengeValue`"
+      ],
+      "reason": "not applicable: internal stored ceremony; this verifier needs session data that value does not carry"
     }
   ],
   "backlog": [

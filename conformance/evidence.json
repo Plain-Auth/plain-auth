@@ -2866,6 +2866,11 @@
       "label": "Refuse to register a credential the account has already enrolled",
       "test": "adapters/sqlstore/passkey_test.go",
       "marker": "request(second, \"verify-registration\", resp, 400, cs[0], session)"
+    },
+    {
+      "label": "Refuse on another instance a registration that lacks the large blob support its challenge required",
+      "test": "adapters/sqlstore/passkey_options_test.go",
+      "marker": "another instance verified a registration without the large blob support its challenge required"
     }
   ],
   "plugin/passkey/POST /passkey/verify-authentication": [
@@ -2887,12 +2892,22 @@
     {
       "label": "Refuse an assertion whose signature counter did not advance",
       "test": "adapters/sqlstore/passkey_test.go",
-      "marker": "login(1, origin, 401)"
+      "marker": "login(1, origin, 400)"
     },
     {
       "label": "Refuse an assertion whose challenge has expired",
       "test": "adapters/sqlstore/passkey_test.go",
       "marker": "optsAuth[\"challenge\"]"
+    },
+    {
+      "label": "Refuse a verified sign-in that the application callback refuses, keeping the counter and issuing no session",
+      "test": "adapters/sqlstore/passkey_options_test.go",
+      "marker": "a refused sign-in saved its counter or issued a session"
+    },
+    {
+      "label": "Answer 401 for an assertion whose signature does not verify and 400 for another refused assertion, and 500 UNABLE_TO_CREATE_SESSION when a session hook skips the session, on three SQL engines",
+      "test": "adapters/sqlstore/passkey_errors_test.go",
+      "marker": "passkeyError(t, err, 401, \"AUTHENTICATION_FAILED\", \"Authentication failed\")"
     }
   ],
   "plugin/passkey/GET /passkey/list-user-passkeys": [
@@ -2911,12 +2926,17 @@
     {
       "label": "Rename an owned credential and refuse changes from another account",
       "test": "adapters/sqlstore/passkey_test.go",
-      "marker": "request(first, \"update-passkey\", mutation, 401, foreign)"
+      "marker": "request(first, \"update-passkey\", mutation, 404, foreign)"
     },
     {
       "label": "Return the renamed passkey under passkey in the update response",
       "test": "adapters/sqlstore/passkey_test.go",
       "marker": "t.Fatal(\"rename failed\")"
+    },
+    {
+      "label": "Answer 404 PASSKEY_NOT_FOUND alike for an unknown ID and another account's, and 401 UNAUTHORIZED without a session",
+      "test": "adapters/sqlstore/passkey_errors_test.go",
+      "marker": "if rows(\"owner\") != 1 {"
     }
   ],
   "plugin/passkey/POST /passkey/delete-passkey": [
@@ -2928,7 +2948,7 @@
     {
       "label": "Refuse to delete another account's passkey",
       "test": "adapters/sqlstore/passkey_test.go",
-      "marker": "request(first, \"delete-passkey\", mutation, 401, foreign)"
+      "marker": "request(first, \"delete-passkey\", mutation, 404, foreign)"
     }
   ],
   "docs/content/docs/plugins/passkey.mdx#L134": [
@@ -2986,7 +3006,7 @@
     {
       "label": "Refuse another account's request to delete a passkey by ID, then delete it for its owner",
       "test": "adapters/sqlstore/passkey_test.go",
-      "marker": "request(first, \"delete-passkey\", mutation, 401, foreign)",
+      "marker": "request(first, \"delete-passkey\", mutation, 404, foreign)",
       "complete": true
     }
   ],
@@ -2999,7 +3019,7 @@
     {
       "label": "Refuse another account's rename, and rename the owner's passkey, returning the new name",
       "test": "adapters/sqlstore/passkey_test.go",
-      "marker": "request(first, \"update-passkey\", mutation, 401, foreign)"
+      "marker": "request(first, \"update-passkey\", mutation, 404, foreign)"
     }
   ],
   "docs/content/docs/plugins/passkey.mdx#L381": [
@@ -3018,7 +3038,7 @@
     {
       "label": "Refuse a signed assertion whose client data names an origin outside the configured list",
       "test": "adapters/sqlstore/passkey_test.go",
-      "marker": "login(2, \"https://untrusted.example.test\", 401)"
+      "marker": "login(2, \"https://untrusted.example.test\", 400)"
     }
   ],
   "provider/facebook": [
@@ -9754,6 +9774,12 @@
       "label": "Accept a validated application enrollment context and a provisional user identity",
       "test": "adapters/sqlstore/passkey_first_test.go",
       "marker": "ID: \"pending\", Name: \"registration\""
+    },
+    {
+      "label": "Return the resolver's own error, refuse a resolved user without an ID or a name with RESOLVED_USER_INVALID and store no challenge, and skip the resolver for a signed-in caller, on three SQL engines",
+      "test": "adapters/sqlstore/passkey_errors_test.go",
+      "marker": "phoneError(t, err, 403, \"ENROLLMENT_REQUIRED\")",
+      "complete": true
     }
   ],
   "plugin-symbol/passkey/PasskeyRegistrationOptions/afterVerification": [
@@ -34145,7 +34171,7 @@
     {
       "label": "Refuse an assertion whose client data reports an origin outside the configured list",
       "test": "adapters/sqlstore/passkey_test.go",
-      "marker": "login(2, \"https://untrusted.example.test\", 401)"
+      "marker": "login(2, \"https://untrusted.example.test\", 400)"
     },
     {
       "label": "Refuse wildcard, foreign, insecure, path-bearing and credential-bearing origins when the plugin is built",
@@ -38878,6 +38904,124 @@
       "test": "adapters/sqlstore/passkey_options_test.go",
       "marker": "an unknown authenticator attachment was not refused",
       "complete": true
+    }
+  ],
+  "plugin-symbol/passkey/PasskeyExtensionsResolver": [
+    {
+      "label": "Run the resolver with each options request's endpoint context, and refuse the request with no challenge when it fails or returns an input that does not apply to the ceremony, on three SQL engines",
+      "test": "adapters/sqlstore/passkey_options_test.go",
+      "marker": "the extension resolvers did not see each options request",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/passkey/PasskeyRegistrationOptions/extensions": [
+    {
+      "label": "Merge the resolver's registration extensions with credProps, record them with the challenge so another instance enforces a required large blob, and accept client outputs the server did not request, on three SQL engines",
+      "test": "adapters/sqlstore/passkey_options_test.go",
+      "marker": "registration options lost the resolved extensions",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/passkey/PasskeyAuthenticationOptions/extensions": [
+    {
+      "label": "Add the sign-in extensions the resolver returns for each request, enforce a requested large blob read on another instance, and accept an output the request did not ask for, on three SQL engines",
+      "test": "adapters/sqlstore/passkey_options_test.go",
+      "marker": "a signed-out sign-in received the signed-in caller's extensions",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/passkey/PasskeyAuthenticationOptions/afterVerification": [
+    {
+      "label": "Pass each verified assertion, its stored passkey and the client's response to the callback before the counter is saved and the session is issued, outside any store transaction, on three SQL engines",
+      "test": "adapters/sqlstore/passkey_options_test.go",
+      "marker": "AfterVerification did not see the verified assertion before it was saved",
+      "complete": true
+    },
+    {
+      "label": "Refuse the sign-in with the callback's API error, or AUTHENTICATION_FAILED for any other error, keeping the counter and issuing no session",
+      "test": "adapters/sqlstore/passkey_options_test.go",
+      "marker": "a refused sign-in saved its counter or issued a session"
+    }
+  ],
+  "plugin-symbol/passkey/PasskeyOptions/authentication": [
+    {
+      "label": "Configure sign-in extensions and a post-verification callback for passkey sign-in on three SQL engines",
+      "test": "adapters/sqlstore/passkey_options_test.go",
+      "marker": "func TestPasskeyCeremonyOptionsAcrossEngines(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/passkey.mdx#L77": [
+    {
+      "label": "Add server-defined WebAuthn extensions, computed for each options request, to registration and sign-in options, accepting client extension outputs the server did not request, on three SQL engines",
+      "test": "adapters/sqlstore/passkey_options_test.go",
+      "marker": "an extension output the server did not request refused the registration"
+    }
+  ],
+  "docs/content/docs/plugins/passkey.mdx#L517/`webAuthnChallengeCookie`": [
+    {
+      "label": "Name the challenge cookie in the instance's cookie namespace, and complete registration and sign-in under the name the core cookie override sets",
+      "test": "adapters/sqlstore/passkey_options_test.go",
+      "marker": "func TestPasskeyChallengeCookieName(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/passkey/PasskeyOptions/advanced": [
+    {
+      "label": "Rename the challenge cookie through the core cookie override and complete both ceremonies under the new name",
+      "test": "adapters/sqlstore/passkey_options_test.go",
+      "marker": "the renamed challenge cookie did not complete sign-in",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/passkey.mdx#L515/advanced": [
+    {
+      "label": "Refuse a challenge presented under the default cookie name once the core cookie override renames it, and accept it under the new name",
+      "test": "adapters/sqlstore/passkey_options_test.go",
+      "marker": "the default cookie name redeemed a renamed challenge",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/passkey.mdx#L248": [
+    {
+      "label": "Store each authenticator's AAGUID at registration, pass it to the registration callback and return it from the passkey list, set a default label from it in the callback while a client-supplied name wins, and resolve a label when reading, on three SQL engines",
+      "test": "adapters/sqlstore/passkey_naming_test.go",
+      "marker": "func TestPasskeyAuthenticatorNamesAcrossEngines(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/passkey/commonAuthenticatorNames": [
+    {
+      "label": "List the 14 built-in authenticator names by lowercase AAGUID and hand out a copy that callers can extend without changing the lookup",
+      "test": "plugins/passkey/passkey_test.go",
+      "marker": "t.Fatal(\"extending a copy changed the built-in names\")",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/passkey/getAuthenticatorName": [
+    {
+      "label": "Resolve known authenticator AAGUIDs to provider names, ignoring case and surrounding spaces, and return no name for an unknown, empty or all-zero AAGUID",
+      "test": "plugins/passkey/passkey_test.go",
+      "marker": "func TestAuthenticatorName(",
+      "complete": true
+    },
+    {
+      "label": "Label a passkey registered without a name from its authenticator in the registration callback, on three SQL engines",
+      "test": "adapters/sqlstore/passkey_naming_test.go",
+      "marker": "return pk.RegistrationDecision{Name: pk.AuthenticatorName(proof.AAGUID)}, nil"
+    }
+  ],
+  "plugin-symbol/passkey/PASSKEY_ERROR_CODES": [
+    {
+      "label": "Answer every server passkey error with its status, code and message from the passkey endpoints, on three SQL engines",
+      "test": "adapters/sqlstore/passkey_errors_test.go",
+      "marker": "func TestPasskeyErrorCodesAcrossEngines(",
+      "complete": true
+    },
+    {
+      "label": "Refuse a configuration without browser origins when the plugin is built, so no request finds its origin unconfigured",
+      "test": "plugins/passkey/passkey_test.go",
+      "marker": "t.Fatal(\"a configuration without browser origins was accepted\")"
     }
   ]
 }

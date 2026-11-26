@@ -258,8 +258,8 @@ Each row tracks the behavior exposed by a published entry point. The Go implemen
 
 - [ ] Passkeys
   - [ ] Default interface (`.`)
-    - [x] List only credentials owned by the authenticated account ([test](../../adapters/sqlstore/passkey_test.go#L262))
-    - [x] List the signed-in owner's passkey with its stored signature counter ([test](../../adapters/sqlstore/passkey_test.go#L273))
+    - [x] List only credentials owned by the authenticated account ([test](../../adapters/sqlstore/passkey_test.go#L267))
+    - [x] List the signed-in owner's passkey with its stored signature counter ([test](../../adapters/sqlstore/passkey_test.go#L278))
   - [ ] Client integration (`./client`)
 
 ## Prisma adapter

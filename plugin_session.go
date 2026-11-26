@@ -32,9 +32,20 @@ func (c EndpointContext) RequireFreshSession() (*SessionResult, error) {
 // resulting session in one transaction. The callback must verify the current
 // proof owner and commit the provided session before returning its user.
 func (c EndpointContext) IssueSession(userID string, commit func(context.Context, StoredSession) (User, error)) (*SessionResult, error) {
+	return c.IssueSessionOr(errSessionSkipped(), userID, commit)
+}
+
+// IssueSessionOr is IssueSession for an endpoint that answers skipped,
+// instead of 401 FAILED_TO_CREATE_SESSION, when a session create before hook
+// skips the session.
+func (c EndpointContext) IssueSessionOr(skipped error, userID string, commit func(context.Context, StoredSession) (User, error)) (*SessionResult, error) {
 	r := c.Request
 	session, _ := c.Auth.newSession(userID, RequestMeta{IPAddress: c.Auth.clientIP(r), UserAgent: r.UserAgent()})
-	return c.commitIssuedSession(userID, session, nil, commit)
+	return c.commitIssuedSession(userID, session, nil, skipped, commit)
+}
+
+func errSessionSkipped() error {
+	return &APIError{401, "FAILED_TO_CREATE_SESSION", "Failed to create session"}
 }
 
 // IssueSessionWithFields applies trusted overrides before evaluating defaults,
@@ -46,12 +57,12 @@ func (c EndpointContext) IssueSessionWithFields(userID string, fields map[string
 	if err != nil {
 		return nil, err
 	}
-	return c.commitIssuedSession(userID, session, fields, commit)
+	return c.commitIssuedSession(userID, session, fields, errSessionSkipped(), commit)
 }
 
-func (c EndpointContext) commitIssuedSession(userID string, session StoredSession, fields map[string]any, commit func(context.Context, StoredSession) (User, error)) (*SessionResult, error) {
+func (c EndpointContext) commitIssuedSession(userID string, session StoredSession, fields map[string]any, skipped error, commit func(context.Context, StoredSession) (User, error)) (*SessionResult, error) {
 	a, r := c.Auth, c.Request
-	session, fields, err := a.beforeSessionCreate(r.Context(), session, fields, &APIError{401, "FAILED_TO_CREATE_SESSION", "Failed to create session"})
+	session, fields, err := a.beforeSessionCreate(r.Context(), session, fields, skipped)
 	if err != nil {
 		return nil, err
 	}

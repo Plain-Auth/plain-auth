@@ -176,7 +176,8 @@ Hooks never run inside a database transaction, so they may read and write throug
 | Email and username password sign-in | | Create | | 401 `FAILED_TO_CREATE_SESSION` |
 | `POST /sign-in/anonymous` | Create | Create | 500 `FAILED_TO_CREATE_USER` | 400 `COULD_NOT_CREATE_SESSION` |
 | `POST /change-password` with `revokeOtherSessions` | | Create | | 500 `FAILED_TO_GET_SESSION` |
-| Sessions plugins issue with `EndpointContext.IssueSession`, such as passkey and wallet sign-in | | Create | | 401 `FAILED_TO_CREATE_SESSION` |
+| `POST /passkey/verify-authentication`, and `POST /passkey/verify-registration` with `createSession` | | Create | | 500 `UNABLE_TO_CREATE_SESSION` |
+| Other sessions plugins issue with `EndpointContext.IssueSession`, such as wallet sign-in (`IssueSessionOr` names its own answer) | | Create | | 401 `FAILED_TO_CREATE_SESSION` |
 | `Auth.BootstrapAdmin` | Create | | an error | |
 | Browser social sign-in | Create | Create | redirect with `error=unable_to_create_user` | redirect with `error=unable_to_create_session` |
 | ID-token social sign-in | Create | Create | 401 `OAUTH_LINK_ERROR` | 401 `OAUTH_LINK_ERROR` |
