@@ -11224,6 +11224,11 @@
       "label": "Grant organization visibility to current administrators and remove it after demotion",
       "test": "adapters/sqlstore/sso_test.go",
       "marker": "func TestEnterpriseProviderManagement("
+    },
+    {
+      "label": "Report an unreadable stored SAML certificate in the summary instead of failing the read, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_defaults_test.go",
+      "marker": "t.Fatal(\"an unreadable certificate was not reported in the summary\""
     }
   ],
   "plugin/sso/GET /sso/get-provider": [
@@ -11236,6 +11241,11 @@
       "label": "Answer 404 for a providerId that differs only in case",
       "test": "adapters/sqlstore/sso_test.go",
       "marker": "check(call(one, single+\"CORP\", owner, nil), 404)"
+    },
+    {
+      "label": "Return callbackUrl, idpInitiatedCallbackUrl and each signing certificate's fingerprint, validity dates and key algorithm in a SAML summary, and report an unreadable certificate, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_defaults_test.go",
+      "marker": "t.Fatal(\"the SAML summary lacks its callback URLs or certificate details\""
     }
   ],
   "plugin-symbol/sso/SSOOptions/providersLimit": [

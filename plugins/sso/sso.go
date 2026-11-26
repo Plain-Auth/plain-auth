@@ -149,13 +149,17 @@ type PublicConfig struct {
 	Scopes                      []string `json:"scopes,omitempty"`
 }
 type PublicSAMLConfig struct {
-	EntryPoint           string `json:"entryPoint"`
-	Audience             string `json:"audience,omitempty"`
-	WantAssertionsSigned *bool  `json:"wantAssertionsSigned,omitempty"`
-	AuthnRequestsSigned  bool   `json:"authnRequestsSigned,omitempty"`
-	IdentifierFormat     string `json:"identifierFormat,omitempty"`
-	SignatureAlgorithm   string `json:"signatureAlgorithm,omitempty"`
-	DigestAlgorithm      string `json:"digestAlgorithm,omitempty"`
+	EntryPoint              string `json:"entryPoint"`
+	CallbackURL             string `json:"callbackUrl,omitempty"`
+	IDPInitiatedCallbackURL string `json:"idpInitiatedCallbackUrl,omitempty"`
+	Audience                string `json:"audience,omitempty"`
+	WantAssertionsSigned    *bool  `json:"wantAssertionsSigned,omitempty"`
+	AuthnRequestsSigned     bool   `json:"authnRequestsSigned,omitempty"`
+	IdentifierFormat        string `json:"identifierFormat,omitempty"`
+	SignatureAlgorithm      string `json:"signatureAlgorithm,omitempty"`
+	DigestAlgorithm         string `json:"digestAlgorithm,omitempty"`
+	// Certificate summarizes each configured signing certificate.
+	Certificate []SAMLCertificateInfo `json:"certificate,omitempty"`
 }
 
 type PublicProvider struct {
@@ -561,7 +565,7 @@ func sanitized(c auth.EndpointContext, p Provider) PublicProvider {
 	out := PublicProvider{ProviderID: p.ProviderID, Issuer: p.Issuer, Domain: p.Domain, OrganizationID: p.OrganizationID, Type: "oidc", SPMetadataURL: metadata}
 	if p.SAML != nil {
 		out.Type = "saml"
-		out.SAML = &PublicSAMLConfig{EntryPoint: p.SAML.EntryPoint, Audience: p.SAML.Audience, WantAssertionsSigned: p.SAML.WantAssertionsSigned, AuthnRequestsSigned: p.SAML.AuthnRequestsSigned, IdentifierFormat: p.SAML.IdentifierFormat, SignatureAlgorithm: p.SAML.SignatureAlgorithm, DigestAlgorithm: p.SAML.DigestAlgorithm}
+		out.SAML = &PublicSAMLConfig{EntryPoint: p.SAML.EntryPoint, CallbackURL: p.SAML.CallbackURL, IDPInitiatedCallbackURL: p.SAML.IDPInitiatedCallbackURL, Certificate: signingCertificates(p.SAML), Audience: p.SAML.Audience, WantAssertionsSigned: p.SAML.WantAssertionsSigned, AuthnRequestsSigned: p.SAML.AuthnRequestsSigned, IdentifierFormat: p.SAML.IdentifierFormat, SignatureAlgorithm: p.SAML.SignatureAlgorithm, DigestAlgorithm: p.SAML.DigestAlgorithm}
 	}
 	if cfg := p.OIDC; cfg != nil {
 		masked := "****"

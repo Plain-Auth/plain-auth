@@ -3,12 +3,15 @@ package sqlstore
 import (
 	"bytes"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/tls"
 	"encoding/json"
 	"encoding/xml"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -118,6 +121,34 @@ func TestEnterpriseSAMLDefaults(t *testing.T) {
 			}
 			if w := call("POST", "sso/register", owner, keyed("bound", func(cfg map[string]any) { cfg["spMetadata"].(map[string]any)["binding"] = saml.HTTPPostBinding })); w.Code != 200 {
 				t.Fatal("a registration with spMetadata.binding was refused", w.Code, w.Body.String())
+			}
+			// Summaries carry the callback URLs and each signing certificate.
+			if w := call("POST", "sso/register", owner, keyed("summary", func(cfg map[string]any) { cfg["callbackUrl"] = "/landing"; cfg["idpInitiatedCallbackUrl"] = "/portal" })); w.Code != 200 {
+				t.Fatal("a SAML registration with callback URLs was refused", w.Code, w.Body.String())
+			}
+			var summary struct {
+				SAML struct {
+					CallbackURL string              `json:"callbackUrl"`
+					Portal      string              `json:"idpInitiatedCallbackUrl"`
+					Certificate []map[string]string `json:"certificate"`
+				} `json:"samlConfig"`
+			}
+			got := call("GET", "sso/get-provider?providerId=summary", owner, nil)
+			must(json.Unmarshal(got.Body.Bytes(), &summary))
+			sum := sha256.Sum256(idpCert.Raw)
+			fingerprint := strings.ToUpper(strings.Join(strings.Split(fmt.Sprintf("% x", sum), " "), ":"))
+			const layout = "Jan _2 15:04:05 2006 GMT"
+			if got.Code != 200 || summary.SAML.CallbackURL != "/landing" || summary.SAML.Portal != "/portal" || len(summary.SAML.Certificate) != 1 ||
+				!reflect.DeepEqual(summary.SAML.Certificate[0], map[string]string{"fingerprintSha256": fingerprint, "notBefore": idpCert.NotBefore.UTC().Format(layout), "notAfter": idpCert.NotAfter.UTC().Format(layout), "publicKeyAlgorithm": "RSA"}) {
+				t.Fatal("the SAML summary lacks its callback URLs or certificate details", got.Code, got.Body.String())
+			}
+			// An unreadable stored certificate is reported, not fatal.
+			brokenCert, err := json.Marshal(keyed("broken-cert", func(cfg map[string]any) { cfg["cert"] = "not a certificate" })["samlConfig"])
+			must(err)
+			_, err = store.db.ExecContext(ctx, store.bind(`INSERT INTO "ssoProvider" ("id","providerId","issuer","samlConfig","domain","userId") VALUES (?,?,?,?,?,?)`), "record-broken-cert", "broken-cert", spIssuer, string(brokenCert), "broken-cert.example", ownerID)
+			must(err)
+			if w := call("GET", "sso/get-provider?providerId=broken-cert", owner, nil); w.Code != 200 || !strings.Contains(w.Body.String(), `"certificate":[{"error":"Failed to parse certificate"}]`) {
+				t.Fatal("an unreadable certificate was not reported in the summary", w.Code, w.Body.String())
 			}
 			// Oversized IdP metadata names the limit at registration and update.
 			const tooLarge = "IdP metadata exceeds maximum allowed size (102400 bytes)"
