@@ -12303,6 +12303,12 @@
       "label": "Rebuild a Group-mapped grant row with the same connection, domain, user, SCIM user, source and role values as the other runtime after Go reactivates the User",
       "test": "conformance/scim-contract.mjs",
       "marker": "assert.equal(restored[field],initial[field],field);"
+    },
+    {
+      "label": "Give the role mapper the source connection, domain, SCIM User, account and Group, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_projection_test.go",
+      "marker": "t.Fatal(\"the role mapper did not receive the source directory, identities and Group\", mappedA)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L468": [
@@ -12333,6 +12339,12 @@
       "label": "Roll back a Group replacement and the application's own writes when reconciliation fails",
       "test": "adapters/sqlstore/scim_projection_test.go",
       "marker": "call(two, \"PUT\", \"Groups/\"+a, \"north\", group(\"failed change\", \"directory-editors\", n), 500)"
+    },
+    {
+      "label": "Carry a renamed Group's new name and externalId on its grant, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_projection_test.go",
+      "marker": "t.Fatal(\"a renamed Group's grant did not carry its new name\", lastUser.Grants)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L484": [
@@ -43822,6 +43834,11 @@
       "label": "Keep the remaining active source's role after another source is deactivated and restore the role on reprovisioning",
       "test": "adapters/sqlstore/scim_projection_test.go",
       "marker": "call(two, \"PATCH\", \"Users/\"+n, \"north\", change(\"replace\", \"active\", false), 200)"
+    },
+    {
+      "label": "Project the account active while another source in the domain stays active, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_projection_test.go",
+      "marker": "t.Fatal(\"the account was projected inactive while another source stays active\", lastUser)"
     }
   ],
   "docs/content/docs/plugins/scim/groups-and-roles.mdx#L104": [
@@ -46838,6 +46855,22 @@
       "label": "Accept a code-defined token, a managed token and its rotation on one handler, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/scim_managed_contract_test.go",
       "marker": "t.Fatal(\"a token was refused beside the others\"",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/groups-and-roles.mdx#L97/`sources`": [
+    {
+      "label": "Pass every linked source of the domain, sorted, with its connection and active state, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_projection_test.go",
+      "marker": "t.Fatal(\"a deactivated source was not passed inactive beside the active one\", sources)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/groups-and-roles.mdx#L98/`grants`": [
+    {
+      "label": "Pass validated grants with their Group and source User and without unknown roles, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_projection_test.go",
+      "marker": "t.Fatal(\"a reconciled grant lost its source User or kept an unknown role\", g)",
       "complete": true
     }
   ]

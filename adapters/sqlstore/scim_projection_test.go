@@ -258,6 +258,9 @@ func TestSCIMGroupApplicationProjection(t *testing.T) {
 				if want := map[string]string{a: "north team", b: "south team"}[g.Group.ID]; want == "" || g.Group.DisplayName != want || g.Group.ExternalID != "directory-readers" {
 					t.Fatal("a reconciled grant did not carry its Group", g.Group)
 				}
+				if g.SCIMUserID != map[string]string{a: n, b: s}[g.Group.ID] || g.Role != "reader" {
+					t.Fatal("a reconciled grant lost its source User or kept an unknown role", g)
+				}
 			}
 			seenMu.Unlock()
 			second, e := peer.EnableSCIMProjection(ctx, domain, policy)
@@ -299,6 +302,13 @@ func TestSCIMGroupApplicationProjection(t *testing.T) {
 			fail.Store(0)
 			call(one, "PUT", "Groups/"+a, "north", group("changed", "directory-editors", n), 200)
 			expect(1, 1)
+			seenMu.Lock()
+			if !slices.ContainsFunc(lastUser.Grants, func(g scim.ProjectedGrant) bool {
+				return g.Group.ID == a && g.Group.DisplayName == "changed" && g.Group.ExternalID == "directory-editors" && g.Role == "editor"
+			}) {
+				t.Fatal("a renamed Group's grant did not carry its new name", lastUser.Grants)
+			}
+			seenMu.Unlock()
 			before := calls.Load()
 			call(two, "PATCH", "Groups/"+a, "north", change("add", "members", []map[string]string{{"value": n}}), 200)
 			if calls.Load() != before {
@@ -308,6 +318,9 @@ func TestSCIMGroupApplicationProjection(t *testing.T) {
 			expect(1, 0)
 			seenMu.Lock()
 			sources := lastUser.Sources
+			if !lastUser.Active {
+				t.Fatal("the account was projected inactive while another source stays active", lastUser)
+			}
 			if lastUser.ProvisioningDomainID != domain || lastUser.UserID != owner || len(sources) != 2 || !slices.IsSortedFunc(sources, func(x, y scim.IdentitySource) int { return strings.Compare(x.SCIMUserID, y.SCIMUserID) }) {
 				t.Fatal("the reconciler did not receive the domain's sorted sources", lastUser)
 			}
