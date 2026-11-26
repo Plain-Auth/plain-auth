@@ -371,6 +371,7 @@
       - [ ] A key in a PATCH value that merges into the stored value: a pathless value, `name`, the Enterprise extension, `manager`, or a filtered value such as `addresses[type eq "work"]`
         - [x] Remove null name and pathless keys after the operation's other keys apply, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L578))
         - [x] Expand null keys of name, wrapped and pathless values into ordered removals and drop nulls in whole email entries ([test](../../../plugins/scim/http_test.go#L318))
+        - [x] Merge a filtered address value and remove its null keys, and leave an unmatched filter that only clears fields alone ([test](../../../adapters/sqlstore/scim_attributes_test.go#L705))
       - [ ] A subattribute of a value in a PATCH that adds or replaces whole values, such as `emails` or `addresses`
         - [x] Drop null subattributes in whole emails and roles PATCH values ([test](../../../adapters/sqlstore/scim_attributes_test.go#L260))
     - [ ] Microsoft Entra Group compatibility
@@ -456,6 +457,7 @@
     - [ ] User PATCH paths
       - [x] Answer a pathless remove with noTarget and writes to id, schemas or meta with mutability ([test](../../../adapters/sqlstore/scim_attributes_test.go#L338))
       - [x] Answer invalidPath for an unsupported email path and invalidValue for removing an email value path ([test](../../../adapters/sqlstore/scim_attributes_test.go#L536))
+      - [x] Answer invalidPath for an unsupported address filter or subattribute ([test](../../../adapters/sqlstore/scim_attributes_test.go#L724))
       - [x] `userName` ([test](../../../adapters/sqlstore/scim_attributes_test.go#L438))
         - [x] Replace userName through PATCH and refuse an empty value or a removal ([test](../../../adapters/sqlstore/scim_attributes_test.go#L222))
         - [x] Unwrap a one-element userName array ([test](../../../adapters/sqlstore/scim_attributes_test.go#L438))
@@ -480,7 +482,10 @@
         - [x] Append a non-primary email when a type selector matches nothing ([test](../../../adapters/sqlstore/scim_attributes_test.go#L518))
       - [ ] `title`, `userType`, `preferredLanguage`, `locale`, `timezone`
         - [x] Replace title and locale through concurrent PATCH requests on two servers without losing either ([test](../../../adapters/sqlstore/scim_test.go#L193))
-      - [ ] `phoneNumbers`, `addresses`, `roles`, `entitlements`, their subattributes and type paths
+      - [x] `phoneNumbers`, `addresses`, `roles`, `entitlements`, their subattributes and type paths ([test](../../../adapters/sqlstore/scim_attributes_test.go#L666))
+        - [x] Add, select, merge, create on a miss and remove phone numbers, addresses and entitlements through the role paths, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L666))
+        - [x] Demote the stored primary phone number when an added one is primary ([test](../../../adapters/sqlstore/scim_attributes_test.go#L688))
+        - [x] Create a type-stamped address when a subattribute selector matches nothing ([test](../../../adapters/sqlstore/scim_attributes_test.go#L696))
       - [ ] `enterpriseUrn` and its writable subattributes
       - [ ] `manager`, `manager.value`, `manager.$ref`
     - [ ] Group PATCH paths

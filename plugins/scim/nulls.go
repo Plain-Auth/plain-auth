@@ -38,7 +38,10 @@ func userNullTarget(path string) (nullKind, string) {
 		return nullInvalid, ""
 	case strings.EqualFold(relative, "name"):
 		return nullMerge, strings.TrimSpace(path) + "."
-	case strings.EqualFold(relative, "emails"), strings.EqualFold(relative, "roles"):
+	case strings.EqualFold(relative, "emails"):
+		return nullEntries, ""
+	}
+	if _, ok := multiValuedNamed(relative); ok {
 		return nullEntries, ""
 	}
 	return nullRemove, ""

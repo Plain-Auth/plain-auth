@@ -45306,6 +45306,11 @@
       "label": "Answer invalidPath for an unsupported email path and invalidValue for removing an email value path",
       "test": "adapters/sqlstore/scim_attributes_test.go",
       "marker": "t.Fatal(\"an unsupported email path was not invalidPath\", body)"
+    },
+    {
+      "label": "Answer invalidPath for an unsupported address filter or subattribute",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "t.Fatal(\"an unsupported address filter was not invalidPath\", body)"
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L554": [
@@ -45400,6 +45405,11 @@
       "label": "Expand null keys of name, wrapped and pathless values into ordered removals and drop nulls in whole email entries",
       "test": "plugins/scim/http_test.go",
       "marker": "t.Fatal(\"null PATCH values did not expand into ordered removals\", ops, err)"
+    },
+    {
+      "label": "Merge a filtered address value and remove its null keys, and leave an unmatched filter that only clears fields alone",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "t.Fatal(\"a selected address kept a null subattribute\", got[\"addresses\"])"
     }
   ],
   "plugin-symbol/scim/SCIMCanonicalAddress": [
@@ -45452,6 +45462,24 @@
       "label": "Drop the multi-valued attributes a PUT omits",
       "test": "adapters/sqlstore/scim_attributes_test.go",
       "marker": "t.Fatal(\"PUT kept addresses it omitted\", got)"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L381/`phoneNumbers`, `addresses`, `roles`, `entitlements`, their subattributes and type paths": [
+    {
+      "label": "Add, select, merge, create on a miss and remove phone numbers, addresses and entitlements through the role paths, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "func TestSCIMUserMultiValuedPatchOverHTTP(",
+      "complete": true
+    },
+    {
+      "label": "Demote the stored primary phone number when an added one is primary",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "t.Fatal(\"adding a primary phone number did not demote the previous primary\", got[\"phoneNumbers\"])"
+    },
+    {
+      "label": "Create a type-stamped address when a subattribute selector matches nothing",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "t.Fatal(\"an address filter miss did not create the entry\", got[\"addresses\"])"
     }
   ]
 }

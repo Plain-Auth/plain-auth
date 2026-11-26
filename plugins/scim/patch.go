@@ -115,8 +115,8 @@ func patchValue(m map[string]any, path, op string, value any) error {
 	if readOnlyUserPath(strings.TrimSpace(path)) {
 		return invalid("mutability", "The targeted User attribute is read-only")
 	}
-	if isRolePath(path) {
-		return patchRole(m, path, op, value)
+	if a, ok := multiValuedPathName(path); ok {
+		return patchMultiValued(m, a, path, op, value)
 	}
 	if isEmailPath(path) {
 		return patchEmails(m, strings.TrimSpace(path), op, value)

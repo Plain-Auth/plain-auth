@@ -17,24 +17,27 @@ func roleType(s string) string { return cases.Lower(language.Und).String(jsjson.
 
 // A path can select all entries, a defined type or an explicitly stored
 // primary flag. The same selectors can address a whole entry or one field.
-var rolePath = regexp.MustCompile(`(?i)^roles(?:\s*\[\s*(?:type\s+eq\s+"([^"]+)"|primary\s+eq\s+(true|false|"true"|"false"))\s*\])?(?:\s*\.\s*([a-z]+))?$`)
+var multiValuedPath = regexp.MustCompile(`(?i)^(?:phoneNumbers|addresses|roles|entitlements)(?:\s*\[\s*(?:type\s+eq\s+"([^"]+)"|primary\s+eq\s+(true|false|"true"|"false"))\s*\])?(?:\s*\.\s*([a-z]+))?$`)
 
-func isRolePath(path string) bool {
+// multiValuedPathName finds the multi-valued attribute a PATCH path
+// addresses; emails keep their own paths.
+func multiValuedPathName(path string) (multiValued, bool) {
 	name, _, _ := strings.Cut(path, "[")
 	name, _, _ = strings.Cut(name, ".")
-	return strings.EqualFold(strings.TrimSpace(name), "roles")
+	return multiValuedNamed(name)
 }
 
-func roleObject(raw any) (map[string]any, error) {
+// object reads one PATCH entry, keeping null fields so a merge can clear them.
+func (a multiValued) object(raw any) (map[string]any, error) {
 	input, ok := raw.(map[string]any)
 	if !ok {
-		return nil, invalid("invalidValue", "roles must contain objects")
+		return nil, invalid("invalidValue", a.name+" must contain objects")
 	}
 	item := map[string]any{}
 	for name, v := range input {
-		if k := field(name, roleFields); k != "" {
+		if k := field(name, a.fields); k != "" {
 			if _, duplicate := item[k]; duplicate {
-				return nil, invalid("invalidSyntax", "Duplicate role attribute "+k)
+				return nil, invalid("invalidSyntax", "Duplicate "+a.name+" attribute "+k)
 			}
 			if k == "primary" && v != nil {
 				if b, e := boolValue(v); e == nil {
@@ -47,14 +50,14 @@ func roleObject(raw any) (map[string]any, error) {
 	return item, nil
 }
 
-func roleAdditions(value any) ([]map[string]any, error) {
+func (a multiValued) additions(value any) ([]map[string]any, error) {
 	values, ok := value.([]any)
 	if !ok {
 		values = []any{value}
 	}
 	items := make([]map[string]any, 0, len(values))
 	for _, v := range values {
-		item, e := roleObject(v)
+		item, e := a.object(v)
 		if e != nil {
 			return nil, e
 		}
@@ -63,11 +66,13 @@ func roleAdditions(value any) ([]map[string]any, error) {
 	return items, nil
 }
 
-type roleSelection struct {
+type selection struct {
 	kind, primary, sub string
 }
 
-func (s roleSelection) matches(row map[string]any) bool {
+func (s selection) whole() bool { return s == selection{} }
+
+func (s selection) matches(row map[string]any) bool {
 	if s.primary != "" {
 		return row["primary"] == (s.primary == "true")
 	}
@@ -78,7 +83,7 @@ func (s roleSelection) matches(row map[string]any) bool {
 	return true
 }
 
-func (s roleSelection) additions(value any) ([]map[string]any, error) {
+func (s selection) additions(a multiValued, value any) ([]map[string]any, error) {
 	if s.sub != "" {
 		if s.sub == "primary" {
 			if b, e := boolValue(value); e == nil {
@@ -87,10 +92,10 @@ func (s roleSelection) additions(value any) ([]map[string]any, error) {
 		}
 		return []map[string]any{{s.sub: value}}, nil
 	}
-	return roleAdditions(value)
+	return a.additions(value)
 }
 
-func (s roleSelection) assignSelector(item map[string]any) {
+func (s selection) assignSelector(item map[string]any) {
 	if s.kind != "" && s.sub != "type" {
 		item["type"] = s.kind
 	}
@@ -101,7 +106,7 @@ func (s roleSelection) assignSelector(item map[string]any) {
 
 // Give an explicitly assigned primary entry priority over other entries in a
 // PATCH. POST and PUT validate the submitted collection without this step.
-func storePatchedRoles(m map[string]any, rows []map[string]any, primary int) {
+func storePatched(m map[string]any, name string, rows []map[string]any, primary int) {
 	result := make([]any, 0, len(rows))
 	for i, row := range rows {
 		if primary >= 0 && i != primary && row["primary"] == true {
@@ -109,23 +114,28 @@ func storePatchedRoles(m map[string]any, rows []map[string]any, primary int) {
 		}
 		result = append(result, row)
 	}
-	m["roles"] = result
+	m[name] = result
 }
 
-func patchRole(m map[string]any, path, op string, value any) error {
-	parts := rolePath.FindStringSubmatch(path)
+// patchMultiValued applies a PATCH to a multi-valued attribute: a whole add
+// appends and a whole replace replaces; a selector merges one complex value
+// into its matches; a miss creates a selector-stamped entry unless the
+// change only clears fields; an unmatched remove does nothing; an assigned
+// primary demotes the others.
+func patchMultiValued(m map[string]any, a multiValued, path, op string, value any) error {
+	parts := multiValuedPath.FindStringSubmatch(path)
 	if parts == nil {
-		return invalid("invalidPath", "Unsupported role path")
+		return invalid("invalidPath", "Unsupported "+a.name+" path")
 	}
-	selected := roleSelection{kind: roleType(parts[1]), primary: strings.Trim(strings.ToLower(parts[2]), "\""), sub: field(parts[3], roleFields)}
+	selected := selection{kind: roleType(parts[1]), primary: strings.Trim(strings.ToLower(parts[2]), "\""), sub: field(parts[3], a.fields)}
 	if parts[3] != "" && selected.sub == "" {
-		return invalid("invalidPath", "Unknown role subattribute")
+		return invalid("invalidPath", "Unknown "+a.name+" subattribute")
 	}
-	current, _ := m["roles"].([]any)
+	current, _ := m[a.name].([]any)
 	rows := make([]map[string]any, 0, len(current))
 	var indexes []int
 	for i, raw := range current {
-		item, err := roleObject(raw)
+		item, err := a.object(raw)
 		if err != nil {
 			return err
 		}
@@ -134,10 +144,10 @@ func patchRole(m map[string]any, path, op string, value any) error {
 			indexes = append(indexes, i)
 		}
 	}
-	whole := selected == (roleSelection{})
+	whole := selected.whole()
 	if op == "remove" {
 		if whole {
-			delete(m, "roles")
+			delete(m, a.name)
 			return nil
 		}
 		if len(indexes) == 0 {
@@ -150,14 +160,14 @@ func patchRole(m map[string]any, path, op string, value any) error {
 		} else {
 			rows = slices.DeleteFunc(rows, selected.matches)
 			if len(rows) == 0 {
-				delete(m, "roles")
+				delete(m, a.name)
 				return nil
 			}
 		}
-		storePatchedRoles(m, rows, -1)
+		storePatched(m, a.name, rows, -1)
 		return nil
 	}
-	additions, err := selected.additions(value)
+	additions, err := selected.additions(a, value)
 	if err != nil {
 		return err
 	}
@@ -188,7 +198,7 @@ func patchRole(m map[string]any, path, op string, value any) error {
 		}
 	} else {
 		if len(additions) != 1 {
-			return invalid("invalidValue", "Selected roles require one complex value")
+			return invalid("invalidValue", "Selected "+a.name+" require one complex value")
 		}
 		replacement := additions[0]
 		if replacement["primary"] == true {
@@ -198,6 +208,6 @@ func patchRole(m map[string]any, path, op string, value any) error {
 			maps.Copy(rows[i], replacement)
 		}
 	}
-	storePatchedRoles(m, rows, primary)
+	storePatched(m, a.name, rows, primary)
 	return nil
 }

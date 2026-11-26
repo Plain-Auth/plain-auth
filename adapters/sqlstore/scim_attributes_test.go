@@ -660,3 +660,72 @@ func TestSCIMUserMultiValuedOverHTTP(t *testing.T) {
 		})
 	}
 }
+
+// phoneNumbers, addresses and entitlements take the role PATCH paths: whole
+// values, subattributes and exact type or primary selectors.
+func TestSCIMUserMultiValuedPatchOverHTTP(t *testing.T) {
+	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
+		t.Run(dialect, func(t *testing.T) {
+			_, call := attributeDirectory(t, dialect)
+			created := call("POST", "Users", map[string]any{"schemas": []string{scim.UserSchema}, "userName": "patch@example.test",
+				"addresses":    []any{map[string]any{"type": "home", "locality": "Bath", "region": "Somerset"}},
+				"entitlements": []any{map[string]any{"value": "e1", "primary": true}}}, 201, "the User was refused")
+			id := created["id"].(string)
+			patch := func(status int, failure string, ops ...any) map[string]any {
+				t.Helper()
+				return call("PATCH", "Users/"+id, map[string]any{"schemas": []string{scim.PatchSchema}, "Operations": ops}, status, failure)
+			}
+			op := func(o, path string, value any) map[string]any {
+				m := map[string]any{"op": o, "path": path}
+				if value != nil {
+					m["value"] = value
+				}
+				return m
+			}
+			patch(200, "adding a phone number failed", op("add", "phoneNumbers", []any{map[string]any{"value": "+1 555 0100", "type": "work", "primary": true}}))
+			got := patch(200, "adding a second phone number failed", op("add", "phoneNumbers", map[string]any{"value": "+1 555 0101", "type": "mobile", "primary": true}))
+			if !jsonEqual(got["phoneNumbers"], []any{map[string]any{"value": "+1 555 0100", "type": "work", "primary": false}, map[string]any{"value": "+1 555 0101", "type": "mobile", "primary": true}}) {
+				t.Fatal("adding a primary phone number did not demote the previous primary", got["phoneNumbers"])
+			}
+			got = patch(200, "the work phone selector failed", op("replace", `phoneNumbers[type eq "work"].value`, "+1 555 0102"))
+			if got["phoneNumbers"].([]any)[0].(map[string]any)["value"] != "+1 555 0102" {
+				t.Fatal("the work phone selector did not replace its value", got["phoneNumbers"])
+			}
+			got = patch(200, "an address filter miss failed", op("replace", `addresses[type eq "office"].locality`, "Bristol"))
+			if !jsonEqual(got["addresses"], []any{map[string]any{"type": "home", "locality": "Bath", "region": "Somerset"}, map[string]any{"type": "office", "locality": "Bristol"}}) {
+				t.Fatal("an address filter miss did not create the entry", got["addresses"])
+			}
+			before := got["addresses"]
+			got = patch(200, "clearing a field on an unmatched address failed", op("replace", `addresses[type eq "work"]`, map[string]any{"country": nil}))
+			if !jsonEqual(got["addresses"], before) {
+				t.Fatal("clearing a field on an unmatched address created it", got["addresses"])
+			}
+			got = patch(200, "merging a selected address failed", op("replace", `addresses[type eq "home"]`, map[string]any{"locality": "Wells", "region": nil}))
+			if !jsonEqual(got["addresses"].([]any)[0], map[string]any{"type": "home", "locality": "Wells"}) {
+				t.Fatal("a selected address kept a null subattribute", got["addresses"])
+			}
+			got = patch(200, "a primary entitlement selector failed", op("replace", "entitlements[primary eq true].display", "Main"))
+			if !jsonEqual(got["entitlements"], []any{map[string]any{"value": "e1", "primary": true, "display": "Main"}}) {
+				t.Fatal("a primary entitlement selector did not merge its display", got["entitlements"])
+			}
+			patch(200, "removing an unmatched entitlement selector failed", op("remove", `entitlements[type eq "absent"]`, nil))
+			got = patch(200, "a null whole entitlements entry failed", op("replace", "entitlements", []any{map[string]any{"value": "e2", "display": nil}}))
+			if !jsonEqual(got["entitlements"], []any{map[string]any{"value": "e2"}}) {
+				t.Fatal("a null subattribute in whole entitlements was stored", got["entitlements"])
+			}
+			got = patch(200, "removing phoneNumbers failed", op("remove", "phoneNumbers", nil))
+			if _, has := got["phoneNumbers"]; has {
+				t.Fatal("removing phoneNumbers kept them", got["phoneNumbers"])
+			}
+			if read := call("GET", "Users/"+id, nil, 200, "the patched User could not be read"); !jsonEqual(read["addresses"], got["addresses"]) || read["phoneNumbers"] != nil {
+				t.Fatal("the multi-valued PATCH answered values it did not store", read)
+			}
+			if body := patch(400, "an unsupported address filter was accepted", op("replace", `addresses[value eq "x"]`, map[string]any{"locality": "x"})); body["scimType"] != "invalidPath" {
+				t.Fatal("an unsupported address filter was not invalidPath", body)
+			}
+			if body := patch(400, "an unknown address subattribute was accepted", op("replace", "addresses.value", "x")); body["scimType"] != "invalidPath" {
+				t.Fatal("an unknown address subattribute was not invalidPath", body)
+			}
+		})
+	}
+}

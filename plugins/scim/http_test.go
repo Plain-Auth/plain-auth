@@ -265,7 +265,7 @@ func TestSCIMCaseDuplicateAttributesAreInvalidSyntax(t *testing.T) {
 	if _, err := normalize(map[string]any{"schemas": []any{UserSchema}, "userName": "a@example.test", "active": true, "Active": nil}); !syntax(err) {
 		t.Fatal("a case-duplicate null attribute was not invalidSyntax", err)
 	}
-	if _, err := roleObject(map[string]any{"value": "a", "Value": "b"}); !syntax(err) {
+	if _, err := roleAttribute.object(map[string]any{"value": "a", "Value": "b"}); !syntax(err) {
 		t.Fatal("a case-duplicate role attribute was not invalidSyntax", err)
 	}
 	current := Record{Profile: Profile{UserName: "a@example.test", PrimaryEmail: "a@example.test", Active: true, Attributes: map[string]any{"schemas": []any{UserSchema}, "name": map[string]any{}, "emails": []any{map[string]any{"value": "a@example.test", "primary": true}}}}}
