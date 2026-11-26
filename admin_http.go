@@ -60,6 +60,15 @@ func (a *Auth) adminUpdateFields(ctx context.Context, actor *User, u *User, req 
 			}
 		}
 	}
+	// Refusals and grants are checked in a fixed order before any value is
+	// read, so a request with several fields gets the same answer every
+	// time: password and id, then the role, ban and email grants.
+	if _, ok := req.Data["password"]; ok {
+		return adminError(400, "PASSWORD_CANNOT_BE_UPDATED_VIA_UPDATE_USER", "Password cannot be updated through update-user. Use the set-user-password endpoint instead")
+	}
+	if _, ok := req.Data["id"]; ok {
+		return adminError(400, "USER_ID_CANNOT_BE_UPDATED", "User id cannot be updated")
+	}
 	roleValue, roleInData := req.Data["role"]
 	if req.Role != nil || roleInData {
 		// Check the grant before the value, so a caller without
@@ -88,6 +97,24 @@ func (a *Auth) adminUpdateFields(ctx context.Context, actor *User, u *User, req 
 			}
 		}
 		u.Role = strings.Join(role, ",")
+	}
+	_, banned := req.Data["banned"]
+	_, banReason := req.Data["banReason"]
+	_, banExpires := req.Data["banExpires"]
+	if banned || banReason || banExpires {
+		if err := a.requireAdminFieldGrant(actor, "ban-user"); err != nil {
+			return err
+		}
+		if value, ok := req.Data["banned"].(bool); ok && value && actor != nil && actor.ID == u.ID {
+			return adminError(400, "YOU_CANNOT_BAN_YOURSELF", "You cannot ban yourself")
+		}
+	}
+	_, email := req.Data["email"]
+	_, verified := req.Data["emailVerified"]
+	if email && !creating || verified {
+		if err := a.requireAdminFieldGrant(actor, "set-email"); err != nil {
+			return err
+		}
 	}
 	for key, v := range req.Data {
 		switch key {
@@ -284,9 +311,15 @@ func (a *Auth) adminHTTP(c EndpointContext, name string) (any, error) {
 			req.BanDuration = time.Duration(n * float64(time.Second))
 		}
 	case "has-permission":
-		// One presence check refuses a missing or singular permission set
-		// with VALIDATION_ERROR.
+		// A singular permission key answers a code-less 400, as another
+		// runtime does; any other missing permission set is a
+		// VALIDATION_ERROR.
 		raw, ok := b["permissions"].(map[string]any)
+		if _, single := b["permission"]; !ok && single {
+			if _, both := b["permissions"]; !both {
+				return nil, &APIError{Status: 400, Message: "invalid permission check. no permission(s) were passed."}
+			}
+		}
 		if !ok {
 			return nil, validationError("Permissions are required")
 		}

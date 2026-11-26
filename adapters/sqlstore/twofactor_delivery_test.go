@@ -191,8 +191,13 @@ func TestAuthenticatorAndBackupSettings(t *testing.T) {
 		if u.Query().Get("digits") != "8" || u.Query().Get("period") != "45" || u.Query().Get("issuer") != "Fixture" {
 			t.Fatal("custom authenticator parameters were omitted")
 		}
-		if len(info.BackupCodes) != 4 || len(info.BackupCodes[0]) != 13 || info.BackupCodes[0][5] != '-' {
+		if len(info.BackupCodes) != 4 {
 			t.Fatal("custom backup code amount or length was ignored")
+		}
+		for _, c := range info.BackupCodes {
+			if len(c) != 13 || c[5] != '-' {
+				t.Fatal("a custom-length backup code is not twelve characters split by a hyphen", c)
+			}
 		}
 		view, err := h.second.ViewBackupCodes(ctx, reg.User.ID)
 		if err != nil || len(view) != 4 || view[0] != info.BackupCodes[0] {
@@ -272,6 +277,11 @@ func TestAuthenticatorAndBackupSettings(t *testing.T) {
 		items, err := service.ViewBackupCodes(ctx, id)
 		if err != nil || len(items) != 2 || items[1] != "other-code" {
 			t.Fatal("custom backup-code codec did not round trip", err)
+		}
+		var sealed string
+		plainCodes, _ := json.Marshal([]string{"unique-code", "other-code"})
+		if err = h.store.db.QueryRowContext(ctx, h.store.bind(`SELECT "backupCodes" FROM "twoFactor" WHERE "userId"=?`), id).Scan(&sealed); err != nil || sealed != base64.StdEncoding.EncodeToString(plainCodes) {
+			t.Fatal("custom backup-code cipher was not used for storage", sealed, err)
 		}
 		off := false
 		cfg.TOTP.AllowPasswordless = &off

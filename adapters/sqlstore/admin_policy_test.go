@@ -193,6 +193,15 @@ func TestAdminRefusalsAndDefaultsAcrossEngines(t *testing.T) {
 			expect(err, 400, "INVALID_ROLE_TYPE")
 			_, err = chief.AdminUpdateUser(ctx, chiefUser.ID, map[string]any{"banned": true})
 			expect(err, 400, "YOU_CANNOT_BAN_YOURSELF")
+			// Several fields at once get the same answer every time.
+			for range 5 {
+				_, err = editor.AdminUpdateUser(ctx, plain.ID, map[string]any{"name": "", "banned": true, "email": "not-an-email"})
+				expect(err, 403, "YOU_ARE_NOT_ALLOWED_TO_BAN_USERS")
+				_, err = chief.AdminUpdateUser(ctx, plain.ID, map[string]any{"password": "x", "banned": true, "id": "other"})
+				expect(err, 400, "PASSWORD_CANNOT_BE_UPDATED_VIA_UPDATE_USER")
+				_, err = editor.AdminUpdateUser(ctx, plain.ID, map[string]any{"email": "not-an-email", "role": 7})
+				expect(err, 403, "YOU_ARE_NOT_ALLOWED_TO_CHANGE_USERS_ROLE")
+			}
 			_, err = chief.AdminUpdateUser(ctx, plain.ID, map[string]any{"email": editorAccount.Email})
 			expect(err, 400, "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL")
 			_, err = chief.AdminUpdateUser(ctx, plain.ID, map[string]any{"email": "not-an-email"})
@@ -312,7 +321,7 @@ func TestAdminRefusalsAndDefaultsAcrossEngines(t *testing.T) {
 			// A permission check needs a permission set and a session.
 			expect(guest.Do(ctx, http.MethodPost, "/admin/has-permission", map[string]any{}, nil), 400, "VALIDATION_ERROR")
 			var single *authn.APIError
-			if !errors.As(chief.Do(ctx, http.MethodPost, "/admin/has-permission", map[string]any{"permission": map[string][]string{"user": {"get"}}}, nil), &single) || single.Status != 400 {
+			if !errors.As(chief.Do(ctx, http.MethodPost, "/admin/has-permission", map[string]any{"permission": map[string][]string{"user": {"get"}}}, nil), &single) || single.Status != 400 || single.Code != "" || single.Message != "invalid permission check. no permission(s) were passed." {
 				t.Fatal("a singular permission key was not refused", single)
 			}
 			_, err = guest.AdminHasPermission(ctx, authn.AdminPermissions{"user": {"get"}})

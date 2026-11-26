@@ -134,7 +134,7 @@ func TestDeviceAuthorizationFlow(t *testing.T) {
 				t.Fatalf("OnDeviceAuthRequest got %q, want the accepted client and scope of each accepted code request", requested)
 			}
 			// Malformed token requests are refused before the client check and leave the polling timer alone.
-			for _, body := range []url.Values{{"device_code": {d}, "client_id": {"tv"}}, {"grant_type": {"authorization_code"}, "device_code": {d}, "client_id": {"invalid"}}, {"grant_type": {authn.DeviceGrantType}, "client_id": {"tv"}}} {
+			for _, body := range []url.Values{{"device_code": {d}, "client_id": {"invalid"}}, {"grant_type": {"authorization_code"}, "device_code": {d}, "client_id": {"invalid"}}, {"grant_type": {authn.DeviceGrantType}, "client_id": {"invalid"}}} {
 				refuse(send(first, "POST", "/device/token", body.Encode(), form, nil), 400, "invalid_request", "A device code and device grant type are required")
 			}
 			refuse(send(first, "POST", "/device/token", url.Values{"grant_type": {authn.DeviceGrantType}, "device_code": {d}}.Encode(), form, nil), 400, "invalid_request", "client_id is required")

@@ -39598,15 +39598,15 @@
   ],
   "docs/content/docs/plugins/admin.mdx#L588/Has Permission": [
     {
-      "label": "Check two resources that both carry actions in one request, and fail when one of them names an action the role lacks",
+      "label": "Check the caller's session against two resources that both carry actions in one request, and fail when one of them names an action the role lacks",
       "test": "adapters/sqlstore/admin_policy_test.go",
-      "marker": "a check with an undefined action on one resource passed"
+      "marker": "a check with an undefined action on one resource passed",
+      "complete": true
     },
     {
-      "label": "Check a stored user's grants by id from server code without a session, reading the account's current role",
+      "label": "Check a stored user's grants by user ID from server code without a session, reading the account's current role",
       "test": "adapters/sqlstore/admin_banned_message_test.go",
-      "marker": "the server check used a stale role",
-      "complete": true
+      "marker": "the server check used a stale role"
     }
   ],
   "docs/content/docs/plugins/admin.mdx#L607/Parameter `permission` (optional)": [
