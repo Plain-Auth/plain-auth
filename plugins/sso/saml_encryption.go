@@ -169,6 +169,11 @@ func encryptedAssertionID(raw []byte, acs, requestID string, key *rsa.PrivateKey
 		return "", errSAMLResponse
 	}
 	dataMethod := uniqueChild(ciphertext, encryptionNS, "EncryptionMethod")
+	// A deprecated cipher is named; any other one outside the profile stays
+	// an invalid response.
+	if alg := uniqueAttribute(dataMethod, "Algorithm"); alg == string(DataEncryptionTripleDESCBC) {
+		return "", deprecatedSAMLResponseAlgorithm("data encryption", alg, "AES-GCM")
+	}
 	if uniqueAttribute(dataMethod, "Algorithm") != aesGCM256 || len(dataMethod.ChildElements()) != 0 || !inlineCipherValue(ciphertext) {
 		return "", errSAMLResponse
 	}
@@ -178,6 +183,9 @@ func encryptedAssertionID(raw []byte, acs, requestID string, key *rsa.PrivateKey
 		return "", errSAMLResponse
 	}
 	wrapMethod := uniqueChild(envelope, encryptionNS, "EncryptionMethod")
+	if alg := uniqueAttribute(wrapMethod, "Algorithm"); alg == string(KeyEncryptionRSA15) {
+		return "", deprecatedSAMLResponseAlgorithm("key encryption", alg, "RSA-OAEP")
+	}
 	digest := uniqueChild(wrapMethod, signatureNS, "DigestMethod")
 	mgf := uniqueChild(wrapMethod, encryption11NS, "MGF")
 	if uniqueAttribute(wrapMethod, "Algorithm") != rsaOAEP || len(wrapMethod.ChildElements()) != 2 ||

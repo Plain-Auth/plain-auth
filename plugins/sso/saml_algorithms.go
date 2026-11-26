@@ -172,3 +172,9 @@ func (a SAMLAlgorithms) checkSignatures(elements ...*etree.Element) error {
 	}
 	return nil
 }
+
+// deprecatedSAMLResponseAlgorithm refuses a deprecated encryption algorithm
+// of a response.
+func deprecatedSAMLResponseAlgorithm(kind, uri, fix string) error {
+	return samlAlgorithmFailure("SAML_DEPRECATED_ALGORITHM", "SAML response uses deprecated "+kind+" algorithm: "+uri+". Please configure your IdP to use "+fix+".")
+}

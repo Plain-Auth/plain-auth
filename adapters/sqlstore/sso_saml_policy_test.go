@@ -18,6 +18,7 @@ import (
 	"github.com/Plain-Org/plain-auth/plugins/sso"
 	"github.com/Plain-Org/plain-auth/schema"
 	"github.com/crewjam/saml"
+	"github.com/crewjam/saml/xmlenc"
 	dsig "github.com/russellhaering/goxmldsig"
 )
 
@@ -29,6 +30,8 @@ type samlPolicy struct {
 	idpKey  *rsa.PrivateKey
 	idpCert *x509.Certificate
 	idpPEM  string
+	// recipient decrypts assertions for encrypted directories.
+	recipient *sso.SAMLEncryption
 	// respond, when set, runs after the assertion is signed and before the
 	// response is, so a test can sign them differently.
 	respond func(*saml.IdpAuthnRequest)
@@ -53,7 +56,8 @@ func newSAMLPolicy(t *testing.T, dialect string) *samlPolicy {
 		t.Fatal(err)
 	}
 	key, cert, pem := samlTestCertificate(t)
-	return &samlPolicy{t: t, store: store, idpKey: key, idpCert: cert, idpPEM: pem}
+	encKey, encCert, _ := samlTestCertificate(t)
+	return &samlPolicy{t: t, store: store, idpKey: key, idpCert: cert, idpPEM: pem, recipient: &sso.SAMLEncryption{PrivateKey: encKey, Certificate: encCert}}
 }
 
 // directory inserts a SAML directory id for the shared IdP, after edit.
@@ -246,6 +250,45 @@ func TestEnterpriseSAMLResponsePolicy(t *testing.T) {
 				p.respond = nil
 				if !refused(location, session, "saml_algorithm_not_allowed", "SAML signature algorithm not in allow-list: http://www.w3.org/2001/04/xmldsig-more#rsa-sha512") {
 					t.Fatal("an RSA-SHA512 assertion inside an RSA-SHA256 response escaped the allow-list", location)
+				}
+			})
+			t.Run("deprecated encryption", func(t *testing.T) {
+				p := newSAMLPolicy(t, dialect)
+				p.directory("sealed", func(cfg *sso.SAMLConfig) { cfg.IDPMetadata.IsAssertionEncrypted = true })
+				def := p.host(sso.SAMLOptions{Encryption: p.recipient}, nil)
+				sigOnly := p.host(sso.SAMLOptions{Encryption: p.recipient, Algorithms: sso.SAMLAlgorithms{AllowedSignatureAlgorithms: []sso.SignatureAlgorithm{sso.SignatureRSASHA256}}}, nil)
+				sealed := func(h *auth.Auth, encrypter xmlenc.Encrypter, method sso.SignatureAlgorithm) (*url.URL, bool) {
+					t.Helper()
+					req, state := p.start(h, "sealed")
+					return samlOutcome(t, p.finish(h, "sealed", req, state, func(idp *saml.IdentityProvider) {
+						idp.AssertionEncrypter = encrypter
+						idp.SignatureMethod = string(method)
+					}, nil, nil))
+				}
+				cipher := func(key xmlenc.RSA, block xmlenc.BlockCipher) xmlenc.Encrypter {
+					key.BlockCipher = block
+					return key
+				}
+				refused := func(location *url.URL, session bool, code, description string) bool {
+					return location.Path == "/retry" && location.Query().Get("error") == code && location.Query().Get("error_description") == description && !session
+				}
+				if location, session := sealed(def, cipher(xmlenc.OAEP_SHA256(), xmlenc.TripleDES), sso.SignatureRSASHA256); !refused(location, session, "saml_deprecated_algorithm", "SAML response uses deprecated data encryption algorithm: http://www.w3.org/2001/04/xmlenc#tripledes-cbc. Please configure your IdP to use AES-GCM.") {
+					t.Fatal("a 3DES assertion did not fail with saml_deprecated_algorithm", location)
+				}
+				if location, session := sealed(def, cipher(xmlenc.PKCS1v15(), xmlenc.AES256GCM), sso.SignatureRSASHA256); !refused(location, session, "saml_deprecated_algorithm", "SAML response uses deprecated key encryption algorithm: http://www.w3.org/2001/04/xmlenc#rsa-1_5. Please configure your IdP to use RSA-OAEP.") {
+					t.Fatal("an RSA 1.5 key transport did not fail with saml_deprecated_algorithm", location)
+				}
+				if location, _ := sealed(def, cipher(xmlenc.OAEP_SHA256(), xmlenc.AES128GCM), sso.SignatureRSASHA256); location.Query().Get("error") != "invalid_saml_response" {
+					t.Fatal("an unsupported AES-128-GCM assertion changed its error", location)
+				}
+				if location, session := sealed(def, cipher(xmlenc.OAEP_SHA256(), xmlenc.AES256GCM), sso.SignatureRSASHA256); location.String() != "https://service.test/home" || !session {
+					t.Fatal("the supported encryption profile was refused", location)
+				}
+				p.respond = func(req *saml.IdpAuthnRequest) { req.IDP.SignatureMethod = string(sso.SignatureRSASHA256) }
+				location, session := sealed(sigOnly, cipher(xmlenc.OAEP_SHA256(), xmlenc.AES256GCM), sso.SignatureRSASHA512)
+				p.respond = nil
+				if !refused(location, session, "saml_algorithm_not_allowed", "SAML signature algorithm not in allow-list: http://www.w3.org/2001/04/xmldsig-more#rsa-sha512") {
+					t.Fatal("a decrypted RSA-SHA512 assertion escaped the allow-list", location)
 				}
 			})
 			t.Run("timestamps", func(t *testing.T) {

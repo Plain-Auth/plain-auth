@@ -44133,6 +44133,11 @@
       "label": "Refuse deprecated, unlisted and unknown signature methods and digests with their SAML_ codes, naming only exported URIs",
       "test": "plugins/sso/saml_test.go",
       "marker": "func TestSAMLResponseAlgorithmPolicy("
+    },
+    {
+      "label": "Apply the signature allow-list to a decrypted assertion",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "a decrypted RSA-SHA512 assertion escaped the allow-list"
     }
   ],
   "plugin-symbol/sso/AlgorithmValidationOptions/allowedSignatureAlgorithms": [
@@ -44193,6 +44198,11 @@
       "label": "Refuse an RSA-SHA1 response with saml_deprecated_algorithm, the only deprecated-algorithm mode",
       "test": "adapters/sqlstore/sso_saml_policy_test.go",
       "marker": "an RSA-SHA1 response did not fail with saml_deprecated_algorithm"
+    },
+    {
+      "label": "Refuse a Triple DES encrypted assertion with saml_deprecated_algorithm",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "a 3DES assertion did not fail with saml_deprecated_algorithm"
     }
   ],
   "docs/content/docs/plugins/sso/saml-security.mdx#L127/`SAML_UNKNOWN_ALGORITHM`": [
@@ -44224,6 +44234,17 @@
       "label": "Redirect an RSA-SHA1 response with saml_deprecated_algorithm and its message, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/sso_saml_policy_test.go",
       "marker": "an RSA-SHA1 response did not fail with saml_deprecated_algorithm"
+    },
+    {
+      "label": "Redirect Triple DES and RSA 1.5 encrypted assertions with saml_deprecated_algorithm and their messages, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "a 3DES assertion did not fail with saml_deprecated_algorithm",
+      "complete": true
+    },
+    {
+      "label": "Redirect an RSA 1.5 key transport with saml_deprecated_algorithm",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "an RSA 1.5 key transport did not fail with saml_deprecated_algorithm"
     }
   ],
   "plugin-symbol/sso/AlgorithmValidationOptions/onDeprecated": [
