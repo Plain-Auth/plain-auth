@@ -156,5 +156,16 @@ func resolveIdentity(ctx context.Context, client *http.Client, p BrowserProvider
 	if photo, ok := field("image", "picture").(string); ok && photo != "" {
 		out.Image = &photo
 	}
+	// Only declared user fields that are not server-only are written.
+	extra, _ := p.OIDC.Mapping["extraFields"].(map[string]any)
+	for name, claim := range extra {
+		key, _ := claim.(string)
+		if value, has := claims[key]; has {
+			if out.AdditionalFields == nil {
+				out.AdditionalFields = map[string]any{}
+			}
+			out.AdditionalFields[name] = value
+		}
+	}
 	return out, nil
 }

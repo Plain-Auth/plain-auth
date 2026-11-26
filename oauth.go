@@ -207,6 +207,10 @@ type OAuthLoginOptions struct {
 	IDTokenValidUntil            time.Time
 	// IDTokenHash binds single-use grants independently of randomized storage encryption.
 	IDTokenHash [32]byte
+	// ProfileFields carries an enterprise sign-in's prepared user fields to
+	// its store: Create for a new user and, when set, Update for a returning
+	// owner whose profile the provider overrides.
+	ProfileFields *OAuthProfileFields
 }
 
 // OAuthFlowStore keeps shared, single-use browser flow state. It is needed

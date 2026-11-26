@@ -53,3 +53,28 @@ func (a *Auth) socialProfileCompletion(profile OAuthProfile, syncProfile, requir
 		return store.CompleteOAuthRegistration(ctx, id, subject, tokens, user, session, options, create)
 	}, nil
 }
+
+// enterpriseProfileFields prepares the declared user fields an enterprise
+// profile writes before the store's transaction starts, so a host's field
+// default never runs inside it. It is nil when the host declares no user
+// fields.
+func (a *Auth) enterpriseProfileFields(p OAuthProfile, override bool) *OAuthProfileFields {
+	if len(a.opts.UserAdditionalFields) == 0 {
+		return nil
+	}
+	writable := a.writableProfileFields(p)
+	prepared := func(create bool) func() (UserFieldValues, error) {
+		values, err := a.prepareUserFields(writable, create, false)
+		return func() (UserFieldValues, error) {
+			if err != nil {
+				return UserFieldValues{}, oauthProfileFieldError{err}
+			}
+			return values, nil
+		}
+	}
+	fields := &OAuthProfileFields{Create: prepared(true)}
+	if override {
+		fields.Update = prepared(false)
+	}
+	return fields
+}

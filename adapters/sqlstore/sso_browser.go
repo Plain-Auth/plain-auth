@@ -192,6 +192,9 @@ func (s *Store) completeEnterpriseLogin(ctx context.Context, ref string, provisi
 	var orgID *string
 	var admission *memberAdmission
 	checkedAt := session.CreatedAt
+	// The root prepared the profile's user fields outside this transaction.
+	fields := opts.ProfileFields
+	opts.ProfileFields = nil
 	var hooks oauthTransactionHooks
 	hooks = oauthTransactionHooks{
 		guard: func(tx *sql.Tx) error {
@@ -285,7 +288,7 @@ func (s *Store) completeEnterpriseLogin(ctx context.Context, ref string, provisi
 	err := s.withMemberAdmission(ctx, func(decision *memberAdmission) error {
 		admission = decision
 		var err error
-		u, created, err = s.completeOAuthWith(ctx, id, subject, tokens, user, session, opts, &hooks, false, nil)
+		u, created, err = s.completeOAuthWith(ctx, id, subject, tokens, user, session, opts, &hooks, false, fields)
 		return err
 	})
 	// A concurrent deletion can remove the original link while the account

@@ -313,6 +313,9 @@ func New(o Options) (auth.Plugin, error) {
 			if err = json.Unmarshal(raw, &cfg); err != nil || cfg.ClientID == "" {
 				return nil, apiError(400, "OpenID Connect client credentials are required")
 			}
+			if !validMapping(cfg.Mapping) {
+				return nil, apiError(400, "Invalid OpenID Connect mapping")
+			}
 			cfg.Issuer = issuer
 			if cfg.PKCE == nil {
 				enabled := true
@@ -501,4 +504,33 @@ func (o Options) providerLimit(ctx context.Context, user auth.User, fixed int) (
 		return 0, ErrLimit
 	}
 	return n, nil
+}
+
+// validMapping reports whether an OIDC claim mapping has only the email,
+// emailVerified, name and image claim names and extraFields from user field
+// names to claim names.
+func validMapping(m map[string]any) bool {
+	for key, value := range m {
+		switch key {
+		case "email", "emailVerified", "name", "image":
+			if _, ok := value.(string); !ok {
+				return false
+			}
+		case "extraFields":
+			// Require claim names; another runtime accepts any value and
+			// indexes the claims with it.
+			fields, ok := value.(map[string]any)
+			if !ok {
+				return false
+			}
+			for _, claim := range fields {
+				if _, ok := claim.(string); !ok {
+					return false
+				}
+			}
+		default:
+			return false
+		}
+	}
+	return true
 }

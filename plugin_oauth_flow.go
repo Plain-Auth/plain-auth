@@ -196,6 +196,8 @@ func (c *EndpointContext) consumeEnterpriseFlow(state string, form bool) (OAuthF
 // CompleteEnterpriseFlow applies the host's account and token policy and emits
 // the usual session cookies only after the store's transaction has committed.
 // method is "sso-oidc" or "sso-saml", as ValidateUserInfo sees it. With
+// The completion receives the profile's prepared user fields in
+// OAuthLoginOptions.ProfileFields. With
 // ValidateUserInfo set, complete must follow the LoginPlan protocol, as the
 // SQL store's sign-in methods do; a completion that commits in the dry run
 // is refused, though a user it already stored stays.
@@ -211,7 +213,8 @@ func (c EndpointContext) CompleteEnterpriseFlow(f OAuthFlow, method string, p OA
 	if f.IssuerLoginQuery != "" && (login.query != f.IssuerLoginQuery || login.resume == nil) {
 		return nil, invalidEnterpriseState()
 	}
-	result, created, err := c.Auth.completeProfileWith(c.Request.Context(), c.Request, method, f.Provider, p, tokens, OAuthLoginOptions{DisableSignUp: disableSignup}, complete)
+	options := OAuthLoginOptions{DisableSignUp: disableSignup, ProfileFields: c.Auth.enterpriseProfileFields(p, false)}
+	result, created, err := c.Auth.completeProfileWith(c.Request.Context(), c.Request, method, f.Provider, p, tokens, options, complete)
 	if err != nil {
 		return nil, err
 	}

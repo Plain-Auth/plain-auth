@@ -42115,6 +42115,11 @@
       "label": "Fill the JWKS location and client authentication method from discovery at registration on both runtimes",
       "test": "conformance/sso-providers.mjs",
       "marker": "assert.equal(fetched.oidcConfig.jwksEndpoint, issuer + \"/keys\");"
+    },
+    {
+      "label": "Create an OIDC user with emailVerified false although the mapped verification claim is true",
+      "test": "adapters/sqlstore/sso_claim_mapping_test.go",
+      "marker": "t.Fatal(\"mapping.emailVerified was trusted for an OIDC user\")"
     }
   ],
   "docs/content/docs/plugins/sso/oidc.mdx#L66": [
@@ -44469,6 +44474,26 @@
       "test": "adapters/sqlstore/sso_private_key_test.go",
       "marker": "t.Fatal(\"private_key_jwt sign-in did not complete\", w.Code, w.Header().Get(\"Location\"), w.Body.String())",
       "complete": true
+    }
+  ],
+  "plugin-symbol/sso/OIDCMapping": [
+    {
+      "label": "Map the email, name, image and declared user field claims of an enterprise sign-up, ignore mapping.emailVerified and refuse other mapping shapes, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_claim_mapping_test.go",
+      "marker": "func TestEnterpriseOIDCClaimMapping(",
+      "complete": true
+    },
+    {
+      "label": "Accept only claim names for each mapping key and extraFields entry",
+      "test": "plugins/sso/identity_test.go",
+      "marker": "func TestOIDCMappingShape("
+    }
+  ],
+  "docs/content/docs/plugins/sso/oidc.mdx#L46": [
+    {
+      "label": "Save extraFields entries that name a declared, non-server-only user field, read the default email, name and picture claims, and use the first address of a list email claim",
+      "test": "adapters/sqlstore/sso_claim_mapping_test.go",
+      "marker": "t.Fatal(\"extraFields did not fill the department user field\", mapped.dept)"
     }
   ]
 }

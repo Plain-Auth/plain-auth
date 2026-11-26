@@ -47,6 +47,8 @@ type ssoIssuer struct {
 	// assertion's kid and alg are recorded in assertions.
 	assertionKey crypto.PublicKey
 	assertions   []string
+	// claims adds ID token claims for a grant's mode.
+	claims map[string]map[string]any
 }
 
 func newSSOIssuer(t *testing.T) *ssoIssuer {
@@ -132,6 +134,11 @@ func (i *ssoIssuer) serve(w http.ResponseWriter, r *http.Request) {
 		case "missing-sub":
 			delete(claims, "sub")
 		}
+		i.mu.Lock()
+		for k, v := range i.claims[grant.mode] {
+			claims[k] = v
+		}
+		i.mu.Unlock()
 		signer := i.signer
 		if grant.mode == "signature" {
 			_, other, _ := ed25519.GenerateKey(rand.Reader)

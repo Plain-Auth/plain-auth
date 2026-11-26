@@ -119,3 +119,15 @@ func TestEnterpriseIdentityClaimMapping(t *testing.T) {
 		t.Fatal("a mapped email list did not yield its first nonempty address", listed.Email)
 	}
 }
+
+// Registration accepts only claim names in an OIDC mapping.
+func TestOIDCMappingShape(t *testing.T) {
+	if !validMapping(map[string]any{"email": "mail", "emailVerified": "v", "name": "n", "image": "i", "extraFields": map[string]any{"department": "dept"}}) || !validMapping(nil) {
+		t.Fatal("a valid OIDC mapping was refused")
+	}
+	for _, m := range []map[string]any{{"nickname": "x"}, {"email": 1.0}, {"extraFields": map[string]any{"department": 7.0}}, {"extraFields": "dept"}} {
+		if validMapping(m) {
+			t.Fatal("an invalid OIDC mapping was accepted", m)
+		}
+	}
+}

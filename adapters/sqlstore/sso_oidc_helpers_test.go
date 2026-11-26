@@ -21,13 +21,18 @@ type ssoHost struct {
 	idp *ssoIssuer
 }
 
-func newSSOHost(t *testing.T, store *Store, idp *ssoIssuer, opts sso.Options) *ssoHost {
+// newSSOHost builds the host; edit adjusts its options before New.
+func newSSOHost(t *testing.T, store *Store, idp *ssoIssuer, opts sso.Options, edit ...func(*auth.Options)) *ssoHost {
 	t.Helper()
 	p, err := sso.New(opts)
 	if err != nil {
 		t.Fatal(err)
 	}
-	a, err := auth.New(auth.Options{BaseURL: "https://service.test", BasePath: "/identity", RateLimit: new(bool), Store: store, EmailAndPassword: true, Secret: strings.Repeat("k", 32), TrustedOrigins: []string{idp.URL}, Plugins: []auth.Plugin{p}})
+	options := auth.Options{BaseURL: "https://service.test", BasePath: "/identity", RateLimit: new(bool), Store: store, EmailAndPassword: true, Secret: strings.Repeat("k", 32), TrustedOrigins: []string{idp.URL}, Plugins: []auth.Plugin{p}}
+	for _, e := range edit {
+		e(&options)
+	}
+	a, err := auth.New(options)
 	if err != nil {
 		t.Fatal(err)
 	}

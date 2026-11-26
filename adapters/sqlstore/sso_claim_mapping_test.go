@@ -1,0 +1,107 @@
+package sqlstore
+
+import (
+	"database/sql"
+	"testing"
+
+	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/plugins/sso"
+	"github.com/Plain-Org/plain-auth/schema"
+)
+
+// A provider's mapping chooses the claims for the email, name, image and
+// declared user fields of an enterprise sign-up.
+func TestEnterpriseOIDCClaimMapping(t *testing.T) {
+	fields := map[string]auth.UserField{"department": {Type: auth.FieldString}, "clearance": {Type: auth.FieldString, ServerOnly: true}}
+	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
+		t.Run(dialect, func(t *testing.T) {
+			ctx := t.Context()
+			must := func(err error) {
+				t.Helper()
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			store, err := OpenWithAdditionalFields(ctx, dialect, organizationTestDSN(t, dialect), []string{"sso"}, schema.AdditionalFields{User: fields})
+			must(err)
+			defer store.Close()
+			idp := newSSOIssuer(t)
+			h := newSSOHost(t, store, idp, sso.Options{}, func(o *auth.Options) { o.UserAdditionalFields = fields })
+			owner := h.signUp("owner@service.test")
+			register := func(id string, mapping map[string]any) int {
+				t.Helper()
+				cfg := map[string]any{"clientId": "enterprise-client", "clientSecret": "oidc-secret", "skipDiscovery": true, "authorizationEndpoint": idp.URL + "/authorize", "tokenEndpoint": idp.URL + "/token", "jwksEndpoint": idp.URL + "/keys"}
+				if mapping != nil {
+					cfg["mapping"] = mapping
+				}
+				return h.register(owner, map[string]any{"providerId": id, "issuer": idp.URL, "domain": id + ".example", "oidcConfig": cfg}).Code
+			}
+			type row struct {
+				name                   string
+				image, dept, clearance sql.NullString
+				verified               bool
+			}
+			user := func(email string) (row, bool) {
+				var r row
+				err := store.db.QueryRowContext(ctx, store.bind(`SELECT "name","image","emailVerified","department","clearance" FROM "user" WHERE "email"=?`), email).Scan(&r.name, &r.image, &r.verified, &r.dept, &r.clearance)
+				return r, err == nil
+			}
+			idp.mu.Lock()
+			idp.claims = map[string]map[string]any{
+				"mapped": {"mail": "mapped@mapped.example", "display": "Mapped Person", "avatar": "https://images.example.test/mapped.png", "mail_verified": true, "dept": "Finance", "level": "top"},
+				"list":   {"emails": []string{"first@list.example", "second@list.example"}},
+				"plain":  {"picture": "https://images.example.test/plain.png"},
+			}
+			idp.mu.Unlock()
+
+			if register("mapped", map[string]any{"email": "mail", "name": "display", "image": "avatar", "emailVerified": "mail_verified", "extraFields": map[string]any{"department": "dept", "clearance": "level"}}) != 200 {
+				t.Fatal("a provider with a claim mapping was not registered")
+			}
+			if w := h.signIn(map[string]any{"providerId": "mapped"}, "token-email@mapped.example", "mapped", "client_secret_basic", "mapped"); w.Header().Get("Location") != "https://service.test/home" {
+				t.Fatal("mapped enterprise sign-in failed", w.Code, w.Header().Get("Location"))
+			}
+			mapped, ok := user("mapped@mapped.example")
+			if !ok {
+				t.Fatal("mapping.email did not choose the mail claim")
+			}
+			if mapped.name != "Mapped Person" {
+				t.Fatal("mapping.name did not choose the display claim", mapped.name)
+			}
+			if mapped.image.String != "https://images.example.test/mapped.png" {
+				t.Fatal("mapping.image did not choose the avatar claim", mapped.image)
+			}
+			if mapped.verified {
+				t.Fatal("mapping.emailVerified was trusted for an OIDC user")
+			}
+			if mapped.dept.String != "Finance" {
+				t.Fatal("extraFields did not fill the department user field", mapped.dept)
+			}
+			if mapped.clearance.Valid {
+				t.Fatal("extraFields wrote a server-only user field", mapped.clearance)
+			}
+
+			if register("list", map[string]any{"email": "emails"}) != 200 {
+				t.Fatal("a provider with an email list mapping was not registered")
+			}
+			h.signIn(map[string]any{"providerId": "list"}, "token-email@list.example", "listed", "client_secret_basic", "list")
+			if _, ok := user("first@list.example"); !ok {
+				t.Fatal("a list email claim did not use the first address")
+			}
+
+			if register("plain", nil) != 200 {
+				t.Fatal("a provider without a mapping was not registered")
+			}
+			h.signIn(map[string]any{"providerId": "plain"}, "plain@plain.example", "plain", "client_secret_basic", "plain")
+			if plain, ok := user("plain@plain.example"); !ok || plain.name != "Enterprise User" || plain.image.String != "https://images.example.test/plain.png" {
+				t.Fatal("the default mapping did not read the name and picture claims", plain, ok)
+			}
+
+			if register("numeric", map[string]any{"extraFields": map[string]any{"department": 7}}) != 400 {
+				t.Fatal("registration accepted an extraFields entry that names no claim")
+			}
+			if register("unknown", map[string]any{"nickname": "nick"}) != 400 {
+				t.Fatal("registration accepted an unknown mapping key")
+			}
+		})
+	}
+}
