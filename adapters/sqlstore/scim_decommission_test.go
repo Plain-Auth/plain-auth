@@ -1,6 +1,7 @@
 package sqlstore
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -226,6 +227,70 @@ func TestSCIMRetirementWithoutDomain(t *testing.T) {
 			}
 			if r, err := h.Decommission(ctx, scim.Directory{ID: "declared", ProvisioningDomainID: "office"}); err != nil || r.Status != "complete" {
 				t.Fatal("a configured connection was not retired in its given domain", r, err)
+			}
+		})
+	}
+}
+
+// Retiring a code-defined connection reconciles its Users in one batch,
+// shuts out its token and keeps its directory rows, as another runtime
+// does; a managed connection is retired only through its catalog.
+func TestSCIMStaticDecommission(t *testing.T) {
+	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
+		t.Run(dialect, func(t *testing.T) {
+			ctx := t.Context()
+			must := func(err error) {
+				t.Helper()
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			ddl, err := schema.Generate(dialect, []string{"scim"})
+			must(err)
+			s, err := OpenWithSchema(ctx, dialect, organizationTestDSN(t, dialect), ddl)
+			must(err)
+			defer s.Close()
+			host, err := auth.New(auth.Options{Secret: strings.Repeat("x", 40), BaseURL: "https://retire.test", BasePath: "/identity/custom", Store: s})
+			must(err)
+			h, err := scim.New(host, scim.Options{Store: s, Connections: []scim.Connection{{Directory: scim.Directory{ID: "static"}, Credentials: []scim.Credential{{ID: "key", Token: "static-token"}}}}})
+			must(err)
+			w := scimRequest(h, "POST", "Users", "static-token", map[string]any{"schemas": []string{scim.UserSchema}, "userName": "member@example.test"})
+			if w.Code != 201 {
+				t.Fatal("provisioning failed", w.Code, w.Body.String())
+			}
+			var created struct{ ID string }
+			must(json.Unmarshal(w.Body.Bytes(), &created))
+			if w := scimRequest(h, "POST", "Groups", "static-token", map[string]any{"schemas": []string{scim.GroupSchema}, "displayName": "Team", "members": []map[string]any{{"value": created.ID}}}); w.Code != 201 {
+				t.Fatal("the Group was not created", w.Code, w.Body.String())
+			}
+			status := func() string {
+				var v string
+				must(s.db.QueryRowContext(ctx, s.bind(`SELECT "decommissionStatus" FROM "scimConnectionBinding" WHERE "connectionKey"=?`), scimKey("scim-connection", "static")).Scan(&v))
+				return v
+			}
+			if got := status(); got != "active" {
+				t.Fatal("a provisioned connection's binding is not active", got)
+			}
+			r, err := h.Decommission(ctx, scim.Directory{ID: "static", ProvisioningDomainID: "static"})
+			if err != nil || r.Status != "complete" || r.ReconciledUsers != 1 || r.Batches != 1 {
+				t.Fatal("the static connection was not retired in one batch", r, err)
+			}
+			if got := status(); got != "complete" {
+				t.Fatal("a retired connection's binding is not complete", got)
+			}
+			if w := scimRequest(h, "GET", "Users", "static-token", nil); w.Code != 401 {
+				t.Fatal("a retired connection's token still works", w.Code)
+			}
+			for _, table := range []string{"scimUser", "scimGroup", "scimGroupMember"} {
+				var n int
+				must(s.db.QueryRowContext(ctx, s.bind(`SELECT COUNT(*) FROM "`+table+`"`)).Scan(&n))
+				if n == 0 {
+					t.Fatal("retirement removed the directory rows", table)
+				}
+			}
+			var se *scim.Error
+			if _, err := h.Decommission(ctx, scim.Directory{ID: "ba_scim_connection_x", ProvisioningDomainID: "static"}); !errors.As(err, &se) || se.Status != 400 || se.Type != "invalidValue" {
+				t.Fatal("a managed connection was retired outside its catalog", err)
 			}
 		})
 	}

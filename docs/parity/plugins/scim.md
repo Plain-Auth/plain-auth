@@ -69,8 +69,9 @@
     - [x] Expose the authenticated directory ID and provisioning domain on the request's principal ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L166))
     - [x] Hand the store the same directory that the request authenticated ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L29))
   - [ ] `SCIMConnectionDecommissionStatus`
-    - [x] Preserve terminal state and report the persisted retry time while another worker owns a live lease ([test](../../../adapters/sqlstore/scim_decommission_test.go#L15))
-    - [x] Report the complete state when retiring a managed directory that was never used ([test](../../../adapters/sqlstore/scim_decommission_test.go#L56))
+    - [x] Preserve terminal state and report the persisted retry time while another worker owns a live lease ([test](../../../adapters/sqlstore/scim_decommission_test.go#L16))
+    - [x] Report the complete state when retiring a managed directory that was never used ([test](../../../adapters/sqlstore/scim_decommission_test.go#L57))
+    - [x] Record active for a provisioned connection and complete after its retirement, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_decommission_test.go#L279))
   - [ ] `SCIMConnectionOptions`
     - [x] `id` ([test](../../../adapters/sqlstore/scim_test.go#L143))
       - [x] Isolate two directory identifiers differing only in case on every SQL engine ([test](../../../adapters/sqlstore/scim_test.go#L33))
@@ -177,8 +178,9 @@
     - [x] Expose the static-bearer kind and credential ID of a code-defined token through request context ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L171))
     - [x] Give a static credential's principal its directory, default provisioning domain, all scopes and no expiry, and carry a scoped, expiring credential's values, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L172))
   - [ ] `SCIMTransactionContext`
-  - [ ] `decommissionSCIMConnection (server API only)`
+  - [x] `decommissionSCIMConnection (server API only)` ([test](../../../adapters/sqlstore/scim_decommission_test.go#L276))
     - [x] Persist a terminal binding before first use and read its completion timestamp from either implementation ([test](../../../conformance/core.test.mjs#L1063))
+    - [x] Retire a code-defined connection in one batch, shut out its token, keep its rows, and refuse a managed connection with 400 invalidValue, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_decommission_test.go#L276))
   - [x] `GET /scim/v2/ServiceProviderConfig` ([test](../../../plugins/scim/http_test.go#L214))
     - [x] Discover filter, patch and pagination capabilities without a directory credential ([test](../../../conformance/scim-contract.mjs#L45))
     - [x] Publish bearer authentication only, PATCH and filters with 100 results, report bulk, sorting, ETags and password changes as unsupported, and locate the document at the public directory URL ([test](../../../plugins/scim/http_test.go#L214))
@@ -259,7 +261,7 @@
     - [x] Read the other implementation’s ordered audit events and total with pagination ([test](../../../conformance/scim-managed.mjs#L13))
   - [ ] `decommissionSCIMManagedConnection (server API only)`
     - [x] Retire a provisioned directory from either implementation, invalidate its credentials and revoke the last source’s sessions ([test](../../../conformance/core.test.mjs#L1063))
-    - [x] Resume failed and expired leases across instances, retain independently sourced sessions and record one completion ([test](../../../adapters/sqlstore/scim_decommission_test.go#L15))
+    - [x] Resume failed and expired leases across instances, retain independently sourced sessions and record one completion ([test](../../../adapters/sqlstore/scim_decommission_test.go#L16))
   - [ ] `SCIMManagedConnection`
   - [ ] `SCIMManagedConnectionEvent`
   - [ ] `SCIMManagedConnectionEventType`
@@ -328,7 +330,8 @@
     - [x] Withdraw every projected role by disabling the policy and keep them when the reconciler fails ([test](../../../adapters/sqlstore/scim_projection_test.go#L362))
   - [x] Rotate a credential ([test](../../../adapters/sqlstore/scim_users_contract_test.go#L79))
     - [x] Accept a credential before its expiry beside the current one, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_users_contract_test.go#L79))
-  - [ ] Decommission a connection
+  - [x] Decommission a connection ([test](../../../adapters/sqlstore/scim_decommission_test.go#L288))
+    - [x] Retire a connection with a User and a Group, reconciling one User in one batch and keeping the SCIM rows, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_decommission_test.go#L288))
 
 ## System for Cross-domain Identity Management (SCIM)
 
@@ -413,8 +416,8 @@
       - [x] `listSCIMManagedConnectionEvents` ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L76))
         - [x] Return contiguous lifecycle events and page them by limit, offset and ascending or descending order ([test](../../../adapters/sqlstore/scim_managed_test.go#L229))
         - [x] Refuse audit pages over 100 events, a negative offset or an unknown sort, and default to 100 events, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L76))
-      - [x] `decommissionSCIMManagedConnection` ([test](../../../adapters/sqlstore/scim_decommission_test.go#L159))
-        - [x] Disable a managed connection's credentials, resume an interrupted reconciliation on another server and record it as decommissioned ([test](../../../adapters/sqlstore/scim_decommission_test.go#L159))
+      - [x] `decommissionSCIMManagedConnection` ([test](../../../adapters/sqlstore/scim_decommission_test.go#L160))
+        - [x] Disable a managed connection's credentials, resume an interrupted reconciliation on another server and record it as decommissioned ([test](../../../adapters/sqlstore/scim_decommission_test.go#L160))
       - [x] `scim.users.read` ([test](../../../adapters/sqlstore/scim_users_contract_test.go#L82))
         - [x] Refuse User listing to a write-only credential while a read-only credential lists and reads Users ([test](../../../adapters/sqlstore/scim_test.go#L98))
         - [x] Refuse a User read to a users-write-only token, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_users_contract_test.go#L82))
@@ -638,9 +641,9 @@
       - [x] Replay a trusted policy for its complete domain on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_projection_test.go#L357))
       - [x] Report the domain, reconciled users and committed batches of a replay, and answer 409 without a policy, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_projection_test.go#L465))
     - [ ] `decommissionSCIMConnection`
-      - [x] Refuse retiring a static connection under a different provisioning domain, then retire it before first use so its token answers 401 ([test](../../../adapters/sqlstore/scim_decommission_test.go#L73))
+      - [x] Refuse retiring a static connection under a different provisioning domain, then retire it before first use so its token answers 401 ([test](../../../adapters/sqlstore/scim_decommission_test.go#L74))
       - [x] Report a never-used directory retired by one runtime as complete with no batches from the other ([test](../../../conformance/scim-managed.mjs#L146))
-      - [x] Retire a bound connection without a domain in its bound domain and refuse a never-bound connection, configured or not, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_decommission_test.go#L191))
+      - [x] Retire a bound connection without a domain in its bound domain and refuse a never-bound connection, configured or not, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_decommission_test.go#L192))
   - [ ] Unsupported features
     - [x] Custom schema extensions ([test](../../../adapters/sqlstore/scim_attributes_test.go#L130))
       - [x] Refuse a User or Group with a custom schema extension as invalidValue ([test](../../../adapters/sqlstore/scim_attributes_test.go#L130))
@@ -679,7 +682,7 @@
       - [x] Read direct memberships added by both runtimes from the shared membership rows ([test](../../../conformance/scim-contract.mjs#L133))
     - [x] `scimSubject` ([test](../../../conformance/schema.test.mjs#L106))
       - [x] Emit the scimSubject table from the schema CLI exactly as the other runtime's migration ([test](../../../conformance/schema.test.mjs#L106))
-      - [x] Release a retired directory's profile authority in the subject row while another source keeps the account's sessions ([test](../../../adapters/sqlstore/scim_decommission_test.go#L174))
+      - [x] Release a retired directory's profile authority in the subject row while another source keeps the account's sessions ([test](../../../adapters/sqlstore/scim_decommission_test.go#L175))
     - [x] `scimIdentityTombstone` ([test](../../../conformance/schema.test.mjs#L106))
       - [x] Emit the scimIdentityTombstone table from the schema CLI exactly as the other runtime's migration ([test](../../../conformance/schema.test.mjs#L106))
       - [x] Link a User recreated after deletion with the same externalId to the original account ([test](../../../adapters/sqlstore/scim_test.go#L237))
@@ -688,7 +691,7 @@
       - [x] Record each validated role grant for its domain and user in the grant ledger ([test](../../../adapters/sqlstore/scim_projection_test.go#L191))
     - [x] `scimManagedConnection` ([test](../../../conformance/schema.test.mjs#L106))
       - [x] Emit the scimManagedConnection table from the schema CLI exactly as the other runtime's migration ([test](../../../conformance/schema.test.mjs#L106))
-      - [x] Keep a managed connection in the decommissioning state with unusable credentials after an interrupted retirement ([test](../../../adapters/sqlstore/scim_decommission_test.go#L124))
+      - [x] Keep a managed connection in the decommissioning state with unusable credentials after an interrupted retirement ([test](../../../adapters/sqlstore/scim_decommission_test.go#L125))
     - [x] `scimManagedCredential` ([test](../../../adapters/sqlstore/scim_managed_test.go#L143))
       - [x] Persist only a fixed-length keyed digest of a managed token, never the token or its credential ID ([test](../../../adapters/sqlstore/scim_managed_test.go#L143))
       - [x] Report revoked, expired and active managed credentials with distinct statuses ([test](../../../adapters/sqlstore/scim_managed_test.go#L221))

@@ -10925,6 +10925,12 @@
       "label": "Persist a terminal binding before first use and read its completion timestamp from either implementation",
       "test": "conformance/core.test.mjs",
       "marker": "test(\"SCIM directory retirement"
+    },
+    {
+      "label": "Retire a code-defined connection in one batch, shut out its token, keep its rows, and refuse a managed connection with 400 invalidValue, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_decommission_test.go",
+      "marker": "t.Fatal(\"the static connection was not retired in one batch\", r, err)",
+      "complete": true
     }
   ],
   "plugin/scim/ decommissionSCIMManagedConnection (server API only)": [
@@ -10949,6 +10955,11 @@
       "label": "Report the complete state when retiring a managed directory that was never used",
       "test": "adapters/sqlstore/scim_decommission_test.go",
       "marker": "if z.Connection.Status != \"decommissioned\" || z.Decommission.Status != \"complete\" || z.Decommission.Batches != 0 || z.Decommission.ReconciledUsers != 0 || z.Credentials[0].Status != \"decommissioned\" {"
+    },
+    {
+      "label": "Record active for a provisioned connection and complete after its retirement, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_decommission_test.go",
+      "marker": "t.Fatal(\"a retired connection's binding is not complete\", got)"
     }
   ],
   "plugin/organization/ addMember (server API only)": [
@@ -46928,6 +46939,14 @@
       "label": "Default the scopes, require clientId at registration and store an overrideUserInfo update, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/sso_oidc_contract_test.go",
       "marker": "t.Fatal(\"update-provider did not store overrideUserInfo\", raw)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/groups-and-roles.mdx#L143": [
+    {
+      "label": "Retire a connection with a User and a Group, reconciling one User in one batch and keeping the SCIM rows, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_decommission_test.go",
+      "marker": "t.Fatal(\"retirement removed the directory rows\", table)",
       "complete": true
     }
   ]
