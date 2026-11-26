@@ -77,11 +77,9 @@ func sessionResolver(services []*Service) *plainauth.CredentialSessionResolver {
 	}}
 }
 
-var invalidSessionKey = problem(401, "INVALID_API_KEY", "Invalid API key")
-
 func (s *Service) resolveSession(ctx context.Context, secret string, meta plainauth.RequestMeta, ttl time.Duration) (*plainauth.CredentialSession, error) {
 	if len(secret) < s.opts.KeyLength {
-		return nil, invalidSessionKey
+		return nil, errRefusedKey
 	}
 	v, err := s.Verify(ctx, secret, nil)
 	if errors.Is(err, errKeyValidator) {
@@ -98,7 +96,7 @@ func (s *Service) resolveSession(ctx context.Context, secret string, meta plaina
 		if v.Error.Code == "KEY_NOT_FOUND" {
 			// Session lookup has no requested permission scope. This code
 			// therefore identifies an explicit rejection by the host.
-			return nil, problem(http.StatusForbidden, "INVALID_API_KEY", "Invalid API key")
+			return nil, errRefusedKey
 		}
 		status := 401
 		if v.Error.Code == "RATE_LIMIT_EXCEEDED" || v.Error.Code == "USAGE_EXCEEDED" {
@@ -107,7 +105,7 @@ func (s *Service) resolveSession(ctx context.Context, secret string, meta plaina
 		return nil, problem(status, v.Error.Code, v.Error.Message)
 	}
 	if s.opts.Organization != nil {
-		return nil, problem(401, "INVALID_REFERENCE_ID_FROM_API_KEY", "An organization key cannot identify a user session")
+		return nil, errReference
 	}
 	k := v.Key
 	user, err := s.opts.Store.(sessionUserStore).APIKeySessionUser(ctx, k.ReferenceID)

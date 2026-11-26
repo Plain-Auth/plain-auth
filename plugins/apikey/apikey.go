@@ -289,10 +289,6 @@ func portableSecret(secret string) bool {
 
 var errKeyValidator = errors.New("apikey: application key validator failed")
 
-var ErrMissing = problem(404, "KEY_NOT_FOUND", "API Key not found")
-var ErrSession = problem(401, "UNAUTHORIZED_SESSION", "Unauthorized or invalid session")
-var ErrBanned = problem(403, "USER_BANNED", "User is banned")
-
 func Digest(secret string) string {
 	sum := sha256.Sum256([]byte(secret))
 	return base64.RawURLEncoding.EncodeToString(sum[:])
@@ -326,25 +322,22 @@ func randomSecret(length int) string {
 }
 func (s *Service) apply(k *Key, in UpdateInput, now time.Time) error {
 	if in.Name != nil {
-		n := len(utf16.Encode([]rune(*in.Name)))
-		if n == 0 && s.opts.RequireName {
-			return problem(400, "NAME_REQUIRED", "Name is required")
-		}
-		if n != 0 && (n < s.opts.MinNameLength || n > s.opts.MaxNameLength) {
-			return problem(400, "INVALID_NAME_LENGTH", "Invalid name length")
+		// Creation drops an empty name first, so every name here is checked.
+		if n := len(utf16.Encode([]rune(*in.Name))); n < s.opts.MinNameLength || n > s.opts.MaxNameLength || n == 0 {
+			return errNameLength
 		}
 		k.Name = textPtr(*in.Name)
 	}
 	if in.ExpiresIn != nil {
 		d := *in.ExpiresIn
 		if s.opts.DisableCustomExpiration {
-			return problem(400, "KEY_DISABLED_EXPIRATION", "Custom key expiration values are disabled")
+			return errExpirationDisabled
 		}
 		if d != 0 && d < s.opts.MinExpiration {
-			return problem(400, "EXPIRES_IN_IS_TOO_SMALL", "Expiration is too short")
+			return errExpiresTooSmall
 		}
 		if d > s.opts.MaxExpiration {
-			return problem(400, "EXPIRES_IN_IS_TOO_LARGE", "Expiration is too long")
+			return errExpiresTooLarge
 		}
 		k.ExpiresAt = nil
 		if d != 0 {
@@ -353,7 +346,7 @@ func (s *Service) apply(k *Key, in UpdateInput, now time.Time) error {
 	}
 	if in.Metadata != nil {
 		if !s.opts.EnableMetadata {
-			return problem(400, "METADATA_DISABLED", "Metadata is disabled")
+			return errMetadataDisabled
 		}
 		k.Metadata = in.Metadata
 	}
@@ -365,8 +358,10 @@ func (s *Service) apply(k *Key, in UpdateInput, now time.Time) error {
 		k.RateLimitEnabled = *p.RateLimitEnabled
 	}
 	if p.Remaining != nil {
+		// A Go Policy has no body validator, so the declared code is the
+		// typed answer; another runtime's validator answers VALIDATION_ERROR.
 		if *p.Remaining < 0 || *p.Remaining > 2147483647 {
-			return problem(400, "INVALID_REMAINING", "Invalid remaining count")
+			return errRemaining
 		}
 		k.Remaining = p.Remaining
 	}
@@ -383,8 +378,11 @@ func (s *Service) apply(k *Key, in UpdateInput, now time.Time) error {
 		}
 		k.RateLimitTimeWindow = &ms
 	}
-	if (p.RefillInterval == nil) != (p.RefillAmount == nil) {
-		return problem(400, "REFILL_AMOUNT_AND_INTERVAL_REQUIRED", "Provide a refill amount and interval")
+	if p.RefillInterval != nil && p.RefillAmount == nil {
+		return errRefillAmount
+	}
+	if p.RefillAmount != nil && p.RefillInterval == nil {
+		return errRefillInterval
 	}
 	if p.RefillInterval != nil {
 		ms := p.RefillInterval.Milliseconds()
@@ -420,8 +418,11 @@ func (s *Service) create(ctx context.Context, owner Owner, in CreateInput) (*Cre
 	if prefix == "" {
 		prefix = s.opts.DefaultPrefix
 	}
-	if prefix != "" && (!safePrefix.MatchString(prefix) || len(prefix) < s.opts.MinPrefixLength || len(prefix) > s.opts.MaxPrefixLength) {
-		return nil, problem(400, "INVALID_PREFIX_LENGTH", "Invalid prefix")
+	if prefix != "" && !safePrefix.MatchString(prefix) {
+		return nil, errPrefixFormat
+	}
+	if prefix != "" && (len(prefix) < s.opts.MinPrefixLength || len(prefix) > s.opts.MaxPrefixLength) {
+		return nil, errPrefixLength
 	}
 	now := current()
 	k := Key{
@@ -433,7 +434,13 @@ func (s *Service) create(ctx context.Context, owner Owner, in CreateInput) (*Cre
 	if s.opts.DefaultExpiration > 0 {
 		k.ExpiresAt = ptr(now.Add(s.opts.DefaultExpiration))
 	}
-	up := UpdateInput{Name: &in.Name, Metadata: in.Metadata, Policy: in.Policy}
+	if in.Name == "" && s.opts.RequireName {
+		return nil, errNameRequired
+	}
+	up := UpdateInput{Metadata: in.Metadata, Policy: in.Policy}
+	if in.Name != "" {
+		up.Name = &in.Name
+	}
 	if in.ExpiresIn != 0 {
 		up.ExpiresIn = &in.ExpiresIn
 	}
@@ -501,7 +508,7 @@ func (s *Service) manage(ctx context.Context, owner Owner, id string, action Mut
 	err := s.opts.Store.WithAPIKey(ctx, owner, Lookup{ConfigID: s.opts.ConfigID, ID: id}, now, func(k *Key) (Mutation, error) {
 		if action == Save {
 			if in.empty() {
-				return Read, problem(400, "NO_VALUES_TO_UPDATE", "No values to update")
+				return Read, errNoValues
 			}
 			if err := s.apply(k, in, now); err != nil {
 				return Read, err
@@ -554,7 +561,7 @@ func (s *Service) Verify(ctx context.Context, secret string, required Permission
 	result := Verification{}
 	invalid := func(code, msg string) { result.Error = &VerifyError{Code: code, Message: msg} }
 	if secret == "" || len(secret) > 4096 {
-		invalid("INVALID_API_KEY", "Invalid API key")
+		invalid("INVALID_API_KEY", "Invalid API key.")
 		return result, nil
 	}
 	if s.opts.ValidateKey != nil {
@@ -563,7 +570,7 @@ func (s *Service) Verify(ctx context.Context, secret string, required Permission
 			return Verification{}, fmt.Errorf("%w: %w", errKeyValidator, err)
 		}
 		if !allowed {
-			invalid("KEY_NOT_FOUND", "Invalid API key")
+			invalid("KEY_NOT_FOUND", "API Key not found")
 			return result, nil
 		}
 	}
@@ -617,7 +624,7 @@ func (s *Service) Verify(ctx context.Context, secret string, required Permission
 			if k.LastRequest == nil || now.Sub(*k.LastRequest).Milliseconds() > *k.RateLimitTimeWindow {
 				k.RequestCount = 1
 			} else if k.RequestCount >= *k.RateLimitMax {
-				invalid("RATE_LIMIT_EXCEEDED", "Rate limit exceeded")
+				invalid("RATE_LIMIT_EXCEEDED", "Rate limit exceeded.")
 				result.Error.TryAgainIn = ptr(*k.RateLimitTimeWindow - now.Sub(*k.LastRequest).Milliseconds())
 				return Read, nil
 			} else {
@@ -631,7 +638,7 @@ func (s *Service) Verify(ctx context.Context, secret string, required Permission
 		return Save, nil
 	})
 	if errors.Is(err, ErrMissing) {
-		invalid("INVALID_API_KEY", "Invalid API key")
+		invalid("INVALID_API_KEY", "Invalid API key.")
 		return result, nil
 	}
 	if errors.Is(err, ErrBanned) {

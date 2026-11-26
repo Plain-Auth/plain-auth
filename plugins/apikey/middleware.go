@@ -67,7 +67,7 @@ func (s *Service) credential(r *http.Request) (secret, source string, err error)
 func (s *Service) VerifyRequest(r *http.Request, required Permissions) (Verification, error) {
 	secret, _, err := s.credential(r)
 	if errors.Is(err, invalidSessionKey) {
-		return Verification{Error: &VerifyError{Code: "INVALID_API_KEY", Message: "Invalid API key"}}, nil
+		return Verification{Error: &VerifyError{Code: "INVALID_API_KEY", Message: "Invalid API key."}}, nil
 	}
 	if err != nil {
 		return Verification{}, err

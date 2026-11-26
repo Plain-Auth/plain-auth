@@ -92,6 +92,34 @@ The callback receives the request context and the presented credential. Keep the
 
 The Go client exposes `CreateAPIKey`, `GetAPIKey`, `ListAPIKeys`, `UpdateAPIKey` and `DeleteAPIKey`. Retrieval and listing omit the secret and digest. Store the creation response in the destination application's secret store.
 
+## Errors
+
+Each error carries its status, code and message from the API key error table.
+
+| Code | Status | When |
+| --- | ---: | --- |
+| `KEY_NOT_FOUND` | 404, or a verification result | No key has this ID or secret, or the key lacks a required permission |
+| `UNAUTHORIZED_SESSION` | 401 | Create or update without a session |
+| `USER_BANNED` | 401, or a verification result | The key's owner is banned |
+| `INVALID_PREFIX_LENGTH` | 400 | The prefix is shorter or longer than the configured bounds |
+| `VALIDATION_ERROR` | 400 | The prefix has characters other than letters, digits, `_` and `-`, or another field has the wrong type |
+| `INVALID_NAME_LENGTH` | 400 | The name is outside the configured bounds, including an empty name on update |
+| `NAME_REQUIRED` | 400 | `RequireName` is set and the key has no name |
+| `EXPIRES_IN_IS_TOO_SMALL`, `EXPIRES_IN_IS_TOO_LARGE` | 400 | `expiresIn` is outside the configured bounds |
+| `KEY_DISABLED_EXPIRATION` | 400 | `DisableCustomExpiration` is set and the request names an expiry |
+| `INVALID_METADATA_TYPE` | 400 | `metadata` is not an object |
+| `METADATA_DISABLED` | 400 | `EnableMetadata` is off and the request sends metadata |
+| `SERVER_ONLY_PROPERTY` | 400 | A browser request sets a server-only field such as `remaining` |
+| `REFILL_AMOUNT_AND_INTERVAL_REQUIRED`, `REFILL_INTERVAL_AND_AMOUNT_REQUIRED` | 400 | A refill interval without an amount, or an amount without an interval |
+| `INVALID_REMAINING` | 400 | A trusted `Policy.Remaining` is out of range; a Go policy has no body validator, so the declared code is the typed answer, where another runtime's validator answers `VALIDATION_ERROR` |
+| `NO_VALUES_TO_UPDATE` | 400 | An update changes nothing |
+| `INVALID_API_KEY` | 403 for a session key shorter than `KeyLength` or refused by `ValidateKey`, 401 otherwise, or a verification result | The secret is not a key |
+| `KEY_DISABLED`, `KEY_EXPIRED`, `USAGE_EXCEEDED` | Verification results; 401 or 429 on a session read | The key is disabled, expired or used up |
+| `INVALID_REFERENCE_ID_FROM_API_KEY` | 401 | An organization key is sent as a session credential |
+| `ORGANIZATION_ID_REQUIRED`, `USER_NOT_MEMBER_OF_ORGANIZATION`, `INSUFFICIENT_API_KEY_PERMISSIONS`, `ORGANIZATION_PLUGIN_REQUIRED` | 400, 403, 403, 500 | See [Organization-owned keys](#organization-owned-keys) |
+
+`API_KEY_ALREADY_ISSUED` (409) is this library's own. When a request has several faults, the first one reported may differ from another runtime's; each fault alone gets the code listed here. [Error code tests](../adapters/sqlstore/apikey_errors_test.go)
+
 ## Verify and set policies
 
 A trusted server can call `keys.Verify(ctx, secret, required)`. Check the returned error for storage failures, then check `result.Valid`. A successful result includes the key metadata. A credential must grant every requested resource and action.

@@ -21,11 +21,6 @@ const (
 	DeleteAction = "delete"
 )
 
-var ErrOrganizationRequired = problem(400, "ORGANIZATION_ID_REQUIRED", "Organization ID is required for organization-owned API keys")
-var ErrMembership = problem(403, "USER_NOT_MEMBER_OF_ORGANIZATION", "You are not a member of the organization that owns this API key")
-var ErrPermission = problem(403, "INSUFFICIENT_API_KEY_PERMISSIONS", "You do not have permission to perform this action on organization API keys")
-var ErrOrgPlugin = problem(500, "ORGANIZATION_PLUGIN_REQUIRED", "Organization plugin is required for organization-owned API keys")
-
 func (o *OrganizationOptions) Allows(roles, action string) bool {
 	for _, role := range strings.Split(roles, ",") {
 		role = strings.TrimSpace(role)

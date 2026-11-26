@@ -60,7 +60,7 @@ func (s *Service) handle(c plainauth.EndpointContext, action string) (any, error
 				return nil, ErrSession
 			}
 		case "permissions", "refillAmount", "refillInterval", "rateLimitMax", "rateLimitTimeWindow", "rateLimitEnabled", "remaining":
-			return nil, problem(400, "SERVER_ONLY_PROPERTY", "This property is restricted to server code")
+			return nil, errServerOnly
 		case "organizationId":
 			if action != "create" {
 				return nil, invalidField(k)
@@ -116,7 +116,7 @@ func (s *Service) handle(c plainauth.EndpointContext, action string) (any, error
 	if val, ok := body["metadata"]; ok && val != nil {
 		data, ok := val.(map[string]any)
 		if !ok {
-			return nil, problem(400, "INVALID_METADATA_TYPE", "Metadata must be an object")
+			return nil, errMetadataType
 		}
 		up.Metadata = data
 	}
