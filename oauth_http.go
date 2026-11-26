@@ -850,20 +850,42 @@ func (a *Auth) publishSocialLogin(w http.ResponseWriter, r *http.Request, token 
 }
 
 func (a *Auth) directOAuth(w http.ResponseWriter, r *http.Request, id string, p OAuthProvider, value any, linkUserID string, requestSignUp bool, callback string, resume OAuthLoginContinuation) (any, error) {
-	if p.DisableIDTokenSignIn || p.VerifyIDToken == nil {
+	if p.DisableIDTokenSignIn || p.VerifyIDToken == nil && p.VerifyAccessToken == nil {
 		return nil, &APIError{404, "ID_TOKEN_NOT_SUPPORTED", "Provider does not support ID token sign-in"}
 	}
 	data, _ := value.(map[string]any) // checked with the body
 	raw, _ := data["token"].(string)
 	nonce, _ := data["nonce"].(string)
-	if raw == "" || nonce == "" {
+	access, _ := data["accessToken"].(string)
+	// A token that is not a three-part JWS is a provider access token.
+	opaque := p.VerifyAccessToken != nil && strings.Count(raw, ".") != 2
+	if raw == "" || !opaque && (nonce == "" || p.VerifyIDToken == nil) {
 		return nil, &APIError{401, "INVALID_TOKEN", "Invalid token"}
 	}
 	ctx, cancel := context.WithTimeout(context.WithValue(r.Context(), oauth2.HTTPClient, p.HTTPClient), 30*time.Second)
 	defer cancel()
-	profile, expires, err := p.VerifyIDToken(ctx, raw, nonce)
-	if err != nil || !expires.After(a.now()) {
-		return nil, &APIError{401, "INVALID_TOKEN", "Invalid token"}
+	tokens := OAuthTokens{IDToken: raw}
+	var profile OAuthProfile
+	var expires time.Time
+	var err error
+	if opaque {
+		// The client repeats the token as accessToken, so the stored
+		// credential and the single-use record name the token that was
+		// checked.
+		if access == raw {
+			profile, err = p.VerifyAccessToken(ctx, raw)
+		}
+		if access != raw || err != nil {
+			return nil, &APIError{401, "FAILED_TO_GET_USER_INFO", "Failed to get user info"}
+		}
+		// An access token outlives a sign-in: it signs in at most once an hour.
+		expires = a.now().Add(time.Hour)
+		tokens.AccessToken = raw
+	} else {
+		profile, expires, err = p.VerifyIDToken(ctx, raw, nonce)
+		if err != nil || !expires.After(a.now()) {
+			return nil, &APIError{401, "INVALID_TOKEN", "Invalid token"}
+		}
 	}
 	// A verified token whose profile has no email cannot name an account.
 	if profile.Email == "" {
@@ -877,9 +899,9 @@ func (a *Auth) directOAuth(w http.ResponseWriter, r *http.Request, id string, p 
 	if !validSocialProfile(profile) {
 		return nil, &APIError{401, "INVALID_TOKEN", "Invalid token"}
 	}
-	// Direct grants authenticate the signed ID token. A client-supplied access
-	// or refresh token has no independently verified binding to its subject.
-	tokens := OAuthTokens{IDToken: raw}
+	// Direct grants store the token that was verified. Beside an ID token, a
+	// client-supplied access or refresh token has no verified binding to its
+	// subject, so it only reaches the account-field mapper.
 	input := OAuthAccountFieldInput{Profile: profile, Tokens: tokens}
 	input.ClientAccessToken, _ = data["accessToken"].(string)
 	input.ClientRefreshToken, _ = data["refreshToken"].(string)

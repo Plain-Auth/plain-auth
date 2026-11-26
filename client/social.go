@@ -30,7 +30,9 @@ type SocialSignInRequest struct {
 type SocialIDToken struct {
 	Token string `json:"token"`
 	Nonce string `json:"nonce"`
-	// Optional client-supplied credentials are available to the account-field mapper.
+	// AccessToken repeats Token when Token is a provider access token, such
+	// as a Facebook access token. Beside an ID token it, like RefreshToken,
+	// only reaches the account-field mapper.
 	AccessToken  string `json:"accessToken,omitempty"`
 	RefreshToken string `json:"refreshToken,omitempty"`
 }

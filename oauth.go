@@ -56,8 +56,17 @@ type OAuthProvider struct {
 	// picture are read.
 	UserInfoURL   string
 	VerifyIDToken func(ctx context.Context, raw, nonce string) (OAuthProfile, time.Time, error)
-	// DisableIDTokenSignIn closes the direct token grant on social sign-in and
-	// linking. Browser code exchanges and the One Tap plugin verify independently.
+	// VerifyAccessToken signs in with a provider access token that the client
+	// sends as idToken.token and repeats as idToken.accessToken on social
+	// sign-in and linking. A token that is not a three-part JWS goes here
+	// instead of VerifyIDToken and needs no nonce. It must confirm the token
+	// was issued to this application before returning the profile it names:
+	// a profile endpoint alone also accepts tokens issued to other
+	// applications. A token that signs in is refused for an hour.
+	VerifyAccessToken func(ctx context.Context, token string) (OAuthProfile, error)
+	// DisableIDTokenSignIn closes the direct ID-token and access-token grants
+	// on social sign-in and linking. Browser code exchanges and the One Tap
+	// plugin verify independently.
 	DisableIDTokenSignIn bool
 	// Refresh overrides the standard OAuth 2.0 refresh request.
 	Refresh func(context.Context, oauth2.Config, string) (*oauth2.Token, error)
