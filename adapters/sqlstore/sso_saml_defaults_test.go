@@ -71,6 +71,10 @@ func TestEnterpriseSAMLDefaults(t *testing.T) {
 			if w := call("POST", "sso/register", owner, map[string]any{"providerId": "acme", "issuer": spIssuer, "domain": "acme.example", "samlConfig": map[string]any{"entryPoint": entry, "cert": idpPEM, "idpMetadata": map[string]any{"entityID": idpEntity}}}); w.Code != 200 {
 				t.Fatal("a SAML directory without spMetadata did not register", w.Code, w.Body.String())
 			}
+			// A registration without any signing certificate source names it.
+			if w := call("POST", "sso/register", owner, map[string]any{"providerId": "uncertified", "issuer": spIssuer, "domain": "uncertified.example", "samlConfig": map[string]any{"entryPoint": entry, "idpMetadata": map[string]any{"entityID": idpEntity}}}); w.Code != 400 || !strings.Contains(w.Body.String(), `"code":"CERT_SOURCE_MISSING"`) {
+				t.Fatal("a SAML registration without a certificate source did not answer CERT_SOURCE_MISSING", w.Code, w.Body.String())
+			}
 			// A providerType the provider lacks names the missing protocol.
 			if w := call("POST", "sso/register", owner, map[string]any{"providerId": "oidc-one", "issuer": "https://idp.example.test", "domain": "oidc.example",
 				"oidcConfig": map[string]any{"clientId": "application", "clientSecret": "private", "skipDiscovery": true,

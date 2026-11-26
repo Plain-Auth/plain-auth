@@ -48,7 +48,7 @@ func TestEnterpriseSelectedUserLogin(t *testing.T) {
 			login := func(subject, selected string, update, disableSignUp bool) (auth.User, bool, error) {
 				candidate := auth.User{ID: rand.Text(), Name: "Enterprise User", Email: subject + "@acme.example", CreatedAt: now, UpdatedAt: now}
 				session := auth.StoredSession{Session: auth.Session{ID: rand.Text(), Token: rand.Text(), CreatedAt: now, UpdatedAt: now, ExpiresAt: now.Add(time.Hour)}}
-				return store.CompleteEnterpriseLogin(ctx, browser.Reference, true, "acme", subject, auth.OAuthTokens{AccessToken: "access-" + subject}, candidate, session, auth.OAuthLoginOptions{SelectUserID: selected, UpdateSelectedProfile: update, DisableSignUp: disableSignUp})
+				return store.CompleteEnterpriseLogin(ctx, browser.Reference, "member", "acme", subject, auth.OAuthTokens{AccessToken: "access-" + subject}, candidate, session, auth.OAuthLoginOptions{SelectUserID: selected, UpdateSelectedProfile: update, DisableSignUp: disableSignUp})
 			}
 			count := func(q string, args ...any) int {
 				t.Helper()

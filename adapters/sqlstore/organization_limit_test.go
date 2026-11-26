@@ -213,7 +213,7 @@ func TestOrganizationAdmissionPolicy(t *testing.T) {
 			candidate := auth.User{ID: "Federated", Email: "federated@example.test", Name: "Federated", EmailVerified: true, CreatedAt: now, UpdatedAt: now}
 			login := func(sid string) error {
 				session := auth.StoredSession{Session: auth.Session{ID: sid, Token: sid + "-token", CreatedAt: now, UpdatedAt: now, ExpiresAt: now.Add(time.Hour)}}
-				_, _, err := enterprise.CompleteEnterpriseLogin(ctx, provider.Reference, true, "corp", "remote-subject", auth.OAuthTokens{}, candidate, session, auth.OAuthLoginOptions{})
+				_, _, err := enterprise.CompleteEnterpriseLogin(ctx, provider.Reference, "member", "corp", "remote-subject", auth.OAuthTokens{}, candidate, session, auth.OAuthLoginOptions{})
 				return err
 			}
 			if err := login("enterprise-one"); !errors.Is(err, org.ErrMemberLimit) {
@@ -239,7 +239,7 @@ func TestOrganizationAdmissionPolicy(t *testing.T) {
 			samlLogin := func(sid string) error {
 				account := auth.User{ID: "directory-user", Name: "Staff", Email: "staff@example.test", CreatedAt: now, UpdatedAt: now}
 				session := auth.StoredSession{Session: auth.Session{ID: sid, Token: sid, CreatedAt: now, UpdatedAt: now, ExpiresAt: now.Add(time.Hour)}}
-				_, _, err := samlStore.CompleteSAMLLogin(ctx, directory.Reference, true, false, directory.ProviderID, "staff", sso.AssertionReceipt{Issuer: identityProvider, ID: "seat-claim"}, account, session, auth.OAuthLoginOptions{})
+				_, _, err := samlStore.CompleteSAMLLogin(ctx, directory.Reference, "member", false, directory.ProviderID, "staff", sso.AssertionReceipt{Issuer: identityProvider, ID: "seat-claim"}, account, session, auth.OAuthLoginOptions{})
 				return err
 			}
 			if err := samlLogin("at-capacity"); !errors.Is(err, org.ErrMemberLimit) || count(`SELECT COUNT(*) FROM "user" WHERE "id"='directory-user'`) != 0 {

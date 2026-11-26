@@ -41,6 +41,16 @@ type Options struct {
 	DefaultOverrideUserInfo bool
 	// DisableOrganizationProvisioning leaves membership management to the application.
 	DisableOrganizationProvisioning bool
+	// DefaultOrganizationRole is the role a provider's organization gives a
+	// user it provisions at sign-in: member, the default, or admin.
+	DefaultOrganizationRole string
+	// ResolveOrganizationRole chooses that role, member or admin, in place of
+	// DefaultOrganizationRole. It runs before the sign-in transaction, for
+	// every sign-in through a provider with an organization, so its user is
+	// the provider's view with no stored ID and it runs for an existing member
+	// too; another runtime runs it after storing the user, for a new member
+	// only. An error or panic fails the sign-in with its API error or 500.
+	ResolveOrganizationRole func(context.Context, OrganizationRoleInput) (string, error)
 	// A nil ProvidersLimit allows ten registrations per creator. Zero disables registration.
 	ProvidersLimit *int
 	// ResolveProvidersLimit returns how many providers the signed-in user may
@@ -249,6 +259,12 @@ func New(o Options) (auth.Plugin, error) {
 	if o.ProvidersLimit != nil && o.ResolveProvidersLimit != nil {
 		return auth.Plugin{}, errors.New("sso: choose ProvidersLimit or ResolveProvidersLimit")
 	}
+	if o.DefaultOrganizationRole != "" && !organizationRole(o.DefaultOrganizationRole) {
+		return auth.Plugin{}, errors.New("sso: DefaultOrganizationRole must be member or admin")
+	}
+	if o.DefaultOrganizationRole != "" && o.ResolveOrganizationRole != nil {
+		return auth.Plugin{}, errors.New("sso: choose DefaultOrganizationRole or ResolveOrganizationRole")
+	}
 	type operation func(auth.EndpointContext, Store, Actor) (any, error)
 	endpoint := func(path, method string, fn operation) auth.Endpoint {
 		return auth.Endpoint{Path: path, Method: method, Handler: func(c auth.EndpointContext) (any, error) {
@@ -335,6 +351,9 @@ func New(o Options) (auth.Plugin, error) {
 			p.SAML, e = DecodeSAMLConfig(raw)
 			if e != nil {
 				return nil, ErrInvalidSAML
+			}
+			if e = requireCertSource(p.SAML); e != nil {
+				return nil, e
 			}
 			if e = o.SAML.Algorithms.checkConfig(*p.SAML); e != nil {
 				return nil, e

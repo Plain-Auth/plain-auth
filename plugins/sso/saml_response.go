@@ -26,7 +26,8 @@ type AssertionReceipt struct {
 }
 type SAMLStore interface {
 	BrowserStore
-	CompleteSAMLLogin(ctx context.Context, reference string, provision, verified bool, provider, subject string, receipt AssertionReceipt, u auth.User, session auth.StoredSession, opts auth.OAuthLoginOptions) (auth.User, bool, error)
+	// role is the organization role to provision, or "" for none.
+	CompleteSAMLLogin(ctx context.Context, reference string, role string, verified bool, provider, subject string, receipt AssertionReceipt, u auth.User, session auth.StoredSession, opts auth.OAuthLoginOptions) (auth.User, bool, error)
 }
 
 var ErrAssertionUsed = apiError(400, "SAML assertion has already been consumed")
@@ -519,6 +520,11 @@ func (o Options) samlFinish(c auth.EndpointContext) (any, error) {
 			return enterpriseFailure(c, flow, resolved.Code, resolved.Message)
 		}
 	}
+	// The organization role is chosen before the sign-in transaction.
+	role, err := o.membershipRole(c.Request.Context(), p.Provider, profile, nil)
+	if err != nil {
+		return nil, roleFailure(c, err)
+	}
 	complete := func(ctx context.Context, provider, subject string, _ auth.OAuthTokens, u auth.User, session auth.StoredSession, opts auth.OAuthLoginOptions) (auth.User, bool, error) {
 		resolved.apply(&opts)
 		ctx, cancel := context.WithDeadline(ctx, deadline)
@@ -527,7 +533,7 @@ func (o Options) samlFinish(c auth.EndpointContext) (any, error) {
 		if o.SAML.EnableSingleLogout && availableSAMLLogout(c, p.Provider) == nil {
 			receipt.Logout = logoutIdentity(a)
 		}
-		return store.CompleteSAMLLogin(ctx, p.Reference, !o.DisableOrganizationProvisioning, proof, provider, subject, receipt, u, session, opts)
+		return store.CompleteSAMLLogin(ctx, p.Reference, role, proof, provider, subject, receipt, u, session, opts)
 	}
 	// requestSignUp applies to OIDC only, as in another runtime, so
 	// DisableImplicitSignUp refuses every SAML sign-up.

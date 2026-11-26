@@ -128,7 +128,7 @@ func testSAMLIDPLogout(t *testing.T, first, peerStore *Store, idp *saml.Identity
 	altUser := auth.User{ID: rand.Text(), Name: "independent account", Email: "employee@other.example", CreatedAt: now, UpdatedAt: now}
 	altSession := auth.StoredSession{Session: auth.Session{ID: rand.Text(), Token: rand.Text(), UserID: altUser.ID, CreatedAt: now, UpdatedAt: now, ExpiresAt: now.Add(time.Hour)}}
 	immutableIdentity := sso.SAMLLogoutIdentity{NameID: name, SessionIndex: "index-one"}
-	_, _, e = first.CompleteSAMLLogin(ctx, alt.Reference, false, true, alternate, name.Value, sso.AssertionReceipt{Issuer: idp.MetadataURL.String(), ID: "_" + rand.Text(), Logout: &immutableIdentity}, altUser, altSession, auth.OAuthLoginOptions{})
+	_, _, e = first.CompleteSAMLLogin(ctx, alt.Reference, "", true, alternate, name.Value, sso.AssertionReceipt{Issuer: idp.MetadataURL.String(), ID: "_" + rand.Text(), Logout: &immutableIdentity}, altUser, altSession, auth.OAuthLoginOptions{})
 	must(e)
 	proof := sso.SAMLIDPLogout{ID: "_" + rand.Text(), ProviderID: "work", Reference: p.Reference, Issuer: idp.MetadataURL.String(), Identity: sso.SAMLLogoutIdentity{NameID: name, SessionIndex: "index-one"}, IssuedAt: time.Now()}
 	// A node that only refreshes the application session must keep the SAML

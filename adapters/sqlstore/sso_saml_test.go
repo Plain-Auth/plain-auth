@@ -474,12 +474,14 @@ func runEnterpriseSAMLBrowser(t *testing.T, encrypted, logout bool) {
 				}
 			})
 
+			// A GET to the ACS only returns the browser, as another runtime does.
 			status, _, _ = send(newBrowser(), "GET", acs, "", "", "")
-			if status != 404 && status != 405 {
+			if status != 302 {
 				t.Fatal("unexpected GET assertion consumer", status)
 			}
+			// A JSON body is accepted, so one without SAMLResponse answers 400.
 			status, _, _ = send(newBrowser(), "POST", acs, "application/json", "{}", idpBase)
-			if status != 415 {
+			if status != 400 {
 				t.Fatal("unexpected JSON assertion consumer", status)
 			}
 			browser := newBrowser()

@@ -152,14 +152,14 @@ func TestEnterpriseProviderDeletion(t *testing.T) {
 			calls := 0
 			must(second.DeleteSSOProvider(ctx, direct, p.ProviderID, p.ID, func(context.Context, sso.ProviderMutation) error {
 				if calls++; calls == 1 {
-					_, _, during = first.CompleteEnterpriseLogin(ctx, browser.Reference, true, "corp", "one", auth.OAuthTokens{}, auth.User{ID: "unused", Email: bob.Email, Name: "returned", CreatedAt: now, UpdatedAt: now}, auth.StoredSession{Session: auth.Session{ID: "during-guard", Token: "during-guard-token", CreatedAt: now, UpdatedAt: now, ExpiresAt: now.Add(time.Hour)}}, auth.OAuthLoginOptions{})
+					_, _, during = first.CompleteEnterpriseLogin(ctx, browser.Reference, "member", "corp", "one", auth.OAuthTokens{}, auth.User{ID: "unused", Email: bob.Email, Name: "returned", CreatedAt: now, UpdatedAt: now}, auth.StoredSession{Session: auth.Session{ID: "during-guard", Token: "during-guard-token", CreatedAt: now, UpdatedAt: now, ExpiresAt: now.Add(time.Hour)}}, auth.OAuthLoginOptions{})
 				}
 				return nil
 			}))
 			if during != nil {
 				t.Fatal("a sign-in waited on or failed during a guard that should run outside the transaction", during)
 			}
-			_, _, err = first.CompleteEnterpriseLogin(ctx, browser.Reference, true, "corp", "one", auth.OAuthTokens{}, auth.User{ID: "unused", Email: bob.Email, Name: "returned", CreatedAt: now, UpdatedAt: now}, auth.StoredSession{Session: auth.Session{ID: "post-deletion", Token: "post-deletion-token", CreatedAt: now, UpdatedAt: now, ExpiresAt: now.Add(time.Hour)}}, auth.OAuthLoginOptions{})
+			_, _, err = first.CompleteEnterpriseLogin(ctx, browser.Reference, "member", "corp", "one", auth.OAuthTokens{}, auth.User{ID: "unused", Email: bob.Email, Name: "returned", CreatedAt: now, UpdatedAt: now}, auth.StoredSession{Session: auth.Session{ID: "post-deletion", Token: "post-deletion-token", CreatedAt: now, UpdatedAt: now, ExpiresAt: now.Add(time.Hour)}}, auth.OAuthLoginOptions{})
 			if !errors.Is(err, sso.ErrChanged) {
 				t.Fatalf("stale login returned %v", err)
 			}

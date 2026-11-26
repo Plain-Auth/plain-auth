@@ -477,7 +477,11 @@ func TestSAMLConfigAlgorithms(t *testing.T) {
 	}
 	// A configuration without any signing certificate source names the gap.
 	var missing *auth.APIError
-	if _, err := DecodeSAMLConfig([]byte(`{"entryPoint":"https://idp.example/sso","idpMetadata":{"entityID":"https://idp.example"}}`)); !errors.As(err, &missing) || missing.Code != "CERT_SOURCE_MISSING" {
+	bare, err := DecodeSAMLConfig([]byte(`{"entryPoint":"https://idp.example/sso","idpMetadata":{"entityID":"https://idp.example"}}`))
+	if err != nil {
+		t.Fatal("a stored SAML configuration without a certificate could not be read", err)
+	}
+	if err := requireCertSource(bare); !errors.As(err, &missing) || missing.Code != "CERT_SOURCE_MISSING" {
 		t.Fatal("a SAML configuration without a certificate source did not answer CERT_SOURCE_MISSING", err)
 	}
 	failure := func(err error) (string, string) {

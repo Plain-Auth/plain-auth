@@ -188,13 +188,13 @@ var _ sso.UserResolutionStore = (*Store)(nil)
 // selected user.
 func (*Store) ResolvesSSOUsers() {}
 
-func (s *Store) CompleteEnterpriseLogin(ctx context.Context, ref string, provision bool, id, subject string, tokens auth.OAuthTokens, user auth.User, session auth.StoredSession, opts auth.OAuthLoginOptions) (auth.User, bool, error) {
-	return s.completeEnterpriseLogin(ctx, ref, provision, id, subject, tokens, user, session, opts, false, nil)
+func (s *Store) CompleteEnterpriseLogin(ctx context.Context, ref string, role string, id, subject string, tokens auth.OAuthTokens, user auth.User, session auth.StoredSession, opts auth.OAuthLoginOptions) (auth.User, bool, error) {
+	return s.completeEnterpriseLogin(ctx, ref, role, id, subject, tokens, user, session, opts, false, nil)
 }
-func (s *Store) CompleteVerifiedEnterpriseLogin(ctx context.Context, ref string, provision bool, id, subject string, tokens auth.OAuthTokens, user auth.User, session auth.StoredSession, opts auth.OAuthLoginOptions) (auth.User, bool, error) {
-	return s.completeEnterpriseLogin(ctx, ref, provision, id, subject, tokens, user, session, opts, true, nil)
+func (s *Store) CompleteVerifiedEnterpriseLogin(ctx context.Context, ref string, role string, id, subject string, tokens auth.OAuthTokens, user auth.User, session auth.StoredSession, opts auth.OAuthLoginOptions) (auth.User, bool, error) {
+	return s.completeEnterpriseLogin(ctx, ref, role, id, subject, tokens, user, session, opts, true, nil)
 }
-func (s *Store) completeEnterpriseLogin(ctx context.Context, ref string, provision bool, id, subject string, tokens auth.OAuthTokens, user auth.User, session auth.StoredSession, opts auth.OAuthLoginOptions, requireProof bool, assertion *sso.AssertionReceipt) (auth.User, bool, error) {
+func (s *Store) completeEnterpriseLogin(ctx context.Context, ref string, role string, id, subject string, tokens auth.OAuthTokens, user auth.User, session auth.StoredSession, opts auth.OAuthLoginOptions, requireProof bool, assertion *sso.AssertionReceipt) (auth.User, bool, error) {
 	var orgID *string
 	var admission *memberAdmission
 	checkedAt := session.CreatedAt
@@ -269,7 +269,7 @@ func (s *Store) completeEnterpriseLogin(ctx context.Context, ref string, provisi
 			return s.recordSAMLSession(ctx, tx, id, ref, u.ID, subject, *assertion.Logout, session)
 		},
 		afterIdentity: func(tx *sql.Tx, u auth.User) error {
-			if !provision || orgID == nil {
+			if role == "" || orgID == nil {
 				return nil
 			}
 			var pending bool
@@ -284,7 +284,7 @@ func (s *Store) completeEnterpriseLogin(ctx context.Context, ref string, provisi
 			if e != nil {
 				return e
 			}
-			return s.addMember(ctx, tx, org.Member{ID: rand.Text(), OrganizationID: *orgID, UserID: u.ID, Role: "member", CreatedAt: session.CreatedAt})
+			return s.addMember(ctx, tx, org.Member{ID: rand.Text(), OrganizationID: *orgID, UserID: u.ID, Role: role, CreatedAt: session.CreatedAt})
 		},
 	}
 	// Matching an unverified directory domain never grants linking to an existing email.

@@ -11574,6 +11574,11 @@
       "label": "Add a new enterprise user to the provider's organization with the member role",
       "test": "adapters/sqlstore/sso_browser_test.go",
       "marker": "t.Fatal(\"missing membership\")"
+    },
+    {
+      "label": "Give a provisioned member DefaultOrganizationRole or the role ResolveOrganizationRole chooses before the sign-in transaction, fail the sign-in on an error, panic or other role, and skip it when provisioning is off, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_organization_role_test.go",
+      "marker": "func TestEnterpriseOrganizationRole("
     }
   ],
   "plugin-symbol/sso/SSOOptions/redirectURI": [
@@ -42071,6 +42076,11 @@
       "label": "Add a new enterprise user to the provider's organization with the member role",
       "test": "adapters/sqlstore/sso_browser_test.go",
       "marker": "t.Fatal(\"missing membership\")"
+    },
+    {
+      "label": "Set the provisioned member's role from DefaultOrganizationRole or ResolveOrganizationRole",
+      "test": "adapters/sqlstore/sso_organization_role_test.go",
+      "marker": "t.Fatal(\"ResolveOrganizationRole did not set the provisioned role\", role(\"chosen@acme.example\"))"
     }
   ],
   "docs/content/docs/plugins/sso/index.mdx#L25/DNS domain verification": [
@@ -42483,6 +42493,11 @@
       "label": "Add a provider-linked sign-in as a member, keep an existing role and skip a user with a pending invitation",
       "test": "adapters/sqlstore/sso_browser_test.go",
       "marker": "t.Fatal(\"pending invite ignored\")"
+    },
+    {
+      "label": "Default the provisioned role to member and choose admin through DefaultOrganizationRole",
+      "test": "adapters/sqlstore/sso_organization_role_test.go",
+      "marker": "t.Fatal(\"DefaultOrganizationRole did not set the provisioned role\", role(\"lead@acme.example\"))"
     }
   ],
   "docs/content/docs/plugins/sso/reference.mdx#L494/`POST /sso/register`": [
@@ -42989,6 +43004,11 @@
       "test": "plugins/sso/saml_test.go",
       "marker": "t.Fatal(\"a SAML configuration without a certificate source did not answer CERT_SOURCE_MISSING\", err)",
       "complete": true
+    },
+    {
+      "label": "Refuse a SAML registration without a certificate source with CERT_SOURCE_MISSING over HTTP",
+      "test": "adapters/sqlstore/sso_saml_defaults_test.go",
+      "marker": "t.Fatal(\"a SAML registration without a certificate source did not answer CERT_SOURCE_MISSING\", w.Code, w.Body.String())"
     }
   ],
   "docs/content/docs/plugins/sso/saml.mdx#L92": [

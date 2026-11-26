@@ -26,7 +26,8 @@ type BrowserProvider struct {
 type BrowserStore interface {
 	auth.OAuthIdentityStore
 	FindBrowserProvider(context.Context, Selector) (BrowserProvider, error)
-	CompleteEnterpriseLogin(ctx context.Context, reference string, provision bool, provider, subject string, tokens auth.OAuthTokens, user auth.User, session auth.StoredSession, opts auth.OAuthLoginOptions) (auth.User, bool, error)
+	// role is the organization role to provision, or "" for none.
+	CompleteEnterpriseLogin(ctx context.Context, reference string, role string, provider, subject string, tokens auth.OAuthTokens, user auth.User, session auth.StoredSession, opts auth.OAuthLoginOptions) (auth.User, bool, error)
 }
 
 var ErrChanged = &auth.APIError{Status: 409, Code: "SSO_PROVIDER_CHANGED", Message: "The enterprise provider changed during authentication"}
@@ -366,12 +367,17 @@ func (o Options) finish(c auth.EndpointContext) (any, error) {
 	idToken, _ := token.Extra("id_token").(string)
 	scope, _ := token.Extra("scope").(string)
 	tokens := auth.OAuthTokens{AccessToken: token.AccessToken, RefreshToken: token.RefreshToken, IDToken: idToken, Scope: strings.Join(strings.Fields(scope), ","), ExpiresAt: token.Expiry}
+	// The organization role is chosen before the sign-in transaction.
+	role, err := o.membershipRole(c.Request.Context(), p.Provider, profile, &tokens)
+	if err != nil {
+		return nil, roleFailure(c, err)
+	}
 	complete := func(ctx context.Context, id, sub string, t auth.OAuthTokens, u auth.User, s auth.StoredSession, opts auth.OAuthLoginOptions) (auth.User, bool, error) {
 		resolved.apply(&opts)
 		if proof {
-			return store.(DomainStore).CompleteVerifiedEnterpriseLogin(ctx, p.Reference, !o.DisableOrganizationProvisioning, id, sub, t, u, s, opts)
+			return store.(DomainStore).CompleteVerifiedEnterpriseLogin(ctx, p.Reference, role, id, sub, t, u, s, opts)
 		}
-		return store.CompleteEnterpriseLogin(ctx, p.Reference, !o.DisableOrganizationProvisioning, id, sub, t, u, s, opts)
+		return store.CompleteEnterpriseLogin(ctx, p.Reference, role, id, sub, t, u, s, opts)
 	}
 	raw := tokens
 	result, err := c.CompleteEnterpriseFlowWith(flow, "sso-oidc", profile, tokens, auth.EnterpriseCompletion{DisableSignUp: o.DisableImplicitSignUp && !flow.RequestSignUp, OverrideUserInfo: p.OIDC.OverrideUserInfo || resolved.updates(),

@@ -59,7 +59,7 @@ type DomainStore interface {
 	SSODomainVerified(ctx context.Context, provider Provider, reference string) (bool, error)
 	// SSODomainRequired reports a persisted opt-in across differently configured nodes.
 	SSODomainRequired(context.Context, Provider) (bool, error)
-	CompleteVerifiedEnterpriseLogin(ctx context.Context, ref string, provision bool, id, subject string, tokens auth.OAuthTokens, user auth.User, session auth.StoredSession, opts auth.OAuthLoginOptions) (auth.User, bool, error)
+	CompleteVerifiedEnterpriseLogin(ctx context.Context, ref string, role string, id, subject string, tokens auth.OAuthTokens, user auth.User, session auth.StoredSession, opts auth.OAuthLoginOptions) (auth.User, bool, error)
 }
 
 var (
