@@ -77,13 +77,6 @@ var accountCases = []testCase{
 		if err != nil || got.ID != token.ID || got.UserID != u.ID || got.Token != token.Token || got.Email != u.Email || !got.ExpiresAt.Equal(token.ExpiresAt) {
 			f.Fatalf("FindPasswordResetToken returned %+v (%v)", got, err)
 		}
-		if _, err := s.FindPasswordResetToken(f.ctx, token.Token, token.ExpiresAt); !errors.Is(err, auth.ErrNotFound) {
-			f.Fatal("a token was found at its expiry:", err)
-		}
-		if err := s.FinishPasswordReset(f.ctx, token.Token, "expired", token.ExpiresAt.Add(time.Second), false); !errors.Is(err, auth.ErrNotFound) {
-			f.Fatal("an expired token reset the password:", err)
-		}
-		f.hash(u.Email, "hash-"+u.ID)
 		if err := s.FinishPasswordReset(f.ctx, token.Token, "reset", f.now, false); err != nil {
 			f.Fatal("FinishPasswordReset:", err)
 		}
@@ -105,6 +98,19 @@ var accountCases = []testCase{
 			f.Fatal("FinishPasswordReset with revocation:", err)
 		}
 		f.sessions(u.ID)
+		// Expiry is checked on its own token, so a store may drop a token
+		// once it sees it expired.
+		expired := auth.PasswordResetToken{ID: rand.Text(), Token: rand.Text(), UserID: u.ID, Email: u.Email, CreatedAt: f.now, ExpiresAt: f.now.Add(time.Minute)}
+		if err := s.SavePasswordResetToken(f.ctx, expired); err != nil {
+			f.Fatal("SavePasswordResetToken:", err)
+		}
+		if _, err := s.FindPasswordResetToken(f.ctx, expired.Token, expired.ExpiresAt); !errors.Is(err, auth.ErrNotFound) {
+			f.Fatal("a token was found at its expiry:", err)
+		}
+		if err := s.FinishPasswordReset(f.ctx, expired.Token, "expired", expired.ExpiresAt.Add(time.Second), false); !errors.Is(err, auth.ErrNotFound) {
+			f.Fatal("an expired token reset the password:", err)
+		}
+		f.hash(u.Email, "revoked")
 	}},
 	{"VerifyAccountEmail", func(f *fixture) {
 		u, _ := f.signUp(false)
@@ -158,9 +164,6 @@ var refreshCases = []testCase{
 		if ok, err := f.refresh().RefreshSession(f.ctx, s.Token, s.ExpiresAt.Add(time.Second), at, next); err != nil || ok {
 			f.Fatal("a stale previous expiry refreshed the session:", ok, err)
 		}
-		if ok, err := f.refresh().RefreshSession(f.ctx, s.Token, s.ExpiresAt, s.ExpiresAt, next); err != nil || ok {
-			f.Fatal("a session was refreshed at its expiry:", ok, err)
-		}
 		if ok, err := f.refresh().RefreshSession(f.ctx, rand.Text(), s.ExpiresAt, at, next); err != nil || ok {
 			f.Fatal("an unknown token was refreshed:", ok, err)
 		}
@@ -170,6 +173,10 @@ var refreshCases = []testCase{
 		row, _, err := f.store.Session(f.ctx, s.Token)
 		if err != nil || !row.ExpiresAt.Equal(next) || !row.UpdatedAt.Equal(at) || row.UserID != u.ID {
 			f.Fatal("the refreshed session has the wrong times:", row.ExpiresAt, row.UpdatedAt, err)
+		}
+		// Last, as a store may drop a session it sees expired.
+		if ok, err := f.refresh().RefreshSession(f.ctx, s.Token, next, next, next.Add(time.Hour)); err != nil || ok {
+			f.Fatal("a session was refreshed at its expiry:", ok, err)
 		}
 	}},
 	{"DeleteExpiredSession", func(f *fixture) {

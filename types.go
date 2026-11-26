@@ -399,8 +399,9 @@ var (
 	// ErrNotFound reports a missing record. Stores also return it for a token
 	// that expired, was spent or belongs to another account.
 	ErrNotFound = errors.New("authn: record not found")
-	// ErrEmailTaken reports that CreateUser found another user with the
-	// address.
+	// ErrEmailTaken reports that a store write found another user with the
+	// address: CreateUser, AccountLifecycleStore.ChangeAccountEmail, admin
+	// user writes and phone sign-up.
 	ErrEmailTaken = errors.New("authn: email already registered")
 )
 

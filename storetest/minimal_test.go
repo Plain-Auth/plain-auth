@@ -2,7 +2,6 @@ package storetest_test
 
 import (
 	"context"
-	"errors"
 	"strings"
 	"sync"
 	"testing"
@@ -10,8 +9,6 @@ import (
 	auth "github.com/Plain-Org/plain-auth"
 	"github.com/Plain-Org/plain-auth/storetest"
 )
-
-var errDuplicate = errors.New("duplicate key")
 
 // mapStore is the smallest plainauth.Store: users and sessions in maps under
 // one mutex. It implements none of the optional interfaces.
@@ -34,13 +31,7 @@ func (s *mapStore) CreateUser(_ context.Context, user auth.User, passwordHash st
 	if _, ok := s.byEmail[email]; ok {
 		return auth.ErrEmailTaken
 	}
-	if _, ok := s.users[user.ID]; ok {
-		return errDuplicate
-	}
 	if initial != nil {
-		if _, ok := s.sessions[initial.Token]; ok {
-			return errDuplicate
-		}
 		s.sessions[initial.Token] = initial.Session
 	}
 	s.users[user.ID], s.byEmail[email], s.hashes[user.ID] = user, user.ID, passwordHash
@@ -62,9 +53,6 @@ func (s *mapStore) CreateSession(_ context.Context, session auth.StoredSession) 
 	defer s.mu.Unlock()
 	if _, ok := s.users[session.UserID]; !ok {
 		return auth.ErrNotFound
-	}
-	if _, ok := s.sessions[session.Token]; ok {
-		return errDuplicate
 	}
 	s.sessions[session.Token] = session.Session
 	return nil

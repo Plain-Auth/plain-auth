@@ -21,9 +21,9 @@ Plain Auth generates every ID, token and timestamp; store them as given.
 
 | Method | Contract |
 | --- | --- |
-| `CreateUser` | Writes the user, a password credential holding `passwordHash`, and `initial` when it is not nil, all or nothing. If another user has the address, return `ErrEmailTaken` and write nothing. Any other failure, such as a session token that is already stored, also writes nothing |
+| `CreateUser` | Writes the user, a password credential holding `passwordHash`, and `initial` when it is not nil, all or nothing. If another user has the address, return `ErrEmailTaken` and write nothing. Any other failure also writes nothing |
 | `Credential` | Returns the user with this address and its hash, or `ErrNotFound` when there is no such user or it has no password |
-| `CreateSession` | Inserts the session. Return `ErrNotFound` when the user does not exist, including one deleted at the same moment; never keep a session without its user. A token that is already stored is an error |
+| `CreateSession` | Inserts the session. Fail and store nothing when the user does not exist, including one deleted at the same moment, and never keep a session without its user; `ErrNotFound` is the preferred error |
 | `Session` | Returns the session with this token and its user's current profile, or `ErrNotFound` |
 | `ListSessions` | Returns all of the user's sessions in any order, and an empty list when there are none. There is no limit |
 | `DeleteSession` | Deletes the session with this token |
@@ -33,8 +33,8 @@ Plain Auth generates every ID, token and timestamp; store them as given.
 Deleting something that is already gone returns nil.
 
 - **Addresses.** Plain Auth lowercases the address before `CreateUser` and `Credential`. `FindAccountUser` receives it as typed, for example from a reset request, so match it case-insensitively. The simplest approach is to store addresses lowercased behind a unique index and lowercase lookup arguments.
-- **Tokens and IDs** are case-sensitive random strings. Store and compare them exactly as given; do not trim, re-encode or change their case.
-- **Times.** Keep at least millisecond precision. User and session times arrive as whole UTC milliseconds and must read back as the same instant; the time zone does not matter.
+- **Tokens and IDs** are unique, case-sensitive random strings. Store and compare them exactly as given; do not trim, re-encode or change their case. A unique index on session tokens is good practice, but Plain Auth never sends a token twice.
+- **Times.** Keep at least millisecond precision. Times in `CreateUser` and `CreateSession` arrive as whole UTC milliseconds and must read back as the same instant; the time zone does not matter. Other `now` arguments, such as profile updates, email verification and reset tokens, may carry finer precision; truncating them to your column's precision is fine.
 - **Expiry.** Store `ExpiresAt` as given. Plain Auth compares it with its own clock on every read, so `Session` and `ListSessions` may return expired sessions; a store may also drop them, for example with a TTL. With `SessionRefreshStore`, Plain Auth deletes an expired session that a request presents. Otherwise prune expired rows yourself.
 - **Errors.** `ErrNotFound` and `ErrEmailTaken` are matched with `errors.Is`, so wrapping them with `%w` is fine. Optional interfaces have their own sentinels, such as `ErrUsernameTaken` and `ErrPasswordAlreadySet`. A store may return an `*APIError` to answer with its own status; keep secrets out of its message. Any other error becomes 500 `INTERNAL_SERVER_ERROR` over HTTP; `OnAPIError` and Go callers see the original error, the HTTP client never does.
 - **Context.** Pass `ctx` to every database and network call, and do not keep it after the method returns.
@@ -54,15 +54,16 @@ Plain Auth detects optional interfaces with type assertions on `Options.Store`. 
 | Profile updates, password changes, reset and verification mail | `AccountStore` |
 | Deleting users, changing email | `AccountLifecycleStore` |
 | Additional user, session or account fields | `UserFieldStore`, `SessionFieldStore`, `AccountFieldStore` |
-| Protected sign-up, user and session create hooks, `ValidateUserInfo` for email sign-up | a `FindAccountUser` method |
+| `OnExistingUserSignUp` with `RequireEmailVerification` or `DisableAutoSignIn`, user and session create hooks, `ValidateUserInfo` for email sign-up | a `FindAccountUser` method |
+| User or session create before hooks, or `ValidateUserInfo`, with sign-ins the store decides, such as social sign-in, magic links, email codes, One Tap or SSO | `LoginPlanner` |
 | Social sign-in | `OAuthIdentityStore`, and `OAuthFlowStore` unless the state lives in a cookie |
 | `SecondaryStorage` | `SessionMirrorStore` |
 | `DisableVerificationCleanup` | `VerificationCleanupStore` |
 | Plugins such as phone, username, magic link, email codes or JWT | the interface each plugin's guide names |
 
-Plugins that take their own store, such as organizations, the OAuth provider, SSO, SCIM, passkeys, wallet sign-in, billing and API keys, check it the same way. With the admin plugin, the value `WithAdminConfig` returns must implement every interface yours does.
+Plugins that take their own store, such as organizations, the OAuth provider, SSO, SCIM, passkeys, wallet sign-in, billing and API keys, check it the same way. The store that `AccountFieldStore.WithAccountFields` returns, and with the admin plugin the value `WithAdminConfig` returns, replace `Options.Store`, so each must implement every interface yours does: return a configured copy of your own type.
 
-Some interfaces change behaviour instead of being required. Without `AccountStore`, profile, password and verification operations answer 501. `SessionRefreshStore` adds sliding expiration and the deletion of expired sessions. With `AccountStore.CreateCredentialSession`, a sign-in creates its session only if the password is unchanged. Without `SessionCacheStore`, `SessionCookieCache` silently does nothing.
+Some interfaces change behaviour instead of being required. Without `AccountStore`, profile, password and verification operations answer 501. `SessionRefreshStore` adds sliding expiration and the deletion of expired sessions. With `AccountStore.CreateCredentialSession`, a sign-in creates its session only if the password is unchanged. Without `SessionCacheStore`, `SessionCookieCache` silently does nothing. Without `LinkedAccountStore` and `ProviderCredentialStore`, the account listing, unlinking and provider token routes answer 501, and sign-out never returns a provider logout URL.
 
 ## Test your store
 
@@ -80,7 +81,7 @@ func TestStoreContract(t *testing.T) {
 
 | Group | Runs when the store implements | Covers |
 | --- | --- | --- |
-| `Store` | always | atomic sign-up, duplicate addresses and tokens, session ownership, listing, the three deletes, concurrent sign-up and session creation, and sign-up, sign-in, revocation, password reset and sign-out through `plainauth.New` |
+| `Store` | always | atomic sign-up, duplicate addresses, session ownership, listing, the three deletes, concurrent sign-up and session creation, and sign-up, sign-in, revocation, password reset and sign-out through `plainauth.New` |
 | `AccountStore` | `AccountStore` | case-insensitive lookup, password-guarded sessions and changes, single-use reset tokens, email verification and profile updates |
 | `SessionRefreshStore` | `SessionRefreshStore` | the guarded expiry refresh and the deletion of expired sessions |
 
