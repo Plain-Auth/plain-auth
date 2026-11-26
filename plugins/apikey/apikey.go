@@ -414,6 +414,9 @@ func (s *Service) apply(k *Key, in UpdateInput, now time.Time) error {
 		}
 		k.Remaining = p.Remaining
 	}
+	// A rate maximum must allow at least one request, and both rate settings
+	// must fit the integer columns; other values are refused rather than
+	// stored.
 	if p.RateLimitMax != nil {
 		if *p.RateLimitMax < 1 || *p.RateLimitMax > 2147483647 {
 			return problem(400, "VALIDATION_ERROR", "Invalid rate limit")

@@ -39937,5 +39937,82 @@
       "marker": "merged pages from several configurations were not sorted and paged together",
       "complete": true
     }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L101/Parameter `name` (optional)": [
+    {
+      "label": "Store a name inside the bounds counted in UTF-16 units, leave an omitted name empty, and refuse names outside the bounds with INVALID_NAME_LENGTH, on three SQL engines",
+      "test": "adapters/sqlstore/apikey_parameters_test.go",
+      "marker": "a name inside the limits in UTF-16 units was refused",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L144/Parameter `rateLimitTimeWindow` (optional)": [
+    {
+      "label": "Store a key's own rate window, set the retry interval from it and reopen once it has passed",
+      "test": "adapters/sqlstore/apikey_parameters_test.go",
+      "marker": "the key's own window did not reopen after it passed",
+      "complete": true
+    },
+    {
+      "label": "Refuse server-only fields such as refill and rate settings from browser create and update requests without changing the key",
+      "test": "adapters/sqlstore/apikey_parameters_test.go",
+      "marker": "a browser request changed a server-only property"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L154/Parameter `rateLimitEnabled` (optional)": [
+    {
+      "label": "Leave a key created with rate limiting off unlimited while still recording its requests",
+      "test": "adapters/sqlstore/apikey_parameters_test.go",
+      "marker": "a key created with rate limiting off was limited or not tracked",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L274/Parameter `refillAmount` (optional)": [
+    {
+      "label": "Save a refill amount on update, keep an exhausted key with a refill policy and refill it with the new amount",
+      "test": "adapters/sqlstore/apikey_parameters_test.go",
+      "marker": "the updated refill amount was not used",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L279/Parameter `refillInterval` (optional)": [
+    {
+      "label": "Save a refill interval on update and let it decide the next refill",
+      "test": "adapters/sqlstore/apikey_parameters_test.go",
+      "marker": "the updated refill interval did not decide the next refill",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L289/Parameter `expiresIn` (optional)": [
+    {
+      "label": "Count an updated expiresIn from the update, clear the expiry with a null, and refuse out-of-range values without saving them",
+      "test": "adapters/sqlstore/apikey_parameters_test.go",
+      "marker": "expiresIn on update did not count from the update",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L294/Parameter `rateLimitEnabled` (optional)": [
+    {
+      "label": "Turn rate limiting off and back on by update, without counting requests while it is off",
+      "test": "adapters/sqlstore/apikey_parameters_test.go",
+      "marker": "turning rate limiting back on did not restore the limit",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L299/Parameter `rateLimitTimeWindow` (optional)": [
+    {
+      "label": "Save an updated rate window, set the retry interval from it and reopen once it has passed",
+      "test": "adapters/sqlstore/apikey_parameters_test.go",
+      "marker": "the updated window did not set the retry interval",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L304/Parameter `rateLimitMax` (optional)": [
+    {
+      "label": "Enforce an updated rate maximum under the existing window and refuse a maximum of zero",
+      "test": "adapters/sqlstore/apikey_parameters_test.go",
+      "marker": "the updated rate limit maximum was not enforced",
+      "complete": true
+    }
   ]
 }
