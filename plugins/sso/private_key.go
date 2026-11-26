@@ -4,8 +4,7 @@ import (
 	"context"
 	"slices"
 
-	auth "github.com/Plain-Org/plain-auth"
-	"github.com/Plain-Org/plain-auth/providers"
+	"github.com/Plain-Org/plain-auth/internal/clientassertion"
 )
 
 // PrivateKeyRequest names the provider whose token request needs a
@@ -77,10 +76,10 @@ func (o Options) clientAssertion(ctx context.Context, p BrowserProvider) (string
 	if alg == "" {
 		alg = key.Algorithm
 	}
-	sign, err := providers.PrivateKeyJWT(providers.PrivateKeyJWTOptions{PrivateKeyPEM: key.PEM, PrivateKeyJWK: key.JWK, KeyID: kid, Algorithm: alg})
+	sign, err := clientassertion.New(clientassertion.Options{PrivateKeyPEM: key.PEM, PrivateKeyJWK: key.JWK, KeyID: kid, Algorithm: alg})
 	if err != nil {
 		return "", false
 	}
-	assertion, err := sign(ctx, auth.TokenRequest{ClientID: cfg.ClientID, TokenURL: cfg.TokenEndpoint, GrantType: "authorization_code"})
+	assertion, err := sign(cfg.ClientID, cfg.TokenEndpoint)
 	return assertion, err == nil
 }
