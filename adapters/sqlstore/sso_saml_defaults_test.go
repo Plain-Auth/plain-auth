@@ -132,6 +132,7 @@ func TestEnterpriseSAMLDefaults(t *testing.T) {
 				must(req.MakeAssertionEl())
 				return req.AssertionEl
 			}
+			asJSON := false
 			// post signs a response over every assertion, as the IdP signs one
 			// over a single assertion, and posts it to the ACS.
 			post := func(req *saml.IdpAuthnRequest, state *http.Cookie, assertions ...*etree.Element) *httptest.ResponseRecorder {
@@ -158,6 +159,11 @@ func TestEnterpriseSAMLDefaults(t *testing.T) {
 				body := url.Values{"RelayState": {form.RelayState}, "SAMLResponse": {form.SAMLResponse}}
 				acs := httptest.NewRequest("POST", "https://service.test/identity/sso/saml2/sp/acs/acme", strings.NewReader(body.Encode()))
 				acs.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+				if asJSON {
+					encoded, _ := json.Marshal(map[string]string{"RelayState": form.RelayState, "SAMLResponse": form.SAMLResponse})
+					acs = httptest.NewRequest("POST", "https://service.test/identity/sso/saml2/sp/acs/acme", bytes.NewReader(encoded))
+					acs.Header.Set("Content-Type", "application/json")
+				}
 				acs.Header.Set("Origin", idpBase)
 				acs.Header.Set("Cookie", state.Name+"="+state.Value)
 				done := httptest.NewRecorder()
@@ -199,6 +205,27 @@ func TestEnterpriseSAMLDefaults(t *testing.T) {
 				t.Fatal("a refused two-assertion response stored a user")
 			}
 
+			// The ACS also takes the response as JSON.
+			asJSON = true
+			req, state = start()
+			done = post(req, state, assertion(req, "json", nil, attr("email", "json@acme.example")))
+			if done.Code != 302 || done.Header().Get("Location") != "https://service.test/home" || !sessionCookie(done) {
+				t.Fatal("a JSON SAML response did not sign in", done.Code, done.Header().Get("Location"))
+			}
+			asJSON = false
+			// A GET to the ACS returns a signed-in browser to a trusted
+			// RelayState, the application origin otherwise, and anyone else to
+			// the error page.
+			for _, c := range []struct{ cookie, relay, want string }{
+				{owner, "/dashboard", "https://service.test/dashboard"},
+				{owner, "https://evil.example/steal", "https://service.test/"},
+				{"", "/dashboard", "https://service.test/identity/error?error=invalid_request"},
+			} {
+				w := call("GET", "sso/saml2/sp/acs/acme?RelayState="+url.QueryEscape(c.relay), c.cookie, nil)
+				if w.Code != 302 || w.Header().Get("Location") != c.want {
+					t.Fatal("a GET to the ACS did not return the browser as another runtime does", c.relay, w.Code, w.Header().Get("Location"))
+				}
+			}
 			// requestSignUp applies to OIDC only, so DisableImplicitSignUp
 			// refuses a SAML sign-up that asks for one.
 			strict, err := sso.New(sso.Options{SAML: &sso.SAMLOptions{}, DisableImplicitSignUp: true})

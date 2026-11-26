@@ -499,7 +499,8 @@ func New(o Options) (auth.Plugin, error) {
 		if o.SAML.AllowIDPInitiated != nil {
 			acs.OpenAPI = json.RawMessage(`{"x-plainauth-idp-initiated":true}`)
 		}
-		plugin.Endpoints = append(plugin.Endpoints, auth.Endpoint{Method: "GET", Path: "/sso/saml2/sp/metadata", Handler: o.samlMetadata}, acs)
+		plugin.Endpoints = append(plugin.Endpoints, auth.Endpoint{Method: "GET", Path: "/sso/saml2/sp/metadata", Handler: o.samlMetadata}, acs,
+			auth.Endpoint{Method: "GET", Path: "/sso/saml2/sp/acs/:providerId", Handler: o.samlReturn})
 	}
 	plugin.ValidateVerificationStore = func(s auth.Store, hooks auth.VerificationHookSet) error {
 		// A logout binding or request and a domain token are written inside the

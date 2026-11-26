@@ -12743,6 +12743,11 @@
       "label": "The logout binding's verification create hooks follow the sign-in's session hooks once",
       "test": "adapters/sqlstore/sso_saml_hooks_test.go",
       "marker": "// The binding's hooks follow the user and session hooks once."
+    },
+    {
+      "label": "Sign in from a JSON SAML response and answer a GET by returning a signed-in browser to a trusted RelayState, the origin otherwise, and others to the error page",
+      "test": "adapters/sqlstore/sso_saml_defaults_test.go",
+      "marker": "t.Fatal(\"a GET to the ACS did not return the browser as another runtime does\", c.relay, w.Code, w.Header().Get(\"Location\"))"
     }
   ],
   "docs/content/docs/plugins/polar.mdx#L17/Checkout Integration": [
@@ -42506,6 +42511,11 @@
       "label": "Sign in from a signed SAML response posted to the ACS by the browser that started the request",
       "test": "adapters/sqlstore/sso_saml_test.go",
       "marker": "t.Fatalf(\"first login %d %v %s\", status, headers, string(data))"
+    },
+    {
+      "label": "Accept a JSON SAML response at the ACS",
+      "test": "adapters/sqlstore/sso_saml_defaults_test.go",
+      "marker": "t.Fatal(\"a JSON SAML response did not sign in\", done.Code, done.Header().Get(\"Location\"))"
     }
   ],
   "docs/content/docs/plugins/sso/reference.mdx#L499/`GET /sso/saml2/sp/metadata?providerId=`": [

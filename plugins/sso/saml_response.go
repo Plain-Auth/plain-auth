@@ -4,16 +4,19 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"encoding/xml"
 	"errors"
 	"fmt"
 	"io"
 	"mime"
+	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
 	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/internal/httporigin"
 	"github.com/crewjam/saml"
 )
 
@@ -322,22 +325,54 @@ func sameSAMLOrigin(raw, entryPoint string) bool {
 	return port(origin) == port(entry)
 }
 
+// samlReturn answers a GET to the ACS, as another runtime does: a signed-in
+// browser goes to a trusted RelayState or the application origin, and
+// another goes to the error page with invalid_request.
+func (o Options) samlReturn(c auth.EndpointContext) (any, error) {
+	if session, err := c.Session(); err != nil || session == nil {
+		target, err := c.ErrorPageURL()
+		if err != nil {
+			return nil, err
+		}
+		return c.Redirect(httporigin.SetQuery(target, url.Values{"error": {"invalid_request"}}))
+	}
+	acs, err := samlACS(c, strings.TrimPrefix(c.Request.URL.Path[strings.LastIndex(c.Request.URL.Path, "/"):], "/"))
+	if err != nil {
+		return nil, err
+	}
+	return c.Redirect(samlLanding(c, acs, c.Request.URL.Query().Get("RelayState")))
+}
+
 func (o Options) samlFinish(c auth.EndpointContext) (any, error) {
 	store, ok := c.Store().(SAMLStore)
 	if !ok {
 		return nil, apiError(501, "The configured store does not support SAML sign-in")
 	}
 	media, _, err := mime.ParseMediaType(c.Request.Header.Get("Content-Type"))
-	if err != nil || media != "application/x-www-form-urlencoded" {
-		return nil, apiError(415, "SAML requires a URL-encoded form")
+	if err != nil || media != "application/x-www-form-urlencoded" && media != "application/json" {
+		return nil, apiError(415, "SAML requires a URL-encoded form or JSON")
 	}
 	if c.Request.URL.RawQuery != "" {
 		return nil, errSAMLResponse
 	}
-	if err = c.Request.ParseForm(); err != nil {
-		return nil, errSAMLResponse
+	var form url.Values
+	if media == "application/json" {
+		// Another runtime also accepts the response as JSON.
+		var body struct{ SAMLResponse, RelayState *string }
+		d := json.NewDecoder(http.MaxBytesReader(nil, c.Request.Body, 1<<20))
+		if d.Decode(&body) != nil || body.SAMLResponse == nil || d.Decode(new(any)) != io.EOF {
+			return nil, errSAMLResponse
+		}
+		form = url.Values{"SAMLResponse": {*body.SAMLResponse}}
+		if body.RelayState != nil {
+			form.Set("RelayState", *body.RelayState)
+		}
+	} else {
+		if err = c.Request.ParseForm(); err != nil {
+			return nil, errSAMLResponse
+		}
+		form = c.Request.PostForm
 	}
-	form := c.Request.PostForm
 	if len(form["SAMLResponse"]) != 1 || form.Get("SAMLResponse") == "" {
 		return nil, errSAMLResponse
 	}
