@@ -13,8 +13,10 @@ import (
 	"time"
 
 	authn "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/adapters/memory"
 	"github.com/Plain-Org/plain-auth/client"
 	"github.com/Plain-Org/plain-auth/plugins/anonymous"
+	"github.com/Plain-Org/plain-auth/plugins/phonenumber"
 	"github.com/Plain-Org/plain-auth/plugins/twofactor"
 	"github.com/Plain-Org/plain-auth/schema"
 	"github.com/pquerna/otp/totp"
@@ -259,6 +261,115 @@ func TestAnonymousGuestLifecycle(t *testing.T) {
 			must(<-ch)
 			if calls.Load() != n+1 || count(`SELECT COUNT(*) FROM "user" WHERE "id"=?`, g.User.ID) != 1 {
 				t.Fatal("retained guest transferred more than once or disappeared")
+			}
+			// A password sign-in from a guest browser hands the guest off and,
+			// with deletion disabled, keeps its user row and session.
+			c = browser(keep)
+			g = guest(c)
+			signed, err = c.SignInEmail(ctx, client.SignInRequest{Email: "permanent@test.example", Password: "a local test password"})
+			must(err)
+			if signed.User.ID == g.User.ID || count(`SELECT COUNT(*) FROM "guestTransfer" WHERE "source"=?`, g.User.ID) != 1 ||
+				count(`SELECT COUNT(*) FROM "user" WHERE "id"=?`, g.User.ID) != 1 || count(`SELECT COUNT(*) FROM "session" WHERE "userId"=?`, g.User.ID) != 1 {
+				t.Fatal("a retained guest was deleted or not handed off on sign-in")
+			}
+		})
+	}
+}
+
+// A guest who signs in with a phone code is handed off to that number's
+// account like any other sign-in, while a sessionless verification and a
+// number update keep the guest.
+func TestAnonymousPhoneHandoff(t *testing.T) {
+	for _, dialect := range []string{"memory", "sqlite", "postgres", "mysql"} {
+		t.Run(dialect, func(t *testing.T) {
+			ctx := t.Context()
+			var store authn.Store
+			if dialect == "memory" {
+				store = memory.New()
+			} else {
+				ddl, err := schema.Generate(dialect, []string{"phone-number", "anonymous"})
+				if err != nil {
+					t.Fatal(err)
+				}
+				db, err := OpenWithSchema(ctx, dialect, organizationTestDSN(t, dialect), ddl)
+				if err != nil {
+					t.Fatal(err)
+				}
+				t.Cleanup(func() { db.Close() })
+				store = db
+			}
+			var code string
+			phone, err := phonenumber.New(phonenumber.Options{SendOTP: func(_ context.Context, m authn.PhoneOTPMessage) error { code = m.Code; return nil },
+				SignUpOnVerification: &authn.PhoneSignUpOptions{GetTempEmail: func(n string) string { return n[1:] + "@phone.test" }}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			var links []anonymous.Link
+			guests, err := anonymous.New(anonymous.Options{OnLinkAccount: func(_ context.Context, e anonymous.Link) error { links = append(links, e); return nil }})
+			if err != nil {
+				t.Fatal(err)
+			}
+			const origin = "https://phone-guest.example"
+			off := false
+			a, err := authn.New(authn.Options{Store: store, BaseURL: origin, Secret: strings.Repeat("p", 32), RateLimit: &off, Plugins: []authn.Plugin{guests, phone}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			browser := func() *client.Client {
+				c, err := client.New(origin, &http.Client{Transport: guestTransport{a}})
+				if err != nil {
+					t.Fatal(err)
+				}
+				return c
+			}
+			verify := func(c *client.Client, number string, sessionless, update bool) *client.PhoneVerificationResult {
+				t.Helper()
+				if err := c.SendPhoneNumberOTP(ctx, number); err != nil {
+					t.Fatal(err)
+				}
+				result, err := c.VerifyPhoneNumber(ctx, authn.PhoneVerificationInput{PhoneNumber: number, Code: code, DisableSession: sessionless, UpdatePhoneNumber: update})
+				if err != nil {
+					t.Fatal(err)
+				}
+				return result
+			}
+			guestStore := store.(authn.AnonymousStore)
+			c := browser()
+			g, err := c.SignInAnonymous(ctx)
+			if err != nil {
+				t.Fatal(err)
+			}
+			signed := verify(c, "+12025550142", false, false)
+			if len(links) != 1 || links[0].AnonymousUser.User.ID != g.User.ID || links[0].NewUser.User.ID != signed.User.ID || links[0].Request.URL.Path != "/api/auth/phone-number/verify" {
+				t.Fatal("phone verification did not hand off the guest", links)
+			}
+			if _, err := guestStore.IsAnonymous(ctx, g.User.ID); !errors.Is(err, authn.ErrNotFound) {
+				t.Fatal("the guest survived a phone sign-in", err)
+			}
+			if _, _, err := store.Session(ctx, g.Token); !errors.Is(err, authn.ErrNotFound) {
+				t.Fatal("the guest session survived a phone sign-in", err)
+			}
+			if s, err := c.GetSession(ctx); err != nil || s == nil || s.User.ID != signed.User.ID || s.User.IsAnonymous == nil || *s.User.IsAnonymous {
+				t.Fatal("the browser is not signed in as the phone account", err)
+			}
+			c2 := browser()
+			g2, err := c2.SignInAnonymous(ctx)
+			if err != nil {
+				t.Fatal(err)
+			}
+			verify(c2, "+12025550142", true, false)
+			if anon, err := guestStore.IsAnonymous(ctx, g2.User.ID); len(links) != 1 || err != nil || !anon {
+				t.Fatal("a sessionless phone verification handed off the guest", err)
+			}
+			if s, err := c2.GetSession(ctx); err != nil || s == nil || s.User.ID != g2.User.ID {
+				t.Fatal("a sessionless phone verification signed the guest out", err)
+			}
+			verify(c2, "+12025550143", false, true)
+			if anon, err := guestStore.IsAnonymous(ctx, g2.User.ID); len(links) != 1 || err != nil || !anon {
+				t.Fatal("a phone number update handed off the guest", err)
+			}
+			if s, err := c2.GetSession(ctx); err != nil || s == nil || s.User.ID != g2.User.ID {
+				t.Fatal("a phone number update signed the guest out", err)
 			}
 		})
 	}

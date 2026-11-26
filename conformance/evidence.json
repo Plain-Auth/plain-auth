@@ -5644,9 +5644,19 @@
   ],
   "plugin-symbol/anonymous/AnonymousOptions/disableDeleteAnonymousUser": [
     {
-      "label": "Retain a linked guest, block explicit deletion and deliver one callback across concurrent requests",
+      "label": "Transfer a retained guest once when two store connections link it at the same time",
       "test": "adapters/sqlstore/anonymous_test.go",
-      "marker": "retained guest transferred more than once or disappeared",
+      "marker": "retained guest transferred more than once or disappeared"
+    },
+    {
+      "label": "Refuse guest deletion with DELETE_ANONYMOUS_USER_DISABLED when the option is set",
+      "test": "adapters/sqlstore/anonymous_test.go",
+      "marker": "expectErr(c.DeleteAnonymousUser(ctx), 400, \"DELETE_ANONYMOUS_USER_DISABLED\")"
+    },
+    {
+      "label": "Keep the guest's user row and session and run the callback when a guest signs in with a password while deletion is disabled",
+      "test": "adapters/sqlstore/anonymous_test.go",
+      "marker": "a retained guest was deleted or not handed off on sign-in",
       "complete": true
     }
   ],
@@ -5727,6 +5737,17 @@
       "label": "Link a guest after the email sign-in link is verified",
       "test": "adapters/sqlstore/anonymous_test.go",
       "marker": "verified magic link did not transfer the guest"
+    },
+    {
+      "label": "Hand a guest off to the account it signs in to with a phone code and remove the guest, on the memory and SQL stores",
+      "test": "adapters/sqlstore/anonymous_test.go",
+      "marker": "phone verification did not hand off the guest"
+    },
+    {
+      "label": "Transfer guest records in the callback and delete the guest when it signs in with a password, completing handoff on every sign-in method with the entries above",
+      "test": "adapters/sqlstore/anonymous_test.go",
+      "marker": "guest was not atomically transferred and removed",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/anonymous.mdx#L123": [
@@ -37334,6 +37355,47 @@
       "label": "Fall back to the configured domain when the generator returns an empty address",
       "test": "client/anonymous_test.go",
       "marker": "an empty generated address did not fall back to the domain"
+    }
+  ],
+  "plugin-symbol/anonymous/anonymous": [
+    {
+      "label": "Run guest sign-in, upgrade and deletion on both servers with the official client",
+      "test": "conformance/core.test.mjs",
+      "marker": "the pinned anonymous client signs in, upgrades and deletes guests on either server",
+      "complete": true
+    },
+    {
+      "label": "Hand a guest off to the account it signs in to with a phone code and remove the guest, on the memory and SQL stores",
+      "test": "adapters/sqlstore/anonymous_test.go",
+      "marker": "phone verification did not hand off the guest"
+    },
+    {
+      "label": "Keep a guest signed in when a phone code is verified without a session",
+      "test": "adapters/sqlstore/anonymous_test.go",
+      "marker": "a sessionless phone verification handed off the guest"
+    },
+    {
+      "label": "Keep a guest signed in when it verifies a phone code to add a number to its own account",
+      "test": "adapters/sqlstore/anonymous_test.go",
+      "marker": "a phone number update handed off the guest"
+    }
+  ],
+  "docs/content/docs/plugins/anonymous.mdx#L191": [
+    {
+      "label": "Refuse guest deletion with DELETE_ANONYMOUS_USER_DISABLED when the option is set",
+      "test": "adapters/sqlstore/anonymous_test.go",
+      "marker": "expectErr(c.DeleteAnonymousUser(ctx), 400, \"DELETE_ANONYMOUS_USER_DISABLED\")"
+    },
+    {
+      "label": "Transfer a retained guest once when two store connections link it at the same time",
+      "test": "adapters/sqlstore/anonymous_test.go",
+      "marker": "retained guest transferred more than once or disappeared"
+    },
+    {
+      "label": "Keep the guest's user row and session and run the callback when a guest signs in with a password while deletion is disabled",
+      "test": "adapters/sqlstore/anonymous_test.go",
+      "marker": "a retained guest was deleted or not handed off on sign-in",
+      "complete": true
     }
   ]
 }
