@@ -212,3 +212,102 @@ func TestAPIKeyListPaging(t *testing.T) {
 		})
 	}
 }
+
+// Every scalar sort field orders keys the same way in the store and in a
+// merged listing, a missing flag sorting as true and a missing count as 0.
+func TestAPIKeyListSortFields(t *testing.T) {
+	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
+		t.Run(dialect, func(t *testing.T) {
+			ctx := t.Context()
+			must := func(err error) {
+				t.Helper()
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			ddl, err := schema.Generate(dialect, []string{"api-key"})
+			must(err)
+			store, err := OpenWithSchema(ctx, dialect, organizationTestDSN(t, dialect), ddl)
+			must(err)
+			defer store.Close()
+			keys, err := ak.New(ak.Options{Store: store})
+			must(err)
+			extra, err := ak.New(ak.Options{Store: store, ConfigID: "extra"})
+			must(err)
+			plugin, err := ak.NewPlugin(keys, extra)
+			must(err)
+			const origin = "https://sorts.example"
+			off := false
+			host, err := plainauth.New(plainauth.Options{Store: store, BaseURL: origin, Secret: strings.Repeat("s", 32), EmailAndPassword: true, RateLimit: &off, Plugins: []plainauth.Plugin{plugin}})
+			must(err)
+			member, err := client.New(origin, &http.Client{Transport: guestTransport{host}})
+			must(err)
+			account, err := member.SignUpEmail(ctx, client.SignUpRequest{Name: "Sorter", Email: "sorter@example.test", Password: "sort-password"})
+			must(err)
+			names := map[string]string{}
+			made := func(s *ak.Service, name string) string {
+				t.Helper()
+				k, err := s.Create(ctx, account.User.ID, ak.CreateInput{Name: name})
+				must(err)
+				names[k.ID] = name
+				return k.ID
+			}
+			// a sorts low, c in the middle and b high, so the store lists
+			// a,b under default and the merge lists a,c,b.
+			a, b, c := made(keys, "a"), made(keys, "b"), made(extra, "c")
+			base := time.Now().Add(time.Hour)
+			at := func(i int) any { return store.date(base.Add(time.Duration(i) * 24 * time.Hour)) }
+			order := func(config string, field, direction string) string {
+				t.Helper()
+				p, err := member.ListAPIKeys(ctx, config, ak.PageOptions{SortBy: field, SortDirection: direction})
+				must(err)
+				var got []string
+				for _, k := range p.Keys {
+					got = append(got, names[k.ID])
+				}
+				return strings.Join(got, ",")
+			}
+			for _, f := range []struct {
+				field          string
+				low, mid, high any
+			}{
+				{"name", "n1", "n2", "n3"},
+				{"prefix", "pa", "pb", "pc"},
+				{"start", "sa", "sb", "sc"},
+				{"rateLimitTimeWindow", 1000, 2000, 3000},
+				{"rateLimitMax", nil, 2, 3},
+				{"requestCount", nil, 2, 3},
+				{"remaining", nil, 2, 3},
+				{"refillInterval", 1000, 2000, 3000},
+				{"refillAmount", 1, 2, 3},
+				{"lastRefillAt", nil, at(2), at(3)},
+				{"lastRequest", at(1), at(2), at(3)},
+				{"expiresAt", nil, at(2), at(3)},
+				{"createdAt", at(-3), at(-2), at(-1)},
+				{"updatedAt", at(-3), at(-2), at(-1)},
+			} {
+				for id, value := range map[string]any{a: f.low, c: f.mid, b: f.high} {
+					_, err := store.db.ExecContext(ctx, store.bind(`UPDATE "apikey" SET "`+f.field+`"=? WHERE "id"=?`), value, id)
+					must(err)
+				}
+				if got, down := order("default", f.field, "asc"), order("default", f.field, "desc"); got != "a,b" || down != "b,a" {
+					t.Fatalf("a configuration's keys did not sort by %s: %s / %s", f.field, got, down)
+				}
+				if got, down := order("", f.field, "asc"), order("", f.field, "desc"); got != "a,c,b" || down != "b,c,a" {
+					t.Fatalf("merged keys did not sort by %s: %s / %s", f.field, got, down)
+				}
+			}
+			for _, field := range []string{"enabled", "rateLimitEnabled"} {
+				for id, value := range map[string]any{a: false, b: nil, c: true} {
+					_, err := store.db.ExecContext(ctx, store.bind(`UPDATE "apikey" SET "`+field+`"=? WHERE "id"=?`), value, id)
+					must(err)
+				}
+				for _, config := range []string{"default", ""} {
+					if got, down := order(config, field, "asc"), order(config, field, "desc"); !strings.HasPrefix(got, "a,") || !strings.HasSuffix(down, ",a") {
+						t.Fatalf("a missing %s did not sort as true under %q: %s / %s", field, config, got, down)
+					}
+				}
+			}
+		})
+	}
+}

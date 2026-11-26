@@ -105,3 +105,46 @@ func TestEntraVerificationFollowsTheSelectedEmail(t *testing.T) {
 		t.Fatal("Graph verification does not establish ownership of a different email address")
 	}
 }
+
+// The code exchange posts the configured client secret to the tenant's
+// token endpoint.
+func TestEntraCodeExchangeSendsTheSecret(t *testing.T) {
+	const tenant = "363368ff-7777-452f-886c-a111d48741bb"
+	const issuer = microsoftAuthority + "/" + tenant + "/v2.0"
+	tokenURL := microsoftAuthority + "/" + tenant + "/oauth2/v2.0/token"
+	var exchanged bool
+	client := &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		var payload any
+		switch r.URL.String() {
+		case issuer + "/.well-known/openid-configuration":
+			payload = map[string]any{"issuer": issuer, "authorization_endpoint": microsoftAuthority + "/" + tenant + "/oauth2/v2.0/authorize", "token_endpoint": tokenURL, "jwks_uri": issuer + "/keys", "id_token_signing_alg_values_supported": []string{"RS256"}}
+		case tokenURL:
+			if err := r.ParseForm(); err != nil {
+				t.Fatal(err)
+			}
+			user, pass, basic := r.BasicAuth()
+			sent := basic && user == "client" && pass == "tenant-secret" || r.PostForm.Get("client_id") == "client" && r.PostForm.Get("client_secret") == "tenant-secret"
+			if r.Method != http.MethodPost || r.PostForm.Get("code") != "code" || !sent {
+				t.Fatal("the code exchange did not send the configured secret", r.Header, r.PostForm)
+			}
+			exchanged = true
+			payload = map[string]any{"access_token": "access", "token_type": "Bearer", "expires_in": 3600}
+		default:
+			t.Fatalf("unexpected request %s", r.URL)
+		}
+		body, err := json.Marshal(payload)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": {"application/json"}}, Body: io.NopCloser(bytes.NewReader(body))}, nil
+	})}
+	ctx := context.WithValue(t.Context(), oauth2.HTTPClient, client)
+	p, err := MicrosoftEntraID(ctx, tenant, "client", "tenant-secret")
+	if err != nil {
+		t.Fatal(err)
+	}
+	token, err := p.Config.Exchange(ctx, "code")
+	if err != nil || token.AccessToken != "access" || !exchanged {
+		t.Fatal("the tenant token endpoint was not used for the code exchange", err)
+	}
+}

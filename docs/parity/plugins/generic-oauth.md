@@ -221,7 +221,8 @@
       - [x] Reject a signed identity without an object ID, from another tenant or for another audience ([test](../../../providers/entra_test.go#L93))
     - [ ] `clientId`
       - [x] Reject an Entra ID token issued for an audience other than the configured client ID ([test](../../../providers/entra_test.go#L93))
-    - [ ] `clientSecret`
+    - [x] `clientSecret` ([test](../../../providers/entra_test.go#L111))
+      - [x] Send the configured client secret to the tenant's token endpoint in the code exchange ([test](../../../providers/entra_test.go#L111))
     - [x] `tokenEndpointAuth` ([test](../../../providers/microsoft_test.go#L243))
       - [x] The Microsoft preset's code exchange and refresh authenticate with a private_key_jwt assertion through TokenEndpointAuth instead of a secret ([test](../../../providers/microsoft_test.go#L243))
     - [x] `scopes` ([test](../../../providers/entra_test.go#L61))

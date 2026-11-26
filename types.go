@@ -445,7 +445,9 @@ func (e *MissingPermissionsError) Unwrap() error {
 
 // DetailedError is an APIError whose response also carries a details object,
 // such as the tryAgainIn milliseconds of a rate-limited API key. Clients
-// receive it through errors.As.
+// receive it through errors.As. Numbers in Details are float64, as JSON
+// decoding gives them, whether the error comes from a server call or the Go
+// client.
 type DetailedError struct {
 	*APIError
 	Details         map[string]any `json:"details"`

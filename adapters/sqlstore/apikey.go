@@ -346,7 +346,16 @@ func (s *Store) ListAPIKeys(ctx context.Context, owner ak.Owner, config string, 
 			nulls = " NULLS LAST"
 		}
 	}
-	q := `SELECT ` + apiKeyFields + where + ` ORDER BY "` + sort + `" ` + dir + nulls + `,"id" ASC LIMIT ? OFFSET ?`
+	// A missing flag reads as true and a missing count as zero, so they sort
+	// as the listing shows them.
+	order := `"` + sort + `"`
+	switch sort {
+	case "enabled", "rateLimitEnabled":
+		order = `COALESCE(` + order + `,true)`
+	case "requestCount":
+		order = `COALESCE(` + order + `,0)`
+	}
+	q := `SELECT ` + apiKeyFields + where + ` ORDER BY ` + order + ` ` + dir + nulls + `,"id" ASC LIMIT ? OFFSET ?`
 	limit, off := page.Total, 0
 	if o.Limit != nil {
 		limit = *o.Limit

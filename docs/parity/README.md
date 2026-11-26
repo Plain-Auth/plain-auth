@@ -2,16 +2,16 @@
 
 ## Verification progress
 
-**2,356 of 6,436 inventory entries are fully verified (36.6%).**
+**2,356 of 6,435 inventory entries are fully verified (36.6%).**
 
 | Inventory status | Entries |
 | --- | ---: |
 | Fully verified | 2,356 |
-| Partially verified | 1,465 |
-| No linked test evidence | 2,615 |
-| Not applicable to a Go server | 589 |
+| Partially verified | 1,466 |
+| No linked test evidence | 2,613 |
+| Not applicable to a Go server | 590 |
 
-The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 6,384 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
+The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 6,392 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
 
 Entries that exist only for JavaScript clients, frameworks or runtimes are listed as not applicable, with the reason, and are left out of the totals. Backlog entries stay open on the roadmap but are not scheduled.
 
@@ -94,7 +94,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Additional fields](plugins/additional-fields.md) | 0 | 0 | 2 |
 | [Admin](plugins/admin.md) | 315 | 56 | 6 |
 | [Anonymous](plugins/anonymous.md) | 87 | 7 | 0 |
-| [API keys](plugins/api-key.md) | 494 | 98 | 1 |
+| [API keys](plugins/api-key.md) | 500 | 99 | 1 |
 | [Bearer](plugins/bearer.md) | 30 | 0 | 0 |
 | [Captcha](plugins/captcha.md) | 153 | 26 | 0 |
 | [Client ID metadata documents](plugins/cimd.md) | 0 | 48 | 0 |
@@ -103,7 +103,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Electron](plugins/electron.md) | 0 | 12 | 40 |
 | [Email otp](plugins/email-otp.md) | 245 | 48 | 0 |
 | [Expo](plugins/expo.md) | 0 | 5 | 14 |
-| [Generic OAuth](plugins/generic-oauth.md) | 452 | 151 | 0 |
+| [Generic OAuth](plugins/generic-oauth.md) | 454 | 150 | 0 |
 | [Have I Been Pwned](plugins/have-i-been-pwned.md) | 46 | 0 | 0 |
 | [Internationalization](plugins/i18n.md) | 183 | 6 | 0 |
 | [JSON Web Tokens](plugins/jwt.md) | 132 | 42 | 2 |
@@ -113,7 +113,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Multi session](plugins/multi-session.md) | 64 | 2 | 0 |
 | [OAuth popup](plugins/oauth-popup.md) | 56 | 5 | 0 |
 | [OAuth provider](plugins/oauth-provider.md) | 607 | 373 | 0 |
-| [OAuth proxy](plugins/oauth-proxy.md) | 27 | 6 | 0 |
+| [OAuth proxy](plugins/oauth-proxy.md) | 27 | 5 | 1 |
 | [One tap](plugins/one-tap.md) | 78 | 9 | 0 |
 | [One time token](plugins/one-time-token.md) | 76 | 0 | 0 |
 | [OpenAPI](plugins/open-api.md) | 55 | 5 | 5 |

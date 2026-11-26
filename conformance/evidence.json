@@ -9291,13 +9291,17 @@
     {
       "label": "Report a spent rate budget as RATE_LIMITED with tryAgainIn under details from Verify, middleware, session reads and the Go client, on three SQL engines",
       "test": "adapters/sqlstore/apikey_errors_test.go",
-      "marker": "func TestAPIKeyRateLimitDetails(",
-      "complete": true
+      "marker": "func TestAPIKeyRateLimitDetails("
     },
     {
       "label": "Answer a rate-limited key session with 429 RATE_LIMITED and details.tryAgainIn on both runtimes",
       "test": "conformance/core.test.mjs",
       "marker": "a rate-limited key session gave no retry delay"
+    },
+    {
+      "label": "Give tryAgainIn the same float64 type from a server-side session read as from the Go client",
+      "test": "adapters/sqlstore/apikey_errors_test.go",
+      "marker": "a server-side session read gave tryAgainIn another type than the Go client"
     }
   ],
   "plugin/api-key/ deleteAllExpiredApiKeys (server API only)": [
@@ -40092,6 +40096,11 @@
       "label": "Refuse a key shorter than every configuration sharing the header with 403 INVALID_API_KEY before any lookup",
       "test": "adapters/sqlstore/apikey_errors_test.go",
       "marker": "a short key shared by two configurations was not refused with 403"
+    },
+    {
+      "label": "Answer session reads of disabled, expired and used-up keys with 401 KEY_DISABLED, 401 KEY_EXPIRED and 429 USAGE_EXCEEDED",
+      "test": "adapters/sqlstore/apikey_errors_test.go",
+      "marker": "sessionError(disabled.Secret, 401, \"KEY_DISABLED\", \"API Key is disabled\")"
     }
   ],
   "docs/content/docs/plugins/api-key/advanced.mdx#L625/Null Values": [
@@ -40146,8 +40155,7 @@
     {
       "label": "Sort by any scalar field with missing values first on every database, list a single configuration in the database order with or without configId, merge several configurations in Go, and refuse the digest and JSON fields",
       "test": "adapters/sqlstore/apikey_list_test.go",
-      "marker": "a key without an expiry did not sort first",
-      "complete": true
+      "marker": "a key without an expiry did not sort first"
     },
     {
       "label": "Sort merged keys by their rate maximum and a configuration's keys by their last refill, missing values first",
@@ -40158,6 +40166,17 @@
       "label": "List a single configuration's mixed-case names in the same database order with and without configId",
       "test": "adapters/sqlstore/apikey_list_test.go",
       "marker": "a single configuration listed in two orders"
+    },
+    {
+      "label": "Sort a configuration's keys and a merged listing by every scalar field in both directions, missing values first and a missing flag or count as shown, on three SQL engines",
+      "test": "adapters/sqlstore/apikey_list_test.go",
+      "marker": "func TestAPIKeyListSortFields(",
+      "complete": true
+    },
+    {
+      "label": "Sort a missing enabled or rate-limit flag as true in the store and in a merged listing",
+      "test": "adapters/sqlstore/apikey_list_test.go",
+      "marker": "a missing %s did not sort as true under %q"
     }
   ],
   "docs/content/docs/plugins/api-key/index.mdx#L380/Parameter `sortDirection` (optional)": [
@@ -40274,6 +40293,11 @@
       "label": "Refuse DeferUpdates without a task runner",
       "test": "adapters/sqlstore/apikey_sweep_test.go",
       "marker": "deferred updates were accepted without a task runner"
+    },
+    {
+      "label": "Hand the expired-key sweep of a valid deferred verification to the task runner, and sweep nothing after a refused one",
+      "test": "adapters/sqlstore/apikey_sweep_test.go",
+      "marker": "a deferred verification did not hand the expired-key sweep to the task runner"
     }
   ],
   "plugin-symbol/api-key/ApiKeyConfigurationOptions/deferUpdates": [
@@ -40287,6 +40311,16 @@
       "label": "Commit a deferred verification's usage before the task runner runs",
       "test": "adapters/sqlstore/apikey_sweep_test.go",
       "marker": "a deferred verification left its usage uncommitted"
+    },
+    {
+      "label": "Keep a key whose lifetime was renewed between the answer and its deferred deletion",
+      "test": "adapters/sqlstore/apikey_sweep_test.go",
+      "marker": "a deferred deletion removed a key renewed after the answer"
+    },
+    {
+      "label": "Give the purge before an answer a deadline and the deferred purge none",
+      "test": "plugins/apikey/sweep_test.go",
+      "marker": "func TestSweepDeadline("
     }
   ],
   "plugin-symbol/api-key/apiKey": [
@@ -40671,6 +40705,14 @@
       "label": "Read the provisioning URI through the pinned browser client on both servers",
       "test": "conformance/core.test.mjs",
       "marker": "const { totpURI } = ok(await client.twoFactor.getTotpUri({ password }));"
+    }
+  ],
+  "plugin-symbol/generic-oauth/MicrosoftEntraIdOptions/clientSecret": [
+    {
+      "label": "Send the configured client secret to the tenant's token endpoint in the code exchange",
+      "test": "providers/entra_test.go",
+      "marker": "func TestEntraCodeExchangeSendsTheSecret(",
+      "complete": true
     }
   ]
 }

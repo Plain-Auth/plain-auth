@@ -117,7 +117,7 @@ func (s *Service) resolveSession(ctx context.Context, secret string, meta plaina
 			status = 429
 		}
 		if v.Error.Details != nil {
-			return nil, &plainauth.DetailedError{APIError: problem(status, v.Error.Code, v.Error.Message), Details: map[string]any{"tryAgainIn": v.Error.Details.TryAgainIn}}
+			return nil, &plainauth.DetailedError{APIError: problem(status, v.Error.Code, v.Error.Message), Details: map[string]any{"tryAgainIn": float64(v.Error.Details.TryAgainIn)}}
 		}
 		return nil, problem(status, v.Error.Code, v.Error.Message)
 	}

@@ -170,8 +170,9 @@ const sweepInterval, sweepTimeout = 10 * time.Second, 2 * time.Second
 // sweep deletes the expired keys of every configuration in the store, at
 // most once every ten seconds per service. It runs after the operation,
 // outside any transaction: before the answer, giving up after
-// sweepTimeout, or on the task runner with DeferUpdates. A failure is
-// ignored: the keys it leaves are still refused, and a later sweep retries.
+// sweepTimeout, or on the task runner with DeferUpdates, where nothing waits
+// on it and it has no deadline. A failure is ignored: the keys it leaves are
+// still refused, and a later sweep retries.
 func (s *Service) sweep(ctx context.Context) {
 	now := current()
 	last := s.swept.Load()
@@ -179,21 +180,13 @@ func (s *Service) sweep(ctx context.Context) {
 		return
 	}
 	ctx = context.WithoutCancel(ctx)
-	s.later(func() {
-		ctx, cancel := context.WithTimeout(ctx, sweepTimeout)
-		defer cancel()
-		_, _ = s.opts.Store.DeleteExpiredAPIKeys(ctx, "", now)
-	})
-}
-
-// later runs task through BackgroundTasks when DeferUpdates is set, and
-// inline otherwise.
-func (s *Service) later(task func()) {
 	if s.opts.DeferUpdates {
-		s.opts.BackgroundTasks(task)
+		s.opts.BackgroundTasks(func() { _, _ = s.opts.Store.DeleteExpiredAPIKeys(ctx, "", now) })
 		return
 	}
-	task()
+	ctx, cancel := context.WithTimeout(ctx, sweepTimeout)
+	defer cancel()
+	_, _ = s.opts.Store.DeleteExpiredAPIKeys(ctx, "", now)
 }
 
 // removeSpent deletes the key with digest while it is still expired, or
@@ -823,11 +816,14 @@ func (s *Service) Verify(ctx context.Context, secret string, required Permission
 		return Verification{}, fmt.Errorf("verify API key: %w", err)
 	}
 	if s.opts.DeferUpdates {
-		digest, background := Digest(secret), context.WithoutCancel(ctx)
 		if spent {
+			digest, background := Digest(secret), context.WithoutCancel(ctx)
 			s.opts.BackgroundTasks(func() { s.removeSpent(background, digest) })
 		}
-		s.sweep(ctx)
+		// As other key operations do, only a valid key sweeps.
+		if result.Valid {
+			s.sweep(ctx)
+		}
 	}
 	return result, nil
 }

@@ -1247,7 +1247,7 @@ test("a rate-limited API key session answers RATE_LIMITED with a retry delay on 
     assert.equal(response.status, 429);
     assert.equal(body.code, "RATE_LIMITED");
     assert.equal(body.message, "Rate limit exceeded.");
-    assert.ok(body.details.tryAgainIn > 0 && body.details.tryAgainIn <= 86400000, "a rate-limited key session gave no retry delay");
+    assert.ok(Number.isInteger(body.details.tryAgainIn) && body.details.tryAgainIn > 86400000 - 60000 && body.details.tryAgainIn <= 86400000, "a rate-limited key session gave no retry delay");
   }
 });
 

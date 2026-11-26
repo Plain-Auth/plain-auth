@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -204,6 +205,15 @@ func TestAPIKeyErrorCodesAcrossEngines(t *testing.T) {
 				}
 			}
 			sessionError("short", 403, "INVALID_API_KEY", "Invalid API key.")
+			sessionError(disabled.Secret, 401, "KEY_DISABLED", "API Key is disabled")
+			stale, err := users.Create(ctx, owner.User.ID, ak.CreateInput{Name: "Stale"})
+			must(err)
+			_, err = store.db.ExecContext(ctx, store.bind(`UPDATE "apikey" SET "expiresAt"=? WHERE "id"=?`), store.date(time.Now().Add(-time.Minute)), stale.ID)
+			must(err)
+			sessionError(stale.Secret, 401, "KEY_EXPIRED", "API Key has expired")
+			drained, err := users.Create(ctx, owner.User.ID, ak.CreateInput{Name: "Drained", Policy: ak.Policy{Remaining: &zero}})
+			must(err)
+			sessionError(drained.Secret, 429, "USAGE_EXCEEDED", "API Key has reached its usage limit")
 			shared, err := ak.New(ak.Options{Store: store, ConfigID: "shared", EnableSession: true})
 			must(err)
 			sharing, err := ak.NewPlugin(users, shared)
@@ -270,7 +280,10 @@ func TestAPIKeyRateLimitDetails(t *testing.T) {
 			must(err)
 			owner, err := member.SignUpEmail(ctx, client.SignUpRequest{Name: "Owner", Email: "limits@example.test", Password: "limits-password"})
 			must(err)
-			delay := func(d *ak.RetryDetails) bool { return d != nil && d.TryAgainIn > 0 && d.TryAgainIn <= 86_400_000 }
+			// Back-to-back requests leave nearly the whole day of the window.
+			delay := func(d *ak.RetryDetails) bool {
+				return d != nil && d.TryAgainIn > 86_400_000-60_000 && d.TryAgainIn <= 86_400_000
+			}
 
 			verified, err := keys.Create(ctx, owner.User.ID, ak.CreateInput{Name: "Verify"})
 			must(err)
@@ -293,8 +306,16 @@ func TestAPIKeyRateLimitDetails(t *testing.T) {
 			if !errors.As(err, &detailed) || detailed.Status != 429 || detailed.Code != "RATE_LIMITED" || detailed.Message != "Rate limit exceeded." {
 				t.Fatal("rate-limited session read lacked its details", err)
 			}
-			if ms, ok := detailed.Details["tryAgainIn"].(float64); !ok || ms <= 0 || ms > 86_400_000 {
+			if ms, ok := detailed.Details["tryAgainIn"].(float64); !ok || ms <= 86_400_000-60_000 || ms > 86_400_000 {
 				t.Fatal("the Go client lost the rate-limit details", detailed.Details)
+			}
+			headers := http.Header{"X-Api-Key": {session.Secret}}
+			_, err = host.GetSession(ctx, headers)
+			if !errors.As(err, &detailed) || detailed.Status != 429 {
+				t.Fatal("a server-side session read lost its rate-limit details", err)
+			}
+			if ms, ok := detailed.Details["tryAgainIn"].(float64); !ok || ms <= 86_400_000-60_000 || ms > 86_400_000 {
+				t.Fatal("a server-side session read gave tryAgainIn another type than the Go client", detailed.Details)
 			}
 
 			guarded, err := keys.Create(ctx, owner.User.ID, ak.CreateInput{Name: "Middleware"})
@@ -312,7 +333,7 @@ func TestAPIKeyRateLimitDetails(t *testing.T) {
 			}
 			w := serve()
 			var failure ak.VerifyError
-			if w.Code != 429 || w.Header().Get("Retry-After") == "" || json.Unmarshal(w.Body.Bytes(), &failure) != nil || failure.Code != "RATE_LIMITED" || !delay(failure.Details) {
+			if w.Code != 429 || json.Unmarshal(w.Body.Bytes(), &failure) != nil || failure.Code != "RATE_LIMITED" || !delay(failure.Details) || w.Header().Get("Retry-After") != strconv.FormatInt((failure.Details.TryAgainIn+999)/1000, 10) {
 				t.Fatal("middleware rate refusal lacked its retry delay", w.Code, w.Header(), w.Body)
 			}
 		})

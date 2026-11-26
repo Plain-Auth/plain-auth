@@ -10,7 +10,7 @@ Each row tracks the behavior exposed by a published entry point. The Go implemen
   - [ ] Default interface (`.`)
     - [x] Issue a user-owned key and return its secret to the official client ([test](../../conformance/core.test.mjs#L887))
     - [x] Issue a key whose reference identifies the caller’s organization ([test](../../conformance/core.test.mjs#L959))
-    - [x] Refuse every invalid create body with its error-table status, code and message, organization keys included, on three SQL engines ([test](../../adapters/sqlstore/apikey_errors_test.go#L67))
+    - [x] Refuse every invalid create body with its error-table status, code and message, organization keys included, on three SQL engines ([test](../../adapters/sqlstore/apikey_errors_test.go#L68))
     - [x] Refuse a signed-out create with 401 UNAUTHORIZED_SESSION on both runtimes ([test](../../conformance/core.test.mjs#L1219))
   - [ ] Client integration (`./client`)
     - [x] Create, retrieve, update, list and revoke user-owned keys with the official client ([test](../../conformance/core.test.mjs#L887))

@@ -28,7 +28,7 @@
 ## OAuth Proxy
 
 - [ ] OAuth Proxy
-  - [ ] Upgrading existing deployments
+  - Upgrading existing deployments — *not applicable: cutover notes for the other runtime's earlier releases and their proxy state format; this library has no earlier proxy format to upgrade from*
   - [x] How it works ([test](../../../conformance/core.test.mjs#L1777))
     - [x] Follow the complete production-to-preview return with host-scoped cookies in Chrome ([test](../../../conformance/core.test.mjs#L1777))
   - [ ] Options

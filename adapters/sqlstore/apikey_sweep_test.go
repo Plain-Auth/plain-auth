@@ -240,6 +240,19 @@ func TestAPIKeyDeferredUpdates(t *testing.T) {
 				t.Fatal("a deferred deletion removed a key that gained a refill after the answer")
 			}
 
+			renewed, err := keys.Create(ctx, owner.ID, ak.CreateInput{})
+			must(err)
+			expire(renewed.ID)
+			verify(renewed.Secret, "KEY_EXPIRED")
+			days := 48 * time.Hour
+			_, err = keys.Update(ctx, owner.ID, renewed.ID, ak.UpdateInput{ExpiresIn: &days})
+			must(err)
+			run()
+			if !present(renewed.ID) {
+				t.Fatal("a deferred deletion removed a key renewed after the answer")
+			}
+			verify(renewed.Secret, "")
+
 			five := int64(5)
 			counted, err := keys.Create(ctx, owner.ID, ak.CreateInput{Policy: ak.Policy{Remaining: &five}})
 			must(err)
@@ -264,6 +277,40 @@ func TestAPIKeyDeferredUpdates(t *testing.T) {
 			run()
 			if present(x.ID) {
 				t.Fatal("the expired-key sweep was not handed to the task runner")
+			}
+
+			// A valid deferred verification hands the sweep to the runner, and
+			// a refused one does not sweep.
+			seed, err := ak.New(ak.Options{Store: store, ConfigID: "verifier"})
+			must(err)
+			good, err := seed.Create(ctx, owner.ID, ak.CreateInput{})
+			must(err)
+			switched, err := seed.Create(ctx, owner.ID, ak.CreateInput{})
+			must(err)
+			no := false
+			_, err = seed.Update(ctx, owner.ID, switched.ID, ak.UpdateInput{Policy: ak.Policy{Enabled: &no}})
+			must(err)
+			z, err := other.Create(ctx, owner.ID, ak.CreateInput{})
+			must(err)
+			expire(z.ID)
+			verifier, err := ak.New(ak.Options{Store: store, ConfigID: "verifier", DeferUpdates: true, BackgroundTasks: runner, DisableRateLimit: true})
+			must(err)
+			if v, err := verifier.Verify(ctx, switched.Secret, nil); err != nil || v.Valid {
+				t.Fatal("a disabled key verified", err)
+			}
+			run()
+			if !present(z.ID) {
+				t.Fatal("a refused deferred verification swept expired keys")
+			}
+			if v, err := verifier.Verify(ctx, good.Secret, nil); err != nil || !v.Valid {
+				t.Fatal("a valid key was refused", err)
+			}
+			if !present(z.ID) {
+				t.Fatal("a deferred verification swept before the task runner")
+			}
+			run()
+			if present(z.ID) {
+				t.Fatal("a deferred verification did not hand the expired-key sweep to the task runner")
 			}
 		})
 	}

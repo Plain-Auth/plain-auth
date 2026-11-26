@@ -989,6 +989,15 @@
         "Optional Property"
       ],
       "reason": "not applicable: ECDH-ES keys cannot sign, so there is no curve to choose"
+    },
+    {
+      "page": "plugins/oauth-proxy.md",
+      "section": "OAuth Proxy",
+      "within": "OAuth Proxy",
+      "labels": [
+        "Upgrading existing deployments"
+      ],
+      "reason": "not applicable: cutover notes for the other runtime's earlier releases and their proxy state format; this library has no earlier proxy format to upgrade from"
     }
   ],
   "backlog": [
