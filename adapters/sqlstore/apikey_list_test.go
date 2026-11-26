@@ -125,13 +125,89 @@ func TestAPIKeyListPaging(t *testing.T) {
 					t.Fatal("organization listing named by configuration lost key", config, order(p))
 				}
 			}
+			column := func(name, field string, value any) {
+				t.Helper()
+				_, err := store.db.ExecContext(ctx, store.bind(`UPDATE "apikey" SET "`+field+`"=? WHERE "name"=?`), value, name)
+				must(err)
+			}
+			for name, max := range map[string]any{"alpha": nil, "bravo": 15, "echo": 20, "charlie": 25, "delta": 30} {
+				column(name, "rateLimitMax", max)
+			}
+			column("delta", "lastRefillAt", store.date(base.Add(time.Minute)))
+			column("echo", "lastRefillAt", store.date(base.Add(2*time.Minute)))
+			if p := list("", ak.PageOptions{SortBy: "rateLimitMax"}); order(p) != "alpha,bravo,echo,charlie,delta" {
+				t.Fatal("merged keys were not sorted by their rate maximum", order(p))
+			}
+			if p, q := list("default", ak.PageOptions{SortBy: "lastRefillAt"}), list("default", ak.PageOptions{SortBy: "lastRefillAt", SortDirection: "desc"}); order(p) != "alpha,delta,echo" || order(q) != "echo,delta,alpha" {
+				t.Fatal("keys were not sorted by their last refill", order(p), order(q))
+			}
 			for _, path := range []string{"/api-key/list?", "/api-key/list?configId=default&"} {
-				for _, query := range []string{"sortBy=key", "sortBy=rateLimitMax", "sortDirection=sideways", "limit=-1", "limit=ten", "offset=-1", "offset=ten"} {
+				for _, query := range []string{"sortBy=key", "sortBy=permissions", "sortDirection=sideways", "limit=-1", "limit=ten", "offset=-1", "offset=ten"} {
 					var api *plainauth.APIError
 					if err := member.Do(ctx, http.MethodGet, path+query, nil, nil); !errors.As(err, &api) || api.Code != "VALIDATION_ERROR" {
 						t.Fatal("an invalid listing query was not refused", path+query, err)
 					}
 				}
+			}
+
+			// A single configuration lists in the database's order with or
+			// without configId, mixed-case names included.
+			solo, err := plainauth.New(plainauth.Options{Store: store, BaseURL: origin, Secret: strings.Repeat("l", 32), EmailAndPassword: true, RateLimit: &off, Plugins: []plainauth.Plugin{keys.Plugin(), orgs}})
+			must(err)
+			alone, err := client.New(origin, &http.Client{Transport: guestTransport{solo}})
+			must(err)
+			_, err = alone.SignInEmail(ctx, client.SignInRequest{Email: "lister@example.test", Password: "list-password"})
+			must(err)
+			made(keys, "Bravo", 0, 6)
+			for _, o := range []ak.PageOptions{{SortBy: "name"}, {SortBy: "name", Limit: n(1), Offset: n(1)}, {SortBy: "name", SortDirection: "desc", Limit: n(2)}} {
+				named, err := alone.ListAPIKeys(ctx, "default", o)
+				must(err)
+				merged, err := alone.ListAPIKeys(ctx, "", o)
+				must(err)
+				if order(named) != order(merged) || named.Total != merged.Total || named.Total != 4 {
+					t.Fatal("a single configuration listed in two orders", order(named), order(merged))
+				}
+			}
+			for _, path := range []string{"/api-key/list?", "/api-key/list?configId=default&"} {
+				var api *plainauth.APIError
+				if err := alone.Do(ctx, http.MethodGet, path+"organizationId="+group.ID, nil, nil); !errors.As(err, &api) || api.Status != 400 || api.Code != "VALIDATION_ERROR" {
+					t.Fatal("an organization filter without an organization configuration was not refused", path, err)
+				}
+			}
+
+			// A merged listing reads every configuration before it sweeps.
+			var expired []string
+			for _, s := range []*ak.Service{keys, extra} {
+				k, err := s.Create(ctx, uid, ak.CreateInput{Name: "stale"})
+				must(err)
+				_, err = store.db.ExecContext(ctx, store.bind(`UPDATE "apikey" SET "expiresAt"=? WHERE "id"=?`), store.date(time.Now().Add(-time.Minute)), k.ID)
+				must(err)
+				expired = append(expired, k.ID)
+			}
+			again, err := ak.New(ak.Options{Store: store})
+			must(err)
+			extraAgain, err := ak.New(ak.Options{Store: store, ConfigID: "extra"})
+			must(err)
+			fresh, err := ak.NewPlugin(again, extraAgain)
+			must(err)
+			sweeping, err := plainauth.New(plainauth.Options{Store: store, BaseURL: origin, Secret: strings.Repeat("l", 32), EmailAndPassword: true, RateLimit: &off, Plugins: []plainauth.Plugin{fresh}})
+			must(err)
+			sweeper, err := client.New(origin, &http.Client{Transport: guestTransport{sweeping}})
+			must(err)
+			_, err = sweeper.SignInEmail(ctx, client.SignInRequest{Email: "lister@example.test", Password: "list-password"})
+			must(err)
+			page, err := sweeper.ListAPIKeys(ctx, "", ak.PageOptions{})
+			must(err)
+			shown := 0
+			for _, k := range page.Keys {
+				if k.ID == expired[0] || k.ID == expired[1] {
+					shown++
+				}
+			}
+			var left int
+			must(store.db.QueryRowContext(ctx, store.bind(`SELECT count(*) FROM "apikey" WHERE "id" IN (?,?)`), expired[0], expired[1]).Scan(&left))
+			if shown != 2 || page.Total != len(page.Keys) || left != 0 {
+				t.Fatal("a merged listing swept between its configurations", shown, page.Total, len(page.Keys), left)
 			}
 		})
 	}

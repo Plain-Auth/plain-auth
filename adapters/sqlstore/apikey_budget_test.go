@@ -99,11 +99,11 @@ func TestAPIKeyUsageBudgets(t *testing.T) {
 
 			hour := time.Hour
 			_, err = budget.Create(ctx, uid, ak.CreateInput{Policy: ak.Policy{RefillAmount: n(3)}})
-			if code(err) != "REFILL_INTERVAL_AND_AMOUNT_REQUIRED" {
+			if code(err) != "REFILL_AMOUNT_AND_INTERVAL_REQUIRED" {
 				t.Fatal("a refill amount without an interval was not refused", err)
 			}
 			_, err = budget.Create(ctx, uid, ak.CreateInput{Policy: ak.Policy{RefillInterval: &hour}})
-			if code(err) != "REFILL_AMOUNT_AND_INTERVAL_REQUIRED" {
+			if code(err) != "REFILL_INTERVAL_AND_AMOUNT_REQUIRED" {
 				t.Fatal("a refill interval without an amount was not refused", err)
 			}
 			seeded, err := budget.Create(ctx, uid, ak.CreateInput{Policy: ak.Policy{RefillInterval: &hour, RefillAmount: n(3)}})

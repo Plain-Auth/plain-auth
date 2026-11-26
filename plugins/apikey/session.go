@@ -64,8 +64,16 @@ func sessionResolver(services []*Service) *plainauth.CredentialSessionResolver {
 			service := candidates[0]
 			if len(candidates) > 1 {
 				ids := make([]string, len(candidates))
+				shortest := service.opts.KeyLength
 				for i, candidate := range candidates {
 					ids[i] = candidate.opts.ConfigID
+					shortest = min(shortest, candidate.opts.KeyLength)
+				}
+				// A key too short for every configuration sharing the
+				// header is refused before any lookup, as a single
+				// configuration refuses it.
+				if len(secret) < shortest {
+					return nil, errRefusedKey
 				}
 				store := service.opts.Store.(sessionUserStore)
 				id, err := store.UniqueSessionKeyConfiguration(ctx, Digest(secret), ids)

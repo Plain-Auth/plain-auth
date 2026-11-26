@@ -320,10 +320,11 @@ func (s *Store) ListAPIKeys(ctx context.Context, owner ak.Owner, config string, 
 	if sort == "" {
 		sort = "createdAt"
 	}
-	// Only these columns sort. Other fields, the stored digest and the JSON
-	// columns among them, fail instead of ordering the listing.
+	// Every scalar column sorts. The stored digest and the JSON columns fail
+	// instead of ordering the listing.
 	switch sort {
-	case "id", "name", "expiresAt", "createdAt", "updatedAt", "remaining", "lastRequest", "requestCount", "enabled":
+	case "id", "configId", "referenceId", "name", "prefix", "start", "enabled", "rateLimitEnabled", "rateLimitTimeWindow", "rateLimitMax",
+		"requestCount", "remaining", "refillInterval", "refillAmount", "lastRefillAt", "lastRequest", "expiresAt", "createdAt", "updatedAt":
 	default:
 		return page, &plainauth.APIError{Status: 400, Code: "VALIDATION_ERROR", Message: "Unsupported sort field"}
 	}

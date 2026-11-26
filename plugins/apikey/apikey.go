@@ -148,14 +148,16 @@ type Service struct {
 	swept atomic.Int64 // Unix milliseconds of the last expired-key sweep
 }
 
-// sweepInterval is how often key operations purge expired keys.
-const sweepInterval = 10 * time.Second
+// sweepInterval is how often key operations purge expired keys, and
+// sweepTimeout how long a purge may wait, for example behind another
+// transaction's row locks.
+const sweepInterval, sweepTimeout = 10 * time.Second, 2 * time.Second
 
 // sweep deletes the expired keys of every configuration in the store, at
-// most once every ten seconds per service, as key operations do on the
-// other runtime. It runs after the operation, outside any transaction. A
-// failure is ignored: the keys it leaves are still refused, and a later
-// sweep retries.
+// most once every ten seconds per service. It runs after the operation,
+// outside any transaction: before the answer, giving up after
+// sweepTimeout, or on the task runner with DeferUpdates. A failure is
+// ignored: the keys it leaves are still refused, and a later sweep retries.
 func (s *Service) sweep(ctx context.Context) {
 	now := current()
 	last := s.swept.Load()
@@ -163,7 +165,11 @@ func (s *Service) sweep(ctx context.Context) {
 		return
 	}
 	ctx = context.WithoutCancel(ctx)
-	s.later(func() { _, _ = s.opts.Store.DeleteExpiredAPIKeys(ctx, "", now) })
+	s.later(func() {
+		ctx, cancel := context.WithTimeout(ctx, sweepTimeout)
+		defer cancel()
+		_, _ = s.opts.Store.DeleteExpiredAPIKeys(ctx, "", now)
+	})
 }
 
 // later runs task through BackgroundTasks when DeferUpdates is set, and
@@ -465,10 +471,12 @@ func (s *Service) apply(k *Key, in UpdateInput, now time.Time) error {
 		}
 		k.RateLimitTimeWindow = &ms
 	}
-	if p.RefillInterval != nil && p.RefillAmount == nil {
+	// The codes follow the error table's use, not their wording: an amount
+	// without an interval is REFILL_AMOUNT_AND_INTERVAL_REQUIRED.
+	if p.RefillAmount != nil && p.RefillInterval == nil {
 		return errRefillAmount
 	}
-	if p.RefillAmount != nil && p.RefillInterval == nil {
+	if p.RefillInterval != nil && p.RefillAmount == nil {
 		return errRefillInterval
 	}
 	if p.RefillInterval != nil {
@@ -630,6 +638,15 @@ func (s *Service) List(ctx context.Context, userID string, o PageOptions) (Page,
 	return s.list(ctx, Owner{UserID: userID}, o)
 }
 func (s *Service) list(ctx context.Context, owner Owner, o PageOptions) (Page, error) {
+	page, err := s.listKeys(ctx, owner, o)
+	if err == nil {
+		s.sweep(ctx)
+	}
+	return page, err
+}
+
+// listKeys reads one page of the owner's keys without the expired-key sweep.
+func (s *Service) listKeys(ctx context.Context, owner Owner, o PageOptions) (Page, error) {
 	if owner.UserID == "" {
 		return Page{}, ErrSession
 	}
@@ -644,11 +661,7 @@ func (s *Service) list(ctx context.Context, owner Owner, o PageOptions) (Page, e
 	if owner.Organization == nil && owner.OrganizationID != "" {
 		return Page{}, invalidField("organizationId")
 	}
-	page, err := s.opts.Store.ListAPIKeys(ctx, owner, s.opts.ConfigID, current(), o)
-	if err == nil {
-		s.sweep(ctx)
-	}
-	return page, err
+	return s.opts.Store.ListAPIKeys(ctx, owner, s.opts.ConfigID, current(), o)
 }
 func (s *Service) DeleteExpired(ctx context.Context) (int64, error) {
 	return s.opts.Store.DeleteExpiredAPIKeys(ctx, s.opts.ConfigID, current())

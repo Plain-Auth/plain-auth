@@ -152,9 +152,9 @@ func TestAPIKeyCreateAndUpdateParameters(t *testing.T) {
 			k, err := keys.Create(ctx, uid, ak.CreateInput{Policy: ak.Policy{Remaining: n(1)}})
 			must(err)
 			_, err = keys.Update(ctx, uid, k.ID, ak.UpdateInput{Policy: ak.Policy{RefillAmount: n(4)}})
-			expect(err, "REFILL_INTERVAL_AND_AMOUNT_REQUIRED")
-			_, err = keys.Update(ctx, uid, k.ID, ak.UpdateInput{Policy: ak.Policy{RefillInterval: &hour}})
 			expect(err, "REFILL_AMOUNT_AND_INTERVAL_REQUIRED")
+			_, err = keys.Update(ctx, uid, k.ID, ak.UpdateInput{Policy: ak.Policy{RefillInterval: &hour}})
+			expect(err, "REFILL_INTERVAL_AND_AMOUNT_REQUIRED")
 			up, err := keys.Update(ctx, uid, k.ID, ak.UpdateInput{Policy: ak.Policy{RefillAmount: n(4), RefillInterval: &hour}})
 			must(err)
 			if *up.RefillAmount != 4 || *up.RefillInterval != 3600000 || *up.Remaining != 1 {

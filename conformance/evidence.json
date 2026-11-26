@@ -7472,6 +7472,11 @@
       "test": "adapters/sqlstore/apikey_sweep_test.go",
       "marker": "a second operation within ten seconds swept again",
       "complete": true
+    },
+    {
+      "label": "Sweep expired keys after an API-key session read whose key verifies, and not after a refused one",
+      "test": "adapters/sqlstore/apikey_sweep_test.go",
+      "marker": "an API-key session read did not sweep expired keys"
     }
   ],
   "docs/content/docs/plugins/api-key/advanced.mdx#L434": [
@@ -39881,6 +39886,11 @@
       "label": "Answer a spent rate budget with RATE_LIMITED, the message Rate limit exceeded. and tryAgainIn under details",
       "test": "adapters/sqlstore/apikey_errors_test.go",
       "marker": "rate denial lacked RATE_LIMITED details"
+    },
+    {
+      "label": "Refuse a key shorter than every configuration sharing the header with 403 INVALID_API_KEY before any lookup",
+      "test": "adapters/sqlstore/apikey_errors_test.go",
+      "marker": "a short key shared by two configurations was not refused with 403"
     }
   ],
   "docs/content/docs/plugins/api-key/advanced.mdx#L625/Null Values": [
@@ -39933,10 +39943,20 @@
   ],
   "docs/content/docs/plugins/api-key/index.mdx#L376/Parameter `sortBy` (optional)": [
     {
-      "label": "Sort by the requested field with missing values first on every database, merge configurations in the same order, and refuse unsortable fields",
+      "label": "Sort by any scalar field with missing values first on every database, list a single configuration in the database order with or without configId, merge several configurations in Go, and refuse the digest and JSON fields",
       "test": "adapters/sqlstore/apikey_list_test.go",
       "marker": "a key without an expiry did not sort first",
       "complete": true
+    },
+    {
+      "label": "Sort merged keys by their rate maximum and a configuration's keys by their last refill, missing values first",
+      "test": "adapters/sqlstore/apikey_list_test.go",
+      "marker": "merged keys were not sorted by their rate maximum"
+    },
+    {
+      "label": "List a single configuration's mixed-case names in the same database order with and without configId",
+      "test": "adapters/sqlstore/apikey_list_test.go",
+      "marker": "a single configuration listed in two orders"
     }
   ],
   "docs/content/docs/plugins/api-key/index.mdx#L380/Parameter `sortDirection` (optional)": [
@@ -39953,6 +39973,16 @@
       "test": "adapters/sqlstore/apikey_list_test.go",
       "marker": "merged pages from several configurations were not sorted and paged together",
       "complete": true
+    },
+    {
+      "label": "Read every configuration of a merged listing before its one expired-key sweep, so the page shows and counts the expired keys it held",
+      "test": "adapters/sqlstore/apikey_list_test.go",
+      "marker": "a merged listing swept between its configurations"
+    },
+    {
+      "label": "Refuse an organization filter with VALIDATION_ERROR when no configuration owns organization keys, with or without configId",
+      "test": "adapters/sqlstore/apikey_list_test.go",
+      "marker": "an organization filter without an organization configuration was not refused"
     }
   ],
   "docs/content/docs/plugins/api-key/index.mdx#L101/Parameter `name` (optional)": [

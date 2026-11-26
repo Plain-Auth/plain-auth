@@ -13,7 +13,6 @@ import (
 	plainauth "github.com/Plain-Org/plain-auth"
 )
 
-// NewPlugin shares management routes among independently configured key types.
 // VerifyAny verifies secret with the one listed service whose configuration
 // issued it, applying that configuration's validator, permissions, budget and
 // rate limit as Verify does. The services must share one store that finds a
@@ -57,6 +56,7 @@ func VerifyAny(ctx context.Context, secret string, required Permissions, service
 	return byID[id].Verify(ctx, secret, required)
 }
 
+// NewPlugin shares management routes among independently configured key types.
 func NewPlugin(services ...*Service) (plainauth.Plugin, error) {
 	if len(services) == 0 {
 		return plainauth.Plugin{}, errors.New("apikey: at least one configuration is required")
@@ -138,6 +138,7 @@ func listConfigurations(c plainauth.EndpointContext, services []*Service) (*Page
 			*dst = &n
 		}
 	}
+	var applicable []*Service
 	for _, s := range services {
 		if (s.opts.Organization != nil) != (o.OrganizationID != "") {
 			continue
@@ -145,13 +146,39 @@ func listConfigurations(c plainauth.EndpointContext, services []*Service) (*Page
 		if s.opts.Organization != nil && !c.Auth.HasPlugin("organization") {
 			return nil, ErrOrgPlugin
 		}
-		p, e := s.list(c.Request.Context(), Owner{UserID: session.User.ID, SessionToken: session.Session.Token}, o)
+		applicable = append(applicable, s)
+	}
+	ctx, owner := c.Request.Context(), Owner{UserID: session.User.ID, SessionToken: session.Session.Token}
+	switch len(applicable) {
+	case 0:
+		// No configuration owns keys of the requested kind. An organization
+		// filter is refused as it is under a named personal configuration.
+		if o.OrganizationID != "" {
+			return nil, invalidField("organizationId")
+		}
+		return &out, nil
+	case 1:
+		// One configuration pages in the store, in the database's order.
+		o.Limit, o.Offset = out.Limit, out.Offset
+		p, e := applicable[0].list(ctx, owner, o)
+		if e != nil {
+			return nil, e
+		}
+		return &p, nil
+	}
+	for _, s := range applicable {
+		p, e := s.listKeys(ctx, owner, o)
 		if e != nil {
 			return nil, e
 		}
 		out.Keys = append(out.Keys, p.Keys...)
 		out.Total += p.Total
 	}
+	// One sweep after every configuration has been read, so the page counts
+	// the keys it shows.
+	applicable[0].sweep(ctx)
+	// Several configurations merge here, ordering text by its bytes, where a
+	// database may use a case-insensitive collation for one configuration.
 	slices.SortStableFunc(out.Keys, func(a, b Key) int {
 		c := compareKey(a, b, o.SortBy)
 		if o.SortDirection == "desc" {
@@ -170,51 +197,72 @@ func listConfigurations(c plainauth.EndpointContext, services []*Service) (*Page
 	}
 	return &out, nil
 }
+
+// compareKey orders two keys by field as the store does: missing values
+// first, then values by their bytes or numbers, createdAt by default.
 func compareKey(a, b Key, field string) int {
-	date := func(v *time.Time) time.Time {
-		if v != nil {
-			return *v
-		}
-		return time.Time{}
-	}
-	switch field {
-	case "name":
-		var x, y string
-		if a.Name != nil {
-			x = *a.Name
-		}
-		if b.Name != nil {
-			y = *b.Name
-		}
-		return cmp.Compare(x, y)
-	case "id":
-		return cmp.Compare(a.ID, b.ID)
-	case "updatedAt":
-		return a.UpdatedAt.Compare(b.UpdatedAt)
-	case "expiresAt":
-		return date(a.ExpiresAt).Compare(date(b.ExpiresAt))
-	case "lastRequest":
-		return date(a.LastRequest).Compare(date(b.LastRequest))
-	case "requestCount":
-		return cmp.Compare(a.RequestCount, b.RequestCount)
-	case "remaining":
-		var x, y int64 = -1, -1
-		if a.Remaining != nil {
-			x = *a.Remaining
-		}
-		if b.Remaining != nil {
-			y = *b.Remaining
-		}
-		return cmp.Compare(x, y)
-	case "enabled":
-		if a.Enabled == b.Enabled {
+	text := func(x, y *string) int { return nilFirst(x, y, cmp.Compare[string]) }
+	number := func(x, y *int64) int { return nilFirst(x, y, cmp.Compare[int64]) }
+	date := func(x, y *time.Time) int { return nilFirst(x, y, time.Time.Compare) }
+	flag := func(x, y bool) int {
+		if x == y {
 			return 0
 		}
-		if a.Enabled {
+		if x {
 			return 1
 		}
 		return -1
+	}
+	switch field {
+	case "id":
+		return cmp.Compare(a.ID, b.ID)
+	case "configId":
+		return cmp.Compare(a.ConfigID, b.ConfigID)
+	case "referenceId":
+		return cmp.Compare(a.ReferenceID, b.ReferenceID)
+	case "name":
+		return text(a.Name, b.Name)
+	case "prefix":
+		return text(a.Prefix, b.Prefix)
+	case "start":
+		return text(a.Start, b.Start)
+	case "enabled":
+		return flag(a.Enabled, b.Enabled)
+	case "rateLimitEnabled":
+		return flag(a.RateLimitEnabled, b.RateLimitEnabled)
+	case "rateLimitTimeWindow":
+		return number(a.RateLimitTimeWindow, b.RateLimitTimeWindow)
+	case "rateLimitMax":
+		return number(a.RateLimitMax, b.RateLimitMax)
+	case "requestCount":
+		return cmp.Compare(a.RequestCount, b.RequestCount)
+	case "remaining":
+		return number(a.Remaining, b.Remaining)
+	case "refillInterval":
+		return number(a.RefillInterval, b.RefillInterval)
+	case "refillAmount":
+		return number(a.RefillAmount, b.RefillAmount)
+	case "lastRefillAt":
+		return date(a.LastRefillAt, b.LastRefillAt)
+	case "lastRequest":
+		return date(a.LastRequest, b.LastRequest)
+	case "expiresAt":
+		return date(a.ExpiresAt, b.ExpiresAt)
+	case "updatedAt":
+		return a.UpdatedAt.Compare(b.UpdatedAt)
 	default:
 		return a.CreatedAt.Compare(b.CreatedAt)
 	}
+}
+
+func nilFirst[T any](x, y *T, compare func(T, T) int) int {
+	switch {
+	case x == nil && y == nil:
+		return 0
+	case x == nil:
+		return -1
+	case y == nil:
+		return 1
+	}
+	return compare(*x, *y)
 }

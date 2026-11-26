@@ -1,10 +1,13 @@
 package sqlstore
 
 import (
+	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
+	plainauth "github.com/Plain-Org/plain-auth"
 	ak "github.com/Plain-Org/plain-auth/plugins/apikey"
 	"github.com/Plain-Org/plain-auth/schema"
 )
@@ -83,6 +86,36 @@ func TestAPIKeyExpiredSweep(t *testing.T) {
 					t.Fatal("a second operation within ten seconds swept again", op)
 				}
 			}
+			// An API-key session read sweeps once its key verifies.
+			credential, err := service("default").Create(ctx, owner.ID, ak.CreateInput{})
+			must(err)
+			sessions, err := ak.New(ak.Options{Store: store, EnableSession: true, DisableRateLimit: true})
+			must(err)
+			host, err := plainauth.New(plainauth.Options{Store: store, BaseURL: "https://sweep.example", Secret: strings.Repeat("w", 32), Plugins: []plainauth.Plugin{sessions.Plugin()}})
+			must(err)
+			read := func(secret string) int {
+				r := httptest.NewRequest("GET", "https://sweep.example/api/auth/get-session", nil)
+				r.Header.Set("X-Api-Key", secret)
+				w := httptest.NewRecorder()
+				host.ServeHTTP(w, r)
+				return w.Code
+			}
+			x, err := creator.Create(ctx, owner.ID, ak.CreateInput{})
+			must(err)
+			expire(x.ID)
+			if read(strings.Repeat("z", 64)) != 401 || !present(x.ID) {
+				t.Fatal("a refused session read swept expired keys")
+			}
+			if read(credential.Secret) != 200 || present(x.ID) {
+				t.Fatal("an API-key session read did not sweep expired keys")
+			}
+			y, err := creator.Create(ctx, owner.ID, ak.CreateInput{})
+			must(err)
+			expire(y.ID)
+			if read(credential.Secret) != 200 || !present(y.ID) {
+				t.Fatal("a second session read within ten seconds swept again")
+			}
+
 			mine, err := creator.Create(ctx, owner.ID, ak.CreateInput{})
 			must(err)
 			theirs, err := service("default").Create(ctx, owner.ID, ak.CreateInput{})

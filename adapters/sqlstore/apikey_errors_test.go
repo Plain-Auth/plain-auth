@@ -75,9 +75,9 @@ func TestAPIKeyErrorCodesAcrossEngines(t *testing.T) {
 			wantError(err, 400, "NAME_REQUIRED", "API Key name is required.")
 			amount, interval, negative := int64(5), time.Hour, int64(-1)
 			_, err = users.Create(ctx, owner.User.ID, ak.CreateInput{Policy: ak.Policy{RefillAmount: &amount}})
-			wantError(err, 400, "REFILL_INTERVAL_AND_AMOUNT_REQUIRED", "refillInterval is required when refillAmount is provided")
-			_, err = users.Create(ctx, owner.User.ID, ak.CreateInput{Policy: ak.Policy{RefillInterval: &interval}})
 			wantError(err, 400, "REFILL_AMOUNT_AND_INTERVAL_REQUIRED", "refillAmount is required when refillInterval is provided")
+			_, err = users.Create(ctx, owner.User.ID, ak.CreateInput{Policy: ak.Policy{RefillInterval: &interval}})
+			wantError(err, 400, "REFILL_INTERVAL_AND_AMOUNT_REQUIRED", "refillInterval is required when refillAmount is provided")
 			_, err = users.Create(ctx, owner.User.ID, ak.CreateInput{Policy: ak.Policy{Remaining: &negative}})
 			wantError(err, 400, "INVALID_REMAINING", "The remaining count is either too large or too small.")
 			if unnamed, err := users.Create(ctx, owner.User.ID, ak.CreateInput{}); err != nil || unnamed.Name != nil {
@@ -204,6 +204,19 @@ func TestAPIKeyErrorCodesAcrossEngines(t *testing.T) {
 				}
 			}
 			sessionError("short", 403, "INVALID_API_KEY", "Invalid API key.")
+			shared, err := ak.New(ak.Options{Store: store, ConfigID: "shared", EnableSession: true})
+			must(err)
+			sharing, err := ak.NewPlugin(users, shared)
+			must(err)
+			sharedHost, err := plainauth.New(plainauth.Options{Store: store, BaseURL: origin, Secret: strings.Repeat("e", 32), RateLimit: &off, Plugins: []plainauth.Plugin{sharing}})
+			must(err)
+			r = httptest.NewRequest("GET", origin+"/api/auth/get-session", nil)
+			r.Header.Set("X-Api-Key", "short")
+			w = httptest.NewRecorder()
+			sharedHost.ServeHTTP(w, r)
+			if w.Code != 403 || !strings.Contains(w.Body.String(), `"code":"INVALID_API_KEY"`) {
+				t.Fatal("a short key shared by two configurations was not refused with 403", w.Code, w.Body)
+			}
 
 			_, err = store.db.ExecContext(ctx, store.bind(`UPDATE "user" SET "banned"=? WHERE "id"=?`), true, owner.User.ID)
 			must(err)
