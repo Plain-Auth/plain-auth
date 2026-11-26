@@ -23,8 +23,8 @@ func isEmailPath(path string) bool {
 
 // patchEmails applies the supported email paths: the collection,
 // emails.value, a type-selected value and the primary value. Other email
-// paths return invalidPath. normalize then checks the result and chooses the
-// primary email.
+// paths return invalidPath. Each operation leaves the emails normalized, with
+// a primary chosen, so the next operation in the request selects from them.
 func patchEmails(m map[string]any, path, op string, value any) error {
 	stored := storedEmails(m)
 	switch {
@@ -38,8 +38,7 @@ func patchEmails(m map[string]any, path, op string, value any) error {
 			return invalid("invalidValue", "emails must contain between 1 and 20 valid emails")
 		}
 		if op == "replace" {
-			m["emails"] = list
-			return nil
+			return setEmails(m, list)
 		}
 		return addEmails(m, stored, list)
 	case strings.EqualFold(path, "emails.value"):
@@ -97,8 +96,7 @@ func patchEmails(m map[string]any, path, op string, value any) error {
 			return invalid("invalidValue", "emails.value must be an email")
 		}
 	}
-	setEmails(m, stored)
-	return nil
+	return setEmails(m, entries(stored))
 }
 
 // addEmails appends the type and value pairs not stored yet. Added
@@ -153,8 +151,7 @@ func addEmails(m map[string]any, stored []map[string]any, list []any) error {
 			e["primary"] = false
 		}
 	}
-	setEmails(m, append(stored, fresh...))
-	return nil
+	return setEmails(m, entries(append(stored, fresh...)))
 }
 
 // storedEmails copies the stored entries, so a PATCH never writes into the
@@ -170,10 +167,21 @@ func storedEmails(m map[string]any) []map[string]any {
 	return out
 }
 
-func setEmails(m map[string]any, emails []map[string]any) {
+// setEmails stores a nonempty email list normalized as normalize stores it:
+// lowercased values and types, checked pairs and types, one primary.
+func setEmails(m map[string]any, list []any) error {
+	emails, _, err := emailValues(list, "")
+	if err != nil {
+		return err
+	}
+	m["emails"] = emails
+	return nil
+}
+
+func entries(emails []map[string]any) []any {
 	list := make([]any, len(emails))
 	for i, e := range emails {
 		list[i] = e
 	}
-	m["emails"] = list
+	return list
 }

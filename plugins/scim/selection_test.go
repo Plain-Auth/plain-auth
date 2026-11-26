@@ -44,6 +44,14 @@ func TestSCIMUserResponseSelectionTree(t *testing.T) {
 			t.Fatal("an invalid selection was accepted", q, err)
 		}
 	}
+	// Inner whitespace follows JavaScript: the byte order mark counts and
+	// NEXT LINE does not.
+	if _, err := selected(url.Values{"attributes": {"user\uFEFFName"}}); err == nil {
+		t.Fatal("a selection path with an inner byte order mark was accepted")
+	}
+	if got, err = selected(url.Values{"attributes": {"user\u0085Name"}}); err != nil || len(got) != 2 {
+		t.Fatal("a selection path with an inner NEXT LINE was refused", got, err)
+	}
 	if got, err = selected(url.Values{"attributes": {" "}, "excludedAttributes": {"meta"}}); err != nil || got["meta"] != nil || got["userName"] == nil {
 		t.Fatal("an empty attributes parameter blocked the exclusion", got, err)
 	}

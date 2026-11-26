@@ -272,10 +272,28 @@ func TestSCIMCaseDuplicateAttributesAreInvalidSyntax(t *testing.T) {
 	if _, err := roleAttribute.object(map[string]any{"value": "a", "Value": "b"}); !syntax(err) {
 		t.Fatal("a case-duplicate role attribute was not invalidSyntax", err)
 	}
-	current := Record{Profile: Profile{UserName: "a@example.test", PrimaryEmail: "a@example.test", Active: true, Attributes: map[string]any{"schemas": []any{UserSchema}, "name": map[string]any{}, "emails": []any{map[string]any{"value": "a@example.test", "primary": true}}}}}
+	current := Record{Profile: Profile{UserName: "a@example.test", PrimaryEmail: "a@example.test", DisplayName: "A", Active: true, Attributes: map[string]any{"schemas": []any{UserSchema}, "name": map[string]any{}, "emails": []any{map[string]any{"value": "a@example.test", "primary": true}}}}}
 	ops := []any{map[string]any{"op": "replace", "value": map[string]any{"displayName": "One", "DisplayName": "Two"}}}
 	if _, err := patchProfile(current, ops); !syntax(err) {
 		t.Fatal("a case-duplicate pathless PATCH value was not invalidSyntax", err)
+	}
+	// A null second spelling is refused too, before null keys become removals.
+	for _, op := range []map[string]any{
+		{"op": "replace", "value": map[string]any{"displayName": "One", "DisplayName": nil}},
+		{"op": "replace", "path": "name", "value": map[string]any{"givenName": "Ada", "GIVENNAME": nil}},
+		{"op": "replace", "value": map[string]any{"name": map[string]any{"givenName": "Ada", "GivenName": nil}}},
+		{"op": "replace", "path": EnterpriseUserSchema, "value": map[string]any{"department": "A", "DEPARTMENT": nil}},
+		{"op": "replace", "value": map[string]any{EnterpriseUserSchema: map[string]any{"manager": map[string]any{"value": "m", "VALUE": nil}}}},
+		{"op": "replace", "path": "manager", "value": map[string]any{"value": "m", "Value": nil}},
+		{"op": "replace", "path": "emails", "value": []any{map[string]any{"value": "a@example.test", "Type": "work", "type": nil}}},
+		{"op": "add", "path": `addresses[type eq "home"]`, "value": map[string]any{"locality": "Bath", "LOCALITY": nil}},
+	} {
+		if _, err := patchProfile(current, []any{op}); !syntax(err) {
+			t.Fatal("a PATCH value with a null second spelling was not invalidSyntax", op, err)
+		}
+	}
+	if _, err := patchProfile(current, []any{map[string]any{"op": "replace", "path": "emails", "value": []any{map[string]any{"value": "a@example.test", "unknown": "a", "UNKNOWN": nil}}}}); err != nil {
+		t.Fatal("two spellings of an undeclared key were refused", err)
 	}
 	if _, err := applyGroupPatch(Group{ID: "g"}, []any{map[string]any{"op": "replace", "value": map[string]any{"displayName": "A", "DisplayName": "B"}}}); !syntax(err) {
 		t.Fatal("a Group PATCH value naming displayName twice was not invalidSyntax", err)
@@ -327,5 +345,31 @@ func TestSCIMUserPatchNullExpansion(t *testing.T) {
 	r := Record{Profile: Profile{UserName: "a@example.test", Active: true, Attributes: map[string]any{"emails": []any{map[string]any{"value": "a@example.test", "primary": true}}}}}
 	if _, err := patchProfile(r, []any{map[string]any{"op": "replace", "path": "title"}}); err == nil {
 		t.Fatal("an add or replace without a value was accepted")
+	}
+}
+
+// The serialized-size bound measures parsed values, so unknown subattributes
+// and surrounding spaces do not count.
+func TestSCIMSerializedSizeCountsParsedValues(t *testing.T) {
+	for _, user := range []map[string]any{
+		{"emails": []any{map[string]any{"value": "ada@example.test", "type": "work", "display": strings.Repeat("x", 66_000)}}},
+		{"displayName": "Ada" + strings.Repeat(" ", 70_000)},
+		{"name": map[string]any{"givenName": "Ada", "nickName": strings.Repeat("x", 66_000)}},
+	} {
+		user["schemas"], user["userName"] = []any{UserSchema}, "ada@example.test"
+		if _, err := normalize(user); err != nil {
+			t.Fatal("a User was refused for raw values the parsed document drops", err)
+		}
+	}
+	long := map[string]any{"schemas": []any{UserSchema}, "userName": "ada@example.test", "roles": []any{}}
+	for i := range 10 {
+		long["roles"] = append(long["roles"].([]any), map[string]any{"value": strings.Repeat("é", 1024) + string(rune('a'+i)), "display": strings.Repeat("é", 1024), "type": strings.Repeat(string(rune('a'+i)), 200)})
+	}
+	for _, k := range []string{"title", "userType", "preferredLanguage", "locale", "timezone"} {
+		long[k] = strings.Repeat("x", 250)
+	}
+	long["phoneNumbers"], long["entitlements"] = long["roles"], long["roles"]
+	if _, err := normalize(long); err == nil {
+		t.Fatal("a User over the serialized size was accepted")
 	}
 }

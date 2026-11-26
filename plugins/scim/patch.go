@@ -96,6 +96,11 @@ func userOps(raw []any) ([]patchOp, error) {
 			}
 			o.path = strings.TrimSpace(path)
 		}
+		// Check the names before null keys become removals, which would hide a
+		// null second spelling.
+		if err := userPatchDuplicates(o.path, o.value); err != nil {
+			return nil, err
+		}
 		ops = append(ops, o)
 	}
 	return ops, nil
@@ -109,13 +114,16 @@ func readOnlyUserPath(path string) bool {
 }
 
 func patchValue(m map[string]any, path, op string, value any) error {
-	if len(path) > len(UserSchema) && strings.EqualFold(path[:len(UserSchema)+1], UserSchema+":") {
+	prefixed := len(path) > len(UserSchema) && strings.EqualFold(path[:len(UserSchema)+1], UserSchema+":")
+	if prefixed {
 		path = path[len(UserSchema)+1:]
 	}
 	if readOnlyUserPath(strings.TrimSpace(path)) {
 		return invalid("mutability", "The targeted User attribute is read-only")
 	}
-	if attr, sub, ok, err := enterprisePath(path); ok {
+	// The Enterprise forms and the manager alias are not core attributes, so
+	// the core schema prefix does not reach them.
+	if attr, sub, ok, err := enterprisePath(path); ok && !prefixed {
 		if err != nil {
 			return err
 		}
@@ -154,9 +162,16 @@ func patchValue(m map[string]any, path, op string, value any) error {
 			// display name, then the primary email.
 			given, _ := target["givenName"].(string)
 			family, _ := target["familyName"].(string)
-			if joined := strings.TrimSpace(given + " " + family); joined != "" {
-				setFormatted(m, target, joined)
-				target["formatted"] = joined
+			fallback := strings.TrimSpace(given + " " + family)
+			if fallback == "" {
+				fallback, _ = m["displayName"].(string)
+			}
+			if fallback == "" {
+				fallback = primaryEmail(m)
+			}
+			if fallback != "" {
+				setFormatted(m, target, fallback)
+				target["formatted"] = fallback
 				return nil
 			}
 		}
@@ -166,8 +181,25 @@ func patchValue(m map[string]any, path, op string, value any) error {
 		}
 	}
 	if op == "remove" {
-		if name == "userName" {
+		// The fallbacks apply at once, as another runtime applies them, so a
+		// later operation in the request sees them.
+		stored, _ := m["name"].(map[string]any)
+		formatted, _ := stored["formatted"].(string)
+		display, _ := m["displayName"].(string)
+		switch {
+		case name == "userName":
 			return invalid("mutability", "userName is required")
+		case len(parts) == 1 && name == "displayName" && formatted != "":
+			m["displayName"] = formatted
+			return nil
+		case len(parts) == 1 && name == "name":
+			if display == "" {
+				display = primaryEmail(m)
+			}
+			if display != "" {
+				m["name"] = map[string]any{"formatted": display}
+				return nil
+			}
 		}
 		delete(target, name)
 		return nil
@@ -227,6 +259,24 @@ func single(v any) any {
 		return list[0]
 	}
 	return v
+}
+
+// primaryEmail returns the primary email address of a User document, or the
+// first one.
+func primaryEmail(m map[string]any) string {
+	list, _ := m["emails"].([]any)
+	first := ""
+	for i, item := range list {
+		e, _ := item.(map[string]any)
+		value, _ := e["value"].(string)
+		if e["primary"] == true {
+			return value
+		}
+		if i == 0 {
+			first = value
+		}
+	}
+	return first
 }
 
 // setFormatted runs before a new formatted name is stored in name. A display

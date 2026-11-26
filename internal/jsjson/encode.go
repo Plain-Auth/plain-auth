@@ -41,9 +41,12 @@ func Marshal(value any) ([]byte, error) {
 
 // TrimSpace applies ECMAScript whitespace rules to directory text.
 func TrimSpace(s string) string {
-	// ECMAScript whitespace includes the byte order mark and excludes NEXT LINE.
-	return strings.TrimFunc(s, func(r rune) bool { return r == '\uFEFF' || r != '\u0085' && unicode.IsSpace(r) })
+	return strings.TrimFunc(s, IsSpace)
 }
+
+// IsSpace reports ECMAScript whitespace, which includes the byte order mark
+// and excludes NEXT LINE.
+func IsSpace(r rune) bool { return r == '\uFEFF' || r != '\u0085' && unicode.IsSpace(r) }
 
 // TypeName describes a value from a JSON request for validation errors.
 func TypeName(value any) string {

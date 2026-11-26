@@ -43097,6 +43097,11 @@
       "label": "Return a created User with its derived display name, normalized emails and active state on both runtimes",
       "test": "conformance/scim-contract.mjs",
       "marker": "const user=await call(\"POST\",\"Users\",201,create);"
+    },
+    {
+      "label": "Bound the serialized size on parsed values, ignoring unknown subattributes and surrounding spaces, and refuse a User over the bound",
+      "test": "plugins/scim/http_test.go",
+      "marker": "func TestSCIMSerializedSizeCountsParsedValues("
     }
   ],
   "plugin-symbol/scim/SCIMCompatibilityOptions/microsoftEntra": [
@@ -45289,6 +45294,11 @@
       "test": "adapters/sqlstore/scim_attributes_test.go",
       "marker": "t.Fatal(\"removing displayName did not fall back to the formatted name\", got[\"displayName\"])",
       "complete": true
+    },
+    {
+      "label": "Fall back from a removed display name to the formatted name at once, so a removed formatted name in the same PATCH keeps it",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "t.Fatal(\"a null display and formatted name fell back to the email\", got[\"displayName\"], got[\"name\"])"
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L208/A subattribute of a value in a PATCH that adds or replaces whole values, such as `emails` or `addresses`": [
@@ -45313,6 +45323,21 @@
       "label": "Report an Enterprise object naming department twice as invalidSyntax",
       "test": "plugins/scim/enterprise_test.go",
       "marker": "t.Fatal(\"an Enterprise object naming department twice was not invalidSyntax\", err)"
+    },
+    {
+      "label": "Refuse a null second spelling in pathless, name, Enterprise, manager, email and filtered PATCH values as invalidSyntax, and leave undeclared keys uncompared",
+      "test": "plugins/scim/http_test.go",
+      "marker": "t.Fatal(\"a PATCH value with a null second spelling was not invalidSyntax\", op, err)"
+    },
+    {
+      "label": "Refuse a null second spelling in a name PATCH value over HTTP",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "t.Fatal(\"a null second spelling in a name value was not invalidSyntax\", body)"
+    },
+    {
+      "label": "Refuse an all-null Enterprise object naming a field twice",
+      "test": "plugins/scim/enterprise_test.go",
+      "marker": "t.Fatal(\"an all-null Enterprise object naming a field twice was not invalidSyntax\", extension, err)"
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L351": [
@@ -45364,6 +45389,11 @@
       "label": "Move a derived display name with a formatted name composed on removal",
       "test": "adapters/sqlstore/scim_attributes_test.go",
       "marker": "t.Fatal(\"a derived display name did not follow a composed formatted name\", got[\"displayName\"])"
+    },
+    {
+      "label": "Keep the formatted name from the display name when the name and then the display name are removed",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "t.Fatal(\"removing the name and then the display name lost the name\", got[\"displayName\"], got[\"name\"])"
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L377/`emails`": [
@@ -45382,6 +45412,11 @@
       "label": "Refuse an emails add with a bare object",
       "test": "plugins/scim/http_test.go",
       "marker": "t.Fatal(\"an emails add with a bare object was accepted\")"
+    },
+    {
+      "label": "Select from the emails an earlier operation in the same PATCH normalized",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "t.Fatal(\"a later email operation did not see the primary chosen by the earlier one\", emails(got))"
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L378/`emails.value`": [
@@ -45422,9 +45457,9 @@
       "marker": "t.Fatal(\"an add or replace without a value was accepted\")"
     },
     {
-      "label": "Remove an Enterprise field through a null alias value",
+      "label": "Remove an Enterprise attribute through a null operation value, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/scim_attributes_test.go",
-      "marker": "t.Fatal(\"the enterprise path alias did not clear a field\", got[urn])",
+      "marker": "t.Fatal(\"a null Enterprise attribute value did not remove it\", got[urn])",
       "complete": true
     }
   ],
@@ -45449,6 +45484,16 @@
       "test": "adapters/sqlstore/scim_attributes_test.go",
       "marker": "t.Fatal(\"a null Enterprise key was not removed after the merge\", got[urn])",
       "complete": true
+    },
+    {
+      "label": "Remove a null Enterprise key through the enterprise path alias",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "t.Fatal(\"the enterprise path alias did not clear a field\", got[urn])"
+    },
+    {
+      "label": "Remove a null formatted name after the other null name parts, so it composes from what remains",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "t.Fatal(\"a null formatted name was composed before the other null name parts were removed\", got[\"name\"], got[\"displayName\"])"
     }
   ],
   "plugin-symbol/scim/SCIMCanonicalAddress": [
@@ -45542,6 +45587,11 @@
       "label": "Select nested Group member and meta fields",
       "test": "adapters/sqlstore/scim_attributes_test.go",
       "marker": "t.Fatal(\"a nested Group selection returned the wrong fields\", got)"
+    },
+    {
+      "label": "Read inner whitespace in a selection path as JavaScript does",
+      "test": "plugins/scim/selection_test.go",
+      "marker": "t.Fatal(\"a selection path with an inner byte order mark was accepted\")"
     }
   ],
   "plugin-symbol/scim/SCIMEnterpriseUser": [
@@ -45630,6 +45680,11 @@
       "label": "Drop an emptied manager from the extension",
       "test": "adapters/sqlstore/scim_attributes_test.go",
       "marker": "t.Fatal(\"an emptied manager stayed in the extension\", got[urn])"
+    },
+    {
+      "label": "Answer invalidPath for the manager alias behind the core User schema prefix",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "t.Fatal(\"a core-prefixed manager alias was not invalidPath\", body)"
     }
   ]
 }

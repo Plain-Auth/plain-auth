@@ -34,7 +34,7 @@ const (
 // so its operation still reports the path error.
 func userNullTarget(path string) (nullKind, string) {
 	relative := withoutSchema(path, UserSchema)
-	if attr, sub, ok, err := enterprisePath(relative); ok && err == nil {
+	if attr, sub, ok, err := enterprisePath(relative); ok && err == nil && relative == strings.TrimSpace(path) {
 		// The URN joins its attributes with ":", the other forms with ".".
 		separator := "."
 		if strings.EqualFold(strings.TrimSpace(relative), EnterpriseUserSchema) {
@@ -119,11 +119,21 @@ func expandNulls(ops []patchOp) ([]patchOp, error) {
 
 // splitNulls separates a merged value's null keys, as removals of prefix plus
 // the key, from the keys it keeps. Keys are visited in sorted order, as a
-// pathless value applies them.
+// pathless value applies them, except that a formatted name is removed last
+// so the name it composes sees the other removals.
 func splitNulls(record map[string]any, prefix string) (map[string]any, []patchOp, error) {
 	kept := map[string]any{}
 	var removals []patchOp
-	for _, key := range slices.Sorted(maps.Keys(record)) {
+	keys := slices.SortedFunc(maps.Keys(record), func(a, b string) int {
+		if fa, fb := isFormatted(a), isFormatted(b); fa != fb {
+			if fa {
+				return 1
+			}
+			return -1
+		}
+		return strings.Compare(a, b)
+	})
+	for _, key := range keys {
 		entry := record[key]
 		switch entry.(type) {
 		case nil, map[string]any, []any:
@@ -158,6 +168,13 @@ func splitNulls(record map[string]any, prefix string) (map[string]any, []patchOp
 		kept[key] = entry
 	}
 	return kept, removals, nil
+}
+
+// isFormatted reports a key naming a formatted name, as formatted or
+// name.formatted.
+func isFormatted(key string) bool {
+	i := strings.LastIndexAny(key, ".:")
+	return strings.EqualFold(strings.TrimSpace(key[i+1:]), "formatted")
 }
 
 func nullRemoval(path string, kind nullKind) ([]patchOp, error) {

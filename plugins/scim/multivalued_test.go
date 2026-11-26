@@ -13,7 +13,7 @@ func TestSCIMMultiValuedProfileLimits(t *testing.T) {
 	}
 	p, err := user(map[string]any{
 		"phoneNumbers": []any{map[string]any{"value": " +1 555 0100 ", "type": " WORK ", "primary": "TRUE"}},
-		"addresses":    []any{map[string]any{"streetAddress": "1 Main St", "locality": "London", "type": " Work ", "primary": false}},
+		"addresses":    []any{map[string]any{"streetAddress": " 1 Main St ", "locality": "London\uFEFF", "type": " Work ", "primary": false}},
 		"entitlements": []any{map[string]any{"value": " reports ", "display": "Reports", "type": "License"}},
 	})
 	if err != nil {

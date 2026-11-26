@@ -174,10 +174,16 @@ func normalize(input any) (p Profile, err error) {
 	if err != nil {
 		return p, err
 	}
+	// parsed holds the submitted attributes after parsing, without derived
+	// values, as another runtime bounds them.
+	parsed := map[string]any{"schemas": schemas, "userName": p.UserName}
 	var emails []any
 	emails, p.PrimaryEmail, err = emailValues(m["emails"], p.UserName)
 	if err != nil {
 		return p, err
+	}
+	if m["emails"] != nil {
+		parsed["emails"] = emails
 	}
 	name := map[string]any{}
 	if m["name"] != nil {
@@ -195,18 +201,21 @@ func normalize(input any) (p Profile, err error) {
 				return p, err
 			}
 		}
+		parsed["name"] = maps.Clone(name)
 	}
 	if m["displayName"] != nil {
 		p.DisplayName, err = stringValue(m["displayName"], 1024)
 		if err != nil {
 			return p, err
 		}
+		parsed["displayName"] = p.DisplayName
 	}
 	if m["externalId"] != nil {
 		p.ExternalID, err = stringValue(m["externalId"], 1024)
 		if err != nil {
 			return p, err
 		}
+		parsed["externalId"] = p.ExternalID
 	}
 	if name["formatted"] == nil {
 		label := p.DisplayName
@@ -229,18 +238,23 @@ func normalize(input any) (p Profile, err error) {
 		if err != nil {
 			return p, err
 		}
+		parsed["active"] = p.Active
 	}
 	p.Attributes = map[string]any{"schemas": schemas, "name": name, "emails": emails}
-	if raw, ok := m[EnterpriseUserSchema]; ok && !allNull(raw) {
-		if !declared {
-			return p, invalid("invalidValue", "The Enterprise User extension requires its schema URI")
-		}
+	if raw, ok := m[EnterpriseUserSchema]; ok {
+		// Read even an all-null object, so two spellings of one field are
+		// refused, null or not.
 		extension, err := enterpriseUser(raw)
 		if err != nil {
 			return p, err
 		}
-		p.Attributes["enterprise"] = extension
-		m[EnterpriseUserSchema] = extension
+		if !allNull(raw) {
+			if !declared {
+				return p, invalid("invalidValue", "The Enterprise User extension requires its schema URI")
+			}
+			p.Attributes["enterprise"] = extension
+			parsed[EnterpriseUserSchema] = extension
+		}
 	}
 	for _, a := range multiValuedAttributes {
 		if raw, provided := m[a.name]; provided {
@@ -249,7 +263,7 @@ func normalize(input any) (p Profile, err error) {
 				return p, err
 			}
 			p.Attributes[a.name] = values
-			m[a.name] = values
+			parsed[a.name] = values
 		}
 	}
 	for _, k := range []string{"title", "userType", "preferredLanguage", "locale", "timezone"} {
@@ -265,11 +279,12 @@ func normalize(input any) (p Profile, err error) {
 			if err != nil {
 				return p, err
 			}
+			parsed[k] = p.Attributes[k]
 		}
 	}
-	// Bound both the normalized wire document and the canonical payload a
-	// second directory server will read from serializedAttributes.
-	for _, document := range []map[string]any{m, p.Attributes} {
+	// Bound both the parsed document and the canonical payload a second
+	// directory server will read from serializedAttributes.
+	for _, document := range []map[string]any{parsed, p.Attributes} {
 		encoded, err := jsjson.Marshal(document)
 		if err != nil || len(utf16.Encode([]rune(string(encoded)))) > 65_535 {
 			return p, invalid("invalidValue", "SCIM User attributes exceed the supported serialized size")

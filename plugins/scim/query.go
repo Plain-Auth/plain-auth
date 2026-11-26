@@ -8,7 +8,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"unicode"
 
 	"github.com/Plain-Org/plain-auth/internal/jsjson"
 )
@@ -93,7 +92,7 @@ func selectionParam(q url.Values, key, schema string) ([]string, error) {
 		}
 		for _, part := range strings.Split(value, ",") {
 			part = jsjson.TrimSpace(part)
-			if part == "" || strings.ContainsFunc(part, unicode.IsSpace) {
+			if part == "" || strings.ContainsFunc(part, jsjson.IsSpace) {
 				return nil, invalid("invalidValue", key+" must be a comma-separated list of attribute paths")
 			}
 			paths = append(paths, responsePath(part, schema))

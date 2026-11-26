@@ -544,6 +544,16 @@ func TestSCIMUserEmailPatchOverHTTP(t *testing.T) {
 			if body := second(400, "PATCH removed emails.value", op("remove", "emails.value", nil)); body["scimType"] != "invalidValue" {
 				t.Fatal("removing emails.value was not invalidValue", body)
 			}
+			// Each email operation leaves the emails normalized for the next.
+			fourth := user("four@example.test", email("value", "a4@example.test", "type", "work", "primary", true), email("value", "b4@example.test", "type", "home"))
+			got = fourth(200, "a primary selector after removing the primary failed", op("remove", `emails[type eq "work"].value`, nil), op("replace", "emails[primary eq true].value", "c4@example.test"))
+			if emails(got) != "c4@example.test/home/primary" {
+				t.Fatal("a later email operation did not see the primary chosen by the earlier one", emails(got))
+			}
+			got = fourth(200, "a type selector after an uppercase replace failed", op("replace", "emails", []any{email("value", "a4@example.test", "type", "Work"), email("value", "b4@example.test", "type", "home")}), op("remove", `emails[type eq "work"].value`, nil))
+			if emails(got) != "b4@example.test/home/primary" {
+				t.Fatal("a later email operation did not see the lowercased types", emails(got))
+			}
 			third := user("three@example.test", email("value", "three@example.test", "type", "work"))
 			if body := third(400, "removing the last email was accepted", op("remove", `emails[type eq "work"].value`, nil)); body["scimType"] != "invalidValue" {
 				t.Fatal("removing the last email was not invalidValue", body)
@@ -605,6 +615,30 @@ func TestSCIMUserPatchNullsOverHTTP(t *testing.T) {
 			got = call("GET", "Users/"+id, nil, 200, "the User could not be read")
 			if _, has := got["title"]; has || got["userName"] != "ada@example.test" || got["active"] != true || len(got["emails"].([]any)) != 1 {
 				t.Fatal("a refused null PATCH changed the User", got)
+			}
+			if body := patch(400, "a null second spelling in a name value was applied", map[string]any{"op": "replace", "path": "name", "value": map[string]any{"familyName": "Byron", "FAMILYNAME": nil}}); body["scimType"] != "invalidSyntax" {
+				t.Fatal("a null second spelling in a name value was not invalidSyntax", body)
+			}
+
+			// The display and formatted name fallbacks apply at once, as
+			// another runtime applies them.
+			solo := call("POST", "Users", map[string]any{"schemas": []string{scim.UserSchema}, "userName": "solo@example.test", "displayName": "Ada", "name": map[string]any{"formatted": "Ada"}}, 201, "the User was refused")
+			soloPatch := func(failure string, ops ...any) map[string]any {
+				t.Helper()
+				return call("PATCH", "Users/"+solo["id"].(string), map[string]any{"schemas": []string{scim.PatchSchema}, "Operations": ops}, 200, failure)
+			}
+			got = soloPatch("a null display and formatted name failed", map[string]any{"op": "replace", "value": map[string]any{"displayName": nil, "name": map[string]any{"formatted": nil}}})
+			if got["displayName"] != "Ada" || got["name"].(map[string]any)["formatted"] != "Ada" {
+				t.Fatal("a null display and formatted name fell back to the email", got["displayName"], got["name"])
+			}
+			got = soloPatch("removing the name and display name failed", map[string]any{"op": "remove", "path": "name"}, map[string]any{"op": "remove", "path": "displayName"})
+			if got["displayName"] != "Ada" || !jsonEqual(got["name"], map[string]any{"formatted": "Ada"}) {
+				t.Fatal("removing the name and then the display name lost the name", got["displayName"], got["name"])
+			}
+			parts := call("POST", "Users", map[string]any{"schemas": []string{scim.UserSchema}, "userName": "parts@example.test", "name": map[string]any{"givenName": "Ada", "familyName": "Lovelace"}}, 201, "the User was refused")
+			got = call("PATCH", "Users/"+parts["id"].(string), map[string]any{"schemas": []string{scim.PatchSchema}, "Operations": []any{map[string]any{"op": "replace", "path": "name", "value": map[string]any{"givenName": nil, "formatted": nil}}}}, 200, "null name parts with a null formatted name failed")
+			if got["name"].(map[string]any)["formatted"] != "Lovelace" || got["displayName"] != "Lovelace" {
+				t.Fatal("a null formatted name was composed before the other null name parts were removed", got["name"], got["displayName"])
 			}
 		})
 	}
@@ -903,6 +937,13 @@ func TestSCIMEnterpriseUserPatchOverHTTP(t *testing.T) {
 			patch(200, "setting the manager failed", op("add", "manager", map[string]any{"value": "m-1"}))
 			if got := patch(200, "removing manager.value failed", op("remove", "manager.value", nil)); got[urn].(map[string]any)["manager"] != nil {
 				t.Fatal("an emptied manager stayed in the extension", got[urn])
+			}
+			if body := patch(400, "a core-prefixed manager alias was accepted", op("replace", scim.UserSchema+":manager", "m-2")); body["scimType"] != "invalidPath" {
+				t.Fatal("a core-prefixed manager alias was not invalidPath", body)
+			}
+			patch(200, "setting a cost center failed", op("replace", urn+":costCenter", "C2"))
+			if got := patch(200, "a null Enterprise value failed", map[string]any{"op": "replace", "path": urn + ":costCenter", "value": nil}); got[urn].(map[string]any)["costCenter"] != nil {
+				t.Fatal("a null Enterprise attribute value did not remove it", got[urn])
 			}
 			if body := patch(400, "an unknown Enterprise attribute path was accepted", op("replace", urn+":unknownAttr", "x")); body["scimType"] != "invalidPath" {
 				t.Fatal("an unknown Enterprise attribute path was not invalidPath", body)
