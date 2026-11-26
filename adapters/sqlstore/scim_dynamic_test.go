@@ -94,6 +94,8 @@ func TestSCIMDynamicBearer(t *testing.T) {
 			storeClaims("absent-scopes", bad)
 			storeClaims("remap", claims("runtime", "moved", scim.UsersRead))
 			storeClaims("ba_scim_credential_fixture.fallback", good)
+			storeClaims("padded-conn", claims(" runtime", "tenant", scim.UsersRead))
+			storeClaims("long-conn", claims(strings.Repeat("r", 256), "tenant", scim.UsersRead))
 			var calls atomic.Int64
 			var itemPath atomic.Bool
 			principals := make(chan scim.Principal, 12)
@@ -127,7 +129,8 @@ func TestSCIMDynamicBearer(t *testing.T) {
 				must(e)
 				return h
 			}
-			connections := []scim.Connection{{Directory: scim.Directory{ID: "declared", ProvisioningDomainID: "assigned"}}, {Directory: scim.Directory{ID: "static"}, Credentials: []scim.Credential{{ID: "key", Token: "static"}}}}
+			connections := []scim.Connection{{Directory: scim.Directory{ID: "declared", ProvisioningDomainID: "assigned"}}, {Directory: scim.Directory{ID: "static"}, Credentials: []scim.Credential{{ID: "key", Token: "static"},
+				{ID: "scoped", Token: "scoped-static", Scopes: []string{scim.UsersRead}, ExpiresAt: future}}}}
 			a, b := build(first, connections), build(second, connections)
 			only := build(second, nil)
 			call := func(h http.Handler, method, path, token string, body map[string]any, status int) map[string]any {
@@ -148,7 +151,7 @@ func TestSCIMDynamicBearer(t *testing.T) {
 			if n := calls.Load(); n != 0 {
 				t.Fatal("called verifier for static or reserved token", n)
 			}
-			for _, token := range []string{"stale", "collision", "reserved", "unknown-conn", "bad-domain", "ambiguous", "bad-id", "duplicate", "bad-scope", "absent-scopes", "unknown"} {
+			for _, token := range []string{"stale", "collision", "reserved", "unknown-conn", "bad-domain", "ambiguous", "bad-id", "duplicate", "bad-scope", "absent-scopes", "unknown", "padded-conn", "long-conn"} {
 				call(a, "GET", "Users", token, nil, 401)
 			}
 			call(a, "GET", "Users", "outage", nil, 500)
@@ -165,8 +168,12 @@ func TestSCIMDynamicBearer(t *testing.T) {
 			}
 			call(a, "GET", "Users/absent", "static", nil, 404)
 			p = <-principals
-			if p.Kind != "static-bearer" || p.CredentialID != "key" {
-				t.Fatal(p)
+			if p.Kind != "static-bearer" || p.CredentialID != "key" || p.ID != "static" || p.ProvisioningDomainID != "static" || len(p.Scopes) != 4 || !p.ExpiresAt.IsZero() {
+				t.Fatal("the static principal lacks its directory, domain, scopes or expiry", p)
+			}
+			call(a, "GET", "Users/absent", "scoped-static", nil, 404)
+			if p = <-principals; p.CredentialID != "scoped" || !slices.Equal(p.Scopes, []string{scim.UsersRead}) || !p.ExpiresAt.Equal(future) {
+				t.Fatal("a scoped, expiring static credential lost its scopes or expiry", p)
 			}
 			start := make(chan struct{})
 			statuses := make(chan *httptest.ResponseRecorder, 2)

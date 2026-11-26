@@ -6,18 +6,18 @@
 
 - [ ] SCIM provisioning endpoints, types and options
   - [ ] `SCIMAuthenticationOptions`
-    - [x] `verifyBearerToken` ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L197))
+    - [x] `verifyBearerToken` ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L204))
       - [x] Verify callback credentials per request with scoped identities and prospective revocation ([test](../../../conformance/scim-contract.mjs#L144))
-      - [x] Refuse a token on both instances once the application verifier stops accepting it ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L197))
+      - [x] Refuse a token on both instances once the application verifier stops accepting it ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L204))
   - [ ] `SCIMAuthorizationSource`
     - [x] Hand each SCIM Group to the role mapper with its externalId, which selects the mapped roles ([test](../../../adapters/sqlstore/scim_projection_test.go#L77))
   - [ ] `SCIMBearerCredentialOptions`
     - `type` — *not applicable: TypeScript only. It is a type tag the other runtime never checks, and a Go scim.Credential is always a static bearer credential. Confirmed: packages/scim/src/index.ts validates id, token, scopes and expiresAt but never reads credential.type.*
-    - [x] `id` ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L168))
-      - [x] Report the static credential's ID on the principal the store receives ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L168))
-    - [x] `token` ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L146))
+    - [x] `id` ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L171))
+      - [x] Report the static credential's ID on the principal the store receives ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L171))
+    - [x] `token` ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L149))
       - [x] Reject unknown, ambiguous and duplicate static bearer credentials ([test](../../../plugins/scim/http_test.go#L26))
-      - [x] Authenticate a static credential sent as a Bearer token ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L146))
+      - [x] Authenticate a static credential sent as a Bearer token ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L149))
       - [x] Refuse a token changed in the options after the handler was built ([test](../../../plugins/scim/http_test.go#L78))
       - [x] Refuse a request that sends two Authorization headers ([test](../../../plugins/scim/http_test.go#L116))
     - [x] `scopes` ([test](../../../conformance/scim-contract.mjs#L59))
@@ -28,15 +28,15 @@
     - [x] `expiresAt` ([test](../../../adapters/sqlstore/scim_test.go#L96))
       - [x] Return a bearer challenge for an expired credential ([test](../../../adapters/sqlstore/scim_test.go#L33))
       - [x] Answer 401 with a bearer challenge for a credential past its expiry while the directory's other credentials still work ([test](../../../adapters/sqlstore/scim_test.go#L96))
-  - [x] `SCIMBearerTokenVerification` ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L151))
-    - [x] Answer 401 when the verifier's result is expired, names an unknown directory, both names and supplies one, or has an invalid credential ID or scopes ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L151))
-    - [x] Expose the directory, credential ID, scopes and expiry from an application-resolved verifier result ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L191))
-    - [x] Authenticate a verifier result that names a declared directory and expose that directory's domain and the credential ID ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L163))
+  - [x] `SCIMBearerTokenVerification` ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L154))
+    - [x] Answer 401 when the verifier's result is expired, names an unknown directory, both names and supplies one, or has an invalid credential ID or scopes ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L154))
+    - [x] Expose the directory, credential ID, scopes and expiry from an application-resolved verifier result ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L198))
+    - [x] Authenticate a verifier result that names a declared directory and expose that directory's domain and the credential ID ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L166))
   - `SCIMBearerTokenVerificationContext` — *not applicable: JavaScript only. It hands the verifier a JavaScript database adapter, while a Go VerifyBearerToken receives a context.Context and reads the application's own store. Its only member is Pick<DBAdapter, findOne|update>, which matches the existing scope.json rule that the JavaScript DBAdapter interface does not apply to Go stores.*
-  - [x] `SCIMBearerTokenVerificationInput` ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L105))
+  - [x] `SCIMBearerTokenVerificationInput` ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L107))
     - [x] Supply the trusted verifier with the bearer value, HTTP method, route template and copied request headers ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L35))
-    - [x] Give the verifier the request method and the route template of an item route ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L105))
-    - [x] Give the verifier the bearer token together with the request's Authorization header ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L108))
+    - [x] Give the verifier the request method and the route template of an item route ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L107))
+    - [x] Give the verifier the bearer token together with the request's Authorization header ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L110))
   - [x] `SCIMCanonicalAddress` ([test](../../../plugins/scim/multivalued_test.go#L26))
     - [x] Normalize addresses to trimmed fields with a lowercased type and a kept false primary, and refuse one without an address field or with an overlong country ([test](../../../plugins/scim/multivalued_test.go#L26))
     - [x] Store and return created addresses without their null subattributes, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L681))
@@ -64,8 +64,8 @@
       - [x] Create a Group whose schemas include the classic Entra marker when AcceptLegacyEntraGroupSchema is on ([test](../../../adapters/sqlstore/scim_groups_test.go#L96))
       - [x] Refuse the classic Entra Group marker on creation without AcceptLegacyEntraGroupSchema ([test](../../../adapters/sqlstore/scim_groups_test.go#L407))
       - [x] Refuse a Group carrying the legacy Entra marker with 400 invalidValue unless AcceptLegacyEntraGroupSchema is set, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_groups_contract_test.go#L106))
-  - [x] `SCIMConnection` ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L163))
-    - [x] Expose the authenticated directory ID and provisioning domain on the request's principal ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L163))
+  - [x] `SCIMConnection` ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L166))
+    - [x] Expose the authenticated directory ID and provisioning domain on the request's principal ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L166))
     - [x] Hand the store the same directory that the request authenticated ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L29))
   - [ ] `SCIMConnectionDecommissionStatus`
     - [x] Preserve terminal state and report the persisted retry time while another worker owns a live lease ([test](../../../adapters/sqlstore/scim_decommission_test.go#L15))
@@ -78,14 +78,15 @@
     - [x] `credentials` ([test](../../../adapters/sqlstore/scim_test.go#L68))
       - [x] Resolve separate scoped credentials for one directory ([test](../../../adapters/sqlstore/scim_test.go#L33))
       - [x] Accept several credentials on one directory, each with its own scopes, and refuse the expired one ([test](../../../adapters/sqlstore/scim_test.go#L68))
-    - [ ] `provisioningDomainId`
+    - [x] `provisioningDomainId` ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L172))
       - [x] Persist the first directory domain and reject later reassignment ([test](../../../adapters/sqlstore/scim_test.go#L33))
       - [x] Answer 409 when a directory's provisioning domain differs from the one recorded on first use ([test](../../../adapters/sqlstore/scim_test.go#L101))
       - [x] Refuse a padded provisioning domain at startup ([test](../../../plugins/scim/http_test.go#L52))
-  - [x] `SCIMDeclaredConnectionVerificationResult` ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L163))
+      - [x] Default a static connection's provisioning domain to its ID, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L172))
+  - [x] `SCIMDeclaredConnectionVerificationResult` ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L166))
     - [x] Resolve a declared directory ID and reject unknown or ambiguous connection claims ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L35))
-    - [x] Authenticate a verifier result that names a declared directory and expose that directory's domain and the credential ID ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L163))
-    - [x] Answer 401 when the verifier's result is expired, names an unknown directory, both names and supplies one, or has an invalid credential ID or scopes ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L151))
+    - [x] Authenticate a verifier result that names a declared directory and expose that directory's domain and the credential ID ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L166))
+    - [x] Answer 401 when the verifier's result is expired, names an unknown directory, both names and supplies one, or has an invalid credential ID or scopes ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L154))
   - [x] `SCIMEmail` ([test](../../../plugins/scim/http_test.go#L148))
     - [x] Make the work address the primary email of a created User whose emails carry types ([test](../../../adapters/sqlstore/scim_test.go#L137))
     - [x] Refuse 21 emails, a 255-character address and an invalid address, accept a 254-character address, and make the first of two untyped emails primary ([test](../../../plugins/scim/http_test.go#L148))
@@ -110,7 +111,8 @@
   - [ ] `SCIMIdentitySource`
     - [x] Hand the reconciler the domain's sources sorted by SCIM User ID, a deactivated one inactive beside an active one ([test](../../../adapters/sqlstore/scim_projection_test.go#L316))
   - [ ] `SCIMIdentityState`
-  - [ ] `SCIMManagedBearerPrincipal`
+  - [x] `SCIMManagedBearerPrincipal` ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L60))
+    - [x] Give a managed credential's principal its connection, domain, credential, scopes and expiry, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L60))
   - [ ] `SCIMManagedConnectionOptions`
     - [x] `credentialHashSecret` ([test](../../../plugins/scim/managed_test.go#L50))
       - [x] Authenticate the other implementation’s issued credential from a shared keyed digest ([test](../../../conformance/scim-managed.mjs#L13))
@@ -135,7 +137,7 @@
   - [ ] `SCIMOptions`
     - [x] Refuse to install a reserved or duplicate connection ID, an empty, whitespace or reused token and an unsupported scope ([test](../../../plugins/scim/http_test.go#L36))
     - [x] `connections` ([test](../../../plugins/scim/http_test.go#L52))
-      - [x] Serve a verifier-resolved directory when no code-defined connection is configured ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L132))
+      - [x] Serve a verifier-resolved directory when no code-defined connection is configured ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L135))
       - [x] Authenticate managed credentials when no code-defined connection is configured ([test](../../../adapters/sqlstore/scim_managed_test.go#L62))
       - [x] Refuse a configuration without connections, verifier or catalog, a connection without credentials, duplicate or padded credential IDs at startup ([test](../../../plugins/scim/http_test.go#L52))
     - [ ] `authentication`
@@ -148,7 +150,8 @@
     - [x] `compatibility` ([test](../../../adapters/sqlstore/scim_groups_contract_test.go#L106))
       - [x] Refuse the classic Entra Group marker on creation by default ([test](../../../adapters/sqlstore/scim_groups_test.go#L407))
       - [x] Refuse the legacy Entra Group marker without AcceptLegacyEntraGroupSchema, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_groups_contract_test.go#L106))
-  - [ ] `SCIMPrincipal`
+  - [x] `SCIMPrincipal` ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L60))
+    - [x] Report managed-bearer principals beside the static-bearer and oauth-bearer ones, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L60))
   - [x] `SCIMProjectedRoleGrant` ([test](../../../adapters/sqlstore/scim_projection_test.go#L259))
     - [x] Hand the reconciler grants sorted by grant key, each with its Group ([test](../../../adapters/sqlstore/scim_projection_test.go#L259))
   - [ ] `SCIMProjectedUserState`
@@ -168,9 +171,10 @@
   - [x] `SCIMScope` ([test](../../../adapters/sqlstore/scim_groups_contract_test.go#L60))
     - [x] Refuse User creation with a read-only scope and listing with a write-only scope, and let the read scope list ([test](../../../adapters/sqlstore/scim_groups_test.go#L410))
     - [x] Refuse POST Users to a users-read-only token and GET Users to a users-write-only one, beside the Group scopes, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_groups_contract_test.go#L60))
-  - [ ] `SCIMStaticBearerPrincipal`
+  - [x] `SCIMStaticBearerPrincipal` ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L172))
     - [x] Keep static principals and reserved managed credentials out of the application verifier ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L35))
-    - [x] Expose the static-bearer kind and credential ID of a code-defined token through request context ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L168))
+    - [x] Expose the static-bearer kind and credential ID of a code-defined token through request context ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L171))
+    - [x] Give a static credential's principal its directory, default provisioning domain, all scopes and no expiry, and carry a scoped, expiring credential's values, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L172))
   - [ ] `SCIMTransactionContext`
   - [ ] `decommissionSCIMConnection (server API only)`
     - [x] Persist a terminal binding before first use and read its completion timestamp from either implementation ([test](../../../conformance/core.test.mjs#L1063))
@@ -238,9 +242,10 @@
     - [x] Refuse invalid connection and credential configurations at startup ([test](../../../plugins/scim/http_test.go#L52))
   - `SCIMPlugin` — *not applicable: TypeScript type (ReturnType<typeof createSCIMPlugin>), consistent with the UsernamePlugin and OrganizationPlugin rules in scope.json*
   - `SCIMEndpoints` — *not applicable: TypeScript type alias (SCIMPlugin["endpoints"]) with no runtime behaviour*
-  - [ ] `createSCIMManagedConnection (server API only)`
+  - [x] `createSCIMManagedConnection (server API only)` ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L49))
     - [x] Issue a finite scoped bearer once under concurrent creates with the same request ID ([test](../../../adapters/sqlstore/scim_managed_test.go#L31))
     - [x] Refuse issuance without a future expiry or with empty or repeated scopes ([test](../../../adapters/sqlstore/scim_managed_test.go#L72))
+    - [x] Refuse a creation request ID under 16 characters and an empty actor with 400 invalidValue and no token, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L49))
   - [ ] `listSCIMManagedConnections (server API only)`
     - [x] List the other implementation’s connection for its provisioning domain ([test](../../../conformance/scim-managed.mjs#L13))
   - [ ] `getSCIMManagedConnection (server API only)`
@@ -329,7 +334,8 @@
       - [x] Serve directory routes under the auth mount's /scim/v2 path and link created Users from the configured base URL ([test](../../../adapters/sqlstore/scim_test.go#L125))
     - [x] Authentication ([test](../../../plugins/scim/http_test.go#L300))
       - [x] Advertise bearer token authentication only and refuse Basic credentials with a bearer challenge ([test](../../../plugins/scim/http_test.go#L300))
-    - [ ] Token
+    - [x] Token ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L67))
+      - [x] Accept a code-defined token, a managed token and its rotation on one handler, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L67))
   - [x] How provisioning maps to your application ([test](../../../adapters/sqlstore/scim_groups_contract_test.go#L114))
     - [x] Grant no authorization for a Group membership by itself, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_groups_contract_test.go#L114))
   - [ ] Provision users
@@ -349,7 +355,7 @@
 - [ ] SCIM reference
   - [ ] Plugin options
     - [x] `connections` ([test](../../../plugins/scim/http_test.go#L52))
-      - [x] Serve a verifier-resolved directory when no code-defined connection is configured ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L132))
+      - [x] Serve a verifier-resolved directory when no code-defined connection is configured ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L135))
       - [x] Authenticate managed credentials when no code-defined connection is configured ([test](../../../adapters/sqlstore/scim_managed_test.go#L62))
       - [x] Refuse a handler with no connection, verifier or catalog ([test](../../../plugins/scim/http_test.go#L52))
     - [x] `authentication` ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L35))
@@ -365,15 +371,16 @@
       - [x] `id` ([test](../../../plugins/scim/http_test.go#L52))
         - [x] Refuse a padded or over-long connection ID ([test](../../../plugins/scim/http_test.go#L52))
       - [x] `credentials` ([test](../../../plugins/scim/http_test.go#L52))
-        - [x] Accept a connection with no static credentials when a bearer verifier is configured ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L130))
+        - [x] Accept a connection with no static credentials when a bearer verifier is configured ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L132))
         - [x] Refuse a connection without credentials when no verifier is set ([test](../../../plugins/scim/http_test.go#L52))
-      - [ ] `provisioningDomainId`
+      - [x] `provisioningDomainId` ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L172))
         - [x] Keep the first provisioning domain and reject a changed one with 409 ([test](../../../adapters/sqlstore/scim_test.go#L101))
         - [x] Refuse a padded or over-long provisioning domain ([test](../../../plugins/scim/http_test.go#L52))
+        - [x] Default a static connection's provisioning domain to its ID, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L172))
     - [ ] Bearer credential options
       - `type` — *not applicable: TypeScript credential discriminant; the other runtime declares the "bearer" literal only in its option type (packages/scim/src/configuration.ts) and never reads it at run time, and Go credentials are a bearer-only struct with no type field*
       - [x] `id` ([test](../../../plugins/scim/http_test.go#L52))
-        - [x] Expose a static credential's ID in the directory principal the store receives ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L168))
+        - [x] Expose a static credential's ID in the directory principal the store receives ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L171))
         - [x] Refuse two credentials with one ID and an empty credential ID ([test](../../../plugins/scim/http_test.go#L52))
       - [x] `token` ([test](../../../plugins/scim/http_test.go#L34))
         - [x] Refuse an empty token, a token with whitespace and one token shared by two connections when building the handler ([test](../../../plugins/scim/http_test.go#L34))
@@ -382,8 +389,9 @@
       - [x] `expiresAt` ([test](../../../adapters/sqlstore/scim_users_contract_test.go#L79))
         - [x] Answer 401 for a static credential whose expiry time has passed ([test](../../../adapters/sqlstore/scim_test.go#L96))
         - [x] Accept a credential before its expiry, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_users_contract_test.go#L79))
-    - [ ] Bearer verification
+    - [x] Bearer verification ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L154))
       - [x] Accept declared and application-resolved connections from the verifier, answer 401 for expired, ambiguous, colliding, reserved or malformed results, keep the first domain binding with 409, and report a verifier failure as 500 ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L35))
+      - [x] Refuse a verifier result naming a padded or over-long connection ID with 401, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L154))
     - [ ] Managed connection catalog
       - [x] Store only a keyed digest of an issued token, answer 401 under another digest secret and throttle last-use writes ([test](../../../adapters/sqlstore/scim_managed_test.go#L164))
       - [x] Issue tokens in the reserved credential namespace that both runtimes accept ([test](../../../conformance/scim-managed.mjs#L69))
@@ -398,8 +406,9 @@
         - [x] Issue exactly one extra credential under four concurrent rotations at the active-credential cap while the earlier token keeps working ([test](../../../adapters/sqlstore/scim_managed_test.go#L184))
       - [x] `revokeSCIMManagedCredential` ([test](../../../adapters/sqlstore/scim_managed_test.go#L199))
         - [x] Answer 401 for a revoked credential, including a request already in flight when the revocation commits ([test](../../../adapters/sqlstore/scim_managed_test.go#L199))
-      - [ ] `listSCIMManagedConnectionEvents`
+      - [x] `listSCIMManagedConnectionEvents` ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L76))
         - [x] Return contiguous lifecycle events and page them by limit, offset and ascending or descending order ([test](../../../adapters/sqlstore/scim_managed_test.go#L229))
+        - [x] Refuse audit pages over 100 events, a negative offset or an unknown sort, and default to 100 events, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L76))
       - [x] `decommissionSCIMManagedConnection` ([test](../../../adapters/sqlstore/scim_decommission_test.go#L159))
         - [x] Disable a managed connection's credentials, resume an interrupted reconciliation on another server and record it as decommissioned ([test](../../../adapters/sqlstore/scim_decommission_test.go#L159))
       - [x] `scim.users.read` ([test](../../../adapters/sqlstore/scim_users_contract_test.go#L82))
@@ -639,9 +648,10 @@
       - [x] Reject a User filter using the co operator with 400 ([test](../../../adapters/sqlstore/scim_test.go#L159))
     - [x] A built-in OAuth token endpoint, Basic authentication, or mutual TLS ([test](../../../plugins/scim/http_test.go#L300))
       - [x] Refuse Basic credentials with 401 and a Bearer challenge ([test](../../../plugins/scim/http_test.go#L300))
-    - [ ] HTTP management endpoints, SCIM request audit records, or webhooks
+    - [x] HTTP management endpoints, SCIM request audit records, or webhooks ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L105))
       - [x] Answer 404 for a catalog method name requested under the SCIM HTTP path ([test](../../../adapters/sqlstore/scim_managed_test.go#L248))
-  - [ ] Schema
+      - [x] Answer 404 for every managed operation name under the SCIM and auth paths, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L105))
+  - [x] Schema ([test](../../../conformance/schema.test.mjs#L106))
     - [x] Emit the SCIM and managed SCIM tables from the schema CLI exactly as the other runtime's migration on SQLite, PostgreSQL and MySQL ([test](../../../conformance/schema.test.mjs#L106))
     - [x] `scimConnectionBinding` ([test](../../../conformance/schema.test.mjs#L106))
       - [x] Emit the scimConnectionBinding table from the schema CLI exactly as the other runtime's migration ([test](../../../conformance/schema.test.mjs#L106))
@@ -671,8 +681,9 @@
     - [x] `scimManagedCredential` ([test](../../../adapters/sqlstore/scim_managed_test.go#L143))
       - [x] Persist only a fixed-length keyed digest of a managed token, never the token or its credential ID ([test](../../../adapters/sqlstore/scim_managed_test.go#L143))
       - [x] Report revoked, expired and active managed credentials with distinct statuses ([test](../../../adapters/sqlstore/scim_managed_test.go#L221))
-    - [ ] `scimManagedConnectionEvent`
+    - [x] `scimManagedConnectionEvent` ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L89))
       - [x] Emit the scimManagedConnectionEvent table from the schema CLI exactly as the other runtime's migration ([test](../../../conformance/schema.test.mjs#L106))
       - [x] Record connection creation, issuance, rotation and revocation events in sequence order ([test](../../../adapters/sqlstore/scim_managed_test.go#L233))
+      - [x] Record each audit event's actor, and the credential for credential events only, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L89))
     - [x] Legacy SCIM cutover ([test](../../../adapters/sqlstore/scim_attributes_test.go#L346))
       - [x] Serve GET, PUT and PATCH for a row without serializedAttributes from its mirror columns, write canonical attributes on its next change and read an empty value the same way, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L346))

@@ -9959,6 +9959,12 @@
       "label": "Refuse a padded provisioning domain at startup",
       "test": "plugins/scim/http_test.go",
       "marker": "t.Fatal(\"scim.New accepted a configuration with\", name)"
+    },
+    {
+      "label": "Default a static connection's provisioning domain to its ID, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_dynamic_test.go",
+      "marker": "t.Fatal(\"the static principal lacks its directory, domain, scopes or expiry\", p)",
+      "complete": true
     }
   ],
   "plugin-symbol/scim/SCIMConnectionOptions/id": [
@@ -10679,7 +10685,7 @@
     {
       "label": "Answer 401 when the verifier's result is expired, names an unknown directory, both names and supplies one, or has an invalid credential ID or scopes",
       "test": "adapters/sqlstore/scim_dynamic_test.go",
-      "marker": "for _, token := range []string{\"stale\", \"collision\", \"reserved\", \"unknown-conn\", \"bad-domain\", \"ambiguous\", \"bad-id\", \"duplicate\", \"bad-scope\", \"absent-scopes\", \"unknown\"} {"
+      "marker": "for _, token := range []string{\"stale\", \"collision\", \"reserved\", \"unknown-conn\", \"bad-domain\", \"ambiguous\", \"bad-id\", \"duplicate\", \"bad-scope\", \"absent-scopes\", \"unknown\", \"padded-conn\", \"long-conn\"} {"
     }
   ],
   "plugin-symbol/scim/SCIMResolvedConnectionVerificationResult": [
@@ -10723,7 +10729,13 @@
     {
       "label": "Expose the static-bearer kind and credential ID of a code-defined token through request context",
       "test": "adapters/sqlstore/scim_dynamic_test.go",
-      "marker": "if p.Kind != \"static-bearer\" || p.CredentialID != \"key\" {"
+      "marker": "if p.Kind != \"static-bearer\" || p.CredentialID != \"key\" || p.ID != \"static\""
+    },
+    {
+      "label": "Give a static credential's principal its directory, default provisioning domain, all scopes and no expiry, and carry a scoped, expiring credential's values, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_dynamic_test.go",
+      "marker": "t.Fatal(\"the static principal lacks its directory, domain, scopes or expiry\", p)",
+      "complete": true
     }
   ],
   "plugin-symbol/passkey/passkeyClient": [
@@ -10858,6 +10870,12 @@
       "label": "Refuse issuance without a future expiry or with empty or repeated scopes",
       "test": "adapters/sqlstore/scim_managed_test.go",
       "marker": "t.Fatal(\"invalid issuance\")"
+    },
+    {
+      "label": "Refuse a creation request ID under 16 characters and an empty actor with 400 invalidValue and no token, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_managed_contract_test.go",
+      "marker": "t.Fatal(\"an unusable managed creation was accepted\", c, e)",
+      "complete": true
     }
   ],
   "plugin/scim/ listSCIMManagedConnections (server API only)": [
@@ -43599,7 +43617,7 @@
     {
       "label": "Report the static credential's ID on the principal the store receives",
       "test": "adapters/sqlstore/scim_dynamic_test.go",
-      "marker": "if p.Kind != \"static-bearer\" || p.CredentialID != \"key\" {",
+      "marker": "if p.Kind != \"static-bearer\" || p.CredentialID != \"key\" || p.ID != \"static\"",
       "complete": true
     }
   ],
@@ -43607,7 +43625,7 @@
     {
       "label": "Answer 401 when the verifier's result is expired, names an unknown directory, both names and supplies one, or has an invalid credential ID or scopes",
       "test": "adapters/sqlstore/scim_dynamic_test.go",
-      "marker": "for _, token := range []string{\"stale\", \"collision\", \"reserved\", \"unknown-conn\", \"bad-domain\", \"ambiguous\", \"bad-id\", \"duplicate\", \"bad-scope\", \"absent-scopes\", \"unknown\"} {",
+      "marker": "for _, token := range []string{\"stale\", \"collision\", \"reserved\", \"unknown-conn\", \"bad-domain\", \"ambiguous\", \"bad-id\", \"duplicate\", \"bad-scope\", \"absent-scopes\", \"unknown\", \"padded-conn\", \"long-conn\"} {",
       "complete": true
     },
     {
@@ -43853,13 +43871,19 @@
       "label": "Refuse a padded or over-long provisioning domain",
       "test": "plugins/scim/http_test.go",
       "marker": "t.Fatal(\"scim.New accepted a configuration with\", name)"
+    },
+    {
+      "label": "Default a static connection's provisioning domain to its ID, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_dynamic_test.go",
+      "marker": "t.Fatal(\"the static principal lacks its directory, domain, scopes or expiry\", p)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L36/`id`": [
     {
       "label": "Expose a static credential's ID in the directory principal the store receives",
       "test": "adapters/sqlstore/scim_dynamic_test.go",
-      "marker": "if p.Kind != \"static-bearer\" || p.CredentialID != \"key\" {"
+      "marker": "if p.Kind != \"static-bearer\" || p.CredentialID != \"key\" || p.ID != \"static\""
     },
     {
       "label": "Refuse two credentials with one ID and an empty credential ID",
@@ -43902,6 +43926,12 @@
       "label": "Accept declared and application-resolved connections from the verifier, answer 401 for expired, ambiguous, colliding, reserved or malformed results, keep the first domain binding with 409, and report a verifier failure as 500",
       "test": "adapters/sqlstore/scim_dynamic_test.go",
       "marker": "func TestSCIMDynamicBearer("
+    },
+    {
+      "label": "Refuse a verifier result naming a padded or over-long connection ID with 401, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_dynamic_test.go",
+      "marker": "for _, token := range []string{\"stale\", \"collision\", \"reserved\", \"unknown-conn\", \"bad-domain\", \"ambiguous\", \"bad-id\", \"duplicate\", \"bad-scope\", \"absent-scopes\", \"unknown\", \"padded-conn\", \"long-conn\"} {",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L114": [
@@ -43966,6 +43996,12 @@
       "label": "Return contiguous lifecycle events and page them by limit, offset and ascending or descending order",
       "test": "adapters/sqlstore/scim_managed_test.go",
       "marker": "t.Fatal(\"non-contiguous audit\")"
+    },
+    {
+      "label": "Refuse audit pages over 100 events, a negative offset or an unknown sort, and default to 100 events, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_managed_contract_test.go",
+      "marker": "t.Fatal(\"an unusable audit page was accepted\", q, e)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L169/`decommissionSCIMManagedConnection`": [
@@ -44446,6 +44482,12 @@
       "label": "Answer 404 for a catalog method name requested under the SCIM HTTP path",
       "test": "adapters/sqlstore/scim_managed_test.go",
       "marker": "call(one, \"POST\", \"createSCIMManagedConnection\", next.Token, nil, 404)"
+    },
+    {
+      "label": "Answer 404 for every managed operation name under the SCIM and auth paths, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_managed_contract_test.go",
+      "marker": "t.Fatal(\"a managed operation answered over HTTP\"",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L530": [
@@ -44588,6 +44630,12 @@
       "label": "Record connection creation, issuance, rotation and revocation events in sequence order",
       "test": "adapters/sqlstore/scim_managed_test.go",
       "marker": "\"connection.created\", \"credential.issued\""
+    },
+    {
+      "label": "Record each audit event's actor, and the credential for credential events only, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_managed_contract_test.go",
+      "marker": "t.Fatal(\"a credential event does not name its credential\", event)",
+      "complete": true
     }
   ],
   "plugin-symbol/2fa/TWO_FACTOR_ERROR_CODES": [
@@ -46730,6 +46778,30 @@
       "label": "Accept a credential before its expiry beside the current one, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/scim_users_contract_test.go",
       "marker": "call(\"GET\", \"Users\", \"retiring\", nil, 200, \"\")",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/scim/SCIMManagedBearerPrincipal": [
+    {
+      "label": "Give a managed credential's principal its connection, domain, credential, scopes and expiry, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_managed_contract_test.go",
+      "marker": "t.Fatal(\"the managed principal lacks its directory, credential, scopes or expiry\", p)",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/scim/SCIMPrincipal": [
+    {
+      "label": "Report managed-bearer principals beside the static-bearer and oauth-bearer ones, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_managed_contract_test.go",
+      "marker": "t.Fatal(\"the managed principal lacks its directory, credential, scopes or expiry\", p)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/index.mdx#L164/Token": [
+    {
+      "label": "Accept a code-defined token, a managed token and its rotation on one handler, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_managed_contract_test.go",
+      "marker": "t.Fatal(\"a token was refused beside the others\"",
       "complete": true
     }
   ]
