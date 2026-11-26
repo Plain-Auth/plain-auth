@@ -551,3 +551,61 @@ func TestSCIMUserEmailPatchOverHTTP(t *testing.T) {
 		})
 	}
 }
+
+// A null PATCH value removes its target, and a null key in a name or
+// pathless value removes that attribute after the other keys apply. active,
+// userName and emails cannot be removed, so a null on them is refused.
+func TestSCIMUserPatchNullsOverHTTP(t *testing.T) {
+	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
+		t.Run(dialect, func(t *testing.T) {
+			_, call := attributeDirectory(t, dialect)
+			created := call("POST", "Users", map[string]any{"schemas": []string{scim.UserSchema}, "userName": "ada@example.test", "externalId": "ada", "title": "Engineer", "locale": "en-GB",
+				"name": map[string]any{"givenName": "Ada", "familyName": "Lovelace", "middleName": "Countess"}}, 201, "the User was refused")
+			id := created["id"].(string)
+			patch := func(status int, failure string, ops ...any) map[string]any {
+				t.Helper()
+				return call("PATCH", "Users/"+id, map[string]any{"schemas": []string{scim.PatchSchema}, "Operations": ops}, status, failure)
+			}
+			got := patch(200, "a null replace or add failed", map[string]any{"op": "Replace", "path": "title", "value": nil}, map[string]any{"op": "Add", "path": "externalId", "Value": nil})
+			if _, has := got["title"]; has {
+				t.Fatal("a null replace did not remove its target", got)
+			}
+			if _, has := got["externalId"]; has {
+				t.Fatal("a null add did not remove its target", got)
+			}
+			got = patch(200, "a null name key failed", map[string]any{"op": "replace", "path": "name", "value": map[string]any{"familyName": "King", "middleName": nil, "formatted": nil}})
+			if !jsonEqual(got["name"], map[string]any{"formatted": "Ada King", "givenName": "Ada", "familyName": "King"}) {
+				t.Fatal("null name keys were not removed after the other keys applied", got["name"])
+			}
+			if got["displayName"] != "Ada King" {
+				t.Fatal("a derived display name did not follow a composed formatted name", got["displayName"])
+			}
+			got = patch(200, "a pathless null key failed", map[string]any{"op": "replace", "value": map[string]any{"displayName": "Ada L", "locale": nil, "name.givenName": nil}})
+			if _, has := got["locale"]; has || got["displayName"] != "Ada L" {
+				t.Fatal("a pathless null key did not remove its attribute", got)
+			}
+			if _, has := got["name"].(map[string]any)["givenName"]; has {
+				t.Fatal("a pathless null name subattribute was not removed", got["name"])
+			}
+			if body := patch(400, "a null active PATCH was accepted", map[string]any{"op": "replace", "path": "active", "value": nil}); body["scimType"] != "invalidValue" {
+				t.Fatal("a null active PATCH was not invalidValue", body)
+			}
+			if body := patch(400, "a pathless null active was accepted", map[string]any{"op": "replace", "value": map[string]any{"title": "X", "active": nil}}); body["scimType"] != "invalidValue" {
+				t.Fatal("a pathless null active was not invalidValue", body)
+			}
+			if body := patch(400, "a null userName PATCH was accepted", map[string]any{"op": "replace", "path": "userName", "value": nil}); body["scimType"] != "mutability" {
+				t.Fatal("a null userName PATCH was not mutability", body)
+			}
+			if body := patch(400, "a null emails PATCH was accepted", map[string]any{"op": "replace", "path": "emails", "value": nil}); body["scimType"] != "invalidValue" {
+				t.Fatal("a null emails PATCH was not invalidValue", body)
+			}
+			if body := patch(400, "a PATCH without a value was accepted", map[string]any{"op": "replace", "path": "title"}); body["scimType"] != "invalidValue" {
+				t.Fatal("a PATCH without a value was not invalidValue", body)
+			}
+			got = call("GET", "Users/"+id, nil, 200, "the User could not be read")
+			if _, has := got["title"]; has || got["userName"] != "ada@example.test" || got["active"] != true || len(got["emails"].([]any)) != 1 {
+				t.Fatal("a refused null PATCH changed the User", got)
+			}
+		})
+	}
+}

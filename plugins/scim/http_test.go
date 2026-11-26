@@ -296,3 +296,32 @@ func TestSCIMPathlessPatchKeyOrder(t *testing.T) {
 		}
 	}
 }
+
+// Null values expand into removals that run after the operation's other
+// keys; a missing value stays an error.
+func TestSCIMUserPatchNullExpansion(t *testing.T) {
+	ops, err := expandNulls([]patchOp{
+		{op: "replace", path: "title", hasValue: true},
+		{op: "add", path: "name", value: []any{map[string]any{"givenName": "A", "familyName": nil}}, hasValue: true},
+		{op: "replace", value: map[string]any{"locale": nil, "name": map[string]any{"middleName": nil}}, hasValue: true},
+		{op: "replace", path: "emails", value: []any{map[string]any{"value": "a@example.test", "type": nil, "display": map[string]any{"x": nil}}}, hasValue: true},
+	})
+	want := []patchOp{
+		{op: "remove", path: "title"},
+		{op: "add", path: "name", value: []any{map[string]any{"givenName": "A"}}, hasValue: true},
+		{op: "remove", path: "name.familyName"},
+		{op: "remove", path: "locale"},
+		{op: "remove", path: "name.middleName"},
+		{op: "replace", path: "emails", value: []any{map[string]any{"value": "a@example.test"}}, hasValue: true},
+	}
+	if err != nil || !reflect.DeepEqual(ops, want) {
+		t.Fatal("null PATCH values did not expand into ordered removals", ops, err)
+	}
+	if _, err := expandNulls([]patchOp{{op: "replace", value: map[string]any{"name": map[string]any{"givenName": "A"}, "Active": nil}, hasValue: true}}); err == nil {
+		t.Fatal("a pathless null active expanded")
+	}
+	r := Record{Profile: Profile{UserName: "a@example.test", Active: true, Attributes: map[string]any{"emails": []any{map[string]any{"value": "a@example.test", "primary": true}}}}}
+	if _, err := patchProfile(r, []any{map[string]any{"op": "replace", "path": "title"}}); err == nil {
+		t.Fatal("an add or replace without a value was accepted")
+	}
+}

@@ -45327,6 +45327,11 @@
       "label": "Apply pathless PATCH keys in sorted order",
       "test": "plugins/scim/http_test.go",
       "marker": "func TestSCIMPathlessPatchKeyOrder("
+    },
+    {
+      "label": "Move a derived display name with a formatted name composed on removal",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "t.Fatal(\"a derived display name did not follow a composed formatted name\", got[\"displayName\"])"
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L377/`emails`": [
@@ -45366,6 +45371,35 @@
       "label": "Append a non-primary email when a type selector matches nothing",
       "test": "adapters/sqlstore/scim_attributes_test.go",
       "marker": "t.Fatal(\"a type-filter miss did not append a non-primary email\", emails(got))"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L206/The `value` of a PATCH `add` or `replace` operation": [
+    {
+      "label": "Remove the target of a null add or replace value and refuse a null active, userName or emails, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "t.Fatal(\"a null replace did not remove its target\", got)"
+    },
+    {
+      "label": "Leave the User unchanged after a refused null PATCH",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "t.Fatal(\"a refused null PATCH changed the User\", got)"
+    },
+    {
+      "label": "Refuse an add or replace without a value",
+      "test": "plugins/scim/http_test.go",
+      "marker": "t.Fatal(\"an add or replace without a value was accepted\")"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L207/A key in a PATCH value that merges into the stored value: a pathless value, `name`, the Enterprise extension, `manager`, or a filtered value such as `addresses[type eq \"work\"]`": [
+    {
+      "label": "Remove null name and pathless keys after the operation's other keys apply, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "t.Fatal(\"null name keys were not removed after the other keys applied\", got[\"name\"])"
+    },
+    {
+      "label": "Expand null keys of name, wrapped and pathless values into ordered removals and drop nulls in whole email entries",
+      "test": "plugins/scim/http_test.go",
+      "marker": "t.Fatal(\"null PATCH values did not expand into ordered removals\", ops, err)"
     }
   ]
 }

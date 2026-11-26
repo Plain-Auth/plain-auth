@@ -359,7 +359,12 @@
         - [x] Drop null attributes, name parts and email subattributes on create and replace, and refuse a null userName, active or email entry, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L53))
         - [x] Drop a null Group externalId and member subattribute and empty the members on a null PUT ([test](../../../adapters/sqlstore/scim_attributes_test.go#L172))
       - [ ] The `value` of a PATCH `add` or `replace` operation
+        - [x] Remove the target of a null add or replace value and refuse a null active, userName or emails, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L571))
+        - [x] Leave the User unchanged after a refused null PATCH ([test](../../../adapters/sqlstore/scim_attributes_test.go#L607))
+        - [x] Refuse an add or replace without a value ([test](../../../plugins/scim/http_test.go#L325))
       - [ ] A key in a PATCH value that merges into the stored value: a pathless value, `name`, the Enterprise extension, `manager`, or a filtered value such as `addresses[type eq "work"]`
+        - [x] Remove null name and pathless keys after the operation's other keys apply, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L578))
+        - [x] Expand null keys of name, wrapped and pathless values into ordered removals and drop nulls in whole email entries ([test](../../../plugins/scim/http_test.go#L318))
       - [ ] A subattribute of a value in a PATCH that adds or replaces whole values, such as `emails` or `addresses`
         - [x] Drop null subattributes in whole emails and roles PATCH values ([test](../../../adapters/sqlstore/scim_attributes_test.go#L260))
     - [ ] Microsoft Entra Group compatibility
@@ -455,6 +460,7 @@
       - [x] `name` and its supported subattributes ([test](../../../adapters/sqlstore/scim_attributes_test.go#L404))
         - [x] Merge name add and replace, move a derived display name with the formatted name, compose a removed formatted name and unwrap one-element values, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L404))
         - [x] Apply pathless PATCH keys in sorted order ([test](../../../plugins/scim/http_test.go#L286))
+        - [x] Move a derived display name with a formatted name composed on removal ([test](../../../adapters/sqlstore/scim_attributes_test.go#L581))
       - [x] `emails` ([test](../../../adapters/sqlstore/scim_attributes_test.go#L490))
         - [x] Add new email pairs from an array, coalesce repeats, demote the stored primary for an added one and move the account email, and refuse an empty replacement, a removal and a bare object, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L490))
         - [x] Skip an added email whose type and value are already stored ([test](../../../adapters/sqlstore/scim_attributes_test.go#L497))

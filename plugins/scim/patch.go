@@ -23,39 +23,28 @@ func patchOperations(input any) ([]any, error) {
 	}
 	return ops, nil
 }
-func patchProfile(r Record, ops []any) (Profile, error) {
+func patchProfile(r Record, raw []any) (Profile, error) {
+	ops, err := userOps(raw)
+	if err != nil {
+		return Profile{}, err
+	}
+	if ops, err = expandNulls(ops); err != nil {
+		return Profile{}, err
+	}
 	m := profileObject(r.Profile)
-	for _, raw := range ops {
-		v, err := object(raw, []string{"op", "path", "value"})
-		if err != nil {
-			return Profile{}, err
-		}
-		op := "replace"
-		if v["op"] != nil {
-			o, ok := v["op"].(string)
-			if !ok {
-				return Profile{}, invalid("invalidSyntax", "Expected a patch operation")
-			}
-			op = strings.ToLower(o)
-		}
-		if op != "add" && op != "replace" && op != "remove" {
-			return Profile{}, invalid("invalidSyntax", "Unsupported patch operation")
-		}
-		path := ""
-		if v["path"] != nil {
-			var ok bool
-			path, ok = v["path"].(string)
-			if !ok {
-				return Profile{}, invalid("invalidPath", "Expected an attribute path")
-			}
-			path = strings.TrimSpace(path)
-		}
-		if path == "" && op == "remove" {
+	for _, o := range ops {
+		switch {
+		case o.path == "" && o.op == "remove":
 			return Profile{}, invalid("noTarget", "A pathless remove has no target")
-		}
-		if path == "" {
+		case o.op != "remove" && !o.hasValue:
+			// Refuse a missing value; another runtime treats some such
+			// operations as removals.
+			return Profile{}, invalid("invalidValue", "Patch value is required")
+		case o.path != "":
+			err = patchValue(m, o.path, o.op, o.value)
+		default:
 			// An empty map is a no-op.
-			fields, ok := v["value"].(map[string]any)
+			fields, ok := o.value.(map[string]any)
 			if !ok {
 				return Profile{}, invalid("invalidValue", "Expected an attribute map")
 			}
@@ -66,25 +55,50 @@ func patchProfile(r Record, ops []any) (Profile, error) {
 			// order to stay deterministic; another runtime applies them in
 			// request order.
 			for _, name := range slices.Sorted(maps.Keys(fields)) {
-				if err = patchValue(m, name, op, fields[name]); err != nil {
-					return Profile{}, err
+				if err = patchValue(m, name, o.op, fields[name]); err != nil {
+					break
 				}
 			}
-		} else if op != "remove" && v["value"] == nil && isRolePath(withoutSchema(path, UserSchema)) {
-			// object drops null fields. An explicit null unassigns this role path,
-			// while a write with a missing value is invalid.
-			fields, _ := raw.(map[string]any)
-			if !hasRolePatchValue(fields) {
-				return Profile{}, invalid("invalidValue", "Patch value is required")
-			}
-			if err = patchValue(m, path, "remove", nil); err != nil {
-				return Profile{}, err
-			}
-		} else if err = patchValue(m, path, op, v["value"]); err != nil {
+		}
+		if err != nil {
 			return Profile{}, err
 		}
 	}
 	return normalize(m)
+}
+
+// userOps parses PATCH operations; an omitted op means replace.
+func userOps(raw []any) ([]patchOp, error) {
+	ops := make([]patchOp, 0, len(raw))
+	for _, item := range raw {
+		v, err := object(item, []string{"op", "path", "value"})
+		if err != nil {
+			return nil, err
+		}
+		o := patchOp{op: "replace", value: v["value"]}
+		for key := range item.(map[string]any) {
+			o.hasValue = o.hasValue || strings.EqualFold(key, "value")
+		}
+		if v["op"] != nil {
+			name, ok := v["op"].(string)
+			if !ok {
+				return nil, invalid("invalidSyntax", "Expected a patch operation")
+			}
+			o.op = strings.ToLower(name)
+		}
+		if o.op != "add" && o.op != "replace" && o.op != "remove" {
+			return nil, invalid("invalidSyntax", "Unsupported patch operation")
+		}
+		if v["path"] != nil {
+			path, ok := v["path"].(string)
+			if !ok {
+				return nil, invalid("invalidPath", "Expected an attribute path")
+			}
+			o.path = strings.TrimSpace(path)
+		}
+		ops = append(ops, o)
+	}
+	return ops, nil
 }
 
 // readOnlyUserPath reports id, schemas and meta, which a PATCH cannot change.
@@ -102,9 +116,6 @@ func patchValue(m map[string]any, path, op string, value any) error {
 		return invalid("mutability", "The targeted User attribute is read-only")
 	}
 	if isRolePath(path) {
-		if value == nil {
-			op = "remove"
-		}
 		return patchRole(m, path, op, value)
 	}
 	if isEmailPath(path) {
@@ -138,6 +149,7 @@ func patchValue(m map[string]any, path, op string, value any) error {
 			given, _ := target["givenName"].(string)
 			family, _ := target["familyName"].(string)
 			if joined := strings.TrimSpace(given + " " + family); joined != "" {
+				setFormatted(m, target, joined)
 				target["formatted"] = joined
 				return nil
 			}
@@ -219,13 +231,4 @@ func setFormatted(m, name map[string]any, formatted any) {
 	if display, _ := m["displayName"].(string); old != "" && display == old {
 		m["displayName"] = formatted
 	}
-}
-
-func hasRolePatchValue(fields map[string]any) bool {
-	for k := range fields {
-		if strings.EqualFold(k, "value") {
-			return true
-		}
-	}
-	return false
 }
