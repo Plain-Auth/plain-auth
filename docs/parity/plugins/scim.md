@@ -37,15 +37,21 @@
     - [x] Supply the trusted verifier with the bearer value, HTTP method, route template and copied request headers ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L35))
     - [x] Give the verifier the request method and the route template of an item route ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L105))
     - [x] Give the verifier the bearer token together with the request's Authorization header ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L108))
-  - [ ] `SCIMCanonicalAddress`
+  - [x] `SCIMCanonicalAddress` ([test](../../../plugins/scim/multivalued_test.go#L26))
+    - [x] Normalize addresses to trimmed fields with a lowercased type and a kept false primary, and refuse one without an address field or with an overlong country ([test](../../../plugins/scim/multivalued_test.go#L26))
+    - [x] Store and return created addresses without their null subattributes, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L635))
   - [x] `SCIMCanonicalEmail` ([test](../../../conformance/scim-contract.mjs#L61))
     - [x] Return a created User's email lowercased, with its type and primary set to true, on both runtimes ([test](../../../conformance/scim-contract.mjs#L61))
-  - [ ] `SCIMCanonicalEntitlement`
+  - [x] `SCIMCanonicalEntitlement` ([test](../../../plugins/scim/multivalued_test.go#L29))
+    - [x] Normalize entitlements like roles and refuse duplicate defined types ([test](../../../plugins/scim/multivalued_test.go#L29))
+    - [x] Store entitlements in the canonical serialized attributes and return them, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L642))
   - [ ] `SCIMCanonicalManager`
   - [ ] `SCIMCanonicalName`
     - [x] Derive a created User's display name from its given and family names on both runtimes ([test](../../../conformance/scim-contract.mjs#L60))
     - [x] Name the linked account from the User's given and family names ([test](../../../adapters/sqlstore/scim_test.go#L139))
-  - [ ] `SCIMCanonicalPhoneNumber`
+  - [x] `SCIMCanonicalPhoneNumber` ([test](../../../plugins/scim/multivalued_test.go#L23))
+    - [x] Trim phone numbers, lowercase their type, read a string primary as a Boolean, and refuse eleven entries, two primaries, a missing value or a scalar ([test](../../../plugins/scim/multivalued_test.go#L23))
+    - [x] Store and return created phone numbers and keep them through a PATCH, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L628))
   - [x] `SCIMCanonicalRole` ([test](../../../conformance/scim-roles.mjs#L17))
     - [x] Return created roles trimmed, with lowercased type, boolean primary and display, on both runtimes ([test](../../../conformance/scim-roles.mjs#L17))
     - [x] Return the stored roles of a created User with their value, type and primary flag ([test](../../../adapters/sqlstore/scim_roles_test.go#L60))
@@ -406,7 +412,9 @@
         - [x] Lowercase an email value and mark the only work email primary on both runtimes ([test](../../../conformance/scim-contract.mjs#L61))
       - [ ] `title`, `userType`, `preferredLanguage`, `locale`, `timezone`
         - [x] Return a title sent in a User replacement on both runtimes ([test](../../../conformance/scim-contract.mjs#L71))
-      - [ ] `phoneNumbers`, `addresses`, `roles`, `entitlements`
+      - [x] `phoneNumbers`, `addresses`, `roles`, `entitlements` ([test](../../../adapters/sqlstore/scim_attributes_test.go#L616))
+        - [x] Create, return, patch around and replace Users with phone numbers, addresses and entitlements, and list them in the User schema after timezone and around roles, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L616))
+        - [x] Drop the multi-valued attributes a PUT omits ([test](../../../adapters/sqlstore/scim_attributes_test.go#L650))
       - [ ] `urn:ietf:params:scim:schemas:extension:enterprise:2.0:User`
   - [ ] Groups
     - [x] Refuse a Group name differing only in case, a reused externalId, a member from another connection and a nested Group ([test](../../../adapters/sqlstore/scim_groups_test.go#L108))

@@ -609,3 +609,54 @@ func TestSCIMUserPatchNullsOverHTTP(t *testing.T) {
 		})
 	}
 }
+
+// Phone numbers, addresses and entitlements are stored in the canonical
+// attributes, returned and replaced like roles, and a User carrying them can
+// still be patched.
+func TestSCIMUserMultiValuedOverHTTP(t *testing.T) {
+	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
+		t.Run(dialect, func(t *testing.T) {
+			store, call := attributeDirectory(t, dialect)
+			phones := []any{map[string]any{"value": "+1 555 0100", "type": "work", "primary": true}}
+			addresses := []any{map[string]any{"type": "work", "streetAddress": "44 Montgomery St", "formatted": nil, "country": nil}}
+			entitlements := []any{map[string]any{"value": "reports", "display": "Reports", "type": "license"}}
+			created := call("POST", "Users", map[string]any{"schemas": []string{scim.UserSchema}, "userName": "multi@example.test", "title": strings.Repeat("😀", 1024),
+				"phoneNumbers": phones, "addresses": addresses, "entitlements": entitlements}, 201, "a User with phone numbers, addresses and entitlements was refused")
+			id := created["id"].(string)
+			got := call("GET", "Users/"+id, nil, 200, "the User could not be read")
+			if !jsonEqual(got["phoneNumbers"], phones) {
+				t.Fatal("created phone numbers were not stored and returned", got["phoneNumbers"])
+			}
+			// Limits count code points: 1,024 emoji are 2,048 UTF-16 units.
+			if got["title"] != strings.Repeat("😀", 1024) {
+				t.Fatal("a title of 1024 code points was not stored", got["title"])
+			}
+			if !jsonEqual(got["addresses"], []any{map[string]any{"type": "work", "streetAddress": "44 Montgomery St"}}) {
+				t.Fatal("a null address subattribute was stored", got["addresses"])
+			}
+			if !jsonEqual(got["entitlements"], entitlements) {
+				t.Fatal("created entitlements were not stored and returned", got["entitlements"])
+			}
+			var serialized string
+			if err := store.db.QueryRowContext(t.Context(), store.bind(`SELECT "serializedAttributes" FROM "scimUser" WHERE "id"=?`), id).Scan(&serialized); err != nil || !strings.Contains(serialized, `"entitlements":[`) {
+				t.Fatal("entitlements were not stored in the canonical attributes", serialized, err)
+			}
+			patched := call("PATCH", "Users/"+id, map[string]any{"schemas": []string{scim.PatchSchema}, "Operations": []any{map[string]any{"op": "replace", "path": "title", "value": "X"}}}, 200, "a User carrying phone numbers could not be patched")
+			if patched["title"] != "X" || !jsonEqual(patched["phoneNumbers"], phones) {
+				t.Fatal("a PATCH of a User with phone numbers lost them", patched)
+			}
+			call("PUT", "Users/"+id, map[string]any{"schemas": []string{scim.UserSchema}, "userName": "multi@example.test"}, 200, "the replacement was refused")
+			if got := call("GET", "Users/"+id, nil, 200, "the replaced User could not be read"); got["addresses"] != nil || got["phoneNumbers"] != nil || got["entitlements"] != nil {
+				t.Fatal("PUT kept addresses it omitted", got)
+			}
+			schema := call("GET", "Schemas/"+scim.UserSchema, nil, 200, "the User schema could not be read")
+			var names []string
+			for _, a := range schema["attributes"].([]any) {
+				names = append(names, a.(map[string]any)["name"].(string))
+			}
+			if strings.Join(names, " ") != "userName displayName active name emails title userType preferredLanguage locale timezone phoneNumbers addresses roles entitlements" {
+				t.Fatal("the User schema did not list phoneNumbers, addresses and entitlements in order", names)
+			}
+		})
+	}
+}

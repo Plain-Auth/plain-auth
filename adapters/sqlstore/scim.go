@@ -246,7 +246,7 @@ func (s *Store) scimArgs(d scim.Directory, p scim.Profile, now time.Time) ([]any
 	if err != nil {
 		return nil, err
 	}
-	if _, hasRoles := p.Attributes["roles"]; hasRoles && s.dialect == "mysql" && len(a) > 65_535 {
+	if s.dialect == "mysql" && len(a) > 65_535 {
 		// The canonical MySQL TEXT column also limits encoded bytes, whereas
 		// the protocol bounds the length of the serialized JSON string.
 		return nil, &scim.Error{Status: 400, Type: "invalidValue", Detail: "SCIM User attributes exceed the database text limit"}

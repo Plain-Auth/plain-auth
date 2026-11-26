@@ -215,6 +215,147 @@
         "uniqueness": "none"
       },
       {
+        "name": "phoneNumbers",
+        "type": "complex",
+        "multiValued": true,
+        "description": "Phone numbers for the User.",
+        "required": false,
+        "subAttributes": [
+          {
+            "name": "value",
+            "type": "string",
+            "multiValued": false,
+            "description": "Phone number for the User.",
+            "required": true,
+            "caseExact": false,
+            "mutability": "readWrite",
+            "returned": "default",
+            "uniqueness": "none"
+          },
+          {
+            "name": "type",
+            "type": "string",
+            "multiValued": false,
+            "description": "A label indicating the attribute's function.",
+            "required": false,
+            "caseExact": false,
+            "mutability": "readWrite",
+            "returned": "default",
+            "uniqueness": "none"
+          },
+          {
+            "name": "primary",
+            "type": "boolean",
+            "multiValued": false,
+            "description": "Whether this is the primary value for the attribute.",
+            "required": false,
+            "mutability": "readWrite",
+            "returned": "default"
+          }
+        ],
+        "mutability": "readWrite",
+        "returned": "default",
+        "uniqueness": "none"
+      },
+      {
+        "name": "addresses",
+        "type": "complex",
+        "multiValued": true,
+        "description": "Postal addresses for the User.",
+        "required": false,
+        "subAttributes": [
+          {
+            "name": "formatted",
+            "type": "string",
+            "multiValued": false,
+            "description": "The complete formatted address.",
+            "required": false,
+            "caseExact": false,
+            "mutability": "readWrite",
+            "returned": "default",
+            "uniqueness": "none"
+          },
+          {
+            "name": "streetAddress",
+            "type": "string",
+            "multiValued": false,
+            "description": "The full street address.",
+            "required": false,
+            "caseExact": false,
+            "mutability": "readWrite",
+            "returned": "default",
+            "uniqueness": "none"
+          },
+          {
+            "name": "locality",
+            "type": "string",
+            "multiValued": false,
+            "description": "The city or locality.",
+            "required": false,
+            "caseExact": false,
+            "mutability": "readWrite",
+            "returned": "default",
+            "uniqueness": "none"
+          },
+          {
+            "name": "region",
+            "type": "string",
+            "multiValued": false,
+            "description": "The state or region.",
+            "required": false,
+            "caseExact": false,
+            "mutability": "readWrite",
+            "returned": "default",
+            "uniqueness": "none"
+          },
+          {
+            "name": "postalCode",
+            "type": "string",
+            "multiValued": false,
+            "description": "The postal code.",
+            "required": false,
+            "caseExact": false,
+            "mutability": "readWrite",
+            "returned": "default",
+            "uniqueness": "none"
+          },
+          {
+            "name": "country",
+            "type": "string",
+            "multiValued": false,
+            "description": "The country.",
+            "required": false,
+            "caseExact": false,
+            "mutability": "readWrite",
+            "returned": "default",
+            "uniqueness": "none"
+          },
+          {
+            "name": "type",
+            "type": "string",
+            "multiValued": false,
+            "description": "A label indicating the attribute's function.",
+            "required": false,
+            "caseExact": false,
+            "mutability": "readWrite",
+            "returned": "default",
+            "uniqueness": "none"
+          },
+          {
+            "name": "primary",
+            "type": "boolean",
+            "multiValued": false,
+            "description": "Whether this is the primary value for the attribute.",
+            "required": false,
+            "mutability": "readWrite",
+            "returned": "default"
+          }
+        ],
+        "mutability": "readWrite",
+        "returned": "default",
+        "uniqueness": "none"
+      },
+      {
         "name": "roles",
         "type": "complex",
         "multiValued": true,
@@ -237,6 +378,60 @@
             "type": "string",
             "multiValued": false,
             "description": "A human-readable role name.",
+            "required": false,
+            "caseExact": false,
+            "mutability": "readWrite",
+            "returned": "default",
+            "uniqueness": "none"
+          },
+          {
+            "name": "type",
+            "type": "string",
+            "multiValued": false,
+            "description": "A label indicating the attribute's function.",
+            "required": false,
+            "caseExact": false,
+            "mutability": "readWrite",
+            "returned": "default",
+            "uniqueness": "none"
+          },
+          {
+            "name": "primary",
+            "type": "boolean",
+            "multiValued": false,
+            "description": "Whether this is the primary value for the attribute.",
+            "required": false,
+            "mutability": "readWrite",
+            "returned": "default"
+          }
+        ],
+        "mutability": "readWrite",
+        "returned": "default",
+        "uniqueness": "none"
+      },
+      {
+        "name": "entitlements",
+        "type": "complex",
+        "multiValued": true,
+        "description": "Entitlements for the User.",
+        "required": false,
+        "subAttributes": [
+          {
+            "name": "value",
+            "type": "string",
+            "multiValued": false,
+            "description": "The entitlement value.",
+            "required": true,
+            "caseExact": false,
+            "mutability": "readWrite",
+            "returned": "default",
+            "uniqueness": "none"
+          },
+          {
+            "name": "display",
+            "type": "string",
+            "multiValued": false,
+            "description": "A human-readable entitlement name.",
             "required": false,
             "caseExact": false,
             "mutability": "readWrite",

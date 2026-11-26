@@ -123,7 +123,7 @@ func TestSCIMNormalizedProfileAndPatch(t *testing.T) {
 		{"userName": "foo@example.test", "emails": []any{map[string]any{"type": "work", "value": "aaa@example.test"}, map[string]any{"type": "WORK", "value": "bbb@example.test"}}},
 		{"userName": "foo@example.test", "emails": []any{map[string]any{"primary": true, "value": "one@example.test"}, map[string]any{"primary": "true", "value": "two@example.test"}}},
 		{"userName": "foo@example.test", "active": "yes"},
-		{"userName": "foo@example.test", "phoneNumbers": []any{map[string]any{"value": "12345"}}},
+		{"userName": "foo@example.test", "phoneNumbers": []any{map[string]any{"type": "work"}}},
 	} {
 		bad["schemas"] = []any{UserSchema}
 		if _, e := normalize(bad); e == nil {

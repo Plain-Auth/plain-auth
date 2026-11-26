@@ -8,7 +8,7 @@ import (
 
 func TestSCIMRoleProfileLimits(t *testing.T) {
 	maxValue := strings.Repeat("😀", 1024)
-	roles, err := normalizeRoles([]any{map[string]any{"value": "\uFEFF" + maxValue + " ", "display": maxValue, "type": " İ ", "primary": "fAlSe"}, map[string]any{"value": "a"}, map[string]any{"value": "a"}})
+	roles, err := roleAttribute.normalize([]any{map[string]any{"value": "\uFEFF" + maxValue + " ", "display": maxValue, "type": " İ ", "primary": "fAlSe"}, map[string]any{"value": "a"}, map[string]any{"value": "a"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -17,7 +17,7 @@ func TestSCIMRoleProfileLimits(t *testing.T) {
 		t.Fatal("Unicode value, normalized type or false primary changed")
 	}
 	for _, v := range []any{42, []any{nil}, []any{map[string]any{"value": "a", "TYPE": "a", "type": "b"}}, []any{map[string]any{"value": "a", "primary": 1}}, []any{map[string]any{"display": "missing value"}}, []any{map[string]any{"value": maxValue + "x"}}} {
-		if _, err := normalizeRoles(v); err == nil {
+		if _, err := roleAttribute.normalize(v); err == nil {
 			t.Fatalf("accepted invalid role entry of type %T", v)
 		}
 	}

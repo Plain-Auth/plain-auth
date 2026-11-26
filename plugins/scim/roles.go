@@ -5,7 +5,6 @@ import (
 	"regexp"
 	"slices"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/Plain-Org/plain-auth/internal/jsjson"
 	"golang.org/x/text/cases"
@@ -14,68 +13,7 @@ import (
 
 var roleFields = []string{"value", "display", "type", "primary"}
 
-func roleText(raw any, maxRunes int) (string, error) {
-	s, ok := raw.(string)
-	s = jsjson.TrimSpace(s)
-	if !ok || s == "" || utf8.RuneCountInString(s) > maxRunes {
-		return "", invalid("invalidValue", "Invalid role string attribute")
-	}
-	return s, nil
-}
-
 func roleType(s string) string { return cases.Lower(language.Und).String(jsjson.TrimSpace(s)) }
-
-// The roles collection is a directory-owned profile attribute.
-func normalizeRoles(raw any) ([]any, error) {
-	rows, ok := raw.([]any)
-	if !ok || len(rows) > 10 {
-		return nil, invalid("invalidValue", "roles must contain up to 10 entries")
-	}
-	out := make([]any, 0, len(rows))
-	types := map[string]bool{}
-	primary := false
-	for _, row := range rows {
-		item, err := object(row, roleFields)
-		if err != nil {
-			return nil, err
-		}
-		item["value"], err = roleText(item["value"], 1024)
-		if err != nil {
-			return nil, err
-		}
-		if v, ok := item["display"]; ok {
-			item["display"], err = roleText(v, 1024)
-			if err != nil {
-				return nil, err
-			}
-		}
-		if v, ok := item["type"]; ok {
-			kind, err := roleText(v, 256)
-			if err != nil {
-				return nil, err
-			}
-			kind = roleType(kind)
-			if types[kind] {
-				return nil, invalid("invalidValue", "roles cannot contain duplicate defined types")
-			}
-			types[kind] = true
-			item["type"] = kind
-		}
-		if v, exists := item["primary"]; exists {
-			b, err := boolValue(v)
-			if err != nil {
-				return nil, invalid("invalidValue", "roles.primary must be a boolean")
-			}
-			if primary && b {
-				return nil, invalid("invalidValue", "roles cannot contain multiple primary values")
-			}
-			primary = primary || b
-			item["primary"] = b
-		}
-		out = append(out, item)
-	}
-	return out, nil
-}
 
 // A path can select all entries, a defined type or an explicitly stored
 // primary flag. The same selectors can address a whole entry or one field.

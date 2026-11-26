@@ -5,11 +5,12 @@ import (
 	"net/mail"
 	"strings"
 	"unicode/utf16"
+	"unicode/utf8"
 
 	"github.com/Plain-Org/plain-auth/internal/jsjson"
 )
 
-var userFields = strings.Fields("schemas userName displayName externalId name emails active title userType preferredLanguage locale timezone roles")
+var userFields = strings.Fields("schemas userName displayName externalId name emails active title userType preferredLanguage locale timezone phoneNumbers addresses roles entitlements")
 var nameFields = strings.Fields("formatted givenName familyName middleName honorificPrefix honorificSuffix")
 var emailFields = strings.Fields("type primary value")
 
@@ -46,10 +47,13 @@ func object(input any, allowed []string) (map[string]any, error) {
 	}
 	return out, nil
 }
-func stringValue(v any, max int) (string, error) {
+
+// stringValue trims a string like JavaScript and bounds it in code points,
+// as another runtime counts its limits.
+func stringValue(v any, maxRunes int) (string, error) {
 	str, ok := v.(string)
-	str = strings.TrimSpace(str)
-	if !ok || str == "" || len(utf16.Encode([]rune(str))) > max {
+	str = jsjson.TrimSpace(str)
+	if !ok || str == "" || utf8.RuneCountInString(str) > maxRunes {
 		return "", invalid("invalidValue", "Invalid string attribute")
 	}
 	return str, nil
@@ -160,7 +164,7 @@ func normalize(input any) (p Profile, err error) {
 			if strings.EqualFold(key, "active") && value == nil {
 				return p, invalid("invalidValue", "active cannot be null")
 			}
-			if value != nil && field(key, []string{"phoneNumbers", "addresses", "entitlements", "enterprise"}) != "" {
+			if value != nil && field(key, []string{"enterprise"}) != "" {
 				return p, invalid("invalidValue", "Unsupported User attribute "+key)
 			}
 		}
@@ -230,13 +234,15 @@ func normalize(input any) (p Profile, err error) {
 		}
 	}
 	p.Attributes = map[string]any{"schemas": schemas, "name": name, "emails": emails}
-	if raw, provided := m["roles"]; provided {
-		roles, err := normalizeRoles(raw)
-		if err != nil {
-			return p, err
+	for _, a := range multiValuedAttributes {
+		if raw, provided := m[a.name]; provided {
+			values, err := a.normalize(raw)
+			if err != nil {
+				return p, err
+			}
+			p.Attributes[a.name] = values
+			m[a.name] = values
 		}
-		p.Attributes["roles"] = roles
-		m["roles"] = roles
 	}
 	for _, k := range []string{"title", "userType", "preferredLanguage", "locale", "timezone"} {
 		if v := m[k]; v != nil {
@@ -253,14 +259,12 @@ func normalize(input any) (p Profile, err error) {
 			}
 		}
 	}
-	if _, hasRoles := p.Attributes["roles"]; hasRoles {
-		// Bound both the normalized wire document and the canonical payload a
-		// second directory server will read from serializedAttributes.
-		for _, document := range []map[string]any{m, p.Attributes} {
-			encoded, err := jsjson.Marshal(document)
-			if err != nil || len(utf16.Encode([]rune(string(encoded)))) > 65_535 {
-				return p, invalid("invalidValue", "SCIM User attributes exceed the supported serialized size")
-			}
+	// Bound both the normalized wire document and the canonical payload a
+	// second directory server will read from serializedAttributes.
+	for _, document := range []map[string]any{m, p.Attributes} {
+		encoded, err := jsjson.Marshal(document)
+		if err != nil || len(utf16.Encode([]rune(string(encoded)))) > 65_535 {
+			return p, invalid("invalidValue", "SCIM User attributes exceed the supported serialized size")
 		}
 	}
 	return p, nil

@@ -45401,5 +45401,57 @@
       "test": "plugins/scim/http_test.go",
       "marker": "t.Fatal(\"null PATCH values did not expand into ordered removals\", ops, err)"
     }
+  ],
+  "plugin-symbol/scim/SCIMCanonicalAddress": [
+    {
+      "label": "Normalize addresses to trimmed fields with a lowercased type and a kept false primary, and refuse one without an address field or with an overlong country",
+      "test": "plugins/scim/multivalued_test.go",
+      "marker": "t.Fatal(\"an address lost a field or its explicit false primary\", p.Attributes[\"addresses\"])",
+      "complete": true
+    },
+    {
+      "label": "Store and return created addresses without their null subattributes, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "t.Fatal(\"a null address subattribute was stored\", got[\"addresses\"])"
+    }
+  ],
+  "plugin-symbol/scim/SCIMCanonicalEntitlement": [
+    {
+      "label": "Normalize entitlements like roles and refuse duplicate defined types",
+      "test": "plugins/scim/multivalued_test.go",
+      "marker": "t.Fatal(\"entitlements were not normalized like roles\", p.Attributes[\"entitlements\"])",
+      "complete": true
+    },
+    {
+      "label": "Store entitlements in the canonical serialized attributes and return them, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "t.Fatal(\"entitlements were not stored in the canonical attributes\", serialized, err)"
+    }
+  ],
+  "plugin-symbol/scim/SCIMCanonicalPhoneNumber": [
+    {
+      "label": "Trim phone numbers, lowercase their type, read a string primary as a Boolean, and refuse eleven entries, two primaries, a missing value or a scalar",
+      "test": "plugins/scim/multivalued_test.go",
+      "marker": "t.Fatal(\"phone numbers were not trimmed, typed and given a Boolean primary\", p.Attributes[\"phoneNumbers\"])",
+      "complete": true
+    },
+    {
+      "label": "Store and return created phone numbers and keep them through a PATCH, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "t.Fatal(\"created phone numbers were not stored and returned\", got[\"phoneNumbers\"])"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L256/`phoneNumbers`, `addresses`, `roles`, `entitlements`": [
+    {
+      "label": "Create, return, patch around and replace Users with phone numbers, addresses and entitlements, and list them in the User schema after timezone and around roles, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "func TestSCIMUserMultiValuedOverHTTP(",
+      "complete": true
+    },
+    {
+      "label": "Drop the multi-valued attributes a PUT omits",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "t.Fatal(\"PUT kept addresses it omitted\", got)"
+    }
   ]
 }
