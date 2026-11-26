@@ -35,6 +35,8 @@ mux.Handle("/reports", keys.Middleware(apikey.Permissions{"reports": {"read"}}, 
 
 The application handler can call `apikey.FromContext(r.Context())` for the verified key ID, owner ID and permissions. Middleware reads `X-API-Key` by default. Set `Options.Headers` to accept other header names. Requests carrying more than one configured credential are rejected. Rate-limited requests receive HTTP 429 and a `Retry-After` header.
 
+By default a key is 64 random letters, of which the first six, prefix included, are stored and shown as `start`; it allows ten requests a day and never expires. `KeyLength` changes the number of letters and `StartLength` the characters shown, and `HideStart` stores none. `DefaultPrefix` starts every key whose request names no prefix. For safety, New refuses a `KeyLength` under 32, so a key keeps at least 182 bits of randomness, and a `StartLength` that leaves fewer than 24 characters hidden. Keys are stored only as their SHA-256 digest; there is no plain-text mode, and a row that holds a plain secret never matches. [Option tests](../adapters/sqlstore/apikey_options_test.go)
+
 ## Custom key generation and credential extraction
 
 Set `Options.GenerateKey` to a function with signature `func(context.Context, apikey.Generation) (string, error)`. Its input carries the acting user ID, optional organization ID, configuration ID, effective prefix and configured key length. A nonempty request prefix takes priority over the default. Return the entire secret, including any desired prefix. The service records the requested prefix as metadata and preserves the returned bytes. Use cryptographically random secret material. Generated credentials must contain between `KeyLength` and 4,096 printable ASCII bytes, with no spaces. The usual digest, starting-character display, expiration and policy settings apply.
@@ -87,10 +89,10 @@ The callback receives the request context and the presented credential. Keep the
 | `POST /api-key/create` | Accepts `name`, `prefix`, optional `expiresIn` in seconds and opted-in `metadata`. Returns the secret in `key`. |
 | `GET /api-key/get?id=…` | Returns one owned key’s metadata and policy. |
 | `GET /api-key/list` | Returns `apiKeys` and `total`, echoing an explicit `limit` and `offset`. Accepts `offset`, `limit`, `sortBy` and `sortDirection`. `sortBy` names any scalar field (`id`, `configId`, `referenceId`, `name`, `prefix`, `start`, `enabled`, `rateLimitEnabled`, `rateLimitTimeWindow`, `rateLimitMax`, `requestCount`, `remaining`, `refillInterval`, `refillAmount`, `lastRefillAt`, `lastRequest`, `expiresAt`, `createdAt` or `updatedAt`), default `createdAt`; the stored digest, `permissions` and `metadata` answer `VALIDATION_ERROR`. Missing values sort first in ascending order and last in descending order on every database. Without `configId` the keys of every configuration of the requested kind are listed together: one configuration pages in the database, in its collation order, as with `configId`; several are merged, sorted and paged in Go, where text sorts by its bytes. `organizationId` without an organization configuration answers `VALIDATION_ERROR`. [Listing tests](../adapters/sqlstore/apikey_list_test.go) |
-| `POST /api-key/update` | Accepts `keyId`, `name`, `enabled`, `expiresIn` and `metadata`. Send `expiresIn: null` to remove the expiry when custom expiration is enabled. |
-| `POST /api-key/delete` | Accepts `keyId` and revokes the credential. |
+| `POST /api-key/update` | Accepts `keyId`, `name`, `enabled`, `expiresIn` and `metadata`. Send `expiresIn: null` to remove the expiry when custom expiration is enabled. New metadata replaces the old. A refused value leaves the key unchanged. [Update tests](../adapters/sqlstore/apikey_routes_test.go) |
+| `POST /api-key/delete` | Accepts `keyId` and revokes the credential. A delete that names a configuration other than the key's answers `KEY_NOT_FOUND` and keeps the key. |
 
-The Go client exposes `CreateAPIKey`, `GetAPIKey`, `ListAPIKeys`, `UpdateAPIKey` and `DeleteAPIKey`. Retrieval and listing omit the secret and digest. Store the creation response in the destination application's secret store.
+The Go client exposes `CreateAPIKey`, `GetAPIKey`, `ListAPIKeys`, `UpdateAPIKey` and `DeleteAPIKey`. Retrieval and listing omit the secret and digest. Verification and the expired-key purge are Go methods with no HTTP route, so a client's purge call gets 404. Store the creation response in the destination application's secret store.
 
 ## Errors
 
@@ -171,6 +173,8 @@ opts.Plugins = append(opts.Plugins, orgPlugin, keyPlugin)
 Create an organization key with `{"configId":"teams","organizationId":"…","name":"Build worker"}`. Its `referenceId` identifies the organization. To list organization keys, supply `organizationId` and optionally `configId`. Omit `organizationId` for personal keys. Retrieval, update and deletion accept `configId` and the key ID.
 
 The database checks current membership and the requested action for every management operation. The creator role (`owner` by default) can manage all organization keys. Other roles receive only actions explicitly granted in `Roles`. Multiple roles on a member combine their grants. Existing custom role names can be used in this map. Using the organization HTTP API to assign custom role names and loading dynamic role definitions remain open.
+
+To use the organization plugin's own roles instead, build it with `organization.NewService` and set `OrganizationOptions.RolesFrom` to that service, leaving `CreatorRole` and `Roles` empty. A member may then perform each action that one of its roles grants on the `apiKey` resource, for example `"apiKey": {"read"}`, and the organization's creator role may perform all of them. With `DynamicAccessControl`, roles an organization stores count at once, read in the same transaction that checks membership. Without `RolesFrom`, the key service keeps its own `Roles`, so the organization plugin's roles grant nothing on keys. [Organization role tests](../adapters/sqlstore/apikey_org_roles_test.go)
 
 Each configuration ID retains its ownership type across restarts. Use a fresh configuration ID when switching between personal and organization ownership. A deleted user’s personal keys stop working. An organization’s keys continue to belong to the organization when the issuing user leaves.
 

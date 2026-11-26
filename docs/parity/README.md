@@ -2,16 +2,16 @@
 
 ## Verification progress
 
-**2,295 of 6,436 inventory entries are fully verified (35.7%).**
+**2,356 of 6,436 inventory entries are fully verified (36.6%).**
 
 | Inventory status | Entries |
 | --- | ---: |
-| Fully verified | 2,295 |
-| Partially verified | 1,489 |
-| No linked test evidence | 2,652 |
+| Fully verified | 2,356 |
+| Partially verified | 1,465 |
+| No linked test evidence | 2,615 |
 | Not applicable to a Go server | 589 |
 
-The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 6,292 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
+The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 6,384 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
 
 Entries that exist only for JavaScript clients, frameworks or runtimes are listed as not applicable, with the reason, and are left out of the totals. Backlog entries stay open on the roadmap but are not scheduled.
 
@@ -75,7 +75,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 
 | Checklist | Checked | Open | Not applicable |
 | --- | ---: | ---: | ---: |
-| [Published package interfaces](packages.md) | 108 | 116 | 43 |
+| [Published package interfaces](packages.md) | 111 | 116 | 43 |
 | [Native Go client, routers and databases](go.md) | 51 | 3 | 0 |
 | [Core API, sign-in providers and CLI](runtime.md) | 559 | 104 | 32 |
 | [Database adapters](adapters.md) | 82 | 49 | 163 |
@@ -89,12 +89,12 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 
 | Checklist | Checked | Open | Not applicable |
 | --- | ---: | ---: | ---: |
-| [Two-factor authentication](plugins/2fa.md) | 212 | 97 | 6 |
+| [Two-factor authentication](plugins/2fa.md) | 269 | 77 | 6 |
 | [Access](plugins/access.md) | 25 | 1 | 4 |
 | [Additional fields](plugins/additional-fields.md) | 0 | 0 | 2 |
 | [Admin](plugins/admin.md) | 315 | 56 | 6 |
 | [Anonymous](plugins/anonymous.md) | 87 | 7 | 0 |
-| [API keys](plugins/api-key.md) | 403 | 137 | 1 |
+| [API keys](plugins/api-key.md) | 494 | 98 | 1 |
 | [Bearer](plugins/bearer.md) | 30 | 0 | 0 |
 | [Captcha](plugins/captcha.md) | 153 | 26 | 0 |
 | [Client ID metadata documents](plugins/cimd.md) | 0 | 48 | 0 |
@@ -107,7 +107,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Have I Been Pwned](plugins/have-i-been-pwned.md) | 46 | 0 | 0 |
 | [Internationalization](plugins/i18n.md) | 183 | 6 | 0 |
 | [JSON Web Tokens](plugins/jwt.md) | 132 | 42 | 2 |
-| [Last login method](plugins/last-login-method.md) | 99 | 19 | 2 |
+| [Last login method](plugins/last-login-method.md) | 100 | 18 | 2 |
 | [Magic link](plugins/magic-link.md) | 108 | 5 | 0 |
 | [Model Context Protocol](plugins/mcp.md) | 0 | 108 | 0 |
 | [Multi session](plugins/multi-session.md) | 64 | 2 | 0 |
@@ -118,7 +118,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [One time token](plugins/one-time-token.md) | 76 | 0 | 0 |
 | [OpenAPI](plugins/open-api.md) | 55 | 5 | 5 |
 | [Organization](plugins/organization.md) | 1044 | 73 | 41 |
-| [Passkey](plugins/passkey.md) | 167 | 46 | 10 |
+| [Passkey](plugins/passkey.md) | 168 | 45 | 10 |
 | [Phone number](plugins/phone-number.md) | 148 | 30 | 0 |
 | [SCIM provisioning](plugins/scim.md) | 67 | 257 | 0 |
 | [Sign in with Ethereum](plugins/siwe.md) | 122 | 7 | 0 |

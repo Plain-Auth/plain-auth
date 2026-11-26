@@ -42,7 +42,7 @@
       - [x] Read and match a custom-named preference with the browser module as the other runtime's client does, including a percent-encoded Unicode value, then clear it for the configured domain ([test](../../../conformance/lastlogin-browser.test.mjs#L6))
     - UI Integration Example — *not applicable: React component example*
   - [ ] Database Persistence
-    - [ ] Enable database storage
+    - [x] Enable database storage ([test](../../../adapters/sqlstore/lastlogin_test.go#L100))
       - [x] Expose the stored sign-in method when the configured plugin issues a session ([test](../../../adapters/sqlstore/lastlogin_test.go#L100))
     - [x] Run database migration ([test](../../../cmd/authctl/check_test.go#L99))
       - [x] Add the lastLoginMethod column to an existing SQLite database with authctl migrate, after which the plugin's schema check passes ([test](../../../cmd/authctl/check_test.go#L99))

@@ -124,15 +124,29 @@ type Options struct {
 	// and usage checks. The callback may run concurrently on different requests.
 	ValidateKey func(context.Context, string) (bool, error)
 	// Headers names the request headers accepted by Middleware. The default is X-API-Key.
-	Headers                                                                           []string
-	Store                                                                             Store
-	ConfigID, DefaultPrefix                                                           string
-	KeyLength, StartLength                                                            int
-	HideStart, RequireName, EnableMetadata, DisableCustomExpiration, DisableRateLimit bool
-	MinNameLength, MaxNameLength, MinPrefixLength, MaxPrefixLength                    int
-	MinExpiration, MaxExpiration, DefaultExpiration, RateWindow                       time.Duration
-	RateMax                                                                           int64
-	DefaultPermissions                                                                Permissions
+	Headers []string
+	Store   Store
+	// ConfigID names this configuration; empty means "default".
+	ConfigID string
+	// DefaultPrefix starts every key whose request names no prefix. It must
+	// use letters, digits, _ or - and fit the prefix lengths.
+	DefaultPrefix string
+	// KeyLength is the number of random letters in a generated key, 64 by
+	// default. Below 32 is refused (a deviation, for safety), so a key keeps
+	// at least 182 bits of randomness.
+	KeyLength int
+	// StartLength is how many leading characters, prefix included, are
+	// stored and shown as start, 6 by default. It must leave at least 24
+	// characters of the key hidden.
+	StartLength int
+	// HideStart stores no starting characters, so start is null.
+	HideStart                                                      bool
+	RequireName, EnableMetadata, DisableCustomExpiration           bool
+	DisableRateLimit                                               bool
+	MinNameLength, MaxNameLength, MinPrefixLength, MaxPrefixLength int
+	MinExpiration, MaxExpiration, DefaultExpiration, RateWindow    time.Duration
+	RateMax                                                        int64
+	DefaultPermissions                                             Permissions
 	// DeferUpdates hands work that need not finish before the answer to
 	// BackgroundTasks: deleting a key that verification finds expired or used
 	// up, and the expired-key sweep. Usage counters still commit with the
@@ -286,10 +300,17 @@ func New(o Options) (*Service, error) {
 	o.Headers = headers
 	if o.Organization != nil {
 		org := *o.Organization
+		org.Roles = clonePermissions(o.Organization.Roles)
+		if org.RolesFrom != nil {
+			if org.CreatorRole != "" || org.Roles != nil {
+				return nil, errors.New("apikey: take organization roles from RolesFrom or from CreatorRole and Roles, not both")
+			}
+			org.policy, org.stored = org.RolesFrom.RoleSettings()
+			org.linked = true
+		}
 		if org.CreatorRole == "" {
 			org.CreatorRole = "owner"
 		}
-		org.Roles = clonePermissions(o.Organization.Roles)
 		for _, actions := range org.Roles {
 			for _, action := range actions {
 				switch action {
@@ -379,6 +400,9 @@ func portableSecret(secret string) bool {
 
 var errKeyValidator = errors.New("apikey: application key validator failed")
 
+// Digest is the only stored form of a key. There is no plain-text mode (a
+// deviation, for safety): a row that holds a plain secret never matches, so
+// rotate such keys before switching.
 func Digest(secret string) string {
 	sum := sha256.Sum256([]byte(secret))
 	return base64.RawURLEncoding.EncodeToString(sum[:])

@@ -1202,6 +1202,28 @@ test("application key validators control sessions on both runtimes", async (t) =
   }
 });
 
+test("signed-out key routes and the server-only purge answer alike on both runtimes", async t => {
+  const { apiKey } = await import("@better-auth/api-key");
+  const { apiKeyClient } = await import("@better-auth/api-key/client");
+  const runtimes = [await reference(t, [apiKey()]), await goFixture(t, ["api-key"])];
+  for (const runtime of runtimes) {
+    const { client } = instrument(runtime, [apiKeyClient()]);
+    const refused = async (pending, status, code) => {
+      const { error } = await pending;
+      assert.equal(error?.status, status, runtime.baseURL);
+      assert.equal(error?.code, code, runtime.baseURL);
+    };
+    await refused(client.apiKey.get({ query: { id: "missing" } }), 401, "UNAUTHORIZED");
+    await refused(client.apiKey.list(), 401, "UNAUTHORIZED");
+    await refused(client.apiKey.delete({ keyId: "missing" }), 401, "UNAUTHORIZED");
+    await refused(client.apiKey.create({ name: "Signed out" }), 401, "UNAUTHORIZED_SESSION");
+    await refused(client.apiKey.update({ keyId: "missing", name: "Signed out" }), 401, "UNAUTHORIZED_SESSION");
+    assert.equal((await client.signUp.email({ name, email, password })).error, null);
+    const purge = await client.apiKey.deleteAllExpiredApiKeys();
+    assert.equal(purge.error?.status, 404, "the server-only purge was served over HTTP");
+  }
+});
+
 test("a rate-limited API key session answers RATE_LIMITED with a retry delay on both runtimes", async t => {
   const { apiKey } = await import("@better-auth/api-key");
   const { apiKeyClient } = await import("@better-auth/api-key/client");

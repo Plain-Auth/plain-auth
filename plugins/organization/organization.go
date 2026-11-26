@@ -233,6 +233,13 @@ func New(o Options) (authn.Plugin, error) {
 // Service uses one configuration for the HTTP plugin and trusted server operations.
 type Service struct{ options Options }
 
+// RoleSettings returns the role policy this service applies and whether it
+// also reads the roles organizations store with DynamicAccessControl, so
+// other plugins can authorize organization actions with the same roles.
+func (service *Service) RoleSettings() (RolePolicy, bool) {
+	return service.options.rolePolicy, service.options.DynamicAccessControl
+}
+
 func NewService(o Options) (*Service, error) {
 	if o.Store == nil {
 		return nil, errors.New("organization: Store is required")

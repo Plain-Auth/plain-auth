@@ -170,7 +170,7 @@
       - Preload the passkeys
     - [x] Debugging ([test](../../../conformance/passkey-first-browser.mjs#L13))
       - [x] Register and sign in against both servers through a Chrome virtual authenticator, with no physical device ([test](../../../conformance/passkey-first-browser.mjs#L13))
-  - [ ] Schema
+  - [x] Schema ([test](../../../conformance/schema.test.mjs#L106))
     - [x] Match generated SQL and SQLite physical schema for the public-key credential profile ([test](../../../conformance/schema.test.mjs#L106))
     - [x] `passkeyTableFields.id` ([test](../../../conformance/schema.test.mjs#L106))
       - [x] Generate the passkey id primary-key column with the same SQL as the other runtime's migration on SQLite, PostgreSQL and MySQL ([test](../../../conformance/schema.test.mjs#L106))

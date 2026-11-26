@@ -3041,7 +3041,8 @@
     {
       "label": "Match generated SQL and SQLite physical schema for the public-key credential profile",
       "test": "conformance/schema.test.mjs",
-      "marker": "test(\"the CLI emits the pinned plugin schema"
+      "marker": "test(\"the CLI emits the pinned plugin schema",
+      "complete": true
     }
   ],
   "plugin-symbol/passkey/PasskeyOptions/origin": [
@@ -5642,6 +5643,17 @@
       "label": "Generate the configured eight-digit authenticator code in Go and verify it with the provisioned account",
       "test": "adapters/sqlstore/twofactor_delivery_test.go",
       "marker": "native authenticator generation ignored settings"
+    },
+    {
+      "label": "Refuse trusted code generation on a host that disabled authenticator support",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "disabled authenticator generated a code",
+      "complete": true
+    },
+    {
+      "label": "Keep code generation off HTTP, answering 404 at /two-factor/generate-totp",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "h.request(service, \"two-factor/generate-totp\", map[string]string{\"secret\": \"unused\"}, 404, withoutPassword)"
     }
   ],
   "plugin/2fa/ viewBackupCodes (server API only)": [
@@ -5673,6 +5685,12 @@
       "label": "Persist the configured two-minute lifetime and reject an expired delivered proof",
       "test": "adapters/sqlstore/twofactor_delivery_test.go",
       "marker": "stored delivered OTP or expiry differs"
+    },
+    {
+      "label": "Stage a delivered code expiring three minutes after it is sent when no period is configured",
+      "test": "twofactor_settings_test.go",
+      "marker": "t.Fatal(\"delivery not staged with configured lifetime\")",
+      "complete": true
     }
   ],
   "plugin-symbol/2fa/OTPOptions/digits": [
@@ -5705,6 +5723,12 @@
       "label": "Run the verification update after hooks for each counted wrong delivered code, and remove a code that ran out with its delete hooks",
       "test": "adapters/sqlstore/twofactor_hooks_test.go",
       "marker": "// Each counted wrong delivered code runs the update after hooks."
+    },
+    {
+      "label": "Refuse the right code with TOO_MANY_ATTEMPTS_REQUEST_NEW_CODE once its count reaches the default five",
+      "test": "adapters/sqlstore/twofactor_hooks_test.go",
+      "marker": "t.Fatal(\"a code that ran out answered\", w.Body.String())",
+      "complete": true
     }
   ],
   "plugin-symbol/2fa/OTPOptions/storeOTP": [
@@ -5712,6 +5736,12 @@
       "label": "Encode and verify plain, encrypted, hashed, and custom transformed codes",
       "test": "twofactor_settings_test.go",
       "marker": "func TestDeliveredFactorStorageModes("
+    },
+    {
+      "label": "Store a hashed delivered code as its SHA-256 digest over HTTP",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "stored delivered OTP or expiry differs from configuration",
+      "complete": true
     }
   ],
   "plugin-symbol/2fa/TOTPOptions/digits": [
@@ -5719,6 +5749,12 @@
       "label": "Provision and verify an eight-digit authenticator",
       "test": "adapters/sqlstore/twofactor_delivery_test.go",
       "marker": "native authenticator generation ignored settings"
+    },
+    {
+      "label": "Accept a six-digit, 30-second code from a standard generator under the default settings",
+      "test": "adapters/sqlstore/twofactor_test.go",
+      "marker": "code, err := totp.GenerateCode(secret, time.Now())",
+      "complete": true
     }
   ],
   "plugin-symbol/2fa/TOTPOptions/period": [
@@ -5726,6 +5762,17 @@
       "label": "Advertise the configured 45-second interval in the provisioning URI",
       "test": "adapters/sqlstore/twofactor_delivery_test.go",
       "marker": "custom authenticator parameters were omitted"
+    },
+    {
+      "label": "Accept a six-digit, 30-second code from a standard generator under the default settings",
+      "test": "adapters/sqlstore/twofactor_test.go",
+      "marker": "code, err := totp.GenerateCode(secret, time.Now())",
+      "complete": true
+    },
+    {
+      "label": "Verify a code an external generator computed with the configured 45-second period and eight digits",
+      "test": "adapters/sqlstore/twofactor_import_test.go",
+      "marker": "code, err := totp.GenerateCodeCustom(canonical, time.Now(), totp.ValidateOpts{Period: 45, Digits: otp.DigitsEight, Algorithm: otp.AlgorithmSHA1})"
     }
   ],
   "plugin-symbol/2fa/TOTPOptions/disable": [
@@ -5746,6 +5793,12 @@
       "label": "Generate the configured four-code recovery set",
       "test": "adapters/sqlstore/twofactor_delivery_test.go",
       "marker": "custom backup code amount or length was ignored"
+    },
+    {
+      "label": "Regenerate ten backup codes when no amount is configured",
+      "test": "adapters/sqlstore/twofactor_test.go",
+      "marker": "backup regeneration failed",
+      "complete": true
     }
   ],
   "plugin-symbol/2fa/BackupCodeOptions/length": [
@@ -6912,7 +6965,8 @@
     {
       "label": "Expose the stored sign-in method when the configured plugin issues a session",
       "test": "adapters/sqlstore/lastlogin_test.go",
-      "marker": "missing persisted sign-up method"
+      "marker": "missing persisted sign-up method",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/last-login-method.mdx#L172": [
@@ -7369,6 +7423,17 @@
       "label": "Issue a key whose reference identifies the caller’s organization",
       "test": "conformance/core.test.mjs",
       "marker": "assert.equal(team.referenceId, org.id);"
+    },
+    {
+      "label": "Refuse every invalid create body with its error-table status, code and message, organization keys included, on three SQL engines",
+      "test": "adapters/sqlstore/apikey_errors_test.go",
+      "marker": "wantError(create(map[string]any{\"expiresIn\": 3600}), 400, \"EXPIRES_IN_IS_TOO_SMALL\"",
+      "complete": true
+    },
+    {
+      "label": "Refuse a signed-out create with 401 UNAUTHORIZED_SESSION on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "await refused(client.apiKey.create({ name: \"Signed out\" }), 401, \"UNAUTHORIZED_SESSION\");"
     }
   ],
   "plugin/api-key/GET /api-key/get": [
@@ -7381,6 +7446,17 @@
       "label": "Reject a lookup under the wrong ownership configuration",
       "test": "conformance/core.test.mjs",
       "marker": "id: team.id, configId: \"default\""
+    },
+    {
+      "label": "Answer KEY_NOT_FOUND for a missing key or another configuration and UNAUTHORIZED signed out, with the error table's messages, on three SQL engines",
+      "test": "adapters/sqlstore/apikey_errors_test.go",
+      "marker": "_, err = member.GetAPIKey(ctx, key.ID, \"bogus\")",
+      "complete": true
+    },
+    {
+      "label": "Refuse a signed-out read with 401 UNAUTHORIZED on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "await refused(client.apiKey.get({ query: { id: \"missing\" } }), 401, \"UNAUTHORIZED\");"
     }
   ],
   "plugin/api-key/POST /api-key/update": [
@@ -7393,6 +7469,32 @@
       "label": "Rename a key under its organization configuration",
       "test": "conformance/core.test.mjs",
       "marker": "configId: \"teams\", name: \"Deploy\""
+    },
+    {
+      "label": "Change and clear a key's lifetime, replace its metadata, switch it off and refuse out-of-policy values without changing it, over HTTP on three SQL engines",
+      "test": "adapters/sqlstore/apikey_routes_test.go",
+      "marker": "func TestAPIKeyUpdateFields(",
+      "complete": true
+    },
+    {
+      "label": "Clear a key's lifetime with expiresIn null",
+      "test": "adapters/sqlstore/apikey_routes_test.go",
+      "marker": "clearing the lifetime left an expiry"
+    },
+    {
+      "label": "Refuse an update name outside the lengths, the empty name included, and keep the old name",
+      "test": "adapters/sqlstore/apikey_routes_test.go",
+      "marker": "an out-of-range name was saved"
+    },
+    {
+      "label": "Refuse metadata with METADATA_DISABLED where the configuration turns it off",
+      "test": "adapters/sqlstore/apikey_routes_test.go",
+      "marker": "metadata was accepted while it is off"
+    },
+    {
+      "label": "Refuse a signed-out update with 401 UNAUTHORIZED_SESSION on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "await refused(client.apiKey.update({ keyId: \"missing\", name: \"Signed out\" }), 401, \"UNAUTHORIZED_SESSION\");"
     }
   ],
   "plugin/api-key/POST /api-key/delete": [
@@ -7405,6 +7507,22 @@
       "label": "Revoke an organization key through the owner’s authorized session",
       "test": "conformance/core.test.mjs",
       "marker": "keyId: team.id, configId: \"teams\" })).success"
+    },
+    {
+      "label": "Delete only a key of the named configuration, and refuse a banned owner with UNAUTHORIZED over HTTP and USER_BANNED from Go, keeping the key, on three SQL engines",
+      "test": "adapters/sqlstore/apikey_routes_test.go",
+      "marker": "func TestAPIKeyDeleteScopeAndBan(",
+      "complete": true
+    },
+    {
+      "label": "Keep a key when a delete names another or an unknown configuration",
+      "test": "adapters/sqlstore/apikey_routes_test.go",
+      "marker": "a delete under another configuration removed the key"
+    },
+    {
+      "label": "Refuse a signed-out delete with 401 UNAUTHORIZED on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "await refused(client.apiKey.delete({ keyId: \"missing\" }), 401, \"UNAUTHORIZED\");"
     }
   ],
   "plugin/api-key/GET /api-key/list": [
@@ -7417,6 +7535,17 @@
       "label": "Filter organization keys and keep them out of personal results",
       "test": "conformance/core.test.mjs",
       "marker": "query: { organizationId: org.id } })).apiKeys[0].id"
+    },
+    {
+      "label": "List, sort, page and filter keys over HTTP for one or several configurations, organization keys apart, on three SQL engines",
+      "test": "adapters/sqlstore/apikey_list_test.go",
+      "marker": "func TestAPIKeyListPaging(",
+      "complete": true
+    },
+    {
+      "label": "Refuse a signed-out list with 401 UNAUTHORIZED on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "await refused(client.apiKey.list(), 401, \"UNAUTHORIZED\");"
     }
   ],
   "docs/content/docs/plugins/api-key/index.mdx#L89": [
@@ -7483,7 +7612,8 @@
     {
       "label": "Store credentials in a canonical SQL table and return the secret only on issuance",
       "test": "adapters/sqlstore/apikey_test.go",
-      "marker": "stored value is not the secret digest"
+      "marker": "stored value is not the secret digest",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/api-key/advanced.mdx#L553": [
@@ -7491,6 +7621,12 @@
       "label": "Serialize rate and use decisions across independent service instances",
       "test": "adapters/sqlstore/apikey_test.go",
       "marker": "concurrent key quota granted"
+    },
+    {
+      "label": "Answer an API-key session past its rate maximum with 429 RATE_LIMITED",
+      "test": "adapters/sqlstore/apikey_options_test.go",
+      "marker": "an API-key session past its rate maximum was not answered 429 RATE_LIMITED",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/api-key/advanced.mdx#L637": [
@@ -7606,6 +7742,12 @@
       "label": "Manage organization keys alongside separately authenticated automation clients",
       "test": "conformance/core.test.mjs",
       "marker": "official clients share organization key ownership and API-key sessions"
+    },
+    {
+      "label": "Answer the released client's expired-key purge with 404 on both runtimes, because that call is for server code only",
+      "test": "conformance/core.test.mjs",
+      "marker": "the server-only purge was served over HTTP",
+      "complete": true
     }
   ],
   "plugin-symbol/api-key/ApiKeyConfigurationOptions/configId": [
@@ -7618,6 +7760,12 @@
       "label": "Prevent an existing ownership namespace from being reinterpreted",
       "test": "adapters/sqlstore/apikey_session_test.go",
       "marker": "organization namespace was reinterpreted as user credentials"
+    },
+    {
+      "label": "Treat an unnamed configuration as the default one, so two unnamed configurations are refused and one sits beside named ones",
+      "test": "adapters/sqlstore/apikey_options_test.go",
+      "marker": "two default configurations were accepted",
+      "complete": true
     }
   ],
   "plugin-symbol/api-key/ApiKeyConfigurationOptions/apiKeyHeaders": [
@@ -7647,7 +7795,8 @@
     {
       "label": "Run the selected policy once across native, middleware and session verification, and preserve the usage budget on denial",
       "test": "adapters/sqlstore/apikey_validator_test.go",
-      "marker": "func TestApplicationKeyValidator("
+      "marker": "func TestApplicationKeyValidator(",
+      "complete": true
     },
     {
       "label": "Accept or refuse the same application session using the released client and its host policy",
@@ -7659,7 +7808,8 @@
     {
       "label": "Run the selected policy once across native, middleware and session verification, and preserve the usage budget on denial",
       "test": "adapters/sqlstore/apikey_validator_test.go",
-      "marker": "func TestApplicationKeyValidator("
+      "marker": "func TestApplicationKeyValidator(",
+      "complete": true
     },
     {
       "label": "Accept or refuse the same application session using the released client and its host policy",
@@ -7672,6 +7822,12 @@
       "label": "Issue 64 random letters plus an optional prefix",
       "test": "adapters/sqlstore/apikey_test.go",
       "marker": "issued credential did not match the owner"
+    },
+    {
+      "label": "Generate the configured number of letters after the default prefix",
+      "test": "adapters/sqlstore/apikey_options_test.go",
+      "marker": "built-in generator ignored the configured length",
+      "complete": true
     }
   ],
   "plugin-symbol/api-key/ApiKeyConfigurationOptions/startingCharactersConfig": [
@@ -7679,6 +7835,12 @@
       "label": "Return six display characters by default",
       "test": "adapters/sqlstore/apikey_test.go",
       "marker": "issued credential did not match the owner"
+    },
+    {
+      "label": "Show the configured number of leading characters, prefix included, as start",
+      "test": "adapters/sqlstore/apikey_options_test.go",
+      "marker": "built-in key did not carry the default prefix and configured start",
+      "complete": true
     }
   ],
   "plugin-symbol/api-key/ApiKeyConfigurationOptions/requireName": [
@@ -7712,6 +7874,12 @@
       "label": "Enforce configured default lifetime and maximum expiration",
       "test": "adapters/sqlstore/apikey_test.go",
       "marker": "default expiration missing"
+    },
+    {
+      "label": "Refuse custom lifetimes on create and update when they are disabled, and use the default lifetime",
+      "test": "adapters/sqlstore/apikey_options_test.go",
+      "marker": "custom expiration was accepted while disabled, or the default lifetime was not used",
+      "complete": true
     }
   ],
   "plugin-symbol/api-key/ApiKeyConfigurationOptions/rateLimit": [
@@ -7719,6 +7887,12 @@
       "label": "Enforce an atomic rate budget and provide a retry interval",
       "test": "adapters/sqlstore/apikey_test.go",
       "marker": "rate rejection omitted retry interval"
+    },
+    {
+      "label": "Accept every request of a configuration with rate limiting turned off",
+      "test": "adapters/sqlstore/apikey_options_test.go",
+      "marker": "disabled rate limiting still refused a key",
+      "complete": true
     }
   ],
   "plugin-symbol/api-key/ApiKeyConfigurationOptions/permissions": [
@@ -7995,6 +8169,17 @@
       "label": "Select private and organization credentials on one auth mount",
       "test": "conformance/core.test.mjs",
       "marker": "official clients share organization key ownership and API-key sessions"
+    },
+    {
+      "label": "Mount configurations that keep their own prefix, key length, display, rate policy, default permissions and metadata switch, on three SQL engines",
+      "test": "adapters/sqlstore/apikey_options_test.go",
+      "marker": "func TestAPIKeyConfigurations(",
+      "complete": true
+    },
+    {
+      "label": "Enforce each configuration's own rate maximum on its keys",
+      "test": "adapters/sqlstore/apikey_options_test.go",
+      "marker": "a configuration's own rate maximum was not enforced"
     }
   ],
   "docs/content/docs/plugins/api-key/advanced.mdx#L95": [
@@ -8124,6 +8309,22 @@
       "label": "Combine static grants from multiple roles and pick up membership downgrades",
       "test": "adapters/sqlstore/apikey_session_test.go",
       "marker": "insertMember(readerUser.User.ID, \"reader\", \"member,auditor\")"
+    },
+    {
+      "label": "Authorize organization key actions from the organization plugin's roles: the creator role does everything, other roles need apiKey actions, and stored roles count at once, on three SQL engines",
+      "test": "adapters/sqlstore/apikey_org_roles_test.go",
+      "marker": "func TestOrganizationKeyRolesFromOrganizationPlugin(",
+      "complete": true
+    },
+    {
+      "label": "Let a role stored by the organization grant exactly its apiKey actions",
+      "test": "adapters/sqlstore/apikey_org_roles_test.go",
+      "marker": "a role stored by the organization did not grant exactly its apiKey actions"
+    },
+    {
+      "label": "Let the organization's creator role manage keys without an apiKey grant of its own",
+      "test": "adapters/sqlstore/apikey_org_roles_test.go",
+      "marker": "the creator role without an apiKey grant could not manage keys"
     }
   ],
   "docs/content/docs/plugins/api-key/advanced.mdx#L369/Owner Access": [
@@ -40086,6 +40287,390 @@
       "label": "Commit a deferred verification's usage before the task runner runs",
       "test": "adapters/sqlstore/apikey_sweep_test.go",
       "marker": "a deferred verification left its usage uncommitted"
+    }
+  ],
+  "plugin-symbol/api-key/apiKey": [
+    {
+      "label": "Refuse to build the plugin from no configurations, a nil configuration, or two configurations with the same ConfigID, two unnamed ones included",
+      "test": "adapters/sqlstore/apikey_options_test.go",
+      "marker": "func TestAPIKeyPluginRefusesInvalidConfigurationSets(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/api-key/PredefinedApiKeyOptions/configId": [
+    {
+      "label": "Refuse two configurations sharing a ConfigID in one plugin",
+      "test": "adapters/sqlstore/apikey_options_test.go",
+      "marker": "two configurations sharing a ConfigID were accepted",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/api-key/PredefinedApiKeyOptions/disableKeyHashing": [
+    {
+      "label": "Store keys only as their digest: a row holding the plain secret is refused by Verify and session reads without being changed, on three SQL engines",
+      "test": "adapters/sqlstore/apikey_options_test.go",
+      "marker": "a key stored in plain text was accepted",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/api-key/ApiKeyConfigurationOptions/disableKeyHashing": [
+    {
+      "label": "Verify a key again once its stored digest is restored after a plain-text row was refused",
+      "test": "adapters/sqlstore/apikey_options_test.go",
+      "marker": "the restored digest did not verify",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/api-key/PredefinedApiKeyOptions/startingCharactersConfig": [
+    {
+      "label": "Store and show no starting characters when HideStart is set",
+      "test": "adapters/sqlstore/apikey_options_test.go",
+      "marker": "hidden start was stored",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/api-key/PredefinedApiKeyOptions/defaultKeyLength": [
+    {
+      "label": "Generate 64 random letters by default, showing the first six, with no prefix",
+      "test": "adapters/sqlstore/apikey_options_test.go",
+      "marker": "default key was not 64 random letters with a six-character start",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/api-key/PredefinedApiKeyOptions/defaultPrefix": [
+    {
+      "label": "Use a request prefix in place of the default prefix",
+      "test": "adapters/sqlstore/apikey_options_test.go",
+      "marker": "a request prefix did not replace the default prefix",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/api-key/ApiKeyConfigurationOptions/defaultPrefix": [
+    {
+      "label": "Start a key with the configured default prefix and record it as the key's prefix",
+      "test": "adapters/sqlstore/apikey_options_test.go",
+      "marker": "if s1.Prefix == nil || *s1.Prefix != \"dflt_\"",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/api-key/PredefinedApiKeyOptions/maximumPrefixLength": [
+    {
+      "label": "Accept a 32-character prefix and refuse 33 with INVALID_PREFIX_LENGTH over HTTP",
+      "test": "adapters/sqlstore/apikey_options_test.go",
+      "marker": "default maximum prefix length was not enforced",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/api-key/ApiKeyConfigurationOptions/maximumPrefixLength": [
+    {
+      "label": "Keep prefixes within a configured three to five characters",
+      "test": "adapters/sqlstore/apikey_options_test.go",
+      "marker": "configured prefix lengths were not enforced for %q",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/api-key/PredefinedApiKeyOptions/minimumPrefixLength": [
+    {
+      "label": "Refuse a prefix under the configured minimum from server code too",
+      "test": "adapters/sqlstore/apikey_options_test.go",
+      "marker": "server code created a key with a prefix under the configured minimum",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/api-key/ApiKeyConfigurationOptions/minimumPrefixLength": [
+    {
+      "label": "Refuse a two-character prefix and accept three under a minimum of three",
+      "test": "adapters/sqlstore/apikey_options_test.go",
+      "marker": "\"ab\": \"INVALID_PREFIX_LENGTH\", \"abc\": \"\"",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/api-key/PredefinedApiKeyOptions/maximumNameLength": [
+    {
+      "label": "Accept names up to 32 UTF-16 units and refuse longer ones, emoji counted as two units",
+      "test": "adapters/sqlstore/apikey_options_test.go",
+      "marker": "default maximum name length was not enforced",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/api-key/ApiKeyConfigurationOptions/maximumNameLength": [
+    {
+      "label": "Keep names within a configured three to eight units on creation",
+      "test": "adapters/sqlstore/apikey_options_test.go",
+      "marker": "configured name lengths were not enforced for %q",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/api-key/PredefinedApiKeyOptions/minimumNameLength": [
+    {
+      "label": "Accept a name of the configured minimum length",
+      "test": "adapters/sqlstore/apikey_options_test.go",
+      "marker": "configured minimum name length was not enforced",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/api-key/ApiKeyConfigurationOptions/minimumNameLength": [
+    {
+      "label": "Refuse updates to names that are too short, empty or too long, and keep the old name",
+      "test": "adapters/sqlstore/apikey_options_test.go",
+      "marker": "an update outside the name limits changed the name",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/api-key/PredefinedApiKeyOptions/keyExpiration": [
+    {
+      "label": "Accept lifetimes from one day to 365 days and refuse shorter or longer ones",
+      "test": "adapters/sqlstore/apikey_options_test.go",
+      "marker": "default expiration bounds were not enforced",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/api-key/PredefinedApiKeyOptions/rateLimit": [
+    {
+      "label": "Limit a key to ten requests a day by default and answer the eleventh with RATE_LIMITED and a retry delay",
+      "test": "adapters/sqlstore/apikey_options_test.go",
+      "marker": "default rate limit was not ten per day",
+      "complete": true
+    },
+    {
+      "label": "Give a default key ten uses a day, no expiry and no usage budget",
+      "test": "adapters/sqlstore/apikey_options_test.go",
+      "marker": "default policy differs from ten uses a day without expiry"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/advanced.mdx#L623/Globally": [
+    {
+      "label": "Accept every request of a configuration with rate limiting off, even for a key that asks for a limit, while recording its last request",
+      "test": "adapters/sqlstore/apikey_options_test.go",
+      "marker": "disabled rate limiting still limited a key or stopped recording its last request",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/api-key/advanced.mdx#L624/Per Key": [
+    {
+      "label": "Lift one key's rate limit, record its last request, limit it again from its kept count when turned back on, and lift it again",
+      "test": "adapters/sqlstore/apikey_options_test.go",
+      "marker": "turning a key's rate limit back on did not limit it again",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/api-key/resolveConfiguration": [
+    {
+      "label": "Answer NO_DEFAULT_API_KEY_CONFIGURATION_FOUND when a request names no configuration and none is the default, even with a single configuration",
+      "test": "adapters/sqlstore/apikey_errors_test.go",
+      "marker": "soloMember.CreateAPIKey(ctx, client.CreateAPIKeyRequest{Name: \"No default\"})",
+      "complete": true
+    },
+    {
+      "label": "List the owner's keys of every configuration when a list names none, without a default configuration",
+      "test": "adapters/sqlstore/apikey_errors_test.go",
+      "marker": "a list without configId needed a default configuration"
+    },
+    {
+      "label": "Answer KEY_NOT_FOUND for a configuration the server does not have, instead of reading it as the default one",
+      "test": "adapters/sqlstore/apikey_errors_test.go",
+      "marker": "_, err = member.GetAPIKey(ctx, key.ID, \"bogus\")"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/advanced.mdx#L621/Disabling Rate Limiting": [
+    {
+      "label": "Turn rate limiting off for a whole configuration or for one key, and on again for that key",
+      "test": "adapters/sqlstore/apikey_options_test.go",
+      "marker": "func TestAPIKeyRateLimitSwitches(",
+      "complete": true
+    },
+    {
+      "label": "Leave a key whose rate maximum or window is null unlimited and unstamped",
+      "test": "adapters/sqlstore/apikey_budget_test.go",
+      "marker": "t.Fatal(\"a key with a null rate limit setting was limited or stamped\", column, got.RequestCount, got.LastRequest)"
+    }
+  ],
+  "plugin-symbol/2fa/verifyBackupCode": [
+    {
+      "label": "Refuse a backup code already spent on an earlier sign-in",
+      "test": "adapters/sqlstore/twofactor_test.go",
+      "marker": "check(request(second, \"two-factor/verify-backup-code\", payload, challenge()), 401)",
+      "complete": true
+    },
+    {
+      "label": "Refuse a backup code that is not in the stored set",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "h.request(h.first, \"two-factor/verify-backup-code\", map[string]string{\"code\": \"bad\"}, 401, ch)"
+    },
+    {
+      "label": "Finish a sign-in challenge with a regenerated backup code through the Go client",
+      "test": "client/account_test.go",
+      "marker": "t.Fatal(\"complete challenge:\", err)"
+    }
+  ],
+  "plugin-symbol/2fa/getBackupCodes": [
+    {
+      "label": "Read plain-stored backup codes back through ViewBackupCodes",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "trusted backup code listing failed",
+      "complete": true
+    },
+    {
+      "label": "Read backup codes stored through the application's cipher",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "custom backup-code codec did not round trip"
+    },
+    {
+      "label": "Decrypt default encrypted backup codes to accept one at sign-in",
+      "test": "adapters/sqlstore/twofactor_test.go",
+      "marker": "resetProof := request(first, \"two-factor/verify-backup-code\""
+    }
+  ],
+  "plugin-symbol/2fa/TwoFactorOptions/issuer": [
+    {
+      "label": "Name the plugin's issuer in the provisioning URI when set, and the application name otherwise",
+      "test": "conformance/goapi/freshness_test.go",
+      "marker": "t.Fatal(\"unexpected authenticator issuer\", tc, setup.TOTPURI, w.Body)",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/2fa/UserWithTwoFactor": [
+    {
+      "label": "Report twoFactorEnabled as true on the session user after authenticator verification, on both servers",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(ok(await client.getSession()).user.twoFactorEnabled, true);",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/2fa/TwoFactorTable": [
+    {
+      "label": "Generate the twoFactor table with the same columns as the other runtime across plugin combinations on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"the CLI emits the pinned plugin schema across exhaustive base combinations",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx": [
+    {
+      "label": "Answer a password sign-in for an enrolled account with a challenge and no session token",
+      "test": "adapters/sqlstore/twofactor_test.go",
+      "marker": "t.Fatalf(\"incorrect challenge result: %s\", w.Body)",
+      "complete": true
+    },
+    {
+      "label": "Challenge a password sign-in for an account enrolled for delivered codes, offering otp",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "t.Fatal(\"password login bypassed the delivered factor gate\", v)"
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L14/OTP (One-Time Password)": [
+    {
+      "label": "Deliver a code to the challenged account through the host's sender from the Go client",
+      "test": "client/twofactor_delivery_test.go",
+      "marker": "if err = c.SendFactorOTP(ctx); err != nil || delivery.User.ID != signup.User.ID {",
+      "complete": true
+    },
+    {
+      "label": "Finish the sign-in with the delivered code through the Go client",
+      "test": "client/twofactor_delivery_test.go",
+      "marker": "t.Fatal(\"native factor proof\", err)"
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L15/TOTP (Time-based One-Time Password)": [
+    {
+      "label": "Finish a sign-in challenge with a code a standard generator computed from the provisioning secret",
+      "test": "adapters/sqlstore/twofactor_test.go",
+      "marker": "verified := request(second, \"two-factor/verify-totp\"",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L19/Generating backup codes for account recovery": [
+    {
+      "label": "Regenerate ten new backup codes through the Go client after enrollment",
+      "test": "client/account_test.go",
+      "marker": "t.Fatal(\"regenerate backup codes:\", err)",
+      "complete": true
+    },
+    {
+      "label": "Finish a sign-in challenge with a regenerated backup code through the Go client",
+      "test": "client/account_test.go",
+      "marker": "t.Fatal(\"complete challenge:\", err)"
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L21/Managing trusted devices": [
+    {
+      "label": "Skip the challenge on a password sign-in from a browser remembered by an earlier proof with trustDevice",
+      "test": "adapters/sqlstore/twofactor_trust_test.go",
+      "marker": "t.Fatal(\"valid rotated browser did not bypass the MFA prompt\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L104/Parameter `password`": [
+    {
+      "label": "Refuse enrollment with a wrong password",
+      "test": "adapters/sqlstore/twofactor_test.go",
+      "marker": "check(request(first, \"two-factor/enable\", `{\"password\":\"wrong\"}`, firstCookie), 400)",
+      "complete": true
+    },
+    {
+      "label": "Refuse a credential account that omits its password",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "passwordLogin.Token, true)"
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L108/Parameter `method` (optional)": [
+    {
+      "label": "Enroll for delivered codes with method otp",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "delivery enrollment returned wrong method",
+      "complete": true
+    },
+    {
+      "label": "Enroll an authenticator when no method is sent",
+      "test": "adapters/sqlstore/twofactor_test.go",
+      "marker": "invalid provisioning material"
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L112/Parameter `issuer` (optional)": [
+    {
+      "label": "Put the issuer from the request body and the configured digits and period in the provisioning URI",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "custom authenticator parameters were omitted",
+      "complete": true
+    },
+    {
+      "label": "Name the plugin's issuer in the provisioning URI when set, and the application name otherwise",
+      "test": "conformance/goapi/freshness_test.go",
+      "marker": "t.Fatal(\"unexpected authenticator issuer\", tc, setup.TOTPURI, w.Body)"
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L202/With `auth.api`": [
+    {
+      "label": "Return a challenge and no token from a Go SignInEmail call for an enrolled account",
+      "test": "adapters/sqlstore/twofactor_test.go",
+      "marker": "t.Fatalf(\"native password sign-in bypassed the challenge: %v\", err)",
+      "complete": true
+    },
+    {
+      "label": "Finish that Go sign-in over HTTP with the challenge cookie TwoFactorChallengeCookie builds",
+      "test": "adapters/sqlstore/twofactor_test.go",
+      "marker": "verified := request(second, \"two-factor/verify-totp\""
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L244": [
+    {
+      "label": "Accept a six-digit, 30-second code from a standard generator under the default settings",
+      "test": "adapters/sqlstore/twofactor_test.go",
+      "marker": "code, err := totp.GenerateCode(secret, time.Now())",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L250": [
+    {
+      "label": "Reread the same provisioning URI after validating the password",
+      "test": "adapters/sqlstore/twofactor_test.go",
+      "marker": "provisioning URI changed",
+      "complete": true
+    },
+    {
+      "label": "Read the provisioning URI through the pinned browser client on both servers",
+      "test": "conformance/core.test.mjs",
+      "marker": "const { totpURI } = ok(await client.twoFactor.getTotpUri({ password }));"
     }
   ]
 }

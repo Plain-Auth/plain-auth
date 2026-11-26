@@ -5,64 +5,85 @@
 ## Interfaces
 
 - [ ] API keys endpoints, types and options
-  - [ ] `apiKeyClient`
+  - [x] `apiKeyClient` ([test](../../../conformance/core.test.mjs#L1223))
     - [x] Create, retrieve, update, list and revoke user-owned keys with the official client ([test](../../../conformance/core.test.mjs#L887))
     - [x] Manage organization keys alongside separately authenticated automation clients ([test](../../../conformance/core.test.mjs#L938))
+    - [x] Answer the released client's expired-key purge with 404 on both runtimes, because that call is for server code only ([test](../../../conformance/core.test.mjs#L1223))
   - `ApiKeyClientPlugin` — *not applicable: TypeScript type*
   - [x] `API_KEY_ERROR_CODES` ([test](../../../adapters/sqlstore/apikey_errors_test.go#L21))
     - [x] Answer each API key error with its status, code and message from the key routes, Go calls, verification results and session reads, organization keys included, on three SQL engines ([test](../../../adapters/sqlstore/apikey_errors_test.go#L21))
     - [x] Answer a spent rate budget with RATE_LIMITED, the message Rate limit exceeded. and tryAgainIn under details ([test](../../../adapters/sqlstore/apikey_errors_test.go#L283))
     - [x] Refuse a key shorter than every configuration sharing the header with 403 INVALID_API_KEY before any lookup ([test](../../../adapters/sqlstore/apikey_errors_test.go#L218))
-  - [ ] `apiKey`
+  - [x] `apiKey` ([test](../../../adapters/sqlstore/apikey_options_test.go#L29))
+    - [x] Refuse to build the plugin from no configurations, a nil configuration, or two configurations with the same ConfigID, two unnamed ones included ([test](../../../adapters/sqlstore/apikey_options_test.go#L29))
   - [x] `defaultKeyHasher` ([test](../../../conformance/core.test.mjs#L912))
     - [x] Match the pinned digest and verify a Go key on shared SQLite ([test](../../../conformance/core.test.mjs#L912))
   - [x] `API_KEY_TABLE_NAME` ([test](../../../conformance/core.test.mjs#L911))
     - [x] Read the digest of a key issued by the Go server from the apikey table of a shared SQLite file ([test](../../../conformance/core.test.mjs#L911))
-  - [ ] `POST /api-key/create`
+  - [x] `POST /api-key/create` ([test](../../../adapters/sqlstore/apikey_errors_test.go#L67))
     - [x] Issue a user-owned key and return its secret to the official client ([test](../../../conformance/core.test.mjs#L887))
     - [x] Issue a key whose reference identifies the caller’s organization ([test](../../../conformance/core.test.mjs#L959))
+    - [x] Refuse every invalid create body with its error-table status, code and message, organization keys included, on three SQL engines ([test](../../../adapters/sqlstore/apikey_errors_test.go#L67))
+    - [x] Refuse a signed-out create with 401 UNAUTHORIZED_SESSION on both runtimes ([test](../../../conformance/core.test.mjs#L1219))
   - [x] `deleteAllExpiredApiKeys (server API only)` ([test](../../../adapters/sqlstore/apikey_sweep_test.go#L129))
     - [x] Purge expired entries within one configuration and retain live keys ([test](../../../adapters/sqlstore/apikey_test.go#L266))
     - [x] Purge the expired keys of every configuration in one Go call, while DeleteExpired keeps to its own configuration ([test](../../../adapters/sqlstore/apikey_sweep_test.go#L129))
-  - [ ] `POST /api-key/delete`
+  - [x] `POST /api-key/delete` ([test](../../../adapters/sqlstore/apikey_routes_test.go#L104))
     - [x] Revoke the selected user-owned credential ([test](../../../conformance/core.test.mjs#L887))
     - [x] Revoke an organization key through the owner’s authorized session ([test](../../../conformance/core.test.mjs#L967))
-  - [ ] `GET /api-key/get`
+    - [x] Delete only a key of the named configuration, and refuse a banned owner with UNAUTHORIZED over HTTP and USER_BANNED from Go, keeping the key, on three SQL engines ([test](../../../adapters/sqlstore/apikey_routes_test.go#L104))
+    - [x] Keep a key when a delete names another or an unknown configuration ([test](../../../adapters/sqlstore/apikey_routes_test.go#L141))
+    - [x] Refuse a signed-out delete with 401 UNAUTHORIZED on both runtimes ([test](../../../conformance/core.test.mjs#L1218))
+  - [x] `GET /api-key/get` ([test](../../../adapters/sqlstore/apikey_errors_test.go#L93))
     - [x] Return owner-visible metadata without the stored digest ([test](../../../conformance/core.test.mjs#L887))
     - [x] Reject a lookup under the wrong ownership configuration ([test](../../../conformance/core.test.mjs#L962))
+    - [x] Answer KEY_NOT_FOUND for a missing key or another configuration and UNAUTHORIZED signed out, with the error table's messages, on three SQL engines ([test](../../../adapters/sqlstore/apikey_errors_test.go#L93))
+    - [x] Refuse a signed-out read with 401 UNAUTHORIZED on both runtimes ([test](../../../conformance/core.test.mjs#L1216))
   - [ ] `PredefinedApiKeyOptions`
-    - [ ] `configId`
+    - [x] `configId` ([test](../../../adapters/sqlstore/apikey_options_test.go#L58))
+      - [x] Refuse two configurations sharing a ConfigID in one plugin ([test](../../../adapters/sqlstore/apikey_options_test.go#L58))
     - [x] `apiKeyHeaders` ([test](../../../adapters/sqlstore/apikey_validator_test.go#L84))
       - [x] Read the key from the default X-API-Key header on an application route and a session read ([test](../../../adapters/sqlstore/apikey_validator_test.go#L84))
       - [x] Accept a key sent in a configured custom header ([test](../../../adapters/sqlstore/apikey_test.go#L244))
       - [x] Refuse a key sent in the X-Api-Key header when only other header names are configured ([test](../../../adapters/sqlstore/apikey_test.go#L241))
       - [x] Reject a request carrying two configured key headers ([test](../../../adapters/sqlstore/apikey_test.go#L238))
-    - [ ] `disableKeyHashing`
+    - [x] `disableKeyHashing` ([test](../../../adapters/sqlstore/apikey_options_test.go#L299))
+      - [x] Store keys only as their digest: a row holding the plain secret is refused by Verify and session reads without being changed, on three SQL engines ([test](../../../adapters/sqlstore/apikey_options_test.go#L299))
     - [x] `customAPIKeyGetter` ([test](../../../adapters/sqlstore/apikey_hooks_test.go#L159))
       - [x] Use the host extractor for HTTP, native session reads and middleware while keeping malformed credentials and callback errors out of browser fallback ([test](../../../adapters/sqlstore/apikey_hooks_test.go#L159))
-      - [x] Use the same generator and custom credential source with the released client on both runtimes ([test](../../../conformance/core.test.mjs#L1298))
-    - [ ] `customAPIKeyValidator`
+      - [x] Use the same generator and custom credential source with the released client on both runtimes ([test](../../../conformance/core.test.mjs#L1320))
+    - [x] `customAPIKeyValidator` ([test](../../../adapters/sqlstore/apikey_validator_test.go#L16))
       - [x] Run the selected policy once across native, middleware and session verification, and preserve the usage budget on denial ([test](../../../adapters/sqlstore/apikey_validator_test.go#L16))
       - [x] Accept or refuse the same application session using the released client and its host policy ([test](../../../conformance/core.test.mjs#L1172))
     - [x] `customKeyGenerator` ([test](../../../adapters/sqlstore/apikey_hooks_test.go#L102))
       - [x] Backfill exact historical digests and reject reissuance after revocation, verification cleanup and restart ([test](../../../adapters/sqlstore/apikey_ledger_test.go#L16))
       - [x] Create personal and organization credentials with the effective prefix, current issuance authority and atomic digest collision checks ([test](../../../adapters/sqlstore/apikey_hooks_test.go#L102))
-      - [x] Use the same generator and custom credential source with the released client on both runtimes ([test](../../../conformance/core.test.mjs#L1298))
-    - [ ] `startingCharactersConfig`
-    - [ ] `defaultKeyLength`
-    - [ ] `defaultPrefix`
-    - [ ] `maximumPrefixLength`
+      - [x] Use the same generator and custom credential source with the released client on both runtimes ([test](../../../conformance/core.test.mjs#L1320))
+    - [x] `startingCharactersConfig` ([test](../../../adapters/sqlstore/apikey_options_test.go#L149))
+      - [x] Store and show no starting characters when HideStart is set ([test](../../../adapters/sqlstore/apikey_options_test.go#L149))
+    - [x] `defaultKeyLength` ([test](../../../adapters/sqlstore/apikey_options_test.go#L103))
+      - [x] Generate 64 random letters by default, showing the first six, with no prefix ([test](../../../adapters/sqlstore/apikey_options_test.go#L103))
+    - [x] `defaultPrefix` ([test](../../../adapters/sqlstore/apikey_options_test.go#L139))
+      - [x] Use a request prefix in place of the default prefix ([test](../../../adapters/sqlstore/apikey_options_test.go#L139))
+    - [x] `maximumPrefixLength` ([test](../../../adapters/sqlstore/apikey_options_test.go#L215))
+      - [x] Accept a 32-character prefix and refuse 33 with INVALID_PREFIX_LENGTH over HTTP ([test](../../../adapters/sqlstore/apikey_options_test.go#L215))
     - [x] `requireName` ([test](../../../adapters/sqlstore/apikey_test.go#L203))
       - [x] Reject an unnamed key with NAME_REQUIRED when a name is required ([test](../../../adapters/sqlstore/apikey_test.go#L203))
       - [x] Issue an unnamed key under a configuration that leaves names optional ([test](../../../adapters/sqlstore/apikey_test.go#L184))
-    - [ ] `minimumPrefixLength`
-    - [ ] `maximumNameLength`
-    - [ ] `minimumNameLength`
+    - [x] `minimumPrefixLength` ([test](../../../adapters/sqlstore/apikey_options_test.go#L224))
+      - [x] Refuse a prefix under the configured minimum from server code too ([test](../../../adapters/sqlstore/apikey_options_test.go#L224))
+    - [x] `maximumNameLength` ([test](../../../adapters/sqlstore/apikey_options_test.go#L230))
+      - [x] Accept names up to 32 UTF-16 units and refuse longer ones, emoji counted as two units ([test](../../../adapters/sqlstore/apikey_options_test.go#L230))
+    - [x] `minimumNameLength` ([test](../../../adapters/sqlstore/apikey_options_test.go#L244))
+      - [x] Accept a name of the configured minimum length ([test](../../../adapters/sqlstore/apikey_options_test.go#L244))
     - [x] `enableMetadata` ([test](../../../adapters/sqlstore/apikey_test.go#L207))
       - [x] Reject metadata with METADATA_DISABLED when metadata is left off ([test](../../../adapters/sqlstore/apikey_test.go#L207))
       - [x] Return stored metadata when metadata is enabled ([test](../../../adapters/sqlstore/apikey_test.go#L88))
-    - [ ] `keyExpiration`
-    - [ ] `rateLimit`
+    - [x] `keyExpiration` ([test](../../../adapters/sqlstore/apikey_options_test.go#L155))
+      - [x] Accept lifetimes from one day to 365 days and refuse shorter or longer ones ([test](../../../adapters/sqlstore/apikey_options_test.go#L155))
+    - [x] `rateLimit` ([test](../../../adapters/sqlstore/apikey_options_test.go#L116))
+      - [x] Limit a key to ten requests a day by default and answer the eleventh with RATE_LIMITED and a retry delay ([test](../../../adapters/sqlstore/apikey_options_test.go#L116))
+      - [x] Give a default key ten uses a day, no expiry and no usage budget ([test](../../../adapters/sqlstore/apikey_options_test.go#L106))
     - [x] `enableSessionForAPIKeys` ([test](../../../adapters/sqlstore/apikey_session_test.go#L203))
       - [x] Return no session for a key header when session authentication is left off ([test](../../../adapters/sqlstore/apikey_session_test.go#L203))
       - [x] Return the key owner's session, marked as an application credential, for a key header when session authentication is on ([test](../../../adapters/sqlstore/apikey_session_test.go#L210))
@@ -76,7 +97,10 @@
       - [x] Refuse DeferUpdates without a task runner ([test](../../../adapters/sqlstore/apikey_sweep_test.go#L172))
     - [x] `references` ([test](../../../adapters/sqlstore/apikey_session_test.go#L308))
       - [x] Keep user-owned and organization-owned keys bound to separate owners when their IDs coincide ([test](../../../adapters/sqlstore/apikey_session_test.go#L308))
-  - [ ] `resolveConfiguration`
+  - [x] `resolveConfiguration` ([test](../../../adapters/sqlstore/apikey_errors_test.go#L151))
+    - [x] Answer NO_DEFAULT_API_KEY_CONFIGURATION_FOUND when a request names no configuration and none is the default, even with a single configuration ([test](../../../adapters/sqlstore/apikey_errors_test.go#L151))
+    - [x] List the owner's keys of every configuration when a list names none, without a default configuration ([test](../../../adapters/sqlstore/apikey_errors_test.go#L164))
+    - [x] Answer KEY_NOT_FOUND for a configuration the server does not have, instead of reading it as the default one ([test](../../../adapters/sqlstore/apikey_errors_test.go#L93))
   - [x] `isDefaultConfigId` ([test](../../../conformance/core.test.mjs#L979))
     - [x] Delete a key created under configId "default" without naming a configuration, on both runtimes ([test](../../../conformance/core.test.mjs#L979))
     - [x] Record "default" as the configuration of a key issued under a configuration with no ID, on both runtimes ([test](../../../conformance/core.test.mjs#L899))
@@ -89,58 +113,76 @@
     - [x] Remove the expired keys of every configuration after creating, reading, updating, deleting or listing a key, at most once every ten seconds per service, on three SQL engines ([test](../../../adapters/sqlstore/apikey_sweep_test.go#L78))
   - [x] `createApiKeyRoutes` ([test](../../../adapters/sqlstore/apikey_test.go#L141))
     - [x] Serve create, get, update and delete to the key owner and list to another signed-in user over HTTP, and answer 404 for the verification and expired-key cleanup paths ([test](../../../adapters/sqlstore/apikey_test.go#L141))
-  - [ ] `GET /api-key/list`
+  - [x] `GET /api-key/list` ([test](../../../adapters/sqlstore/apikey_list_test.go#L19))
     - [x] Return the owner’s paginated API keys and total ([test](../../../conformance/core.test.mjs#L887))
     - [x] Filter organization keys and keep them out of personal results ([test](../../../conformance/core.test.mjs#L960))
-  - [ ] `POST /api-key/update`
+    - [x] List, sort, page and filter keys over HTTP for one or several configurations, organization keys apart, on three SQL engines ([test](../../../adapters/sqlstore/apikey_list_test.go#L19))
+    - [x] Refuse a signed-out list with 401 UNAUTHORIZED on both runtimes ([test](../../../conformance/core.test.mjs#L1217))
+  - [x] `POST /api-key/update` ([test](../../../adapters/sqlstore/apikey_routes_test.go#L18))
     - [x] Change user-owned key settings using the pinned client ([test](../../../conformance/core.test.mjs#L887))
     - [x] Rename a key under its organization configuration ([test](../../../conformance/core.test.mjs#L963))
+    - [x] Change and clear a key's lifetime, replace its metadata, switch it off and refuse out-of-policy values without changing it, over HTTP on three SQL engines ([test](../../../adapters/sqlstore/apikey_routes_test.go#L18))
+    - [x] Clear a key's lifetime with expiresIn null ([test](../../../adapters/sqlstore/apikey_routes_test.go#L64))
+    - [x] Refuse an update name outside the lengths, the empty name included, and keep the old name ([test](../../../adapters/sqlstore/apikey_routes_test.go#L82))
+    - [x] Refuse metadata with METADATA_DISABLED where the configuration turns it off ([test](../../../adapters/sqlstore/apikey_routes_test.go#L88))
+    - [x] Refuse a signed-out update with 401 UNAUTHORIZED_SESSION on both runtimes ([test](../../../conformance/core.test.mjs#L1220))
   - [x] `verifyApiKey (server API only)` ([test](../../../adapters/sqlstore/apikey_errors_test.go#L248))
     - [x] Verify permissions and consume the credential atomically ([test](../../../adapters/sqlstore/apikey_test.go#L178))
     - [x] Verify a key under the configuration that issued it, among several sharing one store ([test](../../../adapters/sqlstore/apikey_unscoped_test.go#L14))
     - [x] Report a spent rate budget as RATE_LIMITED with tryAgainIn under details from Verify, middleware, session reads and the Go client, on three SQL engines ([test](../../../adapters/sqlstore/apikey_errors_test.go#L248))
-    - [x] Answer a rate-limited key session with 429 RATE_LIMITED and details.tryAgainIn on both runtimes ([test](../../../conformance/core.test.mjs#L1228))
+    - [x] Answer a rate-limited key session with 429 RATE_LIMITED and details.tryAgainIn on both runtimes ([test](../../../conformance/core.test.mjs#L1250))
   - [ ] `ApiKeyOptions`
     - [ ] `schema`
   - [ ] `ApiKeyConfigurationOptions`
-    - [ ] `configId`
+    - [x] `configId` ([test](../../../adapters/sqlstore/apikey_options_test.go#L55))
       - [x] Scope key reads, verification and cleanup to the configured namespace ([test](../../../adapters/sqlstore/apikey_test.go#L261))
       - [x] Prevent an existing ownership namespace from being reinterpreted ([test](../../../adapters/sqlstore/apikey_session_test.go#L319))
+      - [x] Treat an unnamed configuration as the default one, so two unnamed configurations are refused and one sits beside named ones ([test](../../../adapters/sqlstore/apikey_options_test.go#L55))
     - [x] `apiKeyHeaders` ([test](../../../adapters/sqlstore/apikey_validator_test.go#L84))
       - [x] Accept configured header names and reject ambiguous credential selection ([test](../../../adapters/sqlstore/apikey_test.go#L238))
       - [x] Read the key from the default X-API-Key header on an application route and a session read ([test](../../../adapters/sqlstore/apikey_validator_test.go#L84))
       - [x] Accept a key sent in a configured custom header ([test](../../../adapters/sqlstore/apikey_test.go#L244))
       - [x] Refuse a key sent in the X-Api-Key header when only other header names are configured ([test](../../../adapters/sqlstore/apikey_test.go#L241))
-    - [ ] `disableKeyHashing`
+    - [x] `disableKeyHashing` ([test](../../../adapters/sqlstore/apikey_options_test.go#L303))
+      - [x] Verify a key again once its stored digest is restored after a plain-text row was refused ([test](../../../adapters/sqlstore/apikey_options_test.go#L303))
     - [x] `customAPIKeyGetter` ([test](../../../adapters/sqlstore/apikey_hooks_test.go#L159))
       - [x] Use the host extractor for HTTP, native session reads and middleware while keeping malformed credentials and callback errors out of browser fallback ([test](../../../adapters/sqlstore/apikey_hooks_test.go#L159))
-      - [x] Use the same generator and custom credential source with the released client on both runtimes ([test](../../../conformance/core.test.mjs#L1298))
-    - [ ] `customAPIKeyValidator`
+      - [x] Use the same generator and custom credential source with the released client on both runtimes ([test](../../../conformance/core.test.mjs#L1320))
+    - [x] `customAPIKeyValidator` ([test](../../../adapters/sqlstore/apikey_validator_test.go#L16))
       - [x] Run the selected policy once across native, middleware and session verification, and preserve the usage budget on denial ([test](../../../adapters/sqlstore/apikey_validator_test.go#L16))
       - [x] Accept or refuse the same application session using the released client and its host policy ([test](../../../conformance/core.test.mjs#L1172))
     - [x] `customKeyGenerator` ([test](../../../adapters/sqlstore/apikey_hooks_test.go#L102))
       - [x] Backfill exact historical digests and reject reissuance after revocation, verification cleanup and restart ([test](../../../adapters/sqlstore/apikey_ledger_test.go#L16))
       - [x] Create personal and organization credentials with the effective prefix, current issuance authority and atomic digest collision checks ([test](../../../adapters/sqlstore/apikey_hooks_test.go#L102))
-      - [x] Use the same generator and custom credential source with the released client on both runtimes ([test](../../../conformance/core.test.mjs#L1298))
-    - [ ] `startingCharactersConfig`
+      - [x] Use the same generator and custom credential source with the released client on both runtimes ([test](../../../conformance/core.test.mjs#L1320))
+    - [x] `startingCharactersConfig` ([test](../../../adapters/sqlstore/apikey_options_test.go#L134))
       - [x] Return six display characters by default ([test](../../../adapters/sqlstore/apikey_test.go#L68))
-    - [ ] `defaultKeyLength`
+      - [x] Show the configured number of leading characters, prefix included, as start ([test](../../../adapters/sqlstore/apikey_options_test.go#L134))
+    - [x] `defaultKeyLength` ([test](../../../adapters/sqlstore/apikey_options_test.go#L131))
       - [x] Issue 64 random letters plus an optional prefix ([test](../../../adapters/sqlstore/apikey_test.go#L68))
-    - [ ] `defaultPrefix`
-    - [ ] `maximumPrefixLength`
+      - [x] Generate the configured number of letters after the default prefix ([test](../../../adapters/sqlstore/apikey_options_test.go#L131))
+    - [x] `defaultPrefix` ([test](../../../adapters/sqlstore/apikey_options_test.go#L133))
+      - [x] Start a key with the configured default prefix and record it as the key's prefix ([test](../../../adapters/sqlstore/apikey_options_test.go#L133))
+    - [x] `maximumPrefixLength` ([test](../../../adapters/sqlstore/apikey_options_test.go#L220))
+      - [x] Keep prefixes within a configured three to five characters ([test](../../../adapters/sqlstore/apikey_options_test.go#L220))
     - [x] `requireName` ([test](../../../adapters/sqlstore/apikey_test.go#L184))
       - [x] Enforce a required display name ([test](../../../adapters/sqlstore/apikey_test.go#L203))
       - [x] Issue an unnamed key under a configuration that leaves names optional ([test](../../../adapters/sqlstore/apikey_test.go#L184))
-    - [ ] `minimumPrefixLength`
-    - [ ] `maximumNameLength`
-    - [ ] `minimumNameLength`
+    - [x] `minimumPrefixLength` ([test](../../../adapters/sqlstore/apikey_options_test.go#L217))
+      - [x] Refuse a two-character prefix and accept three under a minimum of three ([test](../../../adapters/sqlstore/apikey_options_test.go#L217))
+    - [x] `maximumNameLength` ([test](../../../adapters/sqlstore/apikey_options_test.go#L235))
+      - [x] Keep names within a configured three to eight units on creation ([test](../../../adapters/sqlstore/apikey_options_test.go#L235))
+    - [x] `minimumNameLength` ([test](../../../adapters/sqlstore/apikey_options_test.go#L253))
+      - [x] Refuse updates to names that are too short, empty or too long, and keep the old name ([test](../../../adapters/sqlstore/apikey_options_test.go#L253))
     - [x] `enableMetadata` ([test](../../../adapters/sqlstore/apikey_test.go#L88))
       - [x] Reject metadata when disabled ([test](../../../adapters/sqlstore/apikey_test.go#L207))
       - [x] Keep metadata given at creation and return it on a later read when metadata is enabled ([test](../../../adapters/sqlstore/apikey_test.go#L88))
-    - [ ] `keyExpiration`
+    - [x] `keyExpiration` ([test](../../../adapters/sqlstore/apikey_options_test.go#L166))
       - [x] Enforce configured default lifetime and maximum expiration ([test](../../../adapters/sqlstore/apikey_test.go#L211))
-    - [ ] `rateLimit`
+      - [x] Refuse custom lifetimes on create and update when they are disabled, and use the default lifetime ([test](../../../adapters/sqlstore/apikey_options_test.go#L166))
+    - [x] `rateLimit` ([test](../../../adapters/sqlstore/apikey_options_test.go#L123))
       - [x] Enforce an atomic rate budget and provide a retry interval ([test](../../../adapters/sqlstore/apikey_test.go#L248))
+      - [x] Accept every request of a configuration with rate limiting turned off ([test](../../../adapters/sqlstore/apikey_options_test.go#L123))
     - [x] `enableSessionForAPIKeys` ([test](../../../adapters/sqlstore/apikey_session_test.go#L194))
       - [x] Authenticate a user for a single request and preserve the originating credential type ([test](../../../adapters/sqlstore/apikey_session_test.go#L210))
       - [x] Complete password-confirmed authenticator enrollment with the official client ([test](../../../conformance/core.test.mjs#L988))
@@ -172,6 +214,8 @@
       - [x] Consume a one-use allowance exactly once for each auth request ([test](../../../adapters/sqlstore/apikey_session_test.go#L259))
   - [ ] Multiple Configurations
     - [x] Select private and organization credentials on one auth mount ([test](../../../conformance/core.test.mjs#L938))
+    - [x] Mount configurations that keep their own prefix, key length, display, rate policy, default permissions and metadata switch, on three SQL engines ([test](../../../adapters/sqlstore/apikey_options_test.go#L404))
+    - [x] Enforce each configuration's own rate maximum on its keys ([test](../../../adapters/sqlstore/apikey_options_test.go#L465))
     - [x] Setup ([test](../../../conformance/core.test.mjs#L943))
       - [x] Register a personal configuration and a separate organization configuration ([test](../../../conformance/core.test.mjs#L943))
     - [x] Creating Keys with Specific Configurations ([test](../../../conformance/core.test.mjs#L959))
@@ -182,7 +226,7 @@
     - [x] Filtering Keys by Configuration ([test](../../../adapters/sqlstore/apikey_session_test.go#L124))
       - [x] List an organization’s keys separately from personal keys ([test](../../../adapters/sqlstore/apikey_session_test.go#L124))
     - [ ] Global Options
-  - [ ] Organization-Owned API Keys
+  - [x] Organization-Owned API Keys ([test](../../../adapters/sqlstore/apikey_session_test.go#L110))
     - [x] Enforce ownership type, namespace and role permissions across three databases ([test](../../../adapters/sqlstore/apikey_session_test.go#L23))
     - [x] Issue a key under an organization configuration that is owned by the organization, not by the user who created it ([test](../../../adapters/sqlstore/apikey_session_test.go#L110))
     - [x] Configuration ([test](../../../adapters/sqlstore/apikey_session_test.go#L319))
@@ -191,7 +235,7 @@
       - [x] Issue a key to the selected organization and retain it when an unrelated user is deleted ([test](../../../adapters/sqlstore/apikey_session_test.go#L308))
       - [x] Session Mocking Limitation ([test](../../../conformance/core.test.mjs#L966))
         - [x] Reject an organization identity on a user session endpoint ([test](../../../conformance/core.test.mjs#L966))
-    - [ ] Access Control & Permissions
+    - [x] Access Control & Permissions ([test](../../../adapters/sqlstore/apikey_session_test.go#L23))
       - [x] Require a current membership and the management grant for each action ([test](../../../adapters/sqlstore/apikey_session_test.go#L23))
       - [x] API Key Permissions ([test](../../../adapters/sqlstore/apikey_session_test.go#L23))
         - [x] Enforce independent create, read, update and delete grants ([test](../../../adapters/sqlstore/apikey_session_test.go#L23))
@@ -203,8 +247,11 @@
           - [x] Change a key with a configured member update grant ([test](../../../adapters/sqlstore/apikey_session_test.go#L140))
         - [x] Delete ([test](../../../adapters/sqlstore/apikey_session_test.go#L142))
           - [x] Revoke with the member’s delete grant ([test](../../../adapters/sqlstore/apikey_session_test.go#L142))
-      - [ ] Configuring Organization Roles
+      - [x] Configuring Organization Roles ([test](../../../adapters/sqlstore/apikey_org_roles_test.go#L21))
         - [x] Combine static grants from multiple roles and pick up membership downgrades ([test](../../../adapters/sqlstore/apikey_session_test.go#L106))
+        - [x] Authorize organization key actions from the organization plugin's roles: the creator role does everything, other roles need apiKey actions, and stored roles count at once, on three SQL engines ([test](../../../adapters/sqlstore/apikey_org_roles_test.go#L21))
+        - [x] Let a role stored by the organization grant exactly its apiKey actions ([test](../../../adapters/sqlstore/apikey_org_roles_test.go#L113))
+        - [x] Let the organization's creator role manage keys without an apiKey grant of its own ([test](../../../adapters/sqlstore/apikey_org_roles_test.go#L127))
         - [x] Owner Access ([test](../../../conformance/core.test.mjs#L938))
           - [x] Give the organization creator role full key management ([test](../../../conformance/core.test.mjs#L938))
       - [x] Permission Examples ([test](../../../adapters/sqlstore/apikey_session_test.go#L23))
@@ -219,7 +266,7 @@
       - [x] Expose the organization as the key’s reference ([test](../../../conformance/core.test.mjs#L959))
   - [ ] Storage Modes
     - [ ] Storage Mode Options
-      - [ ] `"database"` (Default)
+      - [x] `"database"` (Default) ([test](../../../adapters/sqlstore/apikey_test.go#L73))
         - [x] Store credentials in a canonical SQL table and return the secret only on issuance ([test](../../../adapters/sqlstore/apikey_test.go#L73))
       - [ ] `"secondary-storage"`
       - [ ] Secondary Storage with Fallback
@@ -228,6 +275,7 @@
     - [ ] Custom Storage Methods
   - [ ] Rate Limiting
     - [x] Serialize rate and use decisions across independent service instances ([test](../../../adapters/sqlstore/apikey_test.go#L178))
+    - [x] Answer an API-key session past its rate maximum with 429 RATE_LIMITED ([test](../../../adapters/sqlstore/apikey_options_test.go#L358))
     - [x] Double Rate-Limit Increment ([test](../../../adapters/sqlstore/apikey_validator_test.go#L114))
       - [x] Count one use for a session read and another for a separate middleware verification of the same key ([test](../../../adapters/sqlstore/apikey_validator_test.go#L114))
     - [ ] How does it work?
@@ -239,9 +287,13 @@
         - [x] Accept a key that reached its one-request limit again once more than its window has passed since the last request ([test](../../../adapters/sqlstore/apikey_test.go#L253))
       - [ ] Rate Limit Exceeded
         - [x] Answer 429 with a Retry-After interval when a key goes past its rate limit at an application route ([test](../../../adapters/sqlstore/apikey_test.go#L248))
-      - [ ] Disabling Rate Limiting
-      - [ ] Globally
-      - [ ] Per Key
+      - [x] Disabling Rate Limiting ([test](../../../adapters/sqlstore/apikey_options_test.go#L312))
+        - [x] Turn rate limiting off for a whole configuration or for one key, and on again for that key ([test](../../../adapters/sqlstore/apikey_options_test.go#L312))
+        - [x] Leave a key whose rate maximum or window is null unlimited and unstamped ([test](../../../adapters/sqlstore/apikey_budget_test.go#L66))
+      - [x] Globally ([test](../../../adapters/sqlstore/apikey_options_test.go#L375))
+        - [x] Accept every request of a configuration with rate limiting off, even for a key that asks for a limit, while recording its last request ([test](../../../adapters/sqlstore/apikey_options_test.go#L375))
+      - [x] Per Key ([test](../../../adapters/sqlstore/apikey_options_test.go#L391))
+        - [x] Lift one key's rate limit, record its last request, limit it again from its kept count when turned back on, and lift it again ([test](../../../adapters/sqlstore/apikey_options_test.go#L391))
       - [x] Null Values ([test](../../../adapters/sqlstore/apikey_budget_test.go#L60))
         - [x] Accept a key past its one-request limit once its stored rate maximum or window is null, without counting or recording the request, on three databases ([test](../../../adapters/sqlstore/apikey_budget_test.go#L60))
   - [ ] Remaining, refill, and expiration
@@ -258,7 +310,7 @@
   - [x] Custom Key generation & verification ([test](../../../adapters/sqlstore/apikey_validator_test.go#L119))
     - [x] Backfill exact historical digests and reject reissuance after revocation, verification cleanup and restart ([test](../../../adapters/sqlstore/apikey_ledger_test.go#L16))
     - [x] Create personal and organization credentials with the effective prefix, current issuance authority and atomic digest collision checks ([test](../../../adapters/sqlstore/apikey_hooks_test.go#L102))
-    - [x] Use the same generator and custom credential source with the released client on both runtimes ([test](../../../conformance/core.test.mjs#L1298))
+    - [x] Use the same generator and custom credential source with the released client on both runtimes ([test](../../../conformance/core.test.mjs#L1320))
     - [x] Validate the digest table when another PostgreSQL installer finishes during schema discovery ([test](../../../adapters/sqlstore/migrate_postgres_test.go#L108))
     - [x] Reject an unknown credential even when the application validator accepts it ([test](../../../adapters/sqlstore/apikey_validator_test.go#L119))
   - [x] Metadata ([test](../../../adapters/sqlstore/apikey_test.go#L207))
@@ -282,7 +334,7 @@
       - [x] Return metadata given at creation on a later read of the key ([test](../../../adapters/sqlstore/apikey_test.go#L88))
     - [ ] Custom prefix
       - [x] Start a key created over HTTP with prefix app_ with that prefix ([test](../../../adapters/sqlstore/apikey_test.go#L68))
-      - [x] Pass the configured default prefix, or the prefix given at creation, to a custom key generator on both runtimes ([test](../../../conformance/core.test.mjs#L1316))
+      - [x] Pass the configured default prefix, or the prefix given at creation, to a custom key generator on both runtimes ([test](../../../conformance/core.test.mjs#L1338))
     - [ ] Sessions from API keys
       - [x] Resolve the key owner's session from a personal key header with the released client, using the key id as the session id ([test](../../../conformance/core.test.mjs#L973))
       - [x] Return the key owner from a native session lookup with a key header, marked as an application credential ([test](../../../adapters/sqlstore/apikey_session_test.go#L194))
@@ -315,7 +367,7 @@
           - [x] Refuse an organization key to a user outside that organization before the generator runs ([test](../../../adapters/sqlstore/apikey_hooks_test.go#L109))
         - [ ] Parameter `prefix` (optional)
           - [x] Start the issued secret with the prefix given at creation ([test](../../../adapters/sqlstore/apikey_test.go#L68))
-          - [x] Pass the prefix given at creation to a custom key generator on both runtimes ([test](../../../conformance/core.test.mjs#L1316))
+          - [x] Pass the prefix given at creation to a custom key generator on both runtimes ([test](../../../conformance/core.test.mjs#L1338))
         - [ ] Parameter `remaining` (optional)
           - [x] Allow exactly the remaining count set by server-side creation across concurrent verifications ([test](../../../adapters/sqlstore/apikey_test.go#L181))
         - [ ] Parameter `refillAmount` (optional)

@@ -27,6 +27,12 @@ func (s *Store) resolveOrganizationRoles(ctx context.Context, tx *sql.Tx, group 
 	if !s.dynamicOrganizationRoles {
 		return s.organizationRoles, nil
 	}
+	return s.withStoredOrganizationRoles(ctx, tx, group, s.organizationRoles)
+}
+
+// withStoredOrganizationRoles merges the roles organization group stored
+// with dynamic access control into base.
+func (s *Store) withStoredOrganizationRoles(ctx context.Context, tx *sql.Tx, group string, base org.RolePolicy) (org.RolePolicy, error) {
 	rows, err := tx.QueryContext(ctx, s.bind(`SELECT "role","permission" FROM "organizationRole" WHERE "organizationId"=`+s.exactSQLValue("?")), group)
 	if err != nil {
 		return org.RolePolicy{}, err
@@ -48,7 +54,7 @@ func (s *Store) resolveOrganizationRoles(ctx context.Context, tx *sql.Tx, group 
 	if err := rows.Err(); err != nil {
 		return org.RolePolicy{}, err
 	}
-	return s.organizationRoles.WithStoredRoles(definitions), nil
+	return base.WithStoredRoles(definitions), nil
 }
 
 func (s *Store) requireOrganizationAction(ctx context.Context, tx *sql.Tx, group, role, resource, action string, denied error) error {
