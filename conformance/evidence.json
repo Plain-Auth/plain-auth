@@ -11604,7 +11604,7 @@
   ],
   "plugin-symbol/sso/SSOOptions/guardProviderMutation": [
     {
-      "label": "Inspect the locked OIDC provider and linked-account count before deletion, and roll back a rejected mutation with a private conflict response",
+      "label": "Inspect the locked OIDC provider and linked-account count before deletion, and write nothing for a rejected mutation with a private conflict response",
       "test": "adapters/sqlstore/sso_delete_test.go",
       "marker": "guard did not preserve links or exposed its error"
     },
@@ -11617,6 +11617,11 @@
       "label": "Review a general provider update with its linked-account count and identity change, and store nothing when the guard refuses",
       "test": "adapters/sqlstore/sso_update_test.go",
       "marker": "t.Fatal(\"the guard did not review the secret rotation\", last)"
+    },
+    {
+      "label": "Run the metadata guard outside the store's transaction",
+      "test": "adapters/sqlstore/sso_saml_metadata_test.go",
+      "marker": "t.Fatal(\"the metadata guard could not read the store, so it ran inside the transaction\", readErr)"
     }
   ],
   "plugin-symbol/custom-session/customSessionClient": [
@@ -45019,6 +45024,19 @@
       "test": "adapters/sqlstore/sso_scim_link_test.go",
       "marker": "t.Fatal(\"the gated sign-in did not link the provisioned account\", account, owner)",
       "complete": true
+    }
+  ],
+  "plugin-symbol/sso/SSOProviderMutationGuardContext": [
+    {
+      "label": "Run the mutation guard outside the store's transaction on a snapshot, review a provider changed meanwhile again, and give up with SSO_PROVIDER_CHANGED when it keeps changing, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_delete_test.go",
+      "marker": "func TestEnterpriseProviderGuardOutsideTransaction(",
+      "complete": true
+    },
+    {
+      "label": "Let a sign-in on another node complete while the deletion guard decides",
+      "test": "adapters/sqlstore/sso_delete_test.go",
+      "marker": "t.Fatal(\"a sign-in waited on or failed during a guard that should run outside the transaction\", during)"
     }
   ]
 }

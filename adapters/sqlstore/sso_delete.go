@@ -12,6 +12,70 @@ import (
 
 var _ sso.DeletionStore = (*Store)(nil)
 
+var (
+	errGuardPlanned = errors.New("sqlstore: provider mutation planned")
+	errGuardChanged = errors.New("sqlstore: provider mutation changed while its guard ran")
+)
+
+// providerGuard carries a MutationGuard decision from a dry run to the run
+// that commits.
+type providerGuard struct {
+	approved bool
+	planned  *sso.ProviderMutation
+}
+
+// check is called at the guard point inside the transaction: a dry run
+// records m and stops, an approved run continues only for the same snapshot.
+func (g *providerGuard) check(m sso.ProviderMutation) error {
+	if g == nil {
+		return nil
+	}
+	if !g.approved {
+		g.planned = &m
+		return errGuardPlanned
+	}
+	if !sameMutation(*g.planned, m) {
+		return errGuardChanged
+	}
+	return nil
+}
+
+func sameMutation(a, b sso.ProviderMutation) bool {
+	org := func(p *string) string {
+		if p == nil {
+			return "\x00"
+		}
+		return *p
+	}
+	return a.Action == b.Action && a.ID == b.ID && a.ProviderID == b.ProviderID && a.Reference == b.Reference && org(a.OrganizationID) == org(b.OrganizationID) &&
+		a.LinkedAccounts == b.LinkedAccounts && a.AuthenticationBoundaryChanged == b.AuthenticationBoundaryChanged
+}
+
+// guarded runs a provider mutation as a dry run that stops at its guard
+// point and rolls back, asks guard outside any transaction, then runs it
+// again and commits only for the same snapshot, planning again up to three
+// times before ErrChanged.
+func guarded(ctx context.Context, guard sso.MutationGuard, run func(*providerGuard) error) error {
+	if guard == nil {
+		return run(nil)
+	}
+	for range 3 {
+		g := &providerGuard{}
+		err := run(g)
+		if !errors.Is(err, errGuardPlanned) {
+			return err
+		}
+		if guard(ctx, *g.planned) != nil {
+			return sso.ErrMutationRejected
+		}
+		g.approved = true
+		if err = run(g); !errors.Is(err, errGuardChanged) {
+			return err
+		}
+	}
+	return sso.ErrChanged
+}
+
 // DeleteSSOProvider removes a specific persisted OIDC provider and all links
 // under its case-sensitive ID. Retrying is bound to its original record ID.
 func (s *Store) DeleteSSOProvider(ctx context.Context, actor sso.Actor, providerID, recordID string, guard sso.MutationGuard) error {
@@ -20,7 +84,7 @@ func (s *Store) DeleteSSOProvider(ctx context.Context, actor sso.Actor, provider
 	}
 	var err error
 	for range 3 {
-		err = s.deleteSSOProvider(ctx, actor, providerID, recordID, guard)
+		err = guarded(ctx, guard, func(g *providerGuard) error { return s.deleteSSOProvider(ctx, actor, providerID, recordID, g) })
 		if !retryIdentity(err) {
 			break
 		}
@@ -28,7 +92,7 @@ func (s *Store) DeleteSSOProvider(ctx context.Context, actor sso.Actor, provider
 	return err
 }
 
-func (s *Store) deleteSSOProvider(ctx context.Context, actor sso.Actor, id, recordID string, guard sso.MutationGuard) error {
+func (s *Store) deleteSSOProvider(ctx context.Context, actor sso.Actor, id, recordID string, guard *providerGuard) error {
 	tx, err := s.beginMembershipChange(ctx)
 	if err != nil {
 		return err
@@ -78,12 +142,9 @@ func (s *Store) deleteSSOProvider(ctx context.Context, actor sso.Actor, id, reco
 	if err != nil {
 		return err
 	}
-	if guard != nil {
-		mutation := sso.ProviderMutation{Action: "delete", AuthenticationBoundaryChanged: true, ID: recordID, ProviderID: id, OrganizationID: p.OrganizationID, Reference: p.Reference}
-		mutation.LinkedAccounts = len(owned)
-		if err = guard(ctx, mutation); err != nil {
-			return sso.ErrMutationRejected
-		}
+	mutation := sso.ProviderMutation{Action: "delete", AuthenticationBoundaryChanged: true, ID: recordID, ProviderID: id, OrganizationID: p.OrganizationID, Reference: p.Reference, LinkedAccounts: len(owned)}
+	if err = guard.check(mutation); err != nil {
+		return err
 	}
 	for _, link := range owned {
 		result, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "account" WHERE `+s.scimExact(`"id"`)+`=? AND `+accountWhere+` AND `+s.scimExact(`"userId"`)+`=? AND `+s.scimExact(`"accountId"`)+`=?`), link.ID, id, link.UserID, link.Subject)

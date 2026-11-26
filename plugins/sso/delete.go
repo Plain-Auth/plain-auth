@@ -18,13 +18,18 @@ type ProviderMutation struct {
 }
 
 // MutationGuard reviews a provider deletion, metadata replacement or general
-// update. It runs inside the store's transaction, as another runtime runs
-// it, and may be retried after a database conflict. Return an error to deny
-// the operation. Keep the callback read-only.
+// update. It runs outside the store's transaction on a snapshot of the locked
+// provider, so it may read through the store or the application's database.
+// The store then locks the provider again and commits only when it reaches
+// the same snapshot, asking the guard again otherwise, up to three times.
+// Return an error to deny the operation; nothing is written. Another runtime
+// runs it inside the transaction.
 type MutationGuard func(context.Context, ProviderMutation) error
 
 // DeletionStore performs a direct-session and tenant authorization check, then
-// atomically deletes exactly the named record and its account links.
+// atomically deletes exactly the named record and its account links. A
+// custom store calls guard as MutationGuard describes: on a snapshot,
+// outside its transaction, before a commit that rechecks the snapshot.
 type DeletionStore interface {
 	DeleteSSOProvider(ctx context.Context, actor Actor, providerID, recordID string, guard MutationGuard) error
 }

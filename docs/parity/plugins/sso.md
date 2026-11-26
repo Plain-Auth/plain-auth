@@ -114,16 +114,16 @@
     - [x] Answer 404 for a providerId that differs only in case ([test](../../../adapters/sqlstore/sso_test.go#L239))
   - [ ] `POST /sso/update-provider`
     - [x] Rotate a directory’s signing certificate through the released client and retain the existing subject on both runtimes ([test](../../../conformance/sso-saml.mjs#L361))
-    - [x] Authorize metadata replacement under a current manager session and reject stale competing revisions on three SQL engines ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L178))
+    - [x] Authorize metadata replacement under a current manager session and reject stale competing revisions on three SQL engines ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L185))
     - [x] Reject issuer and endpoint replacement on linked directories, accept overlapping signing keys, and reject retired keys after rotation ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L121))
     - [x] Allow an active organization administrator to replace metadata and deny the same live session after demotion ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L152))
     - [x] Rotate a client secret, change scopes, mapping and domain, and refuse identity changes while accounts are linked, unsupported fields and other users, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_update_test.go#L21))
     - [x] Describe the OIDC update fields on every host's OpenAPI document ([test](../../../plugins/openapi/sso_directory_test.go#L251))
   - [ ] `POST /sso/delete-provider`
     - [x] Delete the exact OIDC provider and its account links through the released SDK on both implementations ([test](../../../conformance/sso-providers.mjs#L109))
-    - [x] Recheck current tenant authority, protect unrelated links and serialize concurrent sign-in against deletion on all three SQL engines ([test](../../../adapters/sqlstore/sso_delete_test.go#L17))
+    - [x] Recheck current tenant authority, protect unrelated links and serialize concurrent sign-in against deletion on all three SQL engines ([test](../../../adapters/sqlstore/sso_delete_test.go#L19))
     - [x] Reject a browser callback after the original provider is deleted and a replacement reuses its public ID ([test](../../../conformance/sso-browser.mjs#L123))
-    - [x] Preserve a same-name static OAuth credential and stop deletion until historical account links have independently verified source records ([test](../../../adapters/sqlstore/sso_delete_test.go#L177))
+    - [x] Preserve a same-name static OAuth credential and stop deletion until historical account links have independently verified source records ([test](../../../adapters/sqlstore/sso_delete_test.go#L176))
     - [x] Deny enterprise provider deletion from an impersonated session after the administrative schema is added on another node ([test](../../../adapters/sqlstore/admin_live_schema_test.go#L111))
     - [x] Answer 404 when deleting a provider that was already deleted, through the released client on both runtimes ([test](../../../conformance/sso-providers.mjs#L111))
   - [ ] `GET /sso/saml2/sp/metadata`
@@ -350,9 +350,10 @@
       - [x] ValidateUserInfo runs again when the enterprise user returns ([test](../../../adapters/sqlstore/sso_user_validation_test.go#L115))
       - [x] Run ResolveUser after the OIDC identity is verified and before the sign-in transaction, and require an ID token ([test](../../../adapters/sqlstore/sso_resolve_user_test.go#L119))
     - [ ] `guardProviderMutation`
-      - [x] Inspect the locked OIDC provider and linked-account count before deletion, and roll back a rejected mutation with a private conflict response ([test](../../../adapters/sqlstore/sso_delete_test.go#L145))
-      - [x] Give the guard a locked metadata update of a linked SAML directory, with its record, reference, linked-account count and a changed authentication boundary, and reject the update when the guard refuses ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L161))
+      - [x] Inspect the locked OIDC provider and linked-account count before deletion, and write nothing for a rejected mutation with a private conflict response ([test](../../../adapters/sqlstore/sso_delete_test.go#L147))
+      - [x] Give the guard a locked metadata update of a linked SAML directory, with its record, reference, linked-account count and a changed authentication boundary, and reject the update when the guard refuses ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L165))
       - [x] Review a general provider update with its linked-account count and identity change, and store nothing when the guard refuses ([test](../../../adapters/sqlstore/sso_update_test.go#L102))
+      - [x] Run the metadata guard outside the store's transaction ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L168))
     - [x] `provisionUser` ([test](../../../adapters/sqlstore/sso_provision_user_test.go#L19))
       - [x] Run ProvisionUser after a new enterprise user's sign-in commits, with the stored user, mapped profile, OIDC tokens and provider, and on failure answer 500, keep the user and remove the session, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_provision_user_test.go#L19))
       - [x] Run ProvisionUser for a SAML sign-in without OIDC tokens ([test](../../../adapters/sqlstore/sso_saml_resolve_user_test.go#L107))
@@ -395,10 +396,12 @@
       - [x] Default the inline IdP metadata limit to 100 KiB and reject a negative limit or one above 1 MiB ([test](../../../plugins/sso/saml_test.go#L48))
   - [ ] `SSOProvider`
     - [x] Return the registered provider's record with its provider ID, OIDC configuration and redirect URI to the released client on both runtimes ([test](../../../conformance/sso-providers.mjs#L65))
-  - [ ] `SSOProviderMutationGuardContext`
+  - [x] `SSOProviderMutationGuardContext` ([test](../../../adapters/sqlstore/sso_delete_test.go#L228))
+    - [x] Run the mutation guard outside the store's transaction on a snapshot, review a provider changed meanwhile again, and give up with SSO_PROVIDER_CHANGED when it keeps changing, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_delete_test.go#L228))
+    - [x] Let a sign-in on another node complete while the deletion guard decides ([test](../../../adapters/sqlstore/sso_delete_test.go#L160))
   - [ ] `SSOProviderMutationGuardInput`
-    - [x] Pass the delete action, record ID, provider ID, organization, linked-account count and configuration reference of the locked provider to the guard ([test](../../../adapters/sqlstore/sso_delete_test.go#L135))
-    - [x] Pass the update action, locked record, configuration reference and an authentication boundary change to the guard when IdP metadata is replaced ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L156))
+    - [x] Pass the delete action, record ID, provider ID, organization, linked-account count and configuration reference of the locked provider to the guard ([test](../../../adapters/sqlstore/sso_delete_test.go#L137))
+    - [x] Pass the update action, locked record, configuration reference and an authentication boundary change to the guard when IdP metadata is replaced ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L160))
   - [ ] `SSOProviderReference`
     - [x] Redirect a callback with invalid_state before the token exchange when the provider's configuration changed after sign-in started ([test](../../../adapters/sqlstore/sso_browser_test.go#L352))
     - [x] Stop accepting a captured provider reference after the provider's identity source changes ([test](../../../adapters/sqlstore/sso_domain_test.go#L451))
@@ -571,13 +574,13 @@
         - [x] Rotate a provider's client secret through the native client's UpdateSSOProvider ([test](../../../adapters/sqlstore/sso_update_test.go#L177))
     - [ ] `POST /sso/delete-provider`
       - [x] Delete a provider by ID with its account links, keep another provider's links and the caller's session, on both runtimes ([test](../../../conformance/sso-providers.mjs#L109))
-    - [x] `action` ([test](../../../adapters/sqlstore/sso_delete_test.go#L135))
-      - [x] Pass the delete action to the guard on provider deletion ([test](../../../adapters/sqlstore/sso_delete_test.go#L135))
-      - [x] Pass the update action to the guard when IdP metadata is replaced ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L156))
-    - [x] `provider` ([test](../../../adapters/sqlstore/sso_delete_test.go#L135))
-      - [x] Pass the locked row's record ID, provider ID and organization ID to the guard ([test](../../../adapters/sqlstore/sso_delete_test.go#L135))
-    - [x] `providerReference` ([test](../../../adapters/sqlstore/sso_delete_test.go#L135))
-      - [x] Pass the guard the configuration reference of the locked provider row ([test](../../../adapters/sqlstore/sso_delete_test.go#L135))
+    - [x] `action` ([test](../../../adapters/sqlstore/sso_delete_test.go#L137))
+      - [x] Pass the delete action to the guard on provider deletion ([test](../../../adapters/sqlstore/sso_delete_test.go#L137))
+      - [x] Pass the update action to the guard when IdP metadata is replaced ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L160))
+    - [x] `provider` ([test](../../../adapters/sqlstore/sso_delete_test.go#L137))
+      - [x] Pass the locked row's record ID, provider ID and organization ID to the guard ([test](../../../adapters/sqlstore/sso_delete_test.go#L137))
+    - [x] `providerReference` ([test](../../../adapters/sqlstore/sso_delete_test.go#L137))
+      - [x] Pass the guard the configuration reference of the locked provider row ([test](../../../adapters/sqlstore/sso_delete_test.go#L137))
 
 ## OIDC providers
 
@@ -721,7 +724,7 @@
     - [x] `POST /sso/delete-provider` ([test](../../../plugins/openapi/sso_directory_test.go#L110))
       - [x] Answer 401 to a provider deletion without a session ([test](../../../plugins/openapi/sso_directory_test.go#L110))
       - [x] Delete a provider through the route with the owner's bearer session, answer success and drop it from the list ([test](../../../plugins/openapi/sso_directory_test.go#L161))
-      - [x] Remove a provider's linked accounts when the SQL store deletes it, and issue no session to a sign-in racing the deletion ([test](../../../adapters/sqlstore/sso_delete_test.go#L168))
+      - [x] Remove a provider's linked accounts when the SQL store deletes it, and issue no session to a sign-in racing the deletion ([test](../../../adapters/sqlstore/sso_delete_test.go#L167))
     - [x] `POST /sso/request-domain-verification` ([test](../../../plugins/openapi/sso_domain_test.go#L83))
       - [x] Answer 404 on both DNS routes when domain verification is off ([test](../../../plugins/openapi/sso_domain_test.go#L83))
       - [x] Answer 401 on both DNS routes without a session ([test](../../../plugins/openapi/sso_domain_test.go#L111))

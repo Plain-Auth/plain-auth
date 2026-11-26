@@ -152,13 +152,20 @@ func testSAMLMetadataRotation(t *testing.T, first, second *Store, owner, outside
 		t.Fatal("demoted organization member retained metadata authority", e)
 	}
 	observed := false
-	guard := func(_ context.Context, m sso.ProviderMutation) error {
+	var readErr error
+	guard := func(gc context.Context, m sso.ProviderMutation) error {
+		read, cancel := context.WithTimeout(gc, 2*time.Second)
+		defer cancel()
+		_, readErr = second.FindBrowserProvider(read, sso.Selector{ProviderID: "work", Protocol: "saml"})
 		observed = m.Action == "update" && m.ID == current.ID && m.Reference == current.Reference && m.LinkedAccounts > 0 && m.AuthenticationBoundaryChanged
 		return errors.New("denied by host")
 	}
 	_, e = second.UpdateSSOMetadata(ctx, actor, "work", current.ID, current.Reference, both, guard)
 	if !errors.Is(e, sso.ErrMutationRejected) || !observed {
 		t.Fatal("mutation guard did not receive locked authorization", e)
+	}
+	if readErr != nil {
+		t.Fatal("the metadata guard could not read the store, so it ran inside the transaction", readErr)
 	}
 	if _, e = second.UpdateSSOMetadata(ctx, sso.Actor{UserID: actor.UserID, SessionToken: "stale"}, "work", current.ID, current.Reference, both, nil); !errors.Is(e, sso.ErrUnauthenticated) {
 		t.Fatal("stale session metadata update", e)

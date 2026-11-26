@@ -2,7 +2,9 @@ package sqlstore
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"testing"
@@ -144,24 +146,21 @@ func TestEnterpriseProviderDeletion(t *testing.T) {
 			if strings.Contains(err.Error(), "confidential application detail") || count(`SELECT COUNT(*) FROM "account" WHERE "id" IN ('a-one','a-two')`) != 2 {
 				t.Fatal("guard did not preserve links or exposed its error")
 			}
-			// Hold the exact provider while a second node tries issuing a linked session.
-			entered, release := make(chan struct{}), make(chan struct{})
-			deleted := make(chan error, 1)
-			go func() {
-				deleted <- second.DeleteSSOProvider(ctx, direct, p.ProviderID, p.ID, func(context.Context, sso.ProviderMutation) error { close(entered); <-release; return nil })
-			}()
-			<-entered
-			waiting := make(chan error, 1)
-			started := make(chan struct{})
-			go func() {
-				close(started)
-				_, _, err := first.CompleteEnterpriseLogin(ctx, browser.Reference, true, "corp", "one", auth.OAuthTokens{}, auth.User{ID: "unused", Email: bob.Email, Name: "returned", CreatedAt: now, UpdatedAt: now}, auth.StoredSession{Session: auth.Session{ID: "post-deletion", Token: "post-deletion-token", CreatedAt: now, UpdatedAt: now, ExpiresAt: now.Add(time.Hour)}}, auth.OAuthLoginOptions{})
-				waiting <- err
-			}()
-			<-started
-			close(release)
-			must(<-deleted)
-			if err := <-waiting; !errors.Is(err, sso.ErrChanged) {
+			// The guard runs outside the transaction, so a sign-in on another
+			// node completes while it decides; the deletion then still commits.
+			var during error
+			calls := 0
+			must(second.DeleteSSOProvider(ctx, direct, p.ProviderID, p.ID, func(context.Context, sso.ProviderMutation) error {
+				if calls++; calls == 1 {
+					_, _, during = first.CompleteEnterpriseLogin(ctx, browser.Reference, true, "corp", "one", auth.OAuthTokens{}, auth.User{ID: "unused", Email: bob.Email, Name: "returned", CreatedAt: now, UpdatedAt: now}, auth.StoredSession{Session: auth.Session{ID: "during-guard", Token: "during-guard-token", CreatedAt: now, UpdatedAt: now, ExpiresAt: now.Add(time.Hour)}}, auth.OAuthLoginOptions{})
+				}
+				return nil
+			}))
+			if during != nil {
+				t.Fatal("a sign-in waited on or failed during a guard that should run outside the transaction", during)
+			}
+			_, _, err = first.CompleteEnterpriseLogin(ctx, browser.Reference, true, "corp", "one", auth.OAuthTokens{}, auth.User{ID: "unused", Email: bob.Email, Name: "returned", CreatedAt: now, UpdatedAt: now}, auth.StoredSession{Session: auth.Session{ID: "post-deletion", Token: "post-deletion-token", CreatedAt: now, UpdatedAt: now, ExpiresAt: now.Add(time.Hour)}}, auth.OAuthLoginOptions{})
+			if !errors.Is(err, sso.ErrChanged) {
 				t.Fatalf("stale login returned %v", err)
 			}
 			if count(`SELECT COUNT(*) FROM "session" WHERE "id"='post-deletion'`) != 0 || count(`SELECT COUNT(*) FROM "account" WHERE "id" IN ('a-one','a-two')`) != 0 {
@@ -197,6 +196,7 @@ func TestEnterpriseProviderDeletion(t *testing.T) {
 			var locked string
 			must(link.QueryRowContext(ctx, first.readForUpdate(`SELECT "id" FROM "ssoProvider" WHERE "id"=?`), replacement.ID).Scan(&locked))
 			linkFirst := make(chan struct{})
+			deleted := make(chan error, 1)
 			go func() {
 				close(linkFirst)
 				deleted <- second.DeleteSSOProvider(ctx, direct, "corp", replacement.ID, func(_ context.Context, m sso.ProviderMutation) error {
@@ -219,6 +219,79 @@ func TestEnterpriseProviderDeletion(t *testing.T) {
 				t.Fatal("foreign record deleted")
 			}
 			must(owner.DeleteSSOProvider(ctx, personal.ProviderID))
+		})
+	}
+}
+
+// GuardProviderMutation runs outside the store's transaction; a provider
+// that changes while it decides is reviewed again before the commit.
+func TestEnterpriseProviderGuardOutsideTransaction(t *testing.T) {
+	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
+		t.Run(dialect, func(t *testing.T) {
+			ctx := t.Context()
+			must := func(err error) {
+				t.Helper()
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			ddl, err := schema.Generate(dialect, []string{"sso", "organization"})
+			must(err)
+			store, err := OpenWithSchema(ctx, dialect, organizationTestDSN(t, dialect), ddl)
+			must(err)
+			defer store.Close()
+			idp := newSSOIssuer(t)
+			h := newSSOHost(t, store, idp, sso.Options{})
+			owner := h.signUp("alice@enterprise.test")
+			ids := map[string]string{}
+			for _, id := range []string{"rotating", "flappy"} {
+				w := h.register(owner, map[string]any{"providerId": id, "issuer": idp.URL, "domain": id + ".example", "oidcConfig": map[string]any{"clientId": "application", "clientSecret": "private", "skipDiscovery": true,
+					"authorizationEndpoint": idp.URL + "/authorize", "tokenEndpoint": idp.URL + "/token", "jwksEndpoint": idp.URL + "/keys"}})
+				var reg struct{ ID string }
+				if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &reg) != nil {
+					t.Fatal("registration failed", id, w.Code, w.Body.String())
+				}
+				ids[id] = reg.ID
+			}
+			alice, err := store.FindAccountUser(ctx, "alice@enterprise.test")
+			must(err)
+			actor := sso.Actor{UserID: alice.ID}
+			must(store.db.QueryRowContext(ctx, store.bind(`SELECT "id","token" FROM "session" WHERE "userId"=?`), alice.ID).Scan(&actor.SessionID, &actor.SessionToken))
+			var seen []sso.ProviderMutation
+			var readErr error
+			issuer := 0
+			change := func(id string) {
+				issuer++
+				_, err := store.db.ExecContext(ctx, store.bind(`UPDATE "ssoProvider" SET "issuer"=? WHERE "id"=?`), fmt.Sprintf("%s/rotated-%d", idp.URL, issuer), id)
+				must(err)
+			}
+			guard := func(gc context.Context, m sso.ProviderMutation) error {
+				read, cancel := context.WithTimeout(gc, 2*time.Second)
+				defer cancel()
+				_, readErr = store.FindAccountUser(read, "alice@enterprise.test")
+				seen = append(seen, m)
+				if len(seen) == 1 {
+					change(m.ID)
+				}
+				return nil
+			}
+			if err := store.DeleteSSOProvider(ctx, actor, "rotating", ids["rotating"], guard); err != nil || len(seen) != 2 || seen[0].Reference == seen[1].Reference {
+				t.Fatal("a provider changed after the guard ran was deleted without asking the guard again", err, len(seen))
+			}
+			if readErr != nil {
+				t.Fatal("the mutation guard could not read the store, so it ran inside the transaction", readErr)
+			}
+			var n int
+			must(store.db.QueryRowContext(ctx, store.bind(`SELECT COUNT(*) FROM "ssoProvider" WHERE "providerId"=?`), "rotating").Scan(&n))
+			if n != 0 {
+				t.Fatal("a guarded deletion did not commit after the guard approved the current snapshot", n)
+			}
+			flapping := func(_ context.Context, m sso.ProviderMutation) error { change(m.ID); return nil }
+			err = store.DeleteSSOProvider(ctx, actor, "flappy", ids["flappy"], flapping)
+			must(store.db.QueryRowContext(ctx, store.bind(`SELECT COUNT(*) FROM "ssoProvider" WHERE "providerId"=?`), "flappy").Scan(&n))
+			if !errors.Is(err, sso.ErrChanged) || n != 1 {
+				t.Fatal("a provider that kept changing under its guard was deleted", err, n)
+			}
 		})
 	}
 }
