@@ -964,6 +964,14 @@
         "`ResolvedSigningKey`"
       ],
       "reason": "not applicable: TypeScript type"
+    },
+    {
+      "page": "plugins/api-key.md",
+      "section": "Interfaces",
+      "labels": [
+        "`ApiKeyClientPlugin`"
+      ],
+      "reason": "not applicable: TypeScript type"
     }
   ],
   "backlog": [

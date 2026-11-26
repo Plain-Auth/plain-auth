@@ -7079,6 +7079,12 @@
       "label": "Round-trip opted-in JSON metadata",
       "test": "adapters/sqlstore/apikey_test.go",
       "marker": "denied permission consumed a use or lost metadata"
+    },
+    {
+      "label": "Refuse metadata on a configuration that has not enabled it",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "expect(e, \"METADATA_DISABLED\")",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/api-key/reference.mdx#L277": [
@@ -7093,6 +7099,17 @@
       "label": "Require every requested scope before committing a use",
       "test": "adapters/sqlstore/apikey_test.go",
       "marker": "denied permission consumed a use or lost metadata"
+    },
+    {
+      "label": "Report a key as invalid for an action it lacks and valid for the action it holds",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "verify(made.Secret, ak.Permissions{\"reports\": {\"write\"}}, false, \"KEY_NOT_FOUND\")",
+      "complete": true
+    },
+    {
+      "label": "Keep a missing action invalid even when the host validator accepts the key",
+      "test": "adapters/sqlstore/apikey_validator_test.go",
+      "marker": "callback acceptance overrode required permissions"
     }
   ],
   "docs/content/docs/plugins/api-key/reference.mdx#L403": [
@@ -7100,6 +7117,12 @@
       "label": "Compare API key columns, constraints and indexes on PostgreSQL and MySQL to the canonical DDL",
       "test": "adapters/sqlstore/profiles_test.go",
       "marker": "func TestServerPluginSchemaUpgrade("
+    },
+    {
+      "label": "Generate the apikey table, its 22 columns and its configId, referenceId and key indexes exactly as the pinned schema on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
     }
   ],
   "plugin-symbol/api-key/defaultKeyHasher": [
@@ -7139,6 +7162,22 @@
       "label": "Accept configured header names and reject ambiguous credential selection",
       "test": "adapters/sqlstore/apikey_test.go",
       "marker": "ambiguous key headers accepted"
+    },
+    {
+      "label": "Read the key from the default X-API-Key header on an application route and a session read",
+      "test": "adapters/sqlstore/apikey_validator_test.go",
+      "marker": "req.Header.Set(\"X-API-Key\", key.Secret)",
+      "complete": true
+    },
+    {
+      "label": "Accept a key sent in a configured custom header",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "configured key header failed"
+    },
+    {
+      "label": "Refuse a key sent in the X-Api-Key header when only other header names are configured",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "unconfigured credential header accepted"
     }
   ],
   "plugin-symbol/api-key/PredefinedApiKeyOptions/customAPIKeyValidator": [
@@ -7184,6 +7223,12 @@
       "label": "Enforce a required display name",
       "test": "adapters/sqlstore/apikey_test.go",
       "marker": "expect(e, \"NAME_REQUIRED\")"
+    },
+    {
+      "label": "Issue an unnamed key under a configuration that leaves names optional",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "expires, e := keys.Create(ctx, owner.User.ID, ak.CreateInput{ExpiresIn: lifetime})",
+      "complete": true
     }
   ],
   "plugin-symbol/api-key/ApiKeyConfigurationOptions/enableMetadata": [
@@ -7191,6 +7236,12 @@
       "label": "Reject metadata when disabled",
       "test": "adapters/sqlstore/apikey_test.go",
       "marker": "expect(e, \"METADATA_DISABLED\")"
+    },
+    {
+      "label": "Keep metadata given at creation and return it on a later read when metadata is enabled",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "denied permission consumed a use or lost metadata",
+      "complete": true
     }
   ],
   "plugin-symbol/api-key/ApiKeyConfigurationOptions/keyExpiration": [
@@ -7425,6 +7476,12 @@
       "label": "Require explicit opt-in and reject ambiguous credentials across configurations sharing a header",
       "test": "adapters/sqlstore/apikey_session_test.go",
       "marker": "a key authenticated a session without opt-in"
+    },
+    {
+      "label": "Return the key owner's session from a native session read that carries the key header",
+      "test": "adapters/sqlstore/apikey_session_test.go",
+      "marker": "native session did not identify the verified key owner",
+      "complete": true
     }
   ],
   "plugin-symbol/api-key/ApiKeyConfigurationOptions/references": [
@@ -7440,6 +7497,12 @@
       "label": "Read a request-scoped session, invite a member and enroll an authenticator",
       "test": "conformance/core.test.mjs",
       "marker": "official clients share organization key ownership and API-key sessions"
+    },
+    {
+      "label": "Resolve a session from the host's credential extractor and ignore the default header once an extractor is set",
+      "test": "adapters/sqlstore/apikey_hooks_test.go",
+      "marker": "custom extraction fell back to configured headers or ran twice",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/api-key/advanced.mdx#L16/User-Owned Keys Only": [
@@ -7486,6 +7549,12 @@
       "label": "Use the configured namespace for key retrieval, updates and deletion",
       "test": "conformance/core.test.mjs",
       "marker": "official clients share organization key ownership and API-key sessions"
+    },
+    {
+      "label": "Reject verification of a key by a configuration other than the one that issued it",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "verify(job.Secret, nil, false, \"INVALID_API_KEY\")",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/api-key/advanced.mdx#L204": [
@@ -7501,6 +7570,12 @@
       "label": "Enforce ownership type, namespace and role permissions across three databases",
       "test": "adapters/sqlstore/apikey_session_test.go",
       "marker": "func TestOrgAPIKeyAndEphemeralSession("
+    },
+    {
+      "label": "Issue a key under an organization configuration that is owned by the organization, not by the user who created it",
+      "test": "adapters/sqlstore/apikey_session_test.go",
+      "marker": "organization key owner was not the group",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/api-key/advanced.mdx#L249": [
@@ -7635,6 +7710,11 @@
       "label": "Recheck the current grants before committing an authorized mutation",
       "test": "adapters/sqlstore/apikey_session_test.go",
       "marker": "scope downgrade during request still created an invitation"
+    },
+    {
+      "label": "Deny an invitation after the server update call replaces the key's grants",
+      "test": "adapters/sqlstore/apikey_session_test.go",
+      "marker": "expectHTTP(req(\"organization/invite-member\", profile.Secret, \"X-Api-Key\", inv), 403, \"INSUFFICIENT_API_KEY_PERMISSIONS\")"
     }
   ],
   "docs/content/docs/plugins/i18n.mdx#L57/`ar`": [
@@ -10861,6 +10941,12 @@
       "label": "Validate the digest table when another PostgreSQL installer finishes during schema discovery",
       "test": "adapters/sqlstore/migrate_postgres_test.go",
       "marker": "func TestPostgresConcurrentLedgerInstaller("
+    },
+    {
+      "label": "Reject an unknown credential even when the application validator accepts it",
+      "test": "adapters/sqlstore/apikey_validator_test.go",
+      "marker": "callback acceptance authenticated an unknown credential",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L464": [
@@ -37652,6 +37738,1023 @@
       "test": "adapters/sqlstore/emailotp_resend_test.go",
       "marker": "after a rotate resend the new code did not sign in with a fresh attempt budget:",
       "complete": true
+    }
+  ],
+  "plugin-symbol/api-key/API_KEY_TABLE_NAME": [
+    {
+      "label": "Read the digest of a key issued by the Go server from the apikey table of a shared SQLite file",
+      "test": "conformance/core.test.mjs",
+      "marker": "const saved = database.prepare('SELECT key FROM apikey WHERE id=?').get(row.id);",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/api-key/PredefinedApiKeyOptions/apiKeyHeaders": [
+    {
+      "label": "Read the key from the default X-API-Key header on an application route and a session read",
+      "test": "adapters/sqlstore/apikey_validator_test.go",
+      "marker": "req.Header.Set(\"X-API-Key\", key.Secret)",
+      "complete": true
+    },
+    {
+      "label": "Accept a key sent in a configured custom header",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "configured key header failed"
+    },
+    {
+      "label": "Refuse a key sent in the X-Api-Key header when only other header names are configured",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "unconfigured credential header accepted"
+    },
+    {
+      "label": "Reject a request carrying two configured key headers",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "ambiguous key headers accepted"
+    }
+  ],
+  "plugin-symbol/api-key/PredefinedApiKeyOptions/requireName": [
+    {
+      "label": "Reject an unnamed key with NAME_REQUIRED when a name is required",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "expect(e, \"NAME_REQUIRED\")",
+      "complete": true
+    },
+    {
+      "label": "Issue an unnamed key under a configuration that leaves names optional",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "expires, e := keys.Create(ctx, owner.User.ID, ak.CreateInput{ExpiresIn: lifetime})"
+    }
+  ],
+  "plugin-symbol/api-key/PredefinedApiKeyOptions/enableMetadata": [
+    {
+      "label": "Reject metadata with METADATA_DISABLED when metadata is left off",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "expect(e, \"METADATA_DISABLED\")",
+      "complete": true
+    },
+    {
+      "label": "Return stored metadata when metadata is enabled",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "denied permission consumed a use or lost metadata"
+    }
+  ],
+  "plugin-symbol/api-key/PredefinedApiKeyOptions/enableSessionForAPIKeys": [
+    {
+      "label": "Return no session for a key header when session authentication is left off",
+      "test": "adapters/sqlstore/apikey_session_test.go",
+      "marker": "a key authenticated a session without opt-in",
+      "complete": true
+    },
+    {
+      "label": "Return the key owner's session, marked as an application credential, for a key header when session authentication is on",
+      "test": "adapters/sqlstore/apikey_session_test.go",
+      "marker": "decoded key session lost its credential type"
+    }
+  ],
+  "plugin-symbol/api-key/PredefinedApiKeyOptions/references": [
+    {
+      "label": "Keep user-owned and organization-owned keys bound to separate owners when their IDs coincide",
+      "test": "adapters/sqlstore/apikey_session_test.go",
+      "marker": "deleting a user revoked an organization key with the same reference ID",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/api-key/isDefaultConfigId": [
+    {
+      "label": "Delete a key created under configId \"default\" without naming a configuration, on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(ok(await owner.apiKey.delete({ keyId: personal.id })).success, true);",
+      "complete": true
+    },
+    {
+      "label": "Record \"default\" as the configuration of a key issued under a configuration with no ID, on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(row.configId, \"default\");"
+    }
+  ],
+  "plugin-symbol/api-key/configIdMatches": [
+    {
+      "label": "Delete a key created under configId \"default\" without naming a configuration, on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(ok(await owner.apiKey.delete({ keyId: personal.id })).success, true);",
+      "complete": true
+    },
+    {
+      "label": "Rename an organization key under its own configId \"teams\", on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "configId: \"teams\", name: \"Deploy\""
+    },
+    {
+      "label": "Answer KEY_NOT_FOUND for an organization key looked up under the default configuration, on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "id: team.id, configId: \"default\""
+    },
+    {
+      "label": "Answer KEY_NOT_FOUND for an organization key read under the default configuration",
+      "test": "adapters/sqlstore/apikey_session_test.go",
+      "marker": "_, e = owner.GetAPIKey(ctx, teamKey.ID, \"default\")"
+    }
+  ],
+  "plugin-symbol/api-key/createApiKeyRoutes": [
+    {
+      "label": "Serve create, get, update and delete to the key owner and list to another signed-in user over HTTP, and answer 404 for the verification and expired-key cleanup paths",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "server-only API exposed over HTTP",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/api-key/ApiKey": [
+    {
+      "label": "Return referenceId, configId, start, name and metadata on keys, and leave out the stored digest on reads and lists, through the released client on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "the pinned API key client manages owner credentials on both runtimes"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/advanced.mdx#L563/Double Rate-Limit Increment": [
+    {
+      "label": "Count one use for a session read and another for a separate middleware verification of the same key",
+      "test": "adapters/sqlstore/apikey_validator_test.go",
+      "marker": "only successful requests should consume uses",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/api-key/advanced.mdx#L613/First Request": [
+    {
+      "label": "Accept the first request at a Go application route with a key issued by the other runtime, and store a request count of 1",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(spent.requestCount, 1);",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/api-key/advanced.mdx#L615/Within Window": [
+    {
+      "label": "Allow uses up to a key's rate maximum within one window, then reject further uses with RATE_LIMIT_EXCEEDED, across two service instances",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "race(ak.CreateInput{Policy: ak.Policy{RateLimitMax: &max}}, 2, \"RATE_LIMIT_EXCEEDED\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/api-key/advanced.mdx#L617/Window Reset": [
+    {
+      "label": "Accept a key that reached its one-request limit again once more than its window has passed since the last request",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "elapsed rate window did not reopen"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/advanced.mdx#L619/Rate Limit Exceeded": [
+    {
+      "label": "Answer 429 with a Retry-After interval when a key goes past its rate limit at an application route",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "rate rejection omitted retry interval"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L11/Create, manage, and verify API keys": [
+    {
+      "label": "Create, read, rename, disable and delete keys through the Go client, keep them out of another user's list, and verify them with the Go service, on three SQL engines",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "func TestAPIKeyLifecycleAndPolicy(",
+      "complete": true
+    },
+    {
+      "label": "List the owner's key with a total of one through the released client on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(result.data.apiKeys[0].id, row.id);"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L12/Built-in rate limiting": [
+    {
+      "label": "Accept only a key's rate maximum of concurrent verifications within one window and reject the rest as rate limited",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "race(ak.CreateInput{Policy: ak.Policy{RateLimitMax: &max}}, 2, \"RATE_LIMIT_EXCEEDED\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L13/Custom expiration times, remaining count, and refill systems": [
+    {
+      "label": "Reject a key with a custom lifetime once its expiry has passed",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "verify(expires.Secret, nil, false, \"KEY_EXPIRED\")",
+      "complete": true
+    },
+    {
+      "label": "Grant exactly the remaining number of uses under concurrent verification",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "race(ak.CreateInput{Policy: ak.Policy{Remaining: &usage, RateLimitEnabled: &noRate}}, 3, \"USAGE_EXCEEDED\")"
+    },
+    {
+      "label": "Refuse a depleted refillable key until its refill interval has passed",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "verify(refill.Secret, nil, false, \"USAGE_EXCEEDED\")"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L14/Metadata for API keys": [
+    {
+      "label": "Return metadata given at creation on a later read of the key",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "denied permission consumed a use or lost metadata",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L15/Custom prefix": [
+    {
+      "label": "Start a key created over HTTP with prefix app_ with that prefix",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "issued credential did not match the owner"
+    },
+    {
+      "label": "Pass the configured default prefix, or the prefix given at creation, to a custom key generator on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(created.data.key, \"host-\" + (input.prefix ?? \"app_\") + \"Q\".repeat(32));"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L16/Sessions from API keys": [
+    {
+      "label": "Resolve the key owner's session from a personal key header with the released client, using the key id as the session id",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(current.session.id, personal.id);"
+    },
+    {
+      "label": "Return the key owner from a native session lookup with a key header, marked as an application credential",
+      "test": "adapters/sqlstore/apikey_session_test.go",
+      "marker": "native session did not identify the verified key owner"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L18/Multiple configurations for different API key types": [
+    {
+      "label": "Register a personal and an organization configuration on one mount and report KEY_NOT_FOUND for a team key looked up under the default configuration",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal((await owner.apiKey.get({ query: { id: team.id, configId: \"default\" } })).error.code, \"KEY_NOT_FOUND\");"
+    },
+    {
+      "label": "Remove expired keys only within the selected configuration",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "expired cleanup crossed configuration boundary"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L19/Organization-owned API keys in addition to user-owned keys": [
+    {
+      "label": "Create a key whose reference is the organization on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(team.referenceId, org.id);"
+    },
+    {
+      "label": "Keep an organization key out of the member's personal key list",
+      "test": "adapters/sqlstore/apikey_session_test.go",
+      "marker": "organization key appeared in personal listing"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L91/`POST /api-key/create`": [
+    {
+      "label": "Create a key over HTTP for the signed-in user and return its full secret with that user as the owner",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "issued credential did not match the owner"
+    },
+    {
+      "label": "Create a key from trusted server code for a named user and resolve that user's session from it",
+      "test": "adapters/sqlstore/apikey_session_test.go",
+      "marker": "expectHTTP(req(\"get-session\", worker.Secret, \"X-Api-Key\", nil), 200, visitorUser.User.ID)"
+    },
+    {
+      "label": "Refuse a server-created organization key when the named user loses create permission before it is saved",
+      "test": "adapters/sqlstore/apikey_hooks_test.go",
+      "marker": "revoked organization issuer persisted a generated key"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L97/Parameter `configId` (optional)": [
+    {
+      "label": "Return configId default for a key created without configId, on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(row.configId, \"default\");"
+    },
+    {
+      "label": "Create an organization-owned key when configId names the organization configuration",
+      "test": "adapters/sqlstore/apikey_session_test.go",
+      "marker": "organization key owner was not the group"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L105/Parameter `expiresIn` (optional)": [
+    {
+      "label": "Reject an expiresIn above the configured maximum",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "expect(e, \"EXPIRES_IN_IS_TOO_LARGE\")"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L111/Parameter `userId` (optional)": [
+    {
+      "label": "Reject a userId sent to the HTTP create route with UNAUTHORIZED_SESSION",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "expect(member.Do(ctx, \"POST\", \"/api-key/create\", map[string]any{\"userId\": foreign.User.ID}, nil), \"UNAUTHORIZED_SESSION\")"
+    },
+    {
+      "label": "Give a key created by server code for a named user to that user",
+      "test": "adapters/sqlstore/apikey_session_test.go",
+      "marker": "expectHTTP(req(\"get-session\", worker.Secret, \"X-Api-Key\", nil), 200, visitorUser.User.ID)"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L116/Parameter `organizationId` (optional)": [
+    {
+      "label": "Make the organization named in organizationId the key's reference",
+      "test": "adapters/sqlstore/apikey_session_test.go",
+      "marker": "organization key owner was not the group"
+    },
+    {
+      "label": "Refuse an organization key to a user outside that organization before the generator runs",
+      "test": "adapters/sqlstore/apikey_hooks_test.go",
+      "marker": "foreign member reached the organization generator"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L120/Parameter `prefix` (optional)": [
+    {
+      "label": "Start the issued secret with the prefix given at creation",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "issued credential did not match the owner"
+    },
+    {
+      "label": "Pass the prefix given at creation to a custom key generator on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(created.data.key, \"host-\" + (input.prefix ?? \"app_\") + \"Q\".repeat(32));"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L125/Parameter `remaining` (optional)": [
+    {
+      "label": "Allow exactly the remaining count set by server-side creation across concurrent verifications",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "race(ak.CreateInput{Policy: ak.Policy{Remaining: &usage, RateLimitEnabled: &noRate}}, 3, \"USAGE_EXCEEDED\")"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L134/Parameter `refillAmount` (optional)": [
+    {
+      "label": "Refuse a key once its uses are spent and accept it again after a refill",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "verify(refill.Secret, nil, false, \"USAGE_EXCEEDED\")"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L139/Parameter `refillInterval` (optional)": [
+    {
+      "label": "Refuse a depleted key inside its refill interval and accept it after its last refill time is moved back past the interval",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "verify(refill.Secret, nil, false, \"USAGE_EXCEEDED\")"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L149/Parameter `rateLimitMax` (optional)": [
+    {
+      "label": "Accept exactly the per-key maximum of two concurrent verifications, then return RATE_LIMIT_EXCEEDED",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "race(ak.CreateInput{Policy: ak.Policy{RateLimitMax: &max}}, 2, \"RATE_LIMIT_EXCEEDED\")"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L159/Parameter `permissions` (optional)": [
+    {
+      "label": "Reject permissions sent to the HTTP create route as a server-only property",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "\"permissions\": map[string][]string{\"admin\": {\"all\"}}}, nil), \"SERVER_ONLY_PROPERTY\")"
+    },
+    {
+      "label": "Allow an invitation with a key that server code created with that permission",
+      "test": "adapters/sqlstore/apikey_session_test.go",
+      "marker": "expectHTTP(req(\"organization/invite-member\", priv.Secret, \"X-Api-Key\", inv), 200, inv[\"email\"])"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L166": [
+    {
+      "label": "Return the created key with its full secret, owner, configuration, display start and metadata on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(row.key.length, 69);"
+    },
+    {
+      "label": "Return NAME_REQUIRED as an API error when a required name is missing",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "expect(e, \"NAME_REQUIRED\")"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L175/`POST /api-key/verify` (server API)": [
+    {
+      "label": "Keep the verification endpoint off the HTTP router",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "server-only API exposed over HTTP"
+    },
+    {
+      "label": "Verify a secret through the trusted Go method and check its validity, key and error code",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "wrong verification result"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L189/Parameter `key`": [
+    {
+      "label": "Accept the issued secret when the required permission is granted",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "verify(made.Secret, ak.Permissions{\"reports\": {\"read\"}}, true, \"\")"
+    },
+    {
+      "label": "Return INVALID_API_KEY for the secret of a deleted key",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "verify(made.Secret, nil, false, \"INVALID_API_KEY\")"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L193/Parameter `permissions` (optional)": [
+    {
+      "label": "Refuse a key with KEY_NOT_FOUND when a required action is not granted",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "verify(made.Secret, ak.Permissions{\"reports\": {\"write\"}}, false, \"KEY_NOT_FOUND\")"
+    },
+    {
+      "label": "Count only the permitted verification in the key's request count",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "denied permission consumed a use or lost metadata"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L198": [
+    {
+      "label": "Return valid with the key on success, and invalid with a coded error and no key on failure",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "wrong verification result"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L212/`GET /api-key/get`": [
+    {
+      "label": "Return the owner's key with its request count and metadata over the GET route",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "got, err := member.GetAPIKey(ctx, made.ID, \"\")"
+    },
+    {
+      "label": "Return KEY_NOT_FOUND when another user requests the key",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "_, err = outsider.GetAPIKey(ctx, made.ID, \"\")"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L218/Parameter `configId` (optional)": [
+    {
+      "label": "Return KEY_NOT_FOUND when an organization key is requested under the default configuration",
+      "test": "adapters/sqlstore/apikey_session_test.go",
+      "marker": "_, e = owner.GetAPIKey(ctx, teamKey.ID, \"default\")"
+    },
+    {
+      "label": "Find a default-configuration key when configId is omitted",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "got, err := member.GetAPIKey(ctx, made.ID, \"\")"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L222/Parameter `id`": [
+    {
+      "label": "Return the key named by id to its owner",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "got, err := member.GetAPIKey(ctx, made.ID, \"\")"
+    },
+    {
+      "label": "Return KEY_NOT_FOUND for the id of a deleted key on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal((await client.apiKey.get({ query: { id: row.id } })).error.code, \"KEY_NOT_FOUND\");"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L227": [
+    {
+      "label": "Leave the key field out of the raw GET response",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "management response contained"
+    },
+    {
+      "label": "Return no key value in the released client's get result on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(read.data.key, undefined);"
+    },
+    {
+      "label": "Return the key's request count and metadata from get",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "denied permission consumed a use or lost metadata"
+    },
+    {
+      "label": "Return KEY_NOT_FOUND as an API error when another user requests the key",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "_, err = outsider.GetAPIKey(ctx, made.ID, \"\")"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L240/`POST /api-key/update`": [
+    {
+      "label": "Save the owner's enabled and name changes over HTTP and return the updated key",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "owner update was not saved"
+    },
+    {
+      "label": "Return KEY_NOT_FOUND when another user updates the key",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "_, err = outsider.UpdateAPIKey(ctx, client.UpdateAPIKeyRequest{KeyID: made.ID, Name: &name})"
+    },
+    {
+      "label": "Change a key's permissions from trusted server code for its owning user",
+      "test": "adapters/sqlstore/apikey_session_test.go",
+      "marker": "_, err := users.Update(ctx, ownerUser.User.ID, profile.ID, ak.UpdateInput{Policy: ak.Policy{Permissions: ak.Permissions{\"reports\": {\"read\"}}}})"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L246/Parameter `configId` (optional)": [
+    {
+      "label": "Rename an organization key by naming its configuration on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(ok(await owner.apiKey.update({ keyId: team.id, configId: \"teams\", name: \"Deploy\" })).name, \"Deploy\");"
+    },
+    {
+      "label": "Update a default-configuration key when configId is omitted",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "owner update was not saved"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L250/Parameter `keyId`": [
+    {
+      "label": "Save changes to the key named by keyId",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "owner update was not saved"
+    },
+    {
+      "label": "Return KEY_NOT_FOUND when another user sends the same keyId",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "_, err = outsider.UpdateAPIKey(ctx, client.UpdateAPIKeyRequest{KeyID: made.ID, Name: &name})"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L255/Parameter `userId` (optional)": [
+    {
+      "label": "Update a key from trusted server code by naming its owning user",
+      "test": "adapters/sqlstore/apikey_session_test.go",
+      "marker": "_, err := users.Update(ctx, ownerUser.User.ID, profile.ID, ak.UpdateInput{Policy: ak.Policy{Permissions: ak.Permissions{\"reports\": {\"read\"}}}})"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L259/Parameter `name` (optional)": [
+    {
+      "label": "Rename a key through the released client on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(change.data.name, \"Renamed\");"
+    },
+    {
+      "label": "Save the owner's new name over HTTP",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "owner update was not saved"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L264/Parameter `enabled` (optional)": [
+    {
+      "label": "Return KEY_DISABLED from verification after the owner disables the key over HTTP",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "verify(made.Secret, nil, false, \"KEY_DISABLED\")"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L269/Parameter `remaining` (optional)": [
+    {
+      "label": "Reject remaining sent to the HTTP update route as a server-only property",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "\"remaining\": 300}, nil), \"SERVER_ONLY_PROPERTY\")"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L309/Parameter `permissions` (optional)": [
+    {
+      "label": "Refuse a scoped request after server code narrows the key's permissions during that request",
+      "test": "adapters/sqlstore/apikey_session_test.go",
+      "marker": "scope downgrade during request still created an invitation"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L314": [
+    {
+      "label": "Return the updated key fields to the owner",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "owner update was not saved"
+    },
+    {
+      "label": "Return NO_VALUES_TO_UPDATE as an API error for an empty update",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "expect(err, \"NO_VALUES_TO_UPDATE\")"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L323/`POST /api-key/delete`": [
+    {
+      "label": "Return KEY_NOT_FOUND when another user deletes the key",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "expect(outsider.DeleteAPIKey(ctx, made.ID, \"\"), \"KEY_NOT_FOUND\")"
+    },
+    {
+      "label": "Return success when the owner deletes a key through the released client on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(removed.data.success, true);"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L329/Parameter `configId` (optional)": [
+    {
+      "label": "Delete an organization key by naming its configuration on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "keyId: team.id, configId: \"teams\" })).success"
+    },
+    {
+      "label": "Delete a default-configuration key when configId is omitted",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "must(member.DeleteAPIKey(ctx, made.ID, \"\"))"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L333/Parameter `keyId`": [
+    {
+      "label": "Delete the key named by keyId so its secret no longer verifies",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "must(member.DeleteAPIKey(ctx, made.ID, \"\"))"
+    },
+    {
+      "label": "Refuse deletion when another user sends the same keyId",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "expect(outsider.DeleteAPIKey(ctx, made.ID, \"\"), \"KEY_NOT_FOUND\")"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L338": [
+    {
+      "label": "Return success true from a delete request on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(removed.data.success, true);",
+      "complete": true
+    },
+    {
+      "label": "Return a KEY_NOT_FOUND error when another user deletes the key",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "expect(outsider.DeleteAPIKey(ctx, made.ID, \"\"), \"KEY_NOT_FOUND\")"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L353/`GET /api-key/list`": [
+    {
+      "label": "List the signed-in owner's keys over GET with the official client on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "const result = await client.apiKey.list({ query: { limit: 4, offset: 0 } });"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L359/Parameter `configId` (optional)": [
+    {
+      "label": "Find an organization key in its own configuration when the list names no configuration",
+      "test": "adapters/sqlstore/apikey_session_test.go",
+      "marker": "aggregated organization page lost key"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L364/Parameter `organizationId` (optional)": [
+    {
+      "label": "Return an organization's keys when organizationId is given, on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "query: { organizationId: org.id } })).apiKeys[0].id",
+      "complete": true
+    },
+    {
+      "label": "Leave organization keys out of the list when organizationId is omitted, on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(ok(await owner.apiKey.list()).total, 0);"
+    },
+    {
+      "label": "Return the caller's own key when organizationId is omitted, on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(result.data.apiKeys[0].id, row.id);"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L385": [
+    {
+      "label": "Report the owner's key count as total on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(result.data.total, 1);"
+    },
+    {
+      "label": "Omit the secret from listed keys on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(result.data.apiKeys[0].key, undefined);"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L447/`POST /api-key/delete-all-expired-api-keys` (server API)": [
+    {
+      "label": "Remove exactly the one expired key in its configuration through the server cleanup call",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "expired cleanup did not remove exactly one key"
+    },
+    {
+      "label": "Keep a live key in place after the cleanup call",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "live key lost during sweep"
+    },
+    {
+      "label": "Return 404 for the cleanup route over HTTP",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "server-only API exposed over HTTP"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/reference.mdx#L17/`\"user\"`": [
+    {
+      "label": "Record the session user as the owner of a key from a user-owned configuration",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "issued credential did not match the owner"
+    },
+    {
+      "label": "Return the signed-up user's ID as the key reference on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(row.referenceId, account.data.user.id);"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/reference.mdx#L18/`\"organization\"`": [
+    {
+      "label": "Record the organization as the owner of a key from an organization configuration",
+      "test": "adapters/sqlstore/apikey_session_test.go",
+      "marker": "organization key owner was not the group"
+    },
+    {
+      "label": "Return the organization ID as the key reference on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(team.referenceId, org.id);"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/reference.mdx#L154/`\"database\"`": [
+    {
+      "label": "Store issued keys in the SQL apikey table on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "stored value is not the secret digest",
+      "complete": true
+    },
+    {
+      "label": "Read the Go-issued key row from the shared SQLite database",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(saved.key, await defaultKeyHasher(row.key));"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/reference.mdx#L323": [
+    {
+      "label": "Allow an invitation with a key created through the server call with an invitation create grant",
+      "test": "adapters/sqlstore/apikey_session_test.go",
+      "marker": "expectHTTP(req(\"organization/invite-member\", priv.Secret, \"X-Api-Key\", inv), 200, inv[\"email\"])",
+      "complete": true
+    },
+    {
+      "label": "Deny an organization listing to a key created with only a reports read grant",
+      "test": "adapters/sqlstore/apikey_session_test.go",
+      "marker": "expectHTTP(req(\"organization/list\", limited.Secret, \"X-Api-Key\", nil), 403, \"INSUFFICIENT_API_KEY_PERMISSIONS\")"
+    },
+    {
+      "label": "Refuse permissions supplied by a browser create request",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "expect(member.Do(ctx, \"POST\", \"/api-key/create\", map[string]any{\"permissions\""
+    }
+  ],
+  "docs/content/docs/plugins/api-key/reference.mdx#L384": [
+    {
+      "label": "Accept a Go request with a key whose resource-to-actions grant the other runtime wrote to the shared database",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(application.status, 200);"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/reference.mdx#L409/`apiKeyTableFields.id`": [
+    {
+      "label": "Generate the apikey.id column (not-null text primary key) exactly as the pinned schema on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/api-key/reference.mdx#L416/`apiKeyTableFields.configId`": [
+    {
+      "label": "Generate the apikey.configId column (not-null indexed text) exactly as the pinned schema on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    },
+    {
+      "label": "Assign the default configuration ID to a new key on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(row.configId, \"default\");"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/reference.mdx#L422/`apiKeyTableFields.name`": [
+    {
+      "label": "Generate the apikey.name column (nullable text) exactly as the pinned schema on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    },
+    {
+      "label": "Save and return a renamed key",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "owner update was not saved"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/reference.mdx#L428/`apiKeyTableFields.start`": [
+    {
+      "label": "Generate the apikey.start column (nullable text) exactly as the pinned schema on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    },
+    {
+      "label": "Return the first six characters of the secret as start on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(row.start, row.key.slice(0, 6));"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/reference.mdx#L435/`apiKeyTableFields.prefix`": [
+    {
+      "label": "Generate the apikey.prefix column (nullable text) exactly as the pinned schema on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    },
+    {
+      "label": "Return the effective plain-text prefix on a newly issued key",
+      "test": "adapters/sqlstore/apikey_hooks_test.go",
+      "marker": "incorrect personal generation inputs or display fields"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/reference.mdx#L441/`apiKeyTableFields.key`": [
+    {
+      "label": "Generate the apikey.key column (not-null indexed text) exactly as the pinned schema on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    },
+    {
+      "label": "Store the digest rather than the secret in the key column",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "stored value is not the secret digest"
+    },
+    {
+      "label": "Store a key digest that matches the other runtime's hasher on shared SQLite",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(saved.key, await defaultKeyHasher(row.key));"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/reference.mdx#L446/`apiKeyTableFields.referenceId`": [
+    {
+      "label": "Generate the apikey.referenceId column (not-null indexed text) exactly as the pinned schema on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    },
+    {
+      "label": "Store the issuing user as a personal key's referenceId",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "issued credential did not match the owner"
+    },
+    {
+      "label": "Store the organization as an organization key's referenceId",
+      "test": "adapters/sqlstore/apikey_session_test.go",
+      "marker": "organization key owner was not the group"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/reference.mdx#L453/`apiKeyTableFields.refillInterval`": [
+    {
+      "label": "Generate the apikey.refillInterval column (nullable integer) exactly as the pinned schema on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/reference.mdx#L459/`apiKeyTableFields.refillAmount`": [
+    {
+      "label": "Generate the apikey.refillAmount column (nullable integer) exactly as the pinned schema on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()"
+    },
+    {
+      "label": "Use up a refillable key's allowance before its refill comes due",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "verify(refill.Secret, nil, false, \"USAGE_EXCEEDED\")"
+    },
+    {
+      "label": "Accept a depleted refillable key again once its refill interval has passed",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "UPDATE \"apikey\" SET \"lastRefillAt\"=?"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/reference.mdx#L465/`apiKeyTableFields.lastRefillAt`": [
+    {
+      "label": "Generate the apikey.lastRefillAt column (nullable date) exactly as the pinned schema on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()"
+    },
+    {
+      "label": "Refill a depleted key once its stored last refill time is older than the interval",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "UPDATE \"apikey\" SET \"lastRefillAt\"=?"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/reference.mdx#L471/`apiKeyTableFields.enabled`": [
+    {
+      "label": "Generate the apikey.enabled column (nullable boolean) exactly as the pinned schema on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    },
+    {
+      "label": "Reject verification after the owner disables the key",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "verify(made.Secret, nil, false, \"KEY_DISABLED\")"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/reference.mdx#L477/`apiKeyTableFields.rateLimitEnabled`": [
+    {
+      "label": "Generate the apikey.rateLimitEnabled column (nullable boolean) exactly as the pinned schema on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/reference.mdx#L483/`apiKeyTableFields.rateLimitTimeWindow`": [
+    {
+      "label": "Generate the apikey.rateLimitTimeWindow column (nullable integer) exactly as the pinned schema on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/reference.mdx#L489/`apiKeyTableFields.rateLimitMax`": [
+    {
+      "label": "Generate the apikey.rateLimitMax column (nullable integer) exactly as the pinned schema on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    },
+    {
+      "label": "Accept exactly the configured maximum of concurrent requests in one window",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "race(ak.CreateInput{Policy: ak.Policy{RateLimitMax: &max}}, 2, \"RATE_LIMIT_EXCEEDED\")"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/reference.mdx#L496/`apiKeyTableFields.requestCount`": [
+    {
+      "label": "Generate the apikey.requestCount column (nullable integer) exactly as the pinned schema on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    },
+    {
+      "label": "Store a request count of one after Go middleware accepts a key",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(spent.requestCount, 1);"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/reference.mdx#L503/`apiKeyTableFields.remaining`": [
+    {
+      "label": "Generate the apikey.remaining column (nullable integer) exactly as the pinned schema on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    },
+    {
+      "label": "Lower the stored remaining count only for successful verifications",
+      "test": "adapters/sqlstore/apikey_validator_test.go",
+      "marker": "only successful requests should consume uses"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/reference.mdx#L509/`apiKeyTableFields.lastRequest`": [
+    {
+      "label": "Generate the apikey.lastRequest column (nullable date) exactly as the pinned schema on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    },
+    {
+      "label": "Reopen the rate window once the stored last request time is older than the window",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "elapsed rate window did not reopen"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/reference.mdx#L515/`apiKeyTableFields.expiresAt`": [
+    {
+      "label": "Generate the apikey.expiresAt column (nullable date) exactly as the pinned schema on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    },
+    {
+      "label": "Reject a key once its stored expiration time has passed",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "verify(expires.Secret, nil, false, \"KEY_EXPIRED\")"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/reference.mdx#L521/`apiKeyTableFields.createdAt`": [
+    {
+      "label": "Generate the apikey.createdAt column (not-null date) exactly as the pinned schema on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/api-key/reference.mdx#L526/`apiKeyTableFields.updatedAt`": [
+    {
+      "label": "Generate the apikey.updatedAt column (not-null date) exactly as the pinned schema on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/reference.mdx#L531/`apiKeyTableFields.permissions`": [
+    {
+      "label": "Generate the apikey.permissions column (nullable text) exactly as the pinned schema on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    },
+    {
+      "label": "Enforce a permissions value the other runtime stored when Go middleware checks the key",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(application.status, 200);"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/reference.mdx#L537/`apiKeyTableFields.metadata`": [
+    {
+      "label": "Generate the apikey.metadata column (nullable text) exactly as the pinned schema on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    },
+    {
+      "label": "Return the stored metadata object on a later lookup",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "denied permission consumed a use or lost metadata"
     }
   ]
 }
