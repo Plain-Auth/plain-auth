@@ -170,7 +170,7 @@ func resolveSignedToken(ctx context.Context, verifier *oidc.IDTokenVerifier, rul
 		return profile, time.Time{}, errors.New("unexpected authorized party")
 	}
 	profile, err = rules.profile(token)
-	if err == nil {
+	if err == nil && profile.Data == nil {
 		var claims map[string]any
 		if err = token.Claims(&claims); err == nil {
 			profile.Data = claims

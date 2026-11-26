@@ -2992,6 +2992,11 @@
       "label": "Treat a Kakao email that Kakao marks verified but not valid as unverified",
       "test": "providers/catalog_test.go",
       "marker": "func TestCatalogIdentityBinding("
+    },
+    {
+      "label": "A Kakao SDK ID token signs in for the REST API key or a listed native app key with its nonce, as the account the profile endpoint names, with an unverified email; another audience, issuer or nonce and a non-numeric subject are refused (deviation: the nonce is required)",
+      "test": "providers/kakao_test.go",
+      "marker": "func TestKakaoIDToken(t *testing.T) {"
     }
   ],
   "provider/line": [
@@ -24950,6 +24955,12 @@
       "label": "Authenticate each catalog provider's browser code exchange with the configured client ID and secret",
       "test": "providers/catalog_test.go",
       "marker": "if id != \"fixture-client\" || secret != \"fixture-secret\""
+    },
+    {
+      "label": "Several app keys: Audiences adds the native app keys whose SDK ID tokens sign in, besides the REST API key",
+      "test": "providers/kakao_test.go",
+      "marker": "p := Kakao(\"rest-key\", \"\", KakaoOptions{Audiences: []string{\"native-key\"}, HTTPClient: client})",
+      "complete": true
     }
   ],
   "provider-option/kick/clientId": [
@@ -30667,6 +30678,13 @@
       "label": "An access token sent as token and accessToken signs in after debug_token binds it to the app and /me names the same user, a Limited Login token then signs into the same account, and account-info returns the Graph profile",
       "test": "providers/facebook_test.go",
       "marker": "func TestFacebookAccessTokenSignIn(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/authentication/kakao.mdx#L55": [
+    {
+      "label": "A Kakao SDK ID token signs in for the REST API key or a listed native app key with its nonce, as the account the profile endpoint names, with an unverified email; another audience, issuer or nonce and a non-numeric subject are refused (deviation: the nonce is required)",
+      "test": "providers/kakao_test.go",
+      "marker": "func TestKakaoIDToken(t *testing.T) {"
     }
   ]
 }

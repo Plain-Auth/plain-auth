@@ -203,6 +203,7 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
     - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
     - [x] Send the refresh grant to the provider's token endpoint with its client authentication and fields, and return the new tokens ([test](../../providers/catalog_test.go#L283))
     - [x] Treat a Kakao email that Kakao marks verified but not valid as unverified ([test](../../providers/catalog_test.go#L249))
+    - [x] A Kakao SDK ID token signs in for the REST API key or a listed native app key with its nonce, as the account the profile endpoint names, with an unverified email; another audience, issuer or nonce and a non-numeric subject are refused (deviation: the nonce is required) ([test](../../providers/kakao_test.go#L21))
   - [x] `kick` ([test](../../providers/catalog_test.go#L283))
     - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
     - [x] Send the refresh grant to the provider's token endpoint with its client authentication and fields, and return the new tokens ([test](../../providers/catalog_test.go#L283))
@@ -416,8 +417,9 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
     - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
       - [x] Authenticate each catalog provider's browser code exchange with the configured client ID and secret ([test](../../providers/catalog_test.go#L79))
   - [ ] `kakao`
-    - [ ] `clientId`
+    - [x] `clientId` ([test](../../providers/kakao_test.go#L33))
       - [x] Authenticate each catalog provider's browser code exchange with the configured client ID and secret ([test](../../providers/catalog_test.go#L79))
+      - [x] Several app keys: Audiences adds the native app keys whose SDK ID tokens sign in, besides the REST API key ([test](../../providers/kakao_test.go#L33))
   - [ ] `kick`
     - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
       - [x] Authenticate each catalog provider's browser code exchange with the configured client ID and secret ([test](../../providers/catalog_test.go#L79))

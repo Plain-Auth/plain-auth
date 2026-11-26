@@ -70,6 +70,8 @@ func New(name, clientID, secret string) (auth.OAuthProvider, error) {
 		return Microsoft(clientID, secret, MicrosoftOptions{})
 	case "facebook":
 		return Facebook(clientID, secret, FacebookOptions{}), nil
+	case "kakao":
+		return Kakao(clientID, secret, KakaoOptions{}), nil
 	}
 	if preset, ok := profilePresets[name]; ok {
 		return preset.provider(name, clientID, secret), nil

@@ -322,6 +322,10 @@ Set `Options.EncryptOAuthTokens` to `true` on every instance before accepting so
 
 A Limited Login ID token must be signed by Facebook's Limited Login keys for the App ID or a listed audience, carry the nonce and be at most an hour old; Facebook does not say whether its email is verified, so it is not. An access token is first checked with Graph's `debug_token`, using the App ID and secret, and must be valid for the App ID or a listed audience; `/me` must then name the same user, without following redirects, so the secret-bearing check never reaches another host. Both name the user by the same app-scoped ID as the browser flow, so they sign into the same account. An access token is kept as the account's access token and signs in at most once an hour. A Limited Login token without a nonce is refused; use the browser flow from an SDK that cannot set one. [Facebook tests](../providers/facebook_test.go)
 
+## Kakao SDK ID tokens
+
+`providers.Kakao(restAPIKey, secret, providers.KakaoOptions{Audiences: []string{nativeAppKey}})` also signs in with an ID token from the Kakao Android, iOS or Flutter SDKs, sent as `{ "token": "<ID token>", "nonce": "<nonce>" }`. Enable OpenID Connect in the Kakao Developers console and pass the nonce to the SDK login. The SDKs issue tokens for the app key they were started with, so list the native app keys in `Audiences`; the REST API key, which the browser flow uses, is always accepted. The token's numeric subject, nickname, picture and email name the same account as the browser flow, with the email unverified, since the token does not say; a non-numeric subject is refused. [Kakao tests](../providers/kakao_test.go)
+
 ## Gumroad, HubSpot, Patreon, Slack and Yandex
 
 Use the table name to construct the provider. The key you assign in `SocialProviders` determines the name sent by the client and the callback URL. Register the callback URL including your auth mount, for example `https://app.example.com/api/auth/callback/patreon`. Each registration needs an OAuth application at that provider and its own client credentials.

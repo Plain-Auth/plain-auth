@@ -442,6 +442,7 @@
     - [x] For kakao and each other catalog provider, sign-in/social followed by the callback exchanges the code once, reads the profile once and answers 302 with a session ([test](../../providers/catalog_test.go#L187))
   - [ ] Usage
     - [ ] Sign In with Kakao using ID Token
+      - [x] A Kakao SDK ID token signs in for the REST API key or a listed native app key with its nonce, as the account the profile endpoint names, with an unverified email; another audience, issuer or nonce and a non-numeric subject are refused (deviation: the nonce is required) ([test](../../providers/kakao_test.go#L21))
   - [ ] Options
     - [ ] Scopes
       - [x] The kakao authorization URL requests exactly its default scopes account_email, profile_image and profile_nickname ([test](../../providers/catalog_test.go#L162))
