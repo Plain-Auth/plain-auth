@@ -199,6 +199,15 @@ func TestSAMLProfileRawAttributes(t *testing.T) {
 	}
 }
 
+// Without an email attribute the NameID supplies the email, as in another
+// runtime.
+func TestSAMLProfileEmailFromNameID(t *testing.T) {
+	profile, err := samlProfile(&saml.Assertion{Subject: &saml.Subject{NameID: &saml.NameID{Value: "employee@acme.example"}}}, SAMLMapping{}, false)
+	if err != nil || profile.Email != "employee@acme.example" {
+		t.Fatal("the NameID did not supply the email", profile.Email, err)
+	}
+}
+
 // The SAML name joins givenName and surname (or the mapped names), falls back
 // to displayName and then the NameID, and several values for one name
 // attribute refuse the response.
@@ -569,6 +578,9 @@ func TestSAMLConfigAlgorithms(t *testing.T) {
 	}
 	if err := onlyRSA256.checkConfig(SAMLConfig{SignatureAlgorithm: "sha256"}); err != nil {
 		t.Fatal("the allow-list refused a short form of a listed URI", err)
+	}
+	if err := onlySHA256.checkConfig(SAMLConfig{DigestAlgorithm: "sha256"}); err != nil {
+		t.Fatal("the digest allow-list refused a short form of a listed URI", err)
 	}
 	if code, message := failure(onlySHA256.checkConfig(SAMLConfig{DigestAlgorithm: "sha512"})); code != "SAML_ALGORITHM_NOT_ALLOWED" || message != "SAML digest algorithm not in allow-list: sha512" {
 		t.Fatal("a digestAlgorithm outside the allow-list was accepted", code, message)

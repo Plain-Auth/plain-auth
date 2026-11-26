@@ -256,6 +256,9 @@ func TestEnterpriseSAMLResponsePolicy(t *testing.T) {
 				if location, session := signedWith(digestOnly, sso.SignatureRSASHA384); !refused(location, session, "saml_algorithm_not_allowed", "SAML digest algorithm not in allow-list: http://www.w3.org/2001/04/xmldsig-more#sha384") {
 					t.Fatal("the digest allow-list accepted a SHA-384 digest", location)
 				}
+				if location, session := signedWith(digestOnly, sso.SignatureRSASHA256); !home(location, session) {
+					t.Fatal("the digest allow-list refused a SHA-256 digest", location)
+				}
 				p.respond = func(req *saml.IdpAuthnRequest) { req.IDP.SignatureMethod = string(sso.SignatureRSASHA256) }
 				location, session := signedWith(sigOnly, sso.SignatureRSASHA512)
 				p.respond = nil
@@ -591,6 +594,38 @@ func TestEnterpriseSAMLResponsePolicy(t *testing.T) {
 					}
 				}
 			})
+			t.Run("certificates and request signing", func(t *testing.T) {
+				p := newSAMLPolicy(t, dialect)
+				_, _, oldPEM := samlTestCertificate(t)
+				_, _, otherPEM := samlTestCertificate(t)
+				p.directory("overlap", func(c *sso.SAMLConfig) { c.Certificates = sso.Certificates{oldPEM, p.idpPEM} })
+				p.directory("override", func(c *sso.SAMLConfig) {
+					c.Certificates = sso.Certificates{p.idpPEM}
+					c.IDPMetadata.Certificates = sso.Certificates{otherPEM}
+				})
+				p.directory("signed", func(c *sso.SAMLConfig) { c.AuthnRequestsSigned = true })
+				h := p.host(sso.SAMLOptions{}, nil)
+				run := func(id string) (*url.URL, bool) {
+					t.Helper()
+					req, state := p.start(h, id)
+					return samlOutcome(t, p.finish(h, id, req, state, nil, nil, nil))
+				}
+				if location, session := run("overlap"); location.String() != "https://service.test/home" || !session {
+					t.Fatal("a certificate list did not accept its current certificate", location)
+				}
+				if location, session := run("override"); location.Query().Get("error") != "invalid_saml_response" || session {
+					t.Fatal("idpMetadata.cert did not take precedence over cert", location)
+				}
+				// A directory that signs requests needs the host's signer.
+				if w := p.call(h, "POST", "sign-in/sso", map[string]any{"providerId": "signed", "providerType": "saml", "callbackURL": "/home"}); w.Code != 400 || !strings.Contains(w.Body.String(), "SAML request signing is not configured") {
+					t.Fatal("a signed-request directory started without a request signer", w.Code, w.Body.String())
+				}
+				key, cert, _ := samlTestCertificate(t)
+				signer := p.host(sso.SAMLOptions{RequestSigner: key, RequestCertificate: cert}, nil)
+				if w := p.call(signer, "GET", "sso/saml2/sp/metadata?providerId=signed", nil); w.Code != 200 || !strings.Contains(w.Body.String(), `AuthnRequestsSigned="true"`) {
+					t.Fatal("the SP metadata did not advertise signed requests", w.Code, w.Body.String())
+				}
+			})
 			t.Run("registration algorithms", func(t *testing.T) {
 				p := newSAMLPolicy(t, dialect)
 				def := p.host(sso.SAMLOptions{}, nil)
@@ -766,6 +801,9 @@ func TestEnterpriseSAMLResponsePolicy(t *testing.T) {
 				}
 				if location, session := run(def, expired(time.Hour)); !refused(location, session, "SAML assertion has expired") {
 					t.Fatal("an hour-old assertion did not fail with saml_error", location)
+				}
+				if location, session := run(def, future(2*time.Minute)); location.String() != "https://service.test/home" || !session {
+					t.Fatal("the default clock skew refused an assertion valid in two minutes", location)
 				}
 				if location, session := run(strict, future(2*time.Minute)); !refused(location, session, "SAML assertion is not yet valid") {
 					t.Fatal("a one-minute clock skew accepted an assertion valid only in two minutes", location)

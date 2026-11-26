@@ -41734,7 +41734,8 @@
     {
       "label": "Refuse a SAML configuration whose IdP metadata names no entity ID and carries no metadata XML",
       "test": "plugins/sso/saml_test.go",
-      "marker": "t.Fatal(\"a SAML configuration without an IdP entity ID or metadata was accepted\")"
+      "marker": "t.Fatal(\"a SAML configuration without an IdP entity ID or metadata was accepted\")",
+      "complete": true
     }
   ],
   "plugin-symbol/sso/SAMLConditions": [
@@ -41932,6 +41933,12 @@
       "label": "Return the registered signing certificate on both runtimes",
       "test": "conformance/sso-saml.mjs",
       "marker": "else assert.equal(registration.samlConfig.cert,cert);"
+    },
+    {
+      "label": "Accept a response signed by any certificate in a cert list and let idpMetadata.cert take precedence over cert, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "t.Fatal(\"idpMetadata.cert did not take precedence over cert\"",
+      "complete": true
     }
   ],
   "plugin-symbol/sso/SAMLConfig/audience": [
@@ -42026,6 +42033,12 @@
       "label": "Sign the HTTP-Redirect AuthnRequest when the directory sets authnRequestsSigned, and have the IdP verify it",
       "test": "adapters/sqlstore/sso_saml_test.go",
       "marker": "if !out.Redirect || r.URL.Query().Get(\"Signature\") == \"\" {"
+    },
+    {
+      "label": "Refuse a signed-request directory's sign-in without the host's request signer and advertise AuthnRequestsSigned in its SP metadata, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "t.Fatal(\"the SP metadata did not advertise signed requests\"",
+      "complete": true
     }
   ],
   "plugin-symbol/sso/SAMLConfig/mapping": [
@@ -42184,6 +42197,12 @@
       "label": "Reject a signed assertion whose InResponseTo names a different request than the one the browser started, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/sso_saml_test.go",
       "marker": "a.Subject.SubjectConfirmations[0].SubjectConfirmationData.InResponseTo = \"_otherRequest\""
+    },
+    {
+      "label": "Refuse a SAML response once its request lifetime has passed, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_defaults_test.go",
+      "marker": "t.Fatal(\"a SAML response after the request lifetime signed in\"",
+      "complete": true
     }
   ],
   "plugin-symbol/sso/SAMLSessionRecord": [
@@ -43467,6 +43486,12 @@
       "label": "Fill a new user's email from the default email attribute",
       "test": "adapters/sqlstore/sso_saml_test.go",
       "marker": "if status != 200 || !bytes.Contains(data, []byte(\"worker@staff.example\")) || !bytes.Contains(data, []byte(\"Local Employee\")) {"
+    },
+    {
+      "label": "Take the email from the NameID when no email attribute is sent",
+      "test": "plugins/sso/saml_test.go",
+      "marker": "t.Fatal(\"the NameID did not supply the email\"",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/sso/saml.mdx#L157/`name`": [
@@ -44864,6 +44889,12 @@
       "label": "Refuse a clock skew below zero or above three minutes, accept values within, and default to three minutes",
       "test": "plugins/sso/saml_test.go",
       "marker": "func TestSAMLClockSkewBounds("
+    },
+    {
+      "label": "Accept an assertion valid in two minutes under the default skew, refuse it under a one-minute skew, and bound the option, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "t.Fatal(\"the default clock skew refused an assertion valid in two minutes\"",
+      "complete": true
     }
   ],
   "plugin-symbol/sso/TimestampValidationOptions/requireTimestamps": [
@@ -44996,6 +45027,17 @@
       "label": "Apply the digest allow-list to a directory's digestAlgorithm",
       "test": "plugins/sso/saml_test.go",
       "marker": "a digestAlgorithm outside the allow-list was accepted"
+    },
+    {
+      "label": "Accept a listed digest in its short form and a SHA-256-signed response under a SHA-256 digest allow-list, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "t.Fatal(\"the digest allow-list refused a SHA-256 digest\"",
+      "complete": true
+    },
+    {
+      "label": "Accept the short form of a listed digest in a directory configuration",
+      "test": "plugins/sso/saml_test.go",
+      "marker": "t.Fatal(\"the digest allow-list refused a short form of a listed URI\""
     }
   ],
   "docs/content/docs/plugins/sso/saml-security.mdx#L93/Signature": [
@@ -45125,6 +45167,12 @@
       "label": "Refuse a deprecated algorithm rather than allow it: an RSA-SHA1 response fails with saml_deprecated_algorithm",
       "test": "adapters/sqlstore/sso_saml_policy_test.go",
       "marker": "an RSA-SHA1 response did not fail with saml_deprecated_algorithm"
+    },
+    {
+      "label": "Refuse a deprecated algorithm in an allow-list when the plugin is built; there is no allow mode, a documented deviation",
+      "test": "plugins/sso/saml_test.go",
+      "marker": "t.Fatal(\"a SHA-1 signature allow-list entry was accepted\")",
+      "complete": true
     }
   ],
   "plugin-symbol/sso/SAMLConfig/signatureAlgorithm": [
