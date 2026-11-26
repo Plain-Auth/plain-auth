@@ -51,6 +51,9 @@ func (h *Handler) Decommission(ctx context.Context, d Directory) (Retirement, er
 	if managedDirectory(d) {
 		return Retirement{}, invalid("invalidValue", "Retire a managed connection through its credential catalog")
 	}
+	// A configured connection is retired only in its configured domain, so a
+	// mistyped domain cannot bind it to another one for good; another runtime
+	// retires it in any supplied domain.
 	if declared, ok := h.declared[d.ID]; ok && d.ProvisioningDomainID != "" && declared.ProvisioningDomainID != d.ProvisioningDomainID {
 		return Retirement{}, ErrDomain
 	}

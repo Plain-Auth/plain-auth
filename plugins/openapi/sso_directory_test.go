@@ -246,6 +246,18 @@ func TestEnterpriseSAMLDocumentation(t *testing.T) {
 		if _, ok := paths[acs]; ok != enabled {
 			t.Fatalf("unexpected ACS route, enabled=%v", enabled)
 		}
+		if enabled {
+			// The GET returns a signed-in browser and takes RelayState only;
+			// the POST takes a form or JSON body.
+			get := node(paths, acs, "get")
+			params, _ := get["parameters"].([]any)
+			if get["requestBody"] != nil || len(params) != 2 || params[1].(obj)["name"] != "RelayState" || params[1].(obj)["in"] != "query" {
+				t.Fatal("the ACS GET was described with a request body or without RelayState", get)
+			}
+			if node(paths, acs, "post", "requestBody", "content")["application/json"] == nil {
+				t.Fatal("the ACS POST did not describe its JSON body")
+			}
+		}
 		if _, present := paths["/sso/update-provider"]; !present {
 			t.Fatal("provider update route missing", enabled)
 		}

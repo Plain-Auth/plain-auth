@@ -242,6 +242,15 @@ func TestEnterpriseSAMLDefaults(t *testing.T) {
 			if location := done.Header().Get("Location"); !strings.Contains(location, "error=signup_disabled") || stored("newcomer@acme.example") {
 				t.Fatal("requestSignUp let a SAML sign-up past DisableImplicitSignUp", location)
 			}
+			// A refused sign-in result lands on the success callback, as
+			// another runtime sends it.
+			if location := done.Header().Get("Location"); location != "https://service.test/home?error=signup_disabled" {
+				t.Fatal("a refused SAML sign-up did not land on the success callback", location)
+			}
+			// JSON keys are exact, so lowercased names carry no response.
+			if w := call("POST", "sso/saml2/sp/acs/acme", "", map[string]any{"samlresponse": "x", "relaystate": "y"}); w.Code != 400 {
+				t.Fatal("a JSON SAML response with lowercased keys was read", w.Code, w.Body.String())
+			}
 		})
 	}
 }

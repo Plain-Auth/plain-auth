@@ -86,7 +86,7 @@ func (h *Handler) resolve(ctx context.Context, d Directory, p Profile) (r Identi
 			r, err = IdentityResolution{}, errIdentityResolution
 		}
 	}()
-	copied, err := normalize(profileObject(p))
+	copied, err := normalizeDocument(profileObject(p))
 	if err != nil {
 		return IdentityResolution{}, err
 	}

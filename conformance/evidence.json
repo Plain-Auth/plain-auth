@@ -12798,6 +12798,11 @@
       "label": "Sign in from a JSON SAML response and answer a GET by returning a signed-in browser to a trusted RelayState, the origin otherwise, and others to the error page",
       "test": "adapters/sqlstore/sso_saml_defaults_test.go",
       "marker": "t.Fatal(\"a GET to the ACS did not return the browser as another runtime does\", c.relay, w.Code, w.Header().Get(\"Location\"))"
+    },
+    {
+      "label": "Read JSON SAML responses by exact key",
+      "test": "adapters/sqlstore/sso_saml_defaults_test.go",
+      "marker": "t.Fatal(\"a JSON SAML response with lowercased keys was read\", w.Code, w.Body.String())"
     }
   ],
   "docs/content/docs/plugins/polar.mdx#L17/Checkout Integration": [
@@ -42563,7 +42568,7 @@
   ],
   "docs/content/docs/plugins/sso/provisioning.mdx#L34": [
     {
-      "label": "Redirect with signup_disabled for a new OIDC user when implicit sign-up is off, and create the user when requestSignUp is true",
+      "label": "Refuse a new OIDC user when implicit sign-up is off and create the user when requestSignUp is true",
       "test": "adapters/sqlstore/sso_browser_test.go",
       "marker": "implicit := host(other, false, false, true)"
     },
@@ -42576,6 +42581,11 @@
       "label": "Redirect a refused OIDC sign-up with error=signup disabled",
       "test": "adapters/sqlstore/sso_browser_test.go",
       "marker": "\"/retry?error=signup+disabled\""
+    },
+    {
+      "label": "Land a refused SAML sign-up on the success callback",
+      "test": "adapters/sqlstore/sso_saml_defaults_test.go",
+      "marker": "t.Fatal(\"a refused SAML sign-up did not land on the success callback\", location)"
     }
   ],
   "docs/content/docs/plugins/sso/provisioning.mdx#L162": [
@@ -45513,6 +45523,11 @@
       "label": "Drop a null Group externalId and member subattribute and empty the members on a null PUT",
       "test": "adapters/sqlstore/scim_attributes_test.go",
       "marker": "func TestSCIMGroupNullAttributesOverHTTP("
+    },
+    {
+      "label": "Drop Group values that only hold nulls and refuse two spellings of a member subattribute, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_groups_test.go",
+      "marker": "t.Fatal(\"a Group body did not drop values holding only nulls\", w.Code, w.Body.String())"
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L253/`name.middleName`, `name.honorificPrefix`, `name.honorificSuffix`": [
@@ -45641,12 +45656,12 @@
       "marker": "t.Fatal(\"an unresolvable PATCH path reported duplicate names\", op, err)"
     },
     {
-      "label": "Refuse two spellings in a User or Group PATCH before the lookup, so an unknown resource answers 400 invalidSyntax, on SQLite, PostgreSQL and MySQL",
+      "label": "Refuse two spellings in a User PATCH before the lookup, so an unknown User answers 400 invalidSyntax, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/scim_attributes_test.go",
       "marker": "t.Fatal(\"a PATCH of an unknown User with two spellings was not invalidSyntax\", body)"
     },
     {
-      "label": "Refuse two spellings in a PATCH of an unknown Group with invalidSyntax",
+      "label": "Refuse two spellings in a PATCH of an unknown Group with invalidSyntax, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/scim_attributes_test.go",
       "marker": "t.Fatal(\"a PATCH of an unknown Group with two spellings was not invalidSyntax\", body)"
     }
@@ -45772,6 +45787,11 @@
       "test": "adapters/sqlstore/scim_attributes_test.go",
       "marker": "t.Fatal(\"a null Enterprise attribute value did not remove it\", got[urn])",
       "complete": true
+    },
+    {
+      "label": "Refuse a PATCH active that only holds nulls and keep the User inactive",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "t.Fatal(\"a PATCH value holding only nulls reactivated the User\", got[\"active\"])"
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L207/A key in a PATCH value that merges into the stored value: a pathless value, `name`, the Enterprise extension, `manager`, or a filtered value such as `addresses[type eq \"work\"]`": [

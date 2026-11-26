@@ -64,7 +64,7 @@ func patchProfile(r Record, raw []any) (Profile, error) {
 			return Profile{}, err
 		}
 	}
-	return normalize(m)
+	return normalizeDocument(m)
 }
 
 // userOps parses PATCH operations; an omitted op means replace.

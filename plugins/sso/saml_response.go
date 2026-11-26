@@ -338,7 +338,9 @@ func sameSAMLOrigin(raw, entryPoint string) bool {
 
 // samlReturn answers a GET to the ACS, as another runtime does: a signed-in
 // browser goes to a trusted RelayState or the application origin, and
-// another goes to the error page with invalid_request.
+// another goes to the error page with invalid_request. That is the error
+// page this library serves at its mount, where another runtime defaults to
+// the application origin's /error.
 func (o Options) samlReturn(c auth.EndpointContext) (any, error) {
 	if session, err := c.Session(); err != nil || session == nil {
 		target, err := c.ErrorPageURL()
@@ -368,15 +370,22 @@ func (o Options) samlFinish(c auth.EndpointContext) (any, error) {
 	}
 	var form url.Values
 	if media == "application/json" {
-		// Another runtime also accepts the response as JSON.
-		var body struct{ SAMLResponse, RelayState *string }
+		// Another runtime also accepts the response as JSON, with exact keys.
+		var body map[string]json.RawMessage
 		d := json.NewDecoder(http.MaxBytesReader(nil, c.Request.Body, 1<<20))
-		if d.Decode(&body) != nil || body.SAMLResponse == nil || d.Decode(new(any)) != io.EOF {
+		if d.Decode(&body) != nil || d.Decode(new(any)) != io.EOF {
 			return nil, errSAMLResponse
 		}
-		form = url.Values{"SAMLResponse": {*body.SAMLResponse}}
-		if body.RelayState != nil {
-			form.Set("RelayState", *body.RelayState)
+		var response, relay string
+		if json.Unmarshal(body["SAMLResponse"], &response) != nil || response == "" {
+			return nil, errSAMLResponse
+		}
+		form = url.Values{"SAMLResponse": {response}}
+		if raw, ok := body["RelayState"]; ok {
+			if json.Unmarshal(raw, &relay) != nil || string(raw) == "null" {
+				return nil, errSAMLResponse
+			}
+			form.Set("RelayState", relay)
 		}
 	} else {
 		if err = c.Request.ParseForm(); err != nil {
@@ -397,6 +406,13 @@ func (o Options) samlFinish(c auth.EndpointContext) (any, error) {
 		changed    = "sso_provider_changed_during_authentication"
 		notAllowed = "IdP-initiated SSO not allowed"
 	)
+	// A refused sign-in result goes to the success callback, as another
+	// runtime sends it; other failures go to the error callback.
+	toCallback := func(code string) (any, error) {
+		f := flow
+		f.ErrorCallbackURL = ""
+		return enterpriseFailure(c, f, code, "")
+	}
 	p, err := store.FindBrowserProvider(c.Request.Context(), Selector{ProviderID: flow.Provider, Protocol: "saml"})
 	if err != nil {
 		if errors.Is(err, ErrMissing) {
@@ -569,9 +585,9 @@ func (o Options) samlFinish(c auth.EndpointContext) (any, error) {
 	case errors.Is(err, ErrDomainUnverified):
 		return nil, err
 	case errors.Is(err, auth.ErrOAuthLinkRequired):
-		return fail("account_not_linked")
+		return toCallback("account_not_linked")
 	case errors.Is(err, ErrChanged):
-		return fail("SSO_PROVIDER_CHANGED")
+		return enterpriseFailure(c, flow, "SSO_PROVIDER_CHANGED", providerChanged)
 	case errors.Is(err, ErrAssertionUsed):
 		return enterpriseFailure(c, flow, "replay_detected", "SAML assertion has already been used")
 	}
@@ -581,7 +597,7 @@ func (o Options) samlFinish(c auth.EndpointContext) (any, error) {
 	var ae *auth.APIError
 	if errors.As(err, &ae) {
 		if ae.Code == "SIGN_UP_DISABLED" {
-			return fail("signup_disabled")
+			return toCallback("signup_disabled")
 		}
 		return fail("access_denied")
 	}

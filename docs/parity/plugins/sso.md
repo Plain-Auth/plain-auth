@@ -130,8 +130,8 @@
     - [x] Reject issuer and endpoint replacement on linked directories, accept overlapping signing keys, and reject retired keys after rotation ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L121))
     - [x] Allow an active organization administrator to replace metadata and deny the same live session after demotion ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L152))
     - [x] Rotate a client secret, change scopes, mapping and domain, and refuse identity changes while accounts are linked, unsupported fields and other users, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_update_test.go#L22))
-    - [x] Describe the OIDC update fields on every host's OpenAPI document ([test](../../../plugins/openapi/sso_directory_test.go#L254))
-    - [x] Publish every OIDC update field as optional, refuse unknown ones and a null pkce ([test](../../../plugins/openapi/sso_directory_test.go#L257))
+    - [x] Describe the OIDC update fields on every host's OpenAPI document ([test](../../../plugins/openapi/sso_directory_test.go#L266))
+    - [x] Publish every OIDC update field as optional, refuse unknown ones and a null pkce ([test](../../../plugins/openapi/sso_directory_test.go#L269))
   - [ ] `POST /sso/delete-provider`
     - [x] Delete the exact OIDC provider and its account links through the released SDK on both implementations ([test](../../../conformance/sso-providers.mjs#L109))
     - [x] Recheck current tenant authority, protect unrelated links and serialize concurrent sign-in against deletion on all three SQL engines ([test](../../../adapters/sqlstore/sso_delete_test.go#L19))
@@ -197,6 +197,7 @@
     - [x] A declined RelayState answers 400 INVALID_OAUTH_STATE and keeps the flow for a retry ([test](../../../adapters/sqlstore/sso_saml_test.go#L324))
     - [x] The logout binding's verification create hooks follow the sign-in's session hooks once ([test](../../../adapters/sqlstore/sso_saml_hooks_test.go#L105))
     - [x] Sign in from a JSON SAML response and answer a GET by returning a signed-in browser to a trusted RelayState, the origin otherwise, and others to the error page ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L230))
+    - [x] Read JSON SAML responses by exact key ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L252))
   - [ ] `GET / POST /sso/saml2/sp/slo/:providerId`
     - [x] Accept a signed HTTP-Redirect acknowledgement once across replicas and preserve a newer login during the round trip ([test](../../../adapters/sqlstore/sso_saml_logout_test.go#L243))
     - [x] Complete the strict Go Redirect return with an independent IdP and capture the pinned reference’s signed-response rejection ([test](../../../conformance/core.test.mjs#L1638))
@@ -689,9 +690,10 @@
   - [ ] How SSO users are matched
     - [x] Link a new enterprise identity to a verified local user only under a proved domain or subdomain with implicit linking on, and redirect with account_not_linked otherwise ([test](../../../adapters/sqlstore/sso_domain_test.go#L334))
     - [ ] Block new users
-      - [x] Redirect with signup_disabled for a new OIDC user when implicit sign-up is off, and create the user when requestSignUp is true ([test](../../../adapters/sqlstore/sso_browser_test.go#L345))
+      - [x] Refuse a new OIDC user when implicit sign-up is off and create the user when requestSignUp is true ([test](../../../adapters/sqlstore/sso_browser_test.go#L345))
       - [x] Refuse a SAML sign-up under DisableImplicitSignUp even with requestSignUp, with signup_disabled ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L243))
       - [x] Redirect a refused OIDC sign-up with error=signup disabled ([test](../../../adapters/sqlstore/sso_browser_test.go#L343))
+      - [x] Land a refused SAML sign-up on the success callback ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L248))
     - [ ] Update profiles on sign-in
       - [x] Overwrite a returning user's name, email, image and mapped fields at each OIDC sign-in and store a changed email unverified ([test](../../../adapters/sqlstore/sso_profile_override_test.go#L135))
   - [ ] Resolve SSO users

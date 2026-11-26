@@ -85,6 +85,12 @@ func members(raw any) ([]string, error) {
 }
 func parseGroup(input map[string]any, allowLegacy bool) (GroupProfile, error) {
 	var p GroupProfile
+	// Like another runtime, refuse two spellings of a declared attribute,
+	// null or not, then drop nulls and objects that only held nulls.
+	if e := duplicateNames(input, append(append([]any{}, commonAttributes...), schemaAttributes("GroupSchema")...), false); e != nil {
+		return p, e
+	}
+	input, _ = stripNulls(input, 0).(map[string]any)
 	if _, ok := input[legacyGroupSchema]; ok {
 		return p, invalid("invalidValue", "The compatibility schema cannot contain attributes")
 	}

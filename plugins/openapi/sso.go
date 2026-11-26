@@ -161,6 +161,13 @@ func describeSSORequest(op object, route plainauth.HTTPRoute, info plainauth.HTT
 		op["parameters"] = params
 
 	case "/sso/saml2/sp/acs/:providerId":
+		if route.Method == "GET" {
+			// The GET only returns a signed-in browser; it takes no response.
+			op["description"] = "Return a signed-in browser to a trusted RelayState, or the application origin. Any other browser goes to the error page with error=invalid_request."
+			op["security"] = []object{{"apiKeyCookie": []string{}}}
+			op["parameters"] = []object{{"name": "providerId", "in": "path", "required": true, "schema": providerID}, {"name": "RelayState", "in": "query", "required": false, "schema": text}}
+			break
+		}
 		var mode struct {
 			Portal bool `json:"x-plainauth-idp-initiated"`
 		}
@@ -176,7 +183,8 @@ func describeSSORequest(op object, route plainauth.HTTPRoute, info plainauth.HTT
 			required = append(required, "RelayState")
 		}
 		op["parameters"] = params
-		op["requestBody"] = object{"required": true, "content": content("application/x-www-form-urlencoded", responseObject(object{"SAMLResponse": text, "RelayState": text}, required...))}
+		body := responseObject(object{"SAMLResponse": text, "RelayState": text}, required...)
+		op["requestBody"] = object{"required": true, "content": object{"application/x-www-form-urlencoded": object{"schema": body}, "application/json": object{"schema": body}}}
 
 	case "/sso/callback", "/sso/callback/:providerId":
 		op["description"] = "Complete the browser-bound OIDC flow. Successful authentication redirects to the trusted application callback. Invalid state or rejected authentication may redirect to an error page. No signed-in session is required."

@@ -169,6 +169,7 @@ func emailValues(raw any, user string) ([]any, string, error) {
 	return out, chosen["value"].(string), nil
 }
 
+// normalize checks a POST or PUT body and returns its canonical profile.
 func normalize(input any) (p Profile, err error) {
 	// Like another runtime, refuse two spellings of a declared attribute,
 	// null or not, and then drop null attributes and objects that only held
@@ -184,7 +185,15 @@ func normalize(input any) (p Profile, err error) {
 			}
 		}
 	}
-	m, err := object(stripNulls(input, 0), userFields)
+	return normalizeDocument(stripNulls(input, 0))
+}
+
+// normalizeDocument checks a User document as it is, without dropping
+// nulls: a PATCH result or a stored profile. A value a PATCH left in an
+// attribute is validated rather than treated as omitted, as in another
+// runtime.
+func normalizeDocument(input any) (p Profile, err error) {
+	m, err := object(input, userFields)
 	if err != nil {
 		return p, err
 	}

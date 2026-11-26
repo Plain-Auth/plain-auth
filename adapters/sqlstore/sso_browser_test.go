@@ -361,7 +361,7 @@ func TestEnterpriseOIDCBrowser(t *testing.T) {
 			}
 			exec(`UPDATE "ssoProvider" SET "domain"='latest.example' WHERE "providerId"='acme'`)
 			close(idp.release)
-			target(<-done, "/retry?error=SSO_PROVIDER_CHANGED")
+			target(<-done, "/retry?error=SSO_PROVIDER_CHANGED&error_description=SSO+provider+changed+while+account+linking+was+in+progress")
 			if count(`SELECT COUNT(*) FROM "user" WHERE "email"=?`, "interrupted@example.test") != 0 {
 				t.Fatal("changed provider committed a user")
 			}

@@ -341,3 +341,17 @@ func TestDiscoveryHydratedConfiguration(t *testing.T) {
 		}
 	}
 }
+
+// The callback reports a discovery failure with the raw message, as another
+// runtime does, without the registration prefix.
+func TestCallbackDiscoveryMessage(t *testing.T) {
+	for in, want := range map[string]string{
+		"OIDC discovery document is missing required fields: Discovery document is missing required fields: jwks_uri": "Discovery document is missing required fields: jwks_uri",
+		`OIDC issuer mismatch: Discovered issuer "a" does not match configured issuer "b"`:                            `Discovered issuer "a" does not match configured issuer "b"`,
+		"Discovery document not found": "Discovery document not found",
+	} {
+		if got := callbackDiscoveryMessage(in); got != want {
+			t.Fatal("the callback discovery message kept the registration prefix", got)
+		}
+	}
+}

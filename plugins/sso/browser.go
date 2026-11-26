@@ -315,7 +315,7 @@ func (o Options) finish(c auth.EndpointContext) (any, error) {
 	if p, err = o.withRuntimeDiscovery(c.Request.Context(), c.Auth, p); err != nil {
 		var ae *auth.APIError
 		if errors.As(err, &ae) {
-			return enterpriseFailure(c, flow, "discovery_failed", ae.Message)
+			return enterpriseFailure(c, flow, "discovery_failed", callbackDiscoveryMessage(ae.Message))
 		}
 		return enterpriseFailure(c, flow, "discovery_failed", "unexpected_discovery_error")
 	}
@@ -399,7 +399,7 @@ func (o Options) finish(c auth.EndpointContext) (any, error) {
 		return fail("account_not_linked")
 	}
 	if errors.Is(err, ErrChanged) {
-		return fail("SSO_PROVIDER_CHANGED")
+		return enterpriseFailure(c, flow, "SSO_PROVIDER_CHANGED", providerChanged)
 	}
 	if out, e, ok := profileFailure(c, flow, err); ok {
 		return out, e
@@ -451,4 +451,19 @@ func enterpriseFailure(c auth.EndpointContext, flow auth.OAuthFlow, code, descri
 		set.Set("error_description", description)
 	}
 	return c.Redirect(httporigin.SetQuery(target, set))
+}
+
+// providerChanged describes a provider that changed inside the sign-in
+// transaction, as another runtime does.
+const providerChanged = "SSO provider changed while account linking was in progress"
+
+// callbackDiscoveryMessage drops the registration prefix from a discovery
+// message, as another runtime's callback sends the raw one.
+func callbackDiscoveryMessage(message string) string {
+	for _, prefix := range []string{"OIDC discovery document is missing required fields: ", "OIDC issuer mismatch: "} {
+		if rest, ok := strings.CutPrefix(message, prefix); ok {
+			return rest
+		}
+	}
+	return message
 }

@@ -616,6 +616,18 @@ func TestSCIMUserPatchNullsOverHTTP(t *testing.T) {
 			if _, has := got["title"]; has || got["userName"] != "ada@example.test" || got["active"] != true || len(got["emails"].([]any)) != 1 {
 				t.Fatal("a refused null PATCH changed the User", got)
 			}
+			// A PATCH value that only holds nulls is a value to check, not an
+			// omission, so it cannot reactivate a deactivated User.
+			patch(200, "deactivating the User failed", map[string]any{"op": "replace", "path": "active", "value": false})
+			for _, op := range []map[string]any{{"op": "replace", "path": "active", "value": map[string]any{"x": nil}}, {"op": "replace", "value": map[string]any{"active": map[string]any{"x": nil}}}} {
+				if body := patch(400, "a PATCH active holding only nulls was accepted", op); body["scimType"] != "invalidValue" {
+					t.Fatal("a PATCH active holding only nulls was not invalidValue", body)
+				}
+			}
+			if got := call("GET", "Users/"+id, nil, 200, "the User could not be read"); got["active"] != false {
+				t.Fatal("a PATCH value holding only nulls reactivated the User", got["active"])
+			}
+			patch(200, "reactivating the User failed", map[string]any{"op": "replace", "path": "active", "value": true})
 			if body := patch(400, "a null second spelling in a name value was applied", map[string]any{"op": "replace", "path": "name", "value": map[string]any{"familyName": "Byron", "FAMILYNAME": nil}}); body["scimType"] != "invalidSyntax" {
 				t.Fatal("a null second spelling in a name value was not invalidSyntax", body)
 			}

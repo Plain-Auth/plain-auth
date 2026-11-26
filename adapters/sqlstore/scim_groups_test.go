@@ -415,6 +415,23 @@ func TestSCIMGroupRouteRefusals(t *testing.T) {
 			if code, _ := status("GET", "Users", "usersread", nil); code != 200 {
 				t.Fatal("a read credential could not list Users", code)
 			}
+			// A Group body drops values that only hold nulls, and refuses two
+			// spellings of a member subattribute.
+			w := scimRequest(h, "POST", "Users", "first", map[string]any{"schemas": []string{scim.UserSchema}, "userName": "member@example.test"})
+			var member map[string]any
+			must(json.Unmarshal(w.Body.Bytes(), &member))
+			w = scimRequest(h, "POST", "Groups", "first", map[string]any{"schemas": []string{scim.GroupSchema}, "displayName": "Stripped", "externalId": map[string]any{"x": nil},
+				"members": []map[string]any{{"value": member["id"], "type": map[string]any{"x": nil}}}})
+			var stripped map[string]any
+			_ = json.Unmarshal(w.Body.Bytes(), &stripped)
+			if members, _ := stripped["members"].([]any); w.Code != 201 || stripped["externalId"] != nil || len(members) != 1 {
+				t.Fatal("a Group body did not drop values holding only nulls", w.Code, w.Body.String())
+			}
+			for _, entry := range []map[string]any{{"value": member["id"], "display": "a", "Display": "b"}, {"value": member["id"], "$ref": "a", "$REF": "b"}} {
+				if code, kind := status("POST", "Groups", "first", map[string]any{"schemas": []string{scim.GroupSchema}, "displayName": "Twice", "members": []map[string]any{entry}}); code != 400 || kind != "invalidSyntax" {
+					t.Fatal("a Group member naming a subattribute twice was not invalidSyntax", entry, code, kind)
+				}
+			}
 		})
 	}
 }
