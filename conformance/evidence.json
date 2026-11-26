@@ -38358,9 +38358,9 @@
   ],
   "docs/content/docs/plugins/api-key/advanced.mdx#L615/Within Window": [
     {
-      "label": "Allow uses up to a key's rate maximum within one window, then reject further uses with RATE_LIMIT_EXCEEDED, across two service instances",
+      "label": "Allow uses up to a key's rate maximum within one window, then reject further uses with RATE_LIMITED, across two service instances",
       "test": "adapters/sqlstore/apikey_test.go",
-      "marker": "race(ak.CreateInput{Policy: ak.Policy{RateLimitMax: &max}}, 2, \"RATE_LIMIT_EXCEEDED\")",
+      "marker": "race(ak.CreateInput{Policy: ak.Policy{RateLimitMax: &max}}, 2, \"RATE_LIMITED\")",
       "complete": true
     }
   ],
@@ -38395,7 +38395,7 @@
     {
       "label": "Accept only a key's rate maximum of concurrent verifications within one window and reject the rest as rate limited",
       "test": "adapters/sqlstore/apikey_test.go",
-      "marker": "race(ak.CreateInput{Policy: ak.Policy{RateLimitMax: &max}}, 2, \"RATE_LIMIT_EXCEEDED\")",
+      "marker": "race(ak.CreateInput{Policy: ak.Policy{RateLimitMax: &max}}, 2, \"RATE_LIMITED\")",
       "complete": true
     }
   ],
@@ -38568,9 +38568,9 @@
   ],
   "docs/content/docs/plugins/api-key/index.mdx#L149/Parameter `rateLimitMax` (optional)": [
     {
-      "label": "Accept exactly the per-key maximum of two concurrent verifications, then return RATE_LIMIT_EXCEEDED",
+      "label": "Accept exactly the per-key maximum of two concurrent verifications, then return RATE_LIMITED",
       "test": "adapters/sqlstore/apikey_test.go",
-      "marker": "race(ak.CreateInput{Policy: ak.Policy{RateLimitMax: &max}}, 2, \"RATE_LIMIT_EXCEEDED\")"
+      "marker": "race(ak.CreateInput{Policy: ak.Policy{RateLimitMax: &max}}, 2, \"RATE_LIMITED\")"
     }
   ],
   "docs/content/docs/plugins/api-key/index.mdx#L159/Parameter `permissions` (optional)": [
@@ -39132,7 +39132,7 @@
     {
       "label": "Accept exactly the configured maximum of concurrent requests in one window",
       "test": "adapters/sqlstore/apikey_test.go",
-      "marker": "race(ak.CreateInput{Policy: ak.Policy{RateLimitMax: &max}}, 2, \"RATE_LIMIT_EXCEEDED\")"
+      "marker": "race(ak.CreateInput{Policy: ak.Policy{RateLimitMax: &max}}, 2, \"RATE_LIMITED\")"
     }
   ],
   "docs/content/docs/plugins/api-key/reference.mdx#L496/`apiKeyTableFields.requestCount`": [

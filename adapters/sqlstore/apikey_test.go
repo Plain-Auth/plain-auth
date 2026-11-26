@@ -179,7 +179,7 @@ func TestAPIKeyLifecycleAndPolicy(t *testing.T) {
 				}
 			}
 			race(ak.CreateInput{Policy: ak.Policy{Remaining: &usage, RateLimitEnabled: &noRate}}, 3, "USAGE_EXCEEDED")
-			race(ak.CreateInput{Policy: ak.Policy{RateLimitMax: &max}}, 2, "RATE_LIMIT_EXCEEDED")
+			race(ak.CreateInput{Policy: ak.Policy{RateLimitMax: &max}}, 2, "RATE_LIMITED")
 			lifetime := time.Minute
 			expires, e := keys.Create(ctx, owner.User.ID, ak.CreateInput{ExpiresIn: lifetime})
 			must(e)

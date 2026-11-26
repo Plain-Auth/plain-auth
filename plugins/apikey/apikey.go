@@ -629,7 +629,9 @@ func (s *Service) Verify(ctx context.Context, secret string, required Permission
 			if k.LastRequest == nil || now.Sub(*k.LastRequest).Milliseconds() > *k.RateLimitTimeWindow {
 				k.RequestCount = 1
 			} else if k.RequestCount >= *k.RateLimitMax {
-				invalid("RATE_LIMIT_EXCEEDED", "Rate limit exceeded.")
+				// The code is RATE_LIMITED, with the table's RATE_LIMIT_EXCEEDED
+				// message, as another runtime answers a spent rate budget.
+				invalid("RATE_LIMITED", "Rate limit exceeded.")
 				result.Error.TryAgainIn = ptr(*k.RateLimitTimeWindow - now.Sub(*k.LastRequest).Milliseconds())
 				return Read, nil
 			} else {

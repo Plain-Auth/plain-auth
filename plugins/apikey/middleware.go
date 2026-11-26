@@ -101,7 +101,7 @@ func (s *Service) Middleware(required Permissions, next http.Handler) http.Handl
 		if err != nil {
 			status = http.StatusInternalServerError
 			failure = &VerifyError{Code: "INTERNAL_SERVER_ERROR", Message: "Could not verify application credentials"}
-		} else if failure.Code == "RATE_LIMIT_EXCEEDED" || failure.Code == "USAGE_EXCEEDED" {
+		} else if failure.Code == "RATE_LIMITED" || failure.Code == "USAGE_EXCEEDED" {
 			status = http.StatusTooManyRequests
 			if failure.TryAgainIn != nil {
 				w.Header().Set("Retry-After", strconv.FormatInt(max(1, (*failure.TryAgainIn+999)/1000), 10))

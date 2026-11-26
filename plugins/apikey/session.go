@@ -99,7 +99,7 @@ func (s *Service) resolveSession(ctx context.Context, secret string, meta plaina
 			return nil, errRefusedKey
 		}
 		status := 401
-		if v.Error.Code == "RATE_LIMIT_EXCEEDED" || v.Error.Code == "USAGE_EXCEEDED" {
+		if v.Error.Code == "RATE_LIMITED" || v.Error.Code == "USAGE_EXCEEDED" {
 			status = 429
 		}
 		return nil, problem(status, v.Error.Code, v.Error.Message)

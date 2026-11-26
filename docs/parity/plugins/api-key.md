@@ -221,7 +221,7 @@
       - [x] First Request ([test](../../../conformance/core.test.mjs#L923))
         - [x] Accept the first request at a Go application route with a key issued by the other runtime, and store a request count of 1 ([test](../../../conformance/core.test.mjs#L923))
       - [x] Within Window ([test](../../../adapters/sqlstore/apikey_test.go#L182))
-        - [x] Allow uses up to a key's rate maximum within one window, then reject further uses with RATE_LIMIT_EXCEEDED, across two service instances ([test](../../../adapters/sqlstore/apikey_test.go#L182))
+        - [x] Allow uses up to a key's rate maximum within one window, then reject further uses with RATE_LIMITED, across two service instances ([test](../../../adapters/sqlstore/apikey_test.go#L182))
       - [ ] Window Reset
         - [x] Accept a key that reached its one-request limit again once more than its window has passed since the last request ([test](../../../adapters/sqlstore/apikey_test.go#L253))
       - [ ] Rate Limit Exceeded
@@ -310,7 +310,7 @@
           - [x] Refuse a depleted key inside its refill interval and accept it after its last refill time is moved back past the interval ([test](../../../adapters/sqlstore/apikey_test.go#L196))
         - [ ] Parameter `rateLimitTimeWindow` (optional)
         - [ ] Parameter `rateLimitMax` (optional)
-          - [x] Accept exactly the per-key maximum of two concurrent verifications, then return RATE_LIMIT_EXCEEDED ([test](../../../adapters/sqlstore/apikey_test.go#L182))
+          - [x] Accept exactly the per-key maximum of two concurrent verifications, then return RATE_LIMITED ([test](../../../adapters/sqlstore/apikey_test.go#L182))
         - [ ] Parameter `rateLimitEnabled` (optional)
         - [ ] Parameter `permissions` (optional)
           - [x] Reject permissions sent to the HTTP create route as a server-only property ([test](../../../adapters/sqlstore/apikey_test.go#L135))

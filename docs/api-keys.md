@@ -115,6 +115,7 @@ Each error carries its status, code and message from the API key error table.
 | `NO_VALUES_TO_UPDATE` | 400 | An update changes nothing |
 | `INVALID_API_KEY` | 403 for a session key shorter than `KeyLength` or refused by `ValidateKey`, 401 otherwise, or a verification result | The secret is not a key |
 | `KEY_DISABLED`, `KEY_EXPIRED`, `USAGE_EXCEEDED` | Verification results; 401 or 429 on a session read | The key is disabled, expired or used up |
+| `RATE_LIMITED` | A verification result with `tryAgainIn` in milliseconds; 429 on a session read | The key's rate budget for the window is spent; the message is `Rate limit exceeded.` |
 | `INVALID_REFERENCE_ID_FROM_API_KEY` | 401 | An organization key is sent as a session credential |
 | `ORGANIZATION_ID_REQUIRED`, `USER_NOT_MEMBER_OF_ORGANIZATION`, `INSUFFICIENT_API_KEY_PERMISSIONS`, `ORGANIZATION_PLUGIN_REQUIRED` | 400, 403, 403, 500 | See [Organization-owned keys](#organization-owned-keys) |
 
