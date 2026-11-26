@@ -38,10 +38,31 @@ type SAMLOptions struct {
 	MaxMetadataSize int
 	// MaxResponseSize limits the base64 SAMLResponse form value in bytes,
 	// defaulting to 256 KiB. The ACS reads at most 1 MiB of form data.
-	MaxResponseSize    int
+	MaxResponseSize int
+	// ClockSkew is the tolerance for assertion NotBefore, NotOnOrAfter and
+	// IssueInstant. Zero selects three minutes, the most the SAML library
+	// allows process-wide, so a larger value is refused.
+	ClockSkew time.Duration
+	// RequireTimestamps refuses an assertion whose Conditions has neither
+	// NotBefore nor NotOnOrAfter. Without it such an assertion is accepted
+	// and a warning is logged through the auth Logger.
+	RequireTimestamps  bool
 	RequestSigner      crypto.Signer
 	RequestCertificate *x509.Certificate
 	TrustEmailVerified bool
+}
+
+// defaultSAMLClockSkew is three minutes, not five: the SAML library checks
+// validity times with its process-wide MaxClockSkew of three minutes before
+// this package sees an assertion.
+const defaultSAMLClockSkew = 3 * time.Minute
+
+func (o SAMLOptions) clockSkew() time.Duration {
+	skew := o.ClockSkew
+	if skew == 0 {
+		skew = defaultSAMLClockSkew
+	}
+	return min(skew, saml.MaxClockSkew)
 }
 
 func (o SAMLOptions) validate() error {
@@ -62,6 +83,9 @@ func (o SAMLOptions) validate() error {
 	}
 	if o.MaxMetadataSize < 0 || o.MaxMetadataSize > maxSAMLMetadataBytes {
 		return errors.New("sso: SAML metadata size must be between 1 byte and 1 MiB when set")
+	}
+	if o.ClockSkew < 0 || o.ClockSkew > defaultSAMLClockSkew {
+		return errors.New("sso: SAML clock skew must be between zero and three minutes")
 	}
 	if o.MaxResponseSize < 0 || o.MaxResponseSize > maxSAMLMetadataBytes {
 		return errors.New("sso: SAML response size must be between 1 byte and 1 MiB when set")

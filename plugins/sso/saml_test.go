@@ -132,15 +132,20 @@ func TestSAMLProvisioningDeadline(t *testing.T) {
 			confirmation(acs, "_other", now.Add(time.Hour)), confirmation("elsewhere", "_id", now.Add(time.Hour)),
 		}},
 	}
-	if got := samlProvisioningDeadline(a, acs, "_id", now); !got.Equal(late) {
+	if got := samlProvisioningDeadline(a, acs, "_id", now, saml.MaxClockSkew); !got.Equal(late) {
 		t.Fatal("did not use the last matching confirmation", got)
 	}
+	untimed := *a
+	untimed.Conditions = &saml.Conditions{}
+	if got := samlProvisioningDeadline(&untimed, acs, "_id", now, saml.MaxClockSkew); !got.Equal(late) {
+		t.Fatal("an assertion without NotOnOrAfter lost its provisioning deadline", got)
+	}
 	a.Conditions.NotOnOrAfter = early.Add(-saml.MaxClockSkew)
-	if got := samlProvisioningDeadline(a, acs, "_id", now); !got.Equal(early) {
+	if got := samlProvisioningDeadline(a, acs, "_id", now, saml.MaxClockSkew); !got.Equal(early) {
 		t.Fatal("provisioning exceeded assertion conditions", got)
 	}
 	a.IssueInstant = now.Add(-saml.MaxIssueDelay)
-	if got := samlProvisioningDeadline(a, acs, "_id", now); !got.Equal(now) {
+	if got := samlProvisioningDeadline(a, acs, "_id", now, saml.MaxClockSkew); !got.Equal(now) {
 		t.Fatal("provisioning exceeded assertion age", got)
 	}
 }
@@ -259,5 +264,27 @@ func TestSAMLResponseSizeOption(t *testing.T) {
 	}
 	if limit := (SAMLOptions{MaxResponseSize: 4096}).responseLimit(); limit != 4096 {
 		t.Fatal("configured SAML response size was not kept", limit)
+	}
+}
+
+// ClockSkew defaults to three minutes, keeps a narrower value and refuses a
+// negative one or one above three minutes.
+func TestSAMLClockSkewOption(t *testing.T) {
+	if skew := (SAMLOptions{}).clockSkew(); skew != 3*time.Minute {
+		t.Fatal("unset SAML clock skew is not three minutes", skew)
+	}
+	if _, err := New(Options{SAML: &SAMLOptions{ClockSkew: -time.Second}}); err == nil {
+		t.Fatal("accepted a negative SAML clock skew")
+	}
+	if _, err := New(Options{SAML: &SAMLOptions{ClockSkew: 3*time.Minute + time.Second}}); err == nil {
+		t.Fatal("accepted a SAML clock skew above three minutes")
+	}
+	if skew := (SAMLOptions{ClockSkew: time.Minute}).clockSkew(); skew != time.Minute {
+		t.Fatal("configured SAML clock skew was not kept", skew)
+	}
+	now := time.Now()
+	stale := &saml.Assertion{IssueInstant: now, Conditions: &saml.Conditions{NotOnOrAfter: now.Add(-90 * time.Second)}}
+	if message, _ := (SAMLOptions{ClockSkew: time.Minute}).checkTimestamps(stale, now); message != "SAML assertion has expired" {
+		t.Fatal("checkTimestamps ignored a narrowed clock skew", message)
 	}
 }

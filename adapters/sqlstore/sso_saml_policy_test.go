@@ -200,6 +200,52 @@ func TestEnterpriseSAMLResponsePolicy(t *testing.T) {
 					t.Fatal("a SAMLResponse under the default limit was refused", w.Code, location)
 				}
 			})
+			t.Run("timestamps", func(t *testing.T) {
+				p := newSAMLPolicy(t, dialect)
+				p.directory("clock", nil)
+				var buf lockedLog
+				def, strict, required := p.host(sso.SAMLOptions{}, nil), p.host(sso.SAMLOptions{ClockSkew: time.Minute}, nil), p.host(sso.SAMLOptions{RequireTimestamps: true}, nil)
+				logged := p.host(sso.SAMLOptions{}, slog.New(slog.NewTextHandler(&buf, nil)))
+				run := func(h *auth.Auth, adjust func(*saml.Assertion)) (*url.URL, bool) {
+					t.Helper()
+					req, state := p.start(h, "clock")
+					return samlOutcome(t, p.finish(h, "clock", req, state, nil, adjust, nil))
+				}
+				refused := func(location *url.URL, session bool, description string) bool {
+					return location.Path == "/retry" && location.Query().Get("error") == "saml_error" && location.Query().Get("error_description") == description && !session
+				}
+				expired := func(ago time.Duration) func(*saml.Assertion) {
+					return func(a *saml.Assertion) { a.Conditions.NotOnOrAfter = time.Now().Add(-ago) }
+				}
+				future := func(ahead time.Duration) func(*saml.Assertion) {
+					return func(a *saml.Assertion) { a.Conditions.NotBefore = time.Now().Add(ahead) }
+				}
+				if location, session := run(def, expired(2*time.Minute)); location.String() != "https://service.test/home" || !session {
+					t.Fatal("an assertion expired within the default clock skew was refused", location)
+				}
+				if location, session := run(strict, expired(2*time.Minute)); !refused(location, session, "SAML assertion has expired") {
+					t.Fatal("a one-minute clock skew accepted an assertion expired two minutes ago", location)
+				}
+				if location, session := run(def, expired(time.Hour)); !refused(location, session, "SAML assertion has expired") {
+					t.Fatal("an hour-old assertion did not fail with saml_error", location)
+				}
+				if location, session := run(strict, future(2*time.Minute)); !refused(location, session, "SAML assertion is not yet valid") {
+					t.Fatal("a one-minute clock skew accepted an assertion valid only in two minutes", location)
+				}
+				if location, session := run(def, future(time.Hour)); !refused(location, session, "SAML assertion is not yet valid") {
+					t.Fatal("a future assertion did not fail with saml_error", location)
+				}
+				untimed := func(a *saml.Assertion) { a.Conditions.NotBefore, a.Conditions.NotOnOrAfter = time.Time{}, time.Time{} }
+				if location, session := run(logged, untimed); location.String() != "https://service.test/home" || !session || buf.count("SAML assertion accepted without timestamp conditions") != 1 || buf.count("providerId=clock") != 1 {
+					t.Fatal("an assertion without timestamps was refused or not logged", location)
+				}
+				if location, session := run(required, untimed); !refused(location, session, "SAML assertion missing required timestamp conditions") {
+					t.Fatal("RequireTimestamps accepted an assertion without timestamp conditions", location)
+				}
+				if location, session := run(required, func(a *saml.Assertion) { a.Conditions.NotOnOrAfter = time.Time{} }); location.String() != "https://service.test/home" || !session {
+					t.Fatal("RequireTimestamps refused an assertion that has NotBefore", location)
+				}
+			})
 		})
 	}
 }

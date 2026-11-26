@@ -44019,5 +44019,71 @@
       "marker": "an oversized SAMLResponse did not redirect with saml_error",
       "complete": true
     }
+  ],
+  "plugin-symbol/sso/DEFAULT_CLOCK_SKEW_MS": [
+    {
+      "label": "Default the SAML clock skew to three minutes, the most the SAML library allows process-wide",
+      "test": "plugins/sso/saml_test.go",
+      "marker": "unset SAML clock skew is not three minutes"
+    }
+  ],
+  "plugin-symbol/sso/TimestampValidationOptions": [
+    {
+      "label": "Apply ClockSkew and RequireTimestamps at the ACS and log an assertion without timestamps, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "an assertion without timestamps was refused or not logged"
+    }
+  ],
+  "plugin-symbol/sso/TimestampValidationOptions/clockSkew": [
+    {
+      "label": "Accept an assertion expired two minutes ago under the default skew and refuse it under a one-minute skew, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "a one-minute clock skew accepted an assertion expired two minutes ago",
+      "complete": true
+    },
+    {
+      "label": "Refuse an assertion valid only in two minutes under a one-minute skew",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "a one-minute clock skew accepted an assertion valid only in two minutes"
+    },
+    {
+      "label": "Refuse a negative clock skew or one above three minutes, and keep a narrower one",
+      "test": "plugins/sso/saml_test.go",
+      "marker": "accepted a SAML clock skew above three minutes"
+    }
+  ],
+  "plugin-symbol/sso/TimestampValidationOptions/requireTimestamps": [
+    {
+      "label": "Refuse an assertion without timestamp conditions under RequireTimestamps, and accept one that has NotBefore, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "RequireTimestamps accepted an assertion without timestamp conditions",
+      "complete": true
+    },
+    {
+      "label": "Accept an assertion that has NotBefore without NotOnOrAfter under RequireTimestamps",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "RequireTimestamps refused an assertion that has NotBefore"
+    }
+  ],
+  "plugin-symbol/sso/TimestampValidationOptions/logger": [
+    {
+      "label": "Write a warning naming the provider to the auth Logger for an assertion accepted without timestamp conditions",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "an assertion without timestamps was refused or not logged",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/sso/saml-security.mdx#L81/`saml_error`": [
+    {
+      "label": "Redirect expired and not-yet-valid assertions with error=saml_error and their messages, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "an hour-old assertion did not fail with saml_error",
+      "complete": true
+    },
+    {
+      "label": "Redirect a future assertion with error=saml_error and SAML assertion is not yet valid",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "a future assertion did not fail with saml_error"
+    }
   ]
 }

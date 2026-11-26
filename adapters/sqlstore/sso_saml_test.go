@@ -616,7 +616,11 @@ func runEnterpriseSAMLBrowser(t *testing.T, encrypted, logout bool) {
 					r, e := start(h)
 					must(e)
 					status, hd, _ := post(h, form(r, "unavailable-"+name, "invalid-"+name+"@staff.example", adjust), acs)
-					if status != 302 || !strings.Contains(hd.Get("Location"), "error=invalid_saml_response") || strings.Contains(strings.Join(hd.Values("Set-Cookie"), ";"), "session_token=") {
+					want := "error=invalid_saml_response"
+					if name == "expiry" || name == "not-before" {
+						want = "error=saml_error"
+					}
+					if status != 302 || !strings.Contains(hd.Get("Location"), want) || strings.Contains(strings.Join(hd.Values("Set-Cookie"), ";"), "session_token=") {
 						t.Fatal(status, hd)
 					}
 				})

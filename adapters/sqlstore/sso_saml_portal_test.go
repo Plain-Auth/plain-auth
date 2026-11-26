@@ -94,7 +94,11 @@ func checkSAMLPortal(t *testing.T, idp *saml.IdentityProvider, spEntity, acs, or
 		"expiry":   func(a *saml.Assertion) { a.Conditions.NotOnOrAfter = time.Now().Add(-time.Hour) },
 	} {
 		t.Run(name, func(t *testing.T) {
-			rejected(send(peer, issue(adjust), origin, "", "document"), "invalid_saml_response")
+			want := "invalid_saml_response"
+			if name == "expiry" {
+				want = "saml_error"
+			}
+			rejected(send(peer, issue(adjust), origin, "", "document"), want)
 		})
 	}
 	results := make(chan portalResponse, 2)

@@ -31,10 +31,39 @@ var errSAMLResponse = apiError(400, "Invalid SAML response")
 
 // Bound provisioning work to the lifetime of the assertion the SP already
 // verified. Only bearer confirmations for this callback can extend that window.
-func samlProvisioningDeadline(a *saml.Assertion, acs, requestID string, now time.Time) time.Time {
-	skew := min(3*time.Minute, saml.MaxClockSkew)
+// The ACS failure descriptions for an assertion's validity times.
+const (
+	samlNotYetValid       = "SAML assertion is not yet valid"
+	samlExpired           = "SAML assertion has expired"
+	samlMissingTimestamps = "SAML assertion missing required timestamp conditions"
+)
+
+// checkTimestamps bounds the assertion by ClockSkew even when another
+// component widens the library's tolerance, and applies RequireTimestamps.
+// It returns a failure description, or reports that the assertion has no
+// timestamp conditions.
+func (o SAMLOptions) checkTimestamps(a *saml.Assertion, now time.Time) (message string, untimed bool) {
+	skew := o.clockSkew()
+	latest := now.Add(skew)
+	if a.Conditions.NotBefore.After(latest) || a.IssueInstant.After(latest) {
+		return samlNotYetValid, false
+	}
+	// The five-minute issue bound guards against a widened MaxIssueDelay.
+	if !a.Conditions.NotOnOrAfter.IsZero() && !a.Conditions.NotOnOrAfter.After(now.Add(-skew)) || a.IssueInstant.Before(now.Add(-5*time.Minute)) {
+		return samlExpired, false
+	}
+	if a.Conditions.NotBefore.IsZero() && a.Conditions.NotOnOrAfter.IsZero() {
+		if o.RequireTimestamps {
+			return samlMissingTimestamps, false
+		}
+		return "", true
+	}
+	return "", false
+}
+
+func samlProvisioningDeadline(a *saml.Assertion, acs, requestID string, now time.Time, skew time.Duration) time.Time {
 	deadline := a.IssueInstant.Add(min(5*time.Minute, saml.MaxIssueDelay))
-	if t := a.Conditions.NotOnOrAfter.Add(skew); t.Before(deadline) {
+	if t := a.Conditions.NotOnOrAfter.Add(skew); !a.Conditions.NotOnOrAfter.IsZero() && t.Before(deadline) {
 		deadline = t
 	}
 	var bearer time.Time
@@ -54,9 +83,6 @@ func samlProvisioningDeadline(a *saml.Assertion, acs, requestID string, now time
 	return deadline
 }
 
-// The cleartext HTTP-POST profile has one directly signed assertion.
-// This pass bounds the XML and checks the envelope;
-// all identity data below comes from the library's authenticated assertion.
 // samlAssertionCount counts the Assertion and EncryptedAssertion elements
 // anywhere in a response, or reports -1 for a document that does not parse,
 // which the envelope checks then refuse.
@@ -81,6 +107,9 @@ func samlAssertionCount(raw []byte) int {
 	return -1
 }
 
+// The cleartext HTTP-POST profile has one directly signed assertion.
+// This pass bounds the XML and checks the envelope;
+// all identity data below comes from the library's authenticated assertion.
 func assertionEnvelope(raw []byte, acs, requestID string) (string, error) {
 	const protocol = "urn:oasis:names:tc:SAML:2.0:protocol"
 	const assertion = "urn:oasis:names:tc:SAML:2.0:assertion"
@@ -368,8 +397,15 @@ func (o Options) samlFinish(c auth.EndpointContext) (any, error) {
 		return fail("invalid_saml_response")
 	}
 	a, err := sp.ParseXMLResponse(raw, requestIDs, sp.AcsURL)
+	switch {
+	case errors.Is(err, saml.ErrNotYetValid):
+		return enterpriseFailure(c, flow, "saml_error", samlNotYetValid)
+	case errors.Is(err, saml.ErrExpired):
+		return enterpriseFailure(c, flow, "saml_error", samlExpired)
+	}
 	// Require bounded assertion validity even if library-wide clock settings
-	// are adjusted by another application component.
+	// are adjusted by another application component. The library requires
+	// Conditions for its audience check, so only its timestamps may be absent.
 	now := time.Now()
 	if err != nil || a == nil || a.ID != id || a.Issuer.Value != p.SAML.IdentityProviderEntityID() || a.Conditions == nil {
 		return fail("invalid_saml_response")
@@ -381,17 +417,24 @@ func (o Options) samlFinish(c auth.EndpointContext) (any, error) {
 			}
 		}
 	}
-	latest := now.Add(3 * time.Minute)
-	if a.Conditions.NotOnOrAfter.IsZero() || !a.Conditions.NotOnOrAfter.After(now.Add(-3*time.Minute)) ||
-		a.Conditions.NotBefore.After(latest) || a.IssueInstant.Before(now.Add(-5*time.Minute)) || a.IssueInstant.After(latest) {
-		return fail("invalid_saml_response")
+	message, untimed := o.SAML.checkTimestamps(a, now)
+	if message != "" {
+		return enterpriseFailure(c, flow, "saml_error", message)
+	}
+	if untimed {
+		// Logged before the sign-in completes, outside any store transaction.
+		c.Auth.Logger().WarnContext(c.Request.Context(), "SAML assertion accepted without timestamp conditions", "providerId", p.ProviderID)
+	}
+	deadline := samlProvisioningDeadline(a, flow.RedirectURI, requestID, now, o.SAML.clockSkew())
+	if !deadline.After(now) {
+		return enterpriseFailure(c, flow, "saml_error", samlExpired)
 	}
 	profile, err := samlProfile(a, p.SAML.Mapping, o.SAML.TrustEmailVerified)
 	if err != nil {
 		return fail("invalid_saml_response")
 	}
 	complete := func(ctx context.Context, provider, subject string, _ auth.OAuthTokens, u auth.User, session auth.StoredSession, opts auth.OAuthLoginOptions) (auth.User, bool, error) {
-		ctx, cancel := context.WithDeadline(ctx, samlProvisioningDeadline(a, flow.RedirectURI, requestID, now))
+		ctx, cancel := context.WithDeadline(ctx, deadline)
 		defer cancel()
 		receipt := AssertionReceipt{Issuer: a.Issuer.Value, ID: id}
 		if o.SAML.EnableSingleLogout && availableSAMLLogout(c, p.Provider) == nil {
