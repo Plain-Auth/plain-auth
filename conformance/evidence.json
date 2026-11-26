@@ -11271,6 +11271,11 @@
       "label": "Refuse runtime discovery from an untrusted origin or for another issuer at sign-in, and an untrusted discovered token endpoint at the callback",
       "test": "adapters/sqlstore/sso_runtime_discovery_test.go",
       "marker": "t.Fatal(\"runtime discovery contacted an untrusted discovery origin\", w.Code, w.Body.String())"
+    },
+    {
+      "label": "Keep configured endpoints and fill the others from the discovered document",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "t.Fatal(\"a configured endpoint was replaced by the discovered one\", cfg)"
     }
   ],
   "plugin-symbol/sso/fetchDiscoveryDocument": [
@@ -11618,6 +11623,11 @@
       "label": "Redeem codes with a private_key_jwt client assertion and no client secret",
       "test": "adapters/sqlstore/sso_browser_test.go",
       "marker": "if grant.style == \"private_key_jwt\" {"
+    },
+    {
+      "label": "Keep a configured token endpoint authentication over the advertised one",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "t.Fatal(\"discovery chose the wrong token endpoint authentication\", c.advertised, c.configured, got)"
     }
   ],
   "plugin-symbol/sso/OIDCConfig/userInfoEndpoint": [
@@ -41347,6 +41357,11 @@
       "label": "Fetch {issuer}/.well-known/openid-configuration when no discovery endpoint is configured",
       "test": "plugins/sso/discovery_test.go",
       "marker": "if r.URL.String() != issuer+\"/.well-known/openid-configuration\" {"
+    },
+    {
+      "label": "Fetch the discovery document at the issuer's /.well-known/openid-configuration",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "t.Fatal(\"the discovery URL was not computed and recorded from the issuer\", fetched, cfg.DiscoveryEndpoint)"
     }
   ],
   "plugin-symbol/sso/normalizeDiscoveryUrls": [
@@ -41393,6 +41408,12 @@
       "label": "Keep an unset method as client_secret_basic at runtime discovery though the IdP advertises only client_secret_post",
       "test": "adapters/sqlstore/sso_runtime_discovery_test.go",
       "marker": "t.Fatal(\"runtime discovery replaced the stored token endpoint authentication\", w.Code, w.Header().Get(\"Location\"))"
+    },
+    {
+      "label": "Choose client_secret_basic without advertised or usable methods, the advertised post or private_key_jwt otherwise, and keep a configured method",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "t.Fatal(\"discovery chose the wrong token endpoint authentication\", c.advertised, c.configured, got)",
+      "complete": true
     }
   ],
   "plugin-symbol/sso/validateDiscoveryDocument": [
@@ -41429,6 +41450,11 @@
       "label": "Register providers whose oidcConfig names a discovery endpoint path on the issuer host",
       "test": "adapters/sqlstore/sso_test.go",
       "marker": "cfg := map[string]any{\"clientId\": \"long-client-1234\", \"clientSecret\": \"only-the-sso-issuer-and-creator\", \"discoveryEndpoint\": idp.URL + path}"
+    },
+    {
+      "label": "Hydrate from the issuer and the existing configuration, keeping configured values",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "t.Fatal(\"a configured endpoint was replaced by the discovered one\", cfg)"
     }
   ],
   "plugin-symbol/sso/DiscoveryError": [
@@ -41480,6 +41506,11 @@
       "label": "Fetch the discovery document from a configured discovery endpoint",
       "test": "adapters/sqlstore/sso_test.go",
       "marker": "cfg := map[string]any{\"clientId\": \"long-client-1234\", \"clientSecret\": \"only-the-sso-issuer-and-creator\", \"discoveryEndpoint\": idp.URL + path}"
+    },
+    {
+      "label": "Record the computed discovery endpoint on the hydrated configuration",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "t.Fatal(\"the discovery URL was not computed and recorded from the issuer\", fetched, cfg.DiscoveryEndpoint)"
     }
   ],
   "plugin-symbol/sso/HydratedOIDCConfig/authorizationEndpoint": [
@@ -41521,6 +41552,12 @@
       "label": "Hydrate client_secret_post when only that method is advertised, on both runtimes",
       "test": "conformance/sso-providers.mjs",
       "marker": "assert.equal(record.oidcConfig.tokenEndpointAuthentication, \"client_secret_post\");"
+    },
+    {
+      "label": "Fill the token endpoint authentication from the advertised methods and keep a configured one",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "t.Fatal(\"discovery chose the wrong token endpoint authentication\", c.advertised, c.configured, got)",
+      "complete": true
     }
   ],
   "plugin-symbol/sso/OIDCDiscoveryDocument": [
@@ -41654,6 +41691,11 @@
       "label": "Send the browser to the origin of the stored authorization endpoint",
       "test": "conformance/sso-browser.mjs",
       "marker": "assert.equal(authz.origin,issuer);"
+    },
+    {
+      "label": "Keep a configured authorization endpoint while discovery fills the others",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "t.Fatal(\"a configured endpoint was replaced by the discovered one\", cfg)"
     }
   ],
   "plugin-symbol/sso/OIDCConfig/discoveryEndpoint": [

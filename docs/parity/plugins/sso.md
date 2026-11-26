@@ -21,12 +21,14 @@
   - `NormalizedSSOProfile` — *not applicable: TypeScript type. It is the internal profile shape the other runtime passes to its organization-assignment helper; no host API takes or returns it, and Go hands an auth.OAuthProfile to its store.*
   - [ ] `computeDiscoveryUrl`
     - [x] Fetch {issuer}/.well-known/openid-configuration when no discovery endpoint is configured ([test](../../../plugins/sso/discovery_test.go#L34))
+    - [x] Fetch the discovery document at the issuer's /.well-known/openid-configuration ([test](../../../plugins/sso/discovery_test.go#L323))
   - [ ] `discoverOIDCConfig`
     - [x] Hydrate the tenant’s authorization, token and JWKS locations and select the advertised secret authentication method ([test](../../../conformance/sso-providers.mjs#L12))
     - [x] Resolve the relative authorization, token and JWKS URLs of a discovery document against the issuer path and select client_secret_basic ([test](../../../plugins/sso/discovery_test.go#L61))
     - [x] Reject a registration whose configured discovery endpoint returns a document with a different issuer ([test](../../../adapters/sqlstore/sso_test.go#L241))
     - [x] Discover a stored configuration's missing endpoints at sign-in under the registration rules ([test](../../../adapters/sqlstore/sso_runtime_discovery_test.go#L50))
     - [x] Refuse runtime discovery from an untrusted origin or for another issuer at sign-in, and an untrusted discovered token endpoint at the callback ([test](../../../adapters/sqlstore/sso_runtime_discovery_test.go#L90))
+    - [x] Keep configured endpoints and fill the others from the discovered document ([test](../../../plugins/sso/discovery_test.go#L328))
   - [ ] `fetchDiscoveryDocument`
     - [x] Require an exact discovery origin and enforce the deadline, issuer match and bounded response ([test](../../../plugins/sso/discovery_test.go#L20))
     - [x] Fail a registration with 400 after a single request when the discovery endpoint answers with a redirect ([test](../../../adapters/sqlstore/sso_test.go#L247))
@@ -42,11 +44,12 @@
     - [x] Check every discovered URL, including the revocation, end-session and introspection endpoints, against the trusted origins and name the field and URL in the refusal ([test](../../../plugins/sso/discovery_test.go#L201))
   - [ ] `normalizeUrl`
     - [x] Resolve '/authorize', 'token' and '/keys' against an issuer with a path, keeping that path ([test](../../../plugins/sso/discovery_test.go#L61))
-  - [ ] `selectTokenEndpointAuthMethod`
+  - [x] `selectTokenEndpointAuthMethod` ([test](../../../plugins/sso/discovery_test.go#L340))
     - [x] Select client_secret_basic when the discovery document advertises both secret methods ([test](../../../plugins/sso/discovery_test.go#L61))
     - [x] Select client_secret_post when the discovery document advertises only that method, on both runtimes ([test](../../../conformance/sso-providers.mjs#L67))
     - [x] Select private_key_jwt when the discovery document advertises only that method ([test](../../../adapters/sqlstore/sso_private_key_test.go#L159))
     - [x] Keep an unset method as client_secret_basic at runtime discovery though the IdP advertises only client_secret_post ([test](../../../adapters/sqlstore/sso_runtime_discovery_test.go#L69))
+    - [x] Choose client_secret_basic without advertised or usable methods, the advertised post or private_key_jwt otherwise, and keep a configured method ([test](../../../plugins/sso/discovery_test.go#L340))
   - [ ] `validateDiscoveryDocument`
     - [x] Reject a discovery document missing a required field with discovery_incomplete ([test](../../../plugins/sso/discovery_test.go#L214))
     - [x] Reject a discovery document whose issuer differs from the configured issuer with issuer_mismatch ([test](../../../plugins/sso/discovery_test.go#L66))
@@ -56,6 +59,7 @@
   - [ ] `DiscoverOIDCConfigParams`
     - [x] Bound each discovery fetch with a deadline no more than ten seconds away ([test](../../../plugins/sso/discovery_test.go#L31))
     - [x] Register providers whose oidcConfig names a discovery endpoint path on the issuer host ([test](../../../adapters/sqlstore/sso_test.go#L165))
+    - [x] Hydrate from the issuer and the existing configuration, keeping configured values ([test](../../../plugins/sso/discovery_test.go#L328))
   - [ ] `DiscoveryError`
     - [x] Report discovery failures as API errors carrying a machine-readable code and an HTTP status ([test](../../../plugins/sso/discovery_test.go#L42))
   - [ ] `DiscoveryErrorCode`
@@ -69,6 +73,7 @@
     - [ ] `discoveryEndpoint`
       - [x] Use {issuer}/.well-known/openid-configuration as the discovery URL by default ([test](../../../plugins/sso/discovery_test.go#L34))
       - [x] Fetch the discovery document from a configured discovery endpoint ([test](../../../adapters/sqlstore/sso_test.go#L165))
+      - [x] Record the computed discovery endpoint on the hydrated configuration ([test](../../../plugins/sso/discovery_test.go#L323))
     - [x] `authorizationEndpoint` ([test](../../../plugins/sso/discovery_test.go#L61))
       - [x] Store the issuer-relative authorization endpoint from a discovery document as an absolute URL ([test](../../../plugins/sso/discovery_test.go#L61))
     - [x] `tokenEndpoint` ([test](../../../plugins/sso/discovery_test.go#L61))
@@ -81,9 +86,10 @@
       - [x] Keep a UserInfo endpoint set in oidcConfig over the discovered one ([test](../../../plugins/sso/discovery_test.go#L270))
       - [x] Leave the UserInfo endpoint empty when the document advertises none ([test](../../../plugins/sso/discovery_test.go#L275))
       - [x] Refuse a private discovered userinfo_endpoint outside the trusted origins with discovery_untrusted_origin ([test](../../../plugins/sso/discovery_test.go#L281))
-    - [ ] `tokenEndpointAuthentication`
+    - [x] `tokenEndpointAuthentication` ([test](../../../plugins/sso/discovery_test.go#L340))
       - [x] Hydrate client_secret_basic when both secret methods are advertised ([test](../../../plugins/sso/discovery_test.go#L61))
       - [x] Hydrate client_secret_post when only that method is advertised, on both runtimes ([test](../../../conformance/sso-providers.mjs#L67))
+      - [x] Fill the token endpoint authentication from the advertised methods and keep a configured one ([test](../../../plugins/sso/discovery_test.go#L340))
     - `scopesSupported` — *not applicable: scopesSupported is a field of the result of the other runtime's exported discovery helper, which its plugin neither stores nor reads; this library exposes no discovery helper and registration stores the same configuration either way*
   - [ ] `OIDCDiscoveryDocument`
     - [x] Read issuer, authorization_endpoint, token_endpoint, jwks_uri and token_endpoint_auth_methods_supported from a discovery document ([test](../../../plugins/sso/discovery_test.go#L26))
@@ -269,6 +275,7 @@
     - [ ] `authorizationEndpoint`
       - [x] Fill the authorization endpoint from discovery when it is omitted ([test](../../../plugins/sso/discovery_test.go#L61))
       - [x] Send the browser to the origin of the stored authorization endpoint ([test](../../../conformance/sso-browser.mjs#L81))
+      - [x] Keep a configured authorization endpoint while discovery fills the others ([test](../../../plugins/sso/discovery_test.go#L328))
     - [x] `discoveryEndpoint` ([test](../../../adapters/sqlstore/sso_test.go#L165))
       - [x] Register providers through an oidcConfig discoveryEndpoint on the issuer host ([test](../../../adapters/sqlstore/sso_test.go#L165))
       - [x] Default the discovery URL to {issuer}/.well-known/openid-configuration ([test](../../../plugins/sso/discovery_test.go#L34))
@@ -288,6 +295,7 @@
       - [x] Redeem codes through confidential client-secret basic and POST authentication ([test](../../../adapters/sqlstore/sso_browser_test.go#L119))
       - [x] Store client_secret_post when discovery advertises only that method ([test](../../../adapters/sqlstore/sso_test.go#L235))
       - [x] Redeem codes with a private_key_jwt client assertion and no client secret ([test](../../../adapters/sqlstore/sso_browser_test.go#L105))
+      - [x] Keep a configured token endpoint authentication over the advertised one ([test](../../../plugins/sso/discovery_test.go#L340))
     - [x] `privateKeyId` ([test](../../../adapters/sqlstore/sso_private_key_test.go#L119))
       - [x] Store privateKeyId, pass it to the key resolver and send it as the client assertion's kid, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_private_key_test.go#L119))
     - [x] `privateKeyAlgorithm` ([test](../../../adapters/sqlstore/sso_private_key_test.go#L126))

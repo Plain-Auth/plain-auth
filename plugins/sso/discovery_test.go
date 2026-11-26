@@ -299,3 +299,45 @@ func TestNeedsRuntimeDiscovery(t *testing.T) {
 		}
 	}
 }
+
+// Discovery computes the document URL from the issuer, records it, keeps
+// configured endpoints and picks the token endpoint authentication method.
+func TestDiscoveryHydratedConfiguration(t *testing.T) {
+	host := discoveryHost(t)
+	const issuer = "https://login.example.test/tenant"
+	methods, fetched := "", ""
+	client := &http.Client{Transport: transportFunc(func(r *http.Request) (*http.Response, error) {
+		fetched = r.URL.String()
+		doc := `{"issuer":"` + issuer + `","authorization_endpoint":"/authorize","token_endpoint":"/token","jwks_uri":"/keys"` + methods + `}`
+		return &http.Response{Request: r, StatusCode: 200, Body: io.NopCloser(strings.NewReader(doc)), Header: http.Header{}}, nil
+	})}
+	hydrated := func(cfg Config) Config {
+		t.Helper()
+		if err := hydrate(t.Context(), host, client, &cfg, false); err != nil {
+			t.Fatal(err)
+		}
+		return cfg
+	}
+	cfg := hydrated(Config{Issuer: issuer})
+	if fetched != issuer+"/.well-known/openid-configuration" || cfg.DiscoveryEndpoint != issuer+"/.well-known/openid-configuration" {
+		t.Fatal("the discovery URL was not computed and recorded from the issuer", fetched, cfg.DiscoveryEndpoint)
+	}
+	// A configured authorization endpoint is kept while the others fill in.
+	cfg = hydrated(Config{Issuer: issuer, AuthorizationEndpoint: issuer + "/custom-authorize"})
+	if cfg.AuthorizationEndpoint != issuer+"/custom-authorize" || cfg.TokenEndpoint != issuer+"/token" || cfg.JWKSEndpoint != issuer+"/keys" {
+		t.Fatal("a configured endpoint was replaced by the discovered one", cfg)
+	}
+	for _, c := range []struct{ advertised, configured, want string }{
+		{"", "", "client_secret_basic"},
+		{`,"token_endpoint_auth_methods_supported":["tls_client_auth"]`, "", "client_secret_basic"},
+		{`,"token_endpoint_auth_methods_supported":["client_secret_post"]`, "", "client_secret_post"},
+		{`,"token_endpoint_auth_methods_supported":["private_key_jwt"]`, "", "private_key_jwt"},
+		{`,"token_endpoint_auth_methods_supported":["client_secret_basic"]`, "client_secret_post", "client_secret_post"},
+		{`,"token_endpoint_auth_methods_supported":["client_secret_post"]`, "client_secret_basic", "client_secret_basic"},
+	} {
+		methods = c.advertised
+		if got := hydrated(Config{Issuer: issuer, TokenEndpointAuthentication: c.configured}).TokenEndpointAuthentication; got != c.want {
+			t.Fatal("discovery chose the wrong token endpoint authentication", c.advertised, c.configured, got)
+		}
+	}
+}
