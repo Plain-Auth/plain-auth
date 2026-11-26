@@ -443,8 +443,8 @@
   - [ ] `session`
     - [ ] `modelName`
     - [ ] `fields`
-    - [x] `expiresIn` ([test](../../authtest/server_test.go#L85))
-      - [x] Options.SessionTTL set to 22h: the issued session's ExpiresAt minus CreatedAt equals exactly 22h ([test](../../authtest/server_test.go#L85))
+    - [x] `expiresIn` ([test](../../authtest/server_test.go#L88))
+      - [x] Options.SessionTTL set to 22h: the issued session's ExpiresAt minus CreatedAt equals exactly 22h ([test](../../authtest/server_test.go#L88))
     - [x] `updateAge` ([test](../../session_refresh_test.go#L123))
       - [x] Over HTTP get-session, TestSessionRefreshWindow shows no refresh 1ms before the default one-day update age, a refresh exactly at it that extends expiry by the TTL, and no second refresh within the window ([test](../../session_refresh_test.go#L123))
     - [ ] `additionalFields`

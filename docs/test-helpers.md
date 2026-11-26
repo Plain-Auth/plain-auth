@@ -1,6 +1,6 @@
 # Test helpers
 
-Import `github.com/Plain-Org/plain-auth/authtest` from a Go test to build user and organization fixtures or read codes issued by your test server. The package runs in the test process and registers no HTTP routes.
+Import `github.com/Plain-Org/plain-auth/authtest` from a Go test to build user and organization fixtures or read codes issued by your test server. The package runs in the test process and registers no HTTP routes: a server built with `New` or `NewWithOrganizations` serves exactly the routes of the same options passed to `plainauth.New`. [Route test](../authtest/server_test.go)
 
 ## Build fixture data
 
@@ -66,7 +66,7 @@ Pass the decoded `cookieJSON` array to the browser context's cookie importer bef
 
 ## Save and remove organization fixtures
 
-Use `authtest.NewWithOrganizations` with a dedicated SQLite, PostgreSQL or MySQL database initialized with the `organization` schema profile. Use `organization-teams` when the test needs teams. Pass the organization options to the constructor once. It installs the plugin and retains the same configured adapter for trusted grants and fixture persistence. An empty `organization.Options.Store` selects the auth store. A custom organization adapter can implement `authtest.OrganizationStore` and `organization.MemberWriter`.
+Use `authtest.NewWithOrganizations` with a dedicated SQLite, PostgreSQL or MySQL database initialized with the `organization` schema profile. On a server from `New`, `SaveOrganization`, `AddMember` and `DeleteOrganization` return `authtest.ErrOrganizationSetup` without calling the store. Use `organization-teams` when the test needs teams. Pass the organization options to the constructor once. It installs the plugin and retains the same configured adapter for trusted grants and fixture persistence. An empty `organization.Options.Store` selects the auth store. A custom organization adapter can implement `authtest.OrganizationStore` and `organization.MemberWriter`.
 
 ```go
 server, err := authtest.NewWithOrganizations(opts, organization.Options{})

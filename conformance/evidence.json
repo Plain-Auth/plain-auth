@@ -37498,5 +37498,29 @@
       "test": "conformance/openapi-contract.mjs",
       "marker": "if (own) assert.deepEqual(own.tags, op.tags, method + \" \" + path + \" tags\");"
     }
+  ],
+  "plugin-symbol/test-utils/testUtils": [
+    {
+      "label": "authtest.New and NewWithOrganizations serve exactly the routes of the same options built with plainauth.New",
+      "test": "authtest/server_test.go",
+      "marker": "func TestFixtureServerAddsNoRoutes(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/test-utils/TestHelpers": [
+    {
+      "label": "On a server from authtest.New, SaveOrganization, AddMember and DeleteOrganization return ErrOrganizationSetup (deviation: the helpers always exist and refuse instead)",
+      "test": "authtest/server_test.go",
+      "marker": "t.Fatal(\"organization helper ran without NewWithOrganizations\", name, err)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/test-utils.mdx#L44": [
+    {
+      "label": "A fixture server serves exactly the routes of the application's own options, so the helpers add no public route",
+      "test": "authtest/server_test.go",
+      "marker": "t.Fatal(\"authtest.New changed the HTTP routes\")",
+      "complete": true
+    }
   ]
 }

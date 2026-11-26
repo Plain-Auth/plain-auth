@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -15,6 +16,8 @@ import (
 	"github.com/Plain-Org/plain-auth/adapters/memory"
 	"github.com/Plain-Org/plain-auth/adapters/sqlstore"
 	"github.com/Plain-Org/plain-auth/authtest"
+	"github.com/Plain-Org/plain-auth/plugins/organization"
+	"github.com/Plain-Org/plain-auth/schema"
 )
 
 func TestFixtureUserLifecycle(t *testing.T) {
@@ -164,5 +167,71 @@ func TestFixtureLoginCleansUpOnCancellation(t *testing.T) {
 	rows, err := store.ListSessions(t.Context(), user.ID)
 	if err != nil || len(rows) != 0 {
 		t.Fatal("failed fixture login left a session", err)
+	}
+}
+
+// A fixture server from New or NewWithOrganizations serves exactly the routes
+// of the same options passed to plainauth.New.
+func TestFixtureServerAddsNoRoutes(t *testing.T) {
+	ctx := t.Context()
+	opts := auth.Options{BaseURL: "https://app.example.test", Secret: strings.Repeat("r", 40), Store: memory.New(), EmailAndPassword: true}
+	fixtures, err := authtest.New(opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	plain, err := auth.New(opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(fixtures.Auth.DescribeHTTP().Routes, plain.DescribeHTTP().Routes) {
+		t.Fatal("authtest.New changed the HTTP routes")
+	}
+	ddl, err := schema.Generate("sqlite", []string{"organization"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	store, err := sqlstore.OpenWithSchema(ctx, "sqlite", filepath.Join(t.TempDir(), "org.sqlite"), ddl)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	orgOpts := opts
+	orgOpts.Store = store
+	withOrgs, err := authtest.NewWithOrganizations(orgOpts, organization.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	service, err := organization.NewService(organization.Options{Store: store})
+	if err != nil {
+		t.Fatal(err)
+	}
+	orgOpts.Plugins = []auth.Plugin{service.Plugin()}
+	direct, err := auth.New(orgOpts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(withOrgs.Auth.DescribeHTTP().Routes, direct.DescribeHTTP().Routes) {
+		t.Fatal("NewWithOrganizations added routes beyond the organization plugin")
+	}
+}
+
+// On a server from New, the organization helpers return ErrOrganizationSetup.
+func TestOrganizationHelpersNeedSetup(t *testing.T) {
+	ctx := t.Context()
+	server, err := authtest.New(auth.Options{BaseURL: "https://app.example.test", Secret: strings.Repeat("r", 40), Store: memory.New()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, call := range map[string]func() error{
+		"SaveOrganization": func() error { _, err := server.SaveOrganization(ctx, authtest.NewOrganization("")); return err },
+		"AddMember": func() error {
+			_, err := server.AddMember(ctx, organization.AddMemberRequest{UserID: "user-1", OrganizationID: "org-1"})
+			return err
+		},
+		"DeleteOrganization": func() error { return server.DeleteOrganization(ctx, "org-1") },
+	} {
+		if err := call(); !errors.Is(err, authtest.ErrOrganizationSetup) {
+			t.Fatal("organization helper ran without NewWithOrganizations", name, err)
+		}
 	}
 }

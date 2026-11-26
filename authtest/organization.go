@@ -16,7 +16,10 @@ type OrganizationStore interface {
 	DeleteFixtureOrganization(context.Context, string) error
 }
 
-var errOrganizationSetup = errors.New("authtest: organization fixtures require NewWithOrganizations")
+// ErrOrganizationSetup is returned by SaveOrganization, AddMember and
+// DeleteOrganization on a server built without NewWithOrganizations. The
+// helpers exist on every Server, since a Go type cannot drop methods.
+var ErrOrganizationSetup = errors.New("authtest: organization fixtures require NewWithOrganizations")
 
 // NewWithOrganizations installs a single organization plugin and retains its
 // service for trusted fixture grants. A nil org.Store uses opts.Store.
@@ -56,7 +59,7 @@ func NewWithOrganizations(opts auth.Options, org organization.Options) (*Server,
 // SaveOrganization inserts the supplied organization without creating a member, team or login.
 func (s *Server) SaveOrganization(ctx context.Context, o organization.Organization) (organization.Organization, error) {
 	if s.organizationFixtures == nil {
-		return organization.Organization{}, errOrganizationSetup
+		return organization.Organization{}, ErrOrganizationSetup
 	}
 	return s.organizationFixtures.SaveFixtureOrganization(ctx, o)
 }
@@ -64,7 +67,7 @@ func (s *Server) SaveOrganization(ctx context.Context, o organization.Organizati
 // AddMember grants roles to an existing account. An omitted or empty role defaults to member.
 func (s *Server) AddMember(ctx context.Context, request organization.AddMemberRequest) (*organization.Member, error) {
 	if s.organizations == nil {
-		return nil, errOrganizationSetup
+		return nil, ErrOrganizationSetup
 	}
 	if len(request.Roles) == 0 || (len(request.Roles) == 1 && request.Roles[0] == "") {
 		request.Roles = []string{"member"}
@@ -75,7 +78,7 @@ func (s *Server) AddMember(ctx context.Context, request organization.AddMemberRe
 // DeleteOrganization removes a fixture and its owned local state from the test database.
 func (s *Server) DeleteOrganization(ctx context.Context, id string) error {
 	if s.organizationFixtures == nil {
-		return errOrganizationSetup
+		return ErrOrganizationSetup
 	}
 	return s.organizationFixtures.DeleteFixtureOrganization(ctx, id)
 }
