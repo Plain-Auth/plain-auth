@@ -153,8 +153,11 @@ func inlineCipherValue(parent *etree.Element) bool {
 
 func encryptedAssertionID(raw []byte, acs, requestID string, key *rsa.PrivateKey, algorithms SAMLAlgorithms) (string, error) {
 	response, err := boundedSAMLTree(raw)
-	if err != nil || !namedElement(response, samlProtocolNS, "Response") || uniqueAttribute(response, "Destination") != acs || uniqueAttribute(response, "InResponseTo") != requestID {
+	if err != nil || !namedElement(response, samlProtocolNS, "Response") || uniqueAttribute(response, "Destination") != acs {
 		return "", errSAMLResponse
+	}
+	if uniqueAttribute(response, "InResponseTo") != requestID {
+		return "", errUnknownRequest
 	}
 	if requestID == "" && response.SelectAttr("InResponseTo") != nil {
 		return "", errSAMLResponse

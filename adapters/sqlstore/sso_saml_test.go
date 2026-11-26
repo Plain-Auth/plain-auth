@@ -625,6 +625,21 @@ func runEnterpriseSAMLBrowser(t *testing.T, encrypted, logout bool) {
 					}
 				})
 			}
+			// A response to another request of this browser names a request this
+			// sign-in never sent.
+			t.Run("unknown request", func(t *testing.T) {
+				h := newBrowser()
+				earlier, e := start(h)
+				must(e)
+				later, e := start(h)
+				must(e)
+				fields := form(earlier, "unknown-request", "unknown-request@staff.example", nil)
+				fields.Set("RelayState", later.RelayState)
+				status, hd, _ := post(h, fields, acs)
+				if status != 302 || !strings.Contains(hd.Get("Location"), "error=invalid_saml_response&error_description=Unknown+or+expired+request+ID") || strings.Contains(strings.Join(hd.Values("Set-Cookie"), ";"), "session_token=") {
+					t.Fatal("a response to another request was not reported as an unknown request", status, hd.Get("Location"))
+				}
+			})
 			// Existing accounts link only when both the provider's DNS proof and the
 			// locally verified mailbox agree, even when the IdP attests its email.
 			for _, email := range []string{"prior@staff.example", "prior@third.example"} {
@@ -695,12 +710,14 @@ func runEnterpriseSAMLBrowser(t *testing.T, encrypted, logout bool) {
 				if path == app.URL+"/home" {
 					pass++
 				}
-				if strings.Contains(path, "error=invalid_saml_response") {
+				// A reused assertion is a replay in either flow, with the
+				// description another runtime sends.
+				if strings.Contains(path, "error=replay_detected&error_description=SAML+assertion+has+already+been+used") {
 					denied++
 				}
 			}
 			if pass != 1 || denied != 1 {
-				t.Fatal("assertion replay results", pathsOut)
+				t.Fatal("an SP-initiated assertion replay was not reported as replay_detected", pathsOut)
 			}
 			t.Run("inline metadata registration and signing key rotation", func(t *testing.T) {
 				outsider := sdk(newBrowser())
@@ -736,7 +753,7 @@ func runEnterpriseSAMLBrowser(t *testing.T, encrypted, logout bool) {
 			_, e = second.db.ExecContext(ctx, second.bind(`UPDATE "ssoProvider" SET "samlConfig"=? WHERE "providerId"=?`), string(raw), "work")
 			must(e)
 			st, head, _ = post(h, staleForm, acs)
-			if st != 302 || !strings.Contains(head.Get("Location"), "error=invalid_state") {
+			if st != 302 || !strings.Contains(head.Get("Location"), "error=invalid_state&error_description=SSO+provider+reference+missing+or+invalid") {
 				t.Fatal("changed provider accepted response", head)
 			}
 			must(owner.DeleteSSOProvider(ctx, "work"))
@@ -756,8 +773,8 @@ func runEnterpriseSAMLBrowser(t *testing.T, encrypted, logout bool) {
 			fields := form(portal, "new-directory", "new-directory@staff.example", nil)
 			fields.Del("RelayState")
 			st, head, _ = post(newBrowser(), fields, acs)
-			if st != 302 || !strings.Contains(head.Get("Location"), "error=unsolicited_response") {
-				t.Fatal("portal approval adopted a replacement registration", st)
+			if st != 302 || !strings.Contains(head.Get("Location"), "error=unsolicited_response&error_description=IdP-initiated+SSO+not+allowed") {
+				t.Fatal("portal approval adopted a replacement registration", st, head.Get("Location"))
 			}
 
 			var links int

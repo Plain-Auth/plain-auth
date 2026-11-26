@@ -10518,6 +10518,12 @@
       "label": "Remove one directory grant while another connection changes the same subject",
       "test": "adapters/sqlstore/scim_projection_test.go",
       "marker": "concurrent responses %d %d"
+    },
+    {
+      "label": "Refuse another connection's Group deletion with 404, answer 409 while an imported grant needs its reconciler, then delete with 204, remove its membership rows and keep its Users and another directory's Group, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_groups_test.go",
+      "marker": "call(replica, \"DELETE\", path, \"second\", nil, 404)",
+      "complete": true
     }
   ],
   "plugin-symbol/scim/SCIMMicrosoftEntraCompatibilityOptions/acceptLegacyGroupSchema": [
@@ -12666,7 +12672,7 @@
     {
       "label": "Consume an assertion once across independent instances and maintain the live DNS boundary on automatic linking",
       "test": "adapters/sqlstore/sso_saml_test.go",
-      "marker": "t.Fatal(\"assertion replay results\""
+      "marker": "t.Fatal(\"an SP-initiated assertion replay was not reported as replay_detected\""
     },
     {
       "label": "Invalidate requests that predate a certificate rotation and check the current XML trust anchors on SQLite, PostgreSQL and MySQL",
@@ -41473,7 +41479,8 @@
     {
       "label": "Require issuer, authorization_endpoint and token_endpoint in the discovery document",
       "test": "plugins/sso/discovery_test.go",
-      "marker": "t.Fatal(\"a discovery document missing a required field did not answer 400 discovery_incomplete\", field, status, code)"
+      "marker": "t.Fatal(\"a discovery document missing a required field did not answer 400 discovery_incomplete\", field, status, code)",
+      "complete": true
     }
   ],
   "plugin-symbol/sso/deriveSAMLIdentityProviderEntityID": [
@@ -41647,13 +41654,20 @@
       "label": "Return the registration issuer in samlConfig on both runtimes",
       "test": "conformance/sso-saml.mjs",
       "marker": "assert.equal(registration.samlConfig.issuer,issuer);"
+    },
+    {
+      "label": "Default the SP metadata entity ID, the AuthnRequest issuer and the expected audience to the registered issuer, and refuse another audience, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_defaults_test.go",
+      "marker": "func TestEnterpriseSAMLDefaults(t *testing.T) {",
+      "complete": true
     }
   ],
   "plugin-symbol/sso/SAMLConfig/entryPoint": [
     {
       "label": "Send the SAML request to the IdP sign-in URL, from entryPoint or, when IdP metadata XML is registered with a placeholder entryPoint, from the document",
       "test": "conformance/sso-saml.mjs",
-      "marker": "assert.equal(url.origin+url.pathname,entryPoint);"
+      "marker": "assert.equal(url.origin+url.pathname,entryPoint);",
+      "complete": true
     }
   ],
   "plugin-symbol/sso/SAMLConfig/cert": [
@@ -42001,7 +42015,7 @@
     {
       "label": "Let only one of two concurrent logins carrying the same assertion ID succeed",
       "test": "adapters/sqlstore/sso_saml_test.go",
-      "marker": "t.Fatal(\"assertion replay results\""
+      "marker": "t.Fatal(\"an SP-initiated assertion replay was not reported as replay_detected\""
     }
   ],
   "docs/content/docs/plugins/sso/index.mdx#L22/SAML Single Logout": [
@@ -42607,7 +42621,7 @@
     {
       "label": "Let only one of two concurrent SAML sign-ins that reuse one assertion ID succeed",
       "test": "adapters/sqlstore/sso_saml_test.go",
-      "marker": "t.Fatal(\"assertion replay results\", pathsOut)"
+      "marker": "t.Fatal(\"an SP-initiated assertion replay was not reported as replay_detected\", pathsOut)"
     }
   ],
   "docs/content/docs/plugins/sso/reference.mdx#L559/`saml-session:`": [
@@ -42615,6 +42629,12 @@
       "label": "Send the NameID and SessionIndex recorded at SAML sign-in in the SP-initiated LogoutRequest",
       "test": "adapters/sqlstore/sso_saml_logout_test.go",
       "marker": "t.Fatal(\"incorrect signed logout identity\")"
+    },
+    {
+      "label": "Record the NameID and SessionIndex at SAML sign-in and use them for SP-initiated and IdP-initiated logout, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "func TestEnterpriseSAMLSingleLogout(t *testing.T) {",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/sso/reference.mdx#L560/`saml-session-by-id:`": [
@@ -42622,6 +42642,12 @@
       "label": "Find a SAML sign-in's logout record by its session ID and give it the session's expiry",
       "test": "adapters/sqlstore/sso_saml_test.go",
       "marker": "t.Fatal(\"the binding expires at\", bindingEnd, \"for a session that expires at\", sessionEnd)"
+    },
+    {
+      "label": "Find a SAML login's logout record by its session ID, give it the session's expiry and refuse another session's record",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "func TestEnterpriseSAMLSingleLogout(t *testing.T) {",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/sso/reference.mdx#L561/`saml-logout-request:`": [
@@ -42629,6 +42655,12 @@
       "label": "Reject a LogoutResponse once its stored logout request has expired",
       "test": "adapters/sqlstore/sso_saml_logout_test.go",
       "marker": "t.Fatal(\"expired logout accepted\", status)"
+    },
+    {
+      "label": "Store each SP-initiated LogoutRequest once and refuse responses to another, an expired or an already spent request",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "func TestEnterpriseSAMLSingleLogout(t *testing.T) {",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/sso/reference.mdx#L562/`_{tokenPrefix}-{providerId}`": [
@@ -42693,14 +42725,14 @@
     {
       "label": "Redirect with error=unsolicited_response for an IdP-initiated response when no directory policy allows it",
       "test": "adapters/sqlstore/sso_saml_portal_test.go",
-      "marker": "rejected(send(disabled, proof, origin, \"\", \"document\"), \"unsolicited_response\")"
+      "marker": "for _, h := range []http.Handler{disabled, node} {"
     }
   ],
   "docs/content/docs/plugins/sso/saml-security.mdx#L17/Replay": [
     {
       "label": "Let only one of two concurrent SAML sign-ins that reuse one assertion ID succeed",
       "test": "adapters/sqlstore/sso_saml_test.go",
-      "marker": "t.Fatal(\"assertion replay results\", pathsOut)",
+      "marker": "t.Fatal(\"an SP-initiated assertion replay was not reported as replay_detected\", pathsOut)",
       "complete": true
     },
     {
@@ -42731,25 +42763,37 @@
       "label": "Redirect with error=invalid_saml_response for a correlated response posted without its RelayState",
       "test": "adapters/sqlstore/sso_saml_test.go",
       "marker": "t.Fatal(\"a correlated reply was accepted without its state\", status)"
+    },
+    {
+      "label": "Redirect a response to another request of the browser with invalid_saml_response and Unknown or expired request ID",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "t.Fatal(\"a response to another request was not reported as an unknown request\", status, hd.Get(\"Location\"))"
     }
   ],
   "docs/content/docs/plugins/sso/saml-security.mdx#L47/`unsolicited_response`": [
     {
       "label": "Redirect with error=unsolicited_response for an IdP-initiated response when no directory policy allows it",
       "test": "adapters/sqlstore/sso_saml_portal_test.go",
-      "marker": "rejected(send(disabled, proof, origin, \"\", \"document\"), \"unsolicited_response\")"
+      "marker": "for _, h := range []http.Handler{disabled, node} {"
     },
     {
       "label": "Redirect with error=unsolicited_response for a portal response to a re-registered provider the policy has not approved",
       "test": "adapters/sqlstore/sso_saml_test.go",
-      "marker": "t.Fatal(\"portal approval adopted a replacement registration\", st)"
+      "marker": "t.Fatal(\"portal approval adopted a replacement registration\", st,",
+      "complete": true
+    },
+    {
+      "label": "Refuse a portal response with unsolicited_response and IdP-initiated SSO not allowed when portal sign-in is off or the host declines it",
+      "test": "adapters/sqlstore/sso_saml_portal_test.go",
+      "marker": "t.Fatal(\"a refused portal response did not say IdP-initiated SSO is not allowed\", res.location)"
     }
   ],
   "docs/content/docs/plugins/sso/saml-security.mdx#L48/`invalid_state`": [
     {
       "label": "Redirect with error=invalid_state when the provider's stored configuration changed after sign-in started",
       "test": "adapters/sqlstore/sso_saml_test.go",
-      "marker": "t.Fatal(\"changed provider accepted response\", head)"
+      "marker": "t.Fatal(\"changed provider accepted response\", head)",
+      "complete": true
     },
     {
       "label": "Redirect with error=invalid_state for a request started before a certificate rotation",
@@ -42761,7 +42805,7 @@
     {
       "label": "Let only one of two concurrent SAML sign-ins that reuse one assertion ID succeed",
       "test": "adapters/sqlstore/sso_saml_test.go",
-      "marker": "t.Fatal(\"assertion replay results\", pathsOut)"
+      "marker": "t.Fatal(\"an SP-initiated assertion replay was not reported as replay_detected\", pathsOut)"
     },
     {
       "label": "Redirect a repeated IdP-initiated assertion with error=replay_detected on both runtimes",
@@ -42779,6 +42823,12 @@
       "label": "Redirect a repeated IdP-initiated assertion with error=replay_detected on both runtimes",
       "test": "conformance/sso-saml.mjs",
       "marker": "assert.equal(new URL(duplicate.headers.get(\"location\"),runtime.baseURL).searchParams.get(\"error\"),\"replay_detected\");"
+    },
+    {
+      "label": "Redirect an SP-initiated assertion replay across browsers with replay_detected and SAML assertion has already been used",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "t.Fatal(\"an SP-initiated assertion replay was not reported as replay_detected\", pathsOut)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/sso/saml-security.mdx#L62": [
@@ -42982,7 +43032,7 @@
     {
       "label": "Redirect with error=unsolicited_response for an IdP-initiated response when no directory policy allows it",
       "test": "adapters/sqlstore/sso_saml_portal_test.go",
-      "marker": "rejected(send(disabled, proof, origin, \"\", \"document\"), \"unsolicited_response\")"
+      "marker": "for _, h := range []http.Handler{disabled, node} {"
     },
     {
       "label": "Sign in from an IdP-initiated response through the released client and land on the configured page on both runtimes",
@@ -43623,6 +43673,12 @@
       "label": "Report filter support with a 100-result maximum and PATCH support from the public configuration on both runtimes",
       "test": "conformance/scim-contract.mjs",
       "marker": "assert.deepEqual(meta.filter, {supported:true,maxResults:100});"
+    },
+    {
+      "label": "Report bearer authentication, PATCH, filters with a 100-result page cap and no bulk, sorting, ETags or password changes in the public configuration",
+      "test": "plugins/scim/http_test.go",
+      "marker": "t.Fatal(\"service provider config lost its bearer authentication scheme\", cfg[\"authenticationSchemes\"])",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L316/`GET /scim/v2/Schemas/:schemaId`": [
@@ -43630,6 +43686,12 @@
       "label": "Return the same public User schema roles descriptor from both runtimes",
       "test": "conformance/scim-roles.mjs",
       "marker": "if (discovery) assert.deepEqual(descriptor, discovery);"
+    },
+    {
+      "label": "Serve each supported schema by ID from public discovery, with the User and Enterprise User documents identical on both runtimes",
+      "test": "conformance/scim-contract.mjs",
+      "marker": "\"the \"+id+\" schema differs between runtimes\"",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L317/`GET /scim/v2/ResourceTypes`": [
@@ -45701,6 +45763,54 @@
       "label": "Answer invalidPath for the manager alias behind the core User schema prefix",
       "test": "adapters/sqlstore/scim_attributes_test.go",
       "marker": "t.Fatal(\"a core-prefixed manager alias was not invalidPath\", body)"
+    }
+  ],
+  "docs/content/docs/plugins/scim/groups-and-roles.mdx#L94/`provisioningDomainId`": [
+    {
+      "label": "Hand the reconciler the exact provisioning domain whose access it replaces, leaving a case-distinct domain's role intact",
+      "test": "adapters/sqlstore/scim_projection_test.go",
+      "marker": "t.Fatal(\"tenant replay removed another domain's role\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/groups-and-roles.mdx#L95/`userId`": [
+    {
+      "label": "Write each reconciled grant to the linked account the directory sources share",
+      "test": "adapters/sqlstore/scim_projection_test.go",
+      "marker": "t.Fatalf(\"host %s=%d want %d\", x.role, n, x.n)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/index.mdx#L162/Base URL": [
+    {
+      "label": "Serve directory routes under the auth mount's /scim/v2 path and link created Users from the configured base URL",
+      "test": "adapters/sqlstore/scim_test.go",
+      "marker": "if w.Header().Get(\"Location\") != \"https://directory.example.test\"+directoryPath+\"Users/\"+id",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/index.mdx#L163/Authentication": [
+    {
+      "label": "Advertise bearer token authentication only and refuse Basic credentials with a bearer challenge",
+      "test": "plugins/scim/http_test.go",
+      "marker": "t.Fatal(\"Basic authentication was not refused with a bearer challenge\"",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L15/`authentication`": [
+    {
+      "label": "Verify bearer tokens through the application verifier for declared and application-resolved connections",
+      "test": "adapters/sqlstore/scim_dynamic_test.go",
+      "marker": "func TestSCIMDynamicBearer(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L18/`projection`": [
+    {
+      "label": "Map Group memberships to validated roles and apply them through the application reconciler inside the directory transaction",
+      "test": "adapters/sqlstore/scim_projection_test.go",
+      "marker": "func TestSCIMGroupApplicationProjection(",
+      "complete": true
     }
   ]
 }

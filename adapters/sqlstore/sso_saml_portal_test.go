@@ -66,8 +66,13 @@ func checkSAMLPortal(t *testing.T, idp *saml.IdentityProvider, spEntity, acs, or
 		}
 	}
 	proof := issue(nil)
-	rejected(send(disabled, proof, origin, "", "document"), "unsolicited_response")
-	rejected(send(node, proof, origin, "", "document"), "unsolicited_response")
+	for _, h := range []http.Handler{disabled, node} {
+		res := send(h, proof, origin, "", "document")
+		rejected(res, "unsolicited_response")
+		if u, _ := url.Parse(res.location); u.Query().Get("error_description") != "IdP-initiated SSO not allowed" {
+			t.Fatal("a refused portal response did not say IdP-initiated SSO is not allowed", res.location)
+		}
+	}
 	reviewed.Store(&directory)
 	rejected(send(existingOnly, proof, origin, "", "document"), "signup_disabled")
 	for _, orig := range []string{"", "null", "https://other.example.test", "https://identity.example.test:9999"} {

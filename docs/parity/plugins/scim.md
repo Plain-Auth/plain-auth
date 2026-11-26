@@ -195,9 +195,10 @@
     - [x] Replace a Group's display name on both runtimes ([test](../../../conformance/scim-contract.mjs#L122))
   - [ ] `PATCH /scim/v2/Groups/:groupId`
     - [x] Apply concurrent membership changes, enforce the 1,000-member limit and roll back invalid multi-operation updates ([test](../../../adapters/sqlstore/scim_groups_test.go#L20))
-  - [ ] `DELETE /scim/v2/Groups/:groupId`
+  - [x] `DELETE /scim/v2/Groups/:groupId` ([test](../../../adapters/sqlstore/scim_groups_test.go#L114))
     - [x] Physically remove the scoped membership edges without deleting Users or another directory's Group ([test](../../../adapters/sqlstore/scim_groups_test.go#L20))
     - [x] Remove one directory grant while another connection changes the same subject ([test](../../../adapters/sqlstore/scim_projection_test.go#L274))
+    - [x] Refuse another connection's Group deletion with 404, answer 409 while an imported grant needs its reconciler, then delete with 204, remove its membership rows and keep its Users and another directory's Group, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_groups_test.go#L114))
   - [x] `SCIMActiveUserLink` ([test](../../../adapters/sqlstore/sso_scim_link_test.go#L23))
     - [x] Find the active SCIM User and account for an exact connection and externalId, and nothing for another case, another connection, an inactive or a deleted User, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_scim_link_test.go#L23))
   - [x] `SCIMActiveUserLinkContext` ([test](../../../adapters/sqlstore/sso_scim_link_test.go#L125))
@@ -278,8 +279,10 @@
       - [x] Confirm each candidate role against the application's role table before granting it ([test](../../../adapters/sqlstore/scim_projection_test.go#L81))
     - [x] `reconcileUser` ([test](../../../adapters/sqlstore/scim_projection_test.go#L94))
       - [x] Deliver each account's full desired grant set, so a reconciler that replaces its SCIM-owned roles in the domain matches the expected roles after every change ([test](../../../adapters/sqlstore/scim_projection_test.go#L94))
-    - [ ] `provisioningDomainId`
-    - [ ] `userId`
+    - [x] `provisioningDomainId` ([test](../../../adapters/sqlstore/scim_projection_test.go#L370))
+      - [x] Hand the reconciler the exact provisioning domain whose access it replaces, leaving a case-distinct domain's role intact ([test](../../../adapters/sqlstore/scim_projection_test.go#L370))
+    - [x] `userId` ([test](../../../adapters/sqlstore/scim_projection_test.go#L173))
+      - [x] Write each reconciled grant to the linked account the directory sources share ([test](../../../adapters/sqlstore/scim_projection_test.go#L173))
     - [ ] `active`
       - [x] Keep the remaining active source's role after another source is deactivated and restore the role on reprovisioning ([test](../../../adapters/sqlstore/scim_projection_test.go#L257))
     - [ ] `sources`
@@ -294,8 +297,10 @@
 
 - [ ] System for Cross-domain Identity Management (SCIM)
   - [ ] Configure your directory
-    - [ ] Base URL
-    - [ ] Authentication
+    - [x] Base URL ([test](../../../adapters/sqlstore/scim_test.go#L125))
+      - [x] Serve directory routes under the auth mount's /scim/v2 path and link created Users from the configured base URL ([test](../../../adapters/sqlstore/scim_test.go#L125))
+    - [x] Authentication ([test](../../../plugins/scim/http_test.go#L254))
+      - [x] Advertise bearer token authentication only and refuse Basic credentials with a bearer challenge ([test](../../../plugins/scim/http_test.go#L254))
     - [ ] Token
   - [ ] How provisioning maps to your application
   - [ ] Provision users
@@ -317,11 +322,13 @@
     - [ ] `connections`
       - [x] Serve a verifier-resolved directory when no code-defined connection is configured ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L132))
       - [x] Authenticate managed credentials when no code-defined connection is configured ([test](../../../adapters/sqlstore/scim_managed_test.go#L62))
-    - [ ] `authentication`
+    - [x] `authentication` ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L35))
+      - [x] Verify bearer tokens through the application verifier for declared and application-resolved connections ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L35))
     - [ ] `managedConnections`
     - [ ] `identity`
       - [x] Configure Identity.ResolveUser to link incoming Users ([test](../../../adapters/sqlstore/scim_identity_test.go#L138))
-    - [ ] `projection`
+    - [x] `projection` ([test](../../../adapters/sqlstore/scim_projection_test.go#L19))
+      - [x] Map Group memberships to validated roles and apply them through the application reconciler inside the directory transaction ([test](../../../adapters/sqlstore/scim_projection_test.go#L19))
     - [ ] `compatibility`
     - [ ] Connection options
       - [ ] `id`
@@ -458,13 +465,15 @@
       - [x] Delete a Group with 204 and remove its membership rows ([test](../../../adapters/sqlstore/scim_groups_test.go#L175))
       - [x] Remove a Group's projected grant rows when Go deletes the Group ([test](../../../conformance/scim-contract.mjs#L238))
   - [ ] Discovery
-    - [ ] `GET /scim/v2/ServiceProviderConfig`
+    - [x] `GET /scim/v2/ServiceProviderConfig` ([test](../../../plugins/scim/http_test.go#L198))
       - [x] Report filter support with a 100-result maximum and PATCH support from the public configuration on both runtimes ([test](../../../conformance/scim-contract.mjs#L53))
+      - [x] Report bearer authentication, PATCH, filters with a 100-result page cap and no bulk, sorting, ETags or password changes in the public configuration ([test](../../../plugins/scim/http_test.go#L198))
     - [x] `GET /scim/v2/Schemas` ([test](../../../adapters/sqlstore/scim_attributes_test.go#L858))
       - [x] List the User, Enterprise User and Group schemas and declare the optional Enterprise extension on the User resource type, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L858))
       - [x] Serve the same User resource type, with its Enterprise extension, on both runtimes ([test](../../../conformance/scim-contract.mjs#L252))
-    - [ ] `GET /scim/v2/Schemas/:schemaId`
+    - [x] `GET /scim/v2/Schemas/:schemaId` ([test](../../../conformance/scim-contract.mjs#L250))
       - [x] Return the same public User schema roles descriptor from both runtimes ([test](../../../conformance/scim-roles.mjs#L13))
+      - [x] Serve each supported schema by ID from public discovery, with the User and Enterprise User documents identical on both runtimes ([test](../../../conformance/scim-contract.mjs#L250))
     - [ ] `GET /scim/v2/ResourceTypes`
       - [x] List the Group resource type and Group schema in public discovery collections and fetch each by ID on both runtimes ([test](../../../conformance/scim-contract.mjs#L100))
     - [x] `GET /scim/v2/ResourceTypes/:resourceTypeId` ([test](../../../conformance/scim-contract.mjs#L55))

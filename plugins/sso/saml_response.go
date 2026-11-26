@@ -29,6 +29,10 @@ type SAMLStore interface {
 var ErrAssertionUsed = apiError(400, "SAML assertion has already been consumed")
 var errSAMLResponse = apiError(400, "Invalid SAML response")
 
+// errUnknownRequest answers a response whose InResponseTo names no request
+// this sign-in sent.
+var errUnknownRequest = errors.New("sso: unknown or expired SAML request ID")
+
 // Bound provisioning work to the lifetime of the assertion the SP already
 // verified. Only bearer confirmations for this callback can extend that window.
 // The ACS failure descriptions for an assertion's validity times.
@@ -153,13 +157,16 @@ func assertionEnvelope(raw []byte, acs, requestID string) (string, error) {
 				roots++
 				if requestID == "" {
 					for _, v := range t.Attr {
-						if v.Name == (xml.Name{Local: "InResponseTo"}) {
+						if v.Name == (xml.Name{Local: "InResponseTo"}) && v.Value == "" {
 							return "", errSAMLResponse
 						}
 					}
 				}
-				if roots != 1 || t.Name != (xml.Name{Space: protocol, Local: "Response"}) || attr(t, "Destination") != acs || attr(t, "InResponseTo") != requestID {
+				if roots != 1 || t.Name != (xml.Name{Space: protocol, Local: "Response"}) || attr(t, "Destination") != acs {
 					return "", errSAMLResponse
+				}
+				if attr(t, "InResponseTo") != requestID {
+					return "", errUnknownRequest
 				}
 			case t.Name.Local == "EncryptedAssertion" || t.Name.Local == "EncryptedID" || t.Name.Local == "EncryptedAttribute" || t.Name.Local == "EncryptedData" || t.Name.Local == "EncryptedKey":
 				return "", errSAMLResponse
@@ -339,6 +346,11 @@ func (o Options) samlFinish(c auth.EndpointContext) (any, error) {
 		return nil, err
 	}
 	fail := func(code string) (any, error) { return enterpriseFailure(c, flow, code, "") }
+	// The descriptions are the ones another runtime sends.
+	const (
+		invalidReference = "SSO provider reference missing or invalid"
+		notAllowed       = "IdP-initiated SSO not allowed"
+	)
 	p, err := store.FindBrowserProvider(c.Request.Context(), Selector{ProviderID: flow.Provider, Protocol: "saml"})
 	if err != nil {
 		if errors.Is(err, ErrMissing) {
@@ -350,7 +362,7 @@ func (o Options) samlFinish(c auth.EndpointContext) (any, error) {
 		return nil, err
 	}
 	if p.SAML == nil || p.ProviderID != flow.Provider || !available(c, p) || (!unsolicited && p.Reference != strings.TrimSuffix(flow.ProviderReference, ".dns")) {
-		return fail("invalid_state")
+		return enterpriseFailure(c, flow, "invalid_state", invalidReference)
 	}
 	if unsolicited {
 		flow.CallbackURL = samlLanding(c, flow.RedirectURI, p.SAML.IDPInitiatedCallbackURL, o.SAML.IDPInitiatedCallbackURL, p.SAML.CallbackURL)
@@ -363,7 +375,7 @@ func (o Options) samlFinish(c auth.EndpointContext) (any, error) {
 		return enterpriseFailure(c, flow, "saml_error", fmt.Sprintf("SAML response exceeds maximum allowed size (%d bytes)", limit))
 	}
 	if unsolicited && o.SAML.AllowIDPInitiated == nil {
-		return fail("unsolicited_response")
+		return enterpriseFailure(c, flow, "unsolicited_response", notAllowed)
 	}
 	proof, err := o.domainGate(c, p)
 	if err != nil {
@@ -397,7 +409,7 @@ func (o Options) samlFinish(c auth.EndpointContext) (any, error) {
 			return nil, apiError(503, "SAML directory authorization is unavailable")
 		}
 		if !allowed {
-			return fail("unsolicited_response")
+			return enterpriseFailure(c, flow, "unsolicited_response", notAllowed)
 		}
 		sp.AllowIDPInitiated = true
 		requestID = ""
@@ -412,6 +424,9 @@ func (o Options) samlFinish(c auth.EndpointContext) (any, error) {
 		return enterpriseFailure(c, flow, "saml_multiple_assertions", fmt.Sprintf("SAML response contains %d assertions, expected exactly 1", n))
 	}
 	id, err := assertionDocumentID(raw, sp, requestID, o.SAML.Algorithms)
+	if errors.Is(err, errUnknownRequest) {
+		return enterpriseFailure(c, flow, "invalid_saml_response", "Unknown or expired request ID")
+	}
 	var policy *auth.APIError
 	if errors.As(err, &policy) && strings.HasPrefix(policy.Code, "SAML_") {
 		return enterpriseFailure(c, flow, strings.ToLower(policy.Code), policy.Message)
@@ -502,10 +517,7 @@ func (o Options) samlFinish(c auth.EndpointContext) (any, error) {
 	case errors.Is(err, ErrChanged):
 		return fail("SSO_PROVIDER_CHANGED")
 	case errors.Is(err, ErrAssertionUsed):
-		if unsolicited {
-			return fail("replay_detected")
-		}
-		return fail("invalid_saml_response")
+		return enterpriseFailure(c, flow, "replay_detected", "SAML assertion has already been used")
 	}
 	if out, e, ok := profileFailure(c, flow, err); ok {
 		return out, e
