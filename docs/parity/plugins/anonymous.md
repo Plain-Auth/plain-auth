@@ -5,6 +5,7 @@
 ## Interfaces
 
 - [ ] Anonymous endpoints, types and options
+  - [x] Sign in as a guest, refuse a second guest sign-in, upgrade by password sign-up, refuse to delete the permanent account and delete a new guest, on both servers with the official client ([test](../../../conformance/core.test.mjs#L787))
   - [x] `anonymousClient` ([test](../../../conformance/core.test.mjs#L787))
     - [x] The public browser client creates, upgrades, reads and removes guest identities on both servers ([test](../../../conformance/core.test.mjs#L787))
   - [ ] `ANONYMOUS_ERROR_CODES`
@@ -16,9 +17,15 @@
     - [x] Remove the authenticated guest and revoke its sessions ([test](../../../adapters/sqlstore/anonymous_test.go#L170))
     - [x] Protect permanent accounts from the guest deletion route ([test](../../../adapters/sqlstore/anonymous_test.go#L163))
   - [ ] `anonymous`
-  - [ ] `schema`
-  - [ ] `AnonymousSession`
-  - [ ] `UserWithAnonymous`
+  - [x] `schema` ([test](../../../conformance/schema.test.mjs#L106))
+    - [x] Emit the same schema as the other runtime for every verified plugin selection, including anonymous, on SQLite, PostgreSQL and MySQL ([test](../../../conformance/schema.test.mjs#L106))
+    - [x] Store a sign-up that sends isAnonymous true as a permanent account ([test](../../../conformance/goapi/credential_contract_test.go#L128))
+    - [x] Return isAnonymous false on an ordinary sign-up ([test](../../../adapters/sqlstore/existing_signup_test.go#L270))
+  - [x] `AnonymousSession` ([test](../../../adapters/sqlstore/anonymous_test.go#L146))
+    - [x] Return isAnonymous true on the user of a guest's session ([test](../../../adapters/sqlstore/anonymous_test.go#L146))
+  - [x] `UserWithAnonymous` ([test](../../../conformance/core.test.mjs#L794))
+    - [x] Return isAnonymous true on a new guest user ([test](../../../conformance/core.test.mjs#L794))
+    - [x] Return isAnonymous false on the session user after a guest upgrades by sign-up ([test](../../../conformance/core.test.mjs#L802))
   - [ ] `AnonymousOptions`
     - [x] `emailDomainName` ([test](../../../adapters/sqlstore/anonymous_test.go#L123))
       - [x] Assign generated guest addresses to the configured domain ([test](../../../adapters/sqlstore/anonymous_test.go#L123))
@@ -35,10 +42,16 @@
 ## Anonymous
 
 - [ ] Anonymous
+  - [x] Give a guest a working session without credentials and later upgrade it by sign-up, on both servers with the official client ([test](../../../conformance/core.test.mjs#L787))
   - [ ] Usage
-    - [ ] Sign In Anonymously
+    - [x] Sign In Anonymously ([test](../../../conformance/core.test.mjs#L798))
       - [x] Start a guest identity through the browser or native client ([test](../../../conformance/core.test.mjs#L787))
-      - [ ] `POST /sign-in/anonymous`
+      - [x] Refuse a second guest sign-in from a guest session with ANONYMOUS_USERS_CANNOT_SIGN_IN_AGAIN_ANONYMOUSLY on both servers ([test](../../../conformance/core.test.mjs#L798))
+      - [x] Name a guest Anonymous by default and give it the generated address ([test](../../../client/anonymous_test.go#L49))
+      - [x] Create a flagged guest named by the configured generator at the configured email domain ([test](../../../adapters/sqlstore/anonymous_test.go#L123))
+      - [x] `POST /sign-in/anonymous` ([test](../../../conformance/core.test.mjs#L794))
+        - [x] Create a guest flagged isAnonymous through the official client on both servers ([test](../../../conformance/core.test.mjs#L794))
+        - [x] Give a guest an address at anonymous.placeholder.invalid when no domain is configured ([test](../../../conformance/core.test.mjs#L795))
     - [ ] Link Account
       - [x] Wait for MFA completion before transferring guest data ([test](../../../adapters/sqlstore/anonymous_test.go#L215))
       - [x] Carry a guest through a provider redirect without the primary cookie ([test](../../../adapters/sqlstore/anonymous_oauth_test.go#L98))
@@ -46,17 +59,30 @@
       - [x] Transfer only after a verified WebAuthn assertion ([test](../../../adapters/sqlstore/passkey_test.go#L222))
       - [x] Link after local verification of the email OTP ([test](../../../adapters/sqlstore/anonymous_test.go#L184))
       - [x] Link a guest after the email sign-in link is verified ([test](../../../adapters/sqlstore/anonymous_test.go#L192))
-    - [ ] Delete Anonymous User
+    - [x] Delete Anonymous User ([test](../../../adapters/sqlstore/anonymous_test.go#L170))
       - [x] Distinguish guest deletion from sign-out ([test](../../../adapters/sqlstore/anonymous_test.go#L176))
-      - [ ] `POST /delete-anonymous-user`
-      - [ ] Notes:
+      - [x] Delete the signed-in guest so that it has no session and no user row ([test](../../../adapters/sqlstore/anonymous_test.go#L170))
+      - [x] `POST /delete-anonymous-user` ([test](../../../conformance/core.test.mjs#L806))
+        - [x] Answer success when a guest deletes itself with the official client on both servers ([test](../../../conformance/core.test.mjs#L806))
+      - [x] Notes: ([test](../../../adapters/sqlstore/anonymous_test.go#L161))
+        - [x] Delete the guest after its records transfer to a password sign-in ([test](../../../adapters/sqlstore/anonymous_test.go#L161))
+        - [x] Refuse guest deletion with DELETE_ANONYMOUS_USER_DISABLED when deletion is disabled ([test](../../../adapters/sqlstore/anonymous_test.go#L244))
   - [ ] Options
-    - [ ] `emailDomainName`
+    - [x] `emailDomainName` ([test](../../../adapters/sqlstore/anonymous_test.go#L123))
+      - [x] Give guests addresses at the configured domain ([test](../../../adapters/sqlstore/anonymous_test.go#L123))
+      - [x] Give guests addresses at anonymous.placeholder.invalid when no domain is configured, on both servers ([test](../../../conformance/core.test.mjs#L795))
     - [ ] `generateRandomEmail`
+      - [x] Use the address returned by the configured generator for a new guest ([test](../../../client/anonymous_test.go#L49))
       - [ ] Notes:
-    - [ ] `onLinkAccount`
+    - [x] `onLinkAccount` ([test](../../../client/anonymous_test.go#L21))
+      - [x] Pass the guest and the newly registered account to the callback during a password sign-up ([test](../../../client/anonymous_test.go#L21))
+      - [x] Pass a guest flagged anonymous and a permanent new user to the callback ([test](../../../adapters/sqlstore/anonymous_test.go#L86))
     - [ ] `disableDeleteAnonymousUser`
-    - [ ] `generateName`
-  - [ ] Schema
+    - [x] `generateName` ([test](../../../adapters/sqlstore/anonymous_test.go#L81))
+      - [x] Name guests with the configured generator, which receives the guest sign-in request ([test](../../../adapters/sqlstore/anonymous_test.go#L81))
+  - [x] Schema ([test](../../../conformance/core.test.mjs#L810))
     - [x] Generate the canonical columns on SQLite, PostgreSQL and MySQL, including combined plugin selections ([test](../../../conformance/schema.test.mjs#L106))
-    - [ ] `anonymousUserTableFields.isAnonymous`
+    - [x] Find no isAnonymous rows in the Go server's SQLite user table after the guest deletes itself ([test](../../../conformance/core.test.mjs#L810))
+    - [x] `anonymousUserTableFields.isAnonymous` ([test](../../../conformance/schema.test.mjs#L106))
+      - [x] Emit the same schema as the other runtime for every verified plugin selection, including anonymous, on SQLite, PostgreSQL and MySQL ([test](../../../conformance/schema.test.mjs#L106))
+      - [x] Return isAnonymous false on the session user after a guest upgrades by sign-up ([test](../../../conformance/core.test.mjs#L802))

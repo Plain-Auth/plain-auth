@@ -965,6 +965,12 @@
       "label": "Read and clear a custom Unicode method in a native TLS cookie jar without ending the session",
       "test": "client/lastlogin_test.go",
       "marker": "func TestLoginMethodPreferenceJar("
+    },
+    {
+      "label": "Read and match a custom-named preference with the browser module as the other runtime's client does, including a percent-encoded Unicode value, then clear it for the configured domain",
+      "test": "conformance/lastlogin-browser.test.mjs",
+      "marker": "test(\"login preference readers agree",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L2137": [
@@ -2563,6 +2569,11 @@
       "label": "Persist the configured link lifetime",
       "test": "adapters/sqlstore/magiclink_test.go",
       "marker": "stored representation or TTL:"
+    },
+    {
+      "label": "Redirect an expired link to the error page with INVALID_TOKEN",
+      "test": "adapters/sqlstore/magiclink_test.go",
+      "marker": "expectRedirect(verify(second, expired.URL), \"/failed?error=INVALID_TOKEN\")"
     }
   ],
   "plugin-symbol/magic-link/MagicLinkOptions/sendMagicLink": [
@@ -2610,6 +2621,12 @@
       "label": "Consume raw and custom-hashed keys on SQLite",
       "test": "adapters/sqlstore/magiclink_test.go",
       "marker": "unable to consume generated link"
+    },
+    {
+      "label": "Store the link under the magic-link prefix and the SHA-256 digest of the delivered token when HashTokens is set",
+      "test": "adapters/sqlstore/magiclink_test.go",
+      "marker": "incorrect hashed verification record",
+      "complete": true
     }
   ],
   "plugin-symbol/one-time-token/OneTimeTokenOptions/expiresIn": [
@@ -3811,6 +3828,12 @@
       "label": "Require the signed cookie and reject expired or mismatched credentials",
       "test": "plugins/multisession/multisession_test.go",
       "marker": "func TestDeviceCookieScopeExpiryAndSignOut("
+    },
+    {
+      "label": "Make a remembered login active and return its session, on both servers with the official client",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal((await api.setActive({ sessionToken: logins[0] })).data.session.token, logins[0]);",
+      "complete": true
     }
   ],
   "plugin/multi-session/POST /multi-session/revoke": [
@@ -3823,6 +3846,17 @@
       "label": "Use the public browser client to list, select, revoke, and sign out across independent cookie jars",
       "test": "conformance/core.test.mjs",
       "marker": "test(\"the official multi-session client remembers, switches"
+    },
+    {
+      "label": "Switch to the next remembered login after the active one is revoked, and leave none active after the last is revoked",
+      "test": "plugins/multisession/multisession_test.go",
+      "marker": "assertActive(t, first, \"\")",
+      "complete": true
+    },
+    {
+      "label": "Refuse revocation with UNAUTHORIZED when the browser has no active login",
+      "test": "plugins/multisession/multisession_test.go",
+      "marker": "expectDenied(t, first.RevokeDeviceSession(ctx, bob), \"UNAUTHORIZED\")"
     }
   ],
   "plugin-symbol/multi-session/MultiSessionConfig": [
@@ -3842,6 +3876,17 @@
       "label": "Revoke remembered logins on sign-out and preserve an independent browser session",
       "test": "plugins/multisession/multisession_test.go",
       "marker": "signed-out device still lists entries"
+    },
+    {
+      "label": "Delete this browser's earlier login for an account when that account signs in again",
+      "test": "plugins/multisession/multisession_test.go",
+      "marker": "previous login survived replacement",
+      "complete": true
+    },
+    {
+      "label": "Remember five accounts per browser when no maximum is set",
+      "test": "plugins/multisession/multisession_test.go",
+      "marker": "default limit should be five remembered accounts"
     }
   ],
   "plugin-symbol/multi-session/multiSessionClient": [
@@ -3849,6 +3894,12 @@
       "label": "Use the public browser client to list, select, revoke, and sign out across independent cookie jars",
       "test": "conformance/core.test.mjs",
       "marker": "test(\"the official multi-session client remembers, switches"
+    },
+    {
+      "label": "Switch the active account with the client's setActive and get the chosen session token back, on both servers",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal((await api.setActive({ sessionToken: logins[0] })).data.session.token, logins[0]);",
+      "complete": true
     }
   ],
   "plugin-symbol/custom-session/CustomSessionPluginOptions/shouldMutateListDeviceSessionsEndpoint": [
@@ -3874,6 +3925,12 @@
       "label": "List live accounts from this browser, including when the primary cookie is missing",
       "test": "plugins/multisession/multisession_test.go",
       "marker": "list without active cookie"
+    },
+    {
+      "label": "List the accounts this browser remembers, up to the maximum of two, on both servers with the official client",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.deepEqual(rows.map((r) => r.user.name).sort(), [\"alice\", \"bob\"]);",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/multi-session.mdx#L60": [
@@ -3881,6 +3938,12 @@
       "label": "Preserve browser-only persistence when a remembered account becomes active",
       "test": "plugins/multisession/multisession_test.go",
       "marker": "browser-only choice lost on switch"
+    },
+    {
+      "label": "Make a remembered login active and return its session, on both servers with the official client",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal((await api.setActive({ sessionToken: logins[0] })).data.session.token, logins[0]);",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/multi-session.mdx#L75": [
@@ -3888,6 +3951,12 @@
       "label": "Authorize revocation transactionally across independent database connections",
       "test": "adapters/sqlstore/multisession_test.go",
       "marker": "concurrent self-revocation must have one winner"
+    },
+    {
+      "label": "Revoke a remembered login with the client and answer status true, on both servers",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.deepEqual((await api.revoke({ sessionToken: logins[0] })).data, { status: true });",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/multi-session.mdx#L90": [
@@ -3895,6 +3964,12 @@
       "label": "Revoke remembered logins on sign-out and preserve an independent browser session",
       "test": "plugins/multisession/multisession_test.go",
       "marker": "signed-out device still lists entries"
+    },
+    {
+      "label": "Sign out with the browser client, leave the remembered list empty and keep the same user signed in on another browser on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.deepEqual((await device.signOut()).data, { success: true });",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/multi-session.mdx#L94": [
@@ -3902,6 +3977,17 @@
       "label": "Remember five accounts by default while allowing another account to sign in",
       "test": "plugins/multisession/multisession_test.go",
       "marker": "default limit should be five remembered accounts"
+    },
+    {
+      "label": "List only two remembered accounts under a limit of two while the newest login stays active",
+      "test": "plugins/multisession/multisession_test.go",
+      "marker": "remembered accounts at capacity",
+      "complete": true
+    },
+    {
+      "label": "Remember at most two accounts with a limit of two on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.deepEqual(rows.map((r) => r.user.name).sort(), [\"alice\", \"bob\"]);"
     }
   ],
   "plugin/email-otp/POST /email-otp/send-verification-otp": [
@@ -4235,6 +4321,16 @@
       "label": "Check the exact local mailbox before issuing a session on direct ID-token and One Tap sign-in across all SQL engines",
       "test": "adapters/sqlstore/oauth_verified_email_test.go",
       "marker": "func TestOAuthVerifiedEmailBeforeSession("
+    },
+    {
+      "label": "Refuse an untrusted callbackURL with 403",
+      "test": "adapters/sqlstore/onetap_test.go",
+      "marker": "\"callbackURL\": \"https://other.example\"}, c), 403)"
+    },
+    {
+      "label": "Answer 401 when a new Google subject's email belongs to an existing unlinked account",
+      "test": "adapters/sqlstore/onetap_test.go",
+      "marker": "\"new-sub\", \"pending@example.org\""
     }
   ],
   "plugin-symbol/one-tap/OneTapOptions/disableSignup": [
@@ -4268,6 +4364,26 @@
       "label": "Sign in with a host-generated, browser-bound nonce using the pinned client",
       "test": "conformance/core.test.mjs",
       "marker": "the pinned One Tap client signs in to Go with a nonce issued by the application host"
+    },
+    {
+      "label": "Refuse a second start on the same page while a prompt is active",
+      "test": "conformance/one-tap-browser.test.mjs",
+      "marker": "await assert.rejects(startOneTap(), /already started/);"
+    },
+    {
+      "label": "Render a sign-in button in a selector-addressed container without showing the prompt",
+      "test": "conformance/one-tap-browser.test.mjs",
+      "marker": "button-only mode prompted"
+    },
+    {
+      "label": "Retry a dismissed prompt and stop on a later skip, passing it to the notification callback",
+      "test": "conformance/one-tap-browser.test.mjs",
+      "marker": "One Tap retries dismissed prompts"
+    },
+    {
+      "label": "Clear supported browser selection state only after the server revokes the session",
+      "test": "conformance/one-tap-browser.test.mjs",
+      "marker": "sign-out clears supported FedCM selection only after the server revokes the session"
     }
   ],
   "plugin-symbol/one-tap/GoogleOneTapOptions/autoSelect": [
@@ -4328,6 +4444,11 @@
       "label": "Navigate to the validated same-origin URL after a successful callback",
       "test": "conformance/one-tap-browser.test.mjs",
       "marker": "One Tap binds the prompt and optional button"
+    },
+    {
+      "label": "Refuse an untrusted callbackURL on the One Tap callback with 403",
+      "test": "adapters/sqlstore/onetap_test.go",
+      "marker": "\"callbackURL\": \"https://other.example\"}, c), 403)"
     }
   ],
   "plugin-symbol/one-tap/GoogleOneTapActionOptions/nonce": [
@@ -4806,6 +4927,12 @@
       "label": "Generate the canonical columns on SQLite, PostgreSQL and MySQL, including combined plugin selections",
       "test": "conformance/schema.test.mjs",
       "marker": "test(\"the CLI emits the pinned plugin schema"
+    },
+    {
+      "label": "Find no isAnonymous rows in the Go server's SQLite user table after the guest deletes itself",
+      "test": "conformance/core.test.mjs",
+      "marker": "SELECT count(*) AS n FROM user WHERE isAnonymous",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/last-login-method.mdx#L190": [
@@ -4813,6 +4940,12 @@
       "label": "Generate the canonical columns on SQLite, PostgreSQL and MySQL, including combined plugin selections",
       "test": "conformance/schema.test.mjs",
       "marker": "test(\"the CLI emits the pinned plugin schema"
+    },
+    {
+      "label": "Require the lastLoginMethod user column only when the last-login-method profile is selected, on three SQL engines",
+      "test": "adapters/sqlstore/check_test.go",
+      "marker": "missing column findings",
+      "complete": true
     }
   ],
   "plugin/2fa/POST /two-factor/send-otp": [
@@ -5080,6 +5213,22 @@
       "label": "Start a guest identity through the browser or native client",
       "test": "conformance/core.test.mjs",
       "marker": "the pinned anonymous client signs in, upgrades and deletes guests on either server"
+    },
+    {
+      "label": "Refuse a second guest sign-in from a guest session with ANONYMOUS_USERS_CANNOT_SIGN_IN_AGAIN_ANONYMOUSLY on both servers",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(repeated.error.code,\"ANONYMOUS_USERS_CANNOT_SIGN_IN_AGAIN_ANONYMOUSLY\");",
+      "complete": true
+    },
+    {
+      "label": "Name a guest Anonymous by default and give it the generated address",
+      "test": "client/anonymous_test.go",
+      "marker": "guest email or default name failed"
+    },
+    {
+      "label": "Create a flagged guest named by the configured generator at the configured email domain",
+      "test": "adapters/sqlstore/anonymous_test.go",
+      "marker": "invalid guest identity"
     }
   ],
   "docs/content/docs/plugins/anonymous.mdx#L90": [
@@ -5119,6 +5268,12 @@
       "label": "Distinguish guest deletion from sign-out",
       "test": "adapters/sqlstore/anonymous_test.go",
       "marker": "sign-out deleted guest data"
+    },
+    {
+      "label": "Delete the signed-in guest so that it has no session and no user row",
+      "test": "adapters/sqlstore/anonymous_test.go",
+      "marker": "explicit guest deletion left active state",
+      "complete": true
     }
   ],
   "plugin/admin/POST /admin/set-role": [
@@ -5717,6 +5872,16 @@
       "label": "Honor email verification, administrator bans and existing second-factor settings",
       "test": "adapters/sqlstore/username_test.go",
       "marker": "func TestUsernameVerificationAndFactorChallenge("
+    },
+    {
+      "label": "Sign in by username through the pinned client on either server and get the redirect flag and callback URL back",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(signed.url, \"/welcome?ref=name\");"
+    },
+    {
+      "label": "Refuse an unknown login name with INVALID_USERNAME_OR_PASSWORD",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "Username: \"missing.handle\""
     }
   ],
   "plugin/username/POST /is-username-available": [
@@ -5724,6 +5889,16 @@
       "label": "Check availability against the normalized unique login name",
       "test": "adapters/sqlstore/username_test.go",
       "marker": "normalized availability ignored an existing name"
+    },
+    {
+      "label": "Report a taken name as unavailable through the pinned client on either server",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.deepEqual(ok(await alternate.isUsernameAvailable({ username: raw })), { available: false });"
+    },
+    {
+      "label": "Refuse a two-character name on the availability route with USERNAME_TOO_SHORT through the pinned client",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal((await alternate.isUsernameAvailable({ username: \"ab\" })).error.code, \"USERNAME_TOO_SHORT\");"
     }
   ],
   "plugin-symbol/username/usernameClient": [
@@ -5731,6 +5906,12 @@
       "label": "Sign in with the pinned client and edit the same username on both servers",
       "test": "conformance/core.test.mjs",
       "marker": "test(\"the pinned username client shares"
+    },
+    {
+      "label": "Through the pinned client, sign up, sign in by username, check availability, rename and read the plugin's error codes on either server",
+      "test": "conformance/core.test.mjs",
+      "marker": "const actor = instrument(source, [usernameClient({ displayUsername })]).client;",
+      "complete": true
     }
   ],
   "plugin-symbol/username/UsernameClientOptions/displayUsername": [
@@ -5738,6 +5919,12 @@
       "label": "Consume public profiles with the display field enabled and disabled",
       "test": "conformance/core.test.mjs",
       "marker": "assert.equal(noName.displayUsername,"
+    },
+    {
+      "label": "With the display setting on and off, sign-up through the matching pinned client returns the display spelling or leaves the field out, on either server",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(initial.displayUsername, displayUsername ? raw : undefined);",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/username.mdx#L70": [
@@ -5745,6 +5932,12 @@
       "label": "Set a normalized login name and preserve display spelling",
       "test": "adapters/sqlstore/username_test.go",
       "marker": "sign-up did not preserve normalized and display forms"
+    },
+    {
+      "label": "Sign up with only a username and get the lower-cased login name, with the submitted spelling as the display name",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "*reg.User.Username != \"initial_name.1\"",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/username.mdx#L106": [
@@ -5752,6 +5945,12 @@
       "label": "Issue a remembered or browser-only username login",
       "test": "adapters/sqlstore/username_test.go",
       "marker": "short login preference lost"
+    },
+    {
+      "label": "Sign in by username through the pinned client on either server",
+      "test": "conformance/core.test.mjs",
+      "marker": "const signed = ok(await alternate.signIn.username(",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/username.mdx#L125": [
@@ -5769,6 +5968,11 @@
       "label": "Roll back a display-name clear if the same profile edit requests a claimed login name",
       "test": "adapters/sqlstore/username_test.go",
       "marker": "conflicting update committed a partial clear"
+    },
+    {
+      "label": "Allow one first username assignment and refuse a different one once it is fixed",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "immutable first assignments raced"
     }
   ],
   "docs/content/docs/plugins/username.mdx#L144": [
@@ -5776,6 +5980,12 @@
       "label": "Release the old login name on rename",
       "test": "adapters/sqlstore/username_test.go",
       "marker": "renaming did not release the old username"
+    },
+    {
+      "label": "Report a released name as available through the pinned client on either server",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.deepEqual(ok(await actor.isUsernameAvailable({ username: raw })), { available: true });",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/username.mdx#L387": [
@@ -5788,6 +5998,12 @@
       "label": "Disable just the public availability endpoint through general HTTP path configuration",
       "test": "conformance/core.test.mjs",
       "marker": "disabled HTTP paths suppress core, username and JWT endpoints on a custom mount"
+    },
+    {
+      "label": "With the availability path disabled, the route returns 404 on both servers",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal((await send(\"/is-username-available\",\"POST\",{username:\"available123\"})).status,404);",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/username.mdx#L406": [
@@ -5795,6 +6011,17 @@
       "label": "Keep existing accounts intact when adding nullable username fields",
       "test": "adapters/sqlstore/username_test.go",
       "marker": "additive migration changed existing identity"
+    },
+    {
+      "label": "Generate the username columns, with and without the display column, the same as the other runtime on three SQL dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"the CLI emits the pinned plugin schema",
+      "complete": true
+    },
+    {
+      "label": "Add the username profiles to a populated SQLite database and match the other runtime's physical schema",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"adding plugin profiles"
     }
   ],
   "plugin-symbol/username/UsernameOptions/minUsernameLength": [
@@ -5802,6 +6029,11 @@
       "label": "Apply a configured minimum after normalization",
       "test": "adapters/sqlstore/username_test.go",
       "marker": "{\"ab\", \"USERNAME_TOO_SHORT\"}"
+    },
+    {
+      "label": "Refuse a one-character login name at sign-in with USERNAME_TOO_SHORT under the default minimum",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "checkCode(err, \"USERNAME_TOO_SHORT\")"
     }
   ],
   "docs/content/docs/plugins/username.mdx#L167": [
@@ -5809,6 +6041,11 @@
       "label": "Apply a configured minimum after normalization",
       "test": "adapters/sqlstore/username_test.go",
       "marker": "{\"ab\", \"USERNAME_TOO_SHORT\"}"
+    },
+    {
+      "label": "Refuse a two-character name with USERNAME_TOO_SHORT under the default minimum on either server",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal((await alternate.isUsernameAvailable({ username: \"ab\" })).error.code, \"USERNAME_TOO_SHORT\");"
     }
   ],
   "plugin-symbol/username/UsernameOptions/maxUsernameLength": [
@@ -5844,6 +6081,11 @@
       "label": "Reject display spellings that fail application validation",
       "test": "adapters/sqlstore/username_test.go",
       "marker": "display validator ignored"
+    },
+    {
+      "label": "Accept a display spelling with spaces when no display validator is set",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "pretty := \"A public display name\""
     }
   ],
   "docs/content/docs/plugins/username.mdx#L232": [
@@ -5851,6 +6093,12 @@
       "label": "Reject display spellings that fail application validation",
       "test": "adapters/sqlstore/username_test.go",
       "marker": "display validator ignored"
+    },
+    {
+      "label": "Accept a display spelling with spaces when no display validator is set",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "pretty := \"A public display name\"",
+      "complete": true
     }
   ],
   "plugin-symbol/username/UsernameOptions/usernameNormalization": [
@@ -5858,6 +6106,17 @@
       "label": "Disable case folding and retain submitted spelling",
       "test": "adapters/sqlstore/username_test.go",
       "marker": "disabled normalization collapsed different names"
+    },
+    {
+      "label": "Store the output of an application normalizer that lower-cases the name and removes spaces",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "*user.User.Username != \"abc\"",
+      "complete": true
+    },
+    {
+      "label": "Lower-case the login name by default, so an upper-case spelling of a taken name is unavailable",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "owner.IsUsernameAvailable(ctx, strings.ToUpper(initial))"
     }
   ],
   "docs/content/docs/plugins/username.mdx#L255": [
@@ -5865,6 +6124,17 @@
       "label": "Disable case folding and retain submitted spelling",
       "test": "adapters/sqlstore/username_test.go",
       "marker": "disabled normalization collapsed different names"
+    },
+    {
+      "label": "Store the output of an application normalizer that lower-cases the name and removes spaces",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "*user.User.Username != \"abc\"",
+      "complete": true
+    },
+    {
+      "label": "Lower-case the login name by default, so an upper-case spelling of a taken name is unavailable",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "owner.IsUsernameAvailable(ctx, strings.ToUpper(initial))"
     }
   ],
   "plugin-symbol/username/UsernameOptions/displayUsernameNormalization": [
@@ -5872,6 +6142,11 @@
       "label": "Normalize display spelling using an application function",
       "test": "adapters/sqlstore/username_test.go",
       "marker": "NormalizeDisplay: strings.TrimSpace"
+    },
+    {
+      "label": "Copy the submitted username into the display field when sign-up omits it",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "*implicitUser.User.DisplayUsername != implicit"
     }
   ],
   "docs/content/docs/plugins/username.mdx#L282": [
@@ -5879,6 +6154,17 @@
       "label": "Normalize display spelling using an application function",
       "test": "adapters/sqlstore/username_test.go",
       "marker": "NormalizeDisplay: strings.TrimSpace"
+    },
+    {
+      "label": "Copy the submitted username into the display field when sign-up omits it",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "*implicitUser.User.DisplayUsername != implicit",
+      "complete": true
+    },
+    {
+      "label": "Keep the earlier display spelling after a username-only rename on both servers",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(current.displayUsername, displayUsername ? raw : undefined);"
     }
   ],
   "plugin-symbol/username/UsernameOptions/validationOrder": [
@@ -5886,6 +6172,16 @@
       "label": "Apply custom validators to the transformed input",
       "test": "adapters/sqlstore/username_test.go",
       "marker": "post-normalization validators"
+    },
+    {
+      "label": "With both post-normalization switches on, sign-up accepts a display spelling that passes the display validator only after trimming, and stores the normalized login name",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "name, display := \"A b c\", \" Display \""
+    },
+    {
+      "label": "With post-normalization validation on, the availability check refuses a name that the custom validator rejects only after lower-casing",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "{\"Reserved\", \"INVALID_USERNAME\"}"
     }
   ],
   "docs/content/docs/plugins/username.mdx#L304": [
@@ -5893,6 +6189,16 @@
       "label": "Apply custom validators to the transformed input",
       "test": "adapters/sqlstore/username_test.go",
       "marker": "post-normalization validators"
+    },
+    {
+      "label": "With both post-normalization switches on, sign-up accepts a display spelling that passes the display validator only after trimming, and stores the normalized login name",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "name, display := \"A b c\", \" Display \""
+    },
+    {
+      "label": "With post-normalization validation on, the availability check refuses a name that the custom validator rejects only after lower-casing",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "{\"Reserved\", \"INVALID_USERNAME\"}"
     }
   ],
   "plugin-symbol/username/UsernameOptions/displayUsername": [
@@ -5900,6 +6206,17 @@
       "label": "Store only the login name and accept a valid display-only fallback",
       "test": "adapters/sqlstore/username_test.go",
       "marker": "no-display mode failed display-only signup fallback"
+    },
+    {
+      "label": "With the display field disabled on both servers, sign-up and renames never return a display spelling and login names are still lower-cased",
+      "test": "conformance/core.test.mjs",
+      "marker": "for (const displayUsername of [true, false]) {",
+      "complete": true
+    },
+    {
+      "label": "Generate the username-only profile without a display column, the same as the other runtime on three SQL dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"the CLI emits the pinned plugin schema"
     }
   ],
   "docs/content/docs/plugins/username.mdx#L327": [
@@ -5907,6 +6224,17 @@
       "label": "Store only the login name and accept a valid display-only fallback",
       "test": "adapters/sqlstore/username_test.go",
       "marker": "no-display mode failed display-only signup fallback"
+    },
+    {
+      "label": "With the display field disabled on both servers, sign-up and renames never return a display spelling and login names are still lower-cased",
+      "test": "conformance/core.test.mjs",
+      "marker": "for (const displayUsername of [true, false]) {",
+      "complete": true
+    },
+    {
+      "label": "Generate the username-only profile without a display column, the same as the other runtime on three SQL dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"the CLI emits the pinned plugin schema"
     }
   ],
   "plugin-symbol/username/UsernameOptions/immutableUsername": [
@@ -5919,6 +6247,11 @@
       "label": "Require a live owner session and protect previously assigned immutable names from clearing",
       "test": "adapters/sqlstore/username_test.go",
       "marker": "err = fixed.UpdateUser(ctx, h, plainauth.ProfileUpdate{ClearUsername: true})"
+    },
+    {
+      "label": "Allow another profile change, clearing the display spelling, once the username is fixed",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "if err = fixed.UpdateUser(ctx, h, plainauth.ProfileUpdate{ClearDisplayUsername: true}); err != nil {"
     }
   ],
   "docs/content/docs/plugins/username.mdx#L365": [
@@ -5926,6 +6259,11 @@
       "label": "Serialize competing first assignments to an immutable username",
       "test": "adapters/sqlstore/username_test.go",
       "marker": "immutable first assignments raced"
+    },
+    {
+      "label": "Allow another profile change, clearing the display spelling, once the username is fixed",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "if err = fixed.UpdateUser(ctx, h, plainauth.ProfileUpdate{ClearDisplayUsername: true}); err != nil {"
     }
   ],
   "plugin/api-key/POST /api-key/create": [
@@ -6217,6 +6555,12 @@
       "label": "Validate role grants against the catalog and isolate both from later changes to their input",
       "test": "plugins/access/access_test.go",
       "marker": "func TestRoleDefinition("
+    },
+    {
+      "label": "HasAction reports each action in the organization's default catalog, and HasResource and HasAction reject a resource or action outside it",
+      "test": "plugins/organization/default_roles_test.go",
+      "marker": "if control.HasResource(\"billing\") || control.HasAction(\"organization\", \"read\") {",
+      "complete": true
     }
   ],
   "plugin-symbol/access/Role": [
@@ -6236,6 +6580,12 @@
       "label": "Keep resource-level and request-level permission checks independent",
       "test": "plugins/access/access_test.go",
       "marker": "func TestRoleDecisions("
+    },
+    {
+      "label": "Map each shared Go case to the other runtime's plain action list, or to its actions with the OR connector, and get the same decision",
+      "test": "conformance/access.test.mjs",
+      "marker": "resource, match === 1 ? { actions, connector: \"OR\" } : actions,",
+      "complete": true
     }
   ],
   "plugin/stripe/GET /subscription/success": [
@@ -6798,6 +7148,12 @@
       "label": "Resolve this code in the bundled locale dictionaries",
       "test": "plugins/i18n/i18n_test.go",
       "marker": "bundled message unavailable for"
+    },
+    {
+      "label": "Answer a verification link for a deleted account with USER_NOT_FOUND and its default message",
+      "test": "conformance/goapi/verification_endpoints_test.go",
+      "marker": "code != \"USER_NOT_FOUND\" || message != \"User not found\"",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/i18n.mdx#L268/`INVALID_EMAIL_OR_PASSWORD`": [
@@ -6805,6 +7161,12 @@
       "label": "Resolve this code in the bundled locale dictionaries",
       "test": "plugins/i18n/i18n_test.go",
       "marker": "bundled message unavailable for"
+    },
+    {
+      "label": "Translate a failed email sign-in's INVALID_EMAIL_OR_PASSWORD and keep its original message on both runtimes",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "browser client must preserve status, code and source message",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/i18n.mdx#L269/`INVALID_PASSWORD`": [
@@ -6812,6 +7174,12 @@
       "label": "Resolve this code in the bundled locale dictionaries",
       "test": "plugins/i18n/i18n_test.go",
       "marker": "bundled message unavailable for"
+    },
+    {
+      "label": "Translate a wrong current password's INVALID_PASSWORD and keep its original message on both runtimes",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "authenticated profile preference precedes callback detection",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/i18n.mdx#L270/`CREDENTIAL_ACCOUNT_NOT_FOUND`": [
@@ -6819,6 +7187,12 @@
       "label": "Resolve this code in the bundled locale dictionaries",
       "test": "plugins/i18n/i18n_test.go",
       "marker": "bundled message unavailable for"
+    },
+    {
+      "label": "Answer a password change or deletion for a social-only account with CREDENTIAL_ACCOUNT_NOT_FOUND and its default message",
+      "test": "conformance/goapi/password_endpoints_test.go",
+      "marker": "code != \"CREDENTIAL_ACCOUNT_NOT_FOUND\" || message != \"Credential account not found\"",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/i18n.mdx#L271/`EMAIL_NOT_VERIFIED`": [
@@ -6826,6 +7200,11 @@
       "label": "Resolve this code in the bundled locale dictionaries",
       "test": "plugins/i18n/i18n_test.go",
       "marker": "bundled message unavailable for"
+    },
+    {
+      "label": "Refuse an unverified email sign-in with the EMAIL_NOT_VERIFIED code",
+      "test": "conformance/goapi/account_lifecycle_test.go",
+      "marker": "e.Code != \"EMAIL_NOT_VERIFIED\""
     }
   ],
   "docs/content/docs/plugins/i18n.mdx#L272/`SESSION_EXPIRED`": [
@@ -6833,6 +7212,11 @@
       "label": "Resolve this code in the bundled locale dictionaries",
       "test": "plugins/i18n/i18n_test.go",
       "marker": "bundled message unavailable for"
+    },
+    {
+      "label": "Refuse account deletion from a stale session with the SESSION_EXPIRED code",
+      "test": "conformance/goapi/freshness_test.go",
+      "marker": "code != \"SESSION_EXPIRED\""
     }
   ],
   "plugin-symbol/i18n/i18nClient": [
@@ -6861,6 +7245,17 @@
       "label": "Read translated errors through real HTTP on both runtimes",
       "test": "conformance/i18n-contract.mjs",
       "marker": "browser client must preserve status, code and source message"
+    },
+    {
+      "label": "Refuse to install without a translation dictionary",
+      "test": "plugins/i18n/i18n_test.go",
+      "marker": "empty dictionaries accepted",
+      "complete": true
+    },
+    {
+      "label": "Translate a coded OAuth error and leave an uncoded rate-limit response unchanged",
+      "test": "plugins/i18n/i18n_test.go",
+      "marker": "OAuth error did not use the translation hook"
     }
   ],
   "docs/content/docs/plugins/i18n.mdx#L163": [
@@ -6868,6 +7263,12 @@
       "label": "Read translated errors through real HTTP on both runtimes",
       "test": "conformance/i18n-contract.mjs",
       "marker": "browser client must preserve status, code and source message"
+    },
+    {
+      "label": "Return the translated message together with the original message to the native Go client",
+      "test": "plugins/i18n/i18n_test.go",
+      "marker": "native client lost translated or original error",
+      "complete": true
     }
   ],
   "plugin-symbol/i18n/TranslationDictionary": [
@@ -7169,6 +7570,12 @@
       "label": "Describe date-time fields in public models, JSON input and email signup form input",
       "test": "plugins/openapi/user_fields_test.go",
       "marker": "func TestConfiguredDateSchemasAndSignupForm("
+    },
+    {
+      "label": "GET /open-api/generate-schema answers 200 application/json with OpenAPI 3.1.1 and the mounted server URL, lists installed routes and leaves disabled ones out",
+      "test": "plugins/openapi/openapi_test.go",
+      "marker": "t.Fatal(\"incorrect mount or version\")",
+      "complete": true
     }
   ],
   "plugin/open-api/GET /reference (configurable)": [
@@ -7176,6 +7583,22 @@
       "label": "Filter a local interactive reference in headless Chrome under its nonce policy",
       "test": "plugins/openapi/openapi_test.go",
       "marker": "Chrome did not filter operations under the nonce CSP"
+    },
+    {
+      "label": "Serve an HTML page at a configured path with the chosen theme, nonce and CSP, answer 404 at /reference when the page is disabled, and keep serving the JSON schema",
+      "test": "plugins/openapi/openapi_test.go",
+      "marker": "func TestReferencePolicyAndOptions(",
+      "complete": true
+    },
+    {
+      "label": "Leave /reference and /open-api/generate-schema out of the generated document's paths",
+      "test": "plugins/openapi/openapi_test.go",
+      "marker": "t.Fatal(\"advertised disabled route\", path)"
+    },
+    {
+      "label": "With default options, serve the API reference page at /reference beneath the auth mount",
+      "test": "plugins/openapi/sso_domain_test.go",
+      "marker": "page := call(\"GET\", \"/reference\", nil, nil, 200).Body.String()"
     }
   ],
   "plugin-symbol/open-api/OpenAPIOptions/path": [
@@ -7183,6 +7606,12 @@
       "label": "Serve the page at an application-selected path beneath the configured auth mount",
       "test": "plugins/openapi/openapi_test.go",
       "marker": "reference page configuration"
+    },
+    {
+      "label": "With no path configured, serve the API reference page at /reference beneath the auth mount",
+      "test": "plugins/openapi/sso_domain_test.go",
+      "marker": "page := call(\"GET\", \"/reference\", nil, nil, 200).Body.String()",
+      "complete": true
     }
   ],
   "plugin-symbol/open-api/OpenAPIOptions/disableDefaultReference": [
@@ -7190,6 +7619,12 @@
       "label": "Disable the reference page while continuing to serve its JSON schema",
       "test": "plugins/openapi/openapi_test.go",
       "marker": "disabled reference"
+    },
+    {
+      "label": "Serve the API reference page when DisableDefaultReference is left unset",
+      "test": "plugins/openapi/sso_domain_test.go",
+      "marker": "page := call(\"GET\", \"/reference\", nil, nil, 200).Body.String()",
+      "complete": true
     }
   ],
   "plugin-symbol/open-api/OpenAPIOptions/theme": [
@@ -7204,6 +7639,12 @@
       "label": "Apply the configured nonce to inline scripts and styles and send the matching CSP",
       "test": "plugins/openapi/openapi_test.go",
       "marker": "reference page configuration"
+    },
+    {
+      "label": "With no nonce configured, headless Chrome still runs the served page's inline filter script and hides the operations that do not match the query",
+      "test": "plugins/openapi/openapi_test.go",
+      "marker": "Chrome did not filter operations under the nonce CSP",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/open-api.mdx#L48": [
@@ -7211,6 +7652,12 @@
       "label": "Return the public document from its mounted HTTP endpoint",
       "test": "conformance/openapi-contract.mjs",
       "marker": "assert.equal(doc.openapi,\"3.1.1\")"
+    },
+    {
+      "label": "openapi.Generate returns the document for a configured instance directly from Go, and each concurrent caller gets its own copy",
+      "test": "plugins/openapi/openapi_test.go",
+      "marker": "func TestConcurrentSchemaGeneration(",
+      "complete": true
     }
   ],
   "database/redisStorage/get": [
@@ -7413,6 +7860,12 @@
       "label": "Validate role grants against the catalog and isolate both from later changes to their input",
       "test": "plugins/access/access_test.go",
       "marker": "func TestRoleDefinition("
+    },
+    {
+      "label": "HasAction reports each action in the organization's default catalog, and HasResource and HasAction reject a resource or action outside it",
+      "test": "plugins/organization/default_roles_test.go",
+      "marker": "if control.HasResource(\"billing\") || control.HasAction(\"organization\", \"read\") {",
+      "complete": true
     }
   ],
   "plugin-symbol/access/role": [
@@ -10560,6 +11013,12 @@
       "label": "Issue one process-local session on concurrent redemption and revoke standing access during mailbox promotion",
       "test": "adapters/memory/magiclink_test.go",
       "marker": "func TestMemoryMagicLinkAtomicPromotion"
+    },
+    {
+      "label": "A second visit to a redeemed link goes to the error page with INVALID_TOKEN on both servers",
+      "test": "conformance/magic-link-delivery.mjs",
+      "marker": "assert.equal(await visit(first.URL), \"/failed?error=INVALID_TOKEN\")",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/magic-link.mdx#L147/allowedAttempts": [
@@ -10567,6 +11026,17 @@
       "label": "Issue one process-local session on concurrent redemption and revoke standing access during mailbox promotion",
       "test": "adapters/memory/magiclink_test.go",
       "marker": "func TestMemoryMagicLinkAtomicPromotion"
+    },
+    {
+      "label": "Send a second visit of a link to the error page with INVALID_TOKEN, on the Go memory and SQL stores and the other runtime",
+      "test": "conformance/magic-link-delivery.mjs",
+      "marker": "assert.equal(await visit(first.URL), \"/failed?error=INVALID_TOKEN\")",
+      "complete": true
+    },
+    {
+      "label": "Accept exactly one of two concurrent redemptions of the same link on separate database connections",
+      "test": "adapters/sqlstore/magiclink_test.go",
+      "marker": "unexpected concurrent result"
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L882/`lineItems`": [
@@ -11563,6 +12033,21 @@
       "label": "Run the nonce's verification delete hooks before the session hooks",
       "test": "adapters/sqlstore/siwe_hooks_test.go",
       "marker": "// The nonce's hooks run before the session's."
+    },
+    {
+      "label": "Refuse a message with a foreign domain or URI, another chain, or outside its time bounds, and spend its nonce",
+      "test": "adapters/sqlstore/siwe_test.go",
+      "marker": "URI: https://other.example.test"
+    },
+    {
+      "label": "Keep an unverified wallet-derived address when the supplied email already belongs to another account",
+      "test": "conformance/siwe-contact.mjs",
+      "marker": "assert.equal(own.email, other.address.toLowerCase()"
+    },
+    {
+      "label": "Answer a sanitized 401 when the host verifier or resolver errors or panics",
+      "test": "adapters/sqlstore/siwe_callbacks_test.go",
+      "marker": "\"verify panic\", \"verify error\""
     }
   ],
   "docs/content/docs/plugins/siwe.mdx#L104": [
@@ -11580,6 +12065,16 @@
       "label": "Refuse a database account with an ambiguous wallet binding",
       "test": "adapters/sqlstore/siwe_test.go",
       "marker": "ambiguous imported wallet accounts issued a session"
+    },
+    {
+      "label": "Refuse a message with a foreign domain or URI, another chain, or outside its time bounds, and spend its nonce",
+      "test": "adapters/sqlstore/siwe_test.go",
+      "marker": "URI: https://other.example.test"
+    },
+    {
+      "label": "Keep an unverified wallet-derived address when the supplied email already belongs to another account",
+      "test": "conformance/siwe-contact.mjs",
+      "marker": "assert.equal(own.email, other.address.toLowerCase()"
     }
   ],
   "plugin-symbol/siwe/siweClient": [
@@ -11684,6 +12179,17 @@
       "label": "Delete the wallet credential when its owner unlinks or deletes the account",
       "test": "adapters/sqlstore/siwe_test.go",
       "marker": "deletion retained wallet identity or sessions"
+    },
+    {
+      "label": "Install the plugin and serve both nonce routes and verification to the released client",
+      "test": "conformance/siwe-wallet.mjs",
+      "marker": "const go = await goFixture(t, [\"siwe\"]);",
+      "complete": true
+    },
+    {
+      "label": "Refuse invalid plugin settings at construction",
+      "test": "plugins/siwe/message_test.go",
+      "marker": "invalid wallet configuration accepted"
     }
   ],
   "plugin-symbol/siwe/WalletAddress": [
@@ -12238,6 +12744,12 @@
       "label": "Seed an isolated Chromium context with a local fixture cookie and read the signed-in user over HTTP",
       "test": "conformance/browser-fixture-cookies.mjs",
       "marker": "await call(\"Network.setCookies\", {cookies});"
+    },
+    {
+      "label": "A cookie from GetCookies with an overridden domain stops authenticating on another instance after DeleteUser",
+      "test": "authtest/server_test.go",
+      "marker": "check(cookieRequest.Header, false)",
+      "complete": true
     }
   ],
   "plugin-symbol/siwe/SIWEPluginOptions/schema": [
@@ -12255,6 +12767,12 @@
       "label": "Reopen and check mapped layouts, keep ownership consistent on unlink and mailbox promotion, and refuse mismatched nodes",
       "test": "adapters/sqlstore/siwe_schema_test.go",
       "marker": "wrong layout consumed a mailbox proof without reclaiming the wallet"
+    },
+    {
+      "label": "Rename only the table or only some wallet columns and match the generated layout on all three SQL dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "{ UserID: \"member_id\", Address: \"address\", ChainID: \"network\" },",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/admin.mdx#L108/Parameter `data` (optional)": [
@@ -30728,6 +31246,1236 @@
       "label": "Two LINE channels under their own keys keep their own client IDs, secrets, callbacks and account namespaces: a LINE user ID is a separate account per key, the same unverified email at a second key answers account_not_linked, a state from one key fails at the other's callback, and a direct ID token works only at its own channel's key",
       "test": "providers/line_test.go",
       "marker": "func TestLINEChannelsUnderSeparateKeys(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/multi-session.mdx#L79/`POST /multi-session/revoke`": [
+    {
+      "label": "Refuse revocation with UNAUTHORIZED when the browser holds no active session, then revoke the active account and fall back to the next remembered one",
+      "test": "plugins/multisession/multisession_test.go",
+      "marker": "expectDenied(t, first.RevokeDeviceSession(ctx, bob), \"UNAUTHORIZED\")",
+      "complete": true
+    },
+    {
+      "label": "Return status true from the browser client's revoke and make the next remembered account active on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.deepEqual((await api.revoke({ sessionToken: logins[0] })).data, { status: true });"
+    }
+  ],
+  "docs/content/docs/plugins/multi-session.mdx#L85/Parameter `sessionToken`": [
+    {
+      "label": "Revoke the named remembered token and leave the next remembered account active",
+      "test": "plugins/multisession/multisession_test.go",
+      "marker": "if err := first.RevokeDeviceSession(ctx, *newAlice.Token); err != nil {",
+      "complete": true
+    },
+    {
+      "label": "Reject a token this browser never remembered, even when the caller holds another live session",
+      "test": "plugins/multisession/multisession_test.go",
+      "marker": "expectDenied(t, other.RevokeDeviceSession(ctx, alice), \"INVALID_SESSION_TOKEN\")"
+    },
+    {
+      "label": "Reject a token whose device cookie carries another account's signed value",
+      "test": "plugins/multisession/multisession_test.go",
+      "marker": "expectDenied(t, device.RevokeDeviceSession(ctx, foreign), \"INVALID_SESSION_TOKEN\")"
+    }
+  ],
+  "plugin-symbol/last-login-method/lastLoginMethod": [
+    {
+      "label": "Publish the email preference cookie and expose the stored method on the session after sign-up on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "test(\"both runtimes publish the email login preference"
+    },
+    {
+      "label": "Record email after a password sign-in in a script-readable cookie",
+      "test": "plugins/lastlogin/lastlogin_test.go",
+      "marker": "incorrect method cookie: %v"
+    }
+  ],
+  "docs/content/docs/plugins/last-login-method.mdx#L152": [
+    {
+      "label": "Add the lastLoginMethod column to an existing SQLite database with authctl migrate, after which the plugin's schema check passes",
+      "test": "cmd/authctl/check_test.go",
+      "marker": "command(dsn, 0, \"migrate\", \"--dialect\", \"sqlite\", \"--plugins\", \"last-login-method\")",
+      "complete": true
+    },
+    {
+      "label": "Generate the plugin's column with authctl generate identically to the other runtime on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"the CLI emits the pinned plugin schema"
+    }
+  ],
+  "docs/content/docs/plugins/last-login-method.mdx#L198/`lastLoginMethodUserTableFields.lastLoginMethod`": [
+    {
+      "label": "Generate the optional string lastLoginMethod user column identically to the other runtime on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"the CLI emits the pinned plugin schema",
+      "complete": true
+    },
+    {
+      "label": "Report a missing user.lastLoginMethod column when the profile is selected",
+      "test": "adapters/sqlstore/check_test.go",
+      "marker": "missing column findings"
+    }
+  ],
+  "docs/content/docs/plugins/last-login-method.mdx#L278/cookieName": [
+    {
+      "label": "Name the default preference in the host cookie namespace, with the __Secure- prefix on HTTPS",
+      "test": "plugins/lastlogin/lastlogin_test.go",
+      "marker": "func TestDefaultCookieUsesHostNamespace(",
+      "complete": true
+    },
+    {
+      "label": "Issue the preference under a custom cookie name",
+      "test": "plugins/lastlogin/lastlogin_test.go",
+      "marker": "if c.Name == \"app.login-method\" {"
+    }
+  ],
+  "docs/content/docs/plugins/last-login-method.mdx#L282/Note": [
+    {
+      "label": "Publish the login preference without HttpOnly on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.ok(!cookie.attributes.includes(\"httponly\"));",
+      "complete": true
+    },
+    {
+      "label": "Read the preference from page script in Chrome",
+      "test": "conformance/goapi/cookie_scope_browser_test.go",
+      "marker": "custom preference was not shared"
+    }
+  ],
+  "docs/content/docs/plugins/last-login-method.mdx#L284/maxAge": [
+    {
+      "label": "Give the preference a 30-day lifetime by default on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.ok(cookie.attributes.includes(\"max-age=2592000\"));",
+      "complete": true
+    },
+    {
+      "label": "Respect a custom two-hour preference lifetime",
+      "test": "plugins/lastlogin/lastlogin_test.go",
+      "marker": "method.MaxAge != 7200"
+    }
+  ],
+  "docs/content/docs/plugins/last-login-method.mdx#L289/storeInDatabase": [
+    {
+      "label": "Store the method on the account while a refusing consent callback keeps the browser cookie unset, on three SQL backends and in memory",
+      "test": "adapters/sqlstore/lastlogin_test.go",
+      "marker": "consent-gated cookie was emitted"
+    },
+    {
+      "label": "Update the account's stored method on a later sign-in",
+      "test": "adapters/sqlstore/lastlogin_test.go",
+      "marker": "second session did not update account method"
+    }
+  ],
+  "docs/content/docs/plugins/last-login-method.mdx#L303/customResolveMethod": [
+    {
+      "label": "Use the resolver's method for email sign-in and fall back to the default when it returns empty",
+      "test": "adapters/sqlstore/lastlogin_test.go",
+      "marker": "second session did not update account method",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/last-login-method.mdx#L309/beforeStoreCookie": [
+    {
+      "label": "Withhold the preference when the consent callback refuses while sign-up still succeeds, and set it when consent is present",
+      "test": "plugins/lastlogin/lastlogin_test.go",
+      "marker": "cookie recorded without consent"
+    }
+  ],
+  "docs/content/docs/plugins/last-login-method.mdx#L315/Example": [
+    {
+      "label": "Store the preference only when the request carries the application's consent signal",
+      "test": "plugins/lastlogin/lastlogin_test.go",
+      "marker": "cookie recorded without consent",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/last-login-method.mdx#L356/cookieName": [
+    {
+      "label": "Read the default and a custom-named preference issued by the server from a native client cookie jar",
+      "test": "client/lastlogin_test.go",
+      "marker": "client could not read preference",
+      "complete": true
+    },
+    {
+      "label": "Read a custom-named preference in Chrome with the browser module set to the server's name",
+      "test": "conformance/goapi/cookie_scope_browser_test.go",
+      "marker": "custom preference was not shared"
+    }
+  ],
+  "docs/content/docs/plugins/last-login-method.mdx#L362/domain": [
+    {
+      "label": "Clear the shared preference on both HTTPS hosts in Chrome while unrelated cookies and the session survive",
+      "test": "conformance/goapi/cookie_scope_browser_test.go",
+      "marker": "domain preference survived clear",
+      "complete": true
+    },
+    {
+      "label": "Clear a shared preference for the configured domain in the native client and refuse a public-suffix domain",
+      "test": "client/cookie_scope_test.go",
+      "marker": "preference cleanup removed the wrong cookies"
+    }
+  ],
+  "docs/content/docs/plugins/last-login-method.mdx#L372/Email authentication": [
+    {
+      "label": "Record email after a password sign-in",
+      "test": "plugins/lastlogin/lastlogin_test.go",
+      "marker": "incorrect method cookie: %v",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/last-login-method.mdx#L375/Sign up methods": [
+    {
+      "label": "Record email in the preference after an email sign-up",
+      "test": "plugins/lastlogin/lastlogin_test.go",
+      "marker": "missing namespaced login-method cookie",
+      "complete": true
+    },
+    {
+      "label": "Store email on the account at sign-up",
+      "test": "adapters/sqlstore/lastlogin_test.go",
+      "marker": "missing persisted sign-up method"
+    }
+  ],
+  "docs/content/docs/plugins/last-login-method.mdx#L380/`/sign-in/email`": [
+    {
+      "label": "Record email after a password sign-in",
+      "test": "plugins/lastlogin/lastlogin_test.go",
+      "marker": "incorrect method cookie: %v",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/last-login-method.mdx#L381/`/sign-up/email`": [
+    {
+      "label": "Record email in the preference after an email sign-up",
+      "test": "plugins/lastlogin/lastlogin_test.go",
+      "marker": "missing namespaced login-method cookie",
+      "complete": true
+    },
+    {
+      "label": "Publish the preference on email sign-up on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.ok(cookie, \"registration should publish the preference\");"
+    }
+  ],
+  "docs/content/docs/plugins/last-login-method.mdx#L388": [
+    {
+      "label": "Copy the session cookie's Domain and Secure onto the preference, drop the domain for __Host- names and keep it readable by scripts",
+      "test": "plugins/lastlogin/lastlogin_test.go",
+      "marker": "invalid preference security attributes"
+    },
+    {
+      "label": "Clear the shared preference in Chrome when the browser module is given the shared domain",
+      "test": "conformance/goapi/cookie_scope_browser_test.go",
+      "marker": "domain preference survived clear"
+    }
+  ],
+  "docs/content/docs/plugins/last-login-method.mdx#L392/Cross-subdomain setups": [
+    {
+      "label": "Deliver the preference to a sibling subdomain once cross-subdomain cookies are enabled",
+      "test": "conformance/goapi/cookie_scope_http_test.go",
+      "marker": "plugin preference was not shared",
+      "complete": true
+    },
+    {
+      "label": "Send a custom-named preference to the sibling host in Chrome",
+      "test": "conformance/goapi/cookie_scope_browser_test.go",
+      "marker": "custom preference was not shared"
+    }
+  ],
+  "docs/content/docs/plugins/last-login-method.mdx#L414": [
+    {
+      "label": "Withhold the preference without a consent signal while sign-up still succeeds, and set it when the request carries consent",
+      "test": "plugins/lastlogin/lastlogin_test.go",
+      "marker": "cookie recorded without consent"
+    }
+  ],
+  "docs/content/docs/plugins/last-login-method.mdx#L454": [
+    {
+      "label": "Resolve a custom method from the request path and fall back to the default otherwise",
+      "test": "adapters/sqlstore/lastlogin_test.go",
+      "marker": "second session did not update account method",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/one-tap/GsiButtonConfiguration": [
+    {
+      "label": "Forward the button size option unchanged to Google's button renderer",
+      "test": "conformance/one-tap-browser.test.mjs",
+      "marker": "assert.deepEqual(rendered, [element, { size: \"large\" }]);"
+    },
+    {
+      "label": "Forward the button theme option unchanged to Google's button renderer",
+      "test": "conformance/one-tap-browser.test.mjs",
+      "marker": "assert.deepEqual(button,{el:element,style:{theme:\"outline\"}});"
+    }
+  ],
+  "plugin-symbol/username/USERNAME_ERROR_CODES": [
+    {
+      "label": "Return USERNAME_IS_ALREADY_TAKEN, INVALID_USERNAME_OR_PASSWORD, USERNAME_TOO_SHORT and USERNAME_IS_IMMUTABLE from sign-up, sign-in and profile updates",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "func TestUsernameLifecycleAcrossStores("
+    },
+    {
+      "label": "Return USERNAME_TOO_SHORT, USERNAME_TOO_LONG, INVALID_USERNAME and INVALID_DISPLAY_USERNAME from availability checks and sign-up",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "func TestUsernameValidationAndOptionalDisplay("
+    },
+    {
+      "label": "Return EMAIL_NOT_VERIFIED when an unverified account signs in by username",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "check(err, \"EMAIL_NOT_VERIFIED\")"
+    }
+  ],
+  "plugin-symbol/username/username": [
+    {
+      "label": "Install the plugin with default options on memory, SQLite, PostgreSQL and MySQL stores and run sign-up, sign-in, availability, renames and deletion over HTTP",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "func TestUsernameLifecycleAcrossStores(",
+      "complete": true
+    },
+    {
+      "label": "Install the plugin without the display field, without normalization and without the availability route",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "p, err = username.New(username.Options{DisableDisplay: true, DisableNormalization: true, DisableAvailability: true})"
+    }
+  ],
+  "docs/content/docs/plugins/username.mdx#L75/`POST /sign-up/email`": [
+    {
+      "label": "Register over HTTP with an email, name, password and username and get the username fields back",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "reg, err := signup(owner, \"user@example.test\", &initial)",
+      "complete": true
+    },
+    {
+      "label": "Register with only a display spelling through the pinned client on either server and get a lower-cased login name derived from it",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(initial.username, raw.toLowerCase());"
+    }
+  ],
+  "docs/content/docs/plugins/username.mdx#L81/Parameter `email`": [
+    {
+      "label": "With the username plugin on, the session created by sign-up carries the submitted email on both servers",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal((await session.json()).user.email,email);",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/username.mdx#L85/Parameter `name`": [
+    {
+      "label": "On both servers, the account stored by sign-up carries the submitted name",
+      "test": "conformance/existing-signup.mjs",
+      "marker": "assert.equal(notices[0].user.name, ownerInput.name);",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/username.mdx#L89/Parameter `password`": [
+    {
+      "label": "Sign in by username with the password given at sign-up",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "Username: strings.ToUpper(changed)",
+      "complete": true
+    },
+    {
+      "label": "Refuse a username sign-in whose password differs from the one given at sign-up",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "client.UsernameSignInRequest{Username: changed, Password: \"bad-password\"}"
+    }
+  ],
+  "docs/content/docs/plugins/username.mdx#L93/Parameter `username` (optional)": [
+    {
+      "label": "Store the lower-cased login name when sign-up includes a username",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "*reg.User.Username != \"initial_name.1\"",
+      "complete": true
+    },
+    {
+      "label": "Leave the login name null when sign-up sends neither username field, on both servers",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(noName.username, null);"
+    }
+  ],
+  "docs/content/docs/plugins/username.mdx#L97/Parameter `displayUsername` (optional)": [
+    {
+      "label": "Keep the display spelling given at sign-up through the pinned client on either server",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(initial.displayUsername, displayUsername ? raw : undefined);",
+      "complete": true
+    },
+    {
+      "label": "Store the normalized display spelling given alongside a username at sign-up",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "*user.User.Username != \"abc\""
+    },
+    {
+      "label": "Leave the display field null when sign-up sends neither username field",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(noName.displayUsername,"
+    }
+  ],
+  "docs/content/docs/plugins/username.mdx#L110/`POST /sign-in/username`": [
+    {
+      "label": "Signing in by username and password returns the user who registered, on either server",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(signed.user.id, initial.id);",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/username.mdx#L116/Parameter `username`": [
+    {
+      "label": "Sign in with the login name typed in upper case",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "Username: strings.ToUpper(changed)",
+      "complete": true
+    },
+    {
+      "label": "Refuse an unknown login name with INVALID_USERNAME_OR_PASSWORD",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "Username: \"missing.handle\""
+    }
+  ],
+  "docs/content/docs/plugins/username.mdx#L120/Parameter `password`": [
+    {
+      "label": "Refuse a wrong password for a known username with INVALID_USERNAME_OR_PASSWORD on either server",
+      "test": "conformance/core.test.mjs",
+      "marker": "password: \"wrong\" })).error.code, \"INVALID_USERNAME_OR_PASSWORD\"",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/username.mdx#L133/`POST /update-user`": [
+    {
+      "label": "Rename through update-user on one server and read the lower-cased name from the other",
+      "test": "conformance/core.test.mjs",
+      "marker": "ok(await alternate.updateUser({ username: next }));",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/username.mdx#L139/Parameter `username` (optional)": [
+    {
+      "label": "Store the lower-cased name after an update that sets only the username",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "*next.User.Username != \"renamed.member\"",
+      "complete": true
+    },
+    {
+      "label": "Sign in with the earlier login name after an update that changed only the display spelling",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "Username: strings.ToUpper(changed)"
+    }
+  ],
+  "docs/content/docs/plugins/username.mdx#L148/`POST /is-username-available`": [
+    {
+      "label": "Report a taken name as unavailable through the pinned client on either server",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.deepEqual(ok(await alternate.isUsernameAvailable({ username: raw })), { available: false });",
+      "complete": true
+    },
+    {
+      "label": "Report a released name as available through the pinned client on either server",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.deepEqual(ok(await actor.isUsernameAvailable({ username: raw })), { available: true });"
+    }
+  ],
+  "docs/content/docs/plugins/username.mdx#L154/Parameter `username`": [
+    {
+      "label": "Check the submitted name after lower-casing it, so the upper-case spelling of a taken name is unavailable",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "owner.IsUsernameAvailable(ctx, strings.ToUpper(initial))",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/username.mdx#L412/`usernameUserTableFields.username`": [
+    {
+      "label": "Refuse a username column that has no full unique index",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "username schema accepted without unique index",
+      "complete": true
+    },
+    {
+      "label": "Generate the unique, nullable username column the same as the other runtime on three SQL dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"the CLI emits the pinned plugin schema"
+    }
+  ],
+  "docs/content/docs/plugins/username.mdx#L419/`usernameUserTableFields.displayUsername`": [
+    {
+      "label": "Generate the nullable display column only for the full username profile, the same as the other runtime on three SQL dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"the CLI emits the pinned plugin schema",
+      "complete": true
+    },
+    {
+      "label": "Leave the display field null when sign-up sends neither username field",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(noName.displayUsername,"
+    }
+  ],
+  "plugin-symbol/open-api/openAPI": [
+    {
+      "label": "openapi.New installs the JSON schema route and an HTML page at the configured path, omits the page when disabled, and refuses an invalid path, nonce or theme",
+      "test": "plugins/openapi/openapi_test.go",
+      "marker": "func TestReferencePolicyAndOptions(",
+      "complete": true
+    },
+    {
+      "label": "With default options, openapi.New serves the page at /reference beneath the auth mount",
+      "test": "plugins/openapi/sso_domain_test.go",
+      "marker": "page := call(\"GET\", \"/reference\", nil, nil, 200).Body.String()"
+    }
+  ],
+  "docs/content/docs/plugins/open-api.mdx#L59": [
+    {
+      "label": "GET /api/auth/open-api/generate-schema under the default mount answers 200 with a JSON document",
+      "test": "plugins/openapi/organization_role_fields_test.go",
+      "marker": "host.ServeHTTP(w, httptest.NewRequest(\"GET\", \"/api/auth/open-api/generate-schema\", nil))",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/open-api.mdx#L78/`path`": [
+    {
+      "label": "With no path configured, serve the API reference page at /reference beneath the auth mount",
+      "test": "plugins/openapi/sso_domain_test.go",
+      "marker": "page := call(\"GET\", \"/reference\", nil, nil, 200).Body.String()",
+      "complete": true
+    },
+    {
+      "label": "Serve the API reference page at a configured path beneath the configured auth mount",
+      "test": "plugins/openapi/openapi_test.go",
+      "marker": "t.Fatal(\"reference page configuration\")"
+    }
+  ],
+  "docs/content/docs/plugins/open-api.mdx#L80/`disableDefaultReference`": [
+    {
+      "label": "With DisableDefaultReference set, answer 404 at /reference while the JSON schema stays available",
+      "test": "plugins/openapi/openapi_test.go",
+      "marker": "t.Fatal(\"disabled reference\", r.Status)",
+      "complete": true
+    },
+    {
+      "label": "Serve the API reference page when DisableDefaultReference is left unset",
+      "test": "plugins/openapi/sso_domain_test.go",
+      "marker": "page := call(\"GET\", \"/reference\", nil, nil, 200).Body.String()"
+    }
+  ],
+  "docs/content/docs/plugins/open-api.mdx#L86/`nonce`": [
+    {
+      "label": "Put a configured nonce attribute in the served page and send a Content-Security-Policy header that names the same nonce",
+      "test": "plugins/openapi/openapi_test.go",
+      "marker": "t.Fatal(\"reference page configuration\")",
+      "complete": true
+    },
+    {
+      "label": "With no nonce configured, headless Chrome still runs the served page's inline filter script and hides the operations that do not match the query",
+      "test": "plugins/openapi/openapi_test.go",
+      "marker": "Chrome did not filter operations under the nonce CSP"
+    }
+  ],
+  "plugin-symbol/test-utils/TestUtilsOptions/captureOTP": [
+    {
+      "label": "Capture each issued email and SMS code in an OTPRecorder that wraps the sender, while the sender still runs once per message",
+      "test": "authtest/fixtures_test.go",
+      "marker": "func TestCapturedProofs(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/test-utils.mdx#L221": [
+    {
+      "label": "Wrapped email and SMS senders each still run once while the recorder keeps the issued codes",
+      "test": "authtest/fixtures_test.go",
+      "marker": "if emailCalls != 1 || phoneCalls != 1 {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/test-utils.mdx#L264/`captureOTP`": [
+    {
+      "label": "Codes captured by the recorder wrapping the email and SMS senders verify the email address and phone number, and a separate unwired recorder has no code for the mailbox",
+      "test": "authtest/fixtures_test.go",
+      "marker": "var proofs, separate authtest.OTPRecorder",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/test-utils.mdx#L268": [
+    {
+      "label": "Headers from GetAuthHeaders for a saved fixture user return that user from GetSession on another instance and stop working after DeleteUser",
+      "test": "authtest/server_test.go",
+      "marker": "headers, err := h.GetAuthHeaders(ctx, u.ID)",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/access/AuthorizeResponse": [
+    {
+      "label": "Authorize returns nil for an allowed request and an error matching access.ErrDenied for a denied one, across the shared decision cases",
+      "test": "plugins/access/access_test.go",
+      "marker": "if (err == nil) != tc.Allowed || (err != nil && !errors.Is(err, access.ErrDenied)) {",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/access/Statements": [
+    {
+      "label": "access.New and NewRole copy their Statements maps, so later changes to the caller's slices leave the catalog and role unchanged",
+      "test": "plugins/access/access_test.go",
+      "marker": "t.Fatal(\"role changed with caller-owned slices\", err)",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/access/RoleStatements": [
+    {
+      "label": "NewRole refuses a grant naming an action outside the catalog or a resource the catalog lacks",
+      "test": "plugins/access/access_test.go",
+      "marker": "t.Fatal(\"role accepted an undefined grant\")",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/access/RoleInput": [
+    {
+      "label": "NewRole refuses role grants with a resource or action the catalog does not declare",
+      "test": "plugins/access/access_test.go",
+      "marker": "t.Fatal(\"role accepted an undefined grant\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/magic-link.mdx": [
+    {
+      "label": "Request a link by email, read it from the host sender and sign in by following it, on the Go memory and SQL stores and the other runtime",
+      "test": "conformance/magic-link-delivery.mjs",
+      "marker": "export async function compareMagicLinkDelivery(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/magic-link.mdx#L163/storeToken": [
+    {
+      "label": "Store the token unchanged by default, or as a custom hasher's output, after the magic-link prefix, and redeem the delivered link in both cases",
+      "test": "adapters/sqlstore/magiclink_test.go",
+      "marker": "unable to consume generated link",
+      "complete": true
+    },
+    {
+      "label": "Keep the magic-link prefix and redeem a hashed link exactly once when a global identifier hash is also configured, matching the other runtime",
+      "test": "conformance/verification-identifiers.mjs",
+      "marker": "const magicRow = row(\"magic-link:\" + sha(link.Token, \"base64url\"));"
+    }
+  ],
+  "docs/content/docs/plugins/magic-link.mdx#L167/`\"plain\"`": [
+    {
+      "label": "Store a generated token unchanged after the magic-link prefix when no hasher is set",
+      "test": "adapters/sqlstore/magiclink_test.go",
+      "marker": "key := token",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/magic-link.mdx#L168/`\"hashed\"`": [
+    {
+      "label": "Store the link under the magic-link prefix and the SHA-256 digest of the delivered token when HashTokens is set",
+      "test": "adapters/sqlstore/magiclink_test.go",
+      "marker": "incorrect hashed verification record",
+      "complete": true
+    },
+    {
+      "label": "Redeem in either runtime a hashed link issued by the other on one shared SQLite database",
+      "test": "conformance/core.test.mjs",
+      "marker": "test(\"shared SQLite verifies hashed magic links"
+    }
+  ],
+  "docs/content/docs/plugins/magic-link.mdx#L169/`{ type: \"custom-hasher\", hash: (token: string) => Promise<string> }`": [
+    {
+      "label": "Store the custom hasher's output for the original token after the magic-link prefix",
+      "test": "adapters/sqlstore/magiclink_test.go",
+      "marker": "key = \"custom-\" + token",
+      "complete": true
+    }
+  ],
+  "plugin/anonymous": [
+    {
+      "label": "Sign in as a guest, refuse a second guest sign-in, upgrade by password sign-up, refuse to delete the permanent account and delete a new guest, on both servers with the official client",
+      "test": "conformance/core.test.mjs",
+      "marker": "the pinned anonymous client signs in, upgrades and deletes guests on either server",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/anonymous/schema": [
+    {
+      "label": "Emit the same schema as the other runtime for every verified plugin selection, including anonymous, on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"the CLI emits the pinned plugin schema",
+      "complete": true
+    },
+    {
+      "label": "Store a sign-up that sends isAnonymous true as a permanent account",
+      "test": "conformance/goapi/credential_contract_test.go",
+      "marker": "a sign-up that asked to be anonymous was anonymous"
+    },
+    {
+      "label": "Return isAnonymous false on an ordinary sign-up",
+      "test": "adapters/sqlstore/existing_signup_test.go",
+      "marker": "fresh[\"isAnonymous\"] != false"
+    }
+  ],
+  "plugin-symbol/anonymous/AnonymousSession": [
+    {
+      "label": "Return isAnonymous true on the user of a guest's session",
+      "test": "adapters/sqlstore/anonymous_test.go",
+      "marker": "guest flag missing from session",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/anonymous/UserWithAnonymous": [
+    {
+      "label": "Return isAnonymous true on a new guest user",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(guest.data.user.isAnonymous,true);",
+      "complete": true
+    },
+    {
+      "label": "Return isAnonymous false on the session user after a guest upgrades by sign-up",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal((await client.getSession()).data.user.isAnonymous,false);"
+    }
+  ],
+  "docs/content/docs/plugins/anonymous.mdx": [
+    {
+      "label": "Give a guest a working session without credentials and later upgrade it by sign-up, on both servers with the official client",
+      "test": "conformance/core.test.mjs",
+      "marker": "the pinned anonymous client signs in, upgrades and deletes guests on either server",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/anonymous.mdx#L76/`POST /sign-in/anonymous`": [
+    {
+      "label": "Create a guest flagged isAnonymous through the official client on both servers",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(guest.data.user.isAnonymous,true);",
+      "complete": true
+    },
+    {
+      "label": "Give a guest an address at anonymous.placeholder.invalid when no domain is configured",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.match(guest.data.user.email,/@anonymous\\.placeholder\\.invalid$/);"
+    }
+  ],
+  "docs/content/docs/plugins/anonymous.mdx#L127/`POST /delete-anonymous-user`": [
+    {
+      "label": "Answer success when a guest deletes itself with the official client on both servers",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal((await client.deleteAnonymousUser()).data.success,true);",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/anonymous.mdx#L135/Notes:": [
+    {
+      "label": "Delete the guest after its records transfer to a password sign-in",
+      "test": "adapters/sqlstore/anonymous_test.go",
+      "marker": "guest was not atomically transferred and removed",
+      "complete": true
+    },
+    {
+      "label": "Refuse guest deletion with DELETE_ANONYMOUS_USER_DISABLED when deletion is disabled",
+      "test": "adapters/sqlstore/anonymous_test.go",
+      "marker": "expectErr(c.DeleteAnonymousUser(ctx), 400, \"DELETE_ANONYMOUS_USER_DISABLED\")"
+    }
+  ],
+  "docs/content/docs/plugins/anonymous.mdx#L143": [
+    {
+      "label": "Give guests addresses at the configured domain",
+      "test": "adapters/sqlstore/anonymous_test.go",
+      "marker": "invalid guest identity",
+      "complete": true
+    },
+    {
+      "label": "Give guests addresses at anonymous.placeholder.invalid when no domain is configured, on both servers",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.match(guest.data.user.email,/@anonymous\\.placeholder\\.invalid$/);"
+    }
+  ],
+  "docs/content/docs/plugins/anonymous.mdx#L160": [
+    {
+      "label": "Use the address returned by the configured generator for a new guest",
+      "test": "client/anonymous_test.go",
+      "marker": "guest email or default name failed",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/anonymous.mdx#L187": [
+    {
+      "label": "Pass the guest and the newly registered account to the callback during a password sign-up",
+      "test": "client/anonymous_test.go",
+      "marker": "e.NewUser.User.Email == \"registered@example.test\"",
+      "complete": true
+    },
+    {
+      "label": "Pass a guest flagged anonymous and a permanent new user to the callback",
+      "test": "adapters/sqlstore/anonymous_test.go",
+      "marker": "invalid guest transition context"
+    }
+  ],
+  "docs/content/docs/plugins/anonymous.mdx#L198": [
+    {
+      "label": "Name guests with the configured generator, which receives the guest sign-in request",
+      "test": "adapters/sqlstore/anonymous_test.go",
+      "marker": "wrong creation route",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/anonymous.mdx#L208/`anonymousUserTableFields.isAnonymous`": [
+    {
+      "label": "Emit the same schema as the other runtime for every verified plugin selection, including anonymous, on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"the CLI emits the pinned plugin schema",
+      "complete": true
+    },
+    {
+      "label": "Return isAnonymous false on the session user after a guest upgrades by sign-up",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal((await client.getSession()).data.user.isAnonymous,false);"
+    }
+  ],
+  "plugin/multi-session": [
+    {
+      "label": "Remember, list, switch, revoke and sign out accounts per browser with the official client on both servers, leaving another browser's session alone",
+      "test": "conformance/core.test.mjs",
+      "marker": "test(\"the official multi-session client remembers, switches",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/multi-session/MultiSessionConfig/maximumSessions": [
+    {
+      "label": "Remember five accounts per browser when no maximum is set",
+      "test": "plugins/multisession/multisession_test.go",
+      "marker": "default limit should be five remembered accounts",
+      "complete": true
+    },
+    {
+      "label": "Remember only the first two of three accounts under a maximum of two, on both servers",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.deepEqual(rows.map((r) => r.user.name).sort(), [\"alice\", \"bob\"]);"
+    }
+  ],
+  "docs/content/docs/plugins/multi-session.mdx": [
+    {
+      "label": "Keep several accounts signed in on one browser and switch between them without signing out, on both servers with the official client",
+      "test": "conformance/core.test.mjs",
+      "marker": "test(\"the official multi-session client remembers, switches",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/multi-session.mdx#L45": [
+    {
+      "label": "Set an HttpOnly, Secure, SameSite=Lax device cookie on path / with each sign-up, persistent only when the login is remembered",
+      "test": "plugins/multisession/multisession_test.go",
+      "marker": "device cookie attributes differ from login",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/multi-session.mdx#L53/`GET /multi-session/list-device-sessions`": [
+    {
+      "label": "List the accounts this browser remembers, up to the maximum of two, on both servers with the official client",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.deepEqual(rows.map((r) => r.user.name).sort(), [\"alice\", \"bob\"]);",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/multi-session.mdx#L64/`POST /multi-session/set-active`": [
+    {
+      "label": "Make a remembered login active and return its session, on both servers with the official client",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal((await api.setActive({ sessionToken: logins[0] })).data.session.token, logins[0]);",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/multi-session.mdx#L70/Parameter `sessionToken`": [
+    {
+      "label": "Activate the login named by sessionToken and return its token",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal((await api.setActive({ sessionToken: logins[0] })).data.session.token, logins[0]);",
+      "complete": true
+    },
+    {
+      "label": "Refuse a sessionToken this browser does not remember with INVALID_SESSION_TOKEN",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal((await api.setActive({ sessionToken: logins[2] })).error.code, \"INVALID_SESSION_TOKEN\");"
+    }
+  ],
+  "plugin-symbol/one-tap/GoogleOneTapActionOptions/autoSelect": [
+    {
+      "label": "Forward automatic account selection from the start call to the Google prompt",
+      "test": "conformance/one-tap-browser.test.mjs",
+      "marker": "One Tap binds the prompt and optional button",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/one-tap/GoogleOneTapActionOptions/cancelOnTapOutside": [
+    {
+      "label": "Forward outside-click dismissal from the start call to the Google prompt",
+      "test": "conformance/one-tap-browser.test.mjs",
+      "marker": "One Tap binds the prompt and optional button",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/one-tap/GoogleOneTapActionOptions/uxMode": [
+    {
+      "label": "Default to popup credential delivery when the start call names no mode",
+      "test": "conformance/one-tap-browser.test.mjs",
+      "marker": "One Tap binds the prompt and optional button",
+      "complete": true
+    },
+    {
+      "label": "Pass redirect mode with a pinned same-origin receiver",
+      "test": "conformance/one-tap-browser.test.mjs",
+      "marker": "redirect buttons pin the same-origin receiver"
+    },
+    {
+      "label": "Relay a redirect-mode credential form from the same-origin receiver to a stubbed callback and reach the success page in headless Chrome",
+      "test": "plugins/onetap/redirect_test.go",
+      "marker": "func TestChromeOneTapRedirect("
+    }
+  ],
+  "plugin-symbol/one-tap/GoogleOneTapActionOptions/context": [
+    {
+      "label": "Forward the prompt context from the start call to the Google prompt",
+      "test": "conformance/one-tap-browser.test.mjs",
+      "marker": "One Tap binds the prompt and optional button"
+    }
+  ],
+  "plugin-symbol/one-tap/GoogleOneTapActionOptions/additionalOptions": [
+    {
+      "label": "Forward allow-listed Google SDK options from the start call and reject receiver or nonce overrides",
+      "test": "conformance/one-tap-browser.test.mjs",
+      "marker": "redirect buttons pin the same-origin receiver"
+    }
+  ],
+  "plugin-symbol/one-tap/OneTapOptions": [
+    {
+      "label": "Use the explicitly configured audience for the browser challenge",
+      "test": "onetap_test.go",
+      "marker": "explicit client ID was not used",
+      "complete": true
+    },
+    {
+      "label": "Issue the browser challenge for the Google provider's audience when the plugin sets none",
+      "test": "adapters/sqlstore/onetap_test.go",
+      "marker": "r.data[\"clientId\"] != audience"
+    },
+    {
+      "label": "Refuse a new Google subject when the plugin disables sign-up and still sign in a returning one",
+      "test": "adapters/sqlstore/onetap_test.go",
+      "marker": "blocked, _ := build(true, false, workspace)"
+    }
+  ],
+  "plugin-symbol/one-tap/oneTap": [
+    {
+      "label": "Install the plugin with a Google provider and sign in through its challenge and callback routes on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/onetap_test.go",
+      "marker": "func TestOneTapGoogleSignIn(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/one-tap.mdx": [
+    {
+      "label": "Sign in to Go through the pinned One Tap client with a host-issued nonce and a locally signed Google credential",
+      "test": "conformance/core.test.mjs",
+      "marker": "await client.oneTap({ nonce: data.nonce, fetchOptions: {} });"
+    },
+    {
+      "label": "Complete a stubbed prompt sign-in with the bundled browser module in headless Chrome",
+      "test": "conformance/one-tap-browser.test.mjs",
+      "marker": "Chrome posts a stubbed Google credential with its HttpOnly browser cookie"
+    }
+  ],
+  "plugin-symbol/siwe/SIWEPluginOptions": [
+    {
+      "label": "Reject a malformed relying-party domain, chain ID or placeholder email domain when building the plugin and accept a valid configuration",
+      "test": "plugins/siwe/message_test.go",
+      "marker": "invalid wallet configuration accepted",
+      "complete": true
+    },
+    {
+      "label": "Accept a message signed for the configured domain and port and refuse an altered authority, URI or duplicated signed field",
+      "test": "plugins/siwe/message_test.go",
+      "marker": "func TestSignedMessageContract"
+    },
+    {
+      "label": "Apply a configured placeholder email domain without verifying the address",
+      "test": "adapters/sqlstore/siwe_test.go",
+      "marker": "custom wallet email domain was not applied"
+    },
+    {
+      "label": "Give a wallet-only account the default placeholder address and ignore a supplied email when anonymous sign-in is allowed",
+      "test": "conformance/siwe-wallet.mjs",
+      "marker": "assert.equal(session.user.email,"
+    },
+    {
+      "label": "Refuse a verification without a valid contact email when anonymous sign-in is disabled",
+      "test": "conformance/siwe-contact.mjs",
+      "marker": "for (const invalid of [{}, { email: null }, { email: \"not an email\" }]) {"
+    },
+    {
+      "label": "Use a host nonce generator, signature verifier and ENS resolver on both runtimes",
+      "test": "conformance/siwe-wallet.mjs",
+      "marker": "export async function walletCallbacks("
+    },
+    {
+      "label": "Rename the wallet table and columns and match the generated layout on all three SQL dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "custom wallet model, columns and owner indexes match the three released SQL dialects"
+    }
+  ],
+  "docs/content/docs/plugins/siwe.mdx": [
+    {
+      "label": "Sign in with an ERC-4361 message signed by a locally generated wallet key through the released client on both runtimes",
+      "test": "conformance/siwe-wallet.mjs",
+      "marker": "export async function walletSignIn(",
+      "complete": true
+    },
+    {
+      "label": "Use a host nonce generator and signature verifier on both runtimes",
+      "test": "conformance/siwe-wallet.mjs",
+      "marker": "export async function walletCallbacks("
+    },
+    {
+      "label": "Add the wallet table, owner relationship and index on each SQL dialect",
+      "test": "conformance/schema.test.mjs",
+      "marker": "wallet registrations add the canonical address table and owner index on each dialect"
+    }
+  ],
+  "docs/content/docs/plugins/siwe.mdx#L192": [
+    {
+      "label": "Run a host nonce generator, signature verifier and ENS resolver against both runtimes",
+      "test": "conformance/siwe-wallet.mjs",
+      "marker": "export async function walletCallbacks(",
+      "complete": true
+    },
+    {
+      "label": "Answer a sanitized 401 when the host verifier or resolver errors or panics",
+      "test": "adapters/sqlstore/siwe_callbacks_test.go",
+      "marker": "\"verify panic\", \"verify error\""
+    },
+    {
+      "label": "Apply a configured placeholder email domain",
+      "test": "adapters/sqlstore/siwe_test.go",
+      "marker": "custom wallet email domain was not applied"
+    },
+    {
+      "label": "Refuse a verification without a valid contact email when anonymous sign-in is disabled",
+      "test": "conformance/siwe-contact.mjs",
+      "marker": "for (const invalid of [{}, { email: null }, { email: \"not an email\" }]) {"
+    }
+  ],
+  "plugin-symbol/i18n/ar": [
+    {
+      "label": "Match every bundled ar message to the pinned dictionary",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "all bundled locale dictionaries must match the pinned package",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/i18n/bn": [
+    {
+      "label": "Match every bundled bn message to the pinned dictionary",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "all bundled locale dictionaries must match the pinned package",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/i18n/de": [
+    {
+      "label": "Match every bundled de message to the pinned dictionary",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "all bundled locale dictionaries must match the pinned package",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/i18n/en": [
+    {
+      "label": "Match every bundled en message to the pinned dictionary",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "all bundled locale dictionaries must match the pinned package",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/i18n/es": [
+    {
+      "label": "Match every bundled es message to the pinned dictionary",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "all bundled locale dictionaries must match the pinned package",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/i18n/fa": [
+    {
+      "label": "Match every bundled fa message to the pinned dictionary",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "all bundled locale dictionaries must match the pinned package",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/i18n/fr": [
+    {
+      "label": "Match every bundled fr message to the pinned dictionary",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "all bundled locale dictionaries must match the pinned package",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/i18n/hi": [
+    {
+      "label": "Match every bundled hi message to the pinned dictionary",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "all bundled locale dictionaries must match the pinned package",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/i18n/id": [
+    {
+      "label": "Match every bundled id message to the pinned dictionary",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "all bundled locale dictionaries must match the pinned package",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/i18n/locales": [
+    {
+      "label": "Load all 22 bundled dictionaries and match every message to the pinned package",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "all bundled locale dictionaries must match the pinned package",
+      "complete": true
+    },
+    {
+      "label": "Return all 22 bundled dictionaries from Builtins and resolve every message through a plugin built from them",
+      "test": "plugins/i18n/i18n_test.go",
+      "marker": "unexpected bundled locale count"
+    }
+  ],
+  "plugin-symbol/i18n/it": [
+    {
+      "label": "Match every bundled it message to the pinned dictionary",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "all bundled locale dictionaries must match the pinned package",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/i18n/ja": [
+    {
+      "label": "Match every bundled ja message to the pinned dictionary",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "all bundled locale dictionaries must match the pinned package",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/i18n/ko": [
+    {
+      "label": "Match every bundled ko message to the pinned dictionary",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "all bundled locale dictionaries must match the pinned package",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/i18n/nl": [
+    {
+      "label": "Match every bundled nl message to the pinned dictionary",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "all bundled locale dictionaries must match the pinned package",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/i18n/pl": [
+    {
+      "label": "Match every bundled pl message to the pinned dictionary",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "all bundled locale dictionaries must match the pinned package",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/i18n/pt": [
+    {
+      "label": "Match every bundled pt message to the pinned dictionary",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "all bundled locale dictionaries must match the pinned package",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/i18n/ru": [
+    {
+      "label": "Match every bundled ru message to the pinned dictionary",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "all bundled locale dictionaries must match the pinned package",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/i18n/sv": [
+    {
+      "label": "Match every bundled sv message to the pinned dictionary",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "all bundled locale dictionaries must match the pinned package",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/i18n/th": [
+    {
+      "label": "Match every bundled th message to the pinned dictionary",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "all bundled locale dictionaries must match the pinned package",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/i18n/tr": [
+    {
+      "label": "Match every bundled tr message to the pinned dictionary",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "all bundled locale dictionaries must match the pinned package",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/i18n/uk": [
+    {
+      "label": "Match every bundled uk message to the pinned dictionary",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "all bundled locale dictionaries must match the pinned package",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/i18n/vi": [
+    {
+      "label": "Match every bundled vi message to the pinned dictionary",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "all bundled locale dictionaries must match the pinned package",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/i18n/zh": [
+    {
+      "label": "Match every bundled zh message to the pinned dictionary",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "all bundled locale dictionaries must match the pinned package",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/i18n/I18nOptions": [
+    {
+      "label": "Configure dictionaries, fallback locale, detection order, cookie name, profile field and locale callback together and get the same translations on both runtimes",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "goFixture(t, [], { CONFORMANCE_I18N: \"1\" })",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/i18n.mdx": [
+    {
+      "label": "Translate errors by the detected locale through real HTTP on both runtimes",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "export async function localization(",
+      "complete": true
+    },
+    {
+      "label": "Keep the English message when only other locales are configured",
+      "test": "plugins/i18n/i18n_test.go",
+      "marker": "{\"absent default\","
+    }
+  ],
+  "docs/content/docs/plugins/i18n.mdx#L259": [
+    {
+      "label": "Translate every bundled error code in each of the 22 locales through the plugin hook",
+      "test": "plugins/i18n/i18n_test.go",
+      "marker": "func TestBundledMessages(",
       "complete": true
     }
   ]

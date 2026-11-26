@@ -218,6 +218,8 @@ Each row tracks the behavior exposed by a published entry point. The Go implemen
 - [ ] Localization
   - [ ] Default interface (`.`)
     - [x] Read translated errors through real HTTP on both runtimes ([test](../../conformance/i18n-contract.mjs#L26))
+    - [x] Refuse to install without a translation dictionary ([test](../../plugins/i18n/i18n_test.go#L86))
+    - [x] Translate a coded OAuth error and leave an uncoded rate-limit response unchanged ([test](../../plugins/i18n/i18n_test.go#L235))
   - [ ] Client integration (`./client`)
     - [x] Read the translated message, original message, stable code and HTTP status through the published browser client ([test](../../conformance/i18n-contract.mjs#L26))
   - [ ] Bundled locale dictionaries (`./locales`)

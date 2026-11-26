@@ -6,91 +6,155 @@
 
 - [ ] Username endpoints, types and options
   - [ ] `UsernameClientOptions`
-    - [ ] `displayUsername`
+    - [x] `displayUsername` ([test](../../../conformance/core.test.mjs#L834))
       - [x] Consume public profiles with the display field enabled and disabled ([test](../../../conformance/core.test.mjs#L861))
-  - [ ] `usernameClient`
+      - [x] With the display setting on and off, sign-up through the matching pinned client returns the display spelling or leaves the field out, on either server ([test](../../../conformance/core.test.mjs#L834))
+  - [x] `usernameClient` ([test](../../../conformance/core.test.mjs#L828))
     - [x] Sign in with the pinned client and edit the same username on both servers ([test](../../../conformance/core.test.mjs#L816))
+    - [x] Through the pinned client, sign up, sign in by username, check availability, rename and read the plugin's error codes on either server ([test](../../../conformance/core.test.mjs#L828))
   - [ ] `USERNAME_ERROR_CODES`
+    - [x] Return USERNAME_IS_ALREADY_TAKEN, INVALID_USERNAME_OR_PASSWORD, USERNAME_TOO_SHORT and USERNAME_IS_IMMUTABLE from sign-up, sign-in and profile updates ([test](../../../adapters/sqlstore/username_test.go#L23))
+    - [x] Return USERNAME_TOO_SHORT, USERNAME_TOO_LONG, INVALID_USERNAME and INVALID_DISPLAY_USERNAME from availability checks and sign-up ([test](../../../adapters/sqlstore/username_test.go#L255))
+    - [x] Return EMAIL_NOT_VERIFIED when an unverified account signs in by username ([test](../../../adapters/sqlstore/username_test.go#L373))
   - [ ] `POST /sign-in/username`
     - [x] Sign in with the canonical credential, remember preference and callback URL ([test](../../../adapters/sqlstore/username_test.go#L133))
     - [x] Honor email verification, administrator bans and existing second-factor settings ([test](../../../adapters/sqlstore/username_test.go#L316))
+    - [x] Sign in by username through the pinned client on either server and get the redirect flag and callback URL back ([test](../../../conformance/core.test.mjs#L840))
+    - [x] Refuse an unknown login name with INVALID_USERNAME_OR_PASSWORD ([test](../../../adapters/sqlstore/username_test.go#L141))
   - [ ] `POST /is-username-available`
     - [x] Check availability against the normalized unique login name ([test](../../../adapters/sqlstore/username_test.go#L107))
-  - [ ] `username`
+    - [x] Report a taken name as unavailable through the pinned client on either server ([test](../../../conformance/core.test.mjs#L835))
+    - [x] Refuse a two-character name on the availability route with USERNAME_TOO_SHORT through the pinned client ([test](../../../conformance/core.test.mjs#L846))
+  - [x] `username` ([test](../../../adapters/sqlstore/username_test.go#L23))
+    - [x] Install the plugin with default options on memory, SQLite, PostgreSQL and MySQL stores and run sign-up, sign-in, availability, renames and deletion over HTTP ([test](../../../adapters/sqlstore/username_test.go#L23))
+    - [x] Install the plugin without the display field, without normalization and without the availability route ([test](../../../adapters/sqlstore/username_test.go#L294))
   - [ ] `UsernameOptions`
     - [ ] `schema`
     - [ ] `minUsernameLength`
       - [x] Apply a configured minimum after normalization ([test](../../../adapters/sqlstore/username_test.go#L276))
+      - [x] Refuse a one-character login name at sign-in with USERNAME_TOO_SHORT under the default minimum ([test](../../../adapters/sqlstore/username_test.go#L144))
     - [ ] `maxUsernameLength`
       - [x] Apply a configured maximum after normalization ([test](../../../adapters/sqlstore/username_test.go#L276))
     - [ ] `usernameValidator`
       - [x] Apply a custom login-name validator ([test](../../../adapters/sqlstore/username_test.go#L276))
     - [ ] `displayUsernameValidator`
       - [x] Reject display spellings that fail application validation ([test](../../../adapters/sqlstore/username_test.go#L292))
-    - [ ] `usernameNormalization`
+      - [x] Accept a display spelling with spaces when no display validator is set ([test](../../../adapters/sqlstore/username_test.go#L121))
+    - [x] `usernameNormalization` ([test](../../../adapters/sqlstore/username_test.go#L273))
       - [x] Disable case folding and retain submitted spelling ([test](../../../adapters/sqlstore/username_test.go#L312))
+      - [x] Store the output of an application normalizer that lower-cases the name and removes spaces ([test](../../../adapters/sqlstore/username_test.go#L273))
+      - [x] Lower-case the login name by default, so an upper-case spelling of a taken name is unavailable ([test](../../../adapters/sqlstore/username_test.go#L105))
     - [ ] `displayUsernameNormalization`
       - [x] Normalize display spelling using an application function ([test](../../../adapters/sqlstore/username_test.go#L258))
+      - [x] Copy the submitted username into the display field when sign-up omits it ([test](../../../adapters/sqlstore/username_test.go#L285))
     - [ ] `validationOrder`
       - [x] Apply custom validators to the transformed input ([test](../../../adapters/sqlstore/username_test.go#L274))
+      - [x] With both post-normalization switches on, sign-up accepts a display spelling that passes the display validator only after trimming, and stores the normalized login name ([test](../../../adapters/sqlstore/username_test.go#L271))
+      - [x] With post-normalization validation on, the availability check refuses a name that the custom validator rejects only after lower-casing ([test](../../../adapters/sqlstore/username_test.go#L276))
     - [ ] `immutableUsername`
       - [x] Serialize competing first assignments to an immutable username ([test](../../../adapters/sqlstore/username_test.go#L236))
       - [x] Require a live owner session and protect previously assigned immutable names from clearing ([test](../../../adapters/sqlstore/username_test.go#L238))
-    - [ ] `displayUsername`
+      - [x] Allow another profile change, clearing the display spelling, once the username is fixed ([test](../../../adapters/sqlstore/username_test.go#L240))
+    - [x] `displayUsername` ([test](../../../conformance/core.test.mjs#L820))
       - [x] Store only the login name and accept a valid display-only fallback ([test](../../../adapters/sqlstore/username_test.go#L309))
-  - [ ] `UsernamePlugin`
-  - [ ] `UsernamePluginWithoutDisplayUsername`
+      - [x] With the display field disabled on both servers, sign-up and renames never return a display spelling and login names are still lower-cased ([test](../../../conformance/core.test.mjs#L820))
+      - [x] Generate the username-only profile without a display column, the same as the other runtime on three SQL dialects ([test](../../../conformance/schema.test.mjs#L106))
+  - `UsernamePlugin` — *not applicable: TypeScript type*
+  - `UsernamePluginWithoutDisplayUsername` — *not applicable: TypeScript type*
 
 ## Username
 
 - [ ] Username
   - [ ] Usage
-    - [ ] Sign up
+    - [x] Sign up ([test](../../../adapters/sqlstore/username_test.go#L100))
       - [x] Set a normalized login name and preserve display spelling ([test](../../../adapters/sqlstore/username_test.go#L101))
-      - [ ] `POST /sign-up/email`
-        - [ ] Parameter `email`
-        - [ ] Parameter `name`
-        - [ ] Parameter `password`
-        - [ ] Parameter `username` (optional)
-        - [ ] Parameter `displayUsername` (optional)
-    - [ ] Sign in
+      - [x] Sign up with only a username and get the lower-cased login name, with the submitted spelling as the display name ([test](../../../adapters/sqlstore/username_test.go#L100))
+      - [x] `POST /sign-up/email` ([test](../../../adapters/sqlstore/username_test.go#L99))
+        - [x] Register over HTTP with an email, name, password and username and get the username fields back ([test](../../../adapters/sqlstore/username_test.go#L99))
+        - [x] Register with only a display spelling through the pinned client on either server and get a lower-cased login name derived from it ([test](../../../conformance/core.test.mjs#L833))
+        - [x] Parameter `email` ([test](../../../conformance/core.test.mjs#L1387))
+          - [x] With the username plugin on, the session created by sign-up carries the submitted email on both servers ([test](../../../conformance/core.test.mjs#L1387))
+        - [x] Parameter `name` ([test](../../../conformance/existing-signup.mjs#L67))
+          - [x] On both servers, the account stored by sign-up carries the submitted name ([test](../../../conformance/existing-signup.mjs#L67))
+        - [x] Parameter `password` ([test](../../../adapters/sqlstore/username_test.go#L131))
+          - [x] Sign in by username with the password given at sign-up ([test](../../../adapters/sqlstore/username_test.go#L131))
+          - [x] Refuse a username sign-in whose password differs from the one given at sign-up ([test](../../../adapters/sqlstore/username_test.go#L139))
+        - [x] Parameter `username` (optional) ([test](../../../adapters/sqlstore/username_test.go#L100))
+          - [x] Store the lower-cased login name when sign-up includes a username ([test](../../../adapters/sqlstore/username_test.go#L100))
+          - [x] Leave the login name null when sign-up sends neither username field, on both servers ([test](../../../conformance/core.test.mjs#L860))
+        - [x] Parameter `displayUsername` (optional) ([test](../../../conformance/core.test.mjs#L834))
+          - [x] Keep the display spelling given at sign-up through the pinned client on either server ([test](../../../conformance/core.test.mjs#L834))
+          - [x] Store the normalized display spelling given alongside a username at sign-up ([test](../../../adapters/sqlstore/username_test.go#L273))
+          - [x] Leave the display field null when sign-up sends neither username field ([test](../../../conformance/core.test.mjs#L861))
+    - [x] Sign in ([test](../../../conformance/core.test.mjs#L837))
       - [x] Issue a remembered or browser-only username login ([test](../../../adapters/sqlstore/username_test.go#L137))
-      - [ ] `POST /sign-in/username`
-        - [ ] Parameter `username`
-        - [ ] Parameter `password`
+      - [x] Sign in by username through the pinned client on either server ([test](../../../conformance/core.test.mjs#L837))
+      - [x] `POST /sign-in/username` ([test](../../../conformance/core.test.mjs#L838))
+        - [x] Signing in by username and password returns the user who registered, on either server ([test](../../../conformance/core.test.mjs#L838))
+        - [x] Parameter `username` ([test](../../../adapters/sqlstore/username_test.go#L131))
+          - [x] Sign in with the login name typed in upper case ([test](../../../adapters/sqlstore/username_test.go#L131))
+          - [x] Refuse an unknown login name with INVALID_USERNAME_OR_PASSWORD ([test](../../../adapters/sqlstore/username_test.go#L141))
+        - [x] Parameter `password` ([test](../../../conformance/core.test.mjs#L836))
+          - [x] Refuse a wrong password for a known username with INVALID_USERNAME_OR_PASSWORD on either server ([test](../../../conformance/core.test.mjs#L836))
     - [ ] Update username
       - [x] Change the login name atomically without altering the previous display spelling ([test](../../../adapters/sqlstore/username_test.go#L119))
       - [x] Clear either optional field across both servers and immediately release the former login name ([test](../../../conformance/core.test.mjs#L854))
       - [x] Roll back a display-name clear if the same profile edit requests a claimed login name ([test](../../../adapters/sqlstore/username_test.go#L200))
-      - [ ] `POST /update-user`
-        - [ ] Parameter `username` (optional)
-    - [ ] Check if username is available
+      - [x] Allow one first username assignment and refuse a different one once it is fixed ([test](../../../adapters/sqlstore/username_test.go#L236))
+      - [x] `POST /update-user` ([test](../../../conformance/core.test.mjs#L841))
+        - [x] Rename through update-user on one server and read the lower-cased name from the other ([test](../../../conformance/core.test.mjs#L841))
+        - [x] Parameter `username` (optional) ([test](../../../adapters/sqlstore/username_test.go#L118))
+          - [x] Store the lower-cased name after an update that sets only the username ([test](../../../adapters/sqlstore/username_test.go#L118))
+          - [x] Sign in with the earlier login name after an update that changed only the display spelling ([test](../../../adapters/sqlstore/username_test.go#L131))
+    - [x] Check if username is available ([test](../../../conformance/core.test.mjs#L845))
       - [x] Release the old login name on rename ([test](../../../adapters/sqlstore/username_test.go#L127))
-      - [ ] `POST /is-username-available`
-        - [ ] Parameter `username`
+      - [x] Report a released name as available through the pinned client on either server ([test](../../../conformance/core.test.mjs#L845))
+      - [x] `POST /is-username-available` ([test](../../../conformance/core.test.mjs#L835))
+        - [x] Report a taken name as unavailable through the pinned client on either server ([test](../../../conformance/core.test.mjs#L835))
+        - [x] Report a released name as available through the pinned client on either server ([test](../../../conformance/core.test.mjs#L845))
+        - [x] Parameter `username` ([test](../../../adapters/sqlstore/username_test.go#L105))
+          - [x] Check the submitted name after lower-casing it, so the upper-case spelling of a taken name is unavailable ([test](../../../adapters/sqlstore/username_test.go#L105))
   - [ ] Options
     - [ ] Min Username Length
       - [x] Apply a configured minimum after normalization ([test](../../../adapters/sqlstore/username_test.go#L276))
+      - [x] Refuse a two-character name with USERNAME_TOO_SHORT under the default minimum on either server ([test](../../../conformance/core.test.mjs#L846))
     - [ ] Max Username Length
       - [x] Apply a configured maximum after normalization ([test](../../../adapters/sqlstore/username_test.go#L276))
     - [ ] Username Validator
       - [x] Apply a custom login-name validator ([test](../../../adapters/sqlstore/username_test.go#L276))
-    - [ ] Display Username Validator
+    - [x] Display Username Validator ([test](../../../adapters/sqlstore/username_test.go#L121))
       - [x] Reject display spellings that fail application validation ([test](../../../adapters/sqlstore/username_test.go#L292))
-    - [ ] Username Normalization
+      - [x] Accept a display spelling with spaces when no display validator is set ([test](../../../adapters/sqlstore/username_test.go#L121))
+    - [x] Username Normalization ([test](../../../adapters/sqlstore/username_test.go#L273))
       - [x] Disable case folding and retain submitted spelling ([test](../../../adapters/sqlstore/username_test.go#L312))
-    - [ ] Display Username Normalization
+      - [x] Store the output of an application normalizer that lower-cases the name and removes spaces ([test](../../../adapters/sqlstore/username_test.go#L273))
+      - [x] Lower-case the login name by default, so an upper-case spelling of a taken name is unavailable ([test](../../../adapters/sqlstore/username_test.go#L105))
+    - [x] Display Username Normalization ([test](../../../adapters/sqlstore/username_test.go#L285))
       - [x] Normalize display spelling using an application function ([test](../../../adapters/sqlstore/username_test.go#L258))
+      - [x] Copy the submitted username into the display field when sign-up omits it ([test](../../../adapters/sqlstore/username_test.go#L285))
+      - [x] Keep the earlier display spelling after a username-only rename on both servers ([test](../../../conformance/core.test.mjs#L844))
     - [ ] Validation Order
       - [x] Apply custom validators to the transformed input ([test](../../../adapters/sqlstore/username_test.go#L274))
-    - [ ] Disable Display Username
+      - [x] With both post-normalization switches on, sign-up accepts a display spelling that passes the display validator only after trimming, and stores the normalized login name ([test](../../../adapters/sqlstore/username_test.go#L271))
+      - [x] With post-normalization validation on, the availability check refuses a name that the custom validator rejects only after lower-casing ([test](../../../adapters/sqlstore/username_test.go#L276))
+    - [x] Disable Display Username ([test](../../../conformance/core.test.mjs#L820))
       - [x] Store only the login name and accept a valid display-only fallback ([test](../../../adapters/sqlstore/username_test.go#L309))
+      - [x] With the display field disabled on both servers, sign-up and renames never return a display spelling and login names are still lower-cased ([test](../../../conformance/core.test.mjs#L820))
+      - [x] Generate the username-only profile without a display column, the same as the other runtime on three SQL dialects ([test](../../../conformance/schema.test.mjs#L106))
     - [ ] Immutable Username
       - [x] Serialize competing first assignments to an immutable username ([test](../../../adapters/sqlstore/username_test.go#L236))
-    - [ ] Disable Is Username Available
+      - [x] Allow another profile change, clearing the display spelling, once the username is fixed ([test](../../../adapters/sqlstore/username_test.go#L240))
+    - [x] Disable Is Username Available ([test](../../../conformance/core.test.mjs#L1391))
       - [x] Remove the public endpoint while retaining the application lookup ([test](../../../adapters/sqlstore/username_test.go#L304))
       - [x] Disable just the public availability endpoint through general HTTP path configuration ([test](../../../conformance/core.test.mjs#L1374))
-  - [ ] Schema
+      - [x] With the availability path disabled, the route returns 404 on both servers ([test](../../../conformance/core.test.mjs#L1391))
+  - [x] Schema ([test](../../../conformance/schema.test.mjs#L106))
     - [x] Keep existing accounts intact when adding nullable username fields ([test](../../../adapters/sqlstore/username_test.go#L61))
-    - [ ] `usernameUserTableFields.username`
-    - [ ] `usernameUserTableFields.displayUsername`
+    - [x] Generate the username columns, with and without the display column, the same as the other runtime on three SQL dialects ([test](../../../conformance/schema.test.mjs#L106))
+    - [x] Add the username profiles to a populated SQLite database and match the other runtime's physical schema ([test](../../../conformance/schema.test.mjs#L129))
+    - [x] `usernameUserTableFields.username` ([test](../../../adapters/sqlstore/username_test.go#L468))
+      - [x] Refuse a username column that has no full unique index ([test](../../../adapters/sqlstore/username_test.go#L468))
+      - [x] Generate the unique, nullable username column the same as the other runtime on three SQL dialects ([test](../../../conformance/schema.test.mjs#L106))
+    - [x] `usernameUserTableFields.displayUsername` ([test](../../../conformance/schema.test.mjs#L106))
+      - [x] Generate the nullable display column only for the full username profile, the same as the other runtime on three SQL dialects ([test](../../../conformance/schema.test.mjs#L106))
+      - [x] Leave the display field null when sign-up sends neither username field ([test](../../../conformance/core.test.mjs#L861))

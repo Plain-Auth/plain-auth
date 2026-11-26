@@ -24,8 +24,10 @@
   - [ ] `MagicLinkOptions`
     - [ ] `expiresIn`
       - [x] Persist the configured link lifetime ([test](../../../adapters/sqlstore/magiclink_test.go#L238))
-    - [ ] `allowedAttempts`
+      - [x] Redirect an expired link to the error page with INVALID_TOKEN ([test](../../../adapters/sqlstore/magiclink_test.go#L189))
+    - [x] `allowedAttempts` ([test](../../../conformance/magic-link-delivery.mjs#L54))
       - [x] Issue one process-local session on concurrent redemption and revoke standing access during mailbox promotion ([test](../../../adapters/memory/magiclink_test.go#L16))
+      - [x] A second visit to a redeemed link goes to the error page with INVALID_TOKEN on both servers ([test](../../../conformance/magic-link-delivery.mjs#L54))
     - [x] `sendMagicLink` ([test](../../../conformance/magic-link-delivery.mjs#L42))
       - [x] Deliver the intended mailbox, private token and request metadata ([test](../../../adapters/sqlstore/magiclink_test.go#L73))
       - [x] Deliver the destination, token, link, application metadata and browser request context together ([test](../../../conformance/magic-link-delivery.mjs#L42))
@@ -36,13 +38,15 @@
       - [x] Apply the configured per-endpoint request budget ([test](../../../adapters/sqlstore/magiclink_test.go#L195))
     - [ ] `generateToken`
       - [x] Deliver the value from the configured generator ([test](../../../adapters/sqlstore/magiclink_test.go#L234))
-    - [ ] `storeToken`
+    - [x] `storeToken` ([test](../../../adapters/sqlstore/magiclink_test.go#L105))
       - [x] Consume raw and custom-hashed keys on SQLite ([test](../../../adapters/sqlstore/magiclink_test.go#L243))
+      - [x] Store the link under the magic-link prefix and the SHA-256 digest of the delivered token when HashTokens is set ([test](../../../adapters/sqlstore/magiclink_test.go#L105))
   - [ ] `magicLink`
 
 ## Magic link
 
 - [ ] Magic link
+  - [x] Request a link by email, read it from the host sender and sign in by following it, on the Go memory and SQL stores and the other runtime ([test](../../../conformance/magic-link-delivery.mjs#L7))
   - [ ] Usage
     - [x] Sign In with Magic Link ([test](../../../conformance/magic-link-delivery.mjs#L31))
       - [x] Deliver an opaque login link, browser locale and application metadata on the released client with both open and closed registration ([test](../../../conformance/magic-link-delivery.mjs#L31))
@@ -84,13 +88,21 @@
     - [x] `metadata` ([test](../../../conformance/magic-link-delivery.mjs#L40))
       - [x] Read the delivered message through a host-owned sender ([test](../../../conformance/magic-link-delivery.mjs#L40))
     - [ ] expiresIn
-    - [ ] allowedAttempts
+    - [x] allowedAttempts ([test](../../../conformance/magic-link-delivery.mjs#L54))
       - [x] Issue one process-local session on concurrent redemption and revoke standing access during mailbox promotion ([test](../../../adapters/memory/magiclink_test.go#L16))
+      - [x] Send a second visit of a link to the error page with INVALID_TOKEN, on the Go memory and SQL stores and the other runtime ([test](../../../conformance/magic-link-delivery.mjs#L54))
+      - [x] Accept exactly one of two concurrent redemptions of the same link on separate database connections ([test](../../../adapters/sqlstore/magiclink_test.go#L144))
     - [x] disableSignUp ([test](../../../conformance/magic-link-delivery.mjs#L53))
       - [x] Deny creation of an unknown account and admit a known owner under the same closed registration policy ([test](../../../conformance/magic-link-delivery.mjs#L53))
     - [ ] rateLimit
     - [ ] generateToken
-    - [ ] storeToken
-    - [ ] `"plain"`
-    - [ ] `"hashed"`
-    - [ ] `{ type: "custom-hasher", hash: (token: string) => Promise<string> }`
+    - [x] storeToken ([test](../../../adapters/sqlstore/magiclink_test.go#L243))
+      - [x] Store the token unchanged by default, or as a custom hasher's output, after the magic-link prefix, and redeem the delivered link in both cases ([test](../../../adapters/sqlstore/magiclink_test.go#L243))
+      - [x] Keep the magic-link prefix and redeem a hashed link exactly once when a global identifier hash is also configured, matching the other runtime ([test](../../../conformance/verification-identifiers.mjs#L69))
+    - [x] `"plain"` ([test](../../../adapters/sqlstore/magiclink_test.go#L216))
+      - [x] Store a generated token unchanged after the magic-link prefix when no hasher is set ([test](../../../adapters/sqlstore/magiclink_test.go#L216))
+    - [x] `"hashed"` ([test](../../../adapters/sqlstore/magiclink_test.go#L105))
+      - [x] Store the link under the magic-link prefix and the SHA-256 digest of the delivered token when HashTokens is set ([test](../../../adapters/sqlstore/magiclink_test.go#L105))
+      - [x] Redeem in either runtime a hashed link issued by the other on one shared SQLite database ([test](../../../conformance/core.test.mjs#L345))
+    - [x] `{ type: "custom-hasher", hash: (token: string) => Promise<string> }` ([test](../../../adapters/sqlstore/magiclink_test.go#L218))
+      - [x] Store the custom hasher's output for the original token after the magic-link prefix ([test](../../../adapters/sqlstore/magiclink_test.go#L218))

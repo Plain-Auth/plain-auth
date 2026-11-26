@@ -5,42 +5,68 @@
 ## Interfaces
 
 - [ ] Multi session endpoints, types and options
-  - [ ] `multiSessionClient`
+  - [x] Remember, list, switch, revoke and sign out accounts per browser with the official client on both servers, leaving another browser's session alone ([test](../../../conformance/core.test.mjs#L542))
+  - [x] `multiSessionClient` ([test](../../../conformance/core.test.mjs#L562))
     - [x] Use the public browser client to list, select, revoke, and sign out across independent cookie jars ([test](../../../conformance/core.test.mjs#L542))
+    - [x] Switch the active account with the client's setActive and get the chosen session token back, on both servers ([test](../../../conformance/core.test.mjs#L562))
   - [ ] `MULTI_SESSION_ERROR_CODES`
   - [ ] `ERROR_CODES`
   - [ ] `GET /multi-session/list-device-sessions`
     - [x] List live accounts from this browser, including when the primary cookie is missing ([test](../../../plugins/multisession/multisession_test.go#L160))
     - [x] Remove surplus entries after simultaneous browser logins ([test](../../../plugins/multisession/multisession_test.go#L311))
-  - [ ] `POST /multi-session/set-active`
+  - [x] `POST /multi-session/set-active` ([test](../../../conformance/core.test.mjs#L562))
     - [x] Preserve browser-only persistence when a remembered account becomes active ([test](../../../plugins/multisession/multisession_test.go#L141))
     - [x] Require the signed cookie and reject expired or mismatched credentials ([test](../../../plugins/multisession/multisession_test.go#L177))
-  - [ ] `POST /multi-session/revoke`
+    - [x] Make a remembered login active and return its session, on both servers with the official client ([test](../../../conformance/core.test.mjs#L562))
+  - [x] `POST /multi-session/revoke` ([test](../../../plugins/multisession/multisession_test.go#L173))
     - [x] Authorize revocation transactionally across independent database connections ([test](../../../adapters/sqlstore/multisession_test.go#L85))
     - [x] Use the public browser client to list, select, revoke, and sign out across independent cookie jars ([test](../../../conformance/core.test.mjs#L542))
+    - [x] Switch to the next remembered login after the active one is revoked, and leave none active after the last is revoked ([test](../../../plugins/multisession/multisession_test.go#L173))
+    - [x] Refuse revocation with UNAUTHORIZED when the browser has no active login ([test](../../../plugins/multisession/multisession_test.go#L162))
   - [ ] `MultiSessionConfig`
     - [x] Remember five accounts by default while allowing another account to sign in ([test](../../../plugins/multisession/multisession_test.go#L283))
     - [x] Honor a zero limit and reject negative limits ([test](../../../plugins/multisession/multisession_test.go#L243))
-    - [ ] `maximumSessions`
-  - [ ] `multiSession`
+    - [x] `maximumSessions` ([test](../../../plugins/multisession/multisession_test.go#L283))
+      - [x] Remember five accounts per browser when no maximum is set ([test](../../../plugins/multisession/multisession_test.go#L283))
+      - [x] Remember only the first two of three accounts under a maximum of two, on both servers ([test](../../../conformance/core.test.mjs#L558))
+  - [x] `multiSession` ([test](../../../plugins/multisession/multisession_test.go#L155))
     - [x] Revoke remembered logins on sign-out and preserve an independent browser session ([test](../../../plugins/multisession/multisession_test.go#L231))
+    - [x] Delete this browser's earlier login for an account when that account signs in again ([test](../../../plugins/multisession/multisession_test.go#L155))
+    - [x] Remember five accounts per browser when no maximum is set ([test](../../../plugins/multisession/multisession_test.go#L283))
 
 ## Multi Session
 
-- [ ] Multi Session
-  - [ ] Usage
-    - [ ] List all device sessions
+- [x] Multi Session ([test](../../../conformance/core.test.mjs#L542))
+  - [x] Keep several accounts signed in on one browser and switch between them without signing out, on both servers with the official client ([test](../../../conformance/core.test.mjs#L542))
+  - [x] Usage ([test](../../../plugins/multisession/multisession_test.go#L265))
+    - [x] Set an HttpOnly, Secure, SameSite=Lax device cookie on path / with each sign-up, persistent only when the login is remembered ([test](../../../plugins/multisession/multisession_test.go#L265))
+    - [x] List all device sessions ([test](../../../conformance/core.test.mjs#L558))
       - [x] List live accounts from this browser, including when the primary cookie is missing ([test](../../../plugins/multisession/multisession_test.go#L160))
-      - [ ] `GET /multi-session/list-device-sessions`
-    - [ ] Set active session
+      - [x] List the accounts this browser remembers, up to the maximum of two, on both servers with the official client ([test](../../../conformance/core.test.mjs#L558))
+      - [x] `GET /multi-session/list-device-sessions` ([test](../../../conformance/core.test.mjs#L558))
+        - [x] List the accounts this browser remembers, up to the maximum of two, on both servers with the official client ([test](../../../conformance/core.test.mjs#L558))
+    - [x] Set active session ([test](../../../conformance/core.test.mjs#L562))
       - [x] Preserve browser-only persistence when a remembered account becomes active ([test](../../../plugins/multisession/multisession_test.go#L141))
-      - [ ] `POST /multi-session/set-active`
-        - [ ] Parameter `sessionToken`
-    - [ ] Revoke a session
+      - [x] Make a remembered login active and return its session, on both servers with the official client ([test](../../../conformance/core.test.mjs#L562))
+      - [x] `POST /multi-session/set-active` ([test](../../../conformance/core.test.mjs#L562))
+        - [x] Make a remembered login active and return its session, on both servers with the official client ([test](../../../conformance/core.test.mjs#L562))
+        - [x] Parameter `sessionToken` ([test](../../../conformance/core.test.mjs#L562))
+          - [x] Activate the login named by sessionToken and return its token ([test](../../../conformance/core.test.mjs#L562))
+          - [x] Refuse a sessionToken this browser does not remember with INVALID_SESSION_TOKEN ([test](../../../conformance/core.test.mjs#L560))
+    - [x] Revoke a session ([test](../../../conformance/core.test.mjs#L564))
       - [x] Authorize revocation transactionally across independent database connections ([test](../../../adapters/sqlstore/multisession_test.go#L85))
-      - [ ] `POST /multi-session/revoke`
-        - [ ] Parameter `sessionToken`
-    - [ ] Signout and Revoke all sessions
+      - [x] Revoke a remembered login with the client and answer status true, on both servers ([test](../../../conformance/core.test.mjs#L564))
+      - [x] `POST /multi-session/revoke` ([test](../../../plugins/multisession/multisession_test.go#L162))
+        - [x] Refuse revocation with UNAUTHORIZED when the browser holds no active session, then revoke the active account and fall back to the next remembered one ([test](../../../plugins/multisession/multisession_test.go#L162))
+        - [x] Return status true from the browser client's revoke and make the next remembered account active on both runtimes ([test](../../../conformance/core.test.mjs#L564))
+        - [x] Parameter `sessionToken` ([test](../../../plugins/multisession/multisession_test.go#L166))
+          - [x] Revoke the named remembered token and leave the next remembered account active ([test](../../../plugins/multisession/multisession_test.go#L166))
+          - [x] Reject a token this browser never remembered, even when the caller holds another live session ([test](../../../plugins/multisession/multisession_test.go#L126))
+          - [x] Reject a token whose device cookie carries another account's signed value ([test](../../../plugins/multisession/multisession_test.go#L202))
+    - [x] Signout and Revoke all sessions ([test](../../../conformance/core.test.mjs#L568))
       - [x] Revoke remembered logins on sign-out and preserve an independent browser session ([test](../../../plugins/multisession/multisession_test.go#L231))
-    - [ ] Max Sessions
+      - [x] Sign out with the browser client, leave the remembered list empty and keep the same user signed in on another browser on both runtimes ([test](../../../conformance/core.test.mjs#L568))
+    - [x] Max Sessions ([test](../../../plugins/multisession/multisession_test.go#L112))
       - [x] Remember five accounts by default while allowing another account to sign in ([test](../../../plugins/multisession/multisession_test.go#L283))
+      - [x] List only two remembered accounts under a limit of two while the newest login stays active ([test](../../../plugins/multisession/multisession_test.go#L112))
+      - [x] Remember at most two accounts with a limit of two on both runtimes ([test](../../../conformance/core.test.mjs#L558))

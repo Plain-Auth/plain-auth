@@ -2,16 +2,16 @@
 
 ## Verification progress
 
-**1,678 of 6,478 inventory entries are fully verified (25.9%).**
+**1,823 of 6,464 inventory entries are fully verified (28.2%).**
 
 | Inventory status | Entries |
 | --- | ---: |
-| Fully verified | 1,678 |
-| Partially verified | 1,388 |
-| No linked test evidence | 3,412 |
-| Not applicable to a Go server | 547 |
+| Fully verified | 1,823 |
+| Partially verified | 1,354 |
+| No linked test evidence | 3,287 |
+| Not applicable to a Go server | 561 |
 
-The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 4,836 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
+The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 5,111 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
 
 Entries that exist only for JavaScript clients, frameworks or runtimes are listed as not applicable, with the reason, and are left out of the totals. Backlog entries stay open on the roadmap but are not scheduled.
 
@@ -75,7 +75,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 
 | Checklist | Checked | Open | Not applicable |
 | --- | ---: | ---: | ---: |
-| [Published package interfaces](packages.md) | 104 | 116 | 43 |
+| [Published package interfaces](packages.md) | 106 | 116 | 43 |
 | [Native Go client, routers and databases](go.md) | 51 | 3 | 0 |
 | [Core API, sign-in providers and CLI](runtime.md) | 559 | 104 | 32 |
 | [Database adapters](adapters.md) | 82 | 49 | 163 |
@@ -90,10 +90,10 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | Checklist | Checked | Open | Not applicable |
 | --- | ---: | ---: | ---: |
 | [Two-factor authentication](plugins/2fa.md) | 47 | 141 | 0 |
-| [Access](plugins/access.md) | 7 | 14 | 0 |
+| [Access](plugins/access.md) | 21 | 3 | 4 |
 | [Additional fields](plugins/additional-fields.md) | 0 | 0 | 2 |
 | [Admin](plugins/admin.md) | 75 | 141 | 0 |
-| [Anonymous](plugins/anonymous.md) | 28 | 25 | 0 |
+| [Anonymous](plugins/anonymous.md) | 67 | 12 | 0 |
 | [API keys](plugins/api-key.md) | 114 | 210 | 0 |
 | [Bearer](plugins/bearer.md) | 30 | 0 | 0 |
 | [Captcha](plugins/captcha.md) | 17 | 65 | 0 |
@@ -105,27 +105,27 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Expo](plugins/expo.md) | 0 | 5 | 14 |
 | [Generic OAuth](plugins/generic-oauth.md) | 452 | 151 | 0 |
 | [Have I Been Pwned](plugins/have-i-been-pwned.md) | 46 | 0 | 0 |
-| [Internationalization](plugins/i18n.md) | 116 | 36 | 0 |
+| [Internationalization](plugins/i18n.md) | 183 | 6 | 0 |
 | [JSON Web Tokens](plugins/jwt.md) | 13 | 75 | 0 |
-| [Last login method](plugins/last-login-method.md) | 24 | 48 | 0 |
-| [Magic link](plugins/magic-link.md) | 68 | 19 | 0 |
+| [Last login method](plugins/last-login-method.md) | 76 | 29 | 2 |
+| [Magic link](plugins/magic-link.md) | 87 | 12 | 0 |
 | [Model Context Protocol](plugins/mcp.md) | 0 | 108 | 0 |
-| [Multi session](plugins/multi-session.md) | 15 | 22 | 0 |
+| [Multi session](plugins/multi-session.md) | 58 | 5 | 0 |
 | [OAuth popup](plugins/oauth-popup.md) | 56 | 5 | 0 |
 | [OAuth provider](plugins/oauth-provider.md) | 607 | 373 | 0 |
 | [OAuth proxy](plugins/oauth-proxy.md) | 27 | 6 | 0 |
-| [One tap](plugins/one-tap.md) | 38 | 18 | 0 |
+| [One tap](plugins/one-tap.md) | 65 | 13 | 0 |
 | [One time token](plugins/one-time-token.md) | 76 | 0 | 0 |
-| [OpenAPI](plugins/open-api.md) | 16 | 24 | 0 |
+| [OpenAPI](plugins/open-api.md) | 44 | 8 | 5 |
 | [Organization](plugins/organization.md) | 1044 | 73 | 41 |
 | [Passkey](plugins/passkey.md) | 32 | 94 | 0 |
 | [Phone number](plugins/phone-number.md) | 39 | 67 | 0 |
 | [SCIM provisioning](plugins/scim.md) | 67 | 257 | 0 |
-| [Sign in with Ethereum](plugins/siwe.md) | 96 | 11 | 0 |
+| [Sign in with Ethereum](plugins/siwe.md) | 122 | 7 | 0 |
 | [Single sign-on](plugins/sso.md) | 107 | 314 | 0 |
 | [Stripe](plugins/stripe.md) | 206 | 175 | 0 |
-| [Test utils](plugins/test-utils.md) | 69 | 18 | 0 |
-| [Username](plugins/username.md) | 33 | 54 | 0 |
+| [Test utils](plugins/test-utils.md) | 79 | 12 | 1 |
+| [Username](plugins/username.md) | 126 | 23 | 2 |
 
 ## Third-party integrations
 

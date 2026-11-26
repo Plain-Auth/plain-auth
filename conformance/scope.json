@@ -796,6 +796,62 @@
         "Create a Provider Helper"
       ],
       "reason": "not applicable: TypeScript authoring pattern. A helper typed with BaseOAuthProviderOptions returns a GenericOAuthConfig and is shared as an npm package. In Go a helper is any function that returns plainauth.OAuthProvider, like the constructors in providers/."
+    },
+    {
+      "page": "plugins/last-login-method.md",
+      "section": "Last Login Method",
+      "labels": [
+        "UI Integration Example"
+      ],
+      "reason": "not applicable: React component example"
+    },
+    {
+      "page": "plugins/last-login-method.md",
+      "section": "Last Login Method",
+      "labels": [
+        "Usage with Expo"
+      ],
+      "reason": "not applicable: JavaScript only"
+    },
+    {
+      "page": "plugins/username.md",
+      "section": "Interfaces",
+      "labels": [
+        "`UsernamePlugin`",
+        "`UsernamePluginWithoutDisplayUsername`"
+      ],
+      "reason": "not applicable: TypeScript type"
+    },
+    {
+      "page": "plugins/open-api.md",
+      "section": "Interfaces",
+      "labels": [
+        "`FieldSchema`",
+        "`OpenAPIModelSchema`",
+        "`Path`",
+        "`OpenAPISchema`",
+        "`OpenAPIParameter`"
+      ],
+      "reason": "not applicable: TypeScript type"
+    },
+    {
+      "page": "plugins/test-utils.md",
+      "section": "Test Utils",
+      "labels": [
+        "TypeScript caveat"
+      ],
+      "reason": "not applicable: TypeScript type inference"
+    },
+    {
+      "page": "plugins/access.md",
+      "section": "Interfaces",
+      "labels": [
+        "`ArrayElement`",
+        "`SubArray`",
+        "`Subset`",
+        "`ExactRoleStatements`"
+      ],
+      "reason": "not applicable: TypeScript type"
     }
   ],
   "backlog": [

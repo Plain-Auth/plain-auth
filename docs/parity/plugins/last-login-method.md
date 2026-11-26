@@ -27,55 +27,90 @@
       - [x] Require consent independently of successful authentication ([test](../../../plugins/lastlogin/lastlogin_test.go#L39))
     - [ ] `schema`
   - [ ] `lastLoginMethod`
+    - [x] Publish the email preference cookie and expose the stored method on the session after sign-up on both runtimes ([test](../../../conformance/core.test.mjs#L28))
+    - [x] Record email after a password sign-in in a script-readable cookie ([test](../../../plugins/lastlogin/lastlogin_test.go#L42))
 
 ## Last Login Method
 
 - [ ] Last Login Method
   - [ ] Usage
-    - [ ] Getting the Last Used Method
+    - [x] Getting the Last Used Method ([test](../../../conformance/lastlogin-browser.test.mjs#L6))
       - [x] Record the most recent email sign-in method subject to consent ([test](../../../plugins/lastlogin/lastlogin_test.go#L15))
       - [x] Read and clear a custom Unicode method in a native TLS cookie jar without ending the session ([test](../../../client/lastlogin_test.go#L15))
-    - [ ] UI Integration Example
+      - [x] Read and match a custom-named preference with the browser module as the other runtime's client does, including a percent-encoded Unicode value, then clear it for the configured domain ([test](../../../conformance/lastlogin-browser.test.mjs#L6))
+    - UI Integration Example — *not applicable: React component example*
   - [ ] Database Persistence
     - [ ] Enable database storage
       - [x] Expose the stored sign-in method when the configured plugin issues a session ([test](../../../adapters/sqlstore/lastlogin_test.go#L89))
-    - [ ] Run database migration
+    - [x] Run database migration ([test](../../../cmd/authctl/check_test.go#L99))
+      - [x] Add the lastLoginMethod column to an existing SQLite database with authctl migrate, after which the plugin's schema check passes ([test](../../../cmd/authctl/check_test.go#L99))
+      - [x] Generate the plugin's column with authctl generate identically to the other runtime on SQLite, PostgreSQL and MySQL ([test](../../../conformance/schema.test.mjs#L106))
     - [x] Access database field ([test](../../../conformance/core.test.mjs#L28))
       - [x] Expose the stored method through the browser client on both runtimes ([test](../../../conformance/core.test.mjs#L28))
-    - [ ] Database Schema
+    - [x] Database Schema ([test](../../../adapters/sqlstore/check_test.go#L42))
       - [x] Generate the canonical columns on SQLite, PostgreSQL and MySQL, including combined plugin selections ([test](../../../conformance/schema.test.mjs#L106))
-      - [ ] `lastLoginMethodUserTableFields.lastLoginMethod`
+      - [x] Require the lastLoginMethod user column only when the last-login-method profile is selected, on three SQL engines ([test](../../../adapters/sqlstore/check_test.go#L42))
+      - [x] `lastLoginMethodUserTableFields.lastLoginMethod` ([test](../../../conformance/schema.test.mjs#L106))
+        - [x] Generate the optional string lastLoginMethod user column identically to the other runtime on SQLite, PostgreSQL and MySQL ([test](../../../conformance/schema.test.mjs#L106))
+        - [x] Report a missing user.lastLoginMethod column when the profile is selected ([test](../../../adapters/sqlstore/check_test.go#L42))
     - [ ] Custom Schema Configuration
   - [ ] Configuration Options
     - [ ] Server Options
-      - [ ] cookieName
-      - [ ] Note
-      - [ ] maxAge
+      - [x] cookieName ([test](../../../plugins/lastlogin/lastlogin_test.go#L47))
+        - [x] Name the default preference in the host cookie namespace, with the __Secure- prefix on HTTPS ([test](../../../plugins/lastlogin/lastlogin_test.go#L47))
+        - [x] Issue the preference under a custom cookie name ([test](../../../plugins/lastlogin/lastlogin_test.go#L34))
+      - [x] Note ([test](../../../conformance/core.test.mjs#L41))
+        - [x] Publish the login preference without HttpOnly on both runtimes ([test](../../../conformance/core.test.mjs#L41))
+        - [x] Read the preference from page script in Chrome ([test](../../../conformance/goapi/cookie_scope_browser_test.go#L79))
+      - [x] maxAge ([test](../../../conformance/core.test.mjs#L40))
+        - [x] Give the preference a 30-day lifetime by default on both runtimes ([test](../../../conformance/core.test.mjs#L40))
+        - [x] Respect a custom two-hour preference lifetime ([test](../../../plugins/lastlogin/lastlogin_test.go#L41))
       - [ ] storeInDatabase
-      - [ ] customResolveMethod
+        - [x] Store the method on the account while a refusing consent callback keeps the browser cookie unset, on three SQL backends and in memory ([test](../../../adapters/sqlstore/lastlogin_test.go#L64))
+        - [x] Update the account's stored method on a later sign-in ([test](../../../adapters/sqlstore/lastlogin_test.go#L94))
+      - [x] customResolveMethod ([test](../../../adapters/sqlstore/lastlogin_test.go#L94))
+        - [x] Use the resolver's method for email sign-in and fall back to the default when it returns empty ([test](../../../adapters/sqlstore/lastlogin_test.go#L94))
       - [ ] beforeStoreCookie
-      - [ ] Example
+        - [x] Withhold the preference when the consent callback refuses while sign-up still succeeds, and set it when consent is present ([test](../../../plugins/lastlogin/lastlogin_test.go#L39))
+      - [x] Example ([test](../../../plugins/lastlogin/lastlogin_test.go#L39))
+        - [x] Store the preference only when the request carries the application's consent signal ([test](../../../plugins/lastlogin/lastlogin_test.go#L39))
       - [ ] schema
     - [ ] Client Options
-      - [ ] cookieName
-      - [ ] domain
+      - [x] cookieName ([test](../../../client/lastlogin_test.go#L39))
+        - [x] Read the default and a custom-named preference issued by the server from a native client cookie jar ([test](../../../client/lastlogin_test.go#L39))
+        - [x] Read a custom-named preference in Chrome with the browser module set to the server's name ([test](../../../conformance/goapi/cookie_scope_browser_test.go#L79))
+      - [x] domain ([test](../../../conformance/goapi/cookie_scope_browser_test.go#L81))
+        - [x] Clear the shared preference on both HTTPS hosts in Chrome while unrelated cookies and the session survive ([test](../../../conformance/goapi/cookie_scope_browser_test.go#L81))
+        - [x] Clear a shared preference for the configured domain in the native client and refuse a public-suffix domain ([test](../../../client/cookie_scope_test.go#L35))
     - [ ] Default Method Resolution
-      - [ ] Email authentication
+      - [x] Email authentication ([test](../../../plugins/lastlogin/lastlogin_test.go#L42))
+        - [x] Record email after a password sign-in ([test](../../../plugins/lastlogin/lastlogin_test.go#L42))
       - [ ] OAuth providers
       - [ ] OAuth callbacks
-      - [ ] Sign up methods
+      - [x] Sign up methods ([test](../../../plugins/lastlogin/lastlogin_test.go#L74))
+        - [x] Record email in the preference after an email sign-up ([test](../../../plugins/lastlogin/lastlogin_test.go#L74))
+        - [x] Store email on the account at sign-up ([test](../../../adapters/sqlstore/lastlogin_test.go#L89))
       - [ ] `/callback/:id`
-      - [ ] `/sign-in/email`
-      - [ ] `/sign-up/email`
+      - [x] `/sign-in/email` ([test](../../../plugins/lastlogin/lastlogin_test.go#L42))
+        - [x] Record email after a password sign-in ([test](../../../plugins/lastlogin/lastlogin_test.go#L42))
+      - [x] `/sign-up/email` ([test](../../../plugins/lastlogin/lastlogin_test.go#L74))
+        - [x] Record email in the preference after an email sign-up ([test](../../../plugins/lastlogin/lastlogin_test.go#L74))
+        - [x] Publish the preference on email sign-up on both runtimes ([test](../../../conformance/core.test.mjs#L39))
       - [ ] `/one-tap/callback`
       - [ ] `/siwe/verify`
       - [ ] `/passkey/verify-authentication`
       - [ ] `/magic-link/verify`
       - [ ] `/sign-in/email-otp`
   - [ ] Cross-Domain Support
-    - [ ] Cross-subdomain setups
+    - [x] Copy the session cookie's Domain and Secure onto the preference, drop the domain for __Host- names and keep it readable by scripts ([test](../../../plugins/lastlogin/lastlogin_test.go#L103))
+    - [x] Clear the shared preference in Chrome when the browser module is given the shared domain ([test](../../../conformance/goapi/cookie_scope_browser_test.go#L81))
+    - [x] Cross-subdomain setups ([test](../../../conformance/goapi/cookie_scope_http_test.go#L85))
+      - [x] Deliver the preference to a sibling subdomain once cross-subdomain cookies are enabled ([test](../../../conformance/goapi/cookie_scope_http_test.go#L85))
+      - [x] Send a custom-named preference to the sibling host in Chrome ([test](../../../conformance/goapi/cookie_scope_browser_test.go#L79))
     - [ ] Cross-origin setups
   - [ ] GDPR Compliance
+    - [x] Withhold the preference without a consent signal while sign-up still succeeds, and set it when the request carries consent ([test](../../../plugins/lastlogin/lastlogin_test.go#L39))
   - [ ] Advanced Examples
-    - [ ] Custom Provider Tracking
-    - [ ] Usage with Expo
+    - [x] Custom Provider Tracking ([test](../../../adapters/sqlstore/lastlogin_test.go#L94))
+      - [x] Resolve a custom method from the request path and fall back to the default otherwise ([test](../../../adapters/sqlstore/lastlogin_test.go#L94))
+    - Usage with Expo — *not applicable: JavaScript only*

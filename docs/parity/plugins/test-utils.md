@@ -24,13 +24,14 @@
     - [x] Preserve the original deadline, browser flags, host scope and session-only expiry omission ([test](../../../authtest/browser_cookie_test.go#L68))
   - [ ] `TestHelpers`
   - [ ] `TestUtilsOptions`
-    - [ ] `captureOTP`
+    - [x] `captureOTP` ([test](../../../authtest/fixtures_test.go#L42))
+      - [x] Capture each issued email and SMS code in an OTPRecorder that wraps the sender, while the sender still runs once per message ([test](../../../authtest/fixtures_test.go#L42))
 
 ## Test Utils
 
 - [ ] Test Utils
   - [ ] Can I include this in production?
-    - [ ] TypeScript caveat
+    - TypeScript caveat — *not applicable: TypeScript type inference*
   - [ ] Usage
     - [ ] Factories
       - [x] createUser ([test](../../../authtest/fixtures_test.go#L26))
@@ -81,16 +82,20 @@
           - [x] Use the issued session cookie’s secure when a browser fixture logs in ([test](../../../authtest/server_test.go#L82))
         - [x] `sameSite` ([test](../../../authtest/server_test.go#L82))
           - [x] Use the issued session cookie’s sameSite when a browser fixture logs in ([test](../../../authtest/server_test.go#L82))
-    - [ ] OTP Capture
+    - [x] OTP Capture ([test](../../../authtest/fixtures_test.go#L107))
+      - [x] Wrapped email and SMS senders each still run once while the recorder keeps the issued codes ([test](../../../authtest/fixtures_test.go#L107))
       - [x] getOTP ([test](../../../authtest/fixtures_test.go#L42))
         - [x] Capture email and SMS codes in the test process while forwarding the message to its sender ([test](../../../authtest/fixtures_test.go#L42))
         - [x] Isolate concurrent recorder access, return the latest code and preserve delivery errors ([test](../../../authtest/fixtures_test.go#L121))
   - [ ] Options
-    - [ ] `captureOTP`
+    - [x] `captureOTP` ([test](../../../authtest/fixtures_test.go#L50))
+      - [x] Codes captured by the recorder wrapping the email and SMS senders verify the email address and phone number, and a separate unwired recorder has no code for the mailbox ([test](../../../authtest/fixtures_test.go#L50))
   - [ ] Examples
-    - [ ] Integration Test (Vitest)
-    - [ ] E2E Test (Playwright)
+    - [x] Integration Test (Vitest) ([test](../../../authtest/server_test.go#L105))
+      - [x] Headers from GetAuthHeaders for a saved fixture user return that user from GetSession on another instance and stop working after DeleteUser ([test](../../../authtest/server_test.go#L105))
+    - [x] E2E Test (Playwright) ([test](../../../authtest/server_test.go#L131))
       - [x] Seed an isolated Chromium context with a local fixture cookie and read the signed-in user over HTTP ([test](../../../conformance/browser-fixture-cookies.mjs#L44))
+      - [x] A cookie from GetCookies with an overridden domain stops authenticating on another instance after DeleteUser ([test](../../../authtest/server_test.go#L131))
     - [x] OTP Verification Test ([test](../../../authtest/fixtures_test.go#L92))
       - [x] Read the code from a local recorder and verify the account through the public client ([test](../../../authtest/fixtures_test.go#L92))
       - [x] Redeem the captured proof on the pinned runtime ([test](../../../conformance/auth-test-helpers.test.mjs#L44))
