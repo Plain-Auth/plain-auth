@@ -2,6 +2,7 @@ package sqlstore
 
 import (
 	"database/sql"
+	"strings"
 	"testing"
 
 	auth "github.com/Plain-Org/plain-auth"
@@ -12,7 +13,9 @@ import (
 // A provider's mapping chooses the claims for the email, name, image and
 // declared user fields of an enterprise sign-up.
 func TestEnterpriseOIDCClaimMapping(t *testing.T) {
-	fields := map[string]auth.UserField{"department": {Type: auth.FieldString}, "clearance": {Type: auth.FieldString, ServerOnly: true}}
+	fields := map[string]auth.UserField{"department": {Type: auth.FieldString}, "clearance": {Type: auth.FieldString, ServerOnly: true},
+		"region": {Type: auth.FieldString, Default: func() string { return "emea" }}, "tier": {Type: auth.FieldString, ServerOnly: true, Default: "basic"},
+		"level": {Type: auth.FieldNumber}, "active": {Type: auth.FieldBoolean}, "team": {Type: auth.FieldString}}
 	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
 		t.Run(dialect, func(t *testing.T) {
 			ctx := t.Context()
@@ -48,13 +51,15 @@ func TestEnterpriseOIDCClaimMapping(t *testing.T) {
 			}
 			idp.mu.Lock()
 			idp.claims = map[string]map[string]any{
-				"mapped": {"mail": "mapped@mapped.example", "display": "Mapped Person", "avatar": "https://images.example.test/mapped.png", "mail_verified": true, "dept": "Finance", "level": "top"},
-				"list":   {"emails": []string{"first@list.example", "second@list.example"}},
-				"plain":  {"picture": "https://images.example.test/plain.png"},
+				"mapped": {"mail": "mapped@mapped.example", "display": "Mapped Person", "avatar": "https://images.example.test/mapped.png", "mail_verified": true, "dept": "Finance", "level": "top",
+					"grade": "3", "enabled": "true", "teams": []string{"blue", "green"}},
+				"list":  {"emails": []string{"first@list.example", "second@list.example"}},
+				"plain": {"picture": "https://images.example.test/plain.png"},
 			}
 			idp.mu.Unlock()
 
-			if register("mapped", map[string]any{"email": "mail", "name": "display", "image": "avatar", "emailVerified": "mail_verified", "extraFields": map[string]any{"department": "dept", "clearance": "level"}}) != 200 {
+			if register("mapped", map[string]any{"email": "mail", "name": "display", "image": "avatar", "emailVerified": "mail_verified", "extraFields": map[string]any{"department": "dept", "clearance": "level",
+				"level": "grade", "active": "enabled", "team": "teams"}}) != 200 {
 				t.Fatal("a provider with a claim mapping was not registered")
 			}
 			if w := h.signIn(map[string]any{"providerId": "mapped"}, "token-email@mapped.example", "mapped", "client_secret_basic", "mapped"); w.Header().Get("Location") != "https://service.test/home" {
@@ -79,6 +84,19 @@ func TestEnterpriseOIDCClaimMapping(t *testing.T) {
 			if mapped.clearance.Valid {
 				t.Fatal("extraFields wrote a server-only user field", mapped.clearance)
 			}
+			var region, tier, team sql.NullString
+			var level sql.NullInt64
+			var active sql.NullBool
+			must(store.db.QueryRowContext(ctx, store.bind(`SELECT "region","tier","level","active","team" FROM "user" WHERE "email"=?`), "mapped@mapped.example").Scan(&region, &tier, &level, &active, &team))
+			if region.String != "emea" || tier.String != "basic" {
+				t.Fatal("an enterprise sign-up did not apply the user field defaults", region, tier)
+			}
+			if level.Int64 != 3 || !active.Bool {
+				t.Fatal("a string claim did not fill a number or boolean user field", level, active)
+			}
+			if team.Valid {
+				t.Fatal("a claim with several values filled a scalar user field", team)
+			}
 
 			if register("list", map[string]any{"email": "emails"}) != 200 {
 				t.Fatal("a provider with an email list mapping was not registered")
@@ -101,6 +119,42 @@ func TestEnterpriseOIDCClaimMapping(t *testing.T) {
 			}
 			if register("unknown", map[string]any{"nickname": "nick"}) != 400 {
 				t.Fatal("registration accepted an unknown mapping key")
+			}
+
+		})
+	}
+}
+
+// A required user field the provider does not fill refuses an enterprise
+// sign-up with MISSING_FIELD and stores no user.
+func TestEnterpriseRequiredUserField(t *testing.T) {
+	fields := map[string]auth.UserField{"locale": {Type: auth.FieldString, Required: true}}
+	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
+		t.Run(dialect, func(t *testing.T) {
+			ctx := t.Context()
+			store, err := OpenWithAdditionalFields(ctx, dialect, organizationTestDSN(t, dialect), []string{"sso"}, schema.AdditionalFields{User: fields})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer store.Close()
+			idp := newSSOIssuer(t)
+			h := newSSOHost(t, store, idp, sso.Options{}, func(o *auth.Options) { o.UserAdditionalFields = fields })
+			signup := h.call("POST", "sign-up/email", "", map[string]any{"name": "Owner", "email": "owner@service.test", "password": "correct-horse-staple", "locale": "en"})
+			var owner string
+			for _, c := range signup.Result().Cookies() {
+				if strings.Contains(c.Name, "session_token") {
+					owner = c.Name + "=" + c.Value
+				}
+			}
+			if w := h.register(owner, map[string]any{"providerId": "acme", "issuer": idp.URL, "domain": "acme.example", "oidcConfig": map[string]any{"clientId": "enterprise-client", "clientSecret": "oidc-secret", "skipDiscovery": true,
+				"authorizationEndpoint": idp.URL + "/authorize", "tokenEndpoint": idp.URL + "/token", "jwksEndpoint": idp.URL + "/keys"}}); w.Code != 200 {
+				t.Fatal("registration failed", w.Code, w.Body.String())
+			}
+			if w := h.signIn(map[string]any{"providerId": "acme"}, "late@acme.example", "late", "client_secret_basic", ""); !strings.Contains(w.Header().Get("Location"), "error=MISSING_FIELD") {
+				t.Fatal("a sign-up missing a required user field did not redirect with MISSING_FIELD", w.Header().Get("Location"))
+			}
+			if _, err := store.FindAccountUser(ctx, "late@acme.example"); err == nil {
+				t.Fatal("a sign-up missing a required user field stored the user")
 			}
 		})
 	}

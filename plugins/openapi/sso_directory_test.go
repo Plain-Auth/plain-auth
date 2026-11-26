@@ -26,7 +26,7 @@ func TestEnterpriseDirectoryOpenAPI(t *testing.T) {
 	if node(schemaDoc(t, empty), "paths")["/sign-in/sso"] != nil {
 		t.Fatal("enterprise sign-in published without the directory plugin")
 	}
-	for _, mode := range []string{"provider", "shared"} {
+	for _, mode := range []string{"provider", "shared", "restart"} {
 		t.Run(mode, func(t *testing.T) {
 			const origin = "https://directory.example"
 			must := func(e error) {
@@ -40,7 +40,11 @@ func TestEnterpriseDirectoryOpenAPI(t *testing.T) {
 			store, e := sqlstore.OpenWithSchema(t.Context(), "sqlite", filepath.Join(t.TempDir(), "directory.db"), ddl)
 			must(e)
 			t.Cleanup(func() { store.Close() })
-			directory, e := sso.New(sso.Options{SharedCallback: mode == "shared"})
+			var restart sso.OIDCDirectoryPolicy
+			if mode == "restart" {
+				restart = func(context.Context, sso.OIDCDirectory) (bool, error) { return true, nil }
+			}
+			directory, e := sso.New(sso.Options{SharedCallback: mode == "shared", AllowIDPInitiatedOIDC: restart})
 			must(e)
 			reference, e := openapi.New(openapi.Options{})
 			must(e)
@@ -82,8 +86,12 @@ func TestEnterpriseDirectoryOpenAPI(t *testing.T) {
 					p := v.(obj)
 					params[p["in"].(string)+"/"+p["name"].(string)] = p
 				}
-				if params["query/state"]["required"] != true || params["query/code"] == nil || params["query/error"] == nil || params["query/iss"] == nil || (params["path/providerId"] != nil) != (route == "/sso/callback/{providerId}") {
+				restarts := mode == "restart" && route == "/sso/callback/{providerId}"
+				if (params["query/state"]["required"] == true) == restarts || params["query/code"] == nil || params["query/error"] == nil || params["query/iss"] == nil || (params["path/providerId"] != nil) != (route == "/sso/callback/{providerId}") {
 					t.Fatal("callback parameters", params)
+				}
+				if (node(op, "responses")["503"] != nil) != restarts {
+					t.Fatal("the stateless callback restart is not described", route, mode)
 				}
 			}
 			signin := node(paths, "/sign-in/sso", "post")
@@ -141,7 +149,7 @@ func TestEnterpriseDirectoryOpenAPI(t *testing.T) {
 			binding := start.Result().Cookies()[0]
 			cookieDescribed := slices.ContainsFunc(node(paths, template, "get")["parameters"].([]any), func(value any) bool {
 				p := value.(obj)
-				return p["in"] == "cookie" && p["name"] == binding.Name && p["required"] == true
+				return p["in"] == "cookie" && p["name"] == binding.Name && p["required"] == (mode != "restart")
 			})
 			if !cookieDescribed {
 				t.Fatal("callback omits actual browser binding", binding.Name)

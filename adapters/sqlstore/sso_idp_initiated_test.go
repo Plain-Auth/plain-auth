@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/Plain-Org/plain-auth/plugins/sso"
 	"github.com/Plain-Org/plain-auth/schema"
@@ -27,7 +28,7 @@ func TestEnterpriseOIDCIdPInitiated(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			ddl, err := schema.Generate(dialect, []string{"sso"})
+			ddl, err := schema.Generate(dialect, []string{"organization", "sso"})
 			must(err)
 			store, err := OpenWithSchema(ctx, dialect, organizationTestDSN(t, dialect), ddl)
 			must(err)
@@ -39,7 +40,7 @@ func TestEnterpriseOIDCIdPInitiated(t *testing.T) {
 				mu.Lock()
 				defer mu.Unlock()
 				seen = append(seen, d)
-				return d.ProviderID == "acme", nil
+				return d.ProviderID != "other", nil
 			}
 			approving := newSSOHost(t, store, idp, sso.Options{AllowIDPInitiatedOIDC: approve})
 			closed := newSSOHost(t, store, idp, sso.Options{})
@@ -120,6 +121,43 @@ func TestEnterpriseOIDCIdPInitiated(t *testing.T) {
 			}
 			if w := restart(shared, "sso/callback/acme?code=idp-code", "https://service.test/identity/sso/callback", "lin@acme.example", "lin"); w.Header().Get("Location") != "https://service.test/" {
 				t.Fatal("a restarted sign-in did not complete through the shared callback", w.Code, w.Header().Get("Location"))
+			}
+			// The restarted flow cannot request sign-up.
+			strict := newSSOHost(t, store, idp, sso.Options{DisableImplicitSignUp: true, AllowIDPInitiatedOIDC: approve})
+			if w := restart(strict, "sso/callback/acme?code=idp-code", "https://service.test/identity/sso/callback/acme", "nobody@acme.example", "nobody"); !strings.Contains(w.Header().Get("Location"), "error=signup_disabled") {
+				t.Fatal("a restarted sign-in signed up a user under DisableImplicitSignUp", w.Code, w.Header().Get("Location"))
+			}
+			if _, err := store.FindAccountUser(ctx, "nobody@acme.example"); err == nil {
+				t.Fatal("a restarted sign-in stored a user under DisableImplicitSignUp")
+			}
+			// A failed runtime discovery reports the missing state.
+			if w := approving.register(owner, map[string]any{"providerId": "lazy", "issuer": idp.URL, "domain": "lazy.example", "oidcConfig": map[string]any{"clientId": "enterprise-client", "clientSecret": "oidc-secret", "skipDiscovery": true,
+				"authorizationEndpoint": idp.URL + "/authorize", "tokenEndpoint": idp.URL + "/token"}}); w.Code != 200 {
+				t.Fatal("registration failed", w.Code, w.Body.String())
+			}
+			idp.discoveryDown.Store(true)
+			if w := approving.call("GET", "sso/callback/lazy?code=idp-code", "", nil); !missingState(w) {
+				t.Fatal("a restart whose discovery failed did not report the missing state", w.Code, w.Header().Get("Location"))
+			}
+			idp.discoveryDown.Store(false)
+			// The policy sees the provider's organization.
+			var owned string
+			must(store.db.QueryRowContext(ctx, store.bind(`SELECT "id" FROM "user" WHERE "email"=?`), "owner@service.test").Scan(&owned))
+			now := store.date(time.Now())
+			_, err = store.db.ExecContext(ctx, store.bind(`INSERT INTO "organization" ("id","name","slug","createdAt") VALUES (?,?,?,?)`), "tenant", "Tenant", "tenant", now)
+			must(err)
+			_, err = store.db.ExecContext(ctx, store.bind(`INSERT INTO "member" ("id","organizationId","userId","role","createdAt") VALUES (?,?,?,?,?)`), "owner-member", "tenant", owned, "owner", now)
+			must(err)
+			if w := approving.register(owner, map[string]any{"providerId": "orgacme", "issuer": idp.URL, "domain": "orgacme.example", "organizationId": "tenant", "oidcConfig": map[string]any{"clientId": "enterprise-client", "clientSecret": "oidc-secret", "skipDiscovery": true,
+				"authorizationEndpoint": idp.URL + "/authorize", "tokenEndpoint": idp.URL + "/token", "jwksEndpoint": idp.URL + "/keys"}}); w.Code != 200 {
+				t.Fatal("registration failed", w.Code, w.Body.String())
+			}
+			approving.call("GET", "sso/callback/orgacme?code=idp-code", "", nil)
+			mu.Lock()
+			last = seen[len(seen)-1]
+			mu.Unlock()
+			if last.ProviderID != "orgacme" || last.OrganizationID != "tenant" {
+				t.Fatal("the policy did not receive the provider's organization", last)
 			}
 		})
 	}

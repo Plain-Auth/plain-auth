@@ -179,12 +179,22 @@ func describeSSORequest(op object, route plainauth.HTTPRoute, info plainauth.HTT
 			op["description"] = "Complete the browser-bound OIDC flow. A signed issuer login continues authorization with the new session. A navigation receives the next location and a JSON client receives its URL. Ordinary login uses the application's trusted callback."
 			op["responses"].(object)["200"] = response("application/json", responseObject(object{"redirect": object{"const": true}, "url": text}, "redirect", "url"))
 		}
+		var mode struct {
+			Restart bool `json:"x-plainauth-idp-initiated"`
+		}
+		if len(route.OpenAPI) != 0 {
+			_ = json.Unmarshal(route.OpenAPI, &mode)
+		}
+		if mode.Restart {
+			op["description"] = op["description"].(string) + " A code without state, for a provider the host's policy approves, discards the code and redirects to a new authorization at the identity provider; a policy error answers 503."
+			op["responses"].(object)["503"] = object{"description": "The IdP-initiated sign-in policy is unavailable."}
+		}
 		params := []object{
-			{"name": "state", "in": "query", "required": true, "schema": object{"type": "string", "minLength": 1, "maxLength": 128}},
+			{"name": "state", "in": "query", "required": !mode.Restart, "schema": object{"type": "string", "minLength": 1, "maxLength": 128}},
 			{"name": "code", "in": "query", "description": "Authorization code on success.", "schema": text},
 			{"name": "error", "in": "query", "description": "Identity provider error on failure.", "schema": text},
 			{"name": "iss", "in": "query", "description": "Issuer if supplied by the identity provider.", "schema": text},
-			{"name": info.SSOStateCookie, "in": "cookie", "required": true, "description": "Browser binding issued at sign-in.", "schema": text},
+			{"name": info.SSOStateCookie, "in": "cookie", "required": !mode.Restart, "description": "Browser binding issued at sign-in.", "schema": text},
 		}
 		if path == "/sso/callback/:providerId" {
 			params = append(params, object{"name": "providerId", "in": "path", "required": true, "schema": providerID})

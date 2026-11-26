@@ -11178,6 +11178,11 @@
       "label": "Discover a stored configuration's missing endpoints at sign-in under the registration rules",
       "test": "adapters/sqlstore/sso_runtime_discovery_test.go",
       "marker": "t.Fatal(\"sign-in did not discover the missing endpoint at start and callback\", n)"
+    },
+    {
+      "label": "Refuse runtime discovery from an untrusted origin or for another issuer at sign-in, and an untrusted discovered token endpoint at the callback",
+      "test": "adapters/sqlstore/sso_runtime_discovery_test.go",
+      "marker": "t.Fatal(\"runtime discovery contacted an untrusted discovery origin\", w.Code, w.Body.String())"
     }
   ],
   "plugin-symbol/sso/fetchDiscoveryDocument": [
@@ -44479,6 +44484,11 @@
       "test": "adapters/sqlstore/sso_runtime_discovery_test.go",
       "marker": "func TestEnterpriseOIDCRuntimeDiscovery(",
       "complete": true
+    },
+    {
+      "label": "Refuse a callback whose runtime discovery names a token endpoint outside the trusted origins",
+      "test": "adapters/sqlstore/sso_runtime_discovery_test.go",
+      "marker": "t.Fatal(\"a callback used a discovered token endpoint outside the trusted origins\", location)"
     }
   ],
   "plugin-symbol/sso/OIDCConfig/privateKeyId": [
@@ -44500,6 +44510,11 @@
       "label": "Refuse an unsupported private key algorithm at registration",
       "test": "adapters/sqlstore/sso_private_key_test.go",
       "marker": "t.Fatal(\"an unsupported private key algorithm was registered\", w.Code, w.Body.String())"
+    },
+    {
+      "label": "Fail the callback before any token request for an unsupported resolved algorithm",
+      "test": "adapters/sqlstore/sso_private_key_test.go",
+      "marker": "t.Fatal(\"an unusable resolved key did not fail the callback\", id, w.Header().Get(\"Location\"))"
     }
   ],
   "plugin-symbol/sso/SSOOptions/resolvePrivateKey": [
@@ -44508,6 +44523,16 @@
       "test": "adapters/sqlstore/sso_private_key_test.go",
       "marker": "func TestEnterpriseOIDCPrivateKeyJWT(",
       "complete": true
+    },
+    {
+      "label": "Take the resolved key's ID and algorithm, sign a JWK, default to RS256, pass the organization, and fail closed on a resolver error or an unsupported resolved algorithm",
+      "test": "adapters/sqlstore/sso_private_key_test.go",
+      "marker": "t.Fatal(\"the assertion did not take the resolved key's ID and algorithm\", id, w.Header().Get(\"Location\"), lastAssertion())"
+    },
+    {
+      "label": "Pass the provider's organization to the key resolver",
+      "test": "adapters/sqlstore/sso_private_key_test.go",
+      "marker": "t.Fatal(\"ResolvePrivateKey did not receive the provider's organization\", last)"
     }
   ],
   "docs/content/docs/plugins/sso/index.mdx#L19/`private_key_jwt` token endpoint authentication": [
@@ -44516,6 +44541,11 @@
       "test": "adapters/sqlstore/sso_private_key_test.go",
       "marker": "t.Fatal(\"private_key_jwt sign-in did not complete\", w.Code, w.Header().Get(\"Location\"), w.Body.String())",
       "complete": true
+    },
+    {
+      "label": "Never send a stored client secret with a private_key_jwt assertion",
+      "test": "adapters/sqlstore/sso_private_key_test.go",
+      "marker": "t.Fatal(\"a private_key_jwt sign-in sent the stored client secret\", w.Code, w.Header().Get(\"Location\"))"
     }
   ],
   "plugin-symbol/sso/OIDCMapping": [
@@ -44529,6 +44559,16 @@
       "label": "Accept only claim names for each mapping key and extraFields entry",
       "test": "plugins/sso/identity_test.go",
       "marker": "func TestOIDCMappingShape("
+    },
+    {
+      "label": "Apply user field defaults, fill number and boolean fields from string claims and skip a claim with several values",
+      "test": "adapters/sqlstore/sso_claim_mapping_test.go",
+      "marker": "t.Fatal(\"a string claim did not fill a number or boolean user field\", level, active)"
+    },
+    {
+      "label": "Refuse an enterprise sign-up missing a required user field with MISSING_FIELD",
+      "test": "adapters/sqlstore/sso_claim_mapping_test.go",
+      "marker": "t.Fatal(\"a sign-up missing a required user field did not redirect with MISSING_FIELD\", w.Header().Get(\"Location\"))"
     }
   ],
   "docs/content/docs/plugins/sso/oidc.mdx#L46": [
@@ -44549,6 +44589,16 @@
       "label": "Keep a returning user's profile when the provider does not override it",
       "test": "adapters/sqlstore/sso_profile_override_test.go",
       "marker": "t.Fatal(\"a provider without overrideUserInfo replaced the profile\", kept)"
+    },
+    {
+      "label": "Ignore an overrideUserInfo nested in oidcConfig and refuse an override to another user's email as profile_conflict",
+      "test": "adapters/sqlstore/sso_profile_override_test.go",
+      "marker": "t.Fatal(\"a nested overrideUserInfo replaced the profile\", nested)"
+    },
+    {
+      "label": "Redirect an override to another user's email with profile_conflict",
+      "test": "adapters/sqlstore/sso_profile_override_test.go",
+      "marker": "t.Fatal(\"an override to another user's email did not redirect with profile_conflict\", w.Header().Get(\"Location\"))"
     }
   ],
   "plugin-symbol/sso/SSOOptions/defaultOverrideUserInfo": [
@@ -44577,6 +44627,16 @@
       "label": "Pass a mapped attribute's one value as a string and several as a list, and skip a missing attribute",
       "test": "plugins/sso/saml_test.go",
       "marker": "extraFields did not pass one value as a string and several as a list"
+    },
+    {
+      "label": "Verify a mapped email with TrustEmailVerified and skip an attribute with several values for a scalar user field",
+      "test": "adapters/sqlstore/sso_saml_mapping_test.go",
+      "marker": "t.Fatal(\"mapping.emailVerified with TrustEmailVerified did not verify the email\")"
+    },
+    {
+      "label": "Sign up through a multi-valued mapped attribute without writing it",
+      "test": "adapters/sqlstore/sso_saml_mapping_test.go",
+      "marker": "t.Fatal(\"a multi-valued mapped attribute refused the sign-up\", w.Code, w.Header().Get(\"Location\"))"
     }
   ],
   "docs/content/docs/plugins/sso/saml.mdx#L160/`extraFields`": [
@@ -44605,6 +44665,16 @@
       "label": "Refuse a restart when the directory policy fails or panics",
       "test": "plugins/sso/oidc_idp_initiated_test.go",
       "marker": "func TestOIDCDirectoryPolicyFailure("
+    },
+    {
+      "label": "Refuse sign-up in a restarted flow under DisableImplicitSignUp, report the missing state after a failed discovery, and pass the provider's organization to the policy",
+      "test": "adapters/sqlstore/sso_idp_initiated_test.go",
+      "marker": "t.Fatal(\"a restarted sign-in signed up a user under DisableImplicitSignUp\", w.Code, w.Header().Get(\"Location\"))"
+    },
+    {
+      "label": "Describe the stateless restart, optional state and 503 on the per-provider callback in OpenAPI",
+      "test": "plugins/openapi/sso_directory_test.go",
+      "marker": "t.Fatal(\"the stateless callback restart is not described\", route, mode)"
     }
   ],
   "docs/content/docs/plugins/sso/oidc.mdx#L159": [

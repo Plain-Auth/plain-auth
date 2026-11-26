@@ -3,6 +3,8 @@ package plainauth
 import (
 	"context"
 	"errors"
+	"strconv"
+	"strings"
 )
 
 // writableProfileFields keeps the declared user fields a provider may set.
@@ -63,6 +65,14 @@ func (a *Auth) enterpriseProfileFields(p OAuthProfile, override bool) *OAuthProf
 		return nil
 	}
 	writable := a.writableProfileFields(p)
+	for name, value := range writable {
+		if fitted, ok := enterpriseFieldValue(a.opts.UserAdditionalFields[name], value); ok {
+			writable[name] = fitted
+		} else {
+			delete(writable, name)
+			a.Logger().Warn("enterprise provider sent several values for a user field; none was written", "field", name)
+		}
+	}
 	prepared := func(create bool) func() (UserFieldValues, error) {
 		values, err := a.prepareUserFields(writable, create, false)
 		return func() (UserFieldValues, error) {
@@ -77,4 +87,32 @@ func (a *Auth) enterpriseProfileFields(p OAuthProfile, override bool) *OAuthProf
 		fields.Update = prepared(false)
 	}
 	return fields
+}
+
+// enterpriseFieldValue fits a provider value to a scalar user field. A list
+// with one value uses it and a list with several is refused, and a string
+// becomes a number or boolean for those field types, because SAML
+// attributes are always strings.
+func enterpriseFieldValue(field UserField, value any) (any, bool) {
+	if list, ok := value.([]any); ok {
+		if len(list) != 1 {
+			return nil, false
+		}
+		value = list[0]
+	}
+	text, ok := value.(string)
+	if !ok {
+		return value, true
+	}
+	switch field.Type {
+	case FieldNumber:
+		if n, err := strconv.ParseInt(strings.TrimSpace(text), 10, 32); err == nil {
+			return n, true
+		}
+	case FieldBoolean:
+		if b, err := strconv.ParseBool(strings.TrimSpace(text)); err == nil {
+			return b, true
+		}
+	}
+	return value, true
 }

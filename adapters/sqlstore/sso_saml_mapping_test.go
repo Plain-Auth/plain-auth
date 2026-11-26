@@ -39,7 +39,7 @@ func TestEnterpriseSAMLDirectoryMapping(t *testing.T) {
 			store, err := OpenWithAdditionalFields(ctx, dialect, organizationTestDSN(t, dialect), []string{"sso"}, schema.AdditionalFields{User: fields})
 			must(err)
 			defer store.Close()
-			p, err := sso.New(sso.Options{SAML: &sso.SAMLOptions{AllowIDPInitiated: func(_ context.Context, d sso.SAMLDirectory) (bool, error) { return d.ProviderID == "mapped", nil }}})
+			p, err := sso.New(sso.Options{SAML: &sso.SAMLOptions{TrustEmailVerified: true, AllowIDPInitiated: func(_ context.Context, d sso.SAMLDirectory) (bool, error) { return d.ProviderID == "mapped", nil }}})
 			must(err)
 			host, err := auth.New(auth.Options{BaseURL: "https://service.test", BasePath: "/identity", RateLimit: new(bool), Store: store, Secret: strings.Repeat("k", 32), EmailAndPassword: true, UserAdditionalFields: fields, Plugins: []auth.Plugin{p}})
 			must(err)
@@ -67,7 +67,7 @@ func TestEnterpriseSAMLDirectoryMapping(t *testing.T) {
 			}
 			if w := call("POST", "sso/register", owner, map[string]any{"providerId": "mapped", "issuer": idpEntity, "domain": "mapped.example", "samlConfig": map[string]any{
 				"callbackUrl": "/directory-home", "spMetadata": map[string]any{"entityID": spEntity}, "entryPoint": entry, "cert": idpPEM, "idpMetadata": map[string]any{"entityID": idpEntity},
-				"mapping": map[string]any{"email": "mail", "firstName": "first", "lastName": "last", "name": "display", "extraFields": map[string]any{"department": "dept"}}}}); w.Code != 200 {
+				"mapping": map[string]any{"email": "mail", "firstName": "first", "lastName": "last", "name": "display", "emailVerified": "verified", "extraFields": map[string]any{"department": "dept"}}}}); w.Code != 200 {
 				t.Fatal("a SAML mapping with extraFields was refused at registration", w.Code, w.Body.String())
 			}
 			w := call("GET", "sso/saml2/sp/metadata?providerId=mapped", "", nil)
@@ -94,12 +94,13 @@ func TestEnterpriseSAMLDirectoryMapping(t *testing.T) {
 				host.ServeHTTP(done, acs)
 				return done
 			}
+			var verified bool
 			user := func(email string) (name string, dept sql.NullString, found bool) {
-				err := store.db.QueryRowContext(ctx, store.bind(`SELECT "name","department" FROM "user" WHERE "email"=?`), email).Scan(&name, &dept)
+				err := store.db.QueryRowContext(ctx, store.bind(`SELECT "name","department","emailVerified" FROM "user" WHERE "email"=?`), email).Scan(&name, &dept, &verified)
 				return name, dept, err == nil
 			}
 
-			if w := portal("dir-user", attr("mail", "Directory.User@Mapped.Example"), attr("first", "Dana"), attr("last", "Lee"), attr("dept", "Research"), attr("email", "decoy@mapped.example")); w.Code != 302 || w.Header().Get("Location") != "https://service.test/directory-home" {
+			if w := portal("dir-user", attr("mail", "Directory.User@Mapped.Example"), attr("first", "Dana"), attr("last", "Lee"), attr("dept", "Research"), attr("email", "decoy@mapped.example"), attr("verified", "true")); w.Code != 302 || w.Header().Get("Location") != "https://service.test/directory-home" {
 				t.Fatal("the portal sign-in did not land on the directory callbackUrl", w.Code, w.Header().Get("Location"))
 			}
 			name, dept, found := user("directory.user@mapped.example")
@@ -112,9 +113,19 @@ func TestEnterpriseSAMLDirectoryMapping(t *testing.T) {
 			if dept.String != "Research" {
 				t.Fatal("SAML extraFields did not fill the department user field", dept)
 			}
-			portal("display-user", attr("mail", "display@mapped.example"), attr("display", "Display Only"))
-			if name, _, _ := user("display@mapped.example"); name != "Display Only" {
+			if !verified {
+				t.Fatal("mapping.emailVerified with TrustEmailVerified did not verify the email")
+			}
+			teams := saml.Attribute{Name: "dept", Values: []saml.AttributeValue{{Value: "Research"}, {Value: "Sales"}}}
+			if w := portal("display-user", attr("mail", "display@mapped.example"), attr("display", "Display Only"), teams); w.Code != 302 || w.Header().Get("Location") != "https://service.test/directory-home" {
+				t.Fatal("a multi-valued mapped attribute refused the sign-up", w.Code, w.Header().Get("Location"))
+			}
+			name, dept, _ = user("display@mapped.example")
+			if name != "Display Only" {
 				t.Fatal("mapping.name did not supply the name without first and last names", name)
+			}
+			if dept.Valid || verified {
+				t.Fatal("a multi-valued attribute filled a scalar user field, or a missing verification attribute verified the email", dept, verified)
 			}
 		})
 	}

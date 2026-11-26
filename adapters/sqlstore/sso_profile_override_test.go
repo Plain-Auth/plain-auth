@@ -3,6 +3,7 @@ package sqlstore
 import (
 	"database/sql"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	auth "github.com/Plain-Org/plain-auth"
@@ -32,9 +33,14 @@ func TestEnterpriseOIDCProfileOverride(t *testing.T) {
 			owner := plain.signUp("owner@service.test")
 			register := func(h *ssoHost, id string, override any) {
 				t.Helper()
-				body := map[string]any{"providerId": id, "issuer": idp.URL, "domain": id + ".example", "oidcConfig": map[string]any{"clientId": "enterprise-client", "clientSecret": "oidc-secret", "skipDiscovery": true,
-					"authorizationEndpoint": idp.URL + "/authorize", "tokenEndpoint": idp.URL + "/token", "jwksEndpoint": idp.URL + "/keys", "mapping": map[string]any{"extraFields": map[string]any{"department": "dept"}}}}
-				if override != nil {
+				cfg := map[string]any{"clientId": "enterprise-client", "clientSecret": "oidc-secret", "skipDiscovery": true,
+					"authorizationEndpoint": idp.URL + "/authorize", "tokenEndpoint": idp.URL + "/token", "jwksEndpoint": idp.URL + "/keys", "mapping": map[string]any{"extraFields": map[string]any{"department": "dept"}}}
+				body := map[string]any{"providerId": id, "issuer": idp.URL, "domain": id + ".example", "oidcConfig": cfg}
+				switch override {
+				case nil:
+				case "nested":
+					cfg["overrideUserInfo"] = true
+				default:
 					body["overrideUserInfo"] = override
 				}
 				if w := h.register(owner, body); w.Code != 200 {
@@ -77,7 +83,19 @@ func TestEnterpriseOIDCProfileOverride(t *testing.T) {
 
 			register(plain, "sync", true)
 			register(plain, "keep", nil)
+			register(plain, "nested", "nested")
 			register(forcing, "forced", false)
+			register(forcing, "defaulted", nil)
+			if stored("nested") {
+				t.Fatal("registration stored an overrideUserInfo nested in oidcConfig")
+			}
+			if !stored("defaulted") {
+				t.Fatal("DefaultOverrideUserInfo was not stored without a top-level key")
+			}
+			twice(plain, "nested")
+			if nested := user("nested"); nested.name != "First Name" {
+				t.Fatal("a nested overrideUserInfo replaced the profile", nested)
+			}
 			if !stored("sync") || stored("keep") {
 				t.Fatal("overrideUserInfo was not stored from the registration")
 			}
@@ -115,6 +133,13 @@ func TestEnterpriseOIDCProfileOverride(t *testing.T) {
 			}
 			if moved := user("sync"); moved.email != "moved@sync.example" || moved.verified {
 				t.Fatal("overrideUserInfo did not store the changed email unverified", moved)
+			}
+			// An override to another user's email is refused as a profile conflict.
+			if w := plain.signIn(map[string]any{"providerId": "sync"}, "keep@keep.example", "subject-sync", "client_secret_basic", "v2"); !strings.Contains(w.Header().Get("Location"), "error=profile_conflict") {
+				t.Fatal("an override to another user's email did not redirect with profile_conflict", w.Header().Get("Location"))
+			}
+			if moved := user("sync"); moved.email != "moved@sync.example" {
+				t.Fatal("a refused override changed the email", moved)
 			}
 		})
 	}

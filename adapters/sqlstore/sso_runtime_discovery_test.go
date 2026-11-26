@@ -2,6 +2,7 @@ package sqlstore
 
 import (
 	"encoding/json"
+	"net/http/httptest"
 	"net/url"
 	"testing"
 
@@ -68,19 +69,54 @@ func TestEnterpriseOIDCRuntimeDiscovery(t *testing.T) {
 				t.Fatal("runtime discovery replaced the stored token endpoint authentication", w.Code, w.Header().Get("Location"))
 			}
 
-			pending, _ := h.start(map[string]any{"providerId": "lazy"}, "grace@lazy.example", "grace", "client_secret_post", "")
+			// Runtime discovery follows the registration rules.
+			refusal := func(w *httptest.ResponseRecorder) string {
+				var e struct{ Code string }
+				json.Unmarshal(w.Body.Bytes(), &e)
+				return e.Code
+			}
+			untrusted := lazy("untrusted", "client_secret_post")
+			untrusted["oidcConfig"].(map[string]any)["discoveryEndpoint"] = "https://idp.example.org/.well-known/openid-configuration"
+			tenant := lazy("tenant", "client_secret_post")
+			tenant["issuer"] = idp.URL + "/tenant"
+			tenant["oidcConfig"].(map[string]any)["discoveryEndpoint"] = idp.URL + "/.well-known/openid-configuration"
+			for _, body := range []map[string]any{untrusted, tenant} {
+				if w := h.register(owner, body); w.Code != 200 {
+					t.Fatal("registration failed", body["providerId"], w.Code, w.Body.String())
+				}
+			}
+			fetched := idp.discoveries.Load()
+			if w := h.call("POST", "sign-in/sso", "", map[string]any{"providerId": "untrusted", "callbackURL": "/home"}); w.Code != 400 || refusal(w) != "discovery_untrusted_origin" || idp.discoveries.Load() != fetched {
+				t.Fatal("runtime discovery contacted an untrusted discovery origin", w.Code, w.Body.String())
+			}
+			if w := h.call("POST", "sign-in/sso", "", map[string]any{"providerId": "tenant", "callbackURL": "/home"}); w.Code != 400 || refusal(w) != "issuer_mismatch" {
+				t.Fatal("runtime discovery accepted another issuer's document", w.Code, w.Body.String())
+			}
+			pending, _ := h.start(map[string]any{"providerId": "lazy"}, "noor@lazy.example", "noor", "client_secret_post", "")
+			idp.mu.Lock()
+			idp.discovered = map[string]any{"token_endpoint": "https://elsewhere.example.test/token"}
+			idp.mu.Unlock()
+			tokens := idp.tokens.Load()
+			location, err := url.Parse(h.finish(pending).Header().Get("Location"))
+			must(err)
+			if location.Query().Get("error") != "discovery_failed" || idp.tokens.Load() != tokens {
+				t.Fatal("a callback used a discovered token endpoint outside the trusted origins", location)
+			}
+			idp.mu.Lock()
+			idp.discovered = nil
+			idp.mu.Unlock()
+
+			pending, _ = h.start(map[string]any{"providerId": "lazy"}, "grace@lazy.example", "grace", "client_secret_post", "")
 			if pending.path == "" {
 				t.Fatal("a sign-in with discovery available did not start")
 			}
 			idp.discoveryDown.Store(true)
-			location, err := url.Parse(h.finish(pending).Header().Get("Location"))
+			location, err = url.Parse(h.finish(pending).Header().Get("Location"))
 			must(err)
 			if location.Path != "/retry" || location.Query().Get("error") != "discovery_failed" || location.Query().Get("error_description") == "" {
 				t.Fatal("a failed callback discovery did not report discovery_failed", location)
 			}
-			w := h.call("POST", "sign-in/sso", "", map[string]any{"providerId": "lazy", "callbackURL": "/home"})
-			var refusal struct{ Code string }
-			if json.Unmarshal(w.Body.Bytes(), &refusal); w.Code != 400 || refusal.Code != "discovery_not_found" {
+			if w := h.call("POST", "sign-in/sso", "", map[string]any{"providerId": "lazy", "callbackURL": "/home"}); w.Code != 400 || refusal(w) != "discovery_not_found" {
 				t.Fatal("a failed runtime discovery started a sign-in", w.Code, w.Body.String())
 			}
 		})

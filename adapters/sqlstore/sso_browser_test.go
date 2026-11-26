@@ -49,6 +49,8 @@ type ssoIssuer struct {
 	assertions   []string
 	// claims adds ID token claims for a grant's mode.
 	claims map[string]map[string]any
+	// discovered replaces fields of the discovery document.
+	discovered map[string]any
 }
 
 func newSSOIssuer(t *testing.T) *ssoIssuer {
@@ -76,9 +78,12 @@ func (i *ssoIssuer) serve(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		i.mu.Lock()
-		methods := i.methods
+		doc := map[string]any{"issuer": i.URL, "authorization_endpoint": i.URL + "/authorize", "token_endpoint": i.URL + "/token", "jwks_uri": i.URL + "/keys", "token_endpoint_auth_methods_supported": i.methods}
+		for k, v := range i.discovered {
+			doc[k] = v
+		}
 		i.mu.Unlock()
-		json.NewEncoder(w).Encode(map[string]any{"issuer": i.URL, "authorization_endpoint": i.URL + "/authorize", "token_endpoint": i.URL + "/token", "jwks_uri": i.URL + "/keys", "token_endpoint_auth_methods_supported": methods})
+		json.NewEncoder(w).Encode(doc)
 	case "/keys":
 		json.NewEncoder(w).Encode(jose.JSONWebKeySet{Keys: []jose.JSONWebKey{i.key}})
 	case "/token":
@@ -100,7 +105,7 @@ func (i *ssoIssuer) serve(w http.ResponseWriter, r *http.Request) {
 		if grant.style == "private_key_jwt" {
 			secret = ""
 			if !basic && r.PostForm.Get("client_secret") == "" && r.PostForm.Get("client_assertion_type") == "urn:ietf:params:oauth:client-assertion-type:jwt-bearer" {
-				if signed, err := jwt.ParseSigned(r.PostForm.Get("client_assertion"), []jose.SignatureAlgorithm{jose.RS256, jose.PS256}); err == nil {
+				if signed, err := jwt.ParseSigned(r.PostForm.Get("client_assertion"), []jose.SignatureAlgorithm{jose.RS256, jose.RS384, jose.PS256}); err == nil {
 					var claims jwt.Claims
 					i.mu.Lock()
 					if signed.Claims(i.assertionKey, &claims) == nil && claims.Issuer == uid && claims.Subject == uid && claims.Audience.Contains(i.URL+"/token") && claims.ID != "" {

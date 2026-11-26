@@ -436,6 +436,10 @@ func New(o Options) (auth.Plugin, error) {
 		}
 		return map[string]any{"providers": out}, nil
 	}
+	callback := auth.Endpoint{Method: "GET", Path: "/sso/callback/:providerId", Handler: o.finish}
+	if o.AllowIDPInitiatedOIDC != nil {
+		callback.OpenAPI = json.RawMessage(`{"x-plainauth-idp-initiated":true}`)
+	}
 	plugin := auth.Plugin{ID: "sso", ValidateStore: func(s auth.Store) error {
 		if _, ok := s.(Store); !ok {
 			return errors.New("sso: provider management requires a directory store")
@@ -469,7 +473,7 @@ func New(o Options) (auth.Plugin, error) {
 	}, Endpoints: []auth.Endpoint{endpoint("/sso/register", "POST", register), endpoint("/sso/providers", "GET", read), endpoint("/sso/get-provider", "GET", read), endpoint("/sso/delete-provider", "POST", o.deleteProvider), endpoint("/sso/update-provider", "POST", o.updateProvider),
 		{Method: "POST", Path: "/sign-in/sso", Handler: o.start},
 		{Method: "GET", Path: "/sso/callback", Handler: o.finish},
-		{Method: "GET", Path: "/sso/callback/:providerId", Handler: o.finish}}}
+		callback}}
 	if opt := o.DomainVerification; opt != nil {
 		request := endpoint("/sso/request-domain-verification", "POST", opt.request)
 		request.SuccessStatus = 201

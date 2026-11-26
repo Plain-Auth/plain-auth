@@ -15,7 +15,7 @@
     - [x] Default the SAMLResponse limit to 256 KiB, keep a configured one and refuse a negative size or one above 1 MiB ([test](../../../plugins/sso/saml_test.go#L274))
     - [x] Refuse a SAMLResponse one byte over the default limit at the ACS ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L207))
   - [ ] `sso`
-    - [x] Build enterprise hosts with sso.New and complete OIDC sign-in through per-provider and shared callbacks on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_browser_test.go#L185))
+    - [x] Build enterprise hosts with sso.New and complete OIDC sign-in through per-provider and shared callbacks on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_browser_test.go#L190))
     - [x] Build SAML hosts with sso.New, including single logout, IdP-initiated policy, decryption keys and domain verification, and complete SAML sign-in on three SQL engines ([test](../../../adapters/sqlstore/sso_saml_test.go#L117))
   - `SSOPlugin` — *not applicable: TypeScript type. SSOPlugin is the inferred shape of the sso() return value (id, version, endpoints, schema, $Infer) that the client reads for type inference; a Go host gets a plainauth.Plugin from sso.New.*
   - `NormalizedSSOProfile` — *not applicable: TypeScript type. It is the internal profile shape the other runtime passes to its organization-assignment helper; no host API takes or returns it, and Go hands an auth.OAuthProfile to its store.*
@@ -25,14 +25,16 @@
     - [x] Hydrate the tenant’s authorization, token and JWKS locations and select the advertised secret authentication method ([test](../../../conformance/sso-providers.mjs#L12))
     - [x] Resolve the relative authorization, token and JWKS URLs of a discovery document against the issuer path and select client_secret_basic ([test](../../../plugins/sso/discovery_test.go#L61))
     - [x] Reject a registration whose configured discovery endpoint returns a document with a different issuer ([test](../../../adapters/sqlstore/sso_test.go#L241))
-    - [x] Discover a stored configuration's missing endpoints at sign-in under the registration rules ([test](../../../adapters/sqlstore/sso_runtime_discovery_test.go#L49))
+    - [x] Discover a stored configuration's missing endpoints at sign-in under the registration rules ([test](../../../adapters/sqlstore/sso_runtime_discovery_test.go#L50))
+    - [x] Refuse runtime discovery from an untrusted origin or for another issuer at sign-in, and an untrusted discovered token endpoint at the callback ([test](../../../adapters/sqlstore/sso_runtime_discovery_test.go#L90))
   - [ ] `fetchDiscoveryDocument`
     - [x] Require an exact discovery origin and enforce the deadline, issuer match and bounded response ([test](../../../plugins/sso/discovery_test.go#L20))
     - [x] Fail a registration with 400 after a single request when the discovery endpoint answers with a redirect ([test](../../../adapters/sqlstore/sso_test.go#L247))
     - [x] Reject a JSON null discovery document with discovery_invalid_json ([test](../../../plugins/sso/discovery_test.go#L65))
-  - [x] `needsRuntimeDiscovery` ([test](../../../adapters/sqlstore/sso_runtime_discovery_test.go#L14))
+  - [x] `needsRuntimeDiscovery` ([test](../../../adapters/sqlstore/sso_runtime_discovery_test.go#L15))
     - [x] Need discovery for a missing configuration or a missing authorization, token or JWKS endpoint ([test](../../../plugins/sso/discovery_test.go#L269))
-    - [x] Sign in through a skipDiscovery registration without a token endpoint by discovering it at the start and the callback, without storing it, keeping the stored client authentication, and reporting discovery_failed at the callback, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_runtime_discovery_test.go#L14))
+    - [x] Sign in through a skipDiscovery registration without a token endpoint by discovering it at the start and the callback, without storing it, keeping the stored client authentication, and reporting discovery_failed at the callback, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_runtime_discovery_test.go#L15))
+    - [x] Refuse a callback whose runtime discovery names a token endpoint outside the trusted origins ([test](../../../adapters/sqlstore/sso_runtime_discovery_test.go#L103))
   - [ ] `normalizeDiscoveryUrls`
     - [x] Resolve relative discovered authorization, token and JWKS URLs against the issuer path ([test](../../../plugins/sso/discovery_test.go#L61))
     - [x] Reject a discovered JWKS URL on a loopback address outside the trusted origins with discovery_untrusted_origin ([test](../../../plugins/sso/discovery_test.go#L67))
@@ -42,8 +44,8 @@
   - [ ] `selectTokenEndpointAuthMethod`
     - [x] Select client_secret_basic when the discovery document advertises both secret methods ([test](../../../plugins/sso/discovery_test.go#L61))
     - [x] Select client_secret_post when the discovery document advertises only that method, on both runtimes ([test](../../../conformance/sso-providers.mjs#L67))
-    - [x] Select private_key_jwt when the discovery document advertises only that method ([test](../../../adapters/sqlstore/sso_private_key_test.go#L143))
-    - [x] Keep an unset method as client_secret_basic at runtime discovery though the IdP advertises only client_secret_post ([test](../../../adapters/sqlstore/sso_runtime_discovery_test.go#L68))
+    - [x] Select private_key_jwt when the discovery document advertises only that method ([test](../../../adapters/sqlstore/sso_private_key_test.go#L159))
+    - [x] Keep an unset method as client_secret_basic at runtime discovery though the IdP advertises only client_secret_post ([test](../../../adapters/sqlstore/sso_runtime_discovery_test.go#L69))
   - [ ] `validateDiscoveryDocument`
     - [x] Reject a discovery document missing a required field with discovery_incomplete ([test](../../../plugins/sso/discovery_test.go#L197))
     - [x] Reject a discovery document whose issuer differs from the configured issuer with issuer_mismatch ([test](../../../plugins/sso/discovery_test.go#L66))
@@ -116,7 +118,7 @@
     - [x] Reject issuer and endpoint replacement on linked directories, accept overlapping signing keys, and reject retired keys after rotation ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L121))
     - [x] Allow an active organization administrator to replace metadata and deny the same live session after demotion ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L152))
     - [x] Rotate a client secret, change scopes, mapping and domain, and refuse identity changes while accounts are linked, unsupported fields and other users, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_update_test.go#L21))
-    - [x] Describe the OIDC update fields on every host's OpenAPI document ([test](../../../plugins/openapi/sso_directory_test.go#L243))
+    - [x] Describe the OIDC update fields on every host's OpenAPI document ([test](../../../plugins/openapi/sso_directory_test.go#L251))
   - [ ] `POST /sso/delete-provider`
     - [x] Delete the exact OIDC provider and its account links through the released SDK on both implementations ([test](../../../conformance/sso-providers.mjs#L109))
     - [x] Recheck current tenant authority, protect unrelated links and serialize concurrent sign-in against deletion on all three SQL engines ([test](../../../adapters/sqlstore/sso_delete_test.go#L17))
@@ -140,7 +142,7 @@
     - [x] Run the domain token's verification create hooks; a declined token registers the provider as pending ([test](../../../adapters/sqlstore/sso_hooks_test.go#L415))
   - [ ] `POST /sign-in/sso`
     - [x] Start an authorization with a persisted OIDC provider through the released client and retain the same account across implementations ([test](../../../conformance/sso-browser.mjs#L43))
-    - [x] Select a provider by ID, organization slug, email or DNS suffix on a custom auth mount ([test](../../../adapters/sqlstore/sso_browser_test.go#L164))
+    - [x] Select a provider by ID, organization slug, email or DNS suffix on a custom auth mount ([test](../../../adapters/sqlstore/sso_browser_test.go#L169))
     - [x] Select a proved directory ahead of overlapping pending registrations ([test](../../../adapters/sqlstore/sso_domain_test.go#L245))
     - [x] Start an SP-initiated Redirect request and complete first and repeat SAML sign-in with the same account ([test](../../../conformance/sso-saml.mjs#L126))
     - [x] Issue first and returning SAML sessions with public signup and metadata disabled; retain the installed ACS and registration in OpenAPI ([test](../../../conformance/core.test.mjs#L1517))
@@ -148,15 +150,15 @@
     - [x] Validate the signed query at entry and use the application callback after a SAML assertion ([test](../../../adapters/sqlstore/sso_saml_test.go#L350))
     - [x] Run the enterprise flow's verification create hooks; a declined flow is never stored ([test](../../../adapters/sqlstore/sso_hooks_test.go#L241))
   - [ ] `/sso/callback/:providerId`
-    - [x] Redeem a browser-bound code with PKCE and either secret authentication method, then issue a session for the stable provider subject ([test](../../../adapters/sqlstore/sso_browser_test.go#L164))
-    - [x] Reject changed provider configuration before exchange and inside the account, membership and session transaction ([test](../../../adapters/sqlstore/sso_browser_test.go#L361))
+    - [x] Redeem a browser-bound code with PKCE and either secret authentication method, then issue a session for the stable provider subject ([test](../../../adapters/sqlstore/sso_browser_test.go#L169))
+    - [x] Reject changed provider configuration before exchange and inside the account, membership and session transaction ([test](../../../adapters/sqlstore/sso_browser_test.go#L366))
     - [x] Use validated public addresses for tenant-controlled endpoints and reject redirects and oversized responses ([test](../../../plugins/sso/identity_test.go#L17))
-    - [x] Reject a shared public subject from another authority on both enterprise and static OAuth nodes ([test](../../../adapters/sqlstore/sso_browser_test.go#L389))
+    - [x] Reject a shared public subject from another authority on both enterprise and static OAuth nodes ([test](../../../adapters/sqlstore/sso_browser_test.go#L394))
     - [x] Deny the session and roll back identity creation when the DNS proof is withdrawn during token exchange ([test](../../../adapters/sqlstore/sso_domain_test.go#L329))
     - [x] Link a verified local mailbox within the proved subdomain to the authenticated identity ([test](../../../adapters/sqlstore/sso_domain_test.go#L305))
     - [x] Reject two distinct mailboxes that compare equal under an accent-insensitive MySQL collation ([test](../../../adapters/sqlstore/sso_domain_test.go#L339))
     - [x] Resume the original client authorization with the enterprise employee’s new session and redeem the code after consent ([test](../../../conformance/oauth-enterprise-authorization.mjs#L43))
-    - [x] Check the issuer signature and browser binding on a second node before the token exchange ([test](../../../adapters/sqlstore/sso_browser_test.go#L528))
+    - [x] Check the issuer signature and browser binding on a second node before the token exchange ([test](../../../adapters/sqlstore/sso_browser_test.go#L533))
     - [x] ValidateUserInfo checks an enterprise OIDC sign-up and a returning sign-in with the SSO provider ID and raw claims, and a refusal returns to the error callback with error and error_description ([test](../../../adapters/sqlstore/sso_user_validation_test.go#L25))
     - [x] Spend the flow with its verification delete hooks before the code exchange; a declined spend redirects with state_mismatch and keeps it ([test](../../../adapters/sqlstore/sso_hooks_test.go#L262))
     - [x] An identity provider's error callback still spends the flow with its verification hooks ([test](../../../adapters/sqlstore/sso_hooks_test.go#L286))
@@ -239,21 +241,21 @@
     - [x] Reject a signed assertion whose NotOnOrAfter passed an hour ago ([test](../../../adapters/sqlstore/sso_saml_test.go#L611))
     - [x] Reject a signed assertion whose NotBefore is an hour in the future ([test](../../../adapters/sqlstore/sso_saml_test.go#L612))
   - [ ] `OIDCConfig`
-    - [x] Sign in through a stored OIDC configuration with client credentials, explicit endpoints, PKCE and a secret authentication method on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_browser_test.go#L219))
+    - [x] Sign in through a stored OIDC configuration with client credentials, explicit endpoints, PKCE and a secret authentication method on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_browser_test.go#L224))
     - [ ] `issuer`
-      - [x] Reject an enterprise ID token whose issuer differs from the provider issuer, among other invalid ID tokens ([test](../../../adapters/sqlstore/sso_browser_test.go#L333))
+      - [x] Reject an enterprise ID token whose issuer differs from the provider issuer, among other invalid ID tokens ([test](../../../adapters/sqlstore/sso_browser_test.go#L338))
       - [x] Reject a discovery document whose issuer differs from the provider issuer ([test](../../../plugins/sso/discovery_test.go#L66))
     - [ ] `pkce`
-      - [x] Send an S256 code challenge in each enterprise authorization request ([test](../../../adapters/sqlstore/sso_browser_test.go#L258))
+      - [x] Send an S256 code challenge in each enterprise authorization request ([test](../../../adapters/sqlstore/sso_browser_test.go#L263))
       - [x] Default pkce to true at registration on both runtimes ([test](../../../conformance/sso-providers.mjs#L66))
       - [x] Store and return pkce false for a provider registered with it off ([test](../../../conformance/sso-providers.mjs#L92))
     - [ ] `clientId`
-      - [x] Send the registered client ID and secret in the code exchange, which the test token endpoint requires before it issues an ID token ([test](../../../adapters/sqlstore/sso_browser_test.go#L114))
+      - [x] Send the registered client ID and secret in the code exchange, which the test token endpoint requires before it issues an ID token ([test](../../../adapters/sqlstore/sso_browser_test.go#L119))
       - [x] Return only the last four characters of the client ID ([test](../../../conformance/sso-providers.mjs#L74))
     - [ ] `clientSecret`
-      - [x] Send the registered client secret in the code exchange, which the test token endpoint requires before it issues an ID token ([test](../../../adapters/sqlstore/sso_browser_test.go#L114))
+      - [x] Send the registered client secret in the code exchange, which the test token endpoint requires before it issues an ID token ([test](../../../adapters/sqlstore/sso_browser_test.go#L119))
       - [x] Keep the client secret out of the provider read ([test](../../../conformance/sso-providers.mjs#L77))
-      - [x] Require a client secret for client_secret_basic and none for private_key_jwt ([test](../../../adapters/sqlstore/sso_private_key_test.go#L134))
+      - [x] Require a client secret for client_secret_basic and none for private_key_jwt ([test](../../../adapters/sqlstore/sso_private_key_test.go#L150))
     - [ ] `authorizationEndpoint`
       - [x] Fill the authorization endpoint from discovery when it is omitted ([test](../../../plugins/sso/discovery_test.go#L61))
       - [x] Send the browser to the origin of the stored authorization endpoint ([test](../../../conformance/sso-browser.mjs#L81))
@@ -261,34 +263,39 @@
       - [x] Register providers through an oidcConfig discoveryEndpoint on the issuer host ([test](../../../adapters/sqlstore/sso_test.go#L165))
       - [x] Default the discovery URL to {issuer}/.well-known/openid-configuration ([test](../../../plugins/sso/discovery_test.go#L34))
     - [ ] `userInfoEndpoint`
-      - [x] Resolve the subject through UserInfo and reject disagreement with a signed ID token ([test](../../../adapters/sqlstore/sso_browser_test.go#L331))
+      - [x] Resolve the subject through UserInfo and reject disagreement with a signed ID token ([test](../../../adapters/sqlstore/sso_browser_test.go#L336))
     - [ ] `scopes`
       - [x] Store and return the registered scopes on both runtimes ([test](../../../conformance/sso-providers.mjs#L76))
-    - [x] `overrideUserInfo` ([test](../../../adapters/sqlstore/sso_profile_override_test.go#L90))
-      - [x] Store the top-level overrideUserInfo and refresh a returning OIDC user's name, image and mapped field at each sign-in, keeping the profile without it, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_profile_override_test.go#L90))
-      - [x] Keep a returning user's profile when the provider does not override it ([test](../../../adapters/sqlstore/sso_profile_override_test.go#L97))
+    - [x] `overrideUserInfo` ([test](../../../adapters/sqlstore/sso_profile_override_test.go#L108))
+      - [x] Store the top-level overrideUserInfo and refresh a returning OIDC user's name, image and mapped field at each sign-in, keeping the profile without it, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_profile_override_test.go#L108))
+      - [x] Keep a returning user's profile when the provider does not override it ([test](../../../adapters/sqlstore/sso_profile_override_test.go#L115))
+      - [x] Ignore an overrideUserInfo nested in oidcConfig and refuse an override to another user's email as profile_conflict ([test](../../../adapters/sqlstore/sso_profile_override_test.go#L97))
+      - [x] Redirect an override to another user's email with profile_conflict ([test](../../../adapters/sqlstore/sso_profile_override_test.go#L139))
     - [x] `tokenEndpoint` ([test](../../../plugins/sso/discovery_test.go#L61))
       - [x] Fill the token endpoint from discovery when it is omitted ([test](../../../plugins/sso/discovery_test.go#L61))
-      - [x] Redeem the authorization code at the stored token endpoint with the registered client credentials ([test](../../../adapters/sqlstore/sso_browser_test.go#L114))
+      - [x] Redeem the authorization code at the stored token endpoint with the registered client credentials ([test](../../../adapters/sqlstore/sso_browser_test.go#L119))
     - [ ] `tokenEndpointAuthentication`
-      - [x] Redeem codes through confidential client-secret basic and POST authentication ([test](../../../adapters/sqlstore/sso_browser_test.go#L114))
+      - [x] Redeem codes through confidential client-secret basic and POST authentication ([test](../../../adapters/sqlstore/sso_browser_test.go#L119))
       - [x] Store client_secret_post when discovery advertises only that method ([test](../../../adapters/sqlstore/sso_test.go#L235))
-      - [x] Redeem codes with a private_key_jwt client assertion and no client secret ([test](../../../adapters/sqlstore/sso_browser_test.go#L100))
-    - [x] `privateKeyId` ([test](../../../adapters/sqlstore/sso_private_key_test.go#L106))
-      - [x] Store privateKeyId, pass it to the key resolver and send it as the client assertion's kid, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_private_key_test.go#L106))
-    - [x] `privateKeyAlgorithm` ([test](../../../adapters/sqlstore/sso_private_key_test.go#L113))
-      - [x] Sign the client assertion with a configured PS256 and refuse HS256 at registration ([test](../../../adapters/sqlstore/sso_private_key_test.go#L113))
-      - [x] Refuse an unsupported private key algorithm at registration ([test](../../../adapters/sqlstore/sso_private_key_test.go#L131))
-    - [x] `jwksEndpoint` ([test](../../../adapters/sqlstore/sso_browser_test.go#L333))
-      - [x] Reject an enterprise ID token signed by a key outside the provider JWKS, among other invalid ID tokens ([test](../../../adapters/sqlstore/sso_browser_test.go#L333))
+      - [x] Redeem codes with a private_key_jwt client assertion and no client secret ([test](../../../adapters/sqlstore/sso_browser_test.go#L105))
+    - [x] `privateKeyId` ([test](../../../adapters/sqlstore/sso_private_key_test.go#L119))
+      - [x] Store privateKeyId, pass it to the key resolver and send it as the client assertion's kid, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_private_key_test.go#L119))
+    - [x] `privateKeyAlgorithm` ([test](../../../adapters/sqlstore/sso_private_key_test.go#L126))
+      - [x] Sign the client assertion with a configured PS256 and refuse HS256 at registration ([test](../../../adapters/sqlstore/sso_private_key_test.go#L126))
+      - [x] Refuse an unsupported private key algorithm at registration ([test](../../../adapters/sqlstore/sso_private_key_test.go#L147))
+      - [x] Fail the callback before any token request for an unsupported resolved algorithm ([test](../../../adapters/sqlstore/sso_private_key_test.go#L191))
+    - [x] `jwksEndpoint` ([test](../../../adapters/sqlstore/sso_browser_test.go#L338))
+      - [x] Reject an enterprise ID token signed by a key outside the provider JWKS, among other invalid ID tokens ([test](../../../adapters/sqlstore/sso_browser_test.go#L338))
       - [x] Fill the JWKS endpoint from discovery when it is omitted ([test](../../../plugins/sso/discovery_test.go#L61))
     - [ ] `mapping`
       - [x] Read the email, name and image claims named by oidcConfig.mapping instead of the defaults ([test](../../../plugins/sso/identity_test.go#L103))
       - [x] Read email, name and picture when no mapping is set ([test](../../../plugins/sso/identity_test.go#L115))
       - [x] Take the first nonempty address from a mapped email list ([test](../../../plugins/sso/identity_test.go#L119))
-    - [x] `allowIdpInitiated` ([test](../../../adapters/sqlstore/sso_idp_initiated_test.go#L20))
-      - [x] Restart a stateless callback only for a provider the host policy approves with its current registration, fail closed on a policy error and ignore allowIdpInitiated at registration, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_idp_initiated_test.go#L20))
+    - [x] `allowIdpInitiated` ([test](../../../adapters/sqlstore/sso_idp_initiated_test.go#L21))
+      - [x] Restart a stateless callback only for a provider the host policy approves with its current registration, fail closed on a policy error and ignore allowIdpInitiated at registration, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_idp_initiated_test.go#L21))
       - [x] Refuse a restart when the directory policy fails or panics ([test](../../../plugins/sso/oidc_idp_initiated_test.go#L10))
+      - [x] Refuse sign-up in a restarted flow under DisableImplicitSignUp, report the missing state after a failed discovery, and pass the provider's organization to the policy ([test](../../../adapters/sqlstore/sso_idp_initiated_test.go#L128))
+      - [x] Describe the stateless restart, optional state and 503 on the per-provider callback in OpenAPI ([test](../../../plugins/openapi/sso_directory_test.go#L94))
   - [ ] `SAMLConfig`
     - [x] Register a SAML directory with entry point, IdP entity ID, signing certificate, SP entity ID, signed requests and landing pages, and sign in on three SQL engines ([test](../../../adapters/sqlstore/sso_saml_test.go#L159))
     - [ ] `issuer`
@@ -301,7 +308,7 @@
     - [ ] `audience`
       - [x] Reject a signed assertion addressed to a different audience ([test](../../../adapters/sqlstore/sso_saml_test.go#L603))
     - [ ] `callbackUrl`
-      - [x] Land a portal sign-in on the directory's callbackUrl when no IdP-initiated landing page is configured ([test](../../../adapters/sqlstore/sso_saml_mapping_test.go#L103))
+      - [x] Land a portal sign-in on the directory's callbackUrl when no IdP-initiated landing page is configured ([test](../../../adapters/sqlstore/sso_saml_mapping_test.go#L104))
     - [ ] `idpInitiatedCallbackUrl`
       - [x] Send an approved IdP-initiated sign-in to the directory's idpInitiatedCallbackUrl rather than the host-wide fallback ([test](../../../adapters/sqlstore/sso_saml_portal_test.go#L114))
       - [x] Land a portal sign-in on the directory's relative idpInitiatedCallbackUrl, and on the host-wide landing page when the directory names an untrusted absolute URL, on both runtimes ([test](../../../conformance/sso-saml.mjs#L248))
@@ -337,7 +344,7 @@
     - [x] Give the OIDC resolver the ID token issuer and subject, the verified ID token claims and the provider claims ([test](../../../adapters/sqlstore/sso_resolve_user_test.go#L135))
   - [ ] `SSOOptions`
     - [x] Configure the provider limit through sso.Options, including zero to disable registration ([test](../../../adapters/sqlstore/sso_test.go#L79))
-    - [x] Configure shared callbacks and implicit sign-up through sso.Options ([test](../../../adapters/sqlstore/sso_browser_test.go#L185))
+    - [x] Configure shared callbacks and implicit sign-up through sso.Options ([test](../../../adapters/sqlstore/sso_browser_test.go#L190))
     - [ ] `resolveUser`
       - [x] A ValidateUserInfo refusal of an enterprise OIDC sign-up returns to the error callback with error and error_description ([test](../../../adapters/sqlstore/sso_user_validation_test.go#L97))
       - [x] ValidateUserInfo runs again when the enterprise user returns ([test](../../../adapters/sqlstore/sso_user_validation_test.go#L115))
@@ -352,13 +359,13 @@
     - [x] `provisionUserOnEveryLogin` ([test](../../../adapters/sqlstore/sso_provision_user_test.go#L103))
       - [x] Run ProvisionUser only for a new user by default and for every sign-in with ProvisionUserOnEveryLogin ([test](../../../adapters/sqlstore/sso_provision_user_test.go#L103))
     - [ ] `organizationProvisioning`
-      - [x] Preserve existing roles and pending invitations, serialize competing removal and roll back new identities at capacity ([test](../../../adapters/sqlstore/sso_browser_test.go#L457))
-      - [x] Add a new enterprise user to the provider's organization with the member role ([test](../../../adapters/sqlstore/sso_browser_test.go#L306))
+      - [x] Preserve existing roles and pending invitations, serialize competing removal and roll back new identities at capacity ([test](../../../adapters/sqlstore/sso_browser_test.go#L462))
+      - [x] Add a new enterprise user to the provider's organization with the member role ([test](../../../adapters/sqlstore/sso_browser_test.go#L311))
     - [ ] `defaultSSO`
-    - [x] `defaultOverrideUserInfo` ([test](../../../adapters/sqlstore/sso_profile_override_test.go#L85))
-      - [x] Store overrideUserInfo over the request's false and refresh the profile on sign-in ([test](../../../adapters/sqlstore/sso_profile_override_test.go#L85))
+    - [x] `defaultOverrideUserInfo` ([test](../../../adapters/sqlstore/sso_profile_override_test.go#L103))
+      - [x] Store overrideUserInfo over the request's false and refresh the profile on sign-in ([test](../../../adapters/sqlstore/sso_profile_override_test.go#L103))
     - [ ] `disableImplicitSignUp`
-      - [x] Require an explicit signup request for new enterprise users and enforce host-wide signup controls ([test](../../../adapters/sqlstore/sso_browser_test.go#L340))
+      - [x] Require an explicit signup request for new enterprise users and enforce host-wide signup controls ([test](../../../adapters/sqlstore/sso_browser_test.go#L345))
       - [x] Refuse an IdP-initiated SAML sign-in for a new user with signup_disabled when implicit sign-up is off ([test](../../../adapters/sqlstore/sso_saml_portal_test.go#L72))
       - [x] Let an existing SAML user return through the portal when implicit sign-up is off ([test](../../../adapters/sqlstore/sso_saml_portal_test.go#L118))
     - [ ] `modelName`
@@ -369,7 +376,7 @@
       - [x] Refuse registration with 403 when the provider limit is zero ([test](../../../adapters/sqlstore/sso_test.go#L181))
       - [x] Resolve the registration quota per signed-in user, refuse zero with 403, count a negative number as reached and fail on a resolver error ([test](../../../adapters/sqlstore/sso_limit_test.go#L20))
     - [ ] `trustEmailVerified`
-      - [x] Store a new enterprise OIDC user as unverified although the ID token says email_verified true ([test](../../../adapters/sqlstore/sso_browser_test.go#L296))
+      - [x] Store a new enterprise OIDC user as unverified although the ID token says email_verified true ([test](../../../adapters/sqlstore/sso_browser_test.go#L301))
       - [x] Store a new SAML user as unverified by default on both runtimes ([test](../../../conformance/sso-saml.mjs#L293))
     - [x] `domainVerification` ([test](../../../conformance/sso-domains.mjs#L78))
       - [x] Migrate a populated enterprise provider to the DNS profile and compare 24 profile selections on all three SQL dialects ([test](../../../conformance/schema.test.mjs#L252))
@@ -379,8 +386,10 @@
       - [x] Default the TXT record name to the plain-auth-token prefix and reject a prefix that spans more than one DNS label ([test](../../../plugins/sso/domain_test.go#L13))
     - [ ] `redirectURI`
       - [x] Select the shared callback for all registered providers or the provider-specific URL under the auth mount ([test](../../../conformance/sso-browser.mjs#L62))
-    - [x] `resolvePrivateKey` ([test](../../../adapters/sqlstore/sso_private_key_test.go#L20))
-      - [x] Resolve the signing key before each code exchange with the provider's record, tenant, key ID and issuer, refuse private_key_jwt without a resolver, and fail the callback before any token request when no key is returned, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_private_key_test.go#L20))
+    - [x] `resolvePrivateKey` ([test](../../../adapters/sqlstore/sso_private_key_test.go#L23))
+      - [x] Resolve the signing key before each code exchange with the provider's record, tenant, key ID and issuer, refuse private_key_jwt without a resolver, and fail the callback before any token request when no key is returned, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_private_key_test.go#L23))
+      - [x] Take the resolved key's ID and algorithm, sign a JWK, default to RS256, pass the organization, and fail closed on a resolver error or an unsupported resolved algorithm ([test](../../../adapters/sqlstore/sso_private_key_test.go#L180))
+      - [x] Pass the provider's organization to the key resolver ([test](../../../adapters/sqlstore/sso_private_key_test.go#L210))
     - [ ] `saml`
       - [x] Run SP-initiated SAML sign-in, single logout and reviewed IdP portal sign-in under the plugin's SAML options on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_test.go#L117))
       - [x] Default the inline IdP metadata limit to 100 KiB and reject a negative limit or one above 1 MiB ([test](../../../plugins/sso/saml_test.go#L48))
@@ -391,7 +400,7 @@
     - [x] Pass the delete action, record ID, provider ID, organization, linked-account count and configuration reference of the locked provider to the guard ([test](../../../adapters/sqlstore/sso_delete_test.go#L135))
     - [x] Pass the update action, locked record, configuration reference and an authentication boundary change to the guard when IdP metadata is replaced ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L156))
   - [ ] `SSOProviderReference`
-    - [x] Redirect a callback with invalid_state before the token exchange when the provider's configuration changed after sign-in started ([test](../../../adapters/sqlstore/sso_browser_test.go#L347))
+    - [x] Redirect a callback with invalid_state before the token exchange when the provider's configuration changed after sign-in started ([test](../../../adapters/sqlstore/sso_browser_test.go#L352))
     - [x] Stop accepting a captured provider reference after the provider's identity source changes ([test](../../../adapters/sqlstore/sso_domain_test.go#L451))
   - [ ] `SSOProviderUserProfile`
     - [x] Normalize the OIDC provider profile's email, verification and name for the resolver ([test](../../../adapters/sqlstore/sso_resolve_user_test.go#L132))
@@ -406,12 +415,16 @@
   - [x] `SSOUserResolutionInput` ([test](../../../adapters/sqlstore/sso_saml_resolve_user_test.go#L81))
     - [x] Pass the protocol, provider, account key, provider profile, claims, ID token claims and provider reference to ResolveUser ([test](../../../adapters/sqlstore/sso_resolve_user_test.go#L143))
     - [x] Pass a SAML input with the protocol saml and the directory's provider ID ([test](../../../adapters/sqlstore/sso_saml_resolve_user_test.go#L81))
-  - [x] `OIDCMapping` ([test](../../../adapters/sqlstore/sso_claim_mapping_test.go#L14))
-    - [x] Map the email, name, image and declared user field claims of an enterprise sign-up, ignore mapping.emailVerified and refuse other mapping shapes, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_claim_mapping_test.go#L14))
+  - [x] `OIDCMapping` ([test](../../../adapters/sqlstore/sso_claim_mapping_test.go#L15))
+    - [x] Map the email, name, image and declared user field claims of an enterprise sign-up, ignore mapping.emailVerified and refuse other mapping shapes, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_claim_mapping_test.go#L15))
     - [x] Accept only claim names for each mapping key and extraFields entry ([test](../../../plugins/sso/identity_test.go#L124))
+    - [x] Apply user field defaults, fill number and boolean fields from string claims and skip a claim with several values ([test](../../../adapters/sqlstore/sso_claim_mapping_test.go#L95))
+    - [x] Refuse an enterprise sign-up missing a required user field with MISSING_FIELD ([test](../../../adapters/sqlstore/sso_claim_mapping_test.go#L154))
   - [x] `SAMLMapping` ([test](../../../adapters/sqlstore/sso_saml_mapping_test.go#L25))
     - [x] Map a directory's email, first and last name, display name and declared user field attributes at a portal sign-in, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_mapping_test.go#L25))
     - [x] Pass a mapped attribute's one value as a string and several as a list, and skip a missing attribute ([test](../../../plugins/sso/saml_test.go#L222))
+    - [x] Verify a mapped email with TrustEmailVerified and skip an attribute with several values for a scalar user field ([test](../../../adapters/sqlstore/sso_saml_mapping_test.go#L117))
+    - [x] Sign up through a multi-valued mapped attribute without writing it ([test](../../../adapters/sqlstore/sso_saml_mapping_test.go#L121))
   - [ ] `AuthnRequestRecord`
     - [x] Reject a signed assertion whose InResponseTo names a different request than the one the browser started, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_test.go#L609))
   - [x] `SAMLSessionRecord` ([test](../../../adapters/sqlstore/sso_saml_logout_test.go#L61))
@@ -479,8 +492,9 @@
   - [ ] Features
     - [x] OIDC discovery of provider endpoints ([test](../../../conformance/sso-providers.mjs#L75))
       - [x] Fill the provider's endpoints and client authentication method from the issuer's discovery document at registration on both runtimes ([test](../../../conformance/sso-providers.mjs#L75))
-    - [x] `private_key_jwt` token endpoint authentication ([test](../../../adapters/sqlstore/sso_private_key_test.go#L97))
-      - [x] Register a private_key_jwt provider without a client secret, select the method from discovery and redeem codes with a signed client assertion ([test](../../../adapters/sqlstore/sso_private_key_test.go#L97))
+    - [x] `private_key_jwt` token endpoint authentication ([test](../../../adapters/sqlstore/sso_private_key_test.go#L110))
+      - [x] Register a private_key_jwt provider without a client secret, select the method from discovery and redeem codes with a signed client assertion ([test](../../../adapters/sqlstore/sso_private_key_test.go#L110))
+      - [x] Never send a stored client secret with a private_key_jwt assertion ([test](../../../adapters/sqlstore/sso_private_key_test.go#L171))
     - [x] SAML 2.0 SP-initiated and IdP-initiated sign-in ([test](../../../conformance/sso-saml.mjs#L126))
       - [x] Complete an SP-initiated SAML sign-in twice into the same account through the released client on both runtimes ([test](../../../conformance/sso-saml.mjs#L126))
       - [x] Sign in from a reviewed IdP portal with a signed assertion and reject its replay on both runtimes ([test](../../../conformance/core.test.mjs#L1564))
@@ -494,7 +508,7 @@
       - [x] Resolve OIDC users to a chosen account before the sign-in transaction ([test](../../../adapters/sqlstore/sso_resolve_user_test.go#L113))
       - [x] Run provisioning code after an enterprise sign-in commits ([test](../../../adapters/sqlstore/sso_provision_user_test.go#L95))
     - [ ] Organization provisioning
-      - [x] Add a new enterprise user to the provider's organization with the member role ([test](../../../adapters/sqlstore/sso_browser_test.go#L306))
+      - [x] Add a new enterprise user to the provider's organization with the member role ([test](../../../adapters/sqlstore/sso_browser_test.go#L311))
     - [x] DNS domain verification ([test](../../../conformance/sso-domains.mjs#L57))
       - [x] Register, verify over DNS and sign in through a domain-verified provider on both runtimes ([test](../../../conformance/sso-domains.mjs#L57))
   - [ ] Register a provider
@@ -513,17 +527,17 @@
       - [x] Reject a wildcard, URL, email address or empty label as a provider domain ([test](../../../plugins/sso/discovery_test.go#L83))
     - [ ] Configure providers in code
   - [ ] Sign in
-    - [x] Start an OIDC sign-in by provider ID, organization slug, email or domain on a custom auth mount and return the IdP URL ([test](../../../adapters/sqlstore/sso_browser_test.go#L164))
+    - [x] Start an OIDC sign-in by provider ID, organization slug, email or domain on a custom auth mount and return the IdP URL ([test](../../../adapters/sqlstore/sso_browser_test.go#L169))
     - [ ] `POST /sign-in/sso`
       - [x] Start a sign-in by email with the released client and finish it through the provider's callback on both runtimes ([test](../../../conformance/sso-browser.mjs#L43))
-      - [x] Parameter `email` (optional) ([test](../../../adapters/sqlstore/sso_browser_test.go#L279))
-        - [x] Select the provider whose domain is a suffix of the email's domain ([test](../../../adapters/sqlstore/sso_browser_test.go#L279))
-      - [x] Parameter `organizationSlug` (optional) ([test](../../../adapters/sqlstore/sso_browser_test.go#L312))
-        - [x] Select the provider linked to the organization with the given slug ([test](../../../adapters/sqlstore/sso_browser_test.go#L312))
-      - [x] Parameter `providerId` (optional) ([test](../../../adapters/sqlstore/sso_browser_test.go#L236))
-        - [x] Select the provider named by providerId and send its own callback as redirect_uri ([test](../../../adapters/sqlstore/sso_browser_test.go#L236))
-      - [x] Parameter `domain` (optional) ([test](../../../adapters/sqlstore/sso_browser_test.go#L323))
-        - [x] Select the provider whose domain list contains the domain passed at sign-in ([test](../../../adapters/sqlstore/sso_browser_test.go#L323))
+      - [x] Parameter `email` (optional) ([test](../../../adapters/sqlstore/sso_browser_test.go#L284))
+        - [x] Select the provider whose domain is a suffix of the email's domain ([test](../../../adapters/sqlstore/sso_browser_test.go#L284))
+      - [x] Parameter `organizationSlug` (optional) ([test](../../../adapters/sqlstore/sso_browser_test.go#L317))
+        - [x] Select the provider linked to the organization with the given slug ([test](../../../adapters/sqlstore/sso_browser_test.go#L317))
+      - [x] Parameter `providerId` (optional) ([test](../../../adapters/sqlstore/sso_browser_test.go#L241))
+        - [x] Select the provider named by providerId and send its own callback as redirect_uri ([test](../../../adapters/sqlstore/sso_browser_test.go#L241))
+      - [x] Parameter `domain` (optional) ([test](../../../adapters/sqlstore/sso_browser_test.go#L328))
+        - [x] Select the provider whose domain list contains the domain passed at sign-in ([test](../../../adapters/sqlstore/sso_browser_test.go#L328))
       - [x] Parameter `callbackURL` ([test](../../../conformance/oauth-enterprise-authorization.mjs#L46))
         - [x] Require an application callback and return to it on ordinary repeat sign-in ([test](../../../conformance/oauth-enterprise-authorization.mjs#L46))
       - [x] Parameter `errorCallbackURL` (optional) ([test](../../../conformance/oauth-enterprise-authorization.mjs#L61))
@@ -532,13 +546,13 @@
         - [x] Use the welcome callback on first OIDC sign-in and the application callback on the next visit ([test](../../../conformance/oauth-enterprise-authorization.mjs#L47))
         - [x] Use the signed RelayState application callback after a SAML sign-in ([test](../../../adapters/sqlstore/sso_saml_test.go#L350))
       - [ ] Parameter `scopes` (optional)
-        - [x] Request only the scopes passed at sign-in ([test](../../../adapters/sqlstore/sso_browser_test.go#L236))
-      - [x] Parameter `loginHint` (optional) ([test](../../../adapters/sqlstore/sso_browser_test.go#L258))
-        - [x] Send loginHint to the OIDC provider as login_hint ([test](../../../adapters/sqlstore/sso_browser_test.go#L258))
+        - [x] Request only the scopes passed at sign-in ([test](../../../adapters/sqlstore/sso_browser_test.go#L241))
+      - [x] Parameter `loginHint` (optional) ([test](../../../adapters/sqlstore/sso_browser_test.go#L263))
+        - [x] Send loginHint to the OIDC provider as login_hint ([test](../../../adapters/sqlstore/sso_browser_test.go#L263))
       - [ ] Parameter `additionalParams` (optional)
-        - [x] Add a prompt parameter to the OIDC authorization request and reject a reserved state parameter ([test](../../../adapters/sqlstore/sso_browser_test.go#L465))
+        - [x] Add a prompt parameter to the OIDC authorization request and reject a reserved state parameter ([test](../../../adapters/sqlstore/sso_browser_test.go#L470))
       - [ ] Parameter `requestSignUp` (optional)
-        - [x] Create a new user when requestSignUp is true although implicit sign-up is disabled ([test](../../../adapters/sqlstore/sso_browser_test.go#L341))
+        - [x] Create a new user when requestSignUp is true although implicit sign-up is disabled ([test](../../../adapters/sqlstore/sso_browser_test.go#L346))
       - [ ] Parameter `providerType` (optional)
         - [x] Start a SAML sign-in for the directory named by providerId when providerType is saml ([test](../../../adapters/sqlstore/sso_saml_test.go#L241))
   - [ ] Manage providers
@@ -567,15 +581,15 @@
 ## OIDC providers
 
 - [ ] OIDC providers
-  - [x] Require S256 PKCE, reject invalid ID tokens and a disagreeing UserInfo subject, and sign the same provider subject back into one account ([test](../../../adapters/sqlstore/sso_browser_test.go#L333))
+  - [x] Require S256 PKCE, reject invalid ID tokens and a disagreeing UserInfo subject, and sign the same provider subject back into one account ([test](../../../adapters/sqlstore/sso_browser_test.go#L338))
   - [ ] Register an OIDC provider
     - [x] Register discovered and manual OIDC clients with PKCE on by default, keep pkce false when submitted, and return the per-provider redirect URI on both runtimes ([test](../../../conformance/sso-providers.mjs#L12))
     - [ ] Mapping
-      - [x] Save extraFields entries that name a declared, non-server-only user field, read the default email, name and picture claims, and use the first address of a list email claim ([test](../../../adapters/sqlstore/sso_claim_mapping_test.go#L77))
+      - [x] Save extraFields entries that name a declared, non-server-only user field, read the default email, name and picture claims, and use the first address of a list email claim ([test](../../../adapters/sqlstore/sso_claim_mapping_test.go#L82))
   - [ ] OIDC discovery
     - [x] Resolve relative discovered endpoints under the issuer path and choose client_secret_basic from the advertised methods ([test](../../../plugins/sso/discovery_test.go#L61))
     - [x] Fill the JWKS location and client authentication method from discovery at registration on both runtimes ([test](../../../conformance/sso-providers.mjs#L75))
-    - [x] Create an OIDC user with emailVerified false although the mapped verification claim is true ([test](../../../adapters/sqlstore/sso_claim_mapping_test.go#L74))
+    - [x] Create an OIDC user with emailVerified false although the mapped verification claim is true ([test](../../../adapters/sqlstore/sso_claim_mapping_test.go#L79))
     - [ ] Trusted origins
       - [x] Refuse discovery from an origin trusted only for browser redirects without contacting it ([test](../../../plugins/sso/discovery_test.go#L52))
       - [x] Keep a wildcard browser origin from granting server-side transport to an unlisted host ([test](../../../plugins/sso/identity_test.go#L72))
@@ -620,9 +634,9 @@
   - [ ] Token endpoint authentication
   - [ ] Shared redirect URI
     - [x] Send the shared or provider-specific callback as redirect_uri and complete sign-in through it on both runtimes ([test](../../../conformance/sso-browser.mjs#L90))
-    - [x] Reject a code delivered to another provider's callback path with state_mismatch ([test](../../../adapters/sqlstore/sso_browser_test.go#L281))
-  - [x] IdP-initiated sign-in ([test](../../../adapters/sqlstore/sso_idp_initiated_test.go#L88))
-    - [x] Discard the IdP's code, restart at the authorization endpoint with a fresh state, nonce and PKCE challenge, and finish at the host root through the provider or shared callback ([test](../../../adapters/sqlstore/sso_idp_initiated_test.go#L88))
+    - [x] Reject a code delivered to another provider's callback path with state_mismatch ([test](../../../adapters/sqlstore/sso_browser_test.go#L286))
+  - [x] IdP-initiated sign-in ([test](../../../adapters/sqlstore/sso_idp_initiated_test.go#L89))
+    - [x] Discard the IdP's code, restart at the authorization endpoint with a fresh state, nonce and PKCE challenge, and finish at the host root through the provider or shared callback ([test](../../../adapters/sqlstore/sso_idp_initiated_test.go#L89))
 
 ## SSO users and organizations
 
@@ -630,9 +644,9 @@
   - [ ] How SSO users are matched
     - [x] Link a new enterprise identity to a verified local user only under a proved domain or subdomain with implicit linking on, and redirect with account_not_linked otherwise ([test](../../../adapters/sqlstore/sso_domain_test.go#L305))
     - [ ] Block new users
-      - [x] Redirect with signup_disabled for a new OIDC user when implicit sign-up is off, and create the user when requestSignUp is true ([test](../../../adapters/sqlstore/sso_browser_test.go#L340))
+      - [x] Redirect with signup_disabled for a new OIDC user when implicit sign-up is off, and create the user when requestSignUp is true ([test](../../../adapters/sqlstore/sso_browser_test.go#L345))
     - [ ] Update profiles on sign-in
-      - [x] Overwrite a returning user's name, email, image and mapped fields at each OIDC sign-in and store a changed email unverified ([test](../../../adapters/sqlstore/sso_profile_override_test.go#L117))
+      - [x] Overwrite a returning user's name, email, image and mapped fields at each OIDC sign-in and store a changed email unverified ([test](../../../adapters/sqlstore/sso_profile_override_test.go#L135))
   - [ ] Resolve SSO users
     - [x] Link a verified OIDC identity to a chosen user without email matching, and reject or continue it ([test](../../../adapters/sqlstore/sso_resolve_user_test.go#L149))
     - [x] Link a SAML identity to a chosen user and reject a sign-in from the resolver ([test](../../../adapters/sqlstore/sso_saml_resolve_user_test.go#L117))
@@ -657,7 +671,7 @@
   - [ ] Link a provider to an organization
     - [x] Require organization membership (400) and an owner or admin role (403) to register a provider for an organization, and let current organization admins read it ([test](../../../adapters/sqlstore/sso_test.go#L175))
   - [ ] Organization provisioning
-    - [x] Add a provider-linked sign-in as a member, keep an existing role and skip a user with a pending invitation ([test](../../../adapters/sqlstore/sso_browser_test.go#L319))
+    - [x] Add a provider-linked sign-in as a member, keep an existing role and skip a user with a pending invitation ([test](../../../adapters/sqlstore/sso_browser_test.go#L324))
 
 ## SSO reference
 
@@ -674,11 +688,11 @@
     - [ ] oidcConfig
     - [ ] samlConfig
   - [ ] Endpoints
-    - [x] `POST /sso/register` ([test](../../../plugins/openapi/sso_directory_test.go#L101))
-      - [x] Answer 401 to a provider registration without a session ([test](../../../plugins/openapi/sso_directory_test.go#L101))
+    - [x] `POST /sso/register` ([test](../../../plugins/openapi/sso_directory_test.go#L109))
+      - [x] Answer 401 to a provider registration without a session ([test](../../../plugins/openapi/sso_directory_test.go#L109))
       - [x] Register an OIDC provider linked to an organization for its signed-in owner ([test](../../../adapters/sqlstore/sso_test.go#L218))
-    - [x] `POST /sign-in/sso` ([test](../../../plugins/openapi/sso_directory_test.go#L127))
-      - [x] Start an SSO sign-in by email domain without a session and return the provider's authorization URL ([test](../../../plugins/openapi/sso_directory_test.go#L127))
+    - [x] `POST /sign-in/sso` ([test](../../../plugins/openapi/sso_directory_test.go#L135))
+      - [x] Start an SSO sign-in by email domain without a session and return the provider's authorization URL ([test](../../../plugins/openapi/sso_directory_test.go#L135))
     - [x] `GET /sso/callback/:providerId` ([test](../../../conformance/oauth-enterprise-authorization.mjs#L37))
       - [x] Complete an OIDC exchange on the directory-specific return path and issue the employee’s session ([test](../../../conformance/oauth-enterprise-authorization.mjs#L37))
     - [x] `GET /sso/callback` ([test](../../../conformance/oauth-enterprise-authorization.mjs#L37))
@@ -693,19 +707,19 @@
     - [ ] `POST /sso/saml2/logout/:providerId`
       - [x] Start SP-initiated logout from the current SAML session, end it and redirect to the IdP with a signed LogoutRequest ([test](../../../adapters/sqlstore/sso_saml_logout_test.go#L30))
       - [x] Refuse SP-initiated logout from a password session ([test](../../../adapters/sqlstore/sso_saml_logout_test.go#L118))
-      - [x] List the logout start and SLO routes in the generated OpenAPI document only when single logout is enabled ([test](../../../plugins/openapi/sso_directory_test.go#L214))
-    - [x] `GET /sso/providers` ([test](../../../plugins/openapi/sso_directory_test.go#L98))
-      - [x] Answer 401 to the provider list and provider lookup without a session ([test](../../../plugins/openapi/sso_directory_test.go#L98))
+      - [x] List the logout start and SLO routes in the generated OpenAPI document only when single logout is enabled ([test](../../../plugins/openapi/sso_directory_test.go#L222))
+    - [x] `GET /sso/providers` ([test](../../../plugins/openapi/sso_directory_test.go#L106))
+      - [x] Answer 401 to the provider list and provider lookup without a session ([test](../../../plugins/openapi/sso_directory_test.go#L106))
       - [x] Drop organization providers from the list once the caller is demoted from admin ([test](../../../adapters/sqlstore/sso_test.go#L291))
-    - [x] `GET /sso/get-provider` ([test](../../../plugins/openapi/sso_directory_test.go#L98))
-      - [x] Answer 401 to the provider list and provider lookup without a session ([test](../../../plugins/openapi/sso_directory_test.go#L98))
-      - [x] Return one provider by providerId to its owner without the client secret ([test](../../../plugins/openapi/sso_directory_test.go#L121))
+    - [x] `GET /sso/get-provider` ([test](../../../plugins/openapi/sso_directory_test.go#L106))
+      - [x] Answer 401 to the provider list and provider lookup without a session ([test](../../../plugins/openapi/sso_directory_test.go#L106))
+      - [x] Return one provider by providerId to its owner without the client secret ([test](../../../plugins/openapi/sso_directory_test.go#L129))
     - [ ] `POST /sso/update-provider`
       - [x] Replace a SAML provider's IdP metadata and reject responses signed by the removed certificate ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L121))
       - [x] Refuse a metadata update from a user who does not manage the provider ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L94))
-    - [x] `POST /sso/delete-provider` ([test](../../../plugins/openapi/sso_directory_test.go#L102))
-      - [x] Answer 401 to a provider deletion without a session ([test](../../../plugins/openapi/sso_directory_test.go#L102))
-      - [x] Delete a provider through the route with the owner's bearer session, answer success and drop it from the list ([test](../../../plugins/openapi/sso_directory_test.go#L153))
+    - [x] `POST /sso/delete-provider` ([test](../../../plugins/openapi/sso_directory_test.go#L110))
+      - [x] Answer 401 to a provider deletion without a session ([test](../../../plugins/openapi/sso_directory_test.go#L110))
+      - [x] Delete a provider through the route with the owner's bearer session, answer success and drop it from the list ([test](../../../plugins/openapi/sso_directory_test.go#L161))
       - [x] Remove a provider's linked accounts when the SQL store deletes it, and issue no session to a sign-in racing the deletion ([test](../../../adapters/sqlstore/sso_delete_test.go#L168))
     - [x] `POST /sso/request-domain-verification` ([test](../../../plugins/openapi/sso_domain_test.go#L83))
       - [x] Answer 404 on both DNS routes when domain verification is off ([test](../../../plugins/openapi/sso_domain_test.go#L83))
@@ -875,8 +889,8 @@
     - [x] `lastName` ([test](../../../plugins/sso/saml_test.go#L200))
       - [x] Join the surname attribute, or the mapped lastName attribute, after the first name ([test](../../../plugins/sso/saml_test.go#L200))
       - [x] Use a last name alone as the user's name ([test](../../../plugins/sso/saml_test.go#L206))
-    - [x] `extraFields` ([test](../../../adapters/sqlstore/sso_saml_mapping_test.go#L113))
-      - [x] Register a directory with mapping.extraFields and save the mapped department on the new user, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_mapping_test.go#L113))
+    - [x] `extraFields` ([test](../../../adapters/sqlstore/sso_saml_mapping_test.go#L114))
+      - [x] Register a directory with mapping.extraFields and save the mapped department on the new user, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_mapping_test.go#L114))
   - [ ] ACS and callback URLs
     - [x] Land an IdP-initiated sign-in on the provider's idpInitiatedCallbackUrl ([test](../../../adapters/sqlstore/sso_saml_portal_test.go#L114))
     - [x] Fall back to the plugin's IdP-initiated landing page when the provider's is not a trusted origin, on both runtimes ([test](../../../conformance/sso-saml.mjs#L248))

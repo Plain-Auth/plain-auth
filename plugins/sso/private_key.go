@@ -76,6 +76,8 @@ func (o Options) clientAssertion(ctx context.Context, p BrowserProvider) (string
 	if alg == "" {
 		alg = key.Algorithm
 	}
+	// An unsupported algorithm fails closed; another runtime falls back to
+	// RS256.
 	sign, err := clientassertion.New(clientassertion.Options{PrivateKeyPEM: key.PEM, PrivateKeyJWK: key.JWK, KeyID: kid, Algorithm: alg})
 	if err != nil {
 		return "", false

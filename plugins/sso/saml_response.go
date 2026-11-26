@@ -507,6 +507,9 @@ func (o Options) samlFinish(c auth.EndpointContext) (any, error) {
 		}
 		return fail("invalid_saml_response")
 	}
+	if out, e, ok := profileFailure(c, flow, err); ok {
+		return out, e
+	}
 	var ae *auth.APIError
 	if errors.As(err, &ae) {
 		if ae.Code == "SIGN_UP_DISABLED" {

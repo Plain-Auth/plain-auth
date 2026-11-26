@@ -373,6 +373,9 @@ func (o Options) finish(c auth.EndpointContext) (any, error) {
 	if errors.Is(err, ErrChanged) {
 		return fail("SSO_PROVIDER_CHANGED")
 	}
+	if out, e, ok := profileFailure(c, flow, err); ok {
+		return out, e
+	}
 	var ae *auth.APIError
 	if errors.As(err, &ae) {
 		if ae.Code == "SIGN_UP_DISABLED" {
@@ -381,6 +384,24 @@ func (o Options) finish(c auth.EndpointContext) (any, error) {
 		return fail("access_denied")
 	}
 	return result, err
+}
+
+// profileFailure redirects a refused user field with its code and message,
+// and a profile another user's email conflicts with as profile_conflict.
+func profileFailure(c auth.EndpointContext, flow auth.OAuthFlow, err error) (any, error, bool) {
+	var ae *auth.APIError
+	if !errors.As(err, &ae) {
+		return nil, nil, false
+	}
+	switch ae.Code {
+	case "MISSING_FIELD", "VALIDATION_ERROR", "FIELD_NOT_ALLOWED":
+		out, e := enterpriseFailure(c, flow, ae.Code, ae.Message)
+		return out, e, true
+	case "OAUTH_PROFILE_CONFLICT":
+		out, e := enterpriseFailure(c, flow, "profile_conflict", ae.Message)
+		return out, e, true
+	}
+	return nil, nil, false
 }
 
 func enterpriseFailure(c auth.EndpointContext, flow auth.OAuthFlow, code, description string) (any, error) {

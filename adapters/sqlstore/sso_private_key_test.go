@@ -7,12 +7,15 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/Plain-Org/plain-auth/plugins/sso"
 	"github.com/Plain-Org/plain-auth/schema"
+	jose "github.com/go-jose/go-jose/v4"
 )
 
 // A private_key_jwt provider signs each code exchange with a key the host
@@ -36,7 +39,7 @@ func TestEnterpriseOIDCPrivateKeyJWT(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			ddl, err := schema.Generate(dialect, []string{"sso"})
+			ddl, err := schema.Generate(dialect, []string{"organization", "sso"})
 			must(err)
 			store, err := OpenWithSchema(ctx, dialect, organizationTestDSN(t, dialect), ddl)
 			must(err)
@@ -48,12 +51,22 @@ func TestEnterpriseOIDCPrivateKeyJWT(t *testing.T) {
 			var mu sync.Mutex
 			var requests []sso.PrivateKeyRequest
 			empty := false
+			jwk, err := jose.JSONWebKey{Key: key, KeyID: "jwk-key", Algorithm: "RS384"}.MarshalJSON()
+			must(err)
+			// Each provider ID can resolve its own key.
+			keys := map[string]sso.PrivateKey{"jwk": {JWK: jwk}, "named": {PEM: keyPEM, KeyID: "resolved", Algorithm: "PS256"}, "weakresolved": {PEM: keyPEM, Algorithm: "HS256"}}
 			withKey := newSSOHost(t, store, idp, sso.Options{ResolvePrivateKey: func(_ context.Context, r sso.PrivateKeyRequest) (sso.PrivateKey, error) {
 				mu.Lock()
 				defer mu.Unlock()
 				requests = append(requests, r)
+				if r.ProviderID == "failing" {
+					return sso.PrivateKey{}, errors.New("vault unavailable")
+				}
 				if empty {
 					return sso.PrivateKey{}, nil
+				}
+				if k, ok := keys[r.ProviderID]; ok {
+					return k, nil
 				}
 				return sso.PrivateKey{PEM: keyPEM}, nil
 			}})
@@ -123,6 +136,9 @@ func TestEnterpriseOIDCPrivateKeyJWT(t *testing.T) {
 			if idp.tokens.Load() != before {
 				t.Fatal("an empty resolved key reached the token endpoint")
 			}
+			mu.Lock()
+			empty = false
+			mu.Unlock()
 			if w := withoutKey.call("POST", "sign-in/sso", "", map[string]any{"providerId": "acme", "callbackURL": "/home"}); w.Code != 400 {
 				t.Fatal("a host without a resolver started a private_key_jwt sign-in", w.Code, w.Body.String())
 			}
@@ -142,6 +158,56 @@ func TestEnterpriseOIDCPrivateKeyJWT(t *testing.T) {
 			}
 			if _, _, cfg := stored("discovered"); cfg["tokenEndpointAuthentication"] != "private_key_jwt" {
 				t.Fatal("discovery did not select private_key_jwt", cfg)
+			}
+			idp.mu.Lock()
+			idp.methods = nil
+			idp.mu.Unlock()
+
+			// A stored client secret is never sent with an assertion.
+			if w := withKey.register(owner, provider("secretkept", func(c map[string]any) { c["clientSecret"] = "oidc-secret" })); w.Code != 200 {
+				t.Fatal("a private_key_jwt provider with a stored secret was refused", w.Code, w.Body.String())
+			}
+			if w := withKey.signIn(map[string]any{"providerId": "secretkept"}, "kim@secretkept.example", "kim", "private_key_jwt", ""); w.Header().Get("Location") != "https://service.test/home" {
+				t.Fatal("a private_key_jwt sign-in sent the stored client secret", w.Code, w.Header().Get("Location"))
+			}
+			// The key ID and algorithm fall back to the resolved key's, then RS256.
+			bare := func(c map[string]any) { delete(c, "privateKeyId"); delete(c, "privateKeyAlgorithm") }
+			for id, want := range map[string]string{"jwk": "jwk-key RS384", "named": "resolved PS256", "plain": " RS256"} {
+				if w := withKey.register(owner, provider(id, bare)); w.Code != 200 {
+					t.Fatal("registration failed", id, w.Code, w.Body.String())
+				}
+				if w := withKey.signIn(map[string]any{"providerId": id}, "ada@"+id+".example", "ada-"+id, "private_key_jwt", ""); w.Header().Get("Location") != "https://service.test/home" || lastAssertion() != want {
+					t.Fatal("the assertion did not take the resolved key's ID and algorithm", id, w.Header().Get("Location"), lastAssertion())
+				}
+			}
+			// A failing resolver, or a resolved algorithm outside the list,
+			// fails the callback before any token request.
+			for _, id := range []string{"failing", "weakresolved"} {
+				if w := withKey.register(owner, provider(id, bare)); w.Code != 200 {
+					t.Fatal("registration failed", id, w.Code, w.Body.String())
+				}
+				before := idp.tokens.Load()
+				if w := withKey.signIn(map[string]any{"providerId": id}, "ada@"+id+".example", "ada-"+id, "private_key_jwt", ""); w.Header().Get("Location") != "https://service.test/retry?error=invalid_provider&error_description=no_private_key_available" || idp.tokens.Load() != before {
+					t.Fatal("an unusable resolved key did not fail the callback", id, w.Header().Get("Location"))
+				}
+			}
+			// The resolver sees the provider's organization.
+			now := store.date(time.Now())
+			_, err = store.db.ExecContext(ctx, store.bind(`INSERT INTO "organization" ("id","name","slug","createdAt") VALUES (?,?,?,?)`), "tenant", "Tenant", "tenant", now)
+			must(err)
+			_, err = store.db.ExecContext(ctx, store.bind(`INSERT INTO "member" ("id","organizationId","userId","role","createdAt") VALUES (?,?,?,?,?)`), "owner-member", "tenant", user, "owner", now)
+			must(err)
+			org := provider("orgkey", nil)
+			org["organizationId"] = "tenant"
+			if w := withKey.register(owner, org); w.Code != 200 {
+				t.Fatal("an organization's private_key_jwt provider was refused", w.Code, w.Body.String())
+			}
+			withKey.signIn(map[string]any{"providerId": "orgkey"}, "lin@orgkey.example", "lin-org", "private_key_jwt", "")
+			mu.Lock()
+			last = requests[len(requests)-1]
+			mu.Unlock()
+			if last.ProviderID != "orgkey" || last.OrganizationID != "tenant" {
+				t.Fatal("ResolvePrivateKey did not receive the provider's organization", last)
 			}
 		})
 	}
