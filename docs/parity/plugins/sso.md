@@ -108,15 +108,15 @@
     - [x] Resume the original client authorization with the enterprise employee’s new session and redeem the code after consent ([test](../../../conformance/oauth-enterprise-authorization.mjs#L43))
   - [ ] `GET / POST /sso/saml2/sp/acs/:providerId`
     - [x] POST a separately signed browser assertion, receive the application session and reuse the original account ([test](../../../conformance/sso-saml.mjs#L288))
-    - [x] Validate a signed issuer, audience, recipient, request and validity window on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_test.go#L571))
-    - [x] Consume an assertion once across independent instances and maintain the live DNS boundary on automatic linking ([test](../../../adapters/sqlstore/sso_saml_test.go#L671))
+    - [x] Validate a signed issuer, audience, recipient, request and validity window on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_test.go#L592))
+    - [x] Consume an assertion once across independent instances and maintain the live DNS boundary on automatic linking ([test](../../../adapters/sqlstore/sso_saml_test.go#L692))
     - [x] Invalidate requests that predate a certificate rotation and check the current XML trust anchors on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L103))
     - [x] Complete first and returning sign-in with the published client using a directly signed, independently encrypted assertion on both runtimes ([test](../../../conformance/core.test.mjs#L1494))
     - [x] Enforce the encrypted assertion profile, issuer, browser, DNS binding and durable replay checks on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_test.go#L64))
     - [x] Sign in from a reviewed IdP portal with a directly signed or encrypted assertion, select a trusted landing page and reject replay through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L1489))
     - [x] Require an approved immutable registration and its browser Origin, apply session and signup policy, and claim one portal assertion across SQL replicas in all three databases ([test](../../../adapters/sqlstore/sso_saml_portal_test.go#L24))
-    - [x] Exclude a new registration that reuses the approved provider name after deletion ([test](../../../adapters/sqlstore/sso_saml_test.go#L728))
-    - [x] Reject a signed portal assertion when the provider catalog changes after host approval and before the final SQL transaction ([test](../../../adapters/sqlstore/sso_saml_test.go#L445))
+    - [x] Exclude a new registration that reuses the approved provider name after deletion ([test](../../../adapters/sqlstore/sso_saml_test.go#L749))
+    - [x] Reject a signed portal assertion when the provider catalog changes after host approval and before the final SQL transaction ([test](../../../adapters/sqlstore/sso_saml_test.go#L466))
     - [x] A SAML profile carries the raw attributes ValidateUserInfo sees, one value as a string and several as a list ([test](../../../plugins/sso/saml_test.go#L148))
     - [x] A response with a bad signature still spends the browser's RelayState with its verification hooks ([test](../../../adapters/sqlstore/sso_saml_test.go#L314))
     - [x] A declined RelayState answers 400 INVALID_OAUTH_STATE and keeps the flow for a retry ([test](../../../adapters/sqlstore/sso_saml_test.go#L324))
@@ -129,6 +129,7 @@
   - [ ] `POST /sso/saml2/logout/:providerId`
     - [x] Use the native SDK to revoke exactly the recorded local SAML login and sign the original IdP NameID and SessionIndex on three SQL engines ([test](../../../adapters/sqlstore/sso_saml_logout_test.go#L30))
     - [x] Revoke the current local login through the released client on both runtimes and verify the Go request’s RSA-SHA256 Redirect signature ([test](../../../conformance/sso-saml.mjs#L342))
+    - [x] A SAML logout binding carries the expiry a session create hook gave its session ([test](../../../adapters/sqlstore/sso_saml_test.go#L397))
   - [ ] `AlgorithmValidationOptions`
     - [ ] `onDeprecated`
     - [ ] `allowedSignatureAlgorithms`

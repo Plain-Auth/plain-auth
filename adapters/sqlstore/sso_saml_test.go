@@ -384,6 +384,27 @@ func runEnterpriseSAMLBrowser(t *testing.T, encrypted, logout bool) {
 						t.Fatal("SAML login failed", status, head.Get("Location"))
 					}
 				}
+				if !encrypted {
+					t.Run("a binding expires with its stored session", func(t *testing.T) {
+						var hooks auth.DatabaseHooks
+						hooks.Session.Create.Before = func(_ context.Context, s *auth.SessionRecord, _ *auth.HookContext) error {
+							s.ExpiresAt = s.ExpiresAt.Add(time.Hour)
+							return nil
+						}
+						savedNode, savedPeer := node, peer
+						node, peer = host(first, keys, portalPolicy, false, hooks), host(second, keys, portalPolicy, false, hooks)
+						defer func() { node, peer = savedNode, savedPeer }()
+						// A binding expires with the session a create hook extended.
+						login(t, newBrowser(), "extended-session", nil)
+						var sessionID string
+						var sessionEnd, bindingEnd time.Time
+						must(first.db.QueryRowContext(ctx, first.bind(`SELECT s."id",s."expiresAt" FROM "session" s JOIN "user" u ON u."id"=s."userId" WHERE u."email"=?`), "extended-session@staff.example").Scan(&sessionID, &sessionEnd))
+						must(first.db.QueryRowContext(ctx, first.bind(`SELECT "expiresAt" FROM "verification" WHERE "id"=?`), originDigest("sls-", sessionID)).Scan(&bindingEnd))
+						if !bindingEnd.Equal(sessionEnd) || time.Until(sessionEnd) < 90*time.Minute {
+							t.Fatal("the binding expires at", bindingEnd, "for a session that expires at", sessionEnd)
+						}
+					})
+				}
 				t.Run("IdP session logout", func(t *testing.T) {
 					testSAMLIDPLogout(t, first, second, idp, api, newBrowser, sdk, login, owner, node, peer, dns)
 				})

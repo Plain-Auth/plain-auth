@@ -130,6 +130,10 @@ type oauthTransactionHooks struct {
 	trustEmailDomain bool
 	guard            func(*sql.Tx) error
 	afterIdentity    func(*sql.Tx, authn.User) error
+	// withSession writes records bound to the session, such as a SAML logout
+	// binding, once the session row is stored as planned and before its copy
+	// leaves the transaction.
+	withSession func(*sql.Tx, authn.User, authn.StoredSession) error
 }
 
 func (s *Store) completeOAuthWith(ctx context.Context, provider, subject string, tokens authn.OAuthTokens, candidate authn.User, session authn.StoredSession, options authn.OAuthLoginOptions, hooks *oauthTransactionHooks, existingOnly bool, fields *authn.OAuthProfileFields) (authn.User, bool, error) {
@@ -393,7 +397,18 @@ func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tok
 	}
 	session.UserID = u.ID
 	if options.LinkUserID == "" {
-		if err := s.insertSession(ctx, tx, session); err != nil {
+		admin, err := s.insertPlannedSession(ctx, tx, &session)
+		if err != nil {
+			return u, false, err
+		}
+		// Records bound to the session take it as stored, with a create
+		// hook's edits, and are written before its copy leaves the transaction.
+		if hooks != nil && hooks.withSession != nil {
+			if err := hooks.withSession(tx, u, session); err != nil {
+				return u, false, err
+			}
+		}
+		if err := s.mirrorNewSession(ctx, tx, session, admin); err != nil {
 			return u, false, err
 		}
 	}

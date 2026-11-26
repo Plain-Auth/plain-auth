@@ -145,19 +145,31 @@ type executor interface {
 func (s *Store) PlansLogins() {}
 
 func (s *Store) insertSession(ctx context.Context, tx *sql.Tx, ss authn.StoredSession) error {
-	if err := authn.LoginPlanFrom(ctx).PlanSession(&ss); err != nil {
+	admin, err := s.insertPlannedSession(ctx, tx, &ss)
+	if err != nil {
 		return err
+	}
+	return s.mirrorNewSession(ctx, tx, ss, admin)
+}
+
+// insertPlannedSession applies the login plan's version of the session to
+// ss and inserts its row, reporting whether the schema has admin columns.
+// The caller writes the session's mirror copy with mirrorNewSession before
+// it commits.
+func (s *Store) insertPlannedSession(ctx context.Context, tx *sql.Tx, ss *authn.StoredSession) (bool, error) {
+	if err := authn.LoginPlanFrom(ctx).PlanSession(ss); err != nil {
+		return false, err
 	}
 	cols := `"id","userId","token","ipAddress","userAgent","createdAt","updatedAt","expiresAt"`
 	params := "?,?,?,?,?,?,?,?"
 	args := []any{ss.ID, ss.UserID, ss.Token, ss.IPAddress, ss.UserAgent, s.date(ss.CreatedAt), s.date(ss.UpdatedAt), s.date(ss.ExpiresAt)}
 	additional, err := ss.PhysicalSessionFields()
 	if err != nil {
-		return err
+		return false, err
 	}
 	for _, column := range slices.Sorted(maps.Keys(additional)) {
 		if !sessionfields.NameOK(column) {
-			return errors.New("sqlstore: invalid additional session column")
+			return false, errors.New("sqlstore: invalid additional session column")
 		}
 		cols += `,"` + column + `"`
 		params += ",?"
@@ -165,20 +177,18 @@ func (s *Store) insertSession(ctx context.Context, tx *sql.Tx, ss authn.StoredSe
 	}
 	admin, err := s.detectAdminSchema(ctx, tx)
 	if err != nil {
-		return err
+		return false, err
 	}
 	if admin {
 		if err := s.adminSessionGate(ctx, tx, ss.UserID, time.Now()); err != nil {
-			return err
+			return false, err
 		}
 		cols += `,"impersonatedBy"`
 		params += ",?"
 		args = append(args, ss.ImpersonatedBy)
 	}
-	if _, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "session" (`+cols+`) VALUES (`+params+`)`), args...); err != nil {
-		return err
-	}
-	return s.mirrorNewSession(ctx, tx, ss, admin)
+	_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "session" (`+cols+`) VALUES (`+params+`)`), args...)
+	return admin, err
 }
 
 // CreateSession saves a session using its token.

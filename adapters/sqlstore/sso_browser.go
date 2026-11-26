@@ -253,12 +253,13 @@ func (s *Store) completeEnterpriseLogin(ctx context.Context, ref string, provisi
 			}
 			return nil
 		},
-		afterIdentity: func(tx *sql.Tx, u auth.User) error {
-			if assertion != nil && assertion.Logout != nil {
-				if err := s.recordSAMLSession(ctx, tx, id, ref, u.ID, subject, *assertion.Logout, session); err != nil {
-					return err
-				}
+		withSession: func(tx *sql.Tx, u auth.User, session auth.StoredSession) error {
+			if assertion == nil || assertion.Logout == nil {
+				return nil
 			}
+			return s.recordSAMLSession(ctx, tx, id, ref, u.ID, subject, *assertion.Logout, session)
+		},
+		afterIdentity: func(tx *sql.Tx, u auth.User) error {
 			if !provision || orgID == nil {
 				return nil
 			}

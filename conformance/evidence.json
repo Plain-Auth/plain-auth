@@ -10383,6 +10383,11 @@
       "label": "Revoke the current local login through the released client on both runtimes and verify the Go request’s RSA-SHA256 Redirect signature",
       "test": "conformance/sso-saml.mjs",
       "marker": "assert.ok(verify(\"RSA-SHA256\",Buffer.from(signed),actorCert"
+    },
+    {
+      "label": "A SAML logout binding carries the expiry a session create hook gave its session",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "// A binding expires with the session a create hook extended."
     }
   ],
   "plugin/sso/GET / POST /sso/saml2/sp/slo/:providerId": [
