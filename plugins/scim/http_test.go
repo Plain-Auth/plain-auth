@@ -209,6 +209,10 @@ func TestSCIMDiscoveryDocumentsAndRefusedRoutes(t *testing.T) {
 	if !reflect.DeepEqual(cfg["changePassword"], map[string]any{"supported": false}) {
 		t.Fatal("service provider config advertised password changes", cfg["changePassword"])
 	}
+	if _, schemas := call("GET", "Schemas", ""); schemas["totalResults"] != 2.0 || len(schemas["Resources"].([]any)) != 2 ||
+		schemas["Resources"].([]any)[0].(map[string]any)["id"] != UserSchema || schemas["Resources"].([]any)[1].(map[string]any)["id"] != EnterpriseUserSchema {
+		t.Fatal("discovery without Groups did not list the core and Enterprise User schemas", schemas)
+	}
 	if !reflect.DeepEqual(cfg["patch"], map[string]any{"supported": true}) {
 		t.Fatal("service provider config did not advertise PATCH", cfg["patch"])
 	}

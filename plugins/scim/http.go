@@ -233,6 +233,9 @@ func (h *Handler) discovery(w http.ResponseWriter, resource, id string) {
 		kind, groupKey = "ResourceType", "GroupResourceType"
 	}
 	keys := []string{resource}
+	if resource == "Schemas" {
+		keys = append(keys, "EnterpriseSchema")
+	}
 	if h.groups != nil {
 		keys = append(keys, groupKey)
 	}

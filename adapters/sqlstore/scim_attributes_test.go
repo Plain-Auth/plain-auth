@@ -771,3 +771,61 @@ func TestSCIMUserSelectionOverHTTP(t *testing.T) {
 		})
 	}
 }
+
+// The Enterprise User extension is sent under its URN, stored under the
+// canonical enterprise key another runtime reads, and discovered with the
+// User schema.
+func TestSCIMEnterpriseUserOverHTTP(t *testing.T) {
+	const urn = scim.EnterpriseUserSchema
+	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
+		t.Run(dialect, func(t *testing.T) {
+			store, call := attributeDirectory(t, dialect)
+			extension := map[string]any{"employeeNumber": "701984", "department": "Tour Operations", "manager": map[string]any{"value": "m-1"}}
+			created := call("POST", "Users", map[string]any{"schemas": []string{scim.UserSchema, urn}, "userName": "bjensen@example.test",
+				urn: map[string]any{"employeeNumber": "701984", "department": "Tour Operations", "manager": map[string]any{"value": "m-1", "displayName": "John Smith"}}}, 201, "an Enterprise User was refused")
+			if !jsonEqual(created["schemas"], []any{scim.UserSchema, urn}) || !jsonEqual(created[urn], extension) || created["enterprise"] != nil {
+				t.Fatal("the Enterprise extension was not returned on creation", created)
+			}
+			id := created["id"].(string)
+			if got := call("GET", "Users/"+id, nil, 200, "the Enterprise User could not be read"); !jsonEqual(got[urn], extension) {
+				t.Fatal("the Enterprise extension was not stored", got)
+			}
+			var serialized string
+			if err := store.db.QueryRowContext(t.Context(), store.bind(`SELECT "serializedAttributes" FROM "scimUser" WHERE "id"=?`), id).Scan(&serialized); err != nil || !strings.Contains(serialized, `"enterprise":{`) || strings.Contains(serialized, urn+`":`) {
+				t.Fatal("the Enterprise extension was not stored under its canonical key", serialized, err)
+			}
+			if got := call("GET", "Users/"+id+"?attributes=manager,"+urn+":department", nil, 200, "an Enterprise selection was refused"); !jsonEqual(got[urn], map[string]any{"department": "Tour Operations", "manager": map[string]any{"value": "m-1"}}) || got["userName"] != nil {
+				t.Fatal("an Enterprise or manager selection returned the wrong fields", got)
+			}
+			if body := call("POST", "Users", map[string]any{"schemas": []string{scim.UserSchema}, "userName": "undeclared@example.test", urn: map[string]any{"department": "R&D"}}, 400, "HTTP accepted an Enterprise object without its schema URI"); body["scimType"] != "invalidValue" {
+				t.Fatal("an undeclared Enterprise object was not invalidValue", body)
+			}
+			call("PUT", "Users/"+id, map[string]any{"schemas": []string{scim.UserSchema, urn}, "userName": "bjensen@example.test"}, 200, "the replacement was refused")
+			if got := call("GET", "Users/"+id, nil, 200, "the replaced User could not be read"); got[urn] != nil || !jsonEqual(got["schemas"], []any{scim.UserSchema, urn}) {
+				t.Fatal("PUT kept an omitted Enterprise extension", got)
+			}
+			var ids []any
+			for _, r := range call("GET", "Schemas", nil, 200, "the schemas could not be listed")["Resources"].([]any) {
+				ids = append(ids, r.(map[string]any)["id"])
+			}
+			if !jsonEqual(ids, []any{scim.UserSchema, urn, scim.GroupSchema}) {
+				t.Fatal("discovery did not list the User, Enterprise User and Group schemas in order", ids)
+			}
+			schema := call("GET", "Schemas/"+urn, nil, 200, "the Enterprise User schema could not be retrieved by ID")
+			var names []string
+			for _, a := range schema["attributes"].([]any) {
+				names = append(names, a.(map[string]any)["name"].(string))
+			}
+			if schema["name"] != "EnterpriseUser" || strings.Join(names, " ") != "employeeNumber costCenter organization division department manager" || !strings.HasSuffix(schema["meta"].(map[string]any)["location"].(string), "/Schemas/"+urn) {
+				t.Fatal("the Enterprise User schema could not be retrieved by ID", schema)
+			}
+			want := []any{map[string]any{"schema": urn, "required": false}}
+			if got := call("GET", "ResourceTypes/User", nil, 200, "the User resource type could not be read"); !jsonEqual(got["schemaExtensions"], want) {
+				t.Fatal("the User resource type did not declare the Enterprise extension", got)
+			}
+			if got := call("GET", "ResourceTypes", nil, 200, "the resource types could not be listed"); !jsonEqual(got["Resources"].([]any)[0].(map[string]any)["schemaExtensions"], want) {
+				t.Fatal("the ResourceTypes listing omitted the Enterprise extension", got)
+			}
+		})
+	}
+}

@@ -465,6 +465,119 @@
       }
     ]
   },
+  "EnterpriseSchema": {
+    "id": "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User",
+    "schemas": [
+      "urn:ietf:params:scim:schemas:core:2.0:Schema"
+    ],
+    "name": "EnterpriseUser",
+    "description": "Enterprise User",
+    "attributes": [
+      {
+        "name": "employeeNumber",
+        "type": "string",
+        "multiValued": false,
+        "description": "A number assigned to the User.",
+        "required": false,
+        "caseExact": false,
+        "mutability": "readWrite",
+        "returned": "default",
+        "uniqueness": "none"
+      },
+      {
+        "name": "costCenter",
+        "type": "string",
+        "multiValued": false,
+        "description": "The User's cost center.",
+        "required": false,
+        "caseExact": false,
+        "mutability": "readWrite",
+        "returned": "default",
+        "uniqueness": "none"
+      },
+      {
+        "name": "organization",
+        "type": "string",
+        "multiValued": false,
+        "description": "The User's organization.",
+        "required": false,
+        "caseExact": false,
+        "mutability": "readWrite",
+        "returned": "default",
+        "uniqueness": "none"
+      },
+      {
+        "name": "division",
+        "type": "string",
+        "multiValued": false,
+        "description": "The User's division.",
+        "required": false,
+        "caseExact": false,
+        "mutability": "readWrite",
+        "returned": "default",
+        "uniqueness": "none"
+      },
+      {
+        "name": "department",
+        "type": "string",
+        "multiValued": false,
+        "description": "The User's department.",
+        "required": false,
+        "caseExact": false,
+        "mutability": "readWrite",
+        "returned": "default",
+        "uniqueness": "none"
+      },
+      {
+        "name": "manager",
+        "type": "complex",
+        "multiValued": false,
+        "description": "The User's manager.",
+        "required": false,
+        "subAttributes": [
+          {
+            "name": "value",
+            "type": "string",
+            "multiValued": false,
+            "description": "The manager's identifier.",
+            "required": false,
+            "caseExact": false,
+            "mutability": "readWrite",
+            "returned": "default",
+            "uniqueness": "none"
+          },
+          {
+            "name": "$ref",
+            "type": "reference",
+            "referenceTypes": [
+              "User"
+            ],
+            "multiValued": false,
+            "description": "The URI of the manager's SCIM User resource.",
+            "required": false,
+            "caseExact": false,
+            "mutability": "readWrite",
+            "returned": "default",
+            "uniqueness": "none"
+          },
+          {
+            "name": "displayName",
+            "type": "string",
+            "multiValued": false,
+            "description": "The manager's display name.",
+            "required": false,
+            "caseExact": false,
+            "mutability": "readOnly",
+            "returned": "default",
+            "uniqueness": "none"
+          }
+        ],
+        "mutability": "readWrite",
+        "returned": "default",
+        "uniqueness": "none"
+      }
+    ]
+  },
   "ResourceTypes": {
     "schemas": [
       "urn:ietf:params:scim:schemas:core:2.0:ResourceType"
@@ -473,7 +586,13 @@
     "name": "User",
     "endpoint": "/Users",
     "description": "User Account",
-    "schema": "urn:ietf:params:scim:schemas:core:2.0:User"
+    "schema": "urn:ietf:params:scim:schemas:core:2.0:User",
+    "schemaExtensions": [
+      {
+        "schema": "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User",
+        "required": false
+      }
+    ]
   },
   "ServiceProviderConfig": {
     "schemas": [

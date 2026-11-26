@@ -10,7 +10,7 @@ import (
 	"github.com/Plain-Org/plain-auth/internal/jsjson"
 )
 
-var userFields = strings.Fields("schemas userName displayName externalId name emails active title userType preferredLanguage locale timezone phoneNumbers addresses roles entitlements")
+var userFields = append(strings.Fields("schemas userName displayName externalId name emails active title userType preferredLanguage locale timezone phoneNumbers addresses roles entitlements"), EnterpriseUserSchema)
 var nameFields = strings.Fields("formatted givenName familyName middleName honorificPrefix honorificSuffix")
 var emailFields = strings.Fields("type primary value")
 
@@ -164,14 +164,11 @@ func normalize(input any) (p Profile, err error) {
 			if strings.EqualFold(key, "active") && value == nil {
 				return p, invalid("invalidValue", "active cannot be null")
 			}
-			if value != nil && field(key, []string{"enterprise"}) != "" {
-				return p, invalid("invalidValue", "Unsupported User attribute "+key)
-			}
 		}
 	}
-	schemas, ok := m["schemas"].([]any)
-	if !ok || len(schemas) != 1 || schemas[0] != UserSchema {
-		return p, invalid("invalidValue", "The core User schema is required")
+	schemas, declared, err := userSchemas(m["schemas"])
+	if err != nil {
+		return p, err
 	}
 	p.UserName, err = stringValue(m["userName"], 512)
 	if err != nil {
@@ -234,6 +231,17 @@ func normalize(input any) (p Profile, err error) {
 		}
 	}
 	p.Attributes = map[string]any{"schemas": schemas, "name": name, "emails": emails}
+	if raw, ok := m[EnterpriseUserSchema]; ok && !allNull(raw) {
+		if !declared {
+			return p, invalid("invalidValue", "The Enterprise User extension requires its schema URI")
+		}
+		extension, err := enterpriseUser(raw)
+		if err != nil {
+			return p, err
+		}
+		p.Attributes["enterprise"] = extension
+		m[EnterpriseUserSchema] = extension
+	}
 	for _, a := range multiValuedAttributes {
 		if raw, provided := m[a.name]; provided {
 			values, err := a.normalize(raw)
@@ -269,8 +277,15 @@ func normalize(input any) (p Profile, err error) {
 	}
 	return p, nil
 }
+
+// profileObject returns a profile as a User document; the Enterprise
+// extension stored under its canonical key is sent under its URN.
 func profileObject(p Profile) map[string]any {
 	m := maps.Clone(p.Attributes)
+	if extension, ok := m["enterprise"]; ok {
+		delete(m, "enterprise")
+		m[EnterpriseUserSchema] = extension
+	}
 	m["userName"], m["displayName"], m["active"] = p.UserName, p.DisplayName, p.Active
 	if p.ExternalID != "" {
 		m["externalId"] = p.ExternalID

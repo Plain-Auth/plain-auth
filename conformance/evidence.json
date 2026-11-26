@@ -9676,6 +9676,17 @@
       "label": "Discover the core Group schema",
       "test": "conformance/scim-contract.mjs",
       "marker": "export async function groupContract("
+    },
+    {
+      "label": "List the core User, Enterprise User and Group schemas in that order, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "t.Fatal(\"discovery did not list the User, Enterprise User and Group schemas in order\", ids)",
+      "complete": true
+    },
+    {
+      "label": "List the core and Enterprise User schemas without a Group store",
+      "test": "plugins/scim/http_test.go",
+      "marker": "t.Fatal(\"discovery without Groups did not list the core and Enterprise User schemas\", schemas)"
     }
   ],
   "plugin/scim/GET /scim/v2/Schemas/:schemaId": [
@@ -9693,6 +9704,12 @@
       "label": "Answer an unknown schema ID with a SCIM 404",
       "test": "plugins/scim/http_test.go",
       "marker": "t.Fatal(\"an unknown schema ID did not return a SCIM 404\", w.Code, w.Body.String())"
+    },
+    {
+      "label": "Retrieve the Enterprise User schema by its URN with its attributes and location",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "t.Fatal(\"the Enterprise User schema could not be retrieved by ID\", schema)",
+      "complete": true
     }
   ],
   "plugin/scim/GET /scim/v2/ResourceTypes": [
@@ -45286,6 +45303,11 @@
       "label": "Refuse a Group PATCH value naming displayName twice as invalidSyntax over HTTP",
       "test": "adapters/sqlstore/scim_groups_test.go",
       "marker": "t.Fatal(\"a Group PATCH value naming displayName twice was not invalidSyntax\", body)"
+    },
+    {
+      "label": "Report an Enterprise object naming department twice as invalidSyntax",
+      "test": "plugins/scim/enterprise_test.go",
+      "marker": "t.Fatal(\"an Enterprise object naming department twice was not invalidSyntax\", err)"
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L351": [
@@ -45498,6 +45520,46 @@
       "label": "Select nested Group member and meta fields",
       "test": "adapters/sqlstore/scim_attributes_test.go",
       "marker": "t.Fatal(\"a nested Group selection returned the wrong fields\", got)"
+    }
+  ],
+  "plugin-symbol/scim/SCIMEnterpriseUser": [
+    {
+      "label": "Create, read and replace an Enterprise User, return the extension under its URN and store it under the canonical enterprise key, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "t.Fatal(\"the Enterprise extension was not stored under its canonical key\", serialized, err)"
+    },
+    {
+      "label": "Order and check the User schema list, read case-insensitive Enterprise keys, unwrap one-element scalars, count limits in code points, refuse an undeclared object and drop an all-null one",
+      "test": "plugins/scim/enterprise_test.go",
+      "marker": "func TestSCIMEnterpriseUserProfileNormalization("
+    }
+  ],
+  "plugin-symbol/scim/SCIMCanonicalManager": [
+    {
+      "label": "Store a manager string, object or one-element array as value and $ref, discard its displayName and refuse an empty, multiple or overlong manager",
+      "test": "plugins/scim/enterprise_test.go",
+      "marker": "t.Fatal(\"a manager was not stored in its canonical form\", c.manager, p.Attributes[\"enterprise\"], err)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L257/`urn:ietf:params:scim:schemas:extension:enterprise:2.0:User`": [
+    {
+      "label": "Return the Enterprise extension on creation and reads, refuse it without its schema URI and drop it on a PUT that omits it, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "t.Fatal(\"the Enterprise extension was not returned on creation\", created)"
+    },
+    {
+      "label": "Select Enterprise fields through the manager alias and URN-qualified paths",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "t.Fatal(\"an Enterprise or manager selection returned the wrong fields\", got)"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L315/`GET /scim/v2/Schemas`": [
+    {
+      "label": "List the User, Enterprise User and Group schemas and declare the optional Enterprise extension on the User resource type, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "t.Fatal(\"the User resource type did not declare the Enterprise extension\", got)",
+      "complete": true
     }
   ]
 }

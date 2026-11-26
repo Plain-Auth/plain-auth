@@ -96,10 +96,29 @@ func selectionParam(q url.Values, key, schema string) ([]string, error) {
 			if part == "" || strings.ContainsFunc(part, unicode.IsSpace) {
 				return nil, invalid("invalidValue", key+" must be a comma-separated list of attribute paths")
 			}
-			paths = append(paths, strings.ToLower(withoutSchema(part, schema)))
+			paths = append(paths, responsePath(part, schema))
 		}
 	}
 	return paths, nil
+}
+
+// responsePath lowercases a selection path relative to the resource. An
+// Enterprise path is the URN, a dot and the attribute path, and the classic
+// manager alias selects the Enterprise manager.
+func responsePath(part, schema string) string {
+	lower := strings.ToLower(part)
+	if schema == UserSchema {
+		urn := strings.ToLower(EnterpriseUserSchema)
+		switch {
+		case lower == "manager" || strings.HasPrefix(lower, "manager."):
+			return urn + "." + lower
+		case lower == urn:
+			return urn
+		case strings.HasPrefix(lower, urn+":"):
+			return urn + "." + lower[len(urn)+1:]
+		}
+	}
+	return strings.ToLower(withoutSchema(part, schema))
 }
 
 // returns reports whether the selection can return any part of a top-level

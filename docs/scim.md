@@ -97,8 +97,8 @@ Retirement preserves directory and application records, releases profile ownersh
 | Route relative to the directory URL | Behavior |
 | --- | --- |
 | `GET /ServiceProviderConfig` | Publishes bearer authentication, PATCH and filter capabilities |
-| `GET /Schemas` and `GET /Schemas/{id}` | Describe the supported core User and Group attributes |
-| `GET /ResourceTypes` and `GET /ResourceTypes/{id}` | Discover the Users and Groups resources |
+| `GET /Schemas` and `GET /Schemas/{id}` | Describe the core User, Enterprise User and Group schemas, in that order |
+| `GET /ResourceTypes` and `GET /ResourceTypes/{id}` | Discover the Users and Groups resources; the User resource type declares the optional Enterprise extension |
 | `POST /Users` | Create a directory User and an unverified application user, reprovision by a retained external ID, or with `Identity.ResolveUser` link an existing account |
 | `GET /Users/{id}` and `GET /Users` | Read a User or page through resources owned by this connection |
 | `PUT /Users/{id}` | Replace the mutable core profile |
@@ -186,6 +186,8 @@ Send `roles` as an array on a User. Each entry requires `value` and can include 
 
 `phoneNumbers`, `addresses` and `entitlements` follow the same rules as roles: up to ten entries each, trimmed text, lowercased and unique defined types and at most one primary. A phone number or entitlement requires `value`; phone numbers and entitlement values allow 1,024 code points. An address needs at least one of `formatted`, `streetAddress`, `locality`, `region`, `postalCode` and `country`; `formatted` and `streetAddress` allow 1,024 code points and the others 256. They are stored in the canonical attributes another runtime reads, returned on reads and replaced by PUT. PATCH supports the same paths as roles for each of them: the whole array, a subattribute such as `addresses.locality`, and exact `type eq` or `primary eq` selectors, as in `phoneNumbers[type eq "work"].value`. [Multi-valued attribute tests](../adapters/sqlstore/scim_attributes_test.go)
 
+The Enterprise User extension, `urn:ietf:params:scim:schemas:extension:enterprise:2.0:User`, supports `employeeNumber`, `costCenter`, `organization`, `division`, `department` and `manager`. Declare its URI in `schemas` to send the object under that URI; `schemas` holds the core User schema once and the extension at most once, and is returned core first. The URI may be declared alone and stays in the response, and an object whose fields are all null counts as omitted. Scalars may be one-element arrays, and `employeeNumber` and `costCenter` allow 256 code points and the others 1,024. A `manager` accepts an identifier string, an object with `value` or `$ref`, or a one-element array of that object; its `displayName` is read-only and never stored, and the manager is an external reference that needs no local User. The extension is stored under the canonical `enterprise` key another runtime reads. `attributes=manager` and URN-qualified paths such as `urn:ietf:params:scim:schemas:extension:enterprise:2.0:User:department` select its fields. [Enterprise User tests](../adapters/sqlstore/scim_attributes_test.go)
+
 For example, this PATCH assigns a directory role and marks it primary. The preceding primary entry becomes secondary.
 
 ```json
@@ -222,7 +224,7 @@ PUT replaces the Group profile and its direct member set. PATCH supports scalar 
 
 To accept Microsoft's classic Entra Group schema marker on creation, set `AcceptLegacyEntraGroupSchema: true` in `scim.Options`. The response and discovery documents use the core Group schema. The marker is accepted only by `POST /Groups`; PUT and PATCH bodies that carry it return 400. Group paths may carry the core Group schema prefix; a null value removes `externalId` or `members`, and `displayName` cannot be null. [Group PATCH form tests](../adapters/sqlstore/scim_groups_test.go) [Group lifecycle and concurrency tests](../adapters/sqlstore/scim_groups_test.go) · [Group PATCH and compatibility tests](../plugins/scim/groups_test.go)
 
-The checklist tracks Group-to-application role mapping, Enterprise User attributes and their PATCH paths. [Provisioning checklist](parity/plugins/scim.md) · [SQL ownership and concurrency tests](../adapters/sqlstore/scim_test.go) · [Cross-runtime directory tests](../conformance/scim-contract.mjs)
+The checklist tracks Group-to-application role mapping and Enterprise User PATCH paths. [Provisioning checklist](parity/plugins/scim.md) · [SQL ownership and concurrency tests](../adapters/sqlstore/scim_test.go) · [Cross-runtime directory tests](../conformance/scim-contract.mjs)
 
 ## Project Group memberships into application roles
 

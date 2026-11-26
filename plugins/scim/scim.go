@@ -26,6 +26,9 @@ const (
 	UsersWrite  = "scim.users.write"
 )
 
+// EnterpriseUserSchema is the standard Enterprise User extension URN.
+const EnterpriseUserSchema = "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User"
+
 type Directory struct{ ID, ProvisioningDomainID string }
 type Credential struct {
 	ID, Token string
