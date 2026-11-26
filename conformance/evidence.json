@@ -11296,6 +11296,12 @@
       "label": "Keep configured endpoints and fill the others from the discovered document",
       "test": "plugins/sso/discovery_test.go",
       "marker": "t.Fatal(\"a configured endpoint was replaced by the discovered one\", cfg)"
+    },
+    {
+      "label": "Keep configured authorization, token and key endpoints and client authentication method over the discovered ones, and fill only the missing endpoints",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "t.Fatal(\"discovery replaced configured values\"",
+      "complete": true
     }
   ],
   "plugin-symbol/sso/fetchDiscoveryDocument": [
@@ -11658,6 +11664,12 @@
       "label": "Keep a configured token endpoint authentication over the advertised one",
       "test": "plugins/sso/discovery_test.go",
       "marker": "t.Fatal(\"discovery chose the wrong token endpoint authentication\", c.advertised, c.configured, got)"
+    },
+    {
+      "label": "Keep a configured client authentication method against a document advertising another, and default to client_secret_basic when none is advertised",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "t.Fatal(\"discovery replaced a configured client authentication method\"",
+      "complete": true
     }
   ],
   "plugin-symbol/sso/OIDCConfig/userInfoEndpoint": [
@@ -41432,6 +41444,12 @@
       "label": "Fetch the discovery document at the issuer's /.well-known/openid-configuration",
       "test": "plugins/sso/discovery_test.go",
       "marker": "t.Fatal(\"the discovery URL was not computed and recorded from the issuer\", fetched, cfg.DiscoveryEndpoint)"
+    },
+    {
+      "label": "Derive one well-known discovery URL from an issuer with or without a trailing slash",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "t.Fatal(\"the discovery URL was not derived from the issuer\"",
+      "complete": true
     }
   ],
   "plugin-symbol/sso/normalizeDiscoveryUrls": [
@@ -41525,6 +41543,12 @@
       "label": "Hydrate from the issuer and the existing configuration, keeping configured values",
       "test": "plugins/sso/discovery_test.go",
       "marker": "t.Fatal(\"a configured endpoint was replaced by the discovered one\", cfg)"
+    },
+    {
+      "label": "Keep configured endpoints and client_secret_post against a document that advertises others",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "t.Fatal(\"discovery replaced configured values\"",
+      "complete": true
     }
   ],
   "plugin-symbol/sso/DiscoveryError": [
@@ -41581,6 +41605,12 @@
       "label": "Record the computed discovery endpoint on the hydrated configuration",
       "test": "plugins/sso/discovery_test.go",
       "marker": "t.Fatal(\"the discovery URL was not computed and recorded from the issuer\", fetched, cfg.DiscoveryEndpoint)"
+    },
+    {
+      "label": "Record the derived discovery URL in the hydrated configuration",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "t.Fatal(\"the discovery URL was not derived from the issuer\"",
+      "complete": true
     }
   ],
   "plugin-symbol/sso/HydratedOIDCConfig/authorizationEndpoint": [
@@ -41635,6 +41665,12 @@
       "label": "Read issuer, authorization_endpoint, token_endpoint, jwks_uri and token_endpoint_auth_methods_supported from a discovery document",
       "test": "plugins/sso/discovery_test.go",
       "marker": "\"token_endpoint_auth_methods_supported\":[\"client_secret_basic\",\"client_secret_post\"]"
+    },
+    {
+      "label": "Choose the client authentication method from token_endpoint_auth_methods_supported in another runtime's order, default to client_secret_basic for none or unknown ones, and tolerate unknown document fields",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "t.Fatal(\"discovery chose the wrong client authentication method\"",
+      "complete": true
     }
   ],
   "plugin-symbol/sso/REQUIRED_DISCOVERY_FIELDS": [
@@ -41771,6 +41807,11 @@
       "label": "Keep a configured authorization endpoint while discovery fills the others",
       "test": "plugins/sso/discovery_test.go",
       "marker": "t.Fatal(\"a configured endpoint was replaced by the discovered one\", cfg)"
+    },
+    {
+      "label": "Keep a configured authorization endpoint while discovery fills the token and key endpoints",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "t.Fatal(\"discovery did not fill only the missing endpoints\""
     }
   ],
   "plugin-symbol/sso/OIDCConfig/discoveryEndpoint": [
@@ -46423,6 +46464,19 @@
       "label": "Generate and validate additional ssoProvider columns; custom table and column names are not supported",
       "test": "adapters/sqlstore/sso_fields_test.go",
       "marker": "t.Fatal(\"the provider fields were not stored\""
+    }
+  ],
+  "docs/content/docs/plugins/sso/oidc.mdx#L125": [
+    {
+      "label": "Pick client_secret_basic for a document without methods and client_secret_post from [private_key_jwt, client_secret_post]",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "t.Fatal(\"discovery chose the wrong client authentication method\""
+    },
+    {
+      "label": "Refuse a client_secret_basic or client_secret_post registration without clientSecret, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_private_key_test.go",
+      "marker": "t.Fatal(\"a secret method without clientSecret was accepted\"",
+      "complete": true
     }
   ]
 }

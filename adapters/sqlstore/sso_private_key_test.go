@@ -163,6 +163,12 @@ func TestEnterpriseOIDCPrivateKeyJWT(t *testing.T) {
 			idp.methods = nil
 			idp.mu.Unlock()
 
+			// Both secret methods require clientSecret.
+			for _, method := range []string{"client_secret_basic", "client_secret_post"} {
+				if w := withKey.register(owner, provider("secretless", func(c map[string]any) { c["tokenEndpointAuthentication"] = method })); w.Code != 400 {
+					t.Fatal("a secret method without clientSecret was accepted", method, w.Code, w.Body.String())
+				}
+			}
 			// A stored client secret is never sent with an assertion.
 			if w := withKey.register(owner, provider("secretkept", func(c map[string]any) { c["clientSecret"] = "oidc-secret" })); w.Code != 200 {
 				t.Fatal("a private_key_jwt provider with a stored secret was refused", w.Code, w.Body.String())

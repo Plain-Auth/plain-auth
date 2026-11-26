@@ -357,3 +357,63 @@ func TestCallbackDiscoveryMessage(t *testing.T) {
 		}
 	}
 }
+
+// Discovery derives the document URL from the issuer, keeps every endpoint
+// and client authentication method the configuration sets, and picks a
+// method from the advertised list in another runtime's order.
+func TestDiscoveryHydrationKeepsConfiguredValues(t *testing.T) {
+	const issuer = "https://login.example.test/tenant"
+	host, err := auth.New(auth.Options{Store: memory.New(), BaseURL: "https://accounts.test", Secret: strings.Repeat("k", 40), TrustedOrigins: []string{"https://login.example.test", "https://keys.example.test"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	methods := `"token_endpoint_auth_methods_supported":["client_secret_basic"],`
+	var fetched string
+	docIssuer := issuer + "/"
+	client := &http.Client{Transport: transportFunc(func(r *http.Request) (*http.Response, error) {
+		fetched = r.URL.String()
+		doc := `{"issuer":"` + docIssuer + `","authorization_endpoint":"/authorize","token_endpoint":"/token","jwks_uri":"/keys",` + methods + `"x-vendor":{"anything":[1,2]}}`
+		return &http.Response{Request: r, StatusCode: 200, Body: io.NopCloser(strings.NewReader(doc)), Header: http.Header{}}, nil
+	})}
+	hydrated := func(cfg Config) Config {
+		t.Helper()
+		if err := hydrate(t.Context(), host.ExplicitlyTrustedOrigin, client, &cfg, false); err != nil {
+			t.Fatal(err)
+		}
+		return cfg
+	}
+	// A trailing slash on the issuer still names one well-known document,
+	// and the hydrated configuration records it.
+	cfg := hydrated(Config{Issuer: issuer + "/"})
+	if fetched != issuer+"/.well-known/openid-configuration" || cfg.DiscoveryEndpoint != issuer+"/.well-known/openid-configuration" {
+		t.Fatal("the discovery URL was not derived from the issuer", fetched, cfg.DiscoveryEndpoint)
+	}
+	docIssuer = issuer
+	// Configured endpoints and method win over the document.
+	cfg = hydrated(Config{Issuer: issuer, AuthorizationEndpoint: issuer + "/custom-authorize", TokenEndpoint: "https://keys.example.test/token", JWKSEndpoint: "https://keys.example.test/keys", TokenEndpointAuthentication: "client_secret_post"})
+	if cfg.AuthorizationEndpoint != issuer+"/custom-authorize" || cfg.TokenEndpoint != "https://keys.example.test/token" || cfg.JWKSEndpoint != "https://keys.example.test/keys" || cfg.TokenEndpointAuthentication != "client_secret_post" {
+		t.Fatal("discovery replaced configured values", cfg)
+	}
+	if cfg = hydrated(Config{Issuer: issuer, AuthorizationEndpoint: issuer + "/custom-authorize"}); cfg.AuthorizationEndpoint != issuer+"/custom-authorize" || cfg.TokenEndpoint != issuer+"/token" || cfg.JWKSEndpoint != issuer+"/keys" {
+		t.Fatal("discovery did not fill only the missing endpoints", cfg)
+	}
+	methods = `"token_endpoint_auth_methods_supported":["client_secret_post"],`
+	if cfg = hydrated(Config{Issuer: issuer, TokenEndpointAuthentication: "client_secret_basic"}); cfg.TokenEndpointAuthentication != "client_secret_basic" {
+		t.Fatal("discovery replaced a configured client authentication method", cfg.TokenEndpointAuthentication)
+	}
+	// An unset method takes the first advertised one in the order
+	// client_secret_basic, client_secret_post, private_key_jwt; none or only
+	// unknown ones mean client_secret_basic.
+	for list, want := range map[string]string{
+		``: "client_secret_basic", `"token_endpoint_auth_methods_supported":[],`: "client_secret_basic",
+		`"token_endpoint_auth_methods_supported":["client_secret_post"],`:                   "client_secret_post",
+		`"token_endpoint_auth_methods_supported":["private_key_jwt"],`:                      "private_key_jwt",
+		`"token_endpoint_auth_methods_supported":["private_key_jwt","client_secret_post"],`: "client_secret_post",
+		`"token_endpoint_auth_methods_supported":["tls_client_auth"],`:                      "client_secret_basic",
+	} {
+		methods = list
+		if cfg = hydrated(Config{Issuer: issuer}); cfg.TokenEndpointAuthentication != want {
+			t.Fatal("discovery chose the wrong client authentication method", list, cfg.TokenEndpointAuthentication, want)
+		}
+	}
+}
