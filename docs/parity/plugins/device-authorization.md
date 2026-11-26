@@ -5,8 +5,8 @@
 ## Interfaces
 
 - [ ] Device authorization endpoints, types and options
-  - [x] `deviceAuthorizationClient` ([test](../../../conformance/core.test.mjs#L464))
-    - [x] Use the browser SDK methods across a shared SQLite installation ([test](../../../conformance/core.test.mjs#L464))
+  - [x] `deviceAuthorizationClient` ([test](../../../conformance/core.test.mjs#L477))
+    - [x] Use the browser SDK methods across a shared SQLite installation ([test](../../../conformance/core.test.mjs#L477))
   - `deviceAuthorizationOptionsSchema` — *not applicable: JavaScript only*
   - [ ] `DeviceAuthorizationOptions`
     - [x] Build verification links from a custom path, refuse a client that ValidateClient rejects, and call OnDeviceAuthRequest only for the accepted code request ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L31))
@@ -22,7 +22,7 @@
   - [ ] `deviceAuthorization`
     - [x] Serve the code, token, verification, approve and deny routes against SQLite, PostgreSQL and MySQL stores ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L20))
     - [x] Answer 429 to the sixth GET /device lookup once five have been made ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L276))
-    - [x] Share device grants with the other runtime through the released client ([test](../../../conformance/core.test.mjs#L464))
+    - [x] Share device grants with the other runtime through the released client ([test](../../../conformance/core.test.mjs#L477))
   - [x] `POST /device/code` ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L107))
     - [x] Issue distinct indexed codes with expiry, polling interval, callback and display links ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L130))
     - [x] Require an allowed client and reject repeated form parameters ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L121))
@@ -31,7 +31,7 @@
     - [x] Send Pragma no-cache and the plain verification URI with every issued code ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L107))
   - [x] `POST /device/token` ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L191))
     - [x] Throttle pending grants and reject cross-client polling ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L144))
-    - [x] Redeem approved grants exactly once between independent runtimes ([test](../../../conformance/core.test.mjs#L464))
+    - [x] Redeem approved grants exactly once between independent runtimes ([test](../../../conformance/core.test.mjs#L477))
     - [x] Reject OAuth authorization server grants on the first-party endpoint ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L250))
     - [x] Refuse a request without the device grant type, a device code or a client ID with invalid_request before the client is validated or the code is read, leaving the polling timer untouched ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L138))
     - [x] Send Cache-Control no-store with the issued token ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L191))
@@ -41,7 +41,7 @@
     - [x] Refuse a lookup without user_code with invalid_request ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L157))
   - [x] `POST /device/approve` ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L172))
     - [x] Check the live session, prior claim and owner before approving ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L146))
-    - [x] Approvals interoperate across servers sharing grant records ([test](../../../conformance/core.test.mjs#L464))
+    - [x] Approvals interoperate across servers sharing grant records ([test](../../../conformance/core.test.mjs#L477))
     - [x] Refuse an approval for a user code that matches no grant with invalid_request ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L150))
     - [x] Refuse an approval or denial of an expired user code with expired_token ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L214))
     - [x] Refuse another decision on a code already approved or denied with Device code already processed ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L172))
@@ -193,15 +193,15 @@
         - [x] The request hook runs once per issued code ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L130))
         - [x] The hook receives the accepted client ID and the requested scope, empty when none was sent ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L134))
     - [ ] Client
-      - [x] device() ([test](../../../conformance/core.test.mjs#L486))
-        - [x] The browser client's device() lookup returns the owner's client and scope from either server ([test](../../../conformance/core.test.mjs#L486))
+      - [x] device() ([test](../../../conformance/core.test.mjs#L499))
+        - [x] The browser client's device() lookup returns the owner's client and scope from either server ([test](../../../conformance/core.test.mjs#L499))
         - [x] GET /device, the endpoint device() calls, refuses a user code that matches no issued grant with invalid_request ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L267))
-      - [x] device.code() ([test](../../../conformance/core.test.mjs#L484))
-        - [x] The browser client's device.code() gets codes from either server ([test](../../../conformance/core.test.mjs#L484))
-      - [x] device.token() ([test](../../../conformance/core.test.mjs#L491))
-        - [x] The browser client's device.token() redeems an approved code for a bearer session on the other server ([test](../../../conformance/core.test.mjs#L491))
-      - [x] device.approve() ([test](../../../conformance/core.test.mjs#L489))
-        - [x] The browser client's device.approve() returns success for the signed-in claimant on either server ([test](../../../conformance/core.test.mjs#L489))
+      - [x] device.code() ([test](../../../conformance/core.test.mjs#L497))
+        - [x] The browser client's device.code() gets codes from either server ([test](../../../conformance/core.test.mjs#L497))
+      - [x] device.token() ([test](../../../conformance/core.test.mjs#L504))
+        - [x] The browser client's device.token() redeems an approved code for a bearer session on the other server ([test](../../../conformance/core.test.mjs#L504))
+      - [x] device.approve() ([test](../../../conformance/core.test.mjs#L502))
+        - [x] The browser client's device.approve() returns success for the signed-in claimant on either server ([test](../../../conformance/core.test.mjs#L502))
         - [x] An approval without a session returns 401 unauthorized ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L145))
       - [ ] device.deny()
         - [x] The Go client denies a reviewed device code from the signed-in browser session, and the device's next poll fails with 400 access_denied ([test](../../../client/deviceauthorization_test.go#L66))

@@ -42,9 +42,9 @@
       - [x] Let a passwordless account replace its backup codes without a password when the backup-code switch is on, even with the plugin-wide switch off; answer VALIDATION_ERROR when it is off, even with the plugin-wide switch on; and still require the password of an account that has one ([test](../../../adapters/sqlstore/twofactor_options_test.go#L98))
   - [ ] `backupCode2fa`
   - [ ] `twoFactorClient`
-    - [x] Complete delivered second-factor enrollment, code verification and remembered sign-in through the pinned browser client ([test](../../../conformance/core.test.mjs#L712))
+    - [x] Complete delivered second-factor enrollment, code verification and remembered sign-in through the pinned browser client ([test](../../../conformance/core.test.mjs#L725))
     - [x] Enroll an authenticator, verify it, sign in and spend backup codes through the pinned browser client on both servers ([test](../../../conformance/core.test.mjs#L292))
-    - [x] Read the provisioning URI through the pinned browser client after an imported authenticator signs in, on both servers ([test](../../../conformance/core.test.mjs#L1149))
+    - [x] Read the provisioning URI through the pinned browser client after an imported authenticator signs in, on both servers ([test](../../../conformance/core.test.mjs#L1162))
   - [ ] `TWO_FACTOR_ERROR_CODES`
   - [ ] `POST /two-factor/enable`
     - [x] Require a password and issue a provisioning URI and ten backup codes ([test](../../../adapters/sqlstore/twofactor_test.go#L121))
@@ -164,7 +164,7 @@
       - [ ] Getting TOTP URI
         - [ ] `POST /two-factor/get-totp-uri`
           - [x] Return the enrollment's provisioning URI to the signed-in owner who supplies the account password ([test](../../../adapters/sqlstore/twofactor_test.go#L127))
-          - [x] Return the imported seed in the provisioning URI through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L1150))
+          - [x] Return the imported seed in the provisioning URI through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L1163))
           - [x] Parameter `password` (optional) ([test](../../../adapters/sqlstore/twofactor_options_test.go#L113))
             - [x] Answer INVALID_PASSWORD to a URI read from an account with a password that leaves it out under a passwordless switch or sends a wrong one, return the URI to a passwordless account that sends none, and answer VALIDATION_ERROR to a password that is missing without a switch or is not a string ([test](../../../adapters/sqlstore/twofactor_options_test.go#L113))
         - Example: Using React — *not applicable: JavaScript only*
@@ -180,15 +180,15 @@
             - [x] Set the remembered-browser cookie for an authenticator code sent with trustDevice, and skip the challenge at the next sign-in from that browser ([test](../../../adapters/sqlstore/twofactor_hooks_test.go#L274))
             - [x] Refuse a trustDevice that is not a boolean; for one that is, remember the browser for thirty days in the cookie and the store, drop its don't-remember marker, and skip the challenge at the next sign-in, which renews the cookie for thirty days ([test](../../../adapters/sqlstore/twofactor_options_test.go#L239))
       - [x] Importing Existing TOTP Secrets ([test](../../../adapters/sqlstore/twofactor_import_test.go#L18))
-        - [x] Sign in through the released client using the same external Base32 seed enrolled through each server's trusted provisioning process ([test](../../../conformance/core.test.mjs#L1120))
+        - [x] Sign in through the released client using the same external Base32 seed enrolled through each server's trusted provisioning process ([test](../../../conformance/core.test.mjs#L1133))
         - [x] Read the normalized imported key with the configured eight-digit, 45-second authenticator settings on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/twofactor_import_test.go#L97))
         - [x] Import a Base32 seed for an existing account, store it encrypted, require it at the next sign-in and accept eight-digit, 45-second codes from it on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/twofactor_import_test.go#L18))
     - [ ] OTP
       - [x] Call the configured sender with the challenged account and a numeric code ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L64))
-      - [x] Complete a delivered-code challenge through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L712))
+      - [x] Complete a delivered-code challenge through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L725))
       - [ ] Sending OTP
         - [x] Trigger the configured sender for the challenged account from /two-factor/send-otp without returning the code ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L64))
-        - [x] Request a delivered code through the released client and receive status true on both runtimes ([test](../../../conformance/core.test.mjs#L725))
+        - [x] Request a delivered code through the released client and receive status true on both runtimes ([test](../../../conformance/core.test.mjs#L738))
         - [x] Request a delivered code through the Go client and deliver it to the signed-up account ([test](../../../client/twofactor_delivery_test.go#L61))
         - [ ] `POST /two-factor/send-otp`
           - [x] Store the delivered code with an attempt counter and the configured expiry ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L78))
@@ -196,7 +196,7 @@
           - [x] Parameter `trustDevice` (optional) ([test](../../../adapters/sqlstore/twofactor_options_test.go#L214))
             - [x] Answer VALIDATION_ERROR to a trustDevice that is not a boolean, before reading the challenge and without sending a code, and accept a boolean without remembering the browser at the send or at a later verification that leaves it out ([test](../../../adapters/sqlstore/twofactor_options_test.go#L214))
       - [ ] Verifying OTP
-        - [x] Complete a delivered-code challenge through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L731))
+        - [x] Complete a delivered-code challenge through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L744))
         - [ ] `POST /two-factor/verify-otp`
           - [x] Refuse further guesses with TOO_MANY_ATTEMPTS_REQUEST_NEW_CODE once a code's attempt budget is spent ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L87))
           - [x] Refuse an expired delivered code with OTP_HAS_EXPIRED ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L94))
@@ -206,7 +206,7 @@
           - [ ] Parameter `trustDevice` (optional)
             - [x] Set the session and trust_device cookies when a delivered code is verified with trustDevice ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L119))
             - [x] Skip the challenge at the next Go client sign-in after a delivered code is verified with trustDevice ([test](../../../client/twofactor_delivery_test.go#L73))
-            - [x] Sign in without a challenge after a delivered code is verified with trustDevice through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L734))
+            - [x] Sign in without a challenge after a delivered code is verified with trustDevice through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L747))
     - [ ] Backup Codes
       - [x] Complete a sign-in challenge with a backup code issued at enrollment and refuse that code a second time, through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L292))
       - [ ] Generating Backup Codes
@@ -241,7 +241,7 @@
     - [ ] Trusted Devices
       - [x] Skip the second-factor prompt for a remembered browser and rotate its trust cookie on that sign-in ([test](../../../adapters/sqlstore/twofactor_trust_test.go#L218))
       - [x] Refuse remembered grants that belong to another account, are tampered with, expired or predate a password reset, and still require the password ([test](../../../adapters/sqlstore/twofactor_trust_test.go#L154))
-      - [x] Sign in without a challenge after a delivered code is verified with trustDevice through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L734))
+      - [x] Sign in without a challenge after a delivered code is verified with trustDevice through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L747))
       - [x] Set the trust_device cookie after an authenticator code with trustDevice, and issue a session without a challenge at the next sign-in from that browser ([test](../../../adapters/sqlstore/twofactor_hooks_test.go#L274))
     - [x] Issuer ([test](../../../conformance/goapi/freshness_test.go#L94))
       - [x] Use the plugin's issuer in the provisioning URI when set, and the application name otherwise ([test](../../../conformance/goapi/freshness_test.go#L94))

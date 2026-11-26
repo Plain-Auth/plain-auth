@@ -24,7 +24,7 @@ opts.Store = store
 opts.Plugins = append(opts.Plugins, plugin)
 ```
 
-With the default auth mount, an authenticated client requests `GET /api/auth/token` and receives `{"token":"..."}`. It presents that token to the receiving service. The public key set is available at `GET /api/auth/jwks`. The Go HTTP client exposes these operations as `JWT(ctx)` and `JWKS(ctx, "")`. An authenticated `GET /api/auth/get-session` also supplies the assertion in the `Set-Auth-Jwt` header. Set `DisableHeader` to suppress it.
+With the default auth mount, an authenticated client requests `GET /api/auth/token` and receives `{"token":"..."}`. It presents that token to the receiving service. The public key set is available at `GET /api/auth/jwks`. The Go HTTP client exposes these operations as `JWT(ctx)` and `JWKS(ctx, "")`. With a custom `JWKSPath`, pass the same path, as in `JWKS(ctx, "/.well-known/jwks.json")`, and configure the browser client with it too; the default path then answers 404. An authenticated `GET /api/auth/get-session` also supplies the assertion in the `Set-Auth-Jwt` header. Set `DisableHeader` to suppress it.
 
 Configure the receiving service with the auth server's public JWKS address, expected issuer, expected audience, and permitted signing algorithm. Select keys by the signed `kid` and check expiration for each request. A key rotation adds a new `kid`, so clients that cache keys should refresh the JWKS on an unknown key. Revoking a session prevents it from obtaining additional assertions. A service performing offline verification accepts a previously issued assertion until its own expiration, provided its verification key remains trusted.
 

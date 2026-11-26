@@ -9,8 +9,8 @@
     - [x] Forward the button size option unchanged to Google's button renderer ([test](../../../conformance/one-tap-browser.test.mjs#L37))
     - [x] Forward the button theme option unchanged to Google's button renderer ([test](../../../conformance/one-tap-browser.test.mjs#L148))
   - [ ] `GoogleOneTapOptions`
-    - [x] `clientId` ([test](../../../conformance/core.test.mjs#L648))
-      - [x] Validate the configured browser audience against the host-issued challenge ([test](../../../conformance/core.test.mjs#L648))
+    - [x] `clientId` ([test](../../../conformance/core.test.mjs#L661))
+      - [x] Validate the configured browser audience against the host-issued challenge ([test](../../../conformance/core.test.mjs#L661))
     - [x] `autoSelect` ([test](../../../conformance/one-tap-browser.test.mjs#L13))
       - [x] Set automatic account selection ([test](../../../conformance/one-tap-browser.test.mjs#L13))
     - [x] `cancelOnTapOutside` ([test](../../../conformance/one-tap-browser.test.mjs#L13))
@@ -41,9 +41,9 @@
       - [x] Refuse an untrusted callbackURL on the One Tap callback with 403 ([test](../../../adapters/sqlstore/onetap_test.go#L145))
     - [x] `onPromptNotification` ([test](../../../conformance/one-tap-browser.test.mjs#L13))
       - [x] Forward the Google prompt notification callback ([test](../../../conformance/one-tap-browser.test.mjs#L13))
-    - [x] `nonce` ([test](../../../conformance/core.test.mjs#L648))
+    - [x] `nonce` ([test](../../../conformance/core.test.mjs#L661))
       - [x] Bind the Google prompt to the server-generated nonce ([test](../../../conformance/one-tap-browser.test.mjs#L13))
-      - [x] Accept an application-generated nonce with an expiring HttpOnly browser binding ([test](../../../conformance/core.test.mjs#L648))
+      - [x] Accept an application-generated nonce with an expiring HttpOnly browser binding ([test](../../../conformance/core.test.mjs#L661))
     - [x] `button` ([test](../../../conformance/one-tap-browser.test.mjs#L13))
       - [x] Render the selected button element with its visual options ([test](../../../conformance/one-tap-browser.test.mjs#L13))
     - [x] `autoSelect` ([test](../../../conformance/one-tap-browser.test.mjs#L13))
@@ -62,7 +62,7 @@
   - [ ] `oneTapClient`
     - [x] Submit a stubbed Google credential and send the HttpOnly browser cookie in headless Chrome ([test](../../../conformance/one-tap-browser.test.mjs#L66))
     - [x] Cancel without processing credentials from a delayed callback ([test](../../../conformance/one-tap-browser.test.mjs#L51))
-    - [x] Sign in with a host-generated, browser-bound nonce using the pinned client ([test](../../../conformance/core.test.mjs#L648))
+    - [x] Sign in with a host-generated, browser-bound nonce using the pinned client ([test](../../../conformance/core.test.mjs#L661))
     - [x] Refuse a second start on the same page while a prompt is active ([test](../../../conformance/one-tap-browser.test.mjs#L43))
     - [x] Render a sign-in button in a selector-addressed container without showing the prompt ([test](../../../conformance/one-tap-browser.test.mjs#L139))
     - [x] Retry a dismissed prompt and stop on a later skip, passing it to the notification callback ([test](../../../conformance/one-tap-browser.test.mjs#L114))
@@ -72,7 +72,7 @@
     - [x] Consume a browser challenge once, including concurrent tokens signed for the same nonce ([test](../../../adapters/sqlstore/onetap_test.go#L164))
     - [x] Preserve Google subject ownership after an email change ([test](../../../adapters/sqlstore/onetap_test.go#L174))
     - [x] Expire browser proof before verifying a credential ([test](../../../onetap_test.go#L45))
-    - [x] Require the application-issued nonce and reject a replay from the pinned client ([test](../../../conformance/core.test.mjs#L648))
+    - [x] Require the application-issued nonce and reject a replay from the pinned client ([test](../../../conformance/core.test.mjs#L661))
     - [x] Require the Google CSRF cookie and escape the relay document for redirect submissions ([test](../../../plugins/onetap/redirect_test.go#L19))
     - [x] Apply the provider policy on direct sign-in, Google One Tap and permitted automatic links across three SQL engines ([test](../../../adapters/sqlstore/oauth_profile_sync_test.go#L16))
     - [x] Check the exact local mailbox before issuing a session on direct ID-token and One Tap sign-in across all SQL engines ([test](../../../adapters/sqlstore/oauth_verified_email_test.go#L18))
@@ -92,5 +92,5 @@
 ## One Tap
 
 - [ ] One Tap
-  - [x] Sign in to Go through the pinned One Tap client with a host-issued nonce and a locally signed Google credential ([test](../../../conformance/core.test.mjs#L670))
+  - [x] Sign in to Go through the pinned One Tap client with a host-issued nonce and a locally signed Google credential ([test](../../../conformance/core.test.mjs#L683))
   - [x] Complete a stubbed prompt sign-in with the bundled browser module in headless Chrome ([test](../../../conformance/one-tap-browser.test.mjs#L66))

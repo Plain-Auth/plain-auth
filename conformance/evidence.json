@@ -39684,5 +39684,18 @@
       "test": "adapters/sqlstore/jwt_test.go",
       "marker": "a key minted without a rotation interval has an expiry"
     }
+  ],
+  "docs/content/docs/plugins/jwt.mdx#L287/Client Configuration:": [
+    {
+      "label": "Read one public key through the published client configured with the server's custom key path on both servers, and get 404 from a client left on the default path",
+      "test": "conformance/core.test.mjs",
+      "marker": "const { client } = instrument(target, [jwtClient({ jwks: { jwksPath: keyPath } })]);",
+      "complete": true
+    },
+    {
+      "label": "The Go client reads the key set at the server's custom path and gets 404 at the default path",
+      "test": "client/jwt_test.go",
+      "marker": "default key path still served after a custom path was configured"
+    }
   ]
 }

@@ -1,6 +1,7 @@
 package client_test
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -53,5 +54,48 @@ func TestNativeJWTClient(t *testing.T) {
 	token, err := c.JWT(ctx)
 	if err != nil || token == "" {
 		t.Fatal("client issuance failed", err)
+	}
+}
+
+// The Go client reads the key set at the server's custom path, and the
+// default path then answers 404.
+func TestNativeJWTClientCustomKeyPath(t *testing.T) {
+	ctx := t.Context()
+	ddl, err := schema.Generate("sqlite", []string{"jwt"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	store, err := sqlstore.OpenWithSchema(ctx, "sqlite", ":memory:", ddl)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	plugin, err := jwtplugin.New(jwtplugin.Options{JWKSPath: "/.well-known/jwks.json"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	const origin = "https://tokens.test"
+	a, err := auth.New(auth.Options{Store: store, BaseURL: origin, Secret: "native-client-test-key-00000000000000", Plugins: []auth.Plugin{plugin}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	c, err := client.New(origin+"/api/auth", &http.Client{Transport: transport(func(r *http.Request) (*http.Response, error) {
+		w := httptest.NewRecorder()
+		a.ServeHTTP(w, r)
+		return w.Result(), nil
+	})})
+	if err != nil {
+		t.Fatal(err)
+	}
+	keys, err := c.JWKS(ctx, "/.well-known/jwks.json")
+	if err != nil || len(keys.Keys) != 1 || !keys.Keys[0].IsPublic() {
+		t.Fatal("custom key path discovery failed", err)
+	}
+	if set, err := a.PublicJWKS(ctx); err != nil || set.Keys[0].KeyID != keys.Keys[0].KeyID {
+		t.Fatal("client read a different key set", err)
+	}
+	var api *auth.APIError
+	if _, err := c.JWKS(ctx, ""); !errors.As(err, &api) || api.Status != 404 {
+		t.Fatal("default key path still served after a custom path was configured", err)
 	}
 }

@@ -13,7 +13,7 @@ These checks exercise the Go HTTP client, router mounts and SQL drivers.
   - [x] Manage and revoke administrative sessions through the typed cookie-backed client ([test](../../adapters/sqlstore/admin_test.go#L21))
   - [x] Use the typed client to register, sign in, rename a public handle and query availability ([test](../../adapters/sqlstore/username_test.go#L23))
   - [x] A machine client requests a device code and polls for its token while a browser client verifies, approves or denies it; OAuth errors reach the caller and the token response sets no browser cookies ([test](../../client/deviceauthorization_test.go#L19))
-  - [x] The typed client reads the JWKS anonymously, is refused a JWT without a session and receives one after sign-up ([test](../../client/jwt_test.go#L15))
+  - [x] The typed client reads the JWKS anonymously, is refused a JWT without a session and receives one after sign-up ([test](../../client/jwt_test.go#L16))
   - [x] The typed client sends, checks and verifies email codes, signs in with one into its cookie jar, resets a password with a code once and requests an email-change code ([test](../../client/emailotp_test.go#L16))
   - [x] The typed client requests a magic link whose sender gets body-free request metadata, verifies it into its cookie jar, and a second verification fails ([test](../../client/magiclink_test.go#L18))
   - [x] One typed client generates a one-time token for its session, another redeems it once and keeps the bound cookie, and a second verification fails ([test](../../client/onetimetoken_test.go#L17))

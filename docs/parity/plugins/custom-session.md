@@ -22,8 +22,8 @@
     - [x] Project another runtime’s compact browser snapshot and compare it with a fresh deferred session result ([test](../../../conformance/session-cache-compact.mjs#L127))
   - [x] `CustomSessionPluginOptions` ([test](../../../conformance/custom-session-types.mts#L7))
     - [x] Verify that the public options type exposes only the tested device-list setting ([test](../../../conformance/custom-session-types.mts#L7))
-    - [x] `shouldMutateListDeviceSessionsEndpoint` ([test](../../../conformance/core.test.mjs#L579))
-      - [x] Compare both opt-in and default device-list projections with the public browser client ([test](../../../conformance/core.test.mjs#L579))
+    - [x] `shouldMutateListDeviceSessionsEndpoint` ([test](../../../conformance/core.test.mjs#L592))
+      - [x] Compare both opt-in and default device-list projections with the public browser client ([test](../../../conformance/core.test.mjs#L592))
       - [x] Decode nested remembered-account views in Go and discard all results when one projection fails ([test](../../../client/session_view_test.go#L134))
       - [x] Filter remembered accounts through the current SQL ban and delegation policy after a live administrative migration ([test](../../../adapters/sqlstore/custom_session_test.go#L109))
   - [ ] `customSession`

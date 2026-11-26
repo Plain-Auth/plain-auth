@@ -8,11 +8,11 @@ Each row tracks the behavior exposed by a published entry point. The Go implemen
 
 - [ ] API keys
   - [ ] Default interface (`.`)
-    - [x] Issue a user-owned key and return its secret to the official client ([test](../../conformance/core.test.mjs#L874))
-    - [x] Issue a key whose reference identifies the caller’s organization ([test](../../conformance/core.test.mjs#L946))
+    - [x] Issue a user-owned key and return its secret to the official client ([test](../../conformance/core.test.mjs#L887))
+    - [x] Issue a key whose reference identifies the caller’s organization ([test](../../conformance/core.test.mjs#L959))
   - [ ] Client integration (`./client`)
-    - [x] Create, retrieve, update, list and revoke user-owned keys with the official client ([test](../../conformance/core.test.mjs#L874))
-    - [x] Manage organization keys alongside separately authenticated automation clients ([test](../../conformance/core.test.mjs#L925))
+    - [x] Create, retrieve, update, list and revoke user-owned keys with the official client ([test](../../conformance/core.test.mjs#L887))
+    - [x] Manage organization keys alongside separately authenticated automation clients ([test](../../conformance/core.test.mjs#L938))
   - [ ] Configuration and result types (`./types`)
 
 ## Authentication server and framework bindings
@@ -50,7 +50,7 @@ Each row tracks the behavior exposed by a published entry point. The Go implemen
     - [x] Manage and revoke administrative sessions through the typed cookie-backed client ([test](../../adapters/sqlstore/admin_test.go#L21))
     - [x] Use the typed client to register, sign in, rename a public handle and query availability ([test](../../adapters/sqlstore/username_test.go#L23))
     - [x] A machine client requests a device code and polls for its token while a browser client verifies, approves or denies it; OAuth errors reach the caller and the token response sets no browser cookies ([test](../../client/deviceauthorization_test.go#L19))
-    - [x] The typed client reads the JWKS anonymously, is refused a JWT without a session and receives one after sign-up ([test](../../client/jwt_test.go#L15))
+    - [x] The typed client reads the JWKS anonymously, is refused a JWT without a session and receives one after sign-up ([test](../../client/jwt_test.go#L16))
     - [x] The typed client sends, checks and verifies email codes, signs in with one into its cookie jar, resets a password with a code once and requests an email-change code ([test](../../client/emailotp_test.go#L16))
     - [x] The typed client requests a magic link whose sender gets body-free request metadata, verifies it into its cookie jar, and a second verification fails ([test](../../client/magiclink_test.go#L18))
     - [x] One typed client generates a one-time token for its session, another redeems it once and keeps the bound cookie, and a second verification fails ([test](../../client/onetimetoken_test.go#L17))
@@ -281,7 +281,7 @@ Each row tracks the behavior exposed by a published entry point. The Go implemen
     - [x] Provision and synchronize directory Users over authenticated SCIM HTTP using compatible SQL records ([test](../../conformance/scim-contract.mjs#L45))
     - [x] Exchange canonical Group and membership records with the reference runtime ([test](../../conformance/scim-contract.mjs#L92))
     - [x] Issue, rotate, authenticate and revoke managed directory credentials from either runtime on shared SQLite ([test](../../conformance/scim-managed.mjs#L13))
-    - [x] Retire managed directories across runtimes and retain their canonical status and audit records ([test](../../conformance/core.test.mjs#L1045))
+    - [x] Retire managed directories across runtimes and retain their canonical status and audit records ([test](../../conformance/core.test.mjs#L1058))
 
 ## Single sign-on
 

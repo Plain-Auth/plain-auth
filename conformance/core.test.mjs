@@ -461,6 +461,19 @@ test("isolated issuers publish public keys and issue verifiable service tokens",
   await assert.rejects(jwtVerify(issued[1].token, issued[0].jwks));
 });
 
+test("the published client reads the key set at a configured path on both runtimes", async (t) => {
+  const keyPath = "/.well-known/jwks.json";
+  for (const target of [await reference(t, [jwt({ jwks: { jwksPath: keyPath } })]), await goFixture(t, ["jwt"], { CONFORMANCE_JWKS_PATH: keyPath })]) {
+    const { client } = instrument(target, [jwtClient({ jwks: { jwksPath: keyPath } })]);
+    const configured = await client.jwks();
+    assert.equal(configured.error, null);
+    assert.equal(configured.data.keys.length, 1);
+    assert.equal(configured.data.keys[0].d, undefined);
+    const { client: unconfigured } = instrument(target, [jwtClient()]);
+    assert.equal((await unconfigured.jwks()).error.status, 404);
+  }
+});
+
 test("device grants created in either runtime can issue a first-party session in the other", async (t) => {
   const { deviceAuthorization } = await import("better-auth/plugins");
   const { deviceAuthorizationClient } = await import("better-auth/client/plugins");

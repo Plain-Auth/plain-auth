@@ -294,7 +294,7 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
   - [x] `disableIdTokenSignIn` ([test](../../conformance/apple-native.mjs#L51))
     - [x] Decline signed client ID tokens for sign-in and account linking while preserving browser authorization ([test](../../conformance/apple-native.mjs#L51))
     - [x] Finish the browser code exchange with direct grants disabled and keep other providers available ([test](../../conformance/goapi/oauth_signup_test.go#L139))
-    - [x] Complete a separately enabled Google One Tap challenge with the direct social grant disabled ([test](../../conformance/core.test.mjs#L653))
+    - [x] Complete a separately enabled Google One Tap challenge with the direct social grant disabled ([test](../../conformance/core.test.mjs#L666))
   - [ ] `verifyIdToken`
     - [x] A custom VerifyIDToken on a preset receives the raw token and nonce and decides the sign-in; its error answers INVALID_TOKEN without a session ([test](../../conformance/goapi/provider_contract_test.go#L93))
   - [x] `getUserInfo` ([test](../../conformance/goapi/oauth_test.go#L177))
@@ -310,7 +310,7 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
     - [x] Map signed provider account fields across both servers, preserve credentials and explicitly reauthorize an existing link ([test](../../conformance/apple-native.mjs#L87))
     - [x] Map browser grants on first links and verified email linking, keep identity bindings and reject invalid updates atomically ([test](../../conformance/account-fields.mjs#L25))
     - [x] Keep provider credentials separate from native input, transform fields once and expose only owned public account fields on three SQL engines ([test](../../adapters/sqlstore/account_fields_test.go#L17))
-    - [x] Use creation defaults while completing the separately verified One Tap challenge ([test](../../conformance/core.test.mjs#L1774))
+    - [x] Use creation defaults while completing the separately verified One Tap challenge ([test](../../conformance/core.test.mjs#L1787))
     - [x] Complete proxy sign-in across two deployments without invoking provider account mapping on either host ([test](../../adapters/sqlstore/oauth_proxy_test.go#L74))
   - [x] `disableImplicitSignUp` ([test](../../conformance/goapi/oauth_signup_test.go#L118))
     - [x] With DisableImplicitSignUp, a new account is refused unless requestSignUp is sent, for both browser and ID-token sign-in ([test](../../conformance/goapi/oauth_signup_test.go#L118))

@@ -8,7 +8,7 @@
   - [x] Publish keys and issue signed tokens on both servers, and reject a token checked against the other server's keys ([test](../../../conformance/core.test.mjs#L460))
   - [ ] `jwtClient`
     - [x] Read the key set and request a token through the published client against both servers ([test](../../../conformance/core.test.mjs#L438))
-    - [x] The Go client reads the key set without a session, is refused a token anonymously and receives one after sign-up ([test](../../../client/jwt_test.go#L48))
+    - [x] The Go client reads the key set without a session, is refused a token anonymously and receives one after sign-up ([test](../../../client/jwt_test.go#L49))
   - [ ] `signJWT (server API only)`
     - [x] Sign trusted claims with a configured algorithm or a pinned key and keep the operation server-only ([test](../../../adapters/sqlstore/jwt_test.go#L329))
     - [x] Sign with caller-chosen audiences, issue, expiry and not-before times, and verify a multi-audience token ([test](../../../adapters/sqlstore/jwt_test.go#L318))
@@ -91,15 +91,17 @@
       - [x] Example with local JWKS ([test](../../../conformance/core.test.mjs#L451))
         - [x] Build a local key set from the fetched keys and verify the token with the server URL as issuer and audience ([test](../../../conformance/core.test.mjs#L451))
     - [ ] OAuth Provider Mode
-      - [x] Disable both the browser token endpoint and the session JWT response header while retaining ordinary sessions ([test](../../../conformance/core.test.mjs#L1382))
+      - [x] Disable both the browser token endpoint and the session JWT response header while retaining ordinary sessions ([test](../../../conformance/core.test.mjs#L1395))
       - [x] Report a token signed with a published key but carrying no authorized party as inactive at introspection ([test](../../../conformance/oauth-signed-introspection.mjs#L104))
     - [ ] Remote JWKS Url
     - [ ] Custom JWKS Path
       - [x] Serve the key set at a configured path to anonymous callers ([test](../../../adapters/sqlstore/jwt_test.go#L88))
-      - [x] Serve the key set at the default /jwks path to the Go client ([test](../../../client/jwt_test.go#L45))
+      - [x] Serve the key set at the default /jwks path to the Go client ([test](../../../client/jwt_test.go#L46))
       - [x] Server Configuration: ([test](../../../conformance/oauth-issuer-metadata.mjs#L94))
         - [x] Advertise a configured key path in discovery and verify issued tokens with keys fetched from it ([test](../../../conformance/oauth-issuer-metadata.mjs#L94))
-      - [ ] Client Configuration:
+      - [x] Client Configuration: ([test](../../../conformance/core.test.mjs#L467))
+        - [x] Read one public key through the published client configured with the server's custom key path on both servers, and get 404 from a client left on the default path ([test](../../../conformance/core.test.mjs#L467))
+        - [x] The Go client reads the key set at the server's custom path and gets 404 at the default path ([test](../../../client/jwt_test.go#L99))
     - [ ] Custom Signing
       - [ ] Localized Signing
       - [ ] Remote Signing
