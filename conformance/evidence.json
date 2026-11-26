@@ -11855,6 +11855,12 @@
       "label": "Stop an update with a refusing guard as SSO_PROVIDER_MUTATION_REJECTED without exposing its reason or writing",
       "test": "adapters/sqlstore/sso_delete_test.go",
       "marker": "t.Fatal(\"a refusing update guard did not stop the update as a conflict\", err)"
+    },
+    {
+      "label": "Stop a deletion and an update as a conflict when the guard refuses, without its reason, and keep the provider, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_delete_test.go",
+      "marker": "t.Fatal(\"a refusing deletion guard did not stop the deletion as a conflict\", err)",
+      "complete": true
     }
   ],
   "plugin-symbol/custom-session/customSessionClient": [
@@ -42226,6 +42232,12 @@
       "label": "Hand the update guard its action, record and provider IDs, reference, organization and boundary flag",
       "test": "adapters/sqlstore/sso_delete_test.go",
       "marker": "t.Fatal(\"the update guard did not receive the provider and the change it reviews\", last)"
+    },
+    {
+      "label": "Give the update guard the action, record, provider, organization and reference, with the boundary flag false for a scopes change and true for a client ID change, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_delete_test.go",
+      "marker": "t.Fatal(\"the update guard did not see an identity change as a boundary change\", err, boundary)",
+      "complete": true
     }
   ],
   "plugin-symbol/sso/SSOProviderReference": [

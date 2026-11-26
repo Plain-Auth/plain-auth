@@ -346,6 +346,25 @@ func TestEnterpriseProviderGuardOutsideTransaction(t *testing.T) {
 			if !errors.Is(err, sso.ErrMutationRejected) || strings.Contains(err.Error(), "private policy detail") || !strings.Contains(stored, `"email"`) {
 				t.Fatal("a refusing update guard did not stop the update as a conflict", err)
 			}
+			// A refusing guard stops a deletion the same way.
+			if err := store.DeleteSSOProvider(ctx, actor, "updating", ids["updating"], refuse); !errors.Is(err, sso.ErrMutationRejected) || strings.Contains(err.Error(), "private policy detail") {
+				t.Fatal("a refusing deletion guard did not stop the deletion as a conflict", err)
+			}
+			must(store.db.QueryRowContext(ctx, store.bind(`SELECT COUNT(*) FROM "ssoProvider" WHERE "providerId"=?`), "updating").Scan(&n))
+			if n != 1 {
+				t.Fatal("a refused deletion removed the provider", n)
+			}
+			// An identity change reaches the guard as a boundary change.
+			var boundary []sso.ProviderMutation
+			record := func(_ context.Context, m sso.ProviderMutation) error { boundary = append(boundary, m); return nil }
+			if _, err := store.UpdateSSOProvider(ctx, actor, "updating", ids["updating"], func(current sso.Provider) (sso.Provider, bool, error) {
+				cfg := *current.OIDC
+				cfg.ClientID = "other-application"
+				current.OIDC = &cfg
+				return current, true, nil
+			}, record); err != nil || len(boundary) != 1 || boundary[0].Action != "update" || !boundary[0].AuthenticationBoundaryChanged {
+				t.Fatal("the update guard did not see an identity change as a boundary change", err, boundary)
+			}
 			flapping := func(_ context.Context, m sso.ProviderMutation) error { change(m.ID); return nil }
 			err = store.DeleteSSOProvider(ctx, actor, "flappy", ids["flappy"], flapping)
 			must(store.db.QueryRowContext(ctx, store.bind(`SELECT COUNT(*) FROM "ssoProvider" WHERE "providerId"=?`), "flappy").Scan(&n))

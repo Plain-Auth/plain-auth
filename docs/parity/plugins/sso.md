@@ -413,13 +413,14 @@
       - [x] A ValidateUserInfo refusal of an enterprise OIDC sign-up returns to the error callback with error and error_description ([test](../../../adapters/sqlstore/sso_user_validation_test.go#L97))
       - [x] ValidateUserInfo runs again when the enterprise user returns ([test](../../../adapters/sqlstore/sso_user_validation_test.go#L115))
       - [x] Run ResolveUser after the OIDC identity is verified and before the sign-in transaction, and require an ID token ([test](../../../adapters/sqlstore/sso_resolve_user_test.go#L133))
-    - [ ] `guardProviderMutation`
+    - [x] `guardProviderMutation` ([test](../../../adapters/sqlstore/sso_delete_test.go#L351))
       - [x] Inspect the locked OIDC provider and linked-account count before deletion, and write nothing for a rejected mutation with a private conflict response ([test](../../../adapters/sqlstore/sso_delete_test.go#L147))
       - [x] Give the guard a locked metadata update of a linked SAML directory, with its record, reference, linked-account count and a changed authentication boundary, and reject the update when the guard refuses ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L165))
       - [x] Review a general provider update with its linked-account count and identity change, and store nothing when the guard refuses ([test](../../../adapters/sqlstore/sso_update_test.go#L124))
       - [x] Run the metadata guard outside the store's transaction ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L168))
       - [x] Give the update guard the linked-account count and whether the identity changes ([test](../../../adapters/sqlstore/sso_update_test.go#L189))
       - [x] Stop an update with a refusing guard as SSO_PROVIDER_MUTATION_REJECTED without exposing its reason or writing ([test](../../../adapters/sqlstore/sso_delete_test.go#L347))
+      - [x] Stop a deletion and an update as a conflict when the guard refuses, without its reason, and keep the provider, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_delete_test.go#L351))
     - [x] `provisionUser` ([test](../../../adapters/sqlstore/sso_provision_user_test.go#L19))
       - [x] Run ProvisionUser after a new enterprise user's sign-in commits, with the stored user, mapped profile, OIDC tokens and provider, and on failure answer 500, keep the user and remove the session, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_provision_user_test.go#L19))
       - [x] Run ProvisionUser for a SAML sign-in without OIDC tokens ([test](../../../adapters/sqlstore/sso_saml_resolve_user_test.go#L107))
@@ -472,10 +473,11 @@
     - [x] Let a sign-in on another node complete while the deletion guard decides ([test](../../../adapters/sqlstore/sso_delete_test.go#L160))
     - [x] Review a deletion again when the provider's linked accounts were swapped while the guard decided ([test](../../../adapters/sqlstore/sso_delete_test.go#L309))
     - [x] Run the update guard outside the transaction and review a provider changed meanwhile again ([test](../../../adapters/sqlstore/sso_delete_test.go#L330))
-  - [ ] `SSOProviderMutationGuardInput`
+  - [x] `SSOProviderMutationGuardInput` ([test](../../../adapters/sqlstore/sso_delete_test.go#L366))
     - [x] Pass the delete action, record ID, provider ID, organization, linked-account count and configuration reference of the locked provider to the guard ([test](../../../adapters/sqlstore/sso_delete_test.go#L137))
     - [x] Pass the update action, locked record, configuration reference and an authentication boundary change to the guard when IdP metadata is replaced ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L160))
     - [x] Hand the update guard its action, record and provider IDs, reference, organization and boundary flag ([test](../../../adapters/sqlstore/sso_delete_test.go#L334))
+    - [x] Give the update guard the action, record, provider, organization and reference, with the boundary flag false for a scopes change and true for a client ID change, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_delete_test.go#L366))
   - [ ] `SSOProviderReference`
     - [x] Redirect a callback with invalid_state before the token exchange when the provider's configuration changed after sign-in started ([test](../../../adapters/sqlstore/sso_browser_test.go#L352))
     - [x] Stop accepting a captured provider reference after the provider's identity source changes ([test](../../../adapters/sqlstore/sso_domain_test.go#L480))
