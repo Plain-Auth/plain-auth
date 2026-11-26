@@ -4,11 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net/http"
 	"net/http/httptest"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/Plain-Org/plain-auth/client"
 	"github.com/Plain-Org/plain-auth/plugins/sso"
 	"github.com/Plain-Org/plain-auth/schema"
 )
@@ -165,6 +167,17 @@ func TestEnterpriseProviderUpdate(t *testing.T) {
 			}
 			if issuer, cfg := stored(); issuer != idp.URL || cfg.ClientSecret != "second-secret" || cfg.Issuer != idp.URL {
 				t.Fatal("a refused update changed the provider", issuer, cfg)
+			}
+
+			sdk, err := client.New("https://service.test/identity", &http.Client{Transport: guestTransport{h.a}})
+			must(err)
+			_, err = sdk.SignInEmail(ctx, client.SignInRequest{Email: "owner@service.test", Password: "correct-horse-staple"})
+			must(err)
+			if _, err := sdk.UpdateSSOProvider(ctx, client.UpdateSSOProviderRequest{ProviderID: "acme", OIDC: map[string]any{"clientSecret": "third-secret"}}); err != nil {
+				t.Fatal("the native client could not rotate the client secret", err)
+			}
+			if _, cfg := stored(); cfg.ClientSecret != "third-secret" {
+				t.Fatal("the native client could not rotate the client secret", cfg.ClientSecret)
 			}
 
 			// A SAML directory's domain changes through the same route; its

@@ -104,6 +104,24 @@ func (c *Client) VerifySSODomain(ctx context.Context, providerID string) error {
 	return c.Do(ctx, http.MethodPost, "/sso/verify-domain", map[string]string{"providerId": providerID}, nil)
 }
 
+// UpdateSSOProviderRequest changes a managed provider. Issuer and Domain are
+// sent when set, and OIDC holds only the oidcConfig fields to change, such as
+// clientSecret; a supplied mapping replaces the whole mapping.
+type UpdateSSOProviderRequest struct {
+	ProviderID string         `json:"providerId"`
+	Issuer     string         `json:"issuer,omitempty"`
+	Domain     string         `json:"domain,omitempty"`
+	OIDC       map[string]any `json:"oidcConfig,omitempty"`
+}
+
+// UpdateSSOProvider changes a provider's issuer, domain or OIDC
+// configuration with the manager's session.
+func (c *Client) UpdateSSOProvider(ctx context.Context, in UpdateSSOProviderRequest) (sso.PublicProvider, error) {
+	var result sso.PublicProvider
+	err := c.Do(ctx, http.MethodPost, "/sso/update-provider", in, &result)
+	return result, err
+}
+
 // UpdateSAMLMetadata rotates the trusted inline IdP metadata for a managed directory.
 func (c *Client) UpdateSAMLMetadata(ctx context.Context, id, metadata string) (sso.PublicProvider, error) {
 	var result sso.PublicProvider

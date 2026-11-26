@@ -12802,6 +12802,11 @@
       "label": "Rotate a client secret, change scopes, mapping and domain, and refuse identity changes while accounts are linked, unsupported fields and other users, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/sso_update_test.go",
       "marker": "func TestEnterpriseProviderUpdate("
+    },
+    {
+      "label": "Describe the OIDC update fields on every host's OpenAPI document",
+      "test": "plugins/openapi/sso_directory_test.go",
+      "marker": "t.Fatal(\"the update route does not describe OIDC fields\", enabled)"
     }
   ],
   "docs/content/docs/reference/options.mdx#L327/`onExistingUserSignUp`": [
@@ -44617,6 +44622,11 @@
       "label": "Change a SAML directory's domain through the update route",
       "test": "adapters/sqlstore/sso_update_test.go",
       "marker": "t.Fatal(\"a SAML directory's domain was not updated\", domain)"
+    },
+    {
+      "label": "Rotate a provider's client secret through the native client's UpdateSSOProvider",
+      "test": "adapters/sqlstore/sso_update_test.go",
+      "marker": "t.Fatal(\"the native client could not rotate the client secret\", err)"
     }
   ]
 }

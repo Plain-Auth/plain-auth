@@ -115,7 +115,8 @@
     - [x] Authorize metadata replacement under a current manager session and reject stale competing revisions on three SQL engines ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L178))
     - [x] Reject issuer and endpoint replacement on linked directories, accept overlapping signing keys, and reject retired keys after rotation ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L121))
     - [x] Allow an active organization administrator to replace metadata and deny the same live session after demotion ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L152))
-    - [x] Rotate a client secret, change scopes, mapping and domain, and refuse identity changes while accounts are linked, unsupported fields and other users, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_update_test.go#L19))
+    - [x] Rotate a client secret, change scopes, mapping and domain, and refuse identity changes while accounts are linked, unsupported fields and other users, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_update_test.go#L21))
+    - [x] Describe the OIDC update fields on every host's OpenAPI document ([test](../../../plugins/openapi/sso_directory_test.go#L243))
   - [ ] `POST /sso/delete-provider`
     - [x] Delete the exact OIDC provider and its account links through the released SDK on both implementations ([test](../../../conformance/sso-providers.mjs#L109))
     - [x] Recheck current tenant authority, protect unrelated links and serialize concurrent sign-in against deletion on all three SQL engines ([test](../../../adapters/sqlstore/sso_delete_test.go#L17))
@@ -342,7 +343,7 @@
     - [ ] `guardProviderMutation`
       - [x] Inspect the locked OIDC provider and linked-account count before deletion, and roll back a rejected mutation with a private conflict response ([test](../../../adapters/sqlstore/sso_delete_test.go#L145))
       - [x] Give the guard a locked metadata update of a linked SAML directory, with its record, reference, linked-account count and a changed authentication boundary, and reject the update when the guard refuses ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L161))
-      - [x] Review a general provider update with its linked-account count and identity change, and store nothing when the guard refuses ([test](../../../adapters/sqlstore/sso_update_test.go#L100))
+      - [x] Review a general provider update with its linked-account count and identity change, and store nothing when the guard refuses ([test](../../../adapters/sqlstore/sso_update_test.go#L102))
     - [ ] `provisionUser`
     - [ ] `provisionUserOnEveryLogin`
     - [ ] `organizationProvisioning`
@@ -529,14 +530,15 @@
     - [x] Return the provider with a masked client ID and no secret, list it for its manager, and refuse a foreign user with 403 on both runtimes ([test](../../../conformance/sso-providers.mjs#L74))
     - [ ] `POST /sso/update-provider`
       - [x] Replace a directory's IdP metadata to rotate its signing certificate, and refuse a different authority with 409, on both runtimes ([test](../../../conformance/sso-saml.mjs#L361))
-      - [x] Change an OIDC provider's configuration with a replacing mapping and refuse an identity change while accounts are linked ([test](../../../adapters/sqlstore/sso_update_test.go#L120))
+      - [x] Change an OIDC provider's configuration with a replacing mapping and refuse an identity change while accounts are linked ([test](../../../adapters/sqlstore/sso_update_test.go#L122))
       - [x] Parameter `providerId` ([test](../../../conformance/sso-saml.mjs#L360))
         - [x] Update the directory named by providerId with replacement IdP metadata through the released client ([test](../../../conformance/sso-saml.mjs#L360))
       - [ ] Parameter `issuer` (optional)
-        - [x] Refuse an OIDC issuer change with 409 while accounts are linked and a SAML directory issuer change with 400 ([test](../../../adapters/sqlstore/sso_update_test.go#L126))
-      - [x] Parameter `domain` (optional) ([test](../../../adapters/sqlstore/sso_update_test.go#L111))
-        - [x] Normalize an updated domain, reset its DNS proof, and update a SAML directory's domain, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_update_test.go#L111))
-        - [x] Change a SAML directory's domain through the update route ([test](../../../adapters/sqlstore/sso_update_test.go#L184))
+        - [x] Refuse an OIDC issuer change with 409 while accounts are linked and a SAML directory issuer change with 400 ([test](../../../adapters/sqlstore/sso_update_test.go#L128))
+      - [x] Parameter `domain` (optional) ([test](../../../adapters/sqlstore/sso_update_test.go#L113))
+        - [x] Normalize an updated domain, reset its DNS proof, and update a SAML directory's domain, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_update_test.go#L113))
+        - [x] Change a SAML directory's domain through the update route ([test](../../../adapters/sqlstore/sso_update_test.go#L197))
+        - [x] Rotate a provider's client secret through the native client's UpdateSSOProvider ([test](../../../adapters/sqlstore/sso_update_test.go#L177))
     - [ ] `POST /sso/delete-provider`
       - [x] Delete a provider by ID with its account links, keep another provider's links and the caller's session, on both runtimes ([test](../../../conformance/sso-providers.mjs#L109))
     - [x] `action` ([test](../../../adapters/sqlstore/sso_delete_test.go#L135))
