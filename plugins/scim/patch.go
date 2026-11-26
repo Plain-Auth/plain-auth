@@ -107,6 +107,9 @@ func patchValue(m map[string]any, path, op string, value any) error {
 		}
 		return patchRole(m, path, op, value)
 	}
+	if isEmailPath(path) {
+		return patchEmails(m, strings.TrimSpace(path), op, value)
+	}
 	parts := strings.Split(path, ".")
 	name := field(parts[0], userFields)
 	if name == "" || name == "schemas" || len(parts) > 2 {
@@ -164,14 +167,6 @@ func patchValue(m map[string]any, path, op string, value any) error {
 				value = b
 			}
 		}
-	}
-	if name == "emails" && op == "add" {
-		old, _ := target[name].([]any)
-		extra, ok := value.([]any)
-		if !ok {
-			extra = []any{value}
-		}
-		value = append(append([]any(nil), old...), extra...)
 	}
 	if name == "name" && len(parts) == 1 {
 		// name add and replace both merge into the stored name; unspecified

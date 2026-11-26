@@ -108,11 +108,15 @@ func TestSCIMNormalizedProfileAndPatch(t *testing.T) {
 		{map[string]any{"path": UserSchema + ":name.givenName", "value": "Shift"}},
 		{map[string]any{"op": "remove", "path": "name.givenName"}},
 		{map[string]any{"op": "replace", "value": map[string]any{"title": []any{"Director"}, "timeZone": "UTC"}}},
-		{map[string]any{"op": "add", "path": "emails", "value": map[string]any{"type": "work", "value": "second@example.test"}}},
+		{map[string]any{"op": "add", "path": "emails", "value": []any{map[string]any{"type": "work", "value": "second@example.test"}}}},
 	} {
 		if _, e := patchProfile(r, ops); e != nil {
 			t.Fatal(ops, e)
 		}
+	}
+	// Another runtime reads an emails add as an array of values.
+	if _, e := patchProfile(r, []any{map[string]any{"op": "add", "path": "emails", "value": map[string]any{"type": "work", "value": "second@example.test"}}}); e == nil {
+		t.Fatal("an emails add with a bare object was accepted")
 	}
 	for _, bad := range []map[string]any{
 		{"userName": "no-address"},

@@ -443,3 +443,111 @@ func TestSCIMUserNamePatchOverHTTP(t *testing.T) {
 		})
 	}
 }
+
+// Email PATCH paths add, replace and select emails like another runtime:
+// an added primary demotes the stored one, stored pairs are skipped, and the
+// emails cannot be emptied or removed.
+func TestSCIMUserEmailPatchOverHTTP(t *testing.T) {
+	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
+		t.Run(dialect, func(t *testing.T) {
+			store, call := attributeDirectory(t, dialect)
+			user := func(name string, emails ...any) func(int, string, ...any) map[string]any {
+				t.Helper()
+				id := call("POST", "Users", map[string]any{"schemas": []string{scim.UserSchema}, "userName": name, "emails": emails}, 201, "the User was refused")["id"].(string)
+				return func(status int, failure string, ops ...any) map[string]any {
+					t.Helper()
+					return call("PATCH", "Users/"+id, map[string]any{"schemas": []string{scim.PatchSchema}, "Operations": ops}, status, failure)
+				}
+			}
+			// emails lists each email as value/type/primary.
+			emails := func(got map[string]any) string {
+				var out []string
+				list, _ := got["emails"].([]any)
+				for _, item := range list {
+					e := item.(map[string]any)
+					typ, _ := e["type"].(string)
+					out = append(out, e["value"].(string)+"/"+typ+"/"+map[bool]string{true: "primary", false: "-"}[e["primary"] == true])
+				}
+				return strings.Join(out, " ")
+			}
+			op := func(o, path string, value any) map[string]any {
+				m := map[string]any{"op": o, "path": path}
+				if value != nil {
+					m["value"] = value
+				}
+				return m
+			}
+			email := func(fields ...any) map[string]any {
+				m := map[string]any{}
+				for i := 0; i < len(fields); i += 2 {
+					m[fields[i].(string)] = fields[i+1]
+				}
+				return m
+			}
+			patch := user("a@example.test", email("value", "a@example.test", "type", "work", "primary", true), email("value", "b@example.test", "type", "home"))
+			got := patch(200, "adding a primary email failed", op("add", "emails", []any{email("value", "c@example.test", "type", "other", "primary", true)}))
+			if emails(got) != "a@example.test/work/- b@example.test/home/- c@example.test/other/primary" {
+				t.Fatal("adding a primary email did not demote the previous primary", emails(got))
+			}
+			if u, err := store.FindAccountUser(t.Context(), "c@example.test"); err != nil || u.Email != "c@example.test" {
+				t.Fatal("the account email did not follow the added primary email", u.Email, err)
+			}
+			got = patch(200, "adding an existing email failed", op("add", "emails", []any{email("value", "A@example.test", "type", "WORK")}))
+			if emails(got) != "a@example.test/work/- b@example.test/home/- c@example.test/other/primary" {
+				t.Fatal("adding an existing email duplicated it", emails(got))
+			}
+			got = patch(200, "adding a repeated email failed", op("add", "emails", []any{email("value", "d@example.test", "type", "x"), email("value", "D@example.test", "type", "X", "primary", "True")}))
+			if emails(got) != "a@example.test/work/- b@example.test/home/- c@example.test/other/- d@example.test/x/primary" {
+				t.Fatal("a repeated added email did not coalesce into one primary", emails(got))
+			}
+			if body := patch(400, "two added primary emails were accepted", op("add", "emails", []any{email("value", "e@example.test", "primary", true), email("value", "f@example.test", "primary", true)})); body["scimType"] != "invalidValue" {
+				t.Fatal("two added primary emails were not invalidValue", body)
+			}
+			if body := patch(400, "PATCH replaced the emails with an empty set", op("replace", "emails", []any{})); body["scimType"] != "invalidValue" {
+				t.Fatal("an empty email replacement was not invalidValue", body)
+			}
+			if body := patch(400, "PATCH removed every email", op("remove", "emails", nil)); body["scimType"] != "invalidValue" {
+				t.Fatal("removing the emails was not invalidValue", body)
+			}
+			got = patch(200, "the work email selector failed", op("replace", `emails[type eq "work"].value`, "w2@example.test"))
+			if emails(got) != "w2@example.test/work/- b@example.test/home/- c@example.test/other/- d@example.test/x/primary" {
+				t.Fatal("the work email selector did not replace its value", emails(got))
+			}
+			got = patch(200, "a type-filter miss failed", op("add", `urn:ietf:params:scim:schemas:core:2.0:User:emails [ type eq "Mobile" ] . value`, "m@example.test"))
+			if emails(got) != "w2@example.test/work/- b@example.test/home/- c@example.test/other/- d@example.test/x/primary m@example.test/mobile/-" {
+				t.Fatal("a type-filter miss did not append a non-primary email", emails(got))
+			}
+			got = patch(200, "removing a type-selected email failed", op("remove", `emails[type eq "home"].value`, nil))
+			if emails(got) != "w2@example.test/work/- c@example.test/other/- d@example.test/x/primary m@example.test/mobile/-" {
+				t.Fatal("removing a type-selected email kept it", emails(got))
+			}
+			patch(200, "removing an unmatched email selector failed", op("remove", `emails[type eq "absent"].value`, nil))
+			got = patch(200, "the primary email selector failed", op("replace", `emails[primary eq "true"].value`, "p@example.test"))
+			if emails(got) != "w2@example.test/work/- c@example.test/other/- p@example.test/x/primary m@example.test/mobile/-" {
+				t.Fatal("the primary email selector did not replace its value", emails(got))
+			}
+			if read := call("GET", "Users/"+got["id"].(string), nil, 200, "the patched User could not be read"); emails(read) != emails(got) {
+				t.Fatal("the email PATCH answered emails it did not store", emails(read), emails(got))
+			}
+			if body := patch(400, "PATCH removed the primary email value", op("remove", "emails[primary eq true].value", nil)); body["scimType"] != "invalidValue" {
+				t.Fatal("removing the primary email value was not invalidValue", body)
+			}
+			if body := patch(400, "an unsupported email path was accepted", op("replace", "emails.type", "work")); body["scimType"] != "invalidPath" {
+				t.Fatal("an unsupported email path was not invalidPath", body)
+			}
+
+			second := user("two@example.test", email("value", "x@example.test", "type", "work"), email("value", "y@example.test", "type", "home"))
+			got = second(200, "replacing emails.value failed", op("replace", "emails.value", "same@example.test"))
+			if emails(got) != "same@example.test/work/primary same@example.test/home/-" {
+				t.Fatal("emails.value did not replace every entry", emails(got))
+			}
+			if body := second(400, "PATCH removed emails.value", op("remove", "emails.value", nil)); body["scimType"] != "invalidValue" {
+				t.Fatal("removing emails.value was not invalidValue", body)
+			}
+			third := user("three@example.test", email("value", "three@example.test", "type", "work"))
+			if body := third(400, "removing the last email was accepted", op("remove", `emails[type eq "work"].value`, nil)); body["scimType"] != "invalidValue" {
+				t.Fatal("removing the last email was not invalidValue", body)
+			}
+		})
+	}
+}

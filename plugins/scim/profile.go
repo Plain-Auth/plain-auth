@@ -68,6 +68,42 @@ func boolValue(v any) (bool, error) {
 	}
 	return false, invalid("invalidValue", "Expected a Boolean")
 }
+
+// emailEntry checks one email value and returns it with its value and type
+// lowercased, its type and value pair, and whether it claims primary.
+func emailEntry(item any) (map[string]any, [2]string, bool, error) {
+	v, err := object(item, emailFields)
+	if err != nil {
+		return nil, [2]string{}, false, err
+	}
+	address, err := stringValue(v["value"], 254)
+	if err != nil {
+		return nil, [2]string{}, false, err
+	}
+	address = strings.ToLower(address)
+	parsed, parseErr := mail.ParseAddress(address)
+	_, domain, hasAt := strings.Cut(address, "@")
+	if parseErr != nil || parsed.Address != address || !hasAt || !strings.Contains(domain, ".") {
+		return nil, [2]string{}, false, invalid("invalidValue", "Invalid email address")
+	}
+	v["value"] = address
+	var typ string
+	if v["type"] != nil {
+		if typ, err = stringValue(v["type"], 256); err != nil {
+			return nil, [2]string{}, false, err
+		}
+		typ = strings.ToLower(typ)
+		v["type"] = typ
+	}
+	primary := false
+	if v["primary"] != nil {
+		if primary, err = boolValue(v["primary"]); err != nil {
+			return nil, [2]string{}, false, err
+		}
+	}
+	return v, [2]string{typ, address}, primary, nil
+}
+
 func emailValues(raw any, user string) ([]any, string, error) {
 	items, ok := raw.([]any)
 	if raw != nil && !ok || len(items) > 20 {
@@ -80,53 +116,28 @@ func emailValues(raw any, user string) ([]any, string, error) {
 	pairs, types := map[[2]string]bool{}, map[string]bool{}
 	primary, work := -1, -1
 	for i, item := range items {
-		v, err := object(item, emailFields)
+		v, key, first, err := emailEntry(item)
 		if err != nil {
 			return nil, "", err
 		}
-		address, err := stringValue(v["value"], 254)
-		if err != nil {
-			return nil, "", err
-		}
-		address = strings.ToLower(address)
-		parsed, parseErr := mail.ParseAddress(address)
-		_, domain, hasAt := strings.Cut(address, "@")
-		if parseErr != nil || parsed.Address != address || !hasAt || !strings.Contains(domain, ".") {
-			return nil, "", invalid("invalidValue", "Invalid email address")
-		}
-		v["value"] = address
-		var typ string
-		if v["type"] != nil {
-			typ, err = stringValue(v["type"], 256)
-			if err != nil {
-				return nil, "", err
-			}
-			typ = strings.ToLower(typ)
+		if typ := key[0]; v["type"] != nil {
 			if types[typ] {
 				return nil, "", invalid("invalidValue", "Duplicate email type")
 			}
 			types[typ] = true
-			v["type"] = typ
 			if typ == "work" {
 				work = i
 			}
 		}
-		key := [2]string{typ, address}
 		if pairs[key] {
 			return nil, "", invalid("invalidValue", "Duplicate email")
 		}
 		pairs[key] = true
-		if v["primary"] != nil {
-			b, err := boolValue(v["primary"])
-			if err != nil {
-				return nil, "", err
+		if first {
+			if primary >= 0 {
+				return nil, "", invalid("invalidValue", "Multiple primary emails")
 			}
-			if b {
-				if primary >= 0 {
-					return nil, "", invalid("invalidValue", "Multiple primary emails")
-				}
-				primary = i
-			}
+			primary = i
 		}
 		v["primary"] = false
 		out = append(out, v)
