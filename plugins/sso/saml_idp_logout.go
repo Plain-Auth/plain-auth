@@ -80,7 +80,7 @@ func (o Options) receiveIDPLogout(c auth.EndpointContext, q url.Values, store SA
 		target, e := logoutLocation([]SAMLService{{Binding: saml.HTTPRedirectBinding, Location: distinct}})
 		responseEndpoint, _ := url.Parse(target)
 		reqEndpoint, _ := url.Parse(p.SAML.authority().logout)
-		if e != nil || !equalWebOrigin(responseEndpoint, reqEndpoint) || secureBrowserEndpoint(c.Auth, target) != nil {
+		if e != nil || !equalWebOrigin(responseEndpoint, reqEndpoint) || secureBrowserEndpoint(c.Auth.ExplicitlyTrustedOrigin, target) != nil {
 			return nil, ErrSAMLLogoutRequest
 		}
 		// This request owns its in-memory IdP descriptor. Sign the exact response

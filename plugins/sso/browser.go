@@ -214,12 +214,12 @@ func (o Options) oauthConfig(c auth.EndpointContext, p BrowserProvider) (oauth2.
 	var cfg oauth2.Config
 	idp := p.OIDC
 	for _, v := range []string{p.Issuer, idp.AuthorizationEndpoint, idp.TokenEndpoint, idp.JWKSEndpoint} {
-		if err := secureBrowserEndpoint(c.Auth, v); err != nil {
+		if err := secureBrowserEndpoint(requestTrust(c.Request.Context(), c.Auth), v); err != nil {
 			return cfg, err
 		}
 	}
 	if idp.UserInfoEndpoint != "" {
-		if e := secureBrowserEndpoint(c.Auth, idp.UserInfoEndpoint); e != nil {
+		if e := secureBrowserEndpoint(requestTrust(c.Request.Context(), c.Auth), idp.UserInfoEndpoint); e != nil {
 			return cfg, e
 		}
 	}

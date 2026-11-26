@@ -47,15 +47,15 @@ func TestDiscoveryOriginAndBoundedTransport(t *testing.T) {
 		t.Fatal(err)
 	}
 	cfg := Config{Issuer: "https://other.example.test/tenant"}
-	code(hydrate(t.Context(), host, client, &cfg, false), "discovery_untrusted_origin", 400)
+	code(hydrate(t.Context(), host.ExplicitlyTrustedOrigin, client, &cfg, false), "discovery_untrusted_origin", 400)
 	if requests != 0 {
 		t.Fatal("contacted browser-only origin")
 	}
 	for _, endpoint := range []string{"https://100.64.0.1/keys", "https://[2001:db8::1]/keys", "https://metadata.goog/keys"} {
-		code(checkEndpoint(host, endpoint), "discovery_private_host", 400)
+		code(checkEndpoint(host.ExplicitlyTrustedOrigin, endpoint), "discovery_private_host", 400)
 	}
 	cfg = Config{Issuer: issuer}
-	if err = hydrate(t.Context(), host, client, &cfg, false); err != nil {
+	if err = hydrate(t.Context(), host.ExplicitlyTrustedOrigin, client, &cfg, false); err != nil {
 		t.Fatal(err)
 	}
 	if cfg.TokenEndpoint != issuer+"/token" || cfg.JWKSEndpoint != issuer+"/keys" || cfg.AuthorizationEndpoint != issuer+"/authorize" || cfg.TokenEndpointAuthentication != "client_secret_basic" {
@@ -70,13 +70,13 @@ func TestDiscoveryOriginAndBoundedTransport(t *testing.T) {
 		saved := raw
 		raw = body.value
 		cfg = Config{Issuer: issuer}
-		code(hydrate(t.Context(), host, client, &cfg, false), body.code, 400)
+		code(hydrate(t.Context(), host.ExplicitlyTrustedOrigin, client, &cfg, false), body.code, 400)
 		raw = saved
 	}
 	client.Transport = transportFunc(func(r *http.Request) (*http.Response, error) { <-r.Context().Done(); return nil, r.Context().Err() })
 	client.Timeout = 5 * time.Millisecond
 	cfg = Config{Issuer: issuer}
-	code(hydrate(context.Background(), host, client, &cfg, false), "discovery_timeout", 502)
+	code(hydrate(context.Background(), host.ExplicitlyTrustedOrigin, client, &cfg, false), "discovery_timeout", 502)
 	if _, err := domains("Example.org,EXAMPLE.org, BüCHER.example"); err != nil {
 		t.Fatal(err)
 	}
@@ -147,7 +147,7 @@ func TestDiscoveryErrorCodes(t *testing.T) {
 	}
 	fetch := func(path string) error {
 		cfg := Config{Issuer: issuer, DiscoveryEndpoint: issuer + path}
-		return hydrate(t.Context(), host, client, &cfg, false)
+		return hydrate(t.Context(), host.ExplicitlyTrustedOrigin, client, &cfg, false)
 	}
 	if status, code := reply(fetch("/missing")); status != 400 || code != "discovery_not_found" {
 		t.Fatal("a 404 discovery document did not answer 400 discovery_not_found", status, code)
@@ -210,7 +210,7 @@ func TestDiscoveryErrorCodes(t *testing.T) {
 	for _, field := range []string{`"issuer":"https://login.example.test/tenant",`, `"authorization_endpoint":"/authorize",`, `,"token_endpoint":"/token"`, `,"jwks_uri":"/keys"`} {
 		served = strings.Replace(doc, field, "", 1)
 		cfg := Config{Issuer: issuer, DiscoveryEndpoint: issuer + "/served", AuthorizationEndpoint: issuer + "/authorize", TokenEndpoint: issuer + "/token", JWKSEndpoint: issuer + "/keys"}
-		if status, code := reply(hydrate(t.Context(), host, client, &cfg, false)); served == doc || status != 400 || code != "discovery_incomplete" {
+		if status, code := reply(hydrate(t.Context(), host.ExplicitlyTrustedOrigin, client, &cfg, false)); served == doc || status != 400 || code != "discovery_incomplete" {
 			t.Fatal("a discovery document missing a required field did not answer 400 discovery_incomplete", field, status, code)
 		}
 	}
@@ -222,7 +222,7 @@ func TestDiscoveryErrorCodes(t *testing.T) {
 		{Issuer: issuer, DiscoveryEndpoint: "https://login.example.test/%zz"},
 		{Issuer: issuer, DiscoveryEndpoint: "https://admin@login.example.test/tenant/.well-known/openid-configuration"},
 	} {
-		if status, code := reply(hydrate(t.Context(), host, client, &cfg, false)); status != 400 || code != "discovery_invalid_url" {
+		if status, code := reply(hydrate(t.Context(), host.ExplicitlyTrustedOrigin, client, &cfg, false)); status != 400 || code != "discovery_invalid_url" {
 			t.Fatal("a malformed issuer or discovery URL did not answer 400 discovery_invalid_url", cfg.Issuer, cfg.DiscoveryEndpoint, status, code)
 		}
 	}
@@ -232,12 +232,12 @@ func TestDiscoveryErrorCodes(t *testing.T) {
 		{Issuer: issuer, AuthorizationEndpoint: issuer + "/authorize", TokenEndpoint: issuer + "/token", JWKSEndpoint: issuer + "/keys", UserInfoEndpoint: "https://10.0.0.5/userinfo"},
 		{Issuer: issuer, AuthorizationEndpoint: issuer + "/authorize", TokenEndpoint: issuer + "/token", JWKSEndpoint: "http://localhost:6379/"},
 	} {
-		if status, code := reply(hydrate(t.Context(), host, client, &cfg, true)); status != 400 || code != "discovery_private_host" {
+		if status, code := reply(hydrate(t.Context(), host.ExplicitlyTrustedOrigin, client, &cfg, true)); status != 400 || code != "discovery_private_host" {
 			t.Fatal("a private oidcConfig endpoint did not answer 400 discovery_private_host", cfg, status, code)
 		}
 	}
 	manual := Config{Issuer: issuer, AuthorizationEndpoint: "not-a-url", TokenEndpoint: issuer + "/token", JWKSEndpoint: issuer + "/keys"}
-	if status, code := reply(hydrate(t.Context(), host, client, &manual, true)); status != 400 || code != "discovery_invalid_url" {
+	if status, code := reply(hydrate(t.Context(), host.ExplicitlyTrustedOrigin, client, &manual, true)); status != 400 || code != "discovery_invalid_url" {
 		t.Fatal("a malformed configured endpoint did not answer 400 discovery_invalid_url", status, code)
 	}
 	if requests != fetched {
@@ -257,27 +257,27 @@ func TestDiscoveryHydratesUserInfoEndpoint(t *testing.T) {
 	})}
 	userinfo = `,"userinfo_endpoint":"/userinfo"`
 	cfg := Config{Issuer: issuer}
-	if err := hydrate(t.Context(), host, client, &cfg, false); err != nil || cfg.UserInfoEndpoint != issuer+"/userinfo" {
+	if err := hydrate(t.Context(), host.ExplicitlyTrustedOrigin, client, &cfg, false); err != nil || cfg.UserInfoEndpoint != issuer+"/userinfo" {
 		t.Fatal("discovery did not store the issuer-relative userinfo_endpoint", cfg.UserInfoEndpoint, err)
 	}
 	userinfo = `,"userinfo_endpoint":"https://login.example.test/profile/me"`
 	cfg = Config{Issuer: issuer}
-	if err := hydrate(t.Context(), host, client, &cfg, false); err != nil || cfg.UserInfoEndpoint != "https://login.example.test/profile/me" {
+	if err := hydrate(t.Context(), host.ExplicitlyTrustedOrigin, client, &cfg, false); err != nil || cfg.UserInfoEndpoint != "https://login.example.test/profile/me" {
 		t.Fatal("discovery did not store an absolute userinfo_endpoint", cfg.UserInfoEndpoint, err)
 	}
 	cfg = Config{Issuer: issuer, UserInfoEndpoint: "https://login.example.test/claims"}
-	if err := hydrate(t.Context(), host, client, &cfg, false); err != nil || cfg.UserInfoEndpoint != "https://login.example.test/claims" {
+	if err := hydrate(t.Context(), host.ExplicitlyTrustedOrigin, client, &cfg, false); err != nil || cfg.UserInfoEndpoint != "https://login.example.test/claims" {
 		t.Fatal("discovery replaced a configured UserInfo endpoint", cfg.UserInfoEndpoint, err)
 	}
 	userinfo = ""
 	cfg = Config{Issuer: issuer}
-	if err := hydrate(t.Context(), host, client, &cfg, false); err != nil || cfg.UserInfoEndpoint != "" {
+	if err := hydrate(t.Context(), host.ExplicitlyTrustedOrigin, client, &cfg, false); err != nil || cfg.UserInfoEndpoint != "" {
 		t.Fatal("discovery invented a UserInfo endpoint the document does not advertise", cfg.UserInfoEndpoint, err)
 	}
 	userinfo = `,"userinfo_endpoint":"https://10.0.0.5/userinfo"`
 	cfg = Config{Issuer: issuer}
 	var e *auth.APIError
-	if err := hydrate(t.Context(), host, client, &cfg, false); !errors.As(err, &e) || e.Status != 400 || e.Code != "discovery_untrusted_origin" || cfg.UserInfoEndpoint != "" {
+	if err := hydrate(t.Context(), host.ExplicitlyTrustedOrigin, client, &cfg, false); !errors.As(err, &e) || e.Status != 400 || e.Code != "discovery_untrusted_origin" || cfg.UserInfoEndpoint != "" {
 		t.Fatal("discovery stored a private userinfo_endpoint", err)
 	}
 }
@@ -313,7 +313,7 @@ func TestDiscoveryHydratedConfiguration(t *testing.T) {
 	})}
 	hydrated := func(cfg Config) Config {
 		t.Helper()
-		if err := hydrate(t.Context(), host, client, &cfg, false); err != nil {
+		if err := hydrate(t.Context(), host.ExplicitlyTrustedOrigin, client, &cfg, false); err != nil {
 			t.Fatal(err)
 		}
 		return cfg

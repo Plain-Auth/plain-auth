@@ -26,8 +26,8 @@ type providerTransport struct {
 	trusted http.RoundTripper
 }
 
-func secureBrowserEndpoint(host *auth.Auth, raw string) error {
-	if err := checkEndpoint(host, raw); err != nil {
+func secureBrowserEndpoint(trusted func(string) bool, raw string) error {
+	if err := checkEndpoint(trusted, raw); err != nil {
 		return err
 	}
 	u, _ := endpointURL(raw)
@@ -35,7 +35,7 @@ func secureBrowserEndpoint(host *auth.Auth, raw string) error {
 		return nil
 	}
 	name := u.Hostname()
-	if host.ExplicitlyTrustedOrigin(raw) && (net.ParseIP(name).IsLoopback() || strings.EqualFold(name, "localhost")) {
+	if trusted(raw) && (net.ParseIP(name).IsLoopback() || strings.EqualFold(name, "localhost")) {
 		return nil
 	}
 	return apiError(400, "Enterprise identity endpoints require HTTPS")
@@ -43,11 +43,12 @@ func secureBrowserEndpoint(host *auth.Auth, raw string) error {
 
 func (t providerTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	raw := req.URL.String()
-	if e := secureBrowserEndpoint(t.auth, raw); e != nil {
+	trust := requestTrust(req.Context(), t.auth)
+	if e := secureBrowserEndpoint(trust, raw); e != nil {
 		return nil, e
 	}
 	transport := http.RoundTripper(publicTransport)
-	trusted := t.auth.ExplicitlyTrustedOrigin(raw)
+	trusted := trust(raw)
 	if trusted {
 		transport = t.trusted
 	}

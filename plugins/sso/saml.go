@@ -241,7 +241,10 @@ func (o Options) samlSP(c auth.EndpointContext, p Provider) (*saml.ServiceProvid
 	if len(cfg.IDPMetadata.Metadata) > o.SAML.metadataLimit() || !cfg.MetadataValidAt(time.Now()) {
 		return nil, ErrInvalidSAML
 	}
-	if err = secureBrowserEndpoint(c.Auth, authority.redirect); err != nil {
+	// SAML endpoints use only static trusted origins: another runtime never
+	// checks them against trusted origins, and a directory must validate the
+	// same way on every route.
+	if err = secureBrowserEndpoint(c.Auth.ExplicitlyTrustedOrigin, authority.redirect); err != nil {
 		return nil, ErrInvalidSAML
 	}
 	endpoint, _ := url.Parse(authority.redirect)

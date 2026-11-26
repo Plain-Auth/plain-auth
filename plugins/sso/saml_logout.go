@@ -92,7 +92,7 @@ func availableSAMLLogout(c auth.EndpointContext, p Provider) error {
 	if e != nil || !equalWebOrigin(logoutEndpoint, loginEndpoint) {
 		return apiError(400, "SAML logout must use the configured IdP sign-in origin")
 	}
-	if err := secureBrowserEndpoint(c.Auth, location); err != nil {
+	if err := secureBrowserEndpoint(c.Auth.ExplicitlyTrustedOrigin, location); err != nil {
 		return ErrInvalidSAML
 	}
 	return nil

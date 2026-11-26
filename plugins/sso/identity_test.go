@@ -20,12 +20,12 @@ func TestEnterpriseIdentityTransport(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, raw := range []string{"http://idp.company.test/authorize", "https://127.0.0.1:10999/token", "https://[::1]/keys", "https://metadata.google.internal/keys"} {
-		if secureBrowserEndpoint(host, raw) == nil {
+		if secureBrowserEndpoint(host.ExplicitlyTrustedOrigin, raw) == nil {
 			t.Fatal("unsafe endpoint accepted", raw)
 		}
 	}
 	for _, raw := range []string{"https://example.org/authorize", "http://127.0.0.1:10999/keys"} {
-		if e := secureBrowserEndpoint(host, raw); e != nil {
+		if e := secureBrowserEndpoint(host.ExplicitlyTrustedOrigin, raw); e != nil {
 			t.Fatal(e)
 		}
 	}

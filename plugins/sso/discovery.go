@@ -31,12 +31,14 @@ func endpointURL(raw string) (*url.URL, error) {
 	return u, nil
 }
 
-func checkEndpoint(host *auth.Auth, raw string) error {
+// checkEndpoint refuses a private or malformed endpoint unless trusted names
+// its exact origin.
+func checkEndpoint(trusted func(string) bool, raw string) error {
 	u, err := endpointURL(raw)
 	if err != nil {
 		return err
 	}
-	if host.ExplicitlyTrustedOrigin(raw) {
+	if trusted(raw) {
 		return nil
 	}
 	name := strings.ToLower(strings.TrimSuffix(u.Hostname(), "."))
@@ -63,7 +65,7 @@ type discoveryDocument struct {
 	Methods       []string `json:"token_endpoint_auth_methods_supported"`
 }
 
-func hydrate(ctx context.Context, host *auth.Auth, client *http.Client, cfg *Config, skip bool) error {
+func hydrate(ctx context.Context, trusted func(string) bool, client *http.Client, cfg *Config, skip bool) error {
 	if cfg.TokenEndpointAuthentication != "" && cfg.TokenEndpointAuthentication != "client_secret_basic" && cfg.TokenEndpointAuthentication != "client_secret_post" && cfg.TokenEndpointAuthentication != privateKeyJWT {
 		return apiError(400, "Unsupported OpenID Connect client authentication method")
 	}
@@ -72,7 +74,7 @@ func hydrate(ctx context.Context, host *auth.Auth, client *http.Client, cfg *Con
 	}
 	for _, raw := range []string{cfg.DiscoveryEndpoint, cfg.AuthorizationEndpoint, cfg.TokenEndpoint, cfg.JWKSEndpoint, cfg.UserInfoEndpoint} {
 		if raw != "" {
-			if err := checkEndpoint(host, raw); err != nil {
+			if err := checkEndpoint(trusted, raw); err != nil {
 				return err
 			}
 		}
@@ -80,7 +82,7 @@ func hydrate(ctx context.Context, host *auth.Auth, client *http.Client, cfg *Con
 	if !skip {
 		// Discovery takes a customer-supplied URL. Only contact an independently
 		// trusted origin. Never forward it to a redirect target.
-		if !host.ExplicitlyTrustedOrigin(cfg.DiscoveryEndpoint) {
+		if !trusted(cfg.DiscoveryEndpoint) {
 			return discoveryError(400, "discovery_untrusted_origin", "The discovery endpoint origin is not trusted")
 		}
 		doc, err := fetchDiscovery(ctx, client, cfg.DiscoveryEndpoint)
@@ -132,7 +134,7 @@ func hydrate(ctx context.Context, host *auth.Auth, client *http.Client, cfg *Con
 			// host outside the trusted origins answers this code too. Trust
 			// uses exact TrustedOrigins entries only; another runtime also
 			// honours wildcard patterns.
-			if !host.ExplicitlyTrustedOrigin(raw) {
+			if !trusted(raw) {
 				return discoveryError(400, "discovery_untrusted_origin", fmt.Sprintf("The %s %q is not trusted by your trusted origins configuration", f.name, raw))
 			}
 			if f.stored != nil && *f.stored == "" {
@@ -180,7 +182,7 @@ func (o Options) withRuntimeDiscovery(ctx context.Context, host *auth.Auth, p Br
 	if cfg.TokenEndpointAuthentication == "" {
 		cfg.TokenEndpointAuthentication = "client_secret_basic"
 	}
-	if err := hydrate(ctx, host, o.HTTPClient, &cfg, false); err != nil {
+	if err := hydrate(ctx, requestTrust(ctx, host), o.HTTPClient, &cfg, false); err != nil {
 		return p, err
 	}
 	p.OIDC = &cfg
@@ -228,4 +230,11 @@ func fetchDiscovery(ctx context.Context, client *http.Client, endpoint string) (
 		return doc, discoveryError(400, "discovery_invalid_json", "Invalid discovery document")
 	}
 	return doc, nil
+}
+
+// requestTrust trusts the exact origins configured for the request ctx
+// belongs to, including those TrustedOriginsForRequest returned. OIDC
+// discovery, endpoint checks and identity provider requests use it.
+func requestTrust(ctx context.Context, host *auth.Auth) func(string) bool {
+	return func(raw string) bool { return host.ExplicitlyTrustedOriginFor(ctx, raw) }
 }

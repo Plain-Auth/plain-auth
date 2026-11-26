@@ -99,8 +99,11 @@ type Options struct {
 	// as TrustedOrigins and receives a copy of the request without its body,
 	// once per request to the handler. A returned *APIError with a 4xx or
 	// 5xx status is sent as the response; another error or an invalid
-	// pattern fails the request with a 500. Calls made outside the handler, BindOneTapNonce, the public
-	// CallbackURL and server-side discovery use the static origins only.
+	// pattern fails the request with a 500. Calls made outside the handler,
+	// BindOneTapNonce and the public CallbackURL use the static origins only.
+	// Its exact entries also let OIDC discovery, OIDC endpoint checks and
+	// requests to the identity provider reach that origin for the request,
+	// through the configured HTTP client and without the public-address check.
 	TrustedOriginsForRequest func(*http.Request) ([]string, error)
 	CookiePrefix             string
 	// CrossSubDomainCookies selects the Domain attribute for shared browser cookies.

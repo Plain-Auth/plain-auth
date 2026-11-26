@@ -114,7 +114,7 @@ func (o Options) updateProvider(c auth.EndpointContext, store Store, actor Actor
 		cfg.Issuer = next.Issuer
 		for _, endpoint := range []string{cfg.AuthorizationEndpoint, cfg.TokenEndpoint, cfg.JWKSEndpoint, cfg.UserInfoEndpoint, cfg.DiscoveryEndpoint} {
 			if endpoint != "" {
-				if err := checkEndpoint(c.Auth, endpoint); err != nil {
+				if err := checkEndpoint(requestTrust(c.Request.Context(), c.Auth), endpoint); err != nil {
 					return next, false, err
 				}
 			}

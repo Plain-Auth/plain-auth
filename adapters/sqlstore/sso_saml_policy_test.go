@@ -418,7 +418,9 @@ func TestEnterpriseSAMLResponsePolicy(t *testing.T) {
 					req, state := p.start(h, id)
 					return samlOutcome(t, p.finish(h, id, req, state, nil, adjust, nil))
 				}
-				signedIn := func(location *url.URL, session bool) bool { return location.String() == "https://service.test/home" && session }
+				signedIn := func(location *url.URL, session bool) bool {
+					return location.String() == "https://service.test/home" && session
+				}
 				refused := func(location *url.URL, session bool, description string) bool {
 					return location.Path == "/retry" && location.Query().Get("error") == "invalid_saml_response" && location.Query().Get("error_description") == description && !session
 				}

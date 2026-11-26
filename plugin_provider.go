@@ -1,6 +1,7 @@
 package plainauth
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -47,6 +48,19 @@ func (a *Auth) TrustedProviderIDs(r *http.Request) ([]string, error) {
 // ExplicitlyTrustedOrigin permits server-side discovery only at an exact
 // configured origin. Browser wildcard rules do not grant network access.
 func (a *Auth) ExplicitlyTrustedOrigin(raw string) bool {
+	return a.exactlyTrusted(raw, a.trustedOrigins)
+}
+
+// ExplicitlyTrustedOriginFor is ExplicitlyTrustedOrigin for the request ctx
+// belongs to: an exact origin TrustedOriginsForRequest returned for it also
+// counts, as another runtime lets a trusted origins function add identity
+// provider origins. The request's origins were resolved when it entered the
+// handler, so the check runs no host code.
+func (a *Auth) ExplicitlyTrustedOriginFor(ctx context.Context, raw string) bool {
+	return a.exactlyTrusted(raw, a.originRules(ctx))
+}
+
+func (a *Auth) exactlyTrusted(raw string, rules []httporigin.Rule) bool {
 	u, err := url.Parse(raw)
 	if err != nil {
 		return false
@@ -59,7 +73,7 @@ func (a *Auth) ExplicitlyTrustedOrigin(raw string) bool {
 	if base != nil && httporigin.Canonical(base) == origin {
 		return true
 	}
-	for _, rule := range a.trustedOrigins {
+	for _, rule := range rules {
 		if rule.Exact(origin) {
 			return true
 		}

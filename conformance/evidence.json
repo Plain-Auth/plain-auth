@@ -41503,12 +41503,12 @@
     {
       "label": "Return discovery_timeout with 502 when the discovery request outlives its deadline",
       "test": "plugins/sso/discovery_test.go",
-      "marker": "code(hydrate(context.Background(), host, client, &cfg, false), \"discovery_timeout\", 502)"
+      "marker": "code(hydrate(context.Background(), host.ExplicitlyTrustedOrigin, client, &cfg, false), \"discovery_timeout\", 502)"
     },
     {
       "label": "Return discovery_private_host for shared-address, documentation and cloud-metadata endpoints",
       "test": "plugins/sso/discovery_test.go",
-      "marker": "code(checkEndpoint(host, endpoint), \"discovery_private_host\", 400)"
+      "marker": "code(checkEndpoint(host.ExplicitlyTrustedOrigin, endpoint), \"discovery_private_host\", 400)"
     }
   ],
   "plugin-symbol/sso/HydratedOIDCConfig": [
@@ -42448,6 +42448,17 @@
       "label": "Keep a wildcard browser origin from granting server-side transport to an unlisted host",
       "test": "plugins/sso/identity_test.go",
       "marker": "t.Fatal(\"browser wildcard granted confidential transport\")"
+    },
+    {
+      "label": "Let an exact IdP origin returned by TrustedOriginsForRequest reach discovery, sign-in, callback token requests and update-provider on its own routes only, never as a wildcard or for SAML",
+      "test": "adapters/sqlstore/sso_request_origins_test.go",
+      "marker": "t.Fatal(\"a callback refused a token endpoint its request trusted\"",
+      "complete": true
+    },
+    {
+      "label": "Trust only exact per-request origins for server-side requests and keep the static check unchanged",
+      "test": "request_origins_test.go",
+      "marker": "t.Fatal(\"the static check trusted a per-request origin\")"
     }
   ],
   "docs/content/docs/plugins/sso/oidc.mdx#L108": [
@@ -42492,7 +42503,7 @@
     {
       "label": "Return 502 discovery_timeout when the discovery request exceeds its deadline",
       "test": "plugins/sso/discovery_test.go",
-      "marker": "code(hydrate(context.Background(), host, client, &cfg, false), \"discovery_timeout\", 502)"
+      "marker": "code(hydrate(context.Background(), host.ExplicitlyTrustedOrigin, client, &cfg, false), \"discovery_timeout\", 502)"
     },
     {
       "label": "Return 502 discovery_timeout for a 408 discovery response",
@@ -42505,7 +42516,7 @@
     {
       "label": "Reject a discovery URL on an untrusted origin with 400 discovery_untrusted_origin before contacting it",
       "test": "plugins/sso/discovery_test.go",
-      "marker": "code(hydrate(t.Context(), host, client, &cfg, false), \"discovery_untrusted_origin\", 400)"
+      "marker": "code(hydrate(t.Context(), host.ExplicitlyTrustedOrigin, client, &cfg, false), \"discovery_untrusted_origin\", 400)"
     },
     {
       "label": "Return 400 discovery_untrusted_origin for a discovered token endpoint outside the trusted origins",

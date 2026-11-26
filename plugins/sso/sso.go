@@ -396,7 +396,7 @@ func New(o Options) (auth.Plugin, error) {
 					return nil, apiError(400, "Invalid skipDiscovery")
 				}
 			}
-			if err = hydrate(ctx, c.Auth, o.HTTPClient, &cfg, skip); err != nil {
+			if err = hydrate(ctx, requestTrust(c.Request.Context(), c.Auth), o.HTTPClient, &cfg, skip); err != nil {
 				return nil, err
 			}
 			if err = o.checkClientAuth(&cfg); err != nil {
