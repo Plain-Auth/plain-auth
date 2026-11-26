@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -54,8 +55,26 @@ type HookContext struct {
 	Result any
 	Err    error
 
-	requestPath string
-	responded   bool
+	requestPath        string
+	responded          bool
+	oauthServerContext map[string]any
+}
+
+// AddOAuthServerContext keeps values with the browser OAuth flow this request
+// starts. OAuthState.ServerContext returns them to the start's after hooks
+// and to the callback. Call it from a before hook on /sign-in/social,
+// /link-social or /oauth-popup/start. The browser cannot read, set or change
+// the values, but the database strategy stores them as plain JSON, so keep
+// secrets out. Calls merge, and a later value for a key replaces an earlier
+// one. The values are kept as JSON, so numbers come back as float64, and a
+// value JSON cannot encode fails the start. A request that starts no browser
+// flow, such as an ID-token sign-in, keeps none, and a call after the start
+// has built its flow has no effect.
+func (c *HookContext) AddOAuthServerContext(values map[string]any) {
+	if c.oauthServerContext == nil {
+		c.oauthServerContext = make(map[string]any, len(values))
+	}
+	maps.Copy(c.oauthServerContext, values)
 }
 
 // Respond answers the request with result from a before hook. The remaining

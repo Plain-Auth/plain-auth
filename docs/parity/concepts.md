@@ -590,30 +590,41 @@
       - [x] Request additional scopes as the signed-in owner and merge the approved grant once across both servers ([test](../../conformance/social-user-fields.mjs#L307))
     - [ ] Customizing the Authorization URL
       - [x] additionalParams on signIn.social and linkSocial reach the authorization URL, and state, client_id, redirect_uri, response_type, code_challenge, code_challenge_method, nonce and scope each answer 400, on both runtimes ([test](../../conformance/social-signup.mjs#L39))
-    - [ ] Passing Additional Data Through OAuth Flow
+    - [x] Passing Additional Data Through OAuth Flow ([test](../../conformance/goapi/oauth_additional_data_test.go#L27))
       - [x] additionalData on /sign-in/social and /link-social is kept with the browser flow, under the database and the cookie state strategy, and reaches the callback; a value that is not an object, exceeds 8 KiB or holds a number no float64 holds answers 400 VALIDATION_ERROR before a flow is stored ([test](../../conformance/goapi/oauth_additional_data_test.go#L27))
-      - [ ] Accessing Additional Data in Hooks
+      - [x] Accessing Additional Data in Hooks ([test](../../conformance/goapi/oauth_additional_data_test.go#L77))
         - [x] During the callback, OAuthAdditionalData returns the data to the provider's callbacks, ValidateUserInfo, database hooks and after hooks on /callback/:id. Unlike getOAuthState, it returns only the browser's keys, not the flow's own state ([test](../../conformance/goapi/oauth_additional_data_test.go#L77))
-        - [ ] `callbackURL`
+        - [x] OAuthStateFrom returns the flow's state to the provider's exchange and profile callbacks, ValidateUserInfo, user and session create hooks and after hooks on /callback/:id under both state strategies, and the flow just started to after hooks on the start; before hooks on the callback see none ([test](../../conformance/goapi/oauth_flow_state_test.go#L210))
+        - [x] `callbackURL` ([test](../../conformance/goapi/oauth_flow_state_test.go#L207))
           - [x] additionalData cannot replace the flow's callbackURL: the name is dropped from the browser's data. OAuthAdditionalData does not return the flow's own state ([test](../../conformance/goapi/oauth_additional_data_test.go#L126))
-        - [ ] `codeVerifier`
+          - [x] OAuthState.CallbackURL is the destination the start chose, for sign-in, link and popup flows ([test](../../conformance/goapi/oauth_flow_state_test.go#L207))
+        - [x] `codeVerifier` ([test](../../conformance/goapi/oauth_flow_state_test.go#L186))
           - [x] additionalData cannot replace the flow's codeVerifier: the name is dropped from the browser's data. OAuthAdditionalData does not return the flow's own state ([test](../../conformance/goapi/oauth_additional_data_test.go#L126))
-        - [ ] `errorURL`
+          - [x] OAuthState leaves out the PKCE verifier and nonce, which the provider's ExchangeCode and Resolve receive, since hooks see no secrets: no hook's view contains either ([test](../../conformance/goapi/oauth_flow_state_test.go#L186))
+        - [x] `errorURL` ([test](../../conformance/goapi/oauth_flow_state_test.go#L207))
           - [x] additionalData cannot replace the flow's errorURL: the name is dropped from the browser's data. OAuthAdditionalData does not return the flow's own state ([test](../../conformance/goapi/oauth_additional_data_test.go#L126))
-        - [ ] `newUserURL`
+          - [x] OAuthState.ErrorURL is the error destination the start chose or, during the callback, the error page when the start gave none ([test](../../conformance/goapi/oauth_flow_state_test.go#L207))
+        - [x] `newUserURL` ([test](../../conformance/goapi/oauth_flow_state_test.go#L207))
           - [x] additionalData cannot replace the flow's newUserURL: the name is dropped from the browser's data. OAuthAdditionalData does not return the flow's own state ([test](../../conformance/goapi/oauth_additional_data_test.go#L126))
-        - [ ] `link`
+          - [x] OAuthState.NewUserURL is the new-user destination the start chose ([test](../../conformance/goapi/oauth_flow_state_test.go#L207))
+        - [x] `link` ([test](../../conformance/goapi/oauth_flow_state_test.go#L223))
           - [x] additionalData cannot replace the flow's link: the name is dropped from the browser's data. OAuthAdditionalData does not return the flow's own state ([test](../../conformance/goapi/oauth_additional_data_test.go#L126))
-        - [ ] `requestSignUp`
+          - [x] On a /link-social flow OAuthState.LinkUserID names the user the account is linked to, and is empty for a sign-in; the link target is named by user ID only, so read the user for its email ([test](../../conformance/goapi/oauth_flow_state_test.go#L223))
+        - [x] `requestSignUp` ([test](../../conformance/goapi/oauth_flow_state_test.go#L207))
           - [x] additionalData cannot replace the flow's requestSignUp: the name is dropped from the browser's data. OAuthAdditionalData does not return the flow's own state ([test](../../conformance/goapi/oauth_additional_data_test.go#L126))
-        - [ ] `expiresAt`
+          - [x] OAuthState.RequestSignUp reports whether the start asked to create an account ([test](../../conformance/goapi/oauth_flow_state_test.go#L207))
+        - [x] `expiresAt` ([test](../../conformance/goapi/oauth_flow_state_test.go#L179))
           - [x] additionalData cannot replace the flow's expiresAt: the name is dropped from the browser's data. OAuthAdditionalData does not return the flow's own state ([test](../../conformance/goapi/oauth_additional_data_test.go#L126))
-        - [ ] `serverContext`
+          - [x] OAuthState.ExpiresAt is in the future and at most ten minutes after the start ([test](../../conformance/goapi/oauth_flow_state_test.go#L179))
+        - [x] `serverContext` ([test](../../conformance/goapi/oauth_flow_state_test.go#L105))
           - [x] additionalData cannot replace the flow's serverContext: the name is dropped from the browser's data. OAuthAdditionalData does not return the flow's own state ([test](../../conformance/goapi/oauth_additional_data_test.go#L126))
+          - [x] OAuthState.ServerContext holds the values before hooks added, merged with later keys winning, numbers as float64, and nil when none were added whatever the browser sends ([test](../../conformance/goapi/oauth_flow_state_test.go#L105))
         - [x] `[key: string]` ([test](../../conformance/goapi/oauth_additional_data_test.go#L133))
           - [x] The browser's additionalData keys reach the callback as sent, numbers as float64 ([test](../../conformance/goapi/oauth_additional_data_test.go#L133))
-      - [ ] Passing Server-Trusted Data
+      - [x] Passing Server-Trusted Data ([test](../../conformance/goapi/oauth_flow_state_test.go#L104))
         - [x] Keep the signed issuer request in server-owned provider state and ignore client-supplied issuer context ([test](../../conformance/oauth-social-authorization.mjs#L32))
+        - [x] A before hook on /sign-in/social, /link-social or /oauth-popup/start keeps server-derived values with HookContext.AddOAuthServerContext, and the start's after hooks and the callback read them in OAuthState.ServerContext under both strategies; a serverContext in the body or in additionalData is ignored ([test](../../conformance/goapi/oauth_flow_state_test.go#L104))
+        - [x] Behind the OAuth proxy the preview keeps the server context and link owner with its own flow on SQLite, PostgreSQL and MySQL and reads them on /callback/:id/oauth-proxy; production's hooks and provider callbacks see no flow state ([test](../../adapters/sqlstore/oauth_proxy_test.go#L112))
   - [ ] Handling Providers Without Email
     - [x] A provider profile without an email redirects to the error callback with error=email_not_found and issues no session ([test](../../conformance/goapi/oauth_callback_errors_test.go#L108))
     - [ ] Apple

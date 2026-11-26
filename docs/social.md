@@ -357,7 +357,48 @@ plainauth.EndpointHook{
 }
 ```
 
-The values are browser input: check them before you act on them, and do not change the map. Numbers come back as `float64`. Keep values the server derives itself in your own storage rather than in `additionalData`. [Additional data tests](../conformance/goapi/oauth_additional_data_test.go)
+The values are browser input: check them before you act on them, and do not change the map. Numbers come back as `float64`. Values the server derives itself belong in the [server context](#carry-server-data-through-the-flow) rather than in `additionalData`. [Additional data tests](../conformance/goapi/oauth_additional_data_test.go)
+
+## Read the flow's state in hooks
+
+`plainauth.OAuthStateFrom(ctx)` returns what hooks may read of a browser sign-in or link flow:
+
+| Field | Meaning |
+| --- | --- |
+| `CallbackURL`, `NewUserURL`, `ErrorURL` | The destinations the start chose. During the callback, `ErrorURL` is where a failure returns: the error page when the start chose none |
+| `LinkUserID` | The user `/link-social` links the provider account to, or empty for a sign-in |
+| `RequestSignUp` | Whether the start asked to create an account |
+| `ExpiresAt` | When the flow expires, ten minutes after it started |
+| `AdditionalData` | The browser's `additionalData`: untrusted input |
+| `ServerContext` | What hooks added before the flow started; see below |
+
+The start has the state once it has built its flow, so after hooks on `/sign-in/social`, `/link-social` and `/oauth-popup/start` read it through `c.Request.Context()`. The callback has it once it has read the flow: in the provider's `ExchangeCode`, `Resolve` and `GetAccountFields`, in `ValidateUserInfo` and the database hooks, and in after hooks on `/callback/:id`. It reports false in before hooks, in the verification delete hooks that spend the flow, for an ID-token sign-in, which starts no flow, and on the OAuth proxy's production instance. The state leaves out the flow's secrets: the PKCE verifier, the nonce and the browser binding; a provider's `ExchangeCode` receives the verifier. A link names its target by user ID; read the user for its current email. Values a plugin keeps for its own flow are not in `ServerContext`. Do not change the maps. [Flow state tests](../conformance/goapi/oauth_flow_state_test.go)
+
+## Carry server data through the flow
+
+A before hook on `/sign-in/social`, `/link-social` or `/oauth-popup/start` can keep values the server derives with the flow, and read them back on the callback:
+
+```go
+opts.Hooks.Before = append(opts.Hooks.Before, plainauth.EndpointHook{
+	Match: func(c *plainauth.HookContext) bool { return c.Path == "/sign-in/social" },
+	Run: func(c *plainauth.HookContext) error {
+		c.AddOAuthServerContext(map[string]any{"tenantID": tenantID(c.Request.Context())})
+		return nil
+	},
+})
+opts.Hooks.After = append(opts.Hooks.After, plainauth.EndpointHook{
+	Match: func(c *plainauth.HookContext) bool { return c.Path == "/callback/:id" },
+	Run: func(c *plainauth.HookContext) error {
+		if state, ok := plainauth.OAuthStateFrom(c.Request.Context()); ok {
+			tenant, _ := state.ServerContext["tenantID"].(string)
+			_ = tenant // use it
+		}
+		return nil
+	},
+})
+```
+
+Calls merge, and a later value for a key replaces an earlier one. The values are kept as JSON, so numbers come back as `float64`, and a value JSON cannot encode fails the start with a 500. The database strategy stores them as plain JSON in the flow's verification row, so keep secrets out; with `OAuthStateCookie` the whole flow, values included, must fit the sealed cookie. The browser can neither read nor set the values, and a `serverContext` it sends is ignored. An ID-token sign-in keeps none. Behind the OAuth proxy the preview keeps the values with its own flow, and production never receives them. [Flow state tests](../conformance/goapi/oauth_flow_state_test.go) · [OAuth proxy tests](../adapters/sqlstore/oauth_proxy_test.go)
 
 `/link-social` checks its body first, then the caller's session, then the provider, so an anonymous request for an unknown provider answers 401 `UNAUTHORIZED`. A provider subject that is blank, or the placeholder `null` or `undefined`, cannot name an account: an ID-token sign-in or link answers 401 `FAILED_TO_GET_USER_INFO`, and a browser callback receives `unable_to_get_user_info`. [Link contract test](../conformance/goapi/provider_contract_test.go)
 

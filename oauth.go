@@ -84,7 +84,11 @@ type OAuthFlow struct {
 	ProxyOrigin string `json:",omitempty"`
 	// AdditionalData is the additionalData object the browser sent when it
 	// started the flow, without the reserved names.
-	AdditionalData                                    map[string]any `json:",omitempty"`
+	AdditionalData map[string]any `json:",omitempty"`
+	// ServerContext holds the values hooks added with
+	// HookContext.AddOAuthServerContext when the flow started. A custom
+	// OAuthFlowStore must keep it.
+	ServerContext                                     map[string]any `json:",omitempty"`
 	ProviderReference                                 string         `json:",omitempty"`
 	RedirectURI                                       string         `json:",omitempty"`
 	RequestSignUp                                     bool           `json:",omitempty"`

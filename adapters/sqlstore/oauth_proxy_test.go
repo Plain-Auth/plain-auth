@@ -8,8 +8,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"reflect"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	auth "github.com/Plain-Org/plain-auth"
 	"github.com/Plain-Org/plain-auth/plugins/oauthproxy"
@@ -49,6 +52,16 @@ func TestOAuthProxyAcrossDeployments(t *testing.T) {
 		t.Run(dialect, func(t *testing.T) {
 			issuer := newProfileIssuer(t)
 			issuer.set("member", map[string]any{"locale": "fr"})
+			// The flow state each deployment's callback hooks read.
+			var statesMu sync.Mutex
+			states := map[string]auth.OAuthState{}
+			flowState := func(origin string) (auth.OAuthState, bool) {
+				statesMu.Lock()
+				defer statesMu.Unlock()
+				s, ok := states[origin]
+				delete(states, origin)
+				return s, ok
+			}
 			configure := func(origin string) (*auth.Auth, *Store) {
 				t.Helper()
 				opts := oauthproxy.Options{ProductionURL: production, CurrentURL: origin, Secret: secret}
@@ -62,6 +75,9 @@ func TestOAuthProxyAcrossDeployments(t *testing.T) {
 				}
 				resolve := provider.Resolve
 				provider.Resolve = func(ctx context.Context, token *oauth2.Token, nonce string) (auth.OAuthProfile, error) {
+					if _, ok := auth.OAuthStateFrom(ctx); ok {
+						t.Error("production's provider callback saw flow state")
+					}
 					profile, err := resolve(ctx, token, nonce)
 					profile.EmailVerified = profile.Subject != "unverified"
 					domain := "social.test"
@@ -91,7 +107,23 @@ func TestOAuthProxyAcrossDeployments(t *testing.T) {
 				}
 				t.Cleanup(func() { db.Close() })
 				off := false
-				host, err := auth.New(auth.Options{Store: db, BaseURL: origin, BasePath: mount, Secret: "a separate environment credential " + origin, TrustedOrigins: []string{preview}, Plugins: []auth.Plugin{plugin}, RateLimit: &off, EmailAndPassword: true, SocialProviders: map[string]auth.OAuthProvider{"google": provider}, UserAdditionalFields: fields})
+				hooks := auth.EndpointHooks{
+					Before: []auth.EndpointHook{{Match: func(c *auth.HookContext) bool { return c.Path == "/sign-in/social" || c.Path == "/link-social" }, Run: func(c *auth.HookContext) error {
+						c.AddOAuthServerContext(map[string]any{"deployment": origin, "limits": map[string]any{"seats": 3}})
+						return nil
+					}}},
+					After: []auth.EndpointHook{{Match: func(c *auth.HookContext) bool {
+						return strings.HasPrefix(c.Path, "/callback/") || c.Path == "/oauth-proxy-callback"
+					}, Run: func(c *auth.HookContext) error {
+						if s, ok := auth.OAuthStateFrom(c.Request.Context()); ok {
+							statesMu.Lock()
+							states[origin] = s
+							statesMu.Unlock()
+						}
+						return nil
+					}}},
+				}
+				host, err := auth.New(auth.Options{Store: db, BaseURL: origin, BasePath: mount, Secret: "a separate environment credential " + origin, TrustedOrigins: []string{preview}, Plugins: []auth.Plugin{plugin}, RateLimit: &off, EmailAndPassword: true, SocialProviders: map[string]auth.OAuthProvider{"google": provider}, UserAdditionalFields: fields, Hooks: hooks})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -180,9 +212,20 @@ func TestOAuthProxyAcrossDeployments(t *testing.T) {
 			if r := proxyRequest(t, origin, "GET", other.String(), nil, browser, 302); r.Header().Get("Location") != mount+"/error?error=provider_mismatch" {
 				t.Fatal("provider mismatch was accepted")
 			}
+			flowState(preview)
 			w := proxyRequest(t, origin, "GET", target.String(), nil, browser, 302)
 			if w.Header().Get("Location") != "/welcome" {
 				t.Fatal("first registration landing", w.Header().Get("Location"))
+			}
+			// The preview keeps its flow's server context; production never sees it.
+			serverContext := map[string]any{"deployment": preview, "limits": map[string]any{"seats": float64(3)}}
+			state, ok := flowState(preview)
+			if !ok || !state.ExpiresAt.After(time.Now()) || state.ExpiresAt.After(time.Now().Add(10*time.Minute)) {
+				t.Fatal("the preview's callback hook saw no flow state", state)
+			}
+			state.ExpiresAt = time.Time{}
+			if want := (auth.OAuthState{CallbackURL: "/return", NewUserURL: "/welcome", ErrorURL: "/error", ServerContext: serverContext}); !reflect.DeepEqual(state, want) {
+				t.Fatalf("the preview's callback hook saw %+v, want %+v", state, want)
 			}
 			if r := proxyRequest(t, origin, "GET", target.String(), nil, browser, 302); r.Header().Get("Location") != mount+"/error?error=state_mismatch" {
 				t.Fatal("spent state was accepted")
@@ -227,9 +270,16 @@ func TestOAuthProxyAcrossDeployments(t *testing.T) {
 			issuer.identity.Email = "member@social.test"
 			issuer.mu.Unlock()
 			callback, browser = begin("/link-social", session)
+			flowState(preview)
 			w = proxyRequest(t, origin, "GET", relay(callback).String(), nil, browser, 302)
 			if w.Header().Get("Location") != "/return" {
 				t.Fatal("link landing", w.Header().Get("Location"))
+			}
+			if state, ok := flowState(preview); !ok || state.LinkUserID != view.User.ID || !reflect.DeepEqual(state.ServerContext, serverContext) {
+				t.Fatal("the preview's link callback saw the wrong flow state", state)
+			}
+			if _, ok := flowState(production); ok {
+				t.Fatal("production's hooks saw flow state")
 			}
 			for _, cookie := range w.Result().Cookies() {
 				if cookie.MaxAge >= 0 {

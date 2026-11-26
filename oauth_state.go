@@ -12,10 +12,67 @@ import (
 
 type oauthDataKey struct{}
 
+type oauthStateKey struct{}
+
+// OAuthState is what hooks may read of a browser OAuth flow. It leaves out
+// the flow's secrets: its PKCE verifier, nonce, URL state and browser
+// binding. Do not modify its maps.
+type OAuthState struct {
+	// CallbackURL, NewUserURL and ErrorURL are the destinations the start
+	// chose. During the callback, ErrorURL is where a failure returns: the
+	// error page when the start chose none.
+	CallbackURL, NewUserURL, ErrorURL string
+	// LinkUserID is the user /link-social links the provider account to, or
+	// "" for a sign-in.
+	LinkUserID string
+	// RequestSignUp reports whether the start asked to create an account.
+	RequestSignUp bool
+	// ExpiresAt is when the flow expires, ten minutes after it started.
+	ExpiresAt time.Time
+	// AdditionalData is the browser's additionalData: untrusted input.
+	// Numbers decode as float64.
+	AdditionalData map[string]any
+	// ServerContext holds what hooks added with
+	// HookContext.AddOAuthServerContext before the flow started. The browser
+	// cannot read or set it. Numbers decode as float64.
+	ServerContext map[string]any
+}
+
+// OAuthStateFrom returns the state of the browser OAuth flow ctx belongs to.
+// A start has it once it has built its flow, so after hooks on
+// /sign-in/social, /link-social and /oauth-popup/start read it through
+// c.Request.Context(). A callback has it once it has read the flow: in the
+// provider's ExchangeCode, Resolve and GetAccountFields, in ValidateUserInfo
+// and database hooks, and through c.Request.Context() in after hooks on
+// /callback/:id and, behind the OAuth proxy, on the preview's
+// /callback/:id/oauth-proxy. It reports false in before hooks, in the
+// verification delete hooks that spend the flow, for an ID-token sign-in,
+// which starts no flow, and on the OAuth proxy's production instance, which
+// relays the provider's answer without completing a sign-in.
+func OAuthStateFrom(ctx context.Context) (OAuthState, bool) {
+	s, ok := ctx.Value(oauthStateKey{}).(OAuthState)
+	return s, ok
+}
+
+// withOAuthState puts what hooks may read of flow in the request context,
+// and in the endpoint's hook request so after hooks read it too.
+func (a *Auth) withOAuthState(r *http.Request, flow OAuthFlow) *http.Request {
+	state := OAuthState{CallbackURL: flow.CallbackURL, NewUserURL: flow.NewUserCallbackURL, ErrorURL: flow.ErrorCallbackURL,
+		LinkUserID: flow.LinkUserID, RequestSignUp: flow.RequestSignUp, ExpiresAt: flow.ExpiresAt,
+		AdditionalData: flow.AdditionalData, ServerContext: flow.ServerContext}
+	if c := a.hookContext(r.Context()); c != nil {
+		c.Request = c.Request.WithContext(context.WithValue(c.Request.Context(), oauthStateKey{}, state))
+	}
+	return r.WithContext(context.WithValue(r.Context(), oauthStateKey{}, state))
+}
+
 // OAuthAdditionalData returns the additionalData object the browser sent to
 // /sign-in/social, /link-social or /oauth-popup/start, during that flow's
 // callback. The values are browser input: treat them as untrusted and do not
-// modify the map. Numbers decode as float64.
+// modify the map. Numbers decode as float64. OAuthStateFrom returns the same
+// data with the rest of the flow's state. On the OAuth proxy's production
+// instance OAuthStateFrom reports false, but OAuthAdditionalData still
+// returns the data to the provider's callbacks and the hooks.
 func OAuthAdditionalData(ctx context.Context) map[string]any {
 	data, _ := ctx.Value(oauthDataKey{}).(map[string]any)
 	return data

@@ -188,6 +188,16 @@ func (a *Auth) beginBrowserOAuth(h http.Header, r *http.Request, p OAuthProvider
 		}
 		flow.CallbackURL = origin
 	}
+	if c := a.hookContext(r.Context()); c != nil && len(c.oauthServerContext) > 0 {
+		// A JSON copy, so the start and every state strategy return the same values.
+		raw, err := json.Marshal(c.oauthServerContext)
+		if err != nil {
+			return "", "", err
+		}
+		if err := json.Unmarshal(raw, &flow.ServerContext); err != nil {
+			return "", "", err
+		}
+	}
 	var opts []oauth2.AuthCodeOption
 	if !p.OmitNonce {
 		opts = append(opts, oauth2.SetAuthURLParam("nonce", flow.Nonce))
@@ -232,6 +242,7 @@ func (a *Auth) beginBrowserOAuth(h http.Header, r *http.Request, p OAuthProvider
 		p.CustomizeAuthorization(u)
 		target = u.String()
 	}
+	r = a.withOAuthState(r, flow)
 	if err := a.keepOAuthFlow(r.Context(), h, "oauth_state", a.oauthCookie("oauth_state", "", 600), browser, flow, now); err != nil {
 		return "", "", err
 	}
@@ -313,10 +324,6 @@ func (a *Auth) finishBrowserOAuth(w http.ResponseWriter, r *http.Request, id str
 		return nil, err
 	}
 	http.SetCookie(w, a.oauthCookie("oauth_state", "", -1))
-	r = a.withOAuthAdditionalData(r, flow.AdditionalData)
-	if flow.RedirectURI != "" && flow.RedirectURI != p.Config.RedirectURL {
-		return nil, &APIError{400, "INVALID_CALLBACK_URL", "Invalid OAuth callback"}
-	}
 	// Every failure after the state is verified returns to the flow's error
 	// callback, or to the error page when the sign-in gave none.
 	if flow.ErrorCallbackURL == "" {
@@ -326,6 +333,11 @@ func (a *Auth) finishBrowserOAuth(w http.ResponseWriter, r *http.Request, id str
 		} else {
 			flow.ErrorCallbackURL, _ = a.errorPageURL(r.Context())
 		}
+	}
+	r = a.withOAuthAdditionalData(r, flow.AdditionalData)
+	r = a.withOAuthState(r, flow)
+	if flow.RedirectURI != "" && flow.RedirectURI != p.Config.RedirectURL {
+		return nil, &APIError{400, "INVALID_CALLBACK_URL", "Invalid OAuth callback"}
 	}
 	failWithDescription := func(code, description string) (any, error) {
 		if popup != nil {
