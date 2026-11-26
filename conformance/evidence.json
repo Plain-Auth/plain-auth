@@ -10473,6 +10473,11 @@
       "label": "Persist a canonical grant key verified across two independent runtimes",
       "test": "conformance/scim-contract.mjs",
       "marker": "assert.equal(restored[field],initial[field],field)"
+    },
+    {
+      "label": "Refuse a Group with 1,001 members or a nested Group member, and the classic Entra marker without its option, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_groups_test.go",
+      "marker": "t.Fatal(\"a Group with 1,001 members was not refused with invalidValue\", code, kind)"
     }
   ],
   "plugin/scim/GET /scim/v2/Groups/:groupId": [
@@ -43275,6 +43280,11 @@
       "label": "Create a Group whose schemas include the classic Entra marker when AcceptLegacyEntraGroupSchema is on",
       "test": "adapters/sqlstore/scim_groups_test.go",
       "marker": "g[\"schemas\"] = []string{scim.GroupSchema, \"http://schemas.microsoft.com/2006/11/ResourceManagement/ADSCIM/2.0/Group\"}"
+    },
+    {
+      "label": "Refuse the classic Entra Group marker on creation without AcceptLegacyEntraGroupSchema",
+      "test": "adapters/sqlstore/scim_groups_test.go",
+      "marker": "t.Fatal(\"the classic Entra Group marker was accepted without its option\", code, kind)"
     }
   ],
   "plugin-symbol/scim/SCIMConnection": [
@@ -46010,6 +46020,20 @@
       "label": "Hand the reconciler the domain, account and sorted sources after a deactivation",
       "test": "adapters/sqlstore/scim_projection_test.go",
       "marker": "t.Fatal(\"the reconciler did not receive the domain's sorted sources\", lastUser)"
+    }
+  ],
+  "plugin-symbol/scim/SCIMOptions/compatibility": [
+    {
+      "label": "Refuse the classic Entra Group marker on creation by default",
+      "test": "adapters/sqlstore/scim_groups_test.go",
+      "marker": "t.Fatal(\"the classic Entra Group marker was accepted without its option\", code, kind)"
+    }
+  ],
+  "plugin-symbol/scim/SCIMScope": [
+    {
+      "label": "Refuse User creation with a read-only scope and listing with a write-only scope, and let the read scope list",
+      "test": "adapters/sqlstore/scim_groups_test.go",
+      "marker": "t.Fatal(\"a read-only credential created a User\", code)"
     }
   ]
 }

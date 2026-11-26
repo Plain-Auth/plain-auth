@@ -62,6 +62,7 @@
   - [ ] `SCIMCompatibilityOptions`
     - [ ] `microsoftEntra`
       - [x] Create a Group whose schemas include the classic Entra marker when AcceptLegacyEntraGroupSchema is on ([test](../../../adapters/sqlstore/scim_groups_test.go#L96))
+      - [x] Refuse the classic Entra Group marker on creation without AcceptLegacyEntraGroupSchema ([test](../../../adapters/sqlstore/scim_groups_test.go#L407))
   - [x] `SCIMConnection` ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L163))
     - [x] Expose the authenticated directory ID and provisioning domain on the request's principal ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L163))
     - [x] Hand the store the same directory that the request authenticated ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L29))
@@ -144,6 +145,7 @@
       - [x] Link a SCIM User to an existing account through Identity.ResolveUser ([test](../../../adapters/sqlstore/scim_identity_test.go#L111))
     - [ ] `projection`
     - [ ] `compatibility`
+      - [x] Refuse the classic Entra Group marker on creation by default ([test](../../../adapters/sqlstore/scim_groups_test.go#L407))
   - [ ] `SCIMPrincipal`
   - [x] `SCIMProjectedRoleGrant` ([test](../../../adapters/sqlstore/scim_projection_test.go#L259))
     - [x] Hand the reconciler grants sorted by grant key, each with its Group ([test](../../../adapters/sqlstore/scim_projection_test.go#L259))
@@ -162,6 +164,7 @@
     - [x] Grant one reader role per Group source when the mapper returns a padded copy, a repeat, an unknown role and an empty value ([test](../../../adapters/sqlstore/scim_projection_test.go#L78))
     - [x] Restore the same trimmed role in the native runtime's grant when its mapper returns padded, repeated and unknown roles ([test](../../../conformance/scim-contract.mjs#L230))
   - [ ] `SCIMScope`
+    - [x] Refuse User creation with a read-only scope and listing with a write-only scope, and let the read scope list ([test](../../../adapters/sqlstore/scim_groups_test.go#L410))
   - [ ] `SCIMStaticBearerPrincipal`
     - [x] Keep static principals and reserved managed credentials out of the application verifier ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L35))
     - [x] Expose the static-bearer kind and credential ID of a code-defined token through request context ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L168))
@@ -195,6 +198,7 @@
   - [ ] `POST /scim/v2/Groups`
     - [x] Create directory-owned Groups, deduplicate direct members and reject foreign User and nested Group references ([test](../../../adapters/sqlstore/scim_groups_test.go#L20))
     - [x] Persist a canonical grant key verified across two independent runtimes ([test](../../../conformance/scim-contract.mjs#L230))
+    - [x] Refuse a Group with 1,001 members or a nested Group member, and the classic Entra marker without its option, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_groups_test.go#L400))
   - [ ] `GET /scim/v2/Groups/:groupId`
     - [x] Read the other implementation's canonical membership edges with trusted display names and User links ([test](../../../conformance/scim-contract.mjs#L92))
   - [ ] `GET /scim/v2/Groups`

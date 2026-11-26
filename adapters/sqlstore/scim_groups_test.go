@@ -361,3 +361,60 @@ func TestSCIMGroupPatchRouteForms(t *testing.T) {
 		})
 	}
 }
+
+// Group routes refuse oversized and nested member lists and the classic
+// Entra marker without its option, and each scope admits only its routes.
+func TestSCIMGroupRouteRefusals(t *testing.T) {
+	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
+		t.Run(dialect, func(t *testing.T) {
+			ctx := t.Context()
+			must := func(e error) {
+				t.Helper()
+				if e != nil {
+					t.Fatal(e)
+				}
+			}
+			ddl, e := schema.Generate(dialect, []string{"scim"})
+			must(e)
+			s, e := OpenWithSchema(ctx, dialect, organizationTestDSN(t, dialect), ddl)
+			must(e)
+			defer s.Close()
+			host, e := auth.New(auth.Options{BaseURL: "https://directory.test", BasePath: "/identity/custom", Secret: strings.Repeat("x", 32), Store: s})
+			must(e)
+			h, e := scim.New(host, scim.Options{Store: s, Connections: []scim.Connection{{Directory: scim.Directory{ID: "ACME", ProvisioningDomainID: "domain"}, Credentials: []scim.Credential{
+				{ID: "full", Token: "first"}, {ID: "reader", Token: "usersread", Scopes: []string{scim.UsersRead}}, {ID: "writer", Token: "userswrite", Scopes: []string{scim.UsersWrite}}}}}})
+			must(e)
+			status := func(method, path, token string, body map[string]any) (int, string) {
+				t.Helper()
+				w := scimRequest(h, method, path, token, body)
+				var m map[string]any
+				_ = json.Unmarshal(w.Body.Bytes(), &m)
+				kind, _ := m["scimType"].(string)
+				return w.Code, kind
+			}
+			members := []map[string]any{}
+			for i := range scim.MaxGroupMembers + 1 {
+				members = append(members, map[string]any{"value": fmt.Sprintf("u-%04d", i)})
+			}
+			if code, kind := status("POST", "Groups", "first", map[string]any{"schemas": []string{scim.GroupSchema}, "displayName": "Crowd", "members": members}); code != 400 || kind != "invalidValue" {
+				t.Fatal("a Group with 1,001 members was not refused with invalidValue", code, kind)
+			}
+			if code, _ := status("POST", "Groups", "first", map[string]any{"schemas": []string{scim.GroupSchema}, "displayName": "Nested", "members": []map[string]any{{"value": "g-1", "type": "Group"}}}); code != 400 {
+				t.Fatal("a Group with a nested Group member was not refused", code)
+			}
+			legacy := "http://schemas.microsoft.com/2006/11/ResourceManagement/ADSCIM/2.0/Group"
+			if code, kind := status("POST", "Groups", "first", map[string]any{"schemas": []string{scim.GroupSchema, legacy}, "displayName": "Classic"}); code != 400 || kind != "invalidValue" {
+				t.Fatal("the classic Entra Group marker was accepted without its option", code, kind)
+			}
+			if code, _ := status("POST", "Users", "usersread", map[string]any{"schemas": []string{scim.UserSchema}, "userName": "reader@example.test"}); code != 403 {
+				t.Fatal("a read-only credential created a User", code)
+			}
+			if code, _ := status("GET", "Users", "userswrite", nil); code != 403 {
+				t.Fatal("a write-only credential listed Users", code)
+			}
+			if code, _ := status("GET", "Users", "usersread", nil); code != 200 {
+				t.Fatal("a read credential could not list Users", code)
+			}
+		})
+	}
+}
