@@ -241,7 +241,7 @@ func (h *factorHooks) after(ctx context.Context) error {
 			return err
 		}
 	}
-	if rec, ok := h.marked[roleSend]; ok && ch.SaveDelivery != nil && ch.SaveDelivery.Pending && ch.SaveDelivery.ID == rec.ID {
+	if rec, ok := h.marked[roleSend]; ok && ch.SaveDelivery != nil && ch.SaveDelivery.ID == rec.ID {
 		return runAfter(ctx, h.a, v.create, rec)
 	}
 	return nil

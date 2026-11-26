@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -325,7 +326,7 @@ func TestFactorSenderFailureAndConcurrency(t *testing.T) {
 			w := h.request(h.first, "sign-in/email", map[string]string{"email": u.input.Email, "password": u.input.Password}, 200)
 			return h.cookie(w, "two_factor")
 		}
-		a, b := challenge(), challenge()
+		a, b, c, d := challenge(), challenge(), challenge(), challenge()
 		send := func(instance *auth.Auth, marker *http.Cookie) (pending, <-chan int) {
 			statuses := make(chan int, 1)
 			go func() {
@@ -347,13 +348,23 @@ func TestFactorSenderFailureAndConcurrency(t *testing.T) {
 			}
 			return pending{}, nil
 		}
-		failed, first := send(h.first, a)
-		h.request(h.second, "two-factor/verify-otp", map[string]string{"code": failed.code}, 400, a)
-		failed.finish <- errors.New("synthetic sender unavailable")
-		if status := <-first; status != 500 {
-			t.Fatal("sender failure was hidden", status)
+		// A code is stored before its sender runs, so it verifies while the
+		// sender runs.
+		running, done := send(h.first, c)
+		h.request(h.second, "two-factor/verify-otp", map[string]string{"code": running.code}, 200, c)
+		running.finish <- nil
+		if status := <-done; status != 200 {
+			t.Fatal("a send whose code was spent while it ran did not answer as sent", status)
 		}
-		h.request(h.first, "two-factor/verify-otp", map[string]string{"code": failed.code}, 400, a)
+		// A failing sender changes neither the answer nor the stored code.
+		failed, first := send(h.first, d)
+		failed.finish <- errors.New("synthetic sender unavailable")
+		if status := <-first; status != 200 {
+			t.Fatal("a failing sender changed the send-otp answer", status)
+		}
+		// The code of the failed send still verifies.
+		h.request(h.first, "two-factor/verify-otp", map[string]string{"code": failed.code}, 200, d)
+		// An older send that fails late leaves the newer code alone.
 		old, first := send(h.first, a)
 		newer, last := send(h.second, a)
 		newer.finish <- nil
@@ -361,8 +372,8 @@ func TestFactorSenderFailureAndConcurrency(t *testing.T) {
 			t.Fatal("newer delivery did not publish")
 		}
 		old.finish <- errors.New("late delivery failure")
-		if <-first != 500 {
-			t.Fatal("expected responder failure")
+		if <-first != 200 {
+			t.Fatal("a late sender failure changed the send-otp answer")
 		}
 		h.request(h.first, "two-factor/verify-otp", map[string]string{"code": newer.code}, 400, b)
 		h.request(h.second, "two-factor/verify-otp", map[string]string{"code": newer.code}, 200, a)
@@ -377,5 +388,81 @@ func TestFactorSenderFailureAndConcurrency(t *testing.T) {
 			t.Fatal(err)
 		}
 		h.request(h.second, "two-factor/verify-otp", map[string]string{"code": pendingSession.code}, 401, u.session)
+	})
+}
+
+// A sender error is logged without the code while send-otp answers as sent
+// and the code stays valid. With BackgroundTasks the code is stored before
+// the response and sent by the queued task.
+func TestDeliveredCodeSendsInBackground(t *testing.T) {
+	var mu sync.Mutex
+	var sent []twofactor.OTPMessage
+	failNext := false
+	opts := twofactor.Options{OTP: twofactor.OTPOptions{Send: func(_ context.Context, m twofactor.OTPMessage) error {
+		mu.Lock()
+		defer mu.Unlock()
+		sent = append(sent, m)
+		if failNext {
+			failNext = false
+			return errors.New("synthetic delivery outage")
+		}
+		return nil
+	}}}
+	latest := func() (twofactor.OTPMessage, int) {
+		mu.Lock()
+		defer mu.Unlock()
+		if len(sent) == 0 {
+			return twofactor.OTPMessage{}, 0
+		}
+		return sent[len(sent)-1], len(sent)
+	}
+	logs := &lockedLog{}
+	untimed := &slog.HandlerOptions{ReplaceAttr: func(_ []string, a slog.Attr) slog.Attr {
+		if a.Key == slog.TimeKey {
+			return slog.Attr{}
+		}
+		return a
+	}}
+	withConfiguredFactorDatabases(t, opts, func(o *auth.Options) { o.Logger = slog.New(slog.NewTextHandler(logs, untimed)) }, func(h *factorHarness) {
+		t := h.t
+		ctx := t.Context()
+		owner := h.enroll()
+		mu.Lock()
+		failNext = true
+		mu.Unlock()
+		challenge := h.challenge(h.first, owner)
+		if w := h.request(h.first, "two-factor/send-otp", map[string]any{}, 200, challenge); strings.TrimSpace(w.Body.String()) != `{"status":true}` {
+			t.Fatal("a failed send did not answer status true", w.Body)
+		}
+		msg, _ := latest()
+		if logs.count("Failed to send two-factor OTP") != 1 || logs.count(msg.Code) != 0 {
+			t.Fatal("the failed delivery was not logged once without its code")
+		}
+		h.request(h.second, "two-factor/verify-otp", map[string]any{"code": msg.Code}, 200, challenge)
+
+		var queue []func()
+		off := false
+		deferred, err := auth.New(auth.Options{Store: h.store, BaseURL: "https://factor.example", Secret: "synthetic-factor-secret-0001-0123456789", EmailAndPassword: true, RateLimit: &off, BackgroundTasks: func(task func()) { queue = append(queue, task) }, Plugins: []auth.Plugin{twofactor.New(opts)}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		later := h.challenge(h.first, owner)
+		_, before := latest()
+		h.request(deferred, "two-factor/send-otp", map[string]any{}, 200, later)
+		var stored int
+		if err := h.store.db.QueryRowContext(ctx, h.store.bind(`SELECT count(*) FROM "verification" WHERE "identifier"=?`), "2fa-otp-"+h.first.VerifySignedSessionToken(later.Value)).Scan(&stored); err != nil || stored != 1 || len(queue) != 1 {
+			t.Fatal("with a runner the code was not stored before its queued send", stored, len(queue), err)
+		}
+		if _, n := latest(); n != before {
+			t.Fatal("with a runner the code was sent before the response")
+		}
+		for _, task := range queue {
+			task()
+		}
+		queued, n := latest()
+		if n != before+1 || queued.User.ID != owner.userID {
+			t.Fatal("the queued send did not deliver the challenge's code")
+		}
+		h.request(h.second, "two-factor/verify-otp", map[string]any{"code": queued.Code}, 200, later)
 	})
 }

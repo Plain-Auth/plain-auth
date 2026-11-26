@@ -390,9 +390,12 @@ func (a *Auth) factorEndpoint(route string, c EndpointContext) (any, error) {
 		return nil, err
 	}
 	if op.mail != nil {
-		if err := op.deliver(); err != nil {
-			return nil, err
-		}
+		// The code is stored before it is sent, so a sender error is logged,
+		// never answered, and the code stays valid, as in the other runtime.
+		// With BackgroundTasks the whole sender runs after the response; the
+		// other runtime starts it first and hands off only its promise.
+		mail, send := *op.mail, a.factorOptions.OTP.Send
+		a.runInBackgroundOrAwait(ctx, "Failed to send two-factor OTP", func(ctx context.Context) error { return send(ctx, mail) })
 	}
 	if op.clearChallenge {
 		c.ResponseHeader.Add("Set-Cookie", a.factorCookie("", -1).String())

@@ -43,7 +43,7 @@ func TestDeliveredFactorStorageModes(t *testing.T) {
 				t.Fatal(err)
 			}
 			record := ch.SaveDelivery
-			if !record.Pending || record.ID == "" || record.CreatedAt != at || record.ExpiresAt.Sub(at) != 3*time.Minute {
+			if record.Pending || record.ID == "" || record.CreatedAt != at || record.ExpiresAt.Sub(at) != 3*time.Minute {
 				t.Fatal("delivery not staged with configured lifetime")
 			}
 			code := op.mail.Code

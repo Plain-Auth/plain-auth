@@ -518,7 +518,8 @@ func TestVerificationHooksAroundTwoFactor(t *testing.T) {
 		if !strings.Contains(w.Body.String(), "TOO_MANY_ATTEMPTS_REQUEST_NEW_CODE") {
 			t.Fatal("a code that ran out answered", w.Body.String())
 		}
-		// A failed send removes its pending code without hooks.
+		// A failed send answers as sent and keeps its code; its create hooks
+		// ran before the send.
 		mu.Lock()
 		sendFails = true
 		mu.Unlock()
@@ -533,8 +534,8 @@ func TestVerificationHooksAroundTwoFactor(t *testing.T) {
 		mu.Unlock()
 		got, _ = drain()
 		same(got, "v-create-before:2fa-otp", "v-create-after:2fa-otp", "send")
-		if w.Code < 400 || count(`"identifier" IN (?,?)`, "2fa-otp-"+key, "pending-2fa-otp-"+key) != 0 {
-			t.Fatal("a failed send answered", w.Code, "and kept its code")
+		if w.Code != 200 || count(`"identifier"=?`, "2fa-otp-"+key) != 1 || count(`"identifier"=?`, "pending-2fa-otp-"+key) != 0 {
+			t.Fatal("a failed send answered", w.Code, "or did not keep its code")
 		}
 
 		// Signed-in codes name the account, and signed-in proofs of other

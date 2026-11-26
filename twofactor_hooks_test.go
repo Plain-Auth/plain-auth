@@ -47,7 +47,7 @@ func TestFactorHooksFollowCommittedChanges(t *testing.T) {
 	delivery := &FactorDelivery{ID: "code-row", Attempts: 1, ExpiresAt: at}
 	counted := *delivery
 	counted.Attempts++
-	sent := FactorDelivery{ID: "code-row", Pending: true, ExpiresAt: at}
+	sent := FactorDelivery{ID: "code-row", ExpiresAt: at}
 	for _, tc := range []struct {
 		name               string
 		state              FactorState
@@ -66,7 +66,7 @@ func TestFactorHooksFollowCommittedChanges(t *testing.T) {
 		{name: "signed-in correct code", state: FactorState{Delivery: delivery}, change: FactorChange{RemoveDelivery: true}, gateCode: true, want: []string{"v-delete-after:2fa-otp"}},
 		{name: "exhausted code", state: FactorState{ChallengeID: "challenge-row", Delivery: delivery}, change: FactorChange{RemoveDelivery: true}, gateCode: true, gateChal: true, want: []string{"v-delete-after:2fa-otp"}},
 		{name: "another code", state: FactorState{ChallengeID: "challenge-row", Delivery: &FactorDelivery{ID: "resent-row"}}, change: FactorChange{RemoveDelivery: true}, gateCode: true, gateChal: true},
-		{name: "pending send", change: FactorChange{SaveDelivery: &sent}, marked: map[factorRole]VerificationRecord{roleSend: code}, want: []string{"v-create-after:2fa-otp"}},
+		{name: "new code", change: FactorChange{SaveDelivery: &sent}, marked: map[factorRole]VerificationRecord{roleSend: code}, want: []string{"v-create-after:2fa-otp"}},
 		{name: "remembered rotation", state: FactorState{TrustedGrant: "trust-device-old", TrustedGrantID: "old-grant"}, change: FactorChange{CreateTrustedGrant: "trust-device-new", TrustedGrantID: "new-grant"},
 			marked: map[factorRole]VerificationRecord{roleSpend: oldGrant, roleGrant: newGrant}, want: []string{"v-delete-after:trust-device", "v-create-after:trust-device"}},
 		{name: "a proof's grant", state: FactorState{ChallengeID: "challenge-row"}, change: FactorChange{ConsumeChallenge: true, CreateTrustedGrant: "trust-device-new", TrustedGrantID: "new-grant"},

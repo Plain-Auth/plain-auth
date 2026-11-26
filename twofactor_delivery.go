@@ -1,7 +1,6 @@
 package plainauth
 
 import (
-	"context"
 	"crypto/subtle"
 	"errors"
 	"strings"
@@ -11,7 +10,7 @@ import (
 // FactorDelivery is a single-use out-of-band code scoped to an existing login challenge or session.
 type FactorDelivery struct {
 	ID                   string
-	Pending              bool
+	Pending              bool // a code an earlier release staged while its sender ran; a guess at it is refused
 	Stored               string
 	Attempts             int
 	CreatedAt, ExpiresAt time.Time
@@ -99,7 +98,7 @@ func (p *factorRequest) sendOTP(st FactorState) (FactorChange, error) {
 	if stored == "" {
 		return ch, errors.New("empty stored factor code")
 	}
-	ch.SaveDelivery = &FactorDelivery{ID: p.pins.deliveryID, Pending: true, Stored: stored, CreatedAt: p.subject.Now, ExpiresAt: p.subject.Now.Add(o.Period)}
+	ch.SaveDelivery = &FactorDelivery{ID: p.pins.deliveryID, Stored: stored, CreatedAt: p.subject.Now, ExpiresAt: p.subject.Now.Add(o.Period)}
 	p.mail = &FactorOTPMessage{User: st.User, Code: code}
 	p.out = map[string]bool{"status": true}
 	return ch, nil
@@ -110,8 +109,8 @@ func otpExpired() *APIError { return &APIError{400, "OTP_HAS_EXPIRED", "OTP has 
 // hooks ran, like an expired one.
 func otpUnavailable() *APIError { return &APIError{400, "OTP_HAS_EXPIRED", "OTP has expired"} }
 
-// deliveryReady refuses a guess at a delivered code still being sent, and
-// removes one that is missing or expired, before anything compares it.
+// deliveryReady refuses a guess at a code an earlier release left pending,
+// and removes one that is missing or expired, before anything compares it.
 func (p *factorRequest) deliveryReady(st FactorState, ch *FactorChange) error {
 	if st.Delivery != nil && st.Delivery.Pending {
 		return otpUnavailable()
@@ -171,38 +170,4 @@ func (r *FactorRecord) hasPendingAuthenticator() bool {
 }
 func (a *Auth) openAuthenticator(secret string) ([]byte, error) {
 	return a.openRecord("totp", strings.TrimPrefix(secret, pendingAuthenticatorPrefix))
-}
-
-// A send replaces the old proof with a pending row. Publish the new code only
-// after the sender succeeds. Its ID prevents a slow sender from replacing a
-// more recent code or deleting it after a late failure.
-func (p *factorRequest) deliver() error {
-	sendErr := p.auth.factorOptions.OTP.Send(p.ctx, *p.mail)
-	ctx := p.ctx
-	if sendErr != nil {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(context.WithoutCancel(ctx), 3*time.Second)
-		defer cancel()
-	}
-	subject := p.subject
-	subject.Now = p.auth.now().UTC()
-	err := p.auth.factorStore.WithTwoFactor(ctx, subject, func(state FactorState) (FactorChange, error) {
-		saved := state.Delivery
-		if saved == nil || saved.ID != p.pins.deliveryID || !saved.Pending {
-			return FactorChange{}, nil
-		}
-		if sendErr != nil || !saved.ExpiresAt.After(subject.Now) {
-			return FactorChange{RemoveDelivery: true}, nil
-		}
-		active := *saved
-		active.Pending = false
-		return FactorChange{SaveDelivery: &active}, nil
-	})
-	if errors.Is(err, ErrNotFound) && sendErr == nil {
-		if subject.Challenge != "" {
-			return factorCookieError()
-		}
-		return &APIError{401, "UNAUTHORIZED", "Unauthorized"}
-	}
-	return errors.Join(sendErr, err)
 }

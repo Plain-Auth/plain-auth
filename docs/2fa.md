@@ -51,7 +51,7 @@ A browser completing a sign-in challenge can include `"trustDevice":true` with a
 
 ## Deliver a second-factor code
 
-Configure `OTP.Send` with an application-owned mail, SMS or other delivery callback. Direct each code to a verified destination for `message.User`. The server stages a pending code, calls the sender outside the database transaction, and activates the code after delivery succeeds. A failed or delayed callback cannot replace a newer code.
+Configure `OTP.Send` with an application-owned mail, SMS or other delivery callback. Direct each code to a verified destination for `message.User`. The server stores the code and then calls the sender outside the database transaction, after the response when `BackgroundTasks` is set; another runtime starts the sender before the response and hands off only its promise. A sender error is logged without the code, and the answer is still `{"status":true}` with the stored code valid. A newer send replaces the code, so a late failure of an older one leaves the newer code alone.
 
 ```go
 plugin := twofactor.New(twofactor.Options{
@@ -99,7 +99,7 @@ Each error carries its status, code and message from the two-factor error table.
 | --- | ---: | --- |
 | `OTP_NOT_ENABLED` | 400 | `/two-factor/send-otp` or `/two-factor/verify-otp` from a session whose account has not enrolled; only `/two-factor/enable` with the password enrolls an account, where another runtime also enrolls one through a verified code |
 | `OTP_NOT_CONFIGURED` | 400 | Delivered-code enrollment without `OTP.Send`, or `/two-factor/send-otp` without it, which answers `otp isn't configured` before reading the session or challenge |
-| `OTP_HAS_EXPIRED` | 400 | No live delivered code: none was sent, it expired, or it is still being sent |
+| `OTP_HAS_EXPIRED` | 400 | No live delivered code: none was sent, or it expired |
 | `TOTP_NOT_ENABLED` | 400 | `/two-factor/get-totp-uri` or `/two-factor/verify-totp` for an account without an authenticator, or a sign-in proof for one awaiting confirmation |
 | `TOTP_ALREADY_ENABLED` | 400 | Authenticator enrollment for an account with a confirmed authenticator |
 | `TOTP_NOT_CONFIGURED` | 400 | `TOTP.Disabled` is set: enrollment and `Auth.ImportTOTP` answer `TOTP is not available`, and `/two-factor/get-totp-uri`, `/two-factor/verify-totp` and `Auth.GenerateTOTP` answer `totp isn't configured`. A password sign-in for an enrolled account with no usable factor and no stored backup codes also answers `TOTP is not available`, even from a remembered browser, where another runtime issues a challenge or signs that browser in |

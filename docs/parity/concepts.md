@@ -416,7 +416,7 @@
           - [x] Run one verification delete after hook among concurrent verifications of a phone code, on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/phone_code_hooks_test.go#L206))
           - [x] Run one verification delete after hook among concurrent verifications of a passkey challenge, on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/passkey_hooks_test.go#L358))
           - [x] Run one verification delete after hook among concurrent verifications of a wallet nonce, on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/siwe_hooks_test.go#L347))
-          - [x] Count each concurrent wrong proof at one two-factor challenge once with its update after hook, and run one delete after hook among concurrent proofs, on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/twofactor_hooks_test.go#L567))
+          - [x] Count each concurrent wrong proof at one two-factor challenge once with its update after hook, and run one delete after hook among concurrent proofs, on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/twofactor_hooks_test.go#L568))
           - [x] Run one delete and one create after hook among concurrent sign-ins sharing a remembered browser, on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/twofactor_hooks_test.go#L313))
           - [x] Run one verification delete after hook among concurrent exchanges of an authorization code, on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/oauth_code_hooks_test.go#L391))
           - [x] Store one SSO domain token and run its create after hook once among concurrent requests, on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/sso_hooks_test.go#L473))

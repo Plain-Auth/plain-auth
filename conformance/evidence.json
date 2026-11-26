@@ -5611,7 +5611,7 @@
   ],
   "plugin/2fa/POST /two-factor/send-otp": [
     {
-      "label": "Publish delivered codes only after the sender succeeds, preserving the newest proof on a late failure",
+      "label": "Answer status true when the sender fails and keep that code valid, and keep the newer code when an older send fails late",
       "test": "adapters/sqlstore/twofactor_delivery_test.go",
       "marker": "synthetic sender unavailable"
     },
@@ -5687,7 +5687,7 @@
       "marker": "stored delivered OTP or expiry differs"
     },
     {
-      "label": "Stage a delivered code expiring three minutes after it is sent when no period is configured",
+      "label": "Return a delivered code that is active at once and expires three minutes after it is sent when no period is configured",
       "test": "twofactor_settings_test.go",
       "marker": "t.Fatal(\"delivery not staged with configured lifetime\")",
       "complete": true
@@ -5708,7 +5708,7 @@
   ],
   "plugin-symbol/2fa/OTPOptions/sendOTP": [
     {
-      "label": "Deliver outside the database lock and handle a failing sender without activating the proof",
+      "label": "Call the sender outside the database lock once the code is stored, and keep the code valid when the sender fails",
       "test": "adapters/sqlstore/twofactor_delivery_test.go",
       "marker": "factor sender did not run outside the transaction"
     }
@@ -43696,6 +43696,18 @@
       "label": "Answer a sign-in code for an authenticator awaiting confirmation with TOTP_NOT_ENABLED",
       "test": "adapters/sqlstore/twofactor_errors_test.go",
       "marker": "verify-totp for an unconfirmed authenticator during sign-in did not answer TOTP_NOT_ENABLED"
+    }
+  ],
+  "plugin-symbol/2fa/otp2fa": [
+    {
+      "label": "Answer a failed send as sent, log the failure without the code and keep the code valid; with BackgroundTasks store the code before the response and send it from the queued task, on three SQL engines",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "func TestDeliveredCodeSendsInBackground("
+    },
+    {
+      "label": "Store a code before its sender runs, so it verifies while the sender runs, and keep a newer code when an older send fails late",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "a failing sender changed the send-otp answer"
     }
   ]
 }
