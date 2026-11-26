@@ -10508,6 +10508,12 @@
       "label": "Create a Group under an explicit compatibility option using the legacy marker and the core schema",
       "test": "adapters/sqlstore/scim_groups_test.go",
       "marker": "func TestSCIMGroupMembershipLifecycle("
+    },
+    {
+      "label": "Accept the legacy Entra marker only on Group creation, never echo or advertise it, and refuse it in PUT and PATCH bodies, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_groups_test.go",
+      "marker": "t.Fatal(\"PATCH accepted a legacy marker object\", body)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L940": [
@@ -45175,6 +45181,22 @@
       "label": "Never return or store a password, ims, photos or X.509 certificates",
       "test": "adapters/sqlstore/scim_attributes_test.go",
       "marker": "t.Fatal(\"an unsupported User attribute was stored\", needle)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L391": [
+    {
+      "label": "Apply schema-prefixed and pathless Group PATCH values, remove a member by a prefixed selector and clear members with null",
+      "test": "adapters/sqlstore/scim_groups_test.go",
+      "marker": "func TestSCIMGroupPatchRouteForms(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L396/`externalId`": [
+    {
+      "label": "Add, replace, filter, remove and null a Group externalId through PATCH",
+      "test": "adapters/sqlstore/scim_groups_test.go",
+      "marker": "t.Fatal(\"a null Group externalId did not clear it\")",
       "complete": true
     }
   ]

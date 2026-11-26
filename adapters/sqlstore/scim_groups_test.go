@@ -245,3 +245,109 @@ func TestSCIMGroupMembershipLifecycle(t *testing.T) {
 		})
 	}
 }
+
+// Group PATCH accepts schema-prefixed and pathless forms and null removal,
+// and the legacy Entra marker is honoured only on creation.
+func TestSCIMGroupPatchRouteForms(t *testing.T) {
+	const marker = "http://schemas.microsoft.com/2006/11/ResourceManagement/ADSCIM/2.0/Group"
+	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
+		t.Run(dialect, func(t *testing.T) {
+			ddl, err := schema.Generate(dialect, []string{"scim"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			store, err := OpenWithSchema(t.Context(), dialect, organizationTestDSN(t, dialect), ddl)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer store.Close()
+			host, err := auth.New(auth.Options{BaseURL: "https://directory.test", BasePath: "/identity/custom", Secret: strings.Repeat("x", 32), Store: store})
+			if err != nil {
+				t.Fatal(err)
+			}
+			h, err := scim.New(host, scim.Options{Store: store, AcceptLegacyEntraGroupSchema: true, Connections: []scim.Connection{{Directory: scim.Directory{ID: "ACME", ProvisioningDomainID: "domain"}, Credentials: []scim.Credential{{ID: "full", Token: "first"}}}}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			call := func(method, path string, body map[string]any, status int, failure string) map[string]any {
+				t.Helper()
+				w := scimRequest(h, method, path, "first", body)
+				if w.Code != status {
+					t.Fatal(failure, w.Code, w.Body.String())
+				}
+				var out map[string]any
+				_ = json.Unmarshal(w.Body.Bytes(), &out)
+				return out
+			}
+			patch := func(ops ...map[string]any) map[string]any {
+				return map[string]any{"schemas": []string{scim.PatchSchema}, "Operations": ops}
+			}
+			member := call("POST", "Users", map[string]any{"schemas": []string{scim.UserSchema}, "userName": "member@example.test"}, 201, "a User was refused")["id"].(string)
+			created := call("POST", "Groups", map[string]any{"schemas": []string{scim.GroupSchema, marker}, "displayName": "Engineering", "members": []any{map[string]any{"value": member}}}, 201, "a Group with the legacy marker was refused on creation")
+			if !jsonEqual(created["schemas"], []string{scim.GroupSchema}) {
+				t.Fatal("a created Group echoed the legacy Entra marker", created["schemas"])
+			}
+			id := created["id"].(string)
+			if got := call("GET", "Groups/"+id, nil, 200, "GET failed"); !jsonEqual(got["schemas"], []string{scim.GroupSchema}) {
+				t.Fatal("a stored Group carried the legacy Entra marker", got["schemas"])
+			}
+			if body := call("PUT", "Groups/"+id, map[string]any{"schemas": []string{scim.GroupSchema, marker}, "displayName": "Engineering"}, 400, "PUT accepted the legacy Entra Group marker"); body["scimType"] != "invalidValue" {
+				t.Fatal("PUT accepted the legacy Entra Group marker", body)
+			}
+			call("PATCH", "Groups/"+id, map[string]any{"schemas": []string{scim.PatchSchema, marker}, "Operations": []any{map[string]any{"op": "replace", "path": "displayName", "value": "X"}}}, 400, "PATCH accepted the legacy marker in its schema list")
+			withMarker := patch(map[string]any{"op": "replace", "path": "displayName", "value": "X"})
+			withMarker[marker] = map[string]any{}
+			if body := call("PATCH", "Groups/"+id, withMarker, 400, "PATCH accepted a legacy marker object"); body["scimType"] != "invalidValue" {
+				t.Fatal("PATCH accepted a legacy marker object", body)
+			}
+			if got := call("GET", "Groups/"+id, nil, 200, "GET failed"); got["displayName"] != "Engineering" {
+				t.Fatal("PATCH accepted a legacy marker object", got["displayName"])
+			}
+			for _, path := range []string{"Schemas", "ResourceTypes", "Schemas/" + scim.GroupSchema} {
+				if w := scimRequest(h, "GET", path, "", nil); strings.Contains(w.Body.String(), "ADSCIM") {
+					t.Fatal("discovery advertised the legacy Entra marker", path)
+				}
+			}
+
+			group := func() map[string]any { t.Helper(); return call("GET", "Groups/"+id, nil, 200, "GET failed") }
+			call("PATCH", "Groups/"+id, patch(map[string]any{"op": "replace", "path": scim.GroupSchema + ":displayName", "value": "Platform"}), 200, "a schema-prefixed Group path was not applied")
+			if group()["displayName"] != "Platform" {
+				t.Fatal("a schema-prefixed Group path was not applied")
+			}
+			call("PATCH", "Groups/"+id, patch(map[string]any{"op": "Replace", "value": map[string]any{"displayName": "Ops", "externalId": "ops-1", "schemas": nil, "meta": nil}}), 200, "a pathless Group value was not applied")
+			if g := group(); g["displayName"] != "Ops" || g["externalId"] != "ops-1" {
+				t.Fatal("a pathless Group value was not applied", g)
+			}
+			call("PATCH", "Groups/"+id, patch(map[string]any{"op": "remove", "path": scim.GroupSchema + `:members[value eq "` + member + `"]`}), 200, "a schema-prefixed member selector did not remove the member")
+			if members, _ := group()["members"].([]any); len(members) != 0 {
+				t.Fatal("a schema-prefixed member selector did not remove the member", members)
+			}
+			call("PATCH", "Groups/"+id, patch(map[string]any{"op": "add", "path": "members", "value": []any{map[string]any{"value": member}}}), 200, "adding a member failed")
+			call("PATCH", "Groups/"+id, patch(map[string]any{"op": "replace", "path": "members", "value": nil}), 200, "a null Group members value did not clear the membership")
+			if members, _ := group()["members"].([]any); len(members) != 0 {
+				t.Fatal("a null Group members value did not clear the membership", members)
+			}
+			if body := call("PATCH", "Groups/"+id, patch(map[string]any{"op": "replace", "path": "displayName", "value": nil}), 400, "a null Group displayName was accepted"); body["scimType"] != "mutability" {
+				t.Fatal("a null Group displayName was accepted", body)
+			}
+
+			call("PATCH", "Groups/"+id, patch(map[string]any{"op": "add", "path": "externalId", "value": "grp-2"}), 200, "PATCH did not add a Group externalId")
+			if group()["externalId"] != "grp-2" {
+				t.Fatal("PATCH did not add a Group externalId")
+			}
+			call("PATCH", "Groups/"+id, patch(map[string]any{"op": "replace", "path": "externalId", "value": "grp-3"}), 200, "replacing the externalId failed")
+			if list := call("GET", `Groups?filter=externalId%20eq%20%22grp-3%22`, nil, 200, "the filtered list failed"); list["totalResults"] != 1.0 {
+				t.Fatal("a replaced Group externalId is not filterable", list["totalResults"])
+			}
+			call("PATCH", "Groups/"+id, patch(map[string]any{"op": "remove", "path": "externalId"}), 200, "removing the externalId failed")
+			if _, has := group()["externalId"]; has {
+				t.Fatal("PATCH did not clear a Group externalId")
+			}
+			call("PATCH", "Groups/"+id, patch(map[string]any{"op": "add", "path": "externalId", "value": "grp-4"}), 200, "re-adding the externalId failed")
+			call("PATCH", "Groups/"+id, patch(map[string]any{"op": "replace", "path": "externalId", "value": nil}), 200, "a null Group externalId did not clear it")
+			if _, has := group()["externalId"]; has {
+				t.Fatal("a null Group externalId did not clear it")
+			}
+		})
+	}
+}

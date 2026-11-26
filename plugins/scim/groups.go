@@ -130,6 +130,12 @@ func parseGroup(input map[string]any, allowLegacy bool) (GroupProfile, error) {
 }
 
 func groupOperations(raw map[string]any) ([]any, error) {
+	// The Entra marker is honoured only on Group creation.
+	for key := range raw {
+		if strings.EqualFold(key, legacyGroupSchema) {
+			return nil, invalid("invalidValue", "The compatibility schema cannot contain attributes")
+		}
+	}
 	m, e := object(raw, []string{"schemas", "Operations"})
 	if e != nil {
 		return nil, e

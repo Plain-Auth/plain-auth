@@ -103,9 +103,10 @@
       - [x] Default the last-use interval to five minutes, keep zero and a custom value, and refuse a negative one ([test](../../../plugins/scim/managed_test.go#L43))
       - [x] Record every use with a zero last-use interval, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_managed_test.go#L306))
   - [ ] `SCIMMicrosoftEntraCompatibilityOptions`
-    - [ ] `acceptLegacyGroupSchema`
+    - [x] `acceptLegacyGroupSchema` ([test](../../../adapters/sqlstore/scim_groups_test.go#L301))
       - [x] Accept one attribute-free Entra schema marker only when enabled and return the canonical Group schema ([test](../../../plugins/scim/groups_test.go#L8))
       - [x] Create a Group under an explicit compatibility option using the legacy marker and the core schema ([test](../../../adapters/sqlstore/scim_groups_test.go#L20))
+      - [x] Accept the legacy Entra marker only on Group creation, never echo or advertise it, and refuse it in PUT and PATCH bodies, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_groups_test.go#L301))
   - [ ] `SCIMName`
   - [ ] `SCIMOAuthBearerPrincipal`
     - [x] Expose the verified credential ID, operation scopes, expiry and scoped directory through request context ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L35))
@@ -446,9 +447,11 @@
       - [ ] `enterpriseUrn` and its writable subattributes
       - [ ] `manager`, `manager.value`, `manager.$ref`
     - [ ] Group PATCH paths
+      - [x] Apply schema-prefixed and pathless Group PATCH values, remove a member by a prefixed selector and clear members with null ([test](../../../adapters/sqlstore/scim_groups_test.go#L251))
       - [ ] `displayName`
         - [x] Replace a Group displayName sent as a one-element array through PATCH ([test](../../../adapters/sqlstore/scim_groups_test.go#L150))
-      - [ ] `externalId`
+      - [x] `externalId` ([test](../../../adapters/sqlstore/scim_groups_test.go#L349))
+        - [x] Add, replace, filter, remove and null a Group externalId through PATCH ([test](../../../adapters/sqlstore/scim_groups_test.go#L349))
       - [ ] `members`
         - [x] Add members from concurrent PATCH requests on two servers without losing either ([test](../../../adapters/sqlstore/scim_groups_test.go#L147))
         - [x] Remove one supplied member and add another in one PATCH at the 1,000 member limit ([test](../../../adapters/sqlstore/scim_groups_test.go#L243))
