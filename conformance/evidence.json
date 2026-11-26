@@ -41869,6 +41869,11 @@
       "label": "Return the submitted IdP metadata XML in the registration on both runtimes",
       "test": "conformance/sso-saml.mjs",
       "marker": "if (inline) assert.equal(registration.samlConfig.idpMetadata.metadata"
+    },
+    {
+      "label": "Send the AuthnRequest to a manual idpMetadata.singleSignOnService Redirect entry instead of entryPoint, accept a response from its origin, and refuse a list without a Redirect entry, with a plain HTTP or query location, or with two Redirect entries, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "t.Fatal(\"the AuthnRequest did not go to the listed sign-in service\""
     }
   ],
   "plugin-symbol/sso/SAMLConfig/spMetadata": [
@@ -41930,6 +41935,16 @@
       "label": "Reject an assertion from an issuer other than the manually configured entityID",
       "test": "adapters/sqlstore/sso_saml_test.go",
       "marker": "\"issuer\": func(a *saml.Assertion) { a.Issuer.Value = \"https://another.example.test/idp\" },"
+    },
+    {
+      "label": "Accept idpMetadata.singleSignOnService and read its Redirect and POST locations",
+      "test": "plugins/sso/saml_test.go",
+      "marker": "t.Fatal(\"a manual sign-in service list was refused or ignored\""
+    },
+    {
+      "label": "Refuse unusable manual sign-in services at registration, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "t.Fatal(\"an unusable manual sign-in service was accepted\""
     }
   ],
   "plugin-symbol/sso/SSOOIDCUserResolutionInput": [

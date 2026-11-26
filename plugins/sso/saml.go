@@ -183,6 +183,10 @@ type SAMLService struct {
 	Location string `json:"Location"`
 }
 type SAMLIDPMetadata struct {
+	// SingleSignOnService lists a manual IdP's sign-in services. Its
+	// HTTP-Redirect entry replaces EntryPoint as the AuthnRequest
+	// destination; it is ignored when Metadata is set.
+	SingleSignOnService  []SAMLService `json:"singleSignOnService,omitempty"`
 	SingleLogoutService  []SAMLService `json:"singleLogoutService,omitempty"`
 	IsAssertionEncrypted bool          `json:"isAssertionEncrypted,omitempty"`
 	Metadata             string        `json:"metadata,omitempty"`
@@ -245,6 +249,14 @@ func DecodeSAMLConfig(raw []byte) (*SAMLConfig, error) {
 	}
 	if _, err := logoutLocation(c.IDPMetadata.SingleLogoutService); err != nil {
 		return nil, err
+	}
+	// This host sends AuthnRequests only by Redirect, so a listed sign-in
+	// service needs a Redirect entry, where another runtime fails at sign-in.
+	if c.IDPMetadata.Metadata == "" {
+		redirect, _, err := ssoLocations(c.IDPMetadata.SingleSignOnService)
+		if err != nil || len(c.IDPMetadata.SingleSignOnService) > 0 && redirect == "" {
+			return nil, ErrInvalidSAML
+		}
 	}
 	if c.IDPMetadata.Metadata != "" {
 		var err error

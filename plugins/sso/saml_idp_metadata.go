@@ -59,7 +59,35 @@ func (c SAMLConfig) authority() samlIDPAuthority {
 		cs = c.Certificates
 	}
 	logout, _ := logoutLocation(c.IDPMetadata.SingleLogoutService)
-	return samlIDPAuthority{entity: c.IDPMetadata.EntityID, redirect: c.EntryPoint, certs: cs, logout: logout}
+	// A listed sign-in service replaces entryPoint, as in another runtime.
+	redirect, post, _ := ssoLocations(c.IDPMetadata.SingleSignOnService)
+	if redirect == "" {
+		redirect = c.EntryPoint
+	}
+	return samlIDPAuthority{entity: c.IDPMetadata.EntityID, redirect: redirect, post: post, certs: cs, logout: logout}
+}
+
+// ssoLocations reads an IdP's sign-in services: at most one HTTP-Redirect
+// and one HTTP-POST entry, each an absolute HTTPS URL without a query or
+// fragment. Other bindings are ignored.
+func ssoLocations(services []SAMLService) (redirect, post string, err error) {
+	for _, service := range services {
+		var target *string
+		switch service.Binding {
+		case saml.HTTPRedirectBinding:
+			target = &redirect
+		case saml.HTTPPostBinding:
+			target = &post
+		default:
+			continue
+		}
+		u, e := endpointURL(service.Location)
+		if e != nil || u.Scheme != "https" || u.RawQuery != "" || u.ForceQuery || *target != "" || service.Location == "" {
+			return "", "", ErrInvalidSAML
+		}
+		*target = service.Location
+	}
+	return redirect, post, nil
 }
 
 // SameSAMLIdentity reports whether changing only IdP metadata preserves the
@@ -141,24 +169,12 @@ func parseInlineMetadata(raw string) (*samlIDPAuthority, error) {
 	if role.ValidUntil != nil && (idp.validUntil.IsZero() || role.ValidUntil.Before(idp.validUntil)) {
 		idp.validUntil = *role.ValidUntil
 	}
+	var signIn []SAMLService
 	for _, service := range role.SingleSignOnServices {
-		var target *string
-		switch service.Binding {
-		case saml.HTTPRedirectBinding:
-			target = &idp.redirect
-		case saml.HTTPPostBinding:
-			target = &idp.post
-		default:
-			continue
-		}
-		u, e := endpointURL(service.Location)
-		if e != nil || u.Scheme != "https" || u.RawQuery != "" || u.ForceQuery {
-			return nil, ErrInvalidSAML
-		}
-		if *target != "" || service.Location == "" {
-			return nil, ErrInvalidSAML
-		}
-		*target = service.Location
+		signIn = append(signIn, SAMLService{Binding: service.Binding, Location: service.Location})
+	}
+	if idp.redirect, idp.post, err = ssoLocations(signIn); err != nil {
+		return nil, err
 	}
 	var logoutServices []SAMLService
 	for _, endpoint := range role.SingleLogoutServices {

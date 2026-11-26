@@ -15,6 +15,7 @@ func samlConfigSchema() object {
 	encryption := object{"type": "boolean", "description": "Require encrypted assertions. The host must configure an RSA recipient key and certificate."}
 	idp := responseObject(object{"entityID": text, "cert": cert, "metadata": text, "isAssertionEncrypted": encryption})
 	idp["properties"].(object)["singleLogoutService"] = array(responseObject(object{"Binding": text, "Location": object{"type": "string", "format": "uri"}}, "Binding", "Location"))
+	idp["properties"].(object)["singleSignOnService"] = array(responseObject(object{"Binding": text, "Location": object{"type": "string", "format": "uri"}}, "Binding", "Location"))
 	idp["additionalProperties"] = false
 	sp := responseObject(object{"entityID": text, "isAssertionEncrypted": encryption})
 	sp["additionalProperties"] = false

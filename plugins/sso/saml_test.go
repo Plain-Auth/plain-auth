@@ -24,6 +24,14 @@ func TestSAMLConfigurationModes(t *testing.T) {
 			t.Fatal("wantAssertionsSigned was refused or ignored", signed, err)
 		}
 	}
+	// A manual sign-in service list replaces entryPoint and needs a Redirect entry.
+	listed, err := DecodeSAMLConfig([]byte(supported + `,"idpMetadata":{"entityID":"urn:example:idp","singleSignOnService":[{"Binding":"urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST","Location":"https://idp.example/post"},{"Binding":"urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect","Location":"https://idp.example/redirect"}]}}`))
+	if err != nil || listed.authority().redirect != "https://idp.example/redirect" || listed.authority().post != "https://idp.example/post" {
+		t.Fatal("a manual sign-in service list was refused or ignored", err)
+	}
+	if _, err := DecodeSAMLConfig([]byte(supported + `,"idpMetadata":{"entityID":"urn:example:idp","singleSignOnService":[{"Binding":"urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST","Location":"https://idp.example/post"}]}}`)); err == nil {
+		t.Fatal("a sign-in service list without a Redirect entry was accepted")
+	}
 	if v, err := DecodeSAMLConfig([]byte(supported + `}`)); err != nil || !v.assertionSignatureRequired() {
 		t.Fatal("an omitted wantAssertionsSigned did not require the assertion's signature", err)
 	}

@@ -532,6 +532,64 @@ func TestEnterpriseSAMLResponsePolicy(t *testing.T) {
 					}
 				}
 			})
+			t.Run("manual sign-in service", func(t *testing.T) {
+				p := newSAMLPolicy(t, dialect)
+				const legacy = "https://legacy.example.test/sso"
+				p.directory("manual", func(c *sso.SAMLConfig) {
+					c.EntryPoint = legacy
+					c.IDPMetadata.SingleSignOnService = []sso.SAMLService{{Binding: saml.HTTPPostBinding, Location: samlPolicyIdP + "/post"}, {Binding: saml.HTTPRedirectBinding, Location: samlPolicyIdP + "/sso"}}
+				})
+				h := p.host(sso.SAMLOptions{}, nil)
+				// The listed Redirect service replaces entryPoint as the
+				// AuthnRequest destination and the expected IdP origin.
+				w := p.call(h, "POST", "sign-in/sso", map[string]any{"providerId": "manual", "providerType": "saml", "callbackURL": "/home"})
+				var started struct{ URL string }
+				if err := json.Unmarshal(w.Body.Bytes(), &started); err != nil || !strings.HasPrefix(started.URL, samlPolicyIdP+"/sso?") {
+					t.Fatal("the AuthnRequest did not go to the listed sign-in service", w.Code, started.URL)
+				}
+				req, state := p.start(h, "manual")
+				if location, session := samlOutcome(t, p.finish(h, "manual", req, state, nil, nil, nil)); location.String() != "https://service.test/home" || !session {
+					t.Fatal("a response from the listed sign-in service's origin was refused", location)
+				}
+				signup := p.call(h, "POST", "sign-up/email", map[string]any{"name": "Admin", "email": "admin@service.test", "password": "correct-horse-staple"})
+				var admin string
+				for _, c := range signup.Result().Cookies() {
+					if strings.Contains(c.Name, "session_token") {
+						admin = c.Name + "=" + c.Value
+					}
+				}
+				register := func(id string, services []map[string]any) int {
+					t.Helper()
+					cfg := map[string]any{"entryPoint": legacy, "idpMetadata": map[string]any{"entityID": samlPolicyIdP + "/metadata", "singleSignOnService": services}, "cert": p.idpPEM, "spMetadata": map[string]any{"entityID": "https://service.test/sp/" + id}}
+					var buf bytes.Buffer
+					if err := json.NewEncoder(&buf).Encode(map[string]any{"providerId": id, "issuer": "https://service.test/sp/" + id, "domain": id + ".example", "samlConfig": cfg}); err != nil {
+						t.Fatal(err)
+					}
+					req := httptest.NewRequest("POST", "https://service.test/identity/sso/register", &buf)
+					req.Header.Set("Content-Type", "application/json")
+					req.Header.Set("Origin", "https://service.test")
+					req.Header.Set("Cookie", admin)
+					w := httptest.NewRecorder()
+					h.ServeHTTP(w, req)
+					return w.Code
+				}
+				service := func(binding, location string) map[string]any {
+					return map[string]any{"Binding": binding, "Location": location}
+				}
+				if code := register("listed", []map[string]any{service(saml.HTTPRedirectBinding, samlPolicyIdP+"/sso")}); code != 200 {
+					t.Fatal("a manual sign-in service was refused", code)
+				}
+				for name, services := range map[string][]map[string]any{
+					"post only":     {service(saml.HTTPPostBinding, samlPolicyIdP+"/post")},
+					"plain HTTP":    {service(saml.HTTPRedirectBinding, "http://identity.example.test/sso")},
+					"query":         {service(saml.HTTPRedirectBinding, samlPolicyIdP+"/sso?tenant=one")},
+					"two redirects": {service(saml.HTTPRedirectBinding, samlPolicyIdP+"/sso"), service(saml.HTTPRedirectBinding, samlPolicyIdP+"/other")},
+				} {
+					if code := register("refused", services); code != 400 {
+						t.Fatal("an unusable manual sign-in service was accepted", name, code)
+					}
+				}
+			})
 			t.Run("registration algorithms", func(t *testing.T) {
 				p := newSAMLPolicy(t, dialect)
 				def := p.host(sso.SAMLOptions{}, nil)
