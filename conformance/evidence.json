@@ -45236,5 +45236,20 @@
       "test": "plugins/scim/http_test.go",
       "marker": "func TestSCIMCaseDuplicateAttributesAreInvalidSyntax("
     }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L351": [
+    {
+      "label": "Accept an empty Operations array, keep lastModified for an unchanged PATCH, take case-insensitive and omitted ops, and refuse 101 operations or an unknown op, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "func TestSCIMUserPatchOperationForms(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L368": [
+    {
+      "label": "Answer a pathless remove with noTarget and writes to id, schemas or meta with mutability",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "t.Fatal(\"PATCH accepted a write to User meta\", body)"
+    }
   ]
 }

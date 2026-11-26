@@ -349,13 +349,13 @@
     - [x] Report two spellings of one attribute, even with a null value, as invalidSyntax in a User, a role, a pathless PATCH value and a Group ([test](../../../plugins/scim/http_test.go#L235))
     - [ ] Null attribute values
       - [x] Reject active: null in a User replacement with 400 on both runtimes ([test](../../../conformance/scim-roles.mjs#L48))
-      - [x] An attribute or subattribute in a `POST` or `PUT` body ([test](../../../adapters/sqlstore/scim_attributes_test.go#L52))
-        - [x] Drop null attributes, name parts and email subattributes on create and replace, and refuse a null userName, active or email entry, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L52))
-        - [x] Drop a null Group externalId and member subattribute and empty the members on a null PUT ([test](../../../adapters/sqlstore/scim_attributes_test.go#L171))
+      - [x] An attribute or subattribute in a `POST` or `PUT` body ([test](../../../adapters/sqlstore/scim_attributes_test.go#L53))
+        - [x] Drop null attributes, name parts and email subattributes on create and replace, and refuse a null userName, active or email entry, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L53))
+        - [x] Drop a null Group externalId and member subattribute and empty the members on a null PUT ([test](../../../adapters/sqlstore/scim_attributes_test.go#L172))
       - [ ] The `value` of a PATCH `add` or `replace` operation
       - [ ] A key in a PATCH value that merges into the stored value: a pathless value, `name`, the Enterprise extension, `manager`, or a filtered value such as `addresses[type eq "work"]`
       - [ ] A subattribute of a value in a PATCH that adds or replaces whole values, such as `emails` or `addresses`
-        - [x] Drop null subattributes in whole emails and roles PATCH values ([test](../../../adapters/sqlstore/scim_attributes_test.go#L259))
+        - [x] Drop null subattributes in whole emails and roles PATCH values ([test](../../../adapters/sqlstore/scim_attributes_test.go#L260))
     - [ ] Microsoft Entra Group compatibility
       - [x] Create a Group whose schema list carries the classic Entra marker when the compatibility option is on ([test](../../../adapters/sqlstore/scim_groups_test.go#L96))
   - [ ] Users
@@ -389,8 +389,8 @@
         - [x] Derive displayName from the given and family names when it is omitted, on both runtimes ([test](../../../conformance/scim-contract.mjs#L60))
       - [ ] `name.formatted`, `name.givenName`, `name.familyName`
         - [x] Derive the account name from given and family names when neither a formatted name nor displayName is sent ([test](../../../adapters/sqlstore/scim_test.go#L139))
-      - [x] `name.middleName`, `name.honorificPrefix`, `name.honorificSuffix` ([test](../../../adapters/sqlstore/scim_attributes_test.go#L122))
-        - [x] Store and return the middle name and honorifics, and replace them on PUT ([test](../../../adapters/sqlstore/scim_attributes_test.go#L122))
+      - [x] `name.middleName`, `name.honorificPrefix`, `name.honorificSuffix` ([test](../../../adapters/sqlstore/scim_attributes_test.go#L123))
+        - [x] Store and return the middle name and honorifics, and replace them on PUT ([test](../../../adapters/sqlstore/scim_attributes_test.go#L123))
       - [ ] `emails`
         - [x] Lowercase an email value and mark the only work email primary on both runtimes ([test](../../../conformance/scim-contract.mjs#L61))
       - [ ] `title`, `userType`, `preferredLanguage`, `locale`, `timezone`
@@ -433,15 +433,17 @@
       - [x] Find a Group by lowercase displayName and externalId on both runtimes ([test](../../../conformance/scim-contract.mjs#L116))
   - [ ] Response attributes
   - [ ] PATCH
+    - [x] Accept an empty Operations array, keep lastModified for an unchanged PATCH, take case-insensitive and omitted ops, and refuse 101 operations or an unknown op, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L269))
     - [ ] User PATCH paths
+      - [x] Answer a pathless remove with noTarget and writes to id, schemas or meta with mutability ([test](../../../adapters/sqlstore/scim_attributes_test.go#L327))
       - [ ] `userName`
-        - [x] Replace userName through PATCH and refuse an empty value or a removal ([test](../../../adapters/sqlstore/scim_attributes_test.go#L221))
-      - [x] `externalId` ([test](../../../adapters/sqlstore/scim_attributes_test.go#L241))
-        - [x] Add, replace, filter and remove a User externalId through PATCH, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L241))
+        - [x] Replace userName through PATCH and refuse an empty value or a removal ([test](../../../adapters/sqlstore/scim_attributes_test.go#L222))
+      - [x] `externalId` ([test](../../../adapters/sqlstore/scim_attributes_test.go#L242))
+        - [x] Add, replace, filter and remove a User externalId through PATCH, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L242))
       - [ ] `active`
         - [x] Deactivate a User by patching active with the string false and revoke its sessions ([test](../../../adapters/sqlstore/scim_test.go#L202))
-      - [x] `displayName` ([test](../../../adapters/sqlstore/scim_attributes_test.go#L252))
-        - [x] Replace displayName, carry it to the account name and fall back to the formatted name on removal, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L252))
+      - [x] `displayName` ([test](../../../adapters/sqlstore/scim_attributes_test.go#L253))
+        - [x] Replace displayName, carry it to the account name and fall back to the formatted name on removal, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L253))
       - [ ] `name` and its supported subattributes
       - [ ] `emails`
       - [ ] `emails.value`
@@ -484,12 +486,12 @@
       - [x] Refuse retiring a static connection under a different provisioning domain, then retire it before first use so its token answers 401 ([test](../../../adapters/sqlstore/scim_decommission_test.go#L73))
       - [x] Report a never-used directory retired by one runtime as complete with no batches from the other ([test](../../../conformance/scim-managed.mjs#L146))
   - [ ] Unsupported features
-    - [x] Custom schema extensions ([test](../../../adapters/sqlstore/scim_attributes_test.go#L129))
-      - [x] Refuse a User or Group with a custom schema extension as invalidValue ([test](../../../adapters/sqlstore/scim_attributes_test.go#L129))
-    - [x] `User.groups` ([test](../../../adapters/sqlstore/scim_attributes_test.go#L147))
-      - [x] Ignore a supplied User groups value and leave groups out of the User schema ([test](../../../adapters/sqlstore/scim_attributes_test.go#L147))
-    - [x] Passwords, instant messaging addresses, photos, or X.509 certificates ([test](../../../adapters/sqlstore/scim_attributes_test.go#L162))
-      - [x] Never return or store a password, ims, photos or X.509 certificates ([test](../../../adapters/sqlstore/scim_attributes_test.go#L162))
+    - [x] Custom schema extensions ([test](../../../adapters/sqlstore/scim_attributes_test.go#L130))
+      - [x] Refuse a User or Group with a custom schema extension as invalidValue ([test](../../../adapters/sqlstore/scim_attributes_test.go#L130))
+    - [x] `User.groups` ([test](../../../adapters/sqlstore/scim_attributes_test.go#L148))
+      - [x] Ignore a supplied User groups value and leave groups out of the User schema ([test](../../../adapters/sqlstore/scim_attributes_test.go#L148))
+    - [x] Passwords, instant messaging addresses, photos, or X.509 certificates ([test](../../../adapters/sqlstore/scim_attributes_test.go#L163))
+      - [x] Never return or store a password, ims, photos or X.509 certificates ([test](../../../adapters/sqlstore/scim_attributes_test.go#L163))
     - [ ] Nested Groups or non-User Group members
       - [x] Reject a Group created with another Group as a member with 400 ([test](../../../adapters/sqlstore/scim_groups_test.go#L111))
       - [x] Reject adding a Group ID as a member with 400 invalidValue on both runtimes ([test](../../../conformance/scim-contract.mjs#L112))

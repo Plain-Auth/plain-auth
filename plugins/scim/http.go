@@ -140,7 +140,20 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			var ops []any
 			ops, err = patchOperations(input)
 			if err == nil {
-				rec, err = h.store.SCIMUpdate(ctx, d, id, func(current Record) (Profile, error) { return patchProfile(current, ops) })
+				// An unchanged PATCH, including an empty Operations array, keeps
+				// the stored resource and its lastModified.
+				var unchanged Record
+				rec, err = h.store.SCIMUpdate(ctx, d, id, func(current Record) (Profile, error) {
+					p, err := patchProfile(current, ops)
+					if err == nil && sameProfile(p, current.Profile) {
+						unchanged = current
+						return p, errUnchangedPatch
+					}
+					return p, err
+				})
+				if errors.Is(err, errUnchangedPatch) {
+					rec, err = unchanged, nil
+				}
 			}
 		} else {
 			var profile Profile
@@ -273,4 +286,14 @@ func writeError(w http.ResponseWriter, err error) {
 		v["scimType"] = e.Type
 	}
 	write(w, e.Status, v)
+}
+
+var errUnchangedPatch = errors.New("scim: unchanged patch")
+
+// sameProfile compares two profiles as their JSON forms, so number and
+// slice types read back from storage compare equal.
+func sameProfile(a, b Profile) bool {
+	x, errX := json.Marshal(a)
+	y, errY := json.Marshal(b)
+	return errX == nil && errY == nil && string(x) == string(y)
 }

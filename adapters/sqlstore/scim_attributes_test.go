@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	auth "github.com/Plain-Org/plain-auth"
 	"github.com/Plain-Org/plain-auth/plugins/scim"
@@ -257,6 +258,73 @@ func TestSCIMUserScalarPatchOverHTTP(t *testing.T) {
 			}
 			if got := patch(200, "replacing roles failed", map[string]any{"op": "replace", "path": "roles", "value": []any{map[string]any{"value": "r2", "display": nil, "type": nil}}}); !jsonEqual(got["roles"], []any{map[string]any{"value": "r2"}}) {
 				t.Fatal("a null subattribute in a whole roles value was kept", got["roles"])
+			}
+		})
+	}
+}
+
+// An empty or unchanged PATCH keeps the User and its lastModified, operation
+// names are case-insensitive, and read-only and pathless-remove targets are
+// refused.
+func TestSCIMUserPatchOperationForms(t *testing.T) {
+	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
+		t.Run(dialect, func(t *testing.T) {
+			_, call := attributeDirectory(t, dialect)
+			created := call("POST", "Users", map[string]any{"schemas": []string{scim.UserSchema}, "userName": "ops@example.test", "displayName": "No Op"}, 201, "the User was refused")
+			id := created["id"].(string)
+			patch := func(status int, failure string, ops ...any) map[string]any {
+				t.Helper()
+				if ops == nil {
+					ops = []any{}
+				}
+				return call("PATCH", "Users/"+id, map[string]any{"schemas": []string{scim.PatchSchema}, "Operations": ops}, status, failure)
+			}
+			modified := func(m map[string]any) any { return m["meta"].(map[string]any)["lastModified"] }
+			before := modified(created)
+			// A rewrite would move lastModified past these pauses.
+			time.Sleep(5 * time.Millisecond)
+			got := patch(200, "an empty PATCH was refused")
+			if got["displayName"] != "No Op" {
+				t.Fatal("an empty PATCH changed the User", got)
+			}
+			if modified(got) != before {
+				t.Fatal("an empty PATCH rewrote lastModified", before, modified(got))
+			}
+			if got := patch(200, "an uppercase replace op was refused", map[string]any{"op": "REPLACE", "path": "title", "value": "Lead"}); got["title"] != "Lead" {
+				t.Fatal("an uppercase replace op was not applied", got["title"])
+			}
+			if got := patch(200, "an omitted op was refused", map[string]any{"path": "locale", "value": "en-GB"}); got["locale"] != "en-GB" {
+				t.Fatal("an omitted op did not default to replace", got["locale"])
+			}
+			stamped := modified(patch(200, "a mixed-case add op was refused", map[string]any{"op": "Add", "path": "timezone", "value": "Europe/London"}))
+			if got := call("GET", "Users/"+id, nil, 200, "GET failed"); got["timezone"] != "Europe/London" {
+				t.Fatal("a mixed-case add op was not applied", got["timezone"])
+			}
+			time.Sleep(5 * time.Millisecond)
+			if got := patch(200, "an unchanged PATCH was refused", map[string]any{"op": "replace", "path": "title", "value": "Lead"}); modified(got) != stamped {
+				t.Fatal("an unchanged PATCH rewrote lastModified", stamped, modified(got))
+			}
+			many := make([]any, 101)
+			for i := range many {
+				many[i] = map[string]any{"op": "replace", "path": "title", "value": "Lead"}
+			}
+			if body := patch(400, "a PATCH with 101 operations was accepted", many...); body["scimType"] != "invalidSyntax" {
+				t.Fatal("a PATCH with 101 operations was accepted", body)
+			}
+			if body := patch(400, "an unknown PATCH op was accepted", map[string]any{"op": "move", "path": "title", "value": "X"}); body["scimType"] != "invalidSyntax" {
+				t.Fatal("an unknown PATCH op was accepted", body)
+			}
+			if body := patch(400, "a pathless User remove did not answer noTarget", map[string]any{"op": "remove"}); body["scimType"] != "noTarget" {
+				t.Fatal("a pathless User remove did not answer noTarget", body)
+			}
+			if body := patch(400, "PATCH accepted a write to the User id", map[string]any{"op": "replace", "path": "id", "value": "other"}); body["scimType"] != "mutability" {
+				t.Fatal("PATCH accepted a write to the User id", body)
+			}
+			if body := patch(400, "a pathless schemas key was not read-only", map[string]any{"op": "replace", "value": map[string]any{"schemas": []string{scim.UserSchema}}}); body["scimType"] != "mutability" {
+				t.Fatal("a pathless schemas key was not read-only", body)
+			}
+			if body := patch(400, "PATCH accepted a write to User meta", map[string]any{"op": "replace", "path": "meta.created", "value": "2020-01-01T00:00:00Z"}); body["scimType"] != "mutability" {
+				t.Fatal("PATCH accepted a write to User meta", body)
 			}
 		})
 	}

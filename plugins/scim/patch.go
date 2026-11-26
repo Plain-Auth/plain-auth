@@ -14,9 +14,11 @@ func patchOperations(input any) ([]any, error) {
 	if !ok || len(schemas) != 1 || schemas[0] != PatchSchema {
 		return nil, invalid("invalidSyntax", "The PatchOp schema is required")
 	}
+	// An empty Operations array is a valid no-op. Go bounds a request at 100
+	// operations; another runtime accepts longer lists.
 	ops, ok := m["Operations"].([]any)
-	if !ok || len(ops) == 0 || len(ops) > 100 {
-		return nil, invalid("invalidSyntax", "Expected 1 to 100 operations")
+	if !ok || len(ops) > 100 {
+		return nil, invalid("invalidSyntax", "Expected up to 100 operations")
 	}
 	return ops, nil
 }
@@ -47,7 +49,10 @@ func patchProfile(r Record, ops []any) (Profile, error) {
 			}
 			path = strings.TrimSpace(path)
 		}
-		if path == "" && op != "remove" {
+		if path == "" && op == "remove" {
+			return Profile{}, invalid("noTarget", "A pathless remove has no target")
+		}
+		if path == "" {
 			fields, ok := v["value"].(map[string]any)
 			if !ok || len(fields) == 0 {
 				return Profile{}, invalid("invalidValue", "Expected an attribute map")
@@ -76,9 +81,20 @@ func patchProfile(r Record, ops []any) (Profile, error) {
 	}
 	return normalize(m)
 }
+
+// readOnlyUserPath reports id, schemas and meta, which a PATCH cannot change.
+func readOnlyUserPath(path string) bool {
+	head, _, _ := strings.Cut(path, ".")
+	head, _, _ = strings.Cut(head, "[")
+	return strings.EqualFold(head, "id") || strings.EqualFold(head, "schemas") || strings.EqualFold(head, "meta")
+}
+
 func patchValue(m map[string]any, path, op string, value any) error {
 	if len(path) > len(UserSchema) && strings.EqualFold(path[:len(UserSchema)+1], UserSchema+":") {
 		path = path[len(UserSchema)+1:]
+	}
+	if readOnlyUserPath(strings.TrimSpace(path)) {
+		return invalid("mutability", "The targeted User attribute is read-only")
 	}
 	if isRolePath(path) {
 		if value == nil {
