@@ -43,7 +43,7 @@ func TestProviderLogoutRevokesOwnerSession(t *testing.T) {
 		}
 		raw := "test.id-grant.signature"
 		if disable {
-			raw += "-one"
+			raw = "test.id-grant-one.signature"
 		}
 		_, err = c.SignInSocial(t.Context(), client.SocialSignInRequest{Provider: "work", IDToken: &client.SocialIDToken{Token: raw, Nonce: "bound"}})
 		if err != nil {

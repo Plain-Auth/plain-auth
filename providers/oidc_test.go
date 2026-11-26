@@ -191,8 +191,14 @@ func TestOpenIDConnectWithOptions(t *testing.T) {
 	defer otherKeys.Close()
 	var issuer *httptest.Server
 	keysURI, tokenHeader := "", ""
+	tokenHeaderLeaked := false
 	issuer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		record(r.URL.Path, r)
+		if r.URL.Path != "/token" && r.Header.Get("X-Token") != "" {
+			mu.Lock()
+			tokenHeaderLeaked = true
+			mu.Unlock()
+		}
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/.well-known/openid-configuration":
@@ -230,6 +236,12 @@ func TestOpenIDConnectWithOptions(t *testing.T) {
 	}
 	if got := headersAt("/keys"); len(got) == 0 || got[0] != "epic" {
 		t.Fatal("the same-origin keys request sent", got)
+	}
+	mu.Lock()
+	leaked := tokenHeaderLeaked
+	mu.Unlock()
+	if leaked {
+		t.Fatal("TokenHeaders reached discovery or the keys")
 	}
 	mu.Lock()
 	gotToken := tokenHeader

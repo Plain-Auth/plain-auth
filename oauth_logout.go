@@ -65,7 +65,8 @@ func (a *Auth) prepareProviderLogout(ctx context.Context, h http.Header, body wi
 		query := target.Query()
 		// An access token that signed in directly is stored as the ID token;
 		// only a three-part JWS goes into the browser's logout URL.
-		if strings.Count(row.IDToken, ".") == 2 {
+		hint := strings.Count(row.IDToken, ".") == 2
+		if hint {
 			query.Set("id_token_hint", row.IDToken)
 		}
 		callback, _ := body["callbackURL"].(string)
@@ -98,7 +99,7 @@ func (a *Auth) prepareProviderLogout(ctx context.Context, h http.Header, body wi
 			if state != "" {
 				query.Set("state", state)
 			}
-		} else if row.IDToken == "" {
+		} else if !hint {
 			query.Set("client_id", p.Config.ClientID)
 		}
 		target.RawQuery = query.Encode()

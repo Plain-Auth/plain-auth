@@ -131,7 +131,7 @@ func NewOneTap(o OneTapOptions, fallback OAuthProvider) Plugin {
 				return nil, err
 			}
 			raw, _ := c.Body["idToken"].(string)
-			if raw == "" || len(raw) > 64<<10 {
+			if raw == "" || len(raw) > 64<<10 || !oneSpelling(raw) {
 				return nil, invalid()
 			}
 			bound, err := c.Request.Cookie(c.Auth.oneTapCookie("", 0).Name)

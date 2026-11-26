@@ -78,10 +78,11 @@ func TestProviderAccessTokenSignIn(t *testing.T) {
 	if err := json.NewDecoder(n.post(t, "/get-access-token", `{"accountId":"`+n.accountID(t)+`"}`).Body).Decode(&token); err != nil || token.AccessToken != "at-ada" {
 		t.Fatal("the stored access token is", token.AccessToken, err)
 	}
-	// The stored access token never becomes a logout URL's id_token_hint.
+	// The stored access token never becomes a logout URL's id_token_hint;
+	// the URL names the client instead.
 	var logout struct{ URL string }
 	if err := json.NewDecoder(n.post(t, "/sign-out", `{"disableRedirect":true}`).Body).Decode(&logout); err != nil ||
-		!strings.HasPrefix(logout.URL, "https://idp.example/end") || strings.Contains(logout.URL, "id_token_hint") || strings.Contains(logout.URL, "at-ada") {
+		!strings.HasPrefix(logout.URL, "https://idp.example/end") || strings.Contains(logout.URL, "id_token_hint") || strings.Contains(logout.URL, "at-ada") || !strings.Contains(logout.URL, "client_id=client") {
 		t.Fatal("provider logout went to", logout.URL, err)
 	}
 	if status, code := signIn(n, `{"token":"at-ada","accessToken":"at-ada"}`); status != 401 || code != "INVALID_TOKEN" {
@@ -136,17 +137,21 @@ func TestProviderAccessTokenSignIn(t *testing.T) {
 	}
 }
 
-// A direct ID token signs in once: a copy whose segments are re-encoded,
-// with padding or other spare bits, decodes to the same token and is
-// refused too, while a different token still signs in.
+// A direct ID token signs in once. A copy a JWS decoder reads as the same
+// token is refused too: re-encoded segments with padding or other spare
+// bits, another signature over the same header and payload, whitespace
+// anywhere and the JSON form, the last two before any verifier runs. A token
+// with another payload still signs in.
 func TestDirectIDTokenReencodedReplay(t *testing.T) {
+	verified := 0
 	n, err := newTokenAuthNode(t, auth.OAuthProvider{
 		Config: oauth2.Config{ClientID: "client", ClientSecret: "secret", Endpoint: oauth2.Endpoint{AuthURL: "https://idp.example/authorize", TokenURL: "https://idp.example/token"}},
 		Resolve: func(context.Context, *oauth2.Token, string) (auth.OAuthProfile, error) {
 			return auth.OAuthProfile{}, errors.New("unused")
 		},
-		// Like a JWS decoder, this verifier reads each segment leniently.
+		// Like a JWS decoder, this verifier accepts every spelling.
 		VerifyIDToken: func(_ context.Context, raw, _ string) (auth.OAuthProfile, time.Time, error) {
+			verified++
 			return auth.OAuthProfile{Subject: "subject", Email: "person@example.org", EmailVerified: true}, time.Now().Add(time.Minute), nil
 		},
 	})
@@ -154,17 +159,24 @@ func TestDirectIDTokenReencodedReplay(t *testing.T) {
 		t.Fatal(err)
 	}
 	signIn := func(token string) int {
-		return n.post(t, "/sign-in/social", `{"provider":"work","idToken":{"token":"`+token+`","nonce":"n"}}`).StatusCode
+		raw, _ := json.Marshal(map[string]any{"provider": "work", "idToken": map[string]string{"token": token, "nonce": "n"}})
+		return n.post(t, "/sign-in/social", string(raw)).StatusCode
 	}
 	if status := signIn("aGk.aGk.aGk"); status != 200 {
 		t.Fatal("the first sign-in answered", status)
 	}
-	for _, copy := range []string{"aGk.aGk.aGk", "aGk.aGk.aGl", "aGk.aGk.aGk=", "aGl.aGk.aGk"} {
+	for _, copy := range []string{"aGk.aGk.aGk", "aGk.aGk.aGl", "aGk.aGk.aGk=", "aGl.aGk.aGk", "aGk.aGk.aGw"} {
 		if status := signIn(copy); status != 401 {
 			t.Fatal("a copy of the used token,", copy, "answered", status)
 		}
 	}
-	if status := signIn("aGk.aGk.aGw"); status != 200 {
-		t.Fatal("a different token answered", status)
+	verified = 0
+	for _, copy := range []string{" aGk.aGk.aGk", "aGk.aGk.aGk\t", "aGk.aGk.aGk\n", "aGk.a Gk.aGk", `{"protected":"aGk","payload":"aGk","signature":"aGk"}`} {
+		if status := signIn(copy); status != 401 || verified != 0 {
+			t.Fatalf("a copy of the used token, %q, answered %d after %d verifications", copy, status, verified)
+		}
+	}
+	if status := signIn("aGk.aGw.aGk"); status != 200 {
+		t.Fatal("a token with another payload answered", status)
 	}
 }

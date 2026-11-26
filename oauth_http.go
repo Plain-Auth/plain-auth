@@ -14,6 +14,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 
 	"github.com/Plain-Org/plain-auth/internal/httporigin"
 	"github.com/Plain-Org/plain-auth/internal/jsjson"
@@ -631,22 +632,30 @@ func idTokenShape(body wireBody, signIn bool) error {
 
 // accountSubject reports whether a provider subject can name an account:
 // not blank, not a placeholder such as "null", and at most 1024 bytes.
-// replayKey names a token for its single-use record. JWS decoders accept
-// a segment with base64 padding or other spare bits, so a re-encoded copy of
-// a used token still verifies; its segments are encoded again canonically.
+// oneSpelling reports whether a token has no second spelling a JWS decoder
+// would also verify: the decoder strips whitespace anywhere and reads the
+// JSON form, so a copy of a used token in either would look new.
+func oneSpelling(raw string) bool {
+	return !strings.HasPrefix(raw, "{") && !strings.ContainsFunc(raw, unicode.IsSpace)
+}
+
+// replayKey names a token for its single-use record. A JWS segment may also
+// carry base64 padding or other spare bits, and ECDSA allows a second valid
+// signature over the same header and payload, so a JWS is named by its
+// header and payload, decoded and encoded again canonically.
 func replayKey(raw string) string {
 	parts := strings.Split(raw, ".")
 	if len(parts) != 3 {
 		return raw
 	}
-	for i, part := range parts {
+	for i, part := range parts[:2] {
 		b, err := base64.RawURLEncoding.DecodeString(strings.TrimRight(part, "="))
 		if err != nil {
 			return raw
 		}
 		parts[i] = base64.RawURLEncoding.EncodeToString(b)
 	}
-	return strings.Join(parts, ".")
+	return parts[0] + "." + parts[1]
 }
 
 func accountSubject(s string) bool {
@@ -878,7 +887,7 @@ func (a *Auth) directOAuth(w http.ResponseWriter, r *http.Request, id string, p 
 	access, _ := data["accessToken"].(string)
 	// A token that is not a three-part JWS is a provider access token.
 	opaque := p.VerifyAccessToken != nil && strings.Count(raw, ".") != 2
-	if raw == "" || !opaque && (nonce == "" || p.VerifyIDToken == nil) {
+	if raw == "" || !oneSpelling(raw) || !opaque && (nonce == "" || p.VerifyIDToken == nil) {
 		return nil, &APIError{401, "INVALID_TOKEN", "Invalid token"}
 	}
 	ctx, cancel := context.WithTimeout(context.WithValue(r.Context(), oauth2.HTTPClient, p.HTTPClient), 30*time.Second)
