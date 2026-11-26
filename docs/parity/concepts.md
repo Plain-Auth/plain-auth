@@ -295,7 +295,7 @@
           - [x] Run one delete and one create after hook among concurrent sign-ins sharing a remembered browser, on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/twofactor_hooks_test.go#L313))
           - [x] Run one verification delete after hook among concurrent exchanges of an authorization code, on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/oauth_code_hooks_test.go#L391))
           - [x] Store one SSO domain token and run its create after hook once among concurrent requests, on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/sso_hooks_test.go#L473))
-          - [x] Run one verification delete after hook among concurrent SAML LogoutResponses for one request, on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/sso_saml_hooks_test.go#L222))
+          - [x] Run one verification delete after hook among concurrent SAML LogoutResponses for one request, on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/sso_saml_hooks_test.go#L238))
         - [x] Example Usage ([test](../../conformance/goapi/database_user_hooks_test.go#L227))
           - [x] Derive user fields in a before hook and call another service from an after hook ([test](../../conformance/goapi/database_hooks_test.go#L128))
           - [x] Log a session as sign-out deletes it, or keep it by declining the delete ([test](../../conformance/goapi/database_session_hooks_test.go#L166))

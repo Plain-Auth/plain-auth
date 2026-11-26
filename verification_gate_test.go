@@ -230,4 +230,16 @@ func TestVerificationGate(t *testing.T) {
 		t.Fatal(err)
 	}
 	same("call", "create-after:l")
+	// A store that retries its transaction inside one call starts each
+	// attempt afresh, so only the last attempt's records run after hooks.
+	if err := gated(func(ctx context.Context) error {
+		g := VerificationGateFrom(ctx)
+		g.Create(rec("rolled-back"))
+		g.Attempt()
+		_, err := g.Create(rec("committed"))
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	same("create-after:committed")
 }

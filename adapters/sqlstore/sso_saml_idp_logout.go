@@ -87,6 +87,8 @@ func (s *Store) revokeIDPLogout(ctx context.Context, req sso.SAMLIDPLogout, brow
 		return false, err
 	}
 	defer tx.Rollback()
+	gate := auth.VerificationGateFrom(ctx)
+	gate.Attempt() // an attempt RevokeSAMLIDPSessions retries asks afresh
 	records, _, err := s.matchingSAMLReceipts(ctx, tx, req, now)
 	if err != nil {
 		return false, err
@@ -143,13 +145,14 @@ func (s *Store) revokeIDPLogout(ctx context.Context, req sso.SAMLIDPLogout, brow
 	} else if err != nil {
 		return false, err
 	}
-	gate := auth.VerificationGateFrom(ctx)
-	drop := make(map[string]bool, len(records))
-	var asked error
 	for _, rec := range records {
 		if previous, ok := locked[rec.SessionID]; !ok || previous.record != rec {
 			return false, errSAMLSessionSetChanged
 		}
+	}
+	drop := make(map[string]bool, len(records))
+	var asked error
+	for _, rec := range records {
 		// Every binding is asked about before any stop, so their hooks run
 		// in one pass.
 		ok, err := gate.Delete(sso.LogoutSessionRecord(originDigest("sls-", rec.SessionID), rec.UserID, expiries[rec.SessionID]))

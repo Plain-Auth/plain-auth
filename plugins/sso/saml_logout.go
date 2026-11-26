@@ -196,9 +196,16 @@ func (o Options) startLogout(c auth.EndpointContext, _ Store, actor Actor) (any,
 	// The store asks the request's gate before it stores the request and
 	// removes the binding, so their verification hooks run outside its
 	// transaction.
+	committed := false
 	if err := c.GateVerifications(func(ctx context.Context) error {
-		return store.StartSAMLLogout(ctx, actor, identity, pending, proof, time.Now().UTC())
+		err := store.StartSAMLLogout(ctx, actor, identity, pending, proof, time.Now().UTC())
+		committed = err == nil
+		return err
 	}); err != nil {
+		if committed {
+			// An after hook failed once the session ended: its cookies still go.
+			c.SAMLLogoutStarted(actor.SessionToken, destination.String(), cookie, ttl)
+		}
 		return nil, err
 	}
 	return c.SAMLLogoutStarted(actor.SessionToken, destination.String(), cookie, ttl), nil

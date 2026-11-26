@@ -41,17 +41,21 @@ func (s *Store) RefreshSession(ctx context.Context, token string, previousExpiry
 		return false, err
 	}
 	// Carry the original external SAML identity through a sliding renewal on any replica.
-	q = `UPDATE "verification" SET "expiresAt"=? WHERE "id"=? AND "identifier"=? AND ` + s.samlReceiptField("SessionID") + `=? AND ` + s.samlReceiptField("UserID") + `=? AND ` + s.samlReceiptField("TokenDigest") + `=?`
-	result, err = tx.ExecContext(ctx, s.bind(q), s.date(nextExpiry), originDigest("sls-", sessionID), samlSessionKind, sessionID, userID, originDigest("slt-", token))
-	if err != nil {
+	binding := `"id"=? AND "identifier"=? AND ` + s.samlReceiptField("SessionID") + `=? AND ` + s.samlReceiptField("UserID") + `=? AND ` + s.samlReceiptField("TokenDigest") + `=?`
+	args := []any{originDigest("sls-", sessionID), samlSessionKind, sessionID, userID, originDigest("slt-", token)}
+	if _, err = tx.ExecContext(ctx, s.bind(`UPDATE "verification" SET "expiresAt"=? WHERE `+binding), append([]any{s.date(nextExpiry)}, args...)...); err != nil {
 		return false, err
 	}
 	// Report an extended binding for its update after hooks. The Auth gives
 	// a renewal a gate only without update before hooks, so this never stops.
+	// The binding is looked up rather than counted, since MySQL counts only
+	// rows whose values changed.
 	if gate := authn.VerificationGateFrom(ctx); gate != nil {
-		if n, err := result.RowsAffected(); err != nil {
+		var extended bool
+		if err := tx.QueryRowContext(ctx, s.bind(`SELECT EXISTS(SELECT 1 FROM "verification" WHERE `+binding+`)`), args...).Scan(&extended); err != nil {
 			return false, err
-		} else if n == 1 {
+		}
+		if extended {
 			if _, err := gate.Update(sso.LogoutSessionRecord(originDigest("sls-", sessionID), userID, nextExpiry)); err != nil {
 				return false, err
 			}

@@ -174,6 +174,7 @@ func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tok
 	}
 	defer tx.Rollback()
 	authn.LoginPlanFrom(ctx).Attempt()
+	authn.VerificationGateFrom(ctx).Attempt()
 	if options.LinkUserID != "" {
 		if err := s.lockActiveAccount(ctx, tx, options.LinkUserID, options.LinkSessionToken, session.CreatedAt); err != nil {
 			return u, false, err

@@ -81,6 +81,15 @@ func (g *VerificationGate) Now() time.Time {
 	return g.now
 }
 
+// Attempt starts a new transaction attempt of the store call: a store that
+// retries its transaction inside one call calls it at the start of each
+// attempt, so that only the last attempt's records run their after hooks.
+func (g *VerificationGate) Attempt() {
+	if g != nil {
+		g.pending, g.allowed = nil, nil
+	}
+}
+
 // Create reports whether the store may store rec. false means a before hook
 // declined it; ErrVerificationPending means the hooks have yet to see it.
 func (g *VerificationGate) Create(rec VerificationRecord) (bool, error) {

@@ -94,12 +94,18 @@ func (o Options) receiveIDPLogout(c auth.EndpointContext, q url.Values, store SA
 	token := c.SAMLLogoutBrowserToken()
 	// The store asks the request's gate before it removes each binding, so
 	// their verification hooks run outside its transaction.
-	var revoked bool
+	var revoked, committed bool
 	err = c.GateVerifications(func(ctx context.Context) (err error) {
 		revoked, err = store.(SAMLIDPLogoutStore).RevokeSAMLIDPSessions(ctx, proof, token, required, time.Now().UTC())
+		committed = err == nil
 		return err
 	})
 	if err != nil {
+		if committed {
+			// An after hook failed once the sessions ended: a revoked
+			// browser's cookies still go.
+			c.SAMLIDPLogoutCompleted(target.String(), token, revoked)
+		}
 		return nil, err
 	}
 	return c.SAMLIDPLogoutCompleted(target.String(), token, revoked), nil

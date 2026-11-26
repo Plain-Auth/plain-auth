@@ -407,7 +407,7 @@ func runEnterpriseSAMLBrowser(t *testing.T, encrypted, logout bool) {
 						var sessionEnd, bindingEnd time.Time
 						must(first.db.QueryRowContext(ctx, first.bind(`SELECT s."id",s."expiresAt" FROM "session" s JOIN "user" u ON u."id"=s."userId" WHERE u."email"=?`), "extended-session@staff.example").Scan(&sessionID, &sessionEnd))
 						must(first.db.QueryRowContext(ctx, first.bind(`SELECT "expiresAt" FROM "verification" WHERE "id"=?`), originDigest("sls-", sessionID)).Scan(&bindingEnd))
-						if !bindingEnd.Equal(sessionEnd) || time.Until(sessionEnd) < 90*time.Minute {
+						if !bindingEnd.Equal(sessionEnd) || time.Until(sessionEnd) < 7*24*time.Hour+30*time.Minute {
 							t.Fatal("the binding expires at", bindingEnd, "for a session that expires at", sessionEnd)
 						}
 					})

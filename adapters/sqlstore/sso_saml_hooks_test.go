@@ -173,6 +173,22 @@ func testSAMLLogoutHooks(t *testing.T, first, second *Store, idp *saml.IdentityP
 	}
 	log.drain()
 
+	// An after hook that fails once logout committed still clears the
+	// browser's session cookies.
+	h, _ = signin(name("hooked-after-failure"), "hook-index")
+	log.drain()
+	log.set(log.fail, requestCreated, true)
+	if _, e := sdk(h).StartSAMLLogout(ctx, "work", "/signed-out"); e == nil {
+		t.Fatal("a failed after hook was not answered")
+	}
+	log.set(log.fail, requestCreated, false)
+	log.drain()
+	for _, c := range h.Jar.Cookies(mustTestURL(t, api)) {
+		if strings.HasSuffix(c.Name, "session_token") {
+			t.Fatal("a logout whose after hook failed kept the browser's session cookie")
+		}
+	}
+
 	// A declined logout request signs out, and its response answers 400.
 	h, s = signin(name("hooked-unstored"), "hook-index")
 	log.drain()
@@ -281,15 +297,21 @@ func testSAMLLogoutHooks(t *testing.T, first, second *Store, idp *saml.IdentityP
 		}
 	}
 	log.clean(recs, "hooked-idp", "idp-hook-index", "hook-qualifier")
-	// A replayed LogoutRequest runs no hooks.
+	// A replayed LogoutRequest runs no hooks, even for a binding it names.
+	_, c := signin(shared, "idp-hook-index")
+	log.drain()
 	if status, _ := get(newBrowser(), target); status != 400 {
 		t.Fatal("a replayed IdP logout answered", status)
 	}
 	got, _ = log.drain()
 	log.same(only(got))
+	if _, stored := row(originDigest("sls-", c.Session.ID)); !stored {
+		t.Fatal("a replayed IdP logout removed a binding")
+	}
+	if _, _, e := second.Session(ctx, c.Session.Token); e != nil {
+		t.Fatal("a replayed IdP logout ended a session:", e)
+	}
 	// A declined binding still has its session ended, and stays stored.
-	_, c := signin(shared, "idp-hook-index")
-	log.drain()
 	log.set(log.skip, bindingDelete, true)
 	if status, _ := get(newBrowser(), request()); status != 302 {
 		t.Fatal("the IdP logout answered", status)

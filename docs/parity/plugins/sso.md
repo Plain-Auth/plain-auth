@@ -128,12 +128,12 @@
     - [x] Expire a request waiting on a directory lock and keep a renewed SAML session bound past its original TTL ([test](../../../adapters/sqlstore/sso_saml_idp_logout_test.go#L170))
     - [x] Return an independently verified signed Redirect acknowledgement to the IdP; the strict pinned runtime rejects the same signed request ([test](../../../conformance/core.test.mjs#L1576))
     - [x] Spend the logout request with its verification delete hooks after the response's signature is checked; a declined spend answers 400 and keeps it ([test](../../../adapters/sqlstore/sso_saml_hooks_test.go#L158))
-    - [x] An IdP LogoutRequest runs the verification delete hooks of every binding it ends, in one pass ([test](../../../adapters/sqlstore/sso_saml_hooks_test.go#L257))
+    - [x] An IdP LogoutRequest runs the verification delete hooks of every binding it ends, in one pass ([test](../../../adapters/sqlstore/sso_saml_hooks_test.go#L273))
   - [ ] `POST /sso/saml2/logout/:providerId`
     - [x] Use the native SDK to revoke exactly the recorded local SAML login and sign the original IdP NameID and SessionIndex on three SQL engines ([test](../../../adapters/sqlstore/sso_saml_logout_test.go#L30))
     - [x] Revoke the current local login through the released client on both runtimes and verify the Go request’s RSA-SHA256 Redirect signature ([test](../../../conformance/sso-saml.mjs#L342))
     - [x] A SAML logout binding carries the expiry a session create hook gave its session ([test](../../../adapters/sqlstore/sso_saml_test.go#L404))
-    - [x] Run the logout request's create and the binding's delete verification hooks in one pass; a declined request signs out but its LogoutResponse answers 400 ([test](../../../adapters/sqlstore/sso_saml_hooks_test.go#L176))
+    - [x] Run the logout request's create and the binding's delete verification hooks in one pass; a declined request signs out but its LogoutResponse answers 400 ([test](../../../adapters/sqlstore/sso_saml_hooks_test.go#L192))
   - [ ] `AlgorithmValidationOptions`
     - [ ] `onDeprecated`
     - [ ] `allowedSignatureAlgorithms`
