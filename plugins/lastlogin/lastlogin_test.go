@@ -104,3 +104,47 @@ func TestReservedLoginPreferenceName(t *testing.T) {
 		}
 	}
 }
+
+// With the auth API on another site than the app, the preference copies
+// SameSite=None, Secure and Partitioned from the session cookie, whether they
+// apply to every cookie or only to the session cookie, and keeps Path=/.
+func TestPreferenceFollowsCrossSiteSessionCookie(t *testing.T) {
+	const api, app = "https://api.example.test", "https://app.example.org"
+	for _, tc := range []struct {
+		name string
+		opts auth.Options
+	}{
+		{"every cookie", auth.Options{DefaultCookieAttributes: auth.CookieAttributes{SameSite: http.SameSiteNoneMode, Partitioned: true}}},
+		{"session cookie only", auth.Options{Cookies: map[string]auth.CookieOptions{"session_token": {Attributes: auth.CookieAttributes{SameSite: http.SameSiteNoneMode, Partitioned: true, Path: "/api"}}}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			o := tc.opts
+			o.BaseURL, o.Store, o.Secret, o.EmailAndPassword = api, memory.New(), strings.Repeat("s", 32), true
+			o.TrustedOrigins, o.Plugins = []string{app}, []auth.Plugin{lastlogin.New(lastlogin.Options{})}
+			a, err := auth.New(o)
+			if err != nil {
+				t.Fatal(err)
+			}
+			r := httptest.NewRequest("POST", api+"/api/auth/sign-up/email", strings.NewReader(`{"email":"ada@example.test","name":"Ada","password":"test-password"}`))
+			r.Header.Set("Origin", app)
+			r.Header.Set("Content-Type", "application/json")
+			w := httptest.NewRecorder()
+			a.ServeHTTP(w, r)
+			var session, preference *http.Cookie
+			for _, c := range w.Result().Cookies() {
+				switch c.Name {
+				case "__Secure-authn.session_token":
+					session = c
+				case "__Secure-authn.last_used_login_method":
+					preference = c
+				}
+			}
+			if w.Code != 200 || session == nil || session.SameSite != http.SameSiteNoneMode || !session.Secure || !session.Partitioned {
+				t.Fatal("the session cookie is not cross-site:", w.Code, session)
+			}
+			if preference == nil || preference.Value != "email" || preference.SameSite != session.SameSite || preference.Secure != session.Secure || preference.Partitioned != session.Partitioned || preference.Domain != session.Domain || preference.HttpOnly || preference.Path != "/" {
+				t.Fatal("the preference did not copy the cross-site session attributes", preference)
+			}
+		})
+	}
+}

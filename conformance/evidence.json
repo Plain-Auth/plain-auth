@@ -6141,6 +6141,12 @@
       "label": "Share a successful sign-in method across sessions on all three SQL backends and in memory",
       "test": "adapters/sqlstore/lastlogin_test.go",
       "marker": "second session did not update account method"
+    },
+    {
+      "label": "Leave the account and session reads without a method, and need no schema column, when the plugin has no database, in memory and on three SQL backends",
+      "test": "adapters/sqlstore/lastlogin_test.go",
+      "marker": "sign-in stored a method on the account without Database",
+      "complete": true
     }
   ],
   "plugin-symbol/last-login-method/lastLoginMethodClient": [
@@ -34797,6 +34803,88 @@
       "label": "Refuse updatePhoneNumber without a session with 401 USER_NOT_FOUND, and attach the number to the signed-in account when one is present",
       "test": "adapters/sqlstore/phone_accounts_test.go",
       "marker": "phoneError(t, err, 401, \"USER_NOT_FOUND\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/last-login-method.mdx#L373/OAuth providers": [
+    {
+      "label": "Record a social provider's ID as the browser preference and the stored account method after its callback signs the user in, on three SQL backends",
+      "test": "adapters/sqlstore/lastlogin_test.go",
+      "marker": "expectLoginMethod(t, app, store, site, direct, \"github\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/last-login-method.mdx#L374/OAuth callbacks": [
+    {
+      "label": "Take the provider ID from the callback path, including when the OAuth proxy completes the sign-in at /callback/:id/oauth-proxy, on three SQL backends",
+      "test": "adapters/sqlstore/lastlogin_test.go",
+      "marker": "expectLoginMethod(t, preview, store, site, proxied, \"github\")",
+      "complete": true
+    },
+    {
+      "label": "Publish no preference when the provider refuses the callback's code",
+      "test": "adapters/sqlstore/lastlogin_test.go",
+      "marker": "a failed provider callback published a login method"
+    }
+  ],
+  "docs/content/docs/plugins/last-login-method.mdx#L379/`/callback/:id`": [
+    {
+      "label": "Publish the provider ID in the preference and store it on the account after a sign-in through /callback/:id, on three SQL backends",
+      "test": "adapters/sqlstore/lastlogin_test.go",
+      "marker": "expectLoginMethod(t, app, store, site, direct, \"github\")",
+      "complete": true
+    },
+    {
+      "label": "Record the provider ID, not the trailing path, for the OAuth proxy completion at /callback/:id/oauth-proxy",
+      "test": "adapters/sqlstore/lastlogin_test.go",
+      "marker": "expectLoginMethod(t, preview, store, site, proxied, \"github\")"
+    }
+  ],
+  "docs/content/docs/plugins/last-login-method.mdx#L382/`/one-tap/callback`": [
+    {
+      "label": "Record google in the preference, on the session read and on the account after a One Tap sign-in, on three SQL backends",
+      "test": "adapters/sqlstore/lastlogin_test.go",
+      "marker": "expectLoginMethod(t, a, store, origin, oneTapSignIn(), \"google\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/last-login-method.mdx#L383/`/siwe/verify`": [
+    {
+      "label": "Record siwe in the preference, on the session read and on the account after a signed wallet sign-in, on three SQL backends",
+      "test": "adapters/sqlstore/lastlogin_test.go",
+      "marker": "expectLoginMethod(t, a, store, origin, walletSignIn(), \"siwe\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/last-login-method.mdx#L384/`/passkey/verify-authentication`": [
+    {
+      "label": "Record passkey in the preference, on the session read and on the account after a passkey assertion signs in an enrolled user, on three SQL backends",
+      "test": "adapters/sqlstore/lastlogin_test.go",
+      "marker": "expectLoginMethod(t, a, store, origin, passkeySignIn(), \"passkey\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/last-login-method.mdx#L385/`/magic-link/verify`": [
+    {
+      "label": "Record magic-link in the preference, on the session read and on the account after the magic link verify redirect, on three SQL backends",
+      "test": "adapters/sqlstore/lastlogin_test.go",
+      "marker": "expectLoginMethod(t, a, store, origin, magicLinkSignIn(), \"magic-link\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/last-login-method.mdx#L386/`/sign-in/email-otp`": [
+    {
+      "label": "Record email-otp in the preference, on the session read and on the account after a one-time code sign-in, on three SQL backends",
+      "test": "adapters/sqlstore/lastlogin_test.go",
+      "marker": "expectLoginMethod(t, a, store, origin, emailOTPSignIn(), \"email-otp\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/last-login-method.mdx#L393/Cross-origin setups": [
+    {
+      "label": "Copy SameSite=None, Secure and Partitioned from a cross-site session cookie onto the preference, whether they apply to every cookie or only the session cookie, and keep Path=/",
+      "test": "plugins/lastlogin/lastlogin_test.go",
+      "marker": "the preference did not copy the cross-site session attributes",
       "complete": true
     }
   ]

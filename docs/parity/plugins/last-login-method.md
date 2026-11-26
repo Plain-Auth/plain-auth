@@ -19,10 +19,11 @@
       - [x] Publish a custom Secure preference that the browser can read and the sibling receives ([test](../../../conformance/goapi/cookie_scope_browser_test.go#L77))
     - [x] `maxAge` ([test](../../../plugins/lastlogin/lastlogin_test.go#L41))
       - [x] Respect a custom preference lifetime in the emitted browser cookie ([test](../../../plugins/lastlogin/lastlogin_test.go#L41))
-    - [x] `customResolveMethod` ([test](../../../adapters/sqlstore/lastlogin_test.go#L94))
-      - [x] Override the method for a sign-in and fall back to the default when the resolver returns empty ([test](../../../adapters/sqlstore/lastlogin_test.go#L94))
-    - [ ] `storeInDatabase`
-      - [x] Share a successful sign-in method across sessions on all three SQL backends and in memory ([test](../../../adapters/sqlstore/lastlogin_test.go#L94))
+    - [x] `customResolveMethod` ([test](../../../adapters/sqlstore/lastlogin_test.go#L105))
+      - [x] Override the method for a sign-in and fall back to the default when the resolver returns empty ([test](../../../adapters/sqlstore/lastlogin_test.go#L105))
+    - [x] `storeInDatabase` ([test](../../../adapters/sqlstore/lastlogin_test.go#L204))
+      - [x] Share a successful sign-in method across sessions on all three SQL backends and in memory ([test](../../../adapters/sqlstore/lastlogin_test.go#L105))
+      - [x] Leave the account and session reads without a method, and need no schema column, when the plugin has no database, in memory and on three SQL backends ([test](../../../adapters/sqlstore/lastlogin_test.go#L204))
     - [x] `beforeStoreCookie` ([test](../../../plugins/lastlogin/lastlogin_test.go#L39))
       - [x] Require consent independently of successful authentication ([test](../../../plugins/lastlogin/lastlogin_test.go#L39))
     - [ ] `schema`
@@ -41,7 +42,7 @@
     - UI Integration Example — *not applicable: React component example*
   - [ ] Database Persistence
     - [ ] Enable database storage
-      - [x] Expose the stored sign-in method when the configured plugin issues a session ([test](../../../adapters/sqlstore/lastlogin_test.go#L89))
+      - [x] Expose the stored sign-in method when the configured plugin issues a session ([test](../../../adapters/sqlstore/lastlogin_test.go#L100))
     - [x] Run database migration ([test](../../../cmd/authctl/check_test.go#L99))
       - [x] Add the lastLoginMethod column to an existing SQLite database with authctl migrate, after which the plugin's schema check passes ([test](../../../cmd/authctl/check_test.go#L99))
       - [x] Generate the plugin's column with authctl generate identically to the other runtime on SQLite, PostgreSQL and MySQL ([test](../../../conformance/schema.test.mjs#L106))
@@ -66,10 +67,10 @@
         - [x] Give the preference a 30-day lifetime by default on both runtimes ([test](../../../conformance/core.test.mjs#L40))
         - [x] Respect a custom two-hour preference lifetime ([test](../../../plugins/lastlogin/lastlogin_test.go#L41))
       - [ ] storeInDatabase
-        - [x] Store the method on the account while a refusing consent callback keeps the browser cookie unset, on three SQL backends and in memory ([test](../../../adapters/sqlstore/lastlogin_test.go#L64))
-        - [x] Update the account's stored method on a later sign-in ([test](../../../adapters/sqlstore/lastlogin_test.go#L94))
-      - [x] customResolveMethod ([test](../../../adapters/sqlstore/lastlogin_test.go#L94))
-        - [x] Use the resolver's method for email sign-in and fall back to the default when it returns empty ([test](../../../adapters/sqlstore/lastlogin_test.go#L94))
+        - [x] Store the method on the account while a refusing consent callback keeps the browser cookie unset, on three SQL backends and in memory ([test](../../../adapters/sqlstore/lastlogin_test.go#L75))
+        - [x] Update the account's stored method on a later sign-in ([test](../../../adapters/sqlstore/lastlogin_test.go#L105))
+      - [x] customResolveMethod ([test](../../../adapters/sqlstore/lastlogin_test.go#L105))
+        - [x] Use the resolver's method for email sign-in and fall back to the default when it returns empty ([test](../../../adapters/sqlstore/lastlogin_test.go#L105))
       - [ ] beforeStoreCookie
         - [x] Withhold the preference when the consent callback refuses while sign-up still succeeds, and set it when consent is present ([test](../../../plugins/lastlogin/lastlogin_test.go#L39))
       - [x] Example ([test](../../../plugins/lastlogin/lastlogin_test.go#L39))
@@ -85,32 +86,43 @@
     - [ ] Default Method Resolution
       - [x] Email authentication ([test](../../../plugins/lastlogin/lastlogin_test.go#L42))
         - [x] Record email after a password sign-in ([test](../../../plugins/lastlogin/lastlogin_test.go#L42))
-      - [ ] OAuth providers
-      - [ ] OAuth callbacks
+      - [x] OAuth providers ([test](../../../adapters/sqlstore/lastlogin_test.go#L339))
+        - [x] Record a social provider's ID as the browser preference and the stored account method after its callback signs the user in, on three SQL backends ([test](../../../adapters/sqlstore/lastlogin_test.go#L339))
+      - [x] OAuth callbacks ([test](../../../adapters/sqlstore/lastlogin_test.go#L355))
+        - [x] Take the provider ID from the callback path, including when the OAuth proxy completes the sign-in at /callback/:id/oauth-proxy, on three SQL backends ([test](../../../adapters/sqlstore/lastlogin_test.go#L355))
+        - [x] Publish no preference when the provider refuses the callback's code ([test](../../../adapters/sqlstore/lastlogin_test.go#L335))
       - [x] Sign up methods ([test](../../../plugins/lastlogin/lastlogin_test.go#L74))
         - [x] Record email in the preference after an email sign-up ([test](../../../plugins/lastlogin/lastlogin_test.go#L74))
-        - [x] Store email on the account at sign-up ([test](../../../adapters/sqlstore/lastlogin_test.go#L89))
-      - [ ] `/callback/:id`
+        - [x] Store email on the account at sign-up ([test](../../../adapters/sqlstore/lastlogin_test.go#L100))
+      - [x] `/callback/:id` ([test](../../../adapters/sqlstore/lastlogin_test.go#L339))
+        - [x] Publish the provider ID in the preference and store it on the account after a sign-in through /callback/:id, on three SQL backends ([test](../../../adapters/sqlstore/lastlogin_test.go#L339))
+        - [x] Record the provider ID, not the trailing path, for the OAuth proxy completion at /callback/:id/oauth-proxy ([test](../../../adapters/sqlstore/lastlogin_test.go#L355))
       - [x] `/sign-in/email` ([test](../../../plugins/lastlogin/lastlogin_test.go#L42))
         - [x] Record email after a password sign-in ([test](../../../plugins/lastlogin/lastlogin_test.go#L42))
       - [x] `/sign-up/email` ([test](../../../plugins/lastlogin/lastlogin_test.go#L74))
         - [x] Record email in the preference after an email sign-up ([test](../../../plugins/lastlogin/lastlogin_test.go#L74))
         - [x] Publish the preference on email sign-up on both runtimes ([test](../../../conformance/core.test.mjs#L39))
-      - [ ] `/one-tap/callback`
-      - [ ] `/siwe/verify`
-      - [ ] `/passkey/verify-authentication`
-      - [ ] `/magic-link/verify`
-      - [ ] `/sign-in/email-otp`
+      - [x] `/one-tap/callback` ([test](../../../adapters/sqlstore/lastlogin_test.go#L485))
+        - [x] Record google in the preference, on the session read and on the account after a One Tap sign-in, on three SQL backends ([test](../../../adapters/sqlstore/lastlogin_test.go#L485))
+      - [x] `/siwe/verify` ([test](../../../adapters/sqlstore/lastlogin_test.go#L486))
+        - [x] Record siwe in the preference, on the session read and on the account after a signed wallet sign-in, on three SQL backends ([test](../../../adapters/sqlstore/lastlogin_test.go#L486))
+      - [x] `/passkey/verify-authentication` ([test](../../../adapters/sqlstore/lastlogin_test.go#L487))
+        - [x] Record passkey in the preference, on the session read and on the account after a passkey assertion signs in an enrolled user, on three SQL backends ([test](../../../adapters/sqlstore/lastlogin_test.go#L487))
+      - [x] `/magic-link/verify` ([test](../../../adapters/sqlstore/lastlogin_test.go#L488))
+        - [x] Record magic-link in the preference, on the session read and on the account after the magic link verify redirect, on three SQL backends ([test](../../../adapters/sqlstore/lastlogin_test.go#L488))
+      - [x] `/sign-in/email-otp` ([test](../../../adapters/sqlstore/lastlogin_test.go#L489))
+        - [x] Record email-otp in the preference, on the session read and on the account after a one-time code sign-in, on three SQL backends ([test](../../../adapters/sqlstore/lastlogin_test.go#L489))
   - [ ] Cross-Domain Support
     - [x] Copy the session cookie's Domain and Secure onto the preference, drop the domain for __Host- names and keep it readable by scripts ([test](../../../plugins/lastlogin/lastlogin_test.go#L103))
     - [x] Clear the shared preference in Chrome when the browser module is given the shared domain ([test](../../../conformance/goapi/cookie_scope_browser_test.go#L81))
     - [x] Cross-subdomain setups ([test](../../../conformance/goapi/cookie_scope_http_test.go#L85))
       - [x] Deliver the preference to a sibling subdomain once cross-subdomain cookies are enabled ([test](../../../conformance/goapi/cookie_scope_http_test.go#L85))
       - [x] Send a custom-named preference to the sibling host in Chrome ([test](../../../conformance/goapi/cookie_scope_browser_test.go#L79))
-    - [ ] Cross-origin setups
+    - [x] Cross-origin setups ([test](../../../plugins/lastlogin/lastlogin_test.go#L146))
+      - [x] Copy SameSite=None, Secure and Partitioned from a cross-site session cookie onto the preference, whether they apply to every cookie or only the session cookie, and keep Path=/ ([test](../../../plugins/lastlogin/lastlogin_test.go#L146))
   - [ ] GDPR Compliance
     - [x] Withhold the preference without a consent signal while sign-up still succeeds, and set it when the request carries consent ([test](../../../plugins/lastlogin/lastlogin_test.go#L39))
   - [ ] Advanced Examples
-    - [x] Custom Provider Tracking ([test](../../../adapters/sqlstore/lastlogin_test.go#L94))
-      - [x] Resolve a custom method from the request path and fall back to the default otherwise ([test](../../../adapters/sqlstore/lastlogin_test.go#L94))
+    - [x] Custom Provider Tracking ([test](../../../adapters/sqlstore/lastlogin_test.go#L105))
+      - [x] Resolve a custom method from the request path and fall back to the default otherwise ([test](../../../adapters/sqlstore/lastlogin_test.go#L105))
     - Usage with Expo — *not applicable: JavaScript only*

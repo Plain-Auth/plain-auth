@@ -22,8 +22,12 @@ type Options struct {
 	Database   Store
 	CookieName string
 	MaxAge     time.Duration
-	Resolve    func(*http.Request) string
-	Allow      func(*http.Request, string) bool
+	// Resolve names the method for a sign-in request. When it is nil or
+	// returns "", the route decides: email, the provider ID of
+	// /callback/:id (also behind the OAuth proxy), google for One Tap,
+	// siwe, passkey, magic-link or email-otp.
+	Resolve func(*http.Request) string
+	Allow   func(*http.Request, string) bool
 }
 
 func New(opts Options) auth.Plugin {
@@ -97,7 +101,10 @@ func methodForRoute(route string) string {
 	case "/sign-in/email-otp":
 		return "email-otp"
 	}
-	if id, ok := strings.CutPrefix(route, "/callback/"); ok {
+	if rest, ok := strings.CutPrefix(route, "/callback/"); ok {
+		// The provider ID is the first path segment, so the OAuth proxy's
+		// /callback/:id/oauth-proxy completion records the provider too.
+		id, _, _ := strings.Cut(rest, "/")
 		return id
 	}
 	if strings.HasPrefix(route, "/magic-link/verify") {
