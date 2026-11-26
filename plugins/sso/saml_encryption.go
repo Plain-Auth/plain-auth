@@ -26,9 +26,9 @@ const (
 	signatureNS     = "http://www.w3.org/2000/09/xmldsig#"
 	encryptionNS    = "http://www.w3.org/2001/04/xmlenc#"
 	encryption11NS  = "http://www.w3.org/2009/xmlenc11#"
-	aesGCM256       = encryption11NS + "aes256-gcm"
-	rsaOAEP         = encryption11NS + "rsa-oaep"
-	sha256Digest    = encryptionNS + "sha256"
+	aesGCM256       = string(DataEncryptionAES256GCM)
+	rsaOAEP         = string(KeyEncryptionRSAOAEPSHA256)
+	sha256Digest    = string(DigestSHA256)
 	mgfSHA256       = encryption11NS + "mgf1sha256"
 )
 

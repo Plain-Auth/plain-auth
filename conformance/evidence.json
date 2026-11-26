@@ -44085,5 +44085,42 @@
       "test": "adapters/sqlstore/sso_saml_policy_test.go",
       "marker": "a future assertion did not fail with saml_error"
     }
+  ],
+  "plugin-symbol/sso/SignatureAlgorithm": [
+    {
+      "label": "Export the RSA and ECDSA XML Signature method URIs as SignatureAlgorithm constants",
+      "test": "plugins/sso/saml_test.go",
+      "marker": "signature URIs differ from XML Signature",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/sso/DigestAlgorithm": [
+    {
+      "label": "Export the SHA-1, SHA-256, SHA-384 and SHA-512 digest URIs as DigestAlgorithm constants",
+      "test": "plugins/sso/saml_test.go",
+      "marker": "digest URIs differ from XML Signature",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/sso/KeyEncryptionAlgorithm": [
+    {
+      "label": "Export the RSA 1.5, RSA-OAEP and xmlenc11 RSA-OAEP key transport URIs, equal to the decrypter's",
+      "test": "plugins/sso/saml_test.go",
+      "marker": "key transport URIs differ from the decrypter's",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/sso/DataEncryptionAlgorithm": [
+    {
+      "label": "Export the Triple DES, AES-CBC and AES-GCM content cipher URIs, equal to the decrypter's",
+      "test": "plugins/sso/saml_test.go",
+      "marker": "block cipher URIs differ from the decrypter's",
+      "complete": true
+    },
+    {
+      "label": "Name AES-256-GCM, the only accepted content cipher, with the decrypter's URI",
+      "test": "plugins/sso/saml_test.go",
+      "marker": "AES-256-GCM URI differs from the decrypter's"
+    }
   ]
 }

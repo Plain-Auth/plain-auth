@@ -274,7 +274,7 @@ func (o Options) samlSP(c auth.EndpointContext, p Provider) (*saml.ServiceProvid
 		}
 		sp.Key = o.SAML.RequestSigner
 		sp.Certificate = o.SAML.RequestCertificate
-		sp.SignatureMethod = "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"
+		sp.SignatureMethod = string(SignatureRSASHA256)
 	}
 	audience := cfg.Audience
 	if audience == "" {

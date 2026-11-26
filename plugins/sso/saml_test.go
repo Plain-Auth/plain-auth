@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	auth "github.com/Plain-Org/plain-auth"
 	"github.com/crewjam/saml"
+	"github.com/crewjam/saml/xmlenc"
 	"math/big"
 	"strings"
 	"testing"
@@ -286,5 +287,37 @@ func TestSAMLClockSkewOption(t *testing.T) {
 	stale := &saml.Assertion{IssueInstant: now, Conditions: &saml.Conditions{NotOnOrAfter: now.Add(-90 * time.Second)}}
 	if message, _ := (SAMLOptions{ClockSkew: time.Minute}).checkTimestamps(stale, now); message != "SAML assertion has expired" {
 		t.Fatal("checkTimestamps ignored a narrowed clock skew", message)
+	}
+}
+
+// The exported algorithm constants are the XML Signature and XML Encryption
+// URIs, the same values the decrypter uses.
+func TestSAMLAlgorithmURIs(t *testing.T) {
+	for got, want := range map[SignatureAlgorithm]string{
+		SignatureRSASHA1: "http://www.w3.org/2000/09/xmldsig#rsa-sha1", SignatureRSASHA256: "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256",
+		SignatureRSASHA384: "http://www.w3.org/2001/04/xmldsig-more#rsa-sha384", SignatureRSASHA512: "http://www.w3.org/2001/04/xmldsig-more#rsa-sha512",
+		SignatureECDSASHA256: "http://www.w3.org/2001/04/xmldsig-more#ecdsa-sha256", SignatureECDSASHA384: "http://www.w3.org/2001/04/xmldsig-more#ecdsa-sha384",
+		SignatureECDSASHA512: "http://www.w3.org/2001/04/xmldsig-more#ecdsa-sha512",
+	} {
+		if string(got) != want {
+			t.Fatal("signature URIs differ from XML Signature", got, want)
+		}
+	}
+	for got, want := range map[DigestAlgorithm]string{
+		DigestSHA1: "http://www.w3.org/2000/09/xmldsig#sha1", DigestSHA256: "http://www.w3.org/2001/04/xmlenc#sha256",
+		DigestSHA384: "http://www.w3.org/2001/04/xmldsig-more#sha384", DigestSHA512: "http://www.w3.org/2001/04/xmlenc#sha512",
+	} {
+		if string(got) != want {
+			t.Fatal("digest URIs differ from XML Signature", got, want)
+		}
+	}
+	if string(KeyEncryptionRSAOAEPSHA256) != xmlenc.OAEP_SHA256().Algorithm() || string(KeyEncryptionRSAOAEP) != xmlenc.OAEP().Algorithm() || string(KeyEncryptionRSA15) != xmlenc.PKCS1v15().Algorithm() {
+		t.Fatal("key transport URIs differ from the decrypter's")
+	}
+	if string(DataEncryptionAES256GCM) != xmlenc.AES256GCM.Algorithm() {
+		t.Fatal("AES-256-GCM URI differs from the decrypter's")
+	}
+	if string(DataEncryptionAES128GCM) != xmlenc.AES128GCM.Algorithm() || string(DataEncryptionAES256CBC) != xmlenc.AES256CBC.Algorithm() || string(DataEncryptionTripleDESCBC) != xmlenc.TripleDES.Algorithm() {
+		t.Fatal("block cipher URIs differ from the decrypter's")
 	}
 }

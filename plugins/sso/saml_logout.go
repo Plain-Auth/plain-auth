@@ -108,7 +108,7 @@ func (o Options) enableLogoutSP(c auth.EndpointContext, p Provider, sp *saml.Ser
 	sp.LogoutBindings = []string{saml.HTTPRedirectBinding}
 	sp.Key = o.SAML.RequestSigner
 	sp.Certificate = o.SAML.RequestCertificate
-	sp.SignatureMethod = "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"
+	sp.SignatureMethod = string(SignatureRSASHA256)
 	sp.LimitRelayStateLength = true
 	sp.IDPMetadata.IDPSSODescriptors[0].SingleLogoutServices = []saml.Endpoint{{Binding: saml.HTTPRedirectBinding, Location: location}}
 	return nil
