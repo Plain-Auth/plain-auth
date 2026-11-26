@@ -64,6 +64,7 @@ func TestSCIMUserContract(t *testing.T) {
 			call("POST", "Users", "second", user("second", "operator", "", "elsewhere@example.test"), 201, "")
 			// externalId is unique with case within a connection.
 			call("POST", "Users", "writer", user("writer", "another", "ID01", "another@example.test"), 409, "uniqueness")
+			time.Sleep(5 * time.Millisecond) // creation order is by millisecond
 			lower := call("POST", "Users", "writer", user("writer", "lower", "id01", "lower@example.test"), 201, "")
 			call("POST", "Users", "second", user("second", "foreign", "ID01", "foreign@example.test"), 201, "")
 			// Lists keep creation order and filter by id.

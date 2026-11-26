@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+	"time"
 
 	auth "github.com/Plain-Org/plain-auth"
 	"github.com/Plain-Org/plain-auth/plugins/sso"
@@ -18,6 +19,7 @@ func TestEnterpriseProviderFields(t *testing.T) {
 		"tier":   {Type: auth.FieldString, Required: true},
 		"note":   {Type: auth.FieldString, ServerOnly: true},
 		"region": {Type: auth.FieldString, Hidden: true, Default: "eu"},
+		"since":  {Type: auth.FieldDate, Default: func() time.Time { return time.Now() }},
 	}
 	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
 		t.Run(dialect, func(t *testing.T) {
@@ -53,7 +55,7 @@ func TestEnterpriseProviderFields(t *testing.T) {
 				extra map[string]any
 				code  string
 			}{
-				{nil, "MISSING_FIELD"},
+				{nil, "VALIDATION_ERROR"},
 				{map[string]any{"tier": "gold", "note": "set by a client"}, "FIELD_NOT_ALLOWED"},
 				{map[string]any{"tier": map[string]any{"level": 1}}, "VALIDATION_ERROR"},
 			} {
@@ -80,13 +82,25 @@ func TestEnterpriseProviderFields(t *testing.T) {
 			if w := h.call("GET", "sso/providers", owner, nil); w.Code != 200 || !strings.Contains(w.Body.String(), `"tier":"gold"`) || strings.Contains(w.Body.String(), `"region"`) {
 				t.Fatal("the provider list did not return the visible fields only", w.Code, w.Body.String())
 			}
-			// A field alone is an update, and it is not part of the identity.
+			// A field alone is an update, and it is not part of the identity,
+			// so a linked account does not block it.
+			var userID string
+			must(store.db.QueryRowContext(ctx, store.bind(`SELECT "id" FROM "user" WHERE "email"=?`), "owner@service.test").Scan(&userID))
+			now := store.date(time.Now())
+			_, err = store.db.ExecContext(ctx, store.bind(`INSERT INTO "account" ("id","providerId","accountId","userId","createdAt","updatedAt") VALUES (?,?,?,?,?,?)`), "linked", "acme", "subject", userID, now, now)
+			must(err)
 			if w := h.call("POST", "sso/update-provider", owner, map[string]any{"providerId": "acme", "tier": "platinum"}); w.Code != 200 || !visible(w.Body.Bytes(), "platinum") {
 				t.Fatal("a provider field update was refused", w.Code, w.Body.String())
 			}
 			must(store.db.QueryRowContext(ctx, store.bind(`SELECT "tier","region" FROM "ssoProvider" WHERE "providerId"=?`), "acme").Scan(&tier, &region))
 			if tier != "platinum" || region != "eu" {
 				t.Fatal("a provider field update changed the wrong columns", tier, region)
+			}
+			// The response carries the date field, and a later update writes it back intact.
+			var since struct{ Since string }
+			must(json.Unmarshal(h.call("GET", "sso/get-provider?providerId=acme", owner, nil).Body.Bytes(), &since))
+			if w := h.call("POST", "sso/update-provider", owner, map[string]any{"providerId": "acme", "tier": "gold"}); w.Code != 200 || !strings.Contains(w.Body.String(), `"since":"`+since.Since+`"`) || since.Since == "" {
+				t.Fatal("an update did not keep a provider's date field", w.Code, w.Body.String())
 			}
 			if w := h.call("POST", "sso/update-provider", owner, map[string]any{"providerId": "acme", "note": "set by a client"}); w.Code != 400 || code(w.Body.Bytes()) != "FIELD_NOT_ALLOWED" {
 				t.Fatal("a server-only field was set through update-provider", w.Code, w.Body.String())

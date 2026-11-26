@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/internal/jsjson"
 	"github.com/Plain-Org/plain-auth/internal/sessionfields"
 )
 
@@ -45,10 +46,14 @@ func (o Options) providerFieldInput(body map[string]any, create bool) (map[strin
 		switch {
 		case ok:
 			if value, err = field.Value(raw); err != nil {
-				return nil, &auth.APIError{Status: 400, Code: "VALIDATION_ERROR", Message: "Invalid field " + name}
+				return nil, fieldInputError(name, field, jsjson.TypeName(raw))
 			}
 		case !create:
 			continue
+		// A settable required field is checked with the body, as another
+		// runtime's schema checks it; a server-only one when it is filled.
+		case field.Required && !field.ServerOnly:
+			return nil, fieldInputError(name, field, "undefined")
 		case field.Required && field.Default == nil:
 			return nil, &auth.APIError{Status: 400, Code: "MISSING_FIELD", Message: name + " is required"}
 		default:
@@ -62,6 +67,12 @@ func (o Options) providerFieldInput(body map[string]any, create bool) (map[strin
 		out[name] = value
 	}
 	return out, nil
+}
+
+// fieldInputError refuses a missing or mistyped field in another runtime's
+// body validation form.
+func fieldInputError(name string, field ProviderField, received string) error {
+	return &auth.APIError{Status: 400, Code: "VALIDATION_ERROR", Message: "[body." + name + "] Invalid input: expected " + string(field.Type) + ", received " + received}
 }
 
 // publicFields returns the declared fields responses show: every field but

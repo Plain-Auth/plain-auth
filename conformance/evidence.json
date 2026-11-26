@@ -10545,9 +10545,9 @@
       "marker": "assert.equal(replaced.displayName,\"Replaced\");"
     },
     {
-      "label": "Answer 404 for another directory's Group and 409 uniqueness for another Group's name in different case, on SQLite, PostgreSQL and MySQL",
+      "label": "Replace a Group with PUT, answer 404 for another directory's Group and 409 uniqueness for another Group's name in different case, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/scim_groups_contract_test.go",
-      "marker": "call(h, \"PUT\", path, \"first\", group(\"DESIGN\", a), 409, \"uniqueness\")",
+      "marker": "t.Fatal(\"a PUT did not replace the Group\", put)",
       "complete": true
     }
   ],
@@ -11373,7 +11373,7 @@
       "complete": true
     },
     {
-      "label": "Name an untrusted discovery URL with another runtime's route prefix and URL form, and leave the prefix out of the callback's description",
+      "label": "Write an untrusted discovery URL as another runtime's URL parser does: lowercase scheme and host, no default port and \"/\" for an empty path",
       "test": "plugins/sso/discovery_test.go",
       "marker": "t.Fatal(\"an untrusted URL was not normalized\""
     }
@@ -42230,7 +42230,7 @@
       "marker": "assert.equal(record.providerId, providerId);"
     },
     {
-      "label": "Return a provider's declared fields beside its built-in keys and update them without changing its identity, on SQLite, PostgreSQL and MySQL",
+      "label": "Return a provider's declared fields and update one while an account is linked, as a field is not part of the identity, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/sso_fields_test.go",
       "marker": "t.Fatal(\"a provider field update was refused\""
     }
@@ -43774,9 +43774,9 @@
       "marker": "t.Fatal(\"the classic Entra Group marker was accepted without its option\", code, kind)"
     },
     {
-      "label": "Refuse a Group carrying the legacy Entra marker with 400 invalidValue unless AcceptLegacyEntraGroupSchema is set, on SQLite, PostgreSQL and MySQL",
+      "label": "Refuse a Group carrying the legacy Entra marker with 400 invalidValue unless AcceptLegacyEntraGroupSchema is set, and accept it without echoing the marker when it is, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/scim_groups_contract_test.go",
-      "marker": "call(strict, \"POST\", \"Groups\", \"first\", entra, 400, \"invalidValue\")",
+      "marker": "t.Fatal(\"an accepted Entra marker was echoed\", legacy[\"schemas\"])",
       "complete": true
     }
   ],
@@ -44471,9 +44471,9 @@
       "marker": "displayName eq \"sales\" and externalId eq \"org-02\""
     },
     {
-      "label": "Return exactly one Group for an id filter, on SQLite, PostgreSQL and MySQL",
+      "label": "Return exactly one Group for a case-insensitive displayName or an externalId filter, as for an id filter, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/scim_groups_contract_test.go",
-      "marker": "t.Fatal(\"an id filter did not return that Group\"",
+      "marker": "t.Fatal(\"a displayName or externalId filter did not return that Group\", filter, got)",
       "complete": true
     }
   ],
@@ -44528,7 +44528,7 @@
       "marker": "t.Fatal(\"wrong membership boundary\")"
     },
     {
-      "label": "Set the members with a PATCH replace and clear them with a pathless remove, on SQLite, PostgreSQL and MySQL",
+      "label": "Set the members with a PATCH replace and clear them with a remove of members without a value, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/scim_groups_contract_test.go",
       "marker": "t.Fatal(\"PATCH remove members did not clear them\"",
       "complete": true
@@ -46745,9 +46745,9 @@
       "marker": "t.Fatal(\"the classic Entra Group marker was accepted without its option\", code, kind)"
     },
     {
-      "label": "Refuse the legacy Entra Group marker without AcceptLegacyEntraGroupSchema, on SQLite, PostgreSQL and MySQL",
+      "label": "Refuse the legacy Entra Group marker without AcceptLegacyEntraGroupSchema and accept it with the option, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/scim_groups_contract_test.go",
-      "marker": "call(strict, \"POST\", \"Groups\", \"first\", entra, 400, \"invalidValue\")",
+      "marker": "t.Fatal(\"an accepted Entra marker was echoed\", legacy[\"schemas\"])",
       "complete": true
     }
   ],
@@ -46856,9 +46856,9 @@
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L19/`compatibility`": [
     {
-      "label": "Refuse the legacy Entra Group marker without AcceptLegacyEntraGroupSchema, on SQLite, PostgreSQL and MySQL",
+      "label": "Refuse the legacy Entra Group marker without AcceptLegacyEntraGroupSchema and accept it with the option, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/scim_groups_contract_test.go",
-      "marker": "call(strict, \"POST\", \"Groups\", \"first\", entra, 400, \"invalidValue\")",
+      "marker": "t.Fatal(\"an accepted Entra marker was echoed\", legacy[\"schemas\"])",
       "complete": true
     }
   ],
@@ -46874,8 +46874,7 @@
     {
       "label": "Grant no authorization for a Group membership by itself, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/scim_groups_contract_test.go",
-      "marker": "t.Fatal(\"a Group membership granted an authorization\"",
-      "complete": true
+      "marker": "t.Fatal(\"a Group membership granted an authorization\""
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L25/`id`": [

@@ -84,7 +84,7 @@ func hydrate(ctx context.Context, trusted func(string) bool, client *http.Client
 		}
 	}
 	if cfg.DiscoveryEndpoint == "" {
-		cfg.DiscoveryEndpoint = strings.TrimRight(cfg.Issuer, "/") + "/.well-known/openid-configuration"
+		cfg.DiscoveryEndpoint = strings.TrimSuffix(cfg.Issuer, "/") + "/.well-known/openid-configuration"
 	}
 	if _, err := endpointURL(cfg.DiscoveryEndpoint); err != nil {
 		return err
@@ -197,7 +197,7 @@ func (o Options) withRuntimeDiscovery(ctx context.Context, host *auth.Auth, p Br
 	trust := requestTrust(ctx, host)
 	discovery := cfg.DiscoveryEndpoint
 	if discovery == "" {
-		discovery = strings.TrimRight(cfg.Issuer, "/") + "/.well-known/openid-configuration"
+		discovery = strings.TrimSuffix(cfg.Issuer, "/") + "/.well-known/openid-configuration"
 	}
 	if !trust(discovery) {
 		return p, untrustedDiscovery(discovery)

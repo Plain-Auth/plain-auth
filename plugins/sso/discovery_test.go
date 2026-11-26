@@ -342,8 +342,6 @@ func TestDiscoveryHydratedConfiguration(t *testing.T) {
 	}
 }
 
-// The callback reports a discovery failure with the raw message, as another
-// runtime does, without the registration prefix.
 // An untrusted discovery URL is written as another runtime's URL parser
 // writes it.
 func TestUntrustedDiscoveryURL(t *testing.T) {
@@ -354,6 +352,8 @@ func TestUntrustedDiscoveryURL(t *testing.T) {
 	}
 }
 
+// The callback reports a discovery failure with the raw message, as another
+// runtime does, without the registration prefix.
 func TestCallbackDiscoveryMessage(t *testing.T) {
 	for _, c := range []struct{ code, message, want string }{
 		{"discovery_incomplete", "OIDC discovery document is missing required fields: Discovery document is missing required fields: jwks_uri", "Discovery document is missing required fields: jwks_uri"},

@@ -66,6 +66,14 @@ func (s *Store) providerFieldWrite(values map[string]any, all bool) (columns []s
 		if !present && !all {
 			continue
 		}
+		// A value read back for the response is in its public form, such as
+		// a date string, so it is parsed again before it is written.
+		if value != nil {
+			parsed, err := s.ssoFields[name].Value(value)
+			if err == nil {
+				value = parsed
+			}
+		}
 		columns = append(columns, `"`+s.ssoFields[name].Column+`"`)
 		args = append(args, s.fieldParameter(value))
 	}

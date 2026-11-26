@@ -32,7 +32,7 @@
     - [x] Refuse runtime discovery from an untrusted origin or for another issuer at sign-in, and an untrusted discovered token endpoint at the callback ([test](../../../adapters/sqlstore/sso_runtime_discovery_test.go#L90))
     - [x] Keep configured endpoints and fill the others from the discovered document ([test](../../../plugins/sso/discovery_test.go#L328))
     - [x] Keep configured authorization, token and key endpoints and client authentication method over the discovered ones, and fill only the missing endpoints ([test](../../../plugins/sso/discovery_test.go#L406))
-    - [x] Name an untrusted discovery URL with another runtime's route prefix and URL form, and leave the prefix out of the callback's description ([test](../../../plugins/sso/discovery_test.go#L352))
+    - [x] Write an untrusted discovery URL as another runtime's URL parser does: lowercase scheme and host, no default port and "/" for an empty path ([test](../../../plugins/sso/discovery_test.go#L350))
   - [ ] `fetchDiscoveryDocument`
     - [x] Require an exact discovery origin and enforce the deadline, issuer match and bounded response ([test](../../../plugins/sso/discovery_test.go#L20))
     - [x] Fail a registration with 400 after a single request when the discovery endpoint answers with a redirect ([test](../../../adapters/sqlstore/sso_test.go#L247))
@@ -468,7 +468,7 @@
       - [x] Keep the SAML sign-in state for RequestTTL, five minutes by default, while an OIDC attempt keeps ten, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L382))
   - [ ] `SSOProvider`
     - [x] Return the registered provider's record with its provider ID, OIDC configuration and redirect URI to the released client on both runtimes ([test](../../../conformance/sso-providers.mjs#L65))
-    - [x] Return a provider's declared fields beside its built-in keys and update them without changing its identity, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_fields_test.go#L85))
+    - [x] Return a provider's declared fields and update one while an account is linked, as a field is not part of the identity, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_fields_test.go#L93))
   - [x] `SSOProviderMutationGuardContext` ([test](../../../adapters/sqlstore/sso_delete_test.go#L228))
     - [x] Run the deletion, metadata and update guards outside the store's transaction on a snapshot of the provider and its linked accounts, review a provider changed meanwhile again, and give up with SSO_PROVIDER_CHANGED when it keeps changing, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_delete_test.go#L228))
     - [x] Let a sign-in on another node complete while the deletion guard decides ([test](../../../adapters/sqlstore/sso_delete_test.go#L160))
@@ -788,11 +788,11 @@
     - [ ] Providers
     - [ ] SAML
     - [ ] Schema options
-      - [x] Generate and validate additional ssoProvider columns; custom table and column names are not supported ([test](../../../adapters/sqlstore/sso_fields_test.go#L75))
+      - [x] Generate and validate additional ssoProvider columns; custom table and column names are not supported ([test](../../../adapters/sqlstore/sso_fields_test.go#L77))
   - [ ] Provider configuration
     - [ ] Registration body
-      - [x] Additional fields ([test](../../../adapters/sqlstore/sso_fields_test.go#L61))
-        - [x] Take declared provider fields at the top level of a registration and refuse missing required, server-only and mistyped values, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_fields_test.go#L61))
+      - [x] Additional fields ([test](../../../adapters/sqlstore/sso_fields_test.go#L63))
+        - [x] Take declared provider fields at the top level of a registration and refuse missing required, server-only and mistyped values, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_fields_test.go#L63))
     - [x] oidcConfig ([test](../../../adapters/sqlstore/sso_oidc_contract_test.go#L111))
       - [x] Default the scopes, require clientId at registration and store an overrideUserInfo update, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_oidc_contract_test.go#L111))
     - [ ] samlConfig
@@ -843,8 +843,8 @@
       - [x] Answer 404 on both DNS routes when domain verification is off ([test](../../../plugins/openapi/sso_domain_test.go#L83))
       - [x] Answer 401 on both DNS routes without a session ([test](../../../plugins/openapi/sso_domain_test.go#L111))
       - [x] Verify a provider's domains once each publishes the token, and answer 204 ([test](../../../conformance/sso-domains.mjs#L92))
-  - [x] Additional provider fields ([test](../../../adapters/sqlstore/sso_fields_test.go#L70))
-    - [x] Store declared provider fields from the top level of registration and update bodies, refuse missing required, server-only and mistyped values, and return every field but a hidden one, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_fields_test.go#L70))
+  - [x] Additional provider fields ([test](../../../adapters/sqlstore/sso_fields_test.go#L72))
+    - [x] Store declared provider fields from the top level of registration and update bodies, refuse missing required, server-only and mistyped values, and return every field but a hidden one, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_fields_test.go#L72))
     - [x] Refuse provider field names and columns that shadow a built-in provider key when the plugin is built ([test](../../../plugins/sso/provider_fields_test.go#L19))
     - [x] Describe the settable provider fields in the registration and update bodies and the returned ones in provider responses ([test](../../../plugins/openapi/sso_directory_test.go#L362))
   - [ ] Schema

@@ -120,7 +120,19 @@ func (o Options) checkSAMLPatch(patch map[string]any) error {
 			return metadataTooLarge(o.SAML.metadataLimit())
 		}
 	}
-	return nil
+	// The supplied algorithms are checked before the provider's protocol,
+	// as in another runtime.
+	var supplied SAMLConfig
+	for key, target := range map[string]*string{"signatureAlgorithm": &supplied.SignatureAlgorithm, "digestAlgorithm": &supplied.DigestAlgorithm} {
+		if raw, ok := patch[key]; ok {
+			value, ok := raw.(string)
+			if !ok {
+				return ErrInvalidSAML
+			}
+			*target = value
+		}
+	}
+	return o.SAML.Algorithms.checkConfig(supplied)
 }
 
 // mergeSAMLUpdate overlays the supplied SAML fields on the current
@@ -181,17 +193,6 @@ func (o Options) mergeSAMLUpdate(current SAMLConfig, patch map[string]any, issue
 		return nil, ErrInvalidSAML
 	}
 	if err = requireCertSource(next); err != nil {
-		return nil, err
-	}
-	// Only the algorithms the patch names are checked, as in another runtime.
-	var supplied SAMLConfig
-	if _, ok := patch["signatureAlgorithm"]; ok {
-		supplied.SignatureAlgorithm = next.SignatureAlgorithm
-	}
-	if _, ok := patch["digestAlgorithm"]; ok {
-		supplied.DigestAlgorithm = next.DigestAlgorithm
-	}
-	if err = o.SAML.Algorithms.checkConfig(supplied); err != nil {
 		return nil, err
 	}
 	if !next.MetadataValidAt(time.Now()) {
