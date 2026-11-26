@@ -57,7 +57,7 @@
     - [x] `modulusLength` ([test](../../../adapters/sqlstore/jwt_test.go#L388))
       - [x] Generate RS256 and PS256 keys with a configured 3072-bit modulus, publish that size and verify their tokens, on three SQL engines ([test](../../../adapters/sqlstore/jwt_test.go#L388))
       - [x] Generate 2048-bit RSA keys when no length is set ([test](../../../adapters/sqlstore/jwt_test.go#L274))
-      - [x] Refuse modulus lengths below 2048 bits or odd, and accept even lengths such as 2050, 3072 and 4096 ([test](../../../plugins/jwt/jwt_test.go#L14))
+      - [x] Refuse modulus lengths below 2048 bits or odd, and accept even lengths such as 2050, 3072 and 4096 ([test](../../../plugins/jwt/jwt_test.go#L16))
   - [x] `JWSAlgorithms` ([test](../../../adapters/sqlstore/jwt_test.go#L269))
     - [x] Issue and independently verify each of the five supported JWS algorithms ([test](../../../adapters/sqlstore/jwt_test.go#L269))
   - [ ] `Jwk`
@@ -97,7 +97,7 @@
       - [x] Report a token signed with a published key but carrying no authorized party as inactive at introspection ([test](../../../conformance/oauth-signed-introspection.mjs#L104))
     - [x] Remote JWKS Url ([test](../../../conformance/goapi/jwt_remote_keys_test.go#L64))
       - [x] Stop serving the local key route, advertise the remote key-set address in authorization-server and OpenID discovery, and keep issuing tokens that verify with the exported keys ([test](../../../conformance/goapi/jwt_remote_keys_test.go#L64))
-      - [x] Require an explicit signing algorithm and an absolute HTTPS address, or HTTP on loopback, for a remote key set ([test](../../../plugins/jwt/jwt_test.go#L41))
+      - [x] Require an explicit signing algorithm and an absolute HTTPS address, or HTTP on loopback, for a remote key set ([test](../../../plugins/jwt/jwt_test.go#L43))
     - [ ] Custom JWKS Path
       - [x] Serve the key set at a configured path to anonymous callers ([test](../../../adapters/sqlstore/jwt_test.go#L90))
       - [x] Serve the key set at the default /jwks path to the Go client ([test](../../../client/jwt_test.go#L46))
@@ -106,9 +106,13 @@
       - [x] Client Configuration: ([test](../../../conformance/core.test.mjs#L467))
         - [x] Read one public key through the published client configured with the server's custom key path on both servers, and get 404 from a client left on the default path ([test](../../../conformance/core.test.mjs#L467))
         - [x] The Go client reads the key set at the server's custom path and gets 404 at the default path ([test](../../../client/jwt_test.go#L99))
-    - [ ] Custom Signing
-      - [ ] Localized Signing
-      - [ ] Remote Signing
+    - [x] Custom Signing ([test](../../../conformance/goapi/jwt_signer_test.go#L175))
+      - [x] Hand the finished claims and the requested type, content type, algorithm and key ID to a host signer, and reject results that are not compact JWS tokens, drop the requested header values or change the claims ([test](../../../conformance/goapi/jwt_signer_test.go#L175))
+      - [x] Refuse a custom signer without a remote key-set address ([test](../../../plugins/jwt/jwt_test.go#L62))
+      - [x] Localized Signing ([test](../../../conformance/goapi/jwt_signer_test.go#L157))
+        - [x] Sign session and service tokens with a host-held Ed25519 key and key ID, merge the requested at+jwt type and content type into the header, and verify the results independently and through the host's public keys ([test](../../../conformance/goapi/jwt_signer_test.go#L157))
+      - [x] Remote Signing ([test](../../../conformance/goapi/jwt_signer_test.go#L237))
+        - [x] Build the signing input in the host, sign its SHA-256 digest with a separate key service, and verify the ES256 token independently without minting a local key ([test](../../../conformance/goapi/jwt_signer_test.go#L237))
   - [ ] Schema
     - [x] Generate the jwks table for the jwt profile exactly as the other runtime does on SQLite, PostgreSQL and MySQL ([test](../../../conformance/schema.test.mjs#L106))
     - [ ] JWKS
@@ -150,8 +154,8 @@
         - [x] Optional Property ([test](../../../adapters/sqlstore/jwt_test.go#L388))
           - [x] Generate a PS256 key with a configured 3072-bit modulus and verify its tokens independently ([test](../../../adapters/sqlstore/jwt_test.go#L388))
           - [x] Use a 2048-bit modulus for PS256 keys by default ([test](../../../adapters/sqlstore/jwt_test.go#L274))
-      - [x] ECDH-ES ([test](../../../plugins/jwt/jwt_test.go#L29))
-        - [x] Refuse ECDH-ES and its key-wrapping variants as the signing algorithm or an additional one, since key agreement cannot sign a token ([test](../../../plugins/jwt/jwt_test.go#L29))
+      - [x] ECDH-ES ([test](../../../plugins/jwt/jwt_test.go#L31))
+        - [x] Refuse ECDH-ES and its key-wrapping variants as the signing algorithm or an additional one, since key agreement cannot sign a token ([test](../../../plugins/jwt/jwt_test.go#L31))
         - Optional Property — *not applicable: ECDH-ES keys cannot sign, so there is no curve to choose*
       - [x] ES512 ([test](../../../adapters/sqlstore/jwt_test.go#L269))
         - [x] Issue ES512 tokens and verify them independently against the published key ([test](../../../adapters/sqlstore/jwt_test.go#L269))

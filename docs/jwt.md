@@ -41,6 +41,7 @@ Configure the receiving service with the auth server's public JWKS address, expe
 | `DefinePayload` | Receives the authenticated session. The default payload includes the public user profile. A callback can select individual application claims. The server supplies the subject, issuer, audience and timestamps. |
 | `DisablePrivateKeyEncryption` | Stores private keys as plain JWK JSON. Encryption with the application's encryption key is the default and is recommended. An instance cannot sign with a key stored the other way and keeps choosing the newest live key, so when you change the setting delete the existing `jwks` rows, or wait for them to expire under `RotationInterval`. |
 | `RemoteJWKSURL` | Publishes the key set at another address. See [Publish keys elsewhere](#publish-keys-elsewhere). |
+| `Sign` | Signs every token with your own key or a key service. See [Sign with your own key or a key service](#sign-with-your-own-key-or-a-key-service). |
 | `KeyStore` | Keeps signing keys outside the main store. See [Keep keys in your own store](#keep-keys-in-your-own-store). |
 
 All auth instances sharing signing keys need the same encryption key configuration. The SQL store persists the encrypted private JWK, unless `DisablePrivateKeyEncryption` is set, under the active encryption key version and its public counterpart separately. The JWKS endpoint publishes public fields. The host can use `Auth.IssueJWT(ctx, headers)` for authenticated issuance and `Auth.PublicJWKS(ctx)` for public key discovery.
@@ -48,6 +49,42 @@ All auth instances sharing signing keys need the same encryption key configurati
 ## Publish keys elsewhere
 
 Set `RemoteJWKSURL` to serve the key set from another address, such as a CDN. The local key route is then not served, and authorization-server and OpenID discovery advertise the URL. `Algorithm` must be set, because discovery advertises it and a remote key set cannot reveal it. The address must be absolute HTTPS with a host name and no fragment, or HTTP on a loopback host; another runtime accepts any string. Copy `Auth.PublicJWKS(ctx)` to that address, including keys retired within `GracePeriod`. `VerifyJWT` and OAuth introspection, revocation and UserInfo still verify with the keys in the store and never fetch the URL, where another runtime's OAuth provider fetches it; there is no network call or cache in the verification path. [Remote key set test](../conformance/goapi/jwt_remote_keys_test.go)
+
+## Sign with your own key or a key service
+
+Set `Sign` to sign every token the plugin issues yourself, for example with a key from your configuration or through a remote key service. `New` requires `RemoteJWKSURL` with it, and every active signer key must be published there.
+
+```go
+p, err := jwt.New(jwt.Options{
+    Algorithm:     "ES256",
+    RemoteJWKSURL: "https://keys.example.com/jwks.json",
+    Sign: func(ctx context.Context, req plainauth.JWTSigningRequest) (string, error) {
+        typ := req.Type
+        if typ == "" {
+            typ = "JWT"
+        }
+        options := (&jose.SignerOptions{}).WithHeader("kid", keyID).WithType(jose.ContentType(typ))
+        if req.ContentType != "" {
+            options.WithContentType(jose.ContentType(req.ContentType))
+        }
+        signer, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.ES256, Key: privateKey}, options)
+        if err != nil {
+            return "", err
+        }
+        payload, err := json.Marshal(req.Claims)
+        if err != nil {
+            return "", err
+        }
+        signed, err := signer.Sign(payload)
+        if err != nil {
+            return "", err
+        }
+        return signed.CompactSerialize()
+    },
+})
+```
+
+The request carries the complete claims, with `sub`, `iss`, `aud`, `iat` and `exp` already set; the `typ` and `cty` the caller requires, such as `at+jwt` for OAuth access tokens; and the algorithm or key ID the caller pinned. For a remote key service, build the header and payload, send the SHA-256 digest of `header.payload` to the service, check the signature it returns and assemble the compact token. The server then parses the result and refuses it unless it is a compact JWS with the requested or primary algorithm, the pinned `kid`, the requested `typ` and `cty`, and exactly the claims it was given; another runtime returns whatever the signer produces. No local key is minted. `VerifyJWT` and OAuth introspection read public keys from `KeyStore` or the main store and never fetch `RemoteJWKSURL`, so give `KeyStore` the signer's public keys when this server must verify its own tokens. [Custom signer tests](../conformance/goapi/jwt_signer_test.go)
 
 ## Keep keys in your own store
 

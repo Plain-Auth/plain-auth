@@ -39744,5 +39744,34 @@
       "test": "plugins/jwt/jwt_test.go",
       "marker": "accepted a remote key set without an explicit algorithm"
     }
+  ],
+  "docs/content/docs/plugins/jwt.mdx#L319": [
+    {
+      "label": "Hand the finished claims and the requested type, content type, algorithm and key ID to a host signer, and reject results that are not compact JWS tokens, drop the requested header values or change the claims",
+      "test": "conformance/goapi/jwt_signer_test.go",
+      "marker": "accepted a token without the requested type",
+      "complete": true
+    },
+    {
+      "label": "Refuse a custom signer without a remote key-set address",
+      "test": "plugins/jwt/jwt_test.go",
+      "marker": "accepted a custom signer without a remote key set"
+    }
+  ],
+  "docs/content/docs/plugins/jwt.mdx#L330": [
+    {
+      "label": "Sign session and service tokens with a host-held Ed25519 key and key ID, merge the requested at+jwt type and content type into the header, and verify the results independently and through the host's public keys",
+      "test": "conformance/goapi/jwt_signer_test.go",
+      "marker": "localized signer dropped the requested type",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/jwt.mdx#L356": [
+    {
+      "label": "Build the signing input in the host, sign its SHA-256 digest with a separate key service, and verify the ES256 token independently without minting a local key",
+      "test": "conformance/goapi/jwt_signer_test.go",
+      "marker": "remotely signed token did not verify",
+      "complete": true
+    }
   ]
 }

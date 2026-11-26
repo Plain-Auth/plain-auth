@@ -49,6 +49,14 @@ type JWTOptions struct {
 	// key there, for example by copying Auth.PublicJWKS. Verification here
 	// still reads the key store and never fetches the URL.
 	RemoteJWKSURL string
+	// Sign replaces local signing for every token the plugin issues, for
+	// example by calling a remote key service. It receives the finished
+	// claims and returns a compact JWS whose header carries the signer's alg
+	// and kid plus the requested typ and cty. It requires RemoteJWKSURL.
+	// Verification here reads public keys from KeyStore or the main Store,
+	// so supply a KeyStore that lists the signer's public keys when this
+	// server must verify its own tokens.
+	Sign func(ctx context.Context, request JWTSigningRequest) (string, error)
 }
 
 type PublicJWTKey struct {
@@ -99,6 +107,9 @@ func NewJWT(opts JWTOptions) (Plugin, error) {
 		if err != nil || u.Hostname() == "" || u.User != nil || strings.ContainsAny(opts.RemoteJWKSURL, "#\\ \t\r\n") || !(u.Scheme == "https" || u.Scheme == "http" && loopbackHost(u.Host)) {
 			return Plugin{}, errors.New("jwt: RemoteJWKSURL must be an absolute HTTPS URL, or HTTP on a loopback host")
 		}
+	}
+	if opts.Sign != nil && opts.RemoteJWKSURL == "" {
+		return Plugin{}, errors.New("jwt: Sign requires RemoteJWKSURL")
 	}
 	if opts.Algorithm == "" {
 		opts.Algorithm = string(jose.EdDSA)
@@ -214,7 +225,8 @@ func (a *Auth) PublicJWKS(ctx context.Context) (jose.JSONWebKeySet, error) {
 	if err != nil {
 		return jose.JSONWebKeySet{}, err
 	}
-	if len(rows) == 0 {
+	// A custom signer owns its keys, so no local key is minted for it.
+	if len(rows) == 0 && opts.Sign == nil {
 		if _, err = a.activeSigningKey(ctx, now, opts.Algorithm); err != nil {
 			return jose.JSONWebKeySet{}, err
 		}

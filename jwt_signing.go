@@ -2,8 +2,10 @@ package plainauth
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"maps"
+	"reflect"
 	"slices"
 	"time"
 
@@ -28,6 +30,55 @@ type JWTVerifyOptions struct {
 }
 
 var ErrInvalidJWT = errors.New("jwt: invalid service token")
+
+// JWTSigningRequest is what JWTOptions.Sign receives for each token.
+type JWTSigningRequest struct {
+	// Claims is the complete claim set; the server has set sub, iss, aud,
+	// iat and exp, and nbf when requested.
+	Claims map[string]any
+	// Type and ContentType are the typ and cty header values the caller
+	// requires, such as at+jwt for OAuth access tokens; merge them into the
+	// signed header.
+	Type, ContentType string
+	// Algorithm and KeyID are the algorithm or key the caller pinned, such
+	// as an OAuth resource's key; both are empty for ordinary tokens, which
+	// use JWTOptions.Algorithm.
+	Algorithm, KeyID string
+}
+
+// signWithCallback hands a token to JWTOptions.Sign and checks the result. A
+// result must be a compact JWS with the requested algorithm, key and media
+// types and exactly the claims it was given, so a misconfigured signer
+// fails here rather than at a resource server; another runtime returns
+// whatever the signer produces.
+func (a *Auth) signWithCallback(ctx context.Context, claims map[string]any, settings JWTSignOptions) (string, error) {
+	opts := a.serviceJWT
+	token, err := opts.Sign(ctx, JWTSigningRequest{Claims: claims, Type: settings.Type, ContentType: settings.ContentType, Algorithm: settings.Algorithm, KeyID: settings.KeyID})
+	if err != nil {
+		return "", err
+	}
+	invalid := errors.New("jwt: custom signer returned an invalid token")
+	jws, err := jose.ParseSignedCompact(token, opts.verificationAlgorithms())
+	if err != nil || len(jws.Signatures) != 1 {
+		return "", invalid
+	}
+	header := jws.Signatures[0].Protected
+	want := settings.Algorithm
+	if want == "" && settings.KeyID == "" {
+		want = opts.Algorithm
+	}
+	if want != "" && header.Algorithm != want || settings.KeyID != "" && header.KeyID != settings.KeyID ||
+		settings.Type != "" && header.ExtraHeaders[jose.HeaderType] != settings.Type ||
+		settings.ContentType != "" && header.ExtraHeaders[jose.HeaderContentType] != settings.ContentType {
+		return "", invalid
+	}
+	var got, sent map[string]any
+	body, err := json.Marshal(claims)
+	if err != nil || json.Unmarshal(jws.UnsafePayloadWithoutVerification(), &got) != nil || json.Unmarshal(body, &sent) != nil || !reflect.DeepEqual(got, sent) {
+		return "", invalid
+	}
+	return token, nil
+}
 
 type JWTKeyLookup interface {
 	JWTKeyByID(context.Context, string) (StoredJWTKey, error)
@@ -93,6 +144,9 @@ func (a *Auth) SignJWT(ctx context.Context, subject string, settings JWTSignOpti
 	delete(claims, "nbf")
 	if !settings.NotBefore.IsZero() {
 		claims["nbf"] = settings.NotBefore.Unix()
+	}
+	if opts.Sign != nil {
+		return a.signWithCallback(ctx, claims, settings)
 	}
 	var row StoredJWTKey
 	var err error

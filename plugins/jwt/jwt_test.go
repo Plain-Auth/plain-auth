@@ -1,8 +1,10 @@
 package jwt_test
 
 import (
+	"context"
 	"testing"
 
+	plainauth "github.com/Plain-Org/plain-auth"
 	"github.com/Plain-Org/plain-auth/plugins/jwt"
 )
 
@@ -49,5 +51,17 @@ func TestNewChecksRemoteKeySet(t *testing.T) {
 		if _, err := jwt.New(jwt.Options{Algorithm: "ES256", RemoteJWKSURL: raw}); err != nil {
 			t.Fatalf("refused remote key-set URL %q: %v", raw, err)
 		}
+	}
+}
+
+// A custom signer needs a remote key set, since this server publishes no
+// keys of its own for it.
+func TestNewRequiresRemoteKeySetForSigner(t *testing.T) {
+	sign := func(context.Context, plainauth.JWTSigningRequest) (string, error) { return "", nil }
+	if _, err := jwt.New(jwt.Options{Algorithm: "EdDSA", Sign: sign}); err == nil {
+		t.Fatal("accepted a custom signer without a remote key set")
+	}
+	if _, err := jwt.New(jwt.Options{Algorithm: "EdDSA", RemoteJWKSURL: "https://keys.example.test/jwks.json", Sign: sign}); err != nil {
+		t.Fatal("refused a custom signer with a remote key set", err)
 	}
 }
