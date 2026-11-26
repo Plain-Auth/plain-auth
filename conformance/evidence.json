@@ -44562,5 +44562,26 @@
       "test": "adapters/sqlstore/sso_saml_mapping_test.go",
       "marker": "t.Fatal(\"the portal sign-in did not land on the directory callbackUrl\", w.Code, w.Header().Get(\"Location\"))"
     }
+  ],
+  "plugin-symbol/sso/OIDCConfig/allowIdpInitiated": [
+    {
+      "label": "Restart a stateless callback only for a provider the host policy approves with its current registration, fail closed on a policy error and ignore allowIdpInitiated at registration, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_idp_initiated_test.go",
+      "marker": "func TestEnterpriseOIDCIdPInitiated(",
+      "complete": true
+    },
+    {
+      "label": "Refuse a restart when the directory policy fails or panics",
+      "test": "plugins/sso/oidc_idp_initiated_test.go",
+      "marker": "func TestOIDCDirectoryPolicyFailure("
+    }
+  ],
+  "docs/content/docs/plugins/sso/oidc.mdx#L159": [
+    {
+      "label": "Discard the IdP's code, restart at the authorization endpoint with a fresh state, nonce and PKCE challenge, and finish at the host root through the provider or shared callback",
+      "test": "adapters/sqlstore/sso_idp_initiated_test.go",
+      "marker": "t.Fatal(\"a stateless callback was not restarted at the authorization endpoint\", w.Code, target)",
+      "complete": true
+    }
   ]
 }

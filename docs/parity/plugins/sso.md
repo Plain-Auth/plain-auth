@@ -284,7 +284,9 @@
       - [x] Read the email, name and image claims named by oidcConfig.mapping instead of the defaults ([test](../../../plugins/sso/identity_test.go#L103))
       - [x] Read email, name and picture when no mapping is set ([test](../../../plugins/sso/identity_test.go#L115))
       - [x] Take the first nonempty address from a mapped email list ([test](../../../plugins/sso/identity_test.go#L119))
-    - [ ] `allowIdpInitiated`
+    - [x] `allowIdpInitiated` ([test](../../../adapters/sqlstore/sso_idp_initiated_test.go#L20))
+      - [x] Restart a stateless callback only for a provider the host policy approves with its current registration, fail closed on a policy error and ignore allowIdpInitiated at registration, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_idp_initiated_test.go#L20))
+      - [x] Refuse a restart when the directory policy fails or panics ([test](../../../plugins/sso/oidc_idp_initiated_test.go#L10))
   - [ ] `SAMLConfig`
     - [x] Register a SAML directory with entry point, IdP entity ID, signing certificate, SP entity ID, signed requests and landing pages, and sign in on three SQL engines ([test](../../../adapters/sqlstore/sso_saml_test.go#L159))
     - [ ] `issuer`
@@ -596,7 +598,8 @@
   - [ ] Shared redirect URI
     - [x] Send the shared or provider-specific callback as redirect_uri and complete sign-in through it on both runtimes ([test](../../../conformance/sso-browser.mjs#L90))
     - [x] Reject a code delivered to another provider's callback path with state_mismatch ([test](../../../adapters/sqlstore/sso_browser_test.go#L281))
-  - [ ] IdP-initiated sign-in
+  - [x] IdP-initiated sign-in ([test](../../../adapters/sqlstore/sso_idp_initiated_test.go#L88))
+    - [x] Discard the IdP's code, restart at the authorization endpoint with a fresh state, nonce and PKCE challenge, and finish at the host root through the provider or shared callback ([test](../../../adapters/sqlstore/sso_idp_initiated_test.go#L88))
 
 ## SSO users and organizations
 

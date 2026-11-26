@@ -115,10 +115,6 @@ func (o Options) start(c auth.EndpointContext) (any, error) {
 	if p, err = o.withRuntimeDiscovery(c.Request.Context(), c.Auth, p); err != nil {
 		return nil, err
 	}
-	cfg, err := o.oauthConfig(c, p)
-	if err != nil {
-		return nil, err
-	}
 	opts := []oauth2.AuthCodeOption{}
 	login := read("loginHint")
 	if login == "" {
@@ -127,18 +123,19 @@ func (o Options) start(c auth.EndpointContext) (any, error) {
 	if login != "" {
 		opts = append(opts, oauth2.SetAuthURLParam("login_hint", login))
 	}
+	var scopes []string
 	if raw, ok := body["scopes"]; ok {
 		items, ok := raw.([]any)
 		if !ok {
 			return nil, apiError(400, "Invalid scopes")
 		}
-		cfg.Scopes = nil
+		scopes = []string{}
 		for _, item := range items {
 			s, ok := item.(string)
 			if !ok || s == "" {
 				return nil, apiError(400, "Invalid scopes")
 			}
-			cfg.Scopes = append(cfg.Scopes, s)
+			scopes = append(scopes, s)
 		}
 	}
 	if raw, ok := body["additionalParams"]; ok {
@@ -154,15 +151,33 @@ func (o Options) start(c auth.EndpointContext) (any, error) {
 			opts = append(opts, oauth2.SetAuthURLParam(k, value))
 		}
 	}
+	target, err := o.authorize(c, p, proof, signup, scopes, opts)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]any{"url": target, "redirect": true}, nil
+}
+
+// authorize begins a browser flow for p and returns the provider's
+// authorization URL. scopes, when not nil, replace the configured scopes;
+// extra carries the request's login hint and additional parameters.
+func (o Options) authorize(c auth.EndpointContext, p BrowserProvider, proof, signup bool, scopes []string, extra []oauth2.AuthCodeOption) (string, error) {
+	cfg, err := o.oauthConfig(c, p)
+	if err != nil {
+		return "", err
+	}
+	if scopes != nil {
+		cfg.Scopes = scopes
+	}
 	reference := p.Reference
 	if proof {
 		reference += ".dns"
 	}
 	flow, err := c.BeginEnterpriseFlow(p.ProviderID, reference, cfg.RedirectURL, signup)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
-	opts = append(opts, oauth2.SetAuthURLParam("nonce", flow.Nonce))
+	opts := append(slices.Clone(extra), oauth2.SetAuthURLParam("nonce", flow.Nonce))
 	if p.OIDC.PKCE != nil && *p.OIDC.PKCE {
 		opts = append(opts, oauth2.S256ChallengeOption(flow.Verifier))
 	}
@@ -174,13 +189,13 @@ func (o Options) start(c auth.EndpointContext) (any, error) {
 	cfg.Endpoint.AuthURL = base.String()
 	target, err := url.Parse(cfg.AuthCodeURL(flow.State, opts...))
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	for key, values := range target.Query() {
 		fixed[key] = values
 	}
 	target.RawQuery = fixed.Encode()
-	return map[string]any{"url": target.String(), "redirect": true}, nil
+	return target.String(), nil
 }
 func (o Options) oauthConfig(c auth.EndpointContext, p BrowserProvider) (oauth2.Config, error) {
 	var cfg oauth2.Config
@@ -229,6 +244,11 @@ func (o Options) finish(c auth.EndpointContext) (any, error) {
 	store, ok := c.Store().(BrowserStore)
 	if !ok {
 		return nil, apiError(501, "The configured store does not support enterprise sign-in")
+	}
+	if o.AllowIDPInitiatedOIDC != nil {
+		if out, handled, err := o.restartIDPInitiated(c, store); handled {
+			return out, err
+		}
 	}
 	flow, err := c.ConsumeEnterpriseFlow()
 	if code := auth.OAuthStateFailure(err); code != "" {

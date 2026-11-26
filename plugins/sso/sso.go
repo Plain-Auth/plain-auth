@@ -46,6 +46,14 @@ type Options struct {
 	// token request, outside any store transaction. Without it,
 	// registration refuses private_key_jwt.
 	ResolvePrivateKey func(context.Context, PrivateKeyRequest) (PrivateKey, error)
+	// AllowIDPInitiatedOIDC restarts a callback that reaches
+	// /sso/callback/{providerId} with a code and no state, for providers it
+	// approves. The code is discarded and a new authorization with a fresh
+	// state, nonce and PKCE verifier starts, returning to the host root. It
+	// runs outside any store transaction and cannot request sign-up.
+	// Another runtime enables this on providers defined in code; without
+	// them the host approves stored registrations.
+	AllowIDPInitiatedOIDC OIDCDirectoryPolicy
 	// HTTPClient supplies discovery transport and optional TLS settings.
 	HTTPClient *http.Client
 }
