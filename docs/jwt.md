@@ -30,12 +30,12 @@ Configure the receiving service with the auth server's public JWKS address, expe
 
 | Option | Behavior |
 | --- | --- |
-| `Algorithm` | Defaults to EdDSA with Ed25519. Also supports ES256 (P-256), ES512 (P-521), RS256 and PS256. |
+| `Algorithm` | Defaults to EdDSA. Also supports ES256 (P-256), ES512 (P-521), RS256 and PS256. EdDSA keys always use Ed25519; there is no curve option, because Ed448 cannot sign here. `New` refuses every other algorithm: ECDH-ES and its key-wrapping variants agree encryption keys and cannot sign a JWS, and HMAC algorithms such as HS256 have no public key to publish. |
 | `AdditionalAlgorithms` | Algorithms available for server-side issuance. A key for an additional algorithm is generated on first use. Ordinary session tokens continue to use `Algorithm`. |
-| `RSAModulusBits` | RSA modulus size in bits. Defaults to 2048. |
+| `RSAModulusBits` | Size of RS256 and PS256 keys in bits. Defaults to 2048. Must be an even number of at least 2048; odd sizes are not FIPS 140-approved and Go's FIPS 140-only mode refuses them. |
 | `Issuer`, `Audience` | Each defaults to the configured auth origin. Give each receiving service the expected values. |
 | `Expiration` | Defaults to fifteen minutes. |
-| `RotationInterval` | Positive duration schedules key rotation. A token request after the signing key's expiry generates a replacement under a database lock. The default key has no scheduled expiry. |
+| `RotationInterval` | Positive duration schedules key rotation. A token request after the signing key's expiry generates a replacement under a database lock. The default key has no scheduled expiry. Each new key expires one interval after its creation. |
 | `GracePeriod` | An expired signing key remains published for thirty days by default. Set a duration pointer to change that window. |
 | `JWKSPath` | Sets the public verification endpoint relative to the auth mount. Defaults to `/jwks`. |
 | `DefinePayload` | Receives the authenticated session. The default payload includes the public user profile. A callback can select individual application claims. The server supplies the subject, issuer, audience and timestamps. |

@@ -20,8 +20,10 @@ import (
 )
 
 type JWTOptions struct {
-	Algorithm                    string
-	AdditionalAlgorithms         []string
+	Algorithm            string
+	AdditionalAlgorithms []string
+	// RSAModulusBits sets the size of RS256 and PS256 keys. It defaults to
+	// 2048 and must be an even number of at least 2048 bits.
 	RSAModulusBits               int
 	Issuer, Audience, JWKSPath   string
 	Expiration, RotationInterval time.Duration
@@ -50,6 +52,9 @@ func NewJWT(opts JWTOptions) (Plugin, error) {
 		opts.Algorithm = string(jose.EdDSA)
 	}
 	opts.AdditionalAlgorithms = slices.Clone(opts.AdditionalAlgorithms)
+	// Only signature algorithms are accepted. ECDH-ES and its key-wrapping
+	// variants agree encryption keys and cannot sign a JWS on any curve.
+	// EdDSA keys always use Ed25519, because Ed448 cannot sign here.
 	for _, alg := range append([]string{opts.Algorithm}, opts.AdditionalAlgorithms...) {
 		switch jose.SignatureAlgorithm(alg) {
 		case jose.EdDSA, jose.ES256, jose.ES512, jose.RS256, jose.PS256:
@@ -60,8 +65,10 @@ func NewJWT(opts JWTOptions) (Plugin, error) {
 	if opts.RSAModulusBits == 0 {
 		opts.RSAModulusBits = 2048
 	}
-	if opts.RSAModulusBits < 2048 || opts.RSAModulusBits%8 != 0 {
-		return Plugin{}, errors.New("jwt: RSA modulus length must be at least 2048 bits and a multiple of eight")
+	// Go's FIPS 140-only mode refuses odd RSA sizes, so New refuses them at
+	// startup instead of at the first key generation.
+	if opts.RSAModulusBits < 2048 || opts.RSAModulusBits%2 != 0 {
+		return Plugin{}, errors.New("jwt: RSA modulus length must be an even number of at least 2048 bits")
 	}
 	if opts.Expiration == 0 {
 		opts.Expiration = 15 * time.Minute

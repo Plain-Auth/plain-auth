@@ -980,6 +980,15 @@
         "`WebAuthnChallengeValue`"
       ],
       "reason": "not applicable: internal stored ceremony; this verifier needs session data that value does not carry"
+    },
+    {
+      "page": "plugins/jwt.md",
+      "section": "JWT",
+      "within": "ECDH-ES",
+      "labels": [
+        "Optional Property"
+      ],
+      "reason": "not applicable: ECDH-ES keys cannot sign, so there is no curve to choose"
     }
   ],
   "backlog": [

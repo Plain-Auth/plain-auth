@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
+	"crypto/rsa"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -100,6 +101,9 @@ func TestJWTIssuanceAndKeyRotation(t *testing.T) {
 			if err = one.db.QueryRowContext(ctx, one.bind(`SELECT "privateKey" FROM "jwks" WHERE "id"=?`), firstID).Scan(&private); err != nil || !strings.HasPrefix(private, "\"") || strings.Contains(private, pub) || strings.Contains(private, `"d"`) {
 				t.Fatal("stored private signing key was unprotected")
 			}
+			if keys, err := one.PublicJWTKeys(ctx, time.Now().Add(-time.Hour)); err != nil || len(keys) != 1 || keys[0].ExpiresAt == nil || keys[0].ExpiresAt.Sub(keys[0].CreatedAt) != opts.RotationInterval {
+				t.Fatal("first key does not expire one rotation interval after its creation", err)
+			}
 			verify := func(raw, issuer, aud string, when time.Time) (*libjwt.Token, error) {
 				k, err := base64.RawURLEncoding.DecodeString(pub)
 				if err != nil {
@@ -151,6 +155,15 @@ func TestJWTIssuanceAndKeyRotation(t *testing.T) {
 			if err != nil || len(set.Keys) != 2 {
 				t.Fatalf("public rotation grace: %v", err)
 			}
+			rotated, err := one.PublicJWTKeys(ctx, time.Now().Add(-time.Hour))
+			if err != nil || len(rotated) != 2 {
+				t.Fatal("rotation did not keep both keys", err)
+			}
+			for _, k := range rotated {
+				if k.ID != firstID && (k.ExpiresAt == nil || k.ExpiresAt.Sub(k.CreatedAt) != opts.RotationInterval) {
+					t.Fatal("replacement key does not expire one rotation interval after its creation")
+				}
+			}
 			if _, err = one.db.ExecContext(ctx, one.bind(`UPDATE "jwks" SET "expiresAt"=? WHERE "id"=?`), one.date(time.Now().Add(-31*24*time.Hour)), firstID); err != nil {
 				t.Fatal(err)
 			}
@@ -182,6 +195,19 @@ func TestJWTIssuanceAndKeyRotation(t *testing.T) {
 			if err != nil || !esToken.Valid {
 				t.Fatalf("independent verifier rejected ES256: %v", err)
 			}
+			minted, err := two.PublicJWTKeys(ctx, time.Now().Add(-time.Hour))
+			esKeys := 0
+			for _, k := range minted {
+				if k.Algorithm == "ES256" {
+					esKeys++
+					if k.ExpiresAt != nil {
+						t.Fatal("a key minted without a rotation interval has an expiry")
+					}
+				}
+			}
+			if err != nil || esKeys == 0 {
+				t.Fatal("the ES256 key was not stored", err)
+			}
 			esClaims := esToken.Claims.(libjwt.MapClaims)
 			if esClaims["sub"] != account.User.ID || esClaims["employee"] != account.User.ID || esClaims["email"] != nil {
 				t.Fatal("custom payload or subject binding changed")
@@ -210,7 +236,7 @@ func TestServerJWTProfiles(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer store.Close()
-			profile := jwtplugin.Options{Issuer: "https://application.test", Audience: "reports", AdditionalAlgorithms: []string{"ES256", "ES512", "RS256", "PS256"}, RSAModulusBits: 2048}
+			profile := jwtplugin.Options{Issuer: "https://application.test", Audience: "reports", AdditionalAlgorithms: []string{"ES256", "ES512", "RS256", "PS256"}}
 			plugin, err := jwtplugin.New(profile)
 			if err != nil {
 				t.Fatal(err)
@@ -239,6 +265,13 @@ func TestServerJWTProfiles(t *testing.T) {
 				}, libjwt.WithValidMethods([]string{algorithm}), libjwt.WithIssuer(profile.Issuer), libjwt.WithAudience("reports"), libjwt.WithExpirationRequired())
 				if err != nil || !token.Valid || token.Header["typ"] != "events+jwt" || token.Header["cty"] != "application/json" {
 					t.Fatalf("independent verifier rejected %s: %v", algorithm, err)
+				}
+				if algorithm == "RS256" || algorithm == "PS256" {
+					for _, key := range set.Keys {
+						if key.KeyID == token.Header["kid"] && key.Key.(*rsa.PublicKey).N.BitLen() != 2048 {
+							t.Fatalf("%s key is not 2048 bits by default", algorithm)
+						}
+					}
 				}
 				claims, err := a.VerifyJWT(ctx, raw, auth.JWTVerifyOptions{Subject: "service-account"})
 				if err != nil || claims["event"] != "refresh" || claims["sub"] != "service-account" {
@@ -294,6 +327,67 @@ func TestServerJWTProfiles(t *testing.T) {
 			a.ServeHTTP(res, req)
 			if res.Code != 404 {
 				t.Fatal("server-only signer exposed as HTTP route", res.Code)
+			}
+		})
+	}
+}
+
+// RS256 and PS256 keys use a configured modulus length, publish that size
+// and verify their tokens.
+func TestJWTRSAModulusLength(t *testing.T) {
+	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
+		t.Run(dialect, func(t *testing.T) {
+			ctx := t.Context()
+			ddl, err := schema.Generate(dialect, []string{"jwt"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			store, err := OpenWithSchema(ctx, dialect, organizationTestDSN(t, dialect), ddl)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer store.Close()
+			const base = "https://rsa.auth.test"
+			plugin, err := jwtplugin.New(jwtplugin.Options{Algorithm: "RS256", AdditionalAlgorithms: []string{"PS256"}, RSAModulusBits: 3072})
+			if err != nil {
+				t.Fatal(err)
+			}
+			a, err := auth.New(auth.Options{BaseURL: base, Secret: strings.Repeat("s", 32), Store: store, Plugins: []auth.Plugin{plugin}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, alg := range []string{"RS256", "PS256"} {
+				raw, err := a.SignJWT(ctx, "service-account", auth.JWTSignOptions{Algorithm: alg})
+				if err != nil {
+					t.Fatal(err)
+				}
+				set, err := a.PublicJWKS(ctx)
+				if err != nil {
+					t.Fatal(err)
+				}
+				bits, encoded := 0, 0
+				_, err = libjwt.Parse(raw, func(token *libjwt.Token) (any, error) {
+					for _, key := range set.Keys {
+						if key.KeyID == token.Header["kid"] && key.Algorithm == alg {
+							bits = key.Key.(*rsa.PublicKey).N.BitLen()
+							body, _ := json.Marshal(key)
+							var jwk struct{ N string }
+							_ = json.Unmarshal(body, &jwk)
+							encoded = len(jwk.N)
+							return key.Key, nil
+						}
+					}
+					return nil, errors.New("unrecognized key")
+				}, libjwt.WithValidMethods([]string{alg}), libjwt.WithIssuer(base), libjwt.WithAudience(base), libjwt.WithExpirationRequired())
+				if err != nil {
+					t.Fatalf("RSA verifier rejected %s with a configured modulus: %v", alg, err)
+				}
+				if bits != 3072 || encoded != 512 {
+					t.Fatalf("%s published a %d-bit modulus", alg, bits)
+				}
+				if _, err := a.VerifyJWT(ctx, raw, auth.JWTVerifyOptions{Subject: "service-account"}); err != nil {
+					t.Fatalf("%s token with a 3072-bit key failed verification: %v", alg, err)
+				}
 			}
 		})
 	}

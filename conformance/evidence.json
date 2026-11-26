@@ -39611,5 +39611,78 @@
       "test": "adapters/sqlstore/admin_user_fields_test.go",
       "marker": "an administrator changed a server-owned field through update-user"
     }
+  ],
+  "plugin-symbol/jwt/JWKOptions/modulusLength": [
+    {
+      "label": "Generate RS256 and PS256 keys with a configured 3072-bit modulus, publish that size and verify their tokens, on three SQL engines",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "published a %d-bit modulus",
+      "complete": true
+    },
+    {
+      "label": "Generate 2048-bit RSA keys when no length is set",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "key is not 2048 bits by default"
+    },
+    {
+      "label": "Refuse modulus lengths below 2048 bits or odd, and accept even lengths such as 2050, 3072 and 4096",
+      "test": "plugins/jwt/jwt_test.go",
+      "marker": "accepted a %d-bit RSA modulus"
+    }
+  ],
+  "docs/content/docs/plugins/jwt.mdx#L486/Optional Property": [
+    {
+      "label": "Generate an RS256 key with a configured 3072-bit modulus and verify its tokens independently",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "published a %d-bit modulus",
+      "complete": true
+    },
+    {
+      "label": "Use a 2048-bit modulus for RS256 keys by default",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "key is not 2048 bits by default"
+    }
+  ],
+  "docs/content/docs/plugins/jwt.mdx#L492/Optional Property": [
+    {
+      "label": "Generate a PS256 key with a configured 3072-bit modulus and verify its tokens independently",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "published a %d-bit modulus",
+      "complete": true
+    },
+    {
+      "label": "Use a 2048-bit modulus for PS256 keys by default",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "key is not 2048 bits by default"
+    }
+  ],
+  "docs/content/docs/plugins/jwt.mdx#L496": [
+    {
+      "label": "Refuse ECDH-ES and its key-wrapping variants as the signing algorithm or an additional one, since key agreement cannot sign a token",
+      "test": "plugins/jwt/jwt_test.go",
+      "marker": "accepted %s as the signing algorithm",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/jwt.mdx#L476/Optional Property": [
+    {
+      "label": "Generate EdDSA keys on Ed25519, the only curve that can sign, with no curve to configure",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "invalid public key projection",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/jwt.mdx#L535/`rotationInterval`": [
+    {
+      "label": "Give the first key and its replacement an expiry one rotation interval after creation",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "replacement key does not expire one rotation interval after its creation",
+      "complete": true
+    },
+    {
+      "label": "Leave keys without an expiry when no rotation interval is set",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "a key minted without a rotation interval has an expiry"
+    }
   ]
 }
