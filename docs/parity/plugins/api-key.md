@@ -63,7 +63,8 @@
     - [x] `enableSessionForAPIKeys` ([test](../../../adapters/sqlstore/apikey_session_test.go#L203))
       - [x] Return no session for a key header when session authentication is left off ([test](../../../adapters/sqlstore/apikey_session_test.go#L203))
       - [x] Return the key owner's session, marked as an application credential, for a key header when session authentication is on ([test](../../../adapters/sqlstore/apikey_session_test.go#L210))
-    - [ ] `permissions`
+    - [x] `permissions` ([test](../../../adapters/sqlstore/apikey_permissions_test.go#L20))
+      - [x] Work out a new key's default permissions from its owner with DefaultPermissionsFor ([test](../../../adapters/sqlstore/apikey_permissions_test.go#L20))
     - [ ] `storage`
     - [ ] `fallbackToDatabase`
     - [ ] `customStorage`
@@ -137,8 +138,9 @@
       - [x] Complete password-confirmed authenticator enrollment with the official client ([test](../../../conformance/core.test.mjs#L988))
       - [x] Require explicit opt-in and reject ambiguous credentials across configurations sharing a header ([test](../../../adapters/sqlstore/apikey_session_test.go#L203))
       - [x] Return the key owner's session from a native session read that carries the key header ([test](../../../adapters/sqlstore/apikey_session_test.go#L194))
-    - [ ] `permissions`
+    - [x] `permissions` ([test](../../../adapters/sqlstore/apikey_permissions_test.go#L73))
       - [x] Protect an application operation with a resource/action scope ([test](../../../adapters/sqlstore/apikey_test.go#L226))
+      - [x] Work out a new key's default permissions from its owner's user or organization ID after the creator is authorized, let server permissions win, and store nothing when the callback fails, on three SQL engines ([test](../../../adapters/sqlstore/apikey_permissions_test.go#L73))
     - [ ] `storage`
     - [ ] `fallbackToDatabase`
     - [ ] `customStorage`
@@ -441,6 +443,7 @@
   - [ ] Permissions
     - [ ] Setting Default Permissions
       - [x] Apply static defaults independently to each issued key ([test](../../../adapters/sqlstore/apikey_test.go#L221))
+      - [x] Compute default permissions per owner for user and organization keys ([test](../../../adapters/sqlstore/apikey_permissions_test.go#L88))
     - [x] Creating API Keys with Permissions ([test](../../../adapters/sqlstore/apikey_session_test.go#L248))
       - [x] Allow an invitation with a key created through the server call with an invitation create grant ([test](../../../adapters/sqlstore/apikey_session_test.go#L248))
       - [x] Deny an organization listing to a key created with only a reports read grant ([test](../../../adapters/sqlstore/apikey_session_test.go#L228))

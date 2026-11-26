@@ -103,6 +103,14 @@ type Options struct {
 	// GenerateKey runs once per authorized attempt. Return the whole credential
 	// using KeyLength to 4096 printable, non-space ASCII bytes.
 	GenerateKey func(context.Context, Generation) (string, error)
+	// DefaultPermissionsFor works out a new key's permissions from its
+	// owner's reference ID: the user ID, or the organization ID for
+	// organization keys. It runs once per creation that passed its checks and
+	// issuance authorization, after GenerateKey and outside store
+	// transactions. Permissions set by server code win over its result, and a
+	// nil result gives the key no permissions. It cannot be combined with
+	// DefaultPermissions.
+	DefaultPermissionsFor func(ctx context.Context, referenceID string) (Permissions, error)
 	// ExtractKey returns (credential, present, error). It replaces Headers for this
 	// configuration. Report malformed supplied credentials as present or return an error.
 	ExtractKey func(*http.Request) (string, bool, error)
@@ -139,6 +147,14 @@ func New(o Options) (*Service, error) {
 	if o.GenerateKey != nil {
 		if _, ok := o.Store.(GeneratorStore); !ok {
 			return nil, errors.New("apikey: custom generation requires issuer authorization and digest reservation")
+		}
+	}
+	if o.DefaultPermissionsFor != nil {
+		if o.DefaultPermissions != nil {
+			return nil, errors.New("apikey: set DefaultPermissions or DefaultPermissionsFor, not both")
+		}
+		if _, ok := o.Store.(GeneratorStore); !ok {
+			return nil, errors.New("apikey: default permission callbacks require issuer authorization")
 		}
 	}
 	if o.ConfigID == "" {
@@ -266,6 +282,7 @@ func problem(status int, code, msg string) *plainauth.APIError {
 // ErrKeyCollision indicates the generated credential is already reserved or stored.
 var ErrKeyCollision = problem(409, "API_KEY_ALREADY_ISSUED", "The generated credential has already been issued")
 var errGenerator = errors.New("apikey: invalid credential generator result")
+var errDefaultPermissions = errors.New("apikey: default permission callback failed")
 var errExtractor = errors.New("apikey: credential extraction failed")
 
 // Keep application error text and nested HTTP error types out of wire responses.
@@ -451,10 +468,13 @@ func (s *Service) create(ctx context.Context, owner Owner, in CreateInput) (*Cre
 		return nil, err
 	}
 	var secret string
-	if generate := s.opts.GenerateKey; generate != nil {
+	if s.opts.GenerateKey != nil || s.opts.DefaultPermissionsFor != nil {
+		// Host code runs only for an authorized creator.
 		if err := s.opts.Store.(GeneratorStore).CheckAPIKeyCreator(ctx, owner); err != nil {
 			return nil, err
 		}
+	}
+	if generate := s.opts.GenerateKey; generate != nil {
 		var err error
 		secret, err = generate(ctx, Generation{UserID: owner.UserID, OrganizationID: owner.OrganizationID, ConfigID: k.ConfigID, Prefix: prefix, Length: s.opts.KeyLength})
 		if err != nil {
@@ -468,6 +488,18 @@ func (s *Service) create(ctx context.Context, owner Owner, in CreateInput) (*Cre
 		}
 	} else {
 		secret = prefix + randomSecret(s.opts.KeyLength)
+	}
+	if resolve := s.opts.DefaultPermissionsFor; resolve != nil {
+		defaults, err := resolve(ctx, owner.ReferenceID())
+		if err != nil {
+			return nil, hookFailure{errDefaultPermissions, err}
+		}
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		if in.Policy.Permissions == nil {
+			k.Permissions = clonePermissions(defaults)
+		}
 	}
 	if !s.opts.HideStart {
 		k.Start = ptr(secret[:s.opts.StartLength])

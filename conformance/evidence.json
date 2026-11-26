@@ -7539,6 +7539,11 @@
       "label": "Apply static defaults independently to each issued key",
       "test": "adapters/sqlstore/apikey_test.go",
       "marker": "issued metadata mutated future permission defaults"
+    },
+    {
+      "label": "Compute default permissions per owner for user and organization keys",
+      "test": "adapters/sqlstore/apikey_permissions_test.go",
+      "marker": "organization key permissions did not come from the organization ID"
     }
   ],
   "docs/content/docs/plugins/api-key/reference.mdx#L342": [
@@ -7710,6 +7715,12 @@
       "label": "Protect an application operation with a resource/action scope",
       "test": "adapters/sqlstore/apikey_test.go",
       "marker": "middleware did not attach the verified owner and key"
+    },
+    {
+      "label": "Work out a new key's default permissions from its owner's user or organization ID after the creator is authorized, let server permissions win, and store nothing when the callback fails, on three SQL engines",
+      "test": "adapters/sqlstore/apikey_permissions_test.go",
+      "marker": "default permissions callback did not set the user key's permissions",
+      "complete": true
     }
   ],
   "plugin-symbol/access/AccessControl": [
@@ -39848,6 +39859,14 @@
       "label": "Verify a key without naming its configuration against the configuration that issued it, with that configuration's validator, permissions and rate limit, and refuse an unknown secret before any validator runs, on three SQL engines",
       "test": "adapters/sqlstore/apikey_unscoped_test.go",
       "marker": "an unscoped verification did not use the issuing configuration",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/api-key/PredefinedApiKeyOptions/permissions": [
+    {
+      "label": "Work out a new key's default permissions from its owner with DefaultPermissionsFor",
+      "test": "adapters/sqlstore/apikey_permissions_test.go",
+      "marker": "func TestAPIKeyDefaultPermissionsCallback(",
       "complete": true
     }
   ]
