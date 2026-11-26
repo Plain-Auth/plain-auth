@@ -2900,12 +2900,12 @@
       "marker": "func TestCatalogIdentityBinding("
     },
     {
-      "label": "A Limited Login ID token signs in for the App ID or a listed audience with its nonce, within the hour, with an unverified email; another audience, issuer, nonce, key or an old token is refused (deviation: the nonce is required)",
+      "label": "A Limited Login ID token is accepted for the App ID or a listed audience with the request's nonce, within the hour, with an unverified email; another audience, issuer, nonce, key, an old token or a missing nonce is refused (deviation: the nonce is required)",
       "test": "providers/facebook_test.go",
       "marker": "func TestFacebookLimitedLogin(t *testing.T) {"
     },
     {
-      "label": "An access token sent as token and accessToken signs in after debug_token binds it to the app and /me names the same user, a Limited Login token then signs into the same account, and account-info returns the Graph profile",
+      "label": "An access token sent as token and accessToken signs in after debug_token binds it to the app and /me names the same user; a Limited Login token for that user and App ID signs into the same account, one for a listed audience as that app's user, one without its nonce is refused, and account-info reads Graph with the stored access token (deviation: never the stored Limited Login claims)",
       "test": "providers/facebook_test.go",
       "marker": "func TestFacebookAccessTokenSignIn(t *testing.T) {"
     }
@@ -24905,9 +24905,9 @@
       "marker": "func TestCatalogIdentityBinding("
     },
     {
-      "label": "Several App IDs: Audiences adds App IDs whose access tokens and Limited Login tokens sign in, besides the client ID",
+      "label": "Several App IDs: Audiences adds App IDs whose Limited Login tokens sign in as that app's user and whose access tokens debug_token accepts, besides the client ID",
       "test": "providers/facebook_test.go",
-      "marker": "\"a listed audience\": {",
+      "marker": "func TestFacebookAccessTokenSignIn(t *testing.T) {",
       "complete": true
     }
   ],
@@ -30597,13 +30597,13 @@
   ],
   "docs/content/docs/plugins/generic-oauth.mdx#L34/Provider requires custom HTTP headers": [
     {
-      "label": "Token endpoint headers through TokenHeaders; discovery headers are still missing",
+      "label": "Token endpoint headers through TokenHeaders",
       "test": "conformance/goapi/oauth_token_requests_test.go",
       "marker": "func TestOAuthTokenParamsAndHeaders(t *testing.T) {",
       "complete": false
     },
     {
-      "label": "A provider that needs custom headers gets them on discovery and same-origin signing keys through DiscoveryHeaders, and on token requests through TokenHeaders",
+      "label": "A provider built by OpenIDConnectWithOptions gets custom headers on discovery and same-origin signing keys through DiscoveryHeaders and on its token request through TokenHeaders, with neither reaching the other's requests or keys on another origin",
       "test": "providers/oidc_test.go",
       "marker": "func TestOpenIDConnectWithOptions(t *testing.T) {",
       "complete": true
@@ -30691,12 +30691,12 @@
   ],
   "docs/content/docs/authentication/facebook.mdx#L98": [
     {
-      "label": "A Limited Login ID token signs in for the App ID or a listed audience with its nonce, within the hour, with an unverified email; another audience, issuer, nonce, key or an old token is refused (deviation: the nonce is required)",
+      "label": "A Limited Login ID token is accepted for the App ID or a listed audience with the request's nonce, within the hour, with an unverified email; another audience, issuer, nonce, key, an old token or a missing nonce is refused (deviation: the nonce is required)",
       "test": "providers/facebook_test.go",
       "marker": "func TestFacebookLimitedLogin(t *testing.T) {"
     },
     {
-      "label": "An access token sent as token and accessToken signs in after debug_token binds it to the app and /me names the same user, a Limited Login token then signs into the same account, and account-info returns the Graph profile",
+      "label": "An access token sent as token and accessToken signs in after debug_token binds it to the app and /me names the same user; a Limited Login token for that user and App ID signs into the same account, one for a listed audience as that app's user, one without its nonce is refused, and account-info reads Graph with the stored access token (deviation: never the stored Limited Login claims)",
       "test": "providers/facebook_test.go",
       "marker": "func TestFacebookAccessTokenSignIn(t *testing.T) {"
     }

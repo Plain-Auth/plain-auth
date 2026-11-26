@@ -41,7 +41,7 @@ func TestProviderLogoutRevokesOwnerSession(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		raw := "test-id-grant"
+		raw := "test.id-grant.signature"
 		if disable {
 			raw += "-one"
 		}

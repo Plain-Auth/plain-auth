@@ -233,7 +233,7 @@ func TestSignOutProviderLocation(t *testing.T) {
 	c := sessionClient{t, auth}
 	for _, disable := range []bool{false, true} {
 		// Each pass signs in with a new ID token; a used one is refused.
-		grant := "id-grant-" + strconv.FormatBool(disable)
+		grant := "id.grant." + strconv.FormatBool(disable)
 		r := c.post("/sign-in/social", `{"provider":"work","idToken":{"token":"`+grant+`","nonce":"bound"}}`, "", 200)
 		var cookie string
 		for _, ck := range r.Cookies() {

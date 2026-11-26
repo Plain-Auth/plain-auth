@@ -446,8 +446,8 @@
       - [x] Replace the default response_type with the Apple preset's configured code id_token and add response_mode=form_post ([test](../../../providers/apple_microsoft_test.go#L102))
     - [x] `tokenUrlParams` ([test](../../../conformance/goapi/oauth_token_requests_test.go#L53))
       - [x] TokenParams add one-valued form fields such as audience and resource to the code exchange only; New refuses the grant and client authentication fields, two values, and ExchangeCode, which replaces the request (deviation: the protocol fields are refused instead of kept) ([test](../../../conformance/goapi/oauth_token_requests_test.go#L53))
-    - [x] `refreshTokenParams` ([test](../../../conformance/goapi/oauth_token_requests_test.go#L127))
-      - [x] RefreshParams adds fields to each refresh from the triggering request's headers and the owner, runs before the account is locked so it can read the store, nil adds nothing, a redirect_uri is sent, a server call gets nil headers, an error or a field the refresh or client authentication sets fails the refresh without calling the provider (deviation: refused instead of overwritten), and New refuses it with Refresh ([test](../../../conformance/goapi/oauth_token_requests_test.go#L127))
+    - [x] `refreshTokenParams` ([test](../../../conformance/goapi/oauth_token_requests_test.go#L128))
+      - [x] RefreshParams adds fields to each refresh from the triggering request's headers and the owner, runs before the account is locked so it can read the store, nil adds nothing, a redirect_uri is sent, a server call gets nil headers, an error or a field the refresh or client authentication sets fails the refresh without calling the provider (deviation: refused instead of overwritten), and New refuses it with Refresh ([test](../../../conformance/goapi/oauth_token_requests_test.go#L128))
     - [ ] `disableImplicitSignUp`
       - [x] Refuse a first-time account without requestSignUp, create it with requestSignUp and sign a returning user in, for browser and ID-token sign-in ([test](../../../conformance/goapi/oauth_signup_test.go#L117))
     - [ ] `disableSignUp`
@@ -455,8 +455,8 @@
     - [ ] `authentication`
       - [x] Send client credentials in a Basic header or in the token form, as each catalog provider is configured ([test](../../../providers/catalog_test.go#L59))
       - [x] HTTP Basic client authentication without a secret is refused when the instance is built ([test](../../../conformance/goapi/oauth_token_auth_test.go#L238))
-    - [x] `discoveryHeaders` ([test](../../../providers/oidc_test.go#L165))
-      - [x] DiscoveryHeaders reach the discovery request and signing keys on the issuer's origin, not the token endpoint or keys on another origin; an invalid header fails before any request (deviation: discovery follows no redirects, even within the origin) ([test](../../../providers/oidc_test.go#L165))
+    - [x] `discoveryHeaders` ([test](../../../providers/oidc_test.go#L166))
+      - [x] DiscoveryHeaders reach the discovery request and signing keys on the issuer's origin, not the token endpoint or keys on another origin; an invalid header fails before any request (deviation: discovery follows no redirects, even within the origin) ([test](../../../providers/oidc_test.go#L166))
     - [x] `authorizationHeaders` ([test](../../../conformance/goapi/oauth_token_requests_test.go#L53))
       - [x] TokenHeaders reach the code exchange and the refresh at the token endpoint's origin, not profile requests, and never replace a header the request sets such as Basic authentication (deviation: the library's own headers win); New refuses invalid headers and ExchangeCode or Refresh ([test](../../../conformance/goapi/oauth_token_requests_test.go#L53))
     - [x] `overrideUserInfo` ([test](../../../conformance/social-user-fields.mjs#L145))
@@ -465,8 +465,8 @@
       - [x] Withhold sessions for unverified social accounts, honor mail delivery settings and accept confirmation by either server ([test](../../../conformance/social-user-fields.mjs#L200))
     - [x] `allowIdpInitiated` ([test](../../../conformance/goapi/oauth_idp_initiated_test.go#L39))
       - [x] AllowIdPInitiated restarts a callback with a code and no state as a fresh authorization with new state, nonce and PKCE, without exchanging the code, and the restarted sign-in completes toward BaseURL; an empty, unknown or missing state still fails, a form POST without state goes through the GET callback, and a provider without the setting answers state_not_found ([test](../../../conformance/goapi/oauth_idp_initiated_test.go#L39))
-    - [x] `disableIdTokenNonceBinding` ([test](../../../providers/oidc_test.go#L165))
-      - [x] DisableNonceBinding sends no nonce on browser sign-in and accepts an ID token without one, while the default refuses it (deviation: a directly submitted ID token still needs its nonce) ([test](../../../providers/oidc_test.go#L165))
+    - [x] `disableIdTokenNonceBinding` ([test](../../../providers/oidc_test.go#L166))
+      - [x] DisableNonceBinding sends no nonce on browser sign-in and accepts an ID token without one, while the default refuses it (deviation: a directly submitted ID token still needs its nonce) ([test](../../../providers/oidc_test.go#L166))
   - [ ] `GenericOAuthOptions`
     - [ ] `config`
       - [x] Register three hand-configured providers in one SocialProviders map and apply each one's own sign-up and ID-token settings ([test](../../../conformance/goapi/oauth_signup_test.go#L54))
@@ -489,9 +489,9 @@
         - [x] Add a configured authorization parameter (prompt) to every sign-in and link authorization URL ([test](../../../conformance/goapi/provider_contract_test.go#L67))
       - [x] Provider requires extra token parameters ([test](../../../conformance/goapi/oauth_token_requests_test.go#L53))
         - [x] A provider that needs extra token parameters gets them on the code exchange through TokenParams ([test](../../../conformance/goapi/oauth_token_requests_test.go#L53))
-      - [x] Provider requires custom HTTP headers ([test](../../../providers/oidc_test.go#L165))
-        - [x] Token endpoint headers through TokenHeaders; discovery headers are still missing ([test](../../../conformance/goapi/oauth_token_requests_test.go#L53))
-        - [x] A provider that needs custom headers gets them on discovery and same-origin signing keys through DiscoveryHeaders, and on token requests through TokenHeaders ([test](../../../providers/oidc_test.go#L165))
+      - [x] Provider requires custom HTTP headers ([test](../../../providers/oidc_test.go#L166))
+        - [x] Token endpoint headers through TokenHeaders ([test](../../../conformance/goapi/oauth_token_requests_test.go#L53))
+        - [x] A provider built by OpenIDConnectWithOptions gets custom headers on discovery and same-origin signing keys through DiscoveryHeaders and on its token request through TokenHeaders, with neither reaching the other's requests or keys on another origin ([test](../../../providers/oidc_test.go#L166))
       - [ ] Provider does not support OIDC discovery
         - [x] Sign in through a provider configured with explicit authorization and token endpoints and its own profile function ([test](../../../conformance/goapi/oauth_test.go#L21))
       - [ ] Provider uses a non-standard immutable user identifier
@@ -529,8 +529,8 @@
         - [x] Reject a discovered provider's ID token whose nonce does not match ([test](../../../providers/oidc_test.go#L122))
       - [x] requireIdTokenVerification ([test](../../../providers/oidc_test.go#L129))
         - [x] Discovery that cannot verify ID tokens is refused when the provider is built ([test](../../../providers/oidc_test.go#L129))
-      - [x] disableIdTokenNonceBinding ([test](../../../providers/oidc_test.go#L165))
-        - [x] DisableNonceBinding sends no nonce on browser sign-in and accepts an ID token without one, while the default refuses it (deviation: a directly submitted ID token still needs its nonce) ([test](../../../providers/oidc_test.go#L165))
+      - [x] disableIdTokenNonceBinding ([test](../../../providers/oidc_test.go#L166))
+        - [x] DisableNonceBinding sends no nonce on browser sign-in and accepts an ID token without one, while the default refuses it (deviation: a directly submitted ID token still needs its nonce) ([test](../../../providers/oidc_test.go#L166))
       - [ ] authorizationUrl
         - [x] Send a hand-configured provider's sign-in to its configured authorization endpoint with state, nonce and an S256 challenge ([test](../../../conformance/goapi/oauth_test.go#L30))
       - [ ] tokenUrl
@@ -581,8 +581,8 @@
         - [x] Replace the default response_type with the Apple preset's configured code id_token and add response_mode=form_post ([test](../../../providers/apple_microsoft_test.go#L102))
       - [x] tokenUrlParams ([test](../../../conformance/goapi/oauth_token_requests_test.go#L53))
         - [x] TokenParams add one-valued form fields such as audience and resource to the code exchange only; New refuses the grant and client authentication fields, two values, and ExchangeCode, which replaces the request (deviation: the protocol fields are refused instead of kept) ([test](../../../conformance/goapi/oauth_token_requests_test.go#L53))
-      - [x] refreshTokenParams ([test](../../../conformance/goapi/oauth_token_requests_test.go#L127))
-        - [x] RefreshParams adds fields to each refresh from the triggering request's headers and the owner, runs before the account is locked so it can read the store, nil adds nothing, a redirect_uri is sent, a server call gets nil headers, an error or a field the refresh or client authentication sets fails the refresh without calling the provider (deviation: refused instead of overwritten), and New refuses it with Refresh ([test](../../../conformance/goapi/oauth_token_requests_test.go#L127))
+      - [x] refreshTokenParams ([test](../../../conformance/goapi/oauth_token_requests_test.go#L128))
+        - [x] RefreshParams adds fields to each refresh from the triggering request's headers and the owner, runs before the account is locked so it can read the store, nil adds nothing, a redirect_uri is sent, a server call gets nil headers, an error or a field the refresh or client authentication sets fails the refresh without calling the provider (deviation: refused instead of overwritten), and New refuses it with Refresh ([test](../../../conformance/goapi/oauth_token_requests_test.go#L128))
       - [ ] disableImplicitSignUp
         - [x] Refuse a first-time account without requestSignUp, create it with requestSignUp and sign a returning user in, for browser and ID-token sign-in ([test](../../../conformance/goapi/oauth_signup_test.go#L117))
       - [ ] disableSignUp
@@ -590,8 +590,8 @@
       - [ ] authentication
         - [x] Send client credentials in a Basic header or in the token form, as each catalog provider is configured ([test](../../../providers/catalog_test.go#L59))
         - [x] HTTP Basic client authentication without a secret is refused when the instance is built ([test](../../../conformance/goapi/oauth_token_auth_test.go#L238))
-      - [x] discoveryHeaders ([test](../../../providers/oidc_test.go#L165))
-        - [x] DiscoveryHeaders reach the discovery request and signing keys on the issuer's origin, not the token endpoint or keys on another origin; an invalid header fails before any request (deviation: discovery follows no redirects, even within the origin) ([test](../../../providers/oidc_test.go#L165))
+      - [x] discoveryHeaders ([test](../../../providers/oidc_test.go#L166))
+        - [x] DiscoveryHeaders reach the discovery request and signing keys on the issuer's origin, not the token endpoint or keys on another origin; an invalid header fails before any request (deviation: discovery follows no redirects, even within the origin) ([test](../../../providers/oidc_test.go#L166))
       - [x] authorizationHeaders ([test](../../../conformance/goapi/oauth_token_requests_test.go#L53))
         - [x] TokenHeaders reach the code exchange and the refresh at the token endpoint's origin, not profile requests, and never replace a header the request sets such as Basic authentication (deviation: the library's own headers win); New refuses invalid headers and ExchangeCode or Refresh ([test](../../../conformance/goapi/oauth_token_requests_test.go#L53))
       - [x] overrideUserInfo ([test](../../../conformance/social-user-fields.mjs#L145))

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -15,7 +16,8 @@ import (
 // A provider with VerifyAccessToken signs in with an access token the client
 // sends as idToken.token and repeats as idToken.accessToken, with no nonce:
 // only that verifier runs, the token is stored as the account's access
-// token, and it cannot sign in again within the hour. A token without its
+// token, never sent as a logout hint, and it cannot sign in again within
+// the hour. A token without its
 // repeat, a refused token, a JWS without a nonce, and a JWS at a provider
 // without VerifyIDToken fail without a verifier call, and
 // DisableIDTokenSignIn closes the grant.
@@ -36,7 +38,8 @@ func TestProviderAccessTokenSignIn(t *testing.T) {
 	}
 	provider := func() auth.OAuthProvider {
 		return auth.OAuthProvider{
-			Config: oauth2.Config{ClientID: "client", ClientSecret: "secret", Endpoint: oauth2.Endpoint{AuthURL: "https://idp.example/authorize", TokenURL: "https://idp.example/token"}},
+			Config:             oauth2.Config{ClientID: "client", ClientSecret: "secret", Endpoint: oauth2.Endpoint{AuthURL: "https://idp.example/authorize", TokenURL: "https://idp.example/token"}},
+			EndSessionEndpoint: "https://idp.example/end",
 			Resolve: func(context.Context, *oauth2.Token, string) (auth.OAuthProfile, error) {
 				return auth.OAuthProfile{}, errors.New("unused")
 			},
@@ -74,6 +77,12 @@ func TestProviderAccessTokenSignIn(t *testing.T) {
 	var token struct{ AccessToken string }
 	if err := json.NewDecoder(n.post(t, "/get-access-token", `{"accountId":"`+n.accountID(t)+`"}`).Body).Decode(&token); err != nil || token.AccessToken != "at-ada" {
 		t.Fatal("the stored access token is", token.AccessToken, err)
+	}
+	// The stored access token never becomes a logout URL's id_token_hint.
+	var logout struct{ URL string }
+	if err := json.NewDecoder(n.post(t, "/sign-out", `{"disableRedirect":true}`).Body).Decode(&logout); err != nil ||
+		!strings.HasPrefix(logout.URL, "https://idp.example/end") || strings.Contains(logout.URL, "id_token_hint") || strings.Contains(logout.URL, "at-ada") {
+		t.Fatal("provider logout went to", logout.URL, err)
 	}
 	if status, code := signIn(n, `{"token":"at-ada","accessToken":"at-ada"}`); status != 401 || code != "INVALID_TOKEN" {
 		t.Fatal("a reused access token answered", status, code)

@@ -118,7 +118,8 @@ type FacebookOptions struct {
 	ConfigID string
 	// Audiences lists the app's other Facebook App IDs whose Limited Login
 	// ID tokens and access tokens may sign in directly; the client ID is
-	// always accepted.
+	// always accepted. Facebook gives each App ID its own user IDs, so their
+	// users are separate accounts until linked.
 	Audiences []string
 	// HTTPClient fetches the Limited Login signing keys.
 	HTTPClient *http.Client

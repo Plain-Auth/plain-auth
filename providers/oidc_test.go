@@ -158,7 +158,8 @@ func TestOpenIDConnectRefusesUnverifiableDiscovery(t *testing.T) {
 }
 
 // DiscoveryHeaders reach the discovery request and signing keys on the
-// issuer's origin, never the token endpoint or keys elsewhere; discovery
+// issuer's origin, never the token endpoint or keys elsewhere, while the
+// provider's TokenHeaders reach its token request; discovery
 // follows no redirects, and an invalid header fails before any request. With
 // DisableNonceBinding a browser sign-in sends no nonce and accepts an ID
 // token without one, while a directly submitted token still needs its nonce.
@@ -189,7 +190,7 @@ func TestOpenIDConnectWithOptions(t *testing.T) {
 	}))
 	defer otherKeys.Close()
 	var issuer *httptest.Server
-	keysURI := ""
+	keysURI, tokenHeader := "", ""
 	issuer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		record(r.URL.Path, r)
 		w.Header().Set("Content-Type", "application/json")
@@ -207,6 +208,9 @@ func TestOpenIDConnectWithOptions(t *testing.T) {
 		case "/keys":
 			_ = json.NewEncoder(w).Encode(jwks)
 		case "/token":
+			mu.Lock()
+			tokenHeader = r.Header.Get("X-Token")
+			mu.Unlock()
 			_ = json.NewEncoder(w).Encode(map[string]any{"access_token": "access", "token_type": "Bearer", "id_token": signedClaims(t, key, issuer.URL, "subject", "", map[string]any{"email": "person@example.org", "email_verified": true})})
 		}
 	}))
@@ -216,6 +220,7 @@ func TestOpenIDConnectWithOptions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	p.TokenHeaders = http.Header{"X-Token": {"token-header"}}
 	f := runBrowserFlow(t, "work", p)
 	if to := f.callback.Header().Get("Location"); to != "/done" || f.authorize.Query().Has("nonce") {
 		t.Fatal("the sign-in without nonce binding landed at", to, "after authorizing with", f.authorize.Query())
@@ -226,8 +231,11 @@ func TestOpenIDConnectWithOptions(t *testing.T) {
 	if got := headersAt("/keys"); len(got) == 0 || got[0] != "epic" {
 		t.Fatal("the same-origin keys request sent", got)
 	}
-	if got := headersAt("/token"); len(got) != 1 || got[0] != "" {
-		t.Fatal("the token request sent", got)
+	mu.Lock()
+	gotToken := tokenHeader
+	mu.Unlock()
+	if got := headersAt("/token"); len(got) != 1 || got[0] != "" || gotToken != "token-header" {
+		t.Fatal("the token request sent", got, gotToken)
 	}
 	direct := func(p auth.OAuthProvider, tokenNonce, nonce string) error {
 		_, _, err := p.VerifyIDToken(context.Background(), signedClaims(t, key, issuer.URL, "subject", tokenNonce, map[string]any{"email": "person@example.org", "email_verified": true}), nonce)

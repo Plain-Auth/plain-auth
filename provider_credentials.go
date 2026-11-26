@@ -188,10 +188,11 @@ func (a *Auth) validCredential(ctx context.Context, h http.Header, store Provide
 	ctx, cancel := context.WithTimeout(context.WithValue(ctx, oauth2.HTTPClient, p.HTTPClient), 15*time.Second)
 	defer cancel()
 	// RefreshParams is host code, so it runs before the account row is
-	// locked, even when this read saw no refresh token: one may be stored
-	// before the lock is taken.
+	// locked. A refresh token stored after this read is not used, since
+	// RefreshParams has not seen that refresh.
+	paramsRan := p.RefreshParams == nil || row.RefreshToken != ""
 	var extra url.Values
-	if p.RefreshParams != nil {
+	if p.RefreshParams != nil && row.RefreshToken != "" {
 		var err error
 		extra, err = p.RefreshParams(ctx, OAuthRefreshRequest{Header: h.Clone(), UserID: row.UserID, AccountID: row.ID})
 		if err != nil {
@@ -213,7 +214,7 @@ func (a *Auth) validCredential(ctx context.Context, h http.Header, store Provide
 		if !force && !due(current) {
 			return current, false, nil
 		}
-		if current.RefreshToken == "" {
+		if current.RefreshToken == "" || !paramsRan {
 			return current, false, &APIError{400, "REFRESH_TOKEN_NOT_FOUND", "Refresh token not found"}
 		}
 		if !current.RefreshExpiresAt.IsZero() && !current.RefreshExpiresAt.After(a.now()) {

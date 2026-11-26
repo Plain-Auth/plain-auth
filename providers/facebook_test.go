@@ -67,9 +67,9 @@ func limitedLoginToken(t *testing.T, key *rsa.PrivateKey, issuer, aud, nonce str
 	return signedClaims(t, key, issuer, "fb-user", nonce, claims)
 }
 
-// A Limited Login ID token signs in when Facebook signed it for the client
-// ID or a listed audience, with its nonce and within the hour; its email is
-// never marked verified.
+// A Limited Login ID token is accepted when Facebook signed it for the
+// client ID or a listed audience, with the request's nonce and within the
+// hour; its email is never marked verified.
 func TestFacebookLimitedLogin(t *testing.T) {
 	key, _ := rsa.GenerateKey(rand.Reader, 2048)
 	foreign, _ := rsa.GenerateKey(rand.Reader, 2048)
@@ -93,6 +93,12 @@ func TestFacebookLimitedLogin(t *testing.T) {
 			t.Fatal("Limited Login accepted", name)
 		}
 	}
+	if _, _, err := p.VerifyIDToken(t.Context(), limitedLoginToken(t, key, facebookIssuer, "app", "n", nil), ""); err == nil {
+		t.Fatal("Limited Login accepted a token without the request's nonce")
+	}
+	if _, _, err := p.VerifyIDToken(t.Context(), limitedLoginToken(t, key, facebookIssuer, "app", "", nil), ""); err == nil {
+		t.Fatal("Limited Login accepted a token and request without a nonce")
+	}
 	if p, _ := New("facebook", "app", "secret"); p.VerifyIDToken == nil || p.VerifyAccessToken == nil {
 		t.Fatal("New(\"facebook\") has no direct sign-in")
 	}
@@ -100,9 +106,10 @@ func TestFacebookLimitedLogin(t *testing.T) {
 
 // A Facebook access token signs in once debug_token shows it is valid for
 // the client ID or a listed audience and /me names the same user; a Limited
-// Login token for that user then signs into the same account, and
-// account-info returns the Graph profile. A redirect from debug_token is not
-// followed.
+// Login token for that user and App ID then signs into the same account, one
+// for a listed audience names that app's own user, a token without its nonce
+// is refused, and account-info reads the Graph profile with the stored access
+// token. A redirect from debug_token is not followed.
 func TestFacebookAccessTokenSignIn(t *testing.T) {
 	key, _ := rsa.GenerateKey(rand.Reader, 2048)
 	g := newFacebookGraph(t, key)
@@ -114,7 +121,7 @@ func TestFacebookAccessTokenSignIn(t *testing.T) {
 	}
 	defer store.Close()
 	const base = "https://app.example.org"
-	h, err := auth.New(auth.Options{Store: store, Secret: strings.Repeat("s", 32), BaseURL: base, SocialProviders: map[string]auth.OAuthProvider{"facebook": p}})
+	h, err := auth.New(auth.Options{Store: store, Secret: strings.Repeat("s", 32), BaseURL: base, RateLimit: new(bool), SocialProviders: map[string]auth.OAuthProvider{"facebook": p}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -137,11 +144,21 @@ func TestFacebookAccessTokenSignIn(t *testing.T) {
 	if strings.Join(g.seen, ",") != "debug:EAAB-token:app|secret,me:Bearer EAAB-token" {
 		t.Fatal("Graph saw", g.seen)
 	}
-	raw := limitedLoginToken(t, key, facebookIssuer, "ios-app", "n", nil)
+	raw := limitedLoginToken(t, key, facebookIssuer, "app", "n", nil)
+	if res := call("POST", "/sign-in/social", `{"provider":"facebook","idToken":{"token":"`+raw+`"}}`, nil); res.Code != 401 || !strings.Contains(res.Body.String(), "INVALID_TOKEN") {
+		t.Fatal("a Limited Login token without its nonce answered", res.Code, res.Body)
+	}
 	var second struct{ User struct{ ID string } }
 	res = call("POST", "/sign-in/social", `{"provider":"facebook","idToken":{"token":"`+raw+`","nonce":"n"}}`, nil)
 	if res.Code != 200 || json.Unmarshal(res.Body.Bytes(), &second) != nil || second.User.ID != first.User.ID {
 		t.Fatal("the Limited Login sign-in answered", res.Code, res.Body)
+	}
+	// Facebook gives each App ID its own user IDs, so a listed audience's
+	// token names another subject: here a user of the iOS app.
+	ios := limitedLoginToken(t, key, facebookIssuer, "ios-app", "n", map[string]any{"sub": "fb-ios-user", "email": "ios@example.org"})
+	var third struct{ User struct{ ID string } }
+	if res := call("POST", "/sign-in/social", `{"provider":"facebook","idToken":{"token":"`+ios+`","nonce":"n"}}`, nil); res.Code != 200 || json.Unmarshal(res.Body.Bytes(), &third) != nil || third.User.ID == first.User.ID {
+		t.Fatal("the listed audience's token answered", res.Code, res.Body)
 	}
 	var accounts []struct{ ID, AccountID string }
 	if res := call("GET", "/list-accounts", "", res.Result().Cookies()); json.Unmarshal(res.Body.Bytes(), &accounts) != nil || len(accounts) != 1 || accounts[0].AccountID != "fb-user" {

@@ -310,8 +310,8 @@
       - [x] `fields` ([test](../../providers/catalog_options_test.go#L43))
         - [x] Extra Graph profile fields are requested after the default ones ([test](../../providers/catalog_options_test.go#L43))
     - [ ] Sign In with Facebook With ID or Access Token
-      - [x] A Limited Login ID token signs in for the App ID or a listed audience with its nonce, within the hour, with an unverified email; another audience, issuer, nonce, key or an old token is refused (deviation: the nonce is required) ([test](../../providers/facebook_test.go#L73))
-      - [x] An access token sent as token and accessToken signs in after debug_token binds it to the app and /me names the same user, a Limited Login token then signs into the same account, and account-info returns the Graph profile ([test](../../providers/facebook_test.go#L106))
+      - [x] A Limited Login ID token is accepted for the App ID or a listed audience with the request's nonce, within the hour, with an unverified email; another audience, issuer, nonce, key, an old token or a missing nonce is refused (deviation: the nonce is required) ([test](../../providers/facebook_test.go#L73))
+      - [x] An access token sent as token and accessToken signs in after debug_token binds it to the app and /me names the same user; a Limited Login token for that user and App ID signs into the same account, one for a listed audience as that app's user, one without its nonce is refused, and account-info reads Graph with the stored access token (deviation: never the stored Limited Login claims) ([test](../../providers/facebook_test.go#L113))
 
 ## Figma
 

@@ -123,7 +123,8 @@ func TestOAuthTokenParamsAndHeaders(t *testing.T) {
 // it can read the session through the store's only connection. nil adds
 // nothing, a redirect_uri is sent, a failure or a field the refresh or
 // client authentication sets fails the refresh without calling the
-// provider, and a trusted server call passes no headers.
+// provider, a trusted server call passes no headers, and an account without
+// a refresh token is not refreshed or asked about.
 func TestOAuthRefreshParams(t *testing.T) {
 	srv, received := tokenProvider(t)
 	var mu sync.Mutex
@@ -221,5 +222,26 @@ func TestOAuthRefreshParams(t *testing.T) {
 	p.Refresh = func(context.Context, oauth2.Config, string) (*oauth2.Token, error) { return nil, errors.New("unused") }
 	if _, err := newTokenAuthNode(t, p); err == nil {
 		t.Fatal("New accepted RefreshParams with Refresh")
+	}
+
+	// An account without a refresh token answers REFRESH_TOKEN_NOT_FOUND on a
+	// forced refresh, and RefreshParams is not asked.
+	idp := newUserInfoProvider(t)
+	idp.profile = `{"id":"1","email":"plain@example.org"}`
+	plain := idp.provider()
+	asked := false
+	plain.RefreshParams = func(context.Context, auth.OAuthRefreshRequest) (url.Values, error) {
+		asked = true
+		return nil, errors.New("not asked")
+	}
+	if n, err = newTokenAuthNode(t, plain); err != nil {
+		t.Fatal(err)
+	}
+	if to := n.signIn(t); to != "/done" {
+		t.Fatal("the sign-in landed at", to)
+	}
+	res := n.post(t, "/refresh-token", `{"accountId":"`+n.accountID(t)+`"}`)
+	if code := errorCode(t, res); res.StatusCode != 400 || code != "REFRESH_TOKEN_NOT_FOUND" || asked {
+		t.Fatal("a refresh without a refresh token answered", res.StatusCode, code, asked)
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 	"sort"
+	"strings"
 )
 
 // ProviderLogoutResult is returned after local sign-out when a linked provider
@@ -62,7 +63,9 @@ func (a *Auth) prepareProviderLogout(ctx context.Context, h http.Header, body wi
 			continue
 		}
 		query := target.Query()
-		if row.IDToken != "" {
+		// An access token that signed in directly is stored as the ID token;
+		// only a three-part JWS goes into the browser's logout URL.
+		if strings.Count(row.IDToken, ".") == 2 {
 			query.Set("id_token_hint", row.IDToken)
 		}
 		callback, _ := body["callbackURL"].(string)
