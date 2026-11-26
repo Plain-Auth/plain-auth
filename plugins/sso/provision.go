@@ -31,10 +31,16 @@ func (o Options) provisioned(p Provider, profile auth.OAuthProfile, tokens *auth
 	if o.ProvisionUser == nil {
 		return nil
 	}
-	return func(ctx context.Context, u auth.User, created bool) error {
+	return func(ctx context.Context, u auth.User, created bool) (err error) {
 		if !created && !o.ProvisionUserOnEveryLogin {
 			return nil
 		}
+		// A panic fails like an error; its value is never logged.
+		defer func() {
+			if recover() != nil {
+				err = errProvisioning
+			}
+		}()
 		if err := o.ProvisionUser(ctx, Provisioning{User: u, UserInfo: profile, Token: tokens, Provider: p}); err != nil {
 			return errors.Join(errProvisioning, err)
 		}

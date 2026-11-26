@@ -1,7 +1,9 @@
 package sqlstore
 
 import (
+	"context"
 	"database/sql"
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -29,7 +31,16 @@ func TestEnterpriseOIDCClaimMapping(t *testing.T) {
 			must(err)
 			defer store.Close()
 			idp := newSSOIssuer(t)
-			h := newSSOHost(t, store, idp, sso.Options{}, func(o *auth.Options) { o.UserAdditionalFields = fields })
+			var checked []map[string]any
+			h := newSSOHost(t, store, idp, sso.Options{}, func(o *auth.Options) {
+				o.UserAdditionalFields = fields
+				o.ValidateUserInfo = func(_ context.Context, v auth.UserInfoValidation) error {
+					if v.Method == "sso-oidc" {
+						checked = append(checked, v.User.Fields)
+					}
+					return nil
+				}
+			})
 			owner := h.signUp("owner@service.test")
 			register := func(id string, mapping map[string]any) int {
 				t.Helper()
@@ -97,6 +108,10 @@ func TestEnterpriseOIDCClaimMapping(t *testing.T) {
 			if team.Valid {
 				t.Fatal("a claim with several values filled a scalar user field", team)
 			}
+			// The gate copies numbers as json.Number.
+			if gate := checked[len(checked)-1]; gate["level"] != json.Number("3") || gate["active"] != true || gate["team"] != nil {
+				t.Fatal("ValidateUserInfo saw the provider's values before they were fitted", gate)
+			}
 
 			if register("list", map[string]any{"email": "emails"}) != 200 {
 				t.Fatal("a provider with an email list mapping was not registered")
@@ -114,6 +129,12 @@ func TestEnterpriseOIDCClaimMapping(t *testing.T) {
 				t.Fatal("the default mapping did not read the name and picture claims", plain, ok)
 			}
 
+			idp.mu.Lock()
+			idp.claims["noemail"] = map[string]any{"email": ""}
+			idp.mu.Unlock()
+			if w := h.signIn(map[string]any{"providerId": "plain"}, "plain@plain.example", "plain", "client_secret_basic", "noemail"); w.Header().Get("Location") != "https://service.test/retry?error=invalid_provider&error_description=missing_user_info" {
+				t.Fatal("a profile without an email was not refused as missing user info", w.Header().Get("Location"))
+			}
 			if register("numeric", map[string]any{"extraFields": map[string]any{"department": 7}}) != 400 {
 				t.Fatal("registration accepted an extraFields entry that names no claim")
 			}

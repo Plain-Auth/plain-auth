@@ -2,6 +2,7 @@ package sqlstore
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"net/url"
@@ -27,9 +28,8 @@ func TestEnterpriseOIDCResolveUser(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			ddl, err := schema.Generate(dialect, []string{"organization", "sso"})
-			must(err)
-			store, err := OpenWithSchema(ctx, dialect, organizationTestDSN(t, dialect), ddl)
+			fields := map[string]auth.UserField{"department": {Type: auth.FieldString}}
+			store, err := OpenWithAdditionalFields(ctx, dialect, organizationTestDSN(t, dialect), []string{"organization", "sso"}, schema.AdditionalFields{User: fields})
 			must(err)
 			defer store.Close()
 			idp := newSSOIssuer(t)
@@ -67,6 +67,7 @@ func TestEnterpriseOIDCResolveUser(t *testing.T) {
 				return d(in)
 			}
 			h := newSSOHost(t, store, idp, sso.Options{DisableImplicitSignUp: true, ResolveUser: resolve}, func(o *auth.Options) {
+				o.UserAdditionalFields = fields
 				o.ValidateUserInfo = func(_ context.Context, v auth.UserInfoValidation) error {
 					if v.Method == "sso-oidc" {
 						mu.Lock()
@@ -78,7 +79,8 @@ func TestEnterpriseOIDCResolveUser(t *testing.T) {
 			})
 			owner := h.signUp("owner@service.test")
 			for id, userinfo := range map[string]bool{"acme": false, "acme-ui": true} {
-				cfg := map[string]any{"clientId": "enterprise-client", "clientSecret": "oidc-secret", "skipDiscovery": true, "authorizationEndpoint": idp.URL + "/authorize", "tokenEndpoint": idp.URL + "/token", "jwksEndpoint": idp.URL + "/keys"}
+				cfg := map[string]any{"clientId": "enterprise-client", "clientSecret": "oidc-secret", "skipDiscovery": true, "authorizationEndpoint": idp.URL + "/authorize", "tokenEndpoint": idp.URL + "/token", "jwksEndpoint": idp.URL + "/keys",
+					"mapping": map[string]any{"extraFields": map[string]any{"department": "dept"}}}
 				if userinfo {
 					cfg["userInfoEndpoint"] = idp.URL + "/userinfo"
 				}
@@ -108,9 +110,21 @@ func TestEnterpriseOIDCResolveUser(t *testing.T) {
 				return inputs[len(inputs)-1]
 			}
 
+			idp.mu.Lock()
+			idp.claims = map[string]map[string]any{"sales": {"dept": "Sales"}, "support": {"dept": "Support"}, "picture": {"picture": "https://images.example.test/p.png"}}
+			idp.mu.Unlock()
+			department := func() sql.NullString {
+				t.Helper()
+				var d sql.NullString
+				must(store.db.QueryRowContext(ctx, store.bind(`SELECT "department" FROM "user" WHERE "id"=?`), "selected").Scan(&d))
+				return d
+			}
 			set(link("selected", "preserve"))
-			if got := signIn("acme", "employee", "employee@acme.example", ""); got != "https://service.test/home" {
+			if got := signIn("acme", "employee", "employee@acme.example", "sales"); got != "https://service.test/home" {
 				t.Fatal("a resolver link did not finish the enterprise sign-in", got)
+			}
+			if d := department(); d.Valid {
+				t.Fatal("a preserve link wrote a mapped user field", d)
 			}
 			mu.Lock()
 			e := readErr
@@ -159,8 +173,11 @@ func TestEnterpriseOIDCResolveUser(t *testing.T) {
 			}
 
 			set(link("selected", "update"))
-			if got := signIn("acme", "employee", "employee@acme.example", ""); got != "https://service.test/home" {
+			if got := signIn("acme", "employee", "employee@acme.example", "support"); got != "https://service.test/home" {
 				t.Fatal("a returning resolver link did not finish the enterprise sign-in", got)
+			}
+			if d := department(); d.String != "Support" {
+				t.Fatal("an update link did not copy the mapped user field", d)
 			}
 			mu.Lock()
 			action := actions[len(actions)-1]
@@ -170,6 +187,20 @@ func TestEnterpriseOIDCResolveUser(t *testing.T) {
 			}
 			if name, email, verified := profile("selected"); name != "Enterprise User" || email != "employee@acme.example" || verified {
 				t.Fatal("an update link did not copy the provider profile to the resolved user", name, email, verified)
+			}
+
+			// With a UserInfo endpoint, the claims are UserInfo's and the ID
+			// token's stay apart; an image claim reaches the profile.
+			set(link("selected", "preserve"))
+			if got := signIn("acme-ui", "employee", "employee@acme.example", ""); got != "https://service.test/home" {
+				t.Fatal("a resolver link through a UserInfo provider failed", got)
+			}
+			if in := last(); in.Claims["email"] != "employee@userinfo.example" || in.Claims["nonce"] != nil || in.IDTokenClaims["email"] != "employee@acme.example" || in.IDTokenClaims["nonce"] == nil || in.User.Email != "employee@userinfo.example" {
+				t.Fatal("the resolver did not receive UserInfo claims apart from the ID token claims", in.Claims, in.IDTokenClaims, in.User)
+			}
+			signIn("acme", "employee", "employee@acme.example", "picture")
+			if in := last(); in.User.Image == nil || *in.User.Image != "https://images.example.test/p.png" {
+				t.Fatal("the resolver profile did not carry the picture claim", in.User.Image)
 			}
 
 			sessions := count(`SELECT COUNT(*) FROM "session"`)

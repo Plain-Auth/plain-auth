@@ -11655,6 +11655,11 @@
       "label": "Run the metadata guard outside the store's transaction",
       "test": "adapters/sqlstore/sso_saml_metadata_test.go",
       "marker": "t.Fatal(\"the metadata guard could not read the store, so it ran inside the transaction\", readErr)"
+    },
+    {
+      "label": "Give the update guard the linked-account count and whether the identity changes",
+      "test": "adapters/sqlstore/sso_update_test.go",
+      "marker": "t.Fatal(\"the guard did not see the linked accounts and the identity change\", m)"
     }
   ],
   "plugin-symbol/custom-session/customSessionClient": [
@@ -12855,6 +12860,11 @@
       "label": "Describe the OIDC update fields on every host's OpenAPI document",
       "test": "plugins/openapi/sso_directory_test.go",
       "marker": "t.Fatal(\"the update route does not describe OIDC fields\", enabled)"
+    },
+    {
+      "label": "Publish every OIDC update field as optional, refuse unknown ones and a null pkce",
+      "test": "plugins/openapi/sso_directory_test.go",
+      "marker": "t.Fatal(\"the update route requires OIDC fields or accepts unknown ones\", enabled)"
     }
   ],
   "docs/content/docs/reference/options.mdx#L327/`onExistingUserSignUp`": [
@@ -42123,6 +42133,11 @@
       "label": "Change an OIDC provider's configuration with a replacing mapping and refuse an identity change while accounts are linked",
       "test": "adapters/sqlstore/sso_update_test.go",
       "marker": "t.Fatal(\"an identity change was accepted while accounts are linked\", w.Code, w.Body.String())"
+    },
+    {
+      "label": "Replace the whole stored mapping with a supplied one",
+      "test": "adapters/sqlstore/sso_update_test.go",
+      "marker": "t.Fatal(\"the supplied mapping did not replace the earlier one\", cfg.Mapping)"
     }
   ],
   "docs/content/docs/plugins/sso/index.mdx#L284/Parameter `providerId`": [
@@ -44612,6 +44627,16 @@
       "label": "Refuse an enterprise sign-up missing a required user field with MISSING_FIELD",
       "test": "adapters/sqlstore/sso_claim_mapping_test.go",
       "marker": "t.Fatal(\"a sign-up missing a required user field did not redirect with MISSING_FIELD\", w.Header().Get(\"Location\"))"
+    },
+    {
+      "label": "Give ValidateUserInfo the fitted user field values",
+      "test": "adapters/sqlstore/sso_claim_mapping_test.go",
+      "marker": "t.Fatal(\"ValidateUserInfo saw the provider's values before they were fitted\", gate)"
+    },
+    {
+      "label": "Refuse a profile without an email as missing user info",
+      "test": "adapters/sqlstore/sso_claim_mapping_test.go",
+      "marker": "t.Fatal(\"a profile without an email was not refused as missing user info\", w.Header().Get(\"Location\"))"
     }
   ],
   "docs/content/docs/plugins/sso/oidc.mdx#L46": [
@@ -44751,6 +44776,11 @@
       "label": "Rotate a provider's client secret through the native client's UpdateSSOProvider",
       "test": "adapters/sqlstore/sso_update_test.go",
       "marker": "t.Fatal(\"the native client could not rotate the client secret\", err)"
+    },
+    {
+      "label": "Reset a verified provider's DNS proof when its claim mapping or identity changes, and prove it again with a fresh challenge",
+      "test": "adapters/sqlstore/sso_update_test.go",
+      "marker": "t.Fatal(\"a claim mapping change kept the DNS proof\", w.Code, w.Body.String())"
     }
   ],
   "plugin-symbol/sso/SSOUserResolution": [
@@ -44774,6 +44804,11 @@
       "label": "Refuse a SCIM requirement on a decision that is not a link",
       "test": "plugins/sso/resolve_test.go",
       "marker": "t.Fatal(\"a SCIM requirement without a link was accepted\")"
+    },
+    {
+      "label": "Copy the mapped user fields on an update link and leave them on a preserve link",
+      "test": "adapters/sqlstore/sso_resolve_user_test.go",
+      "marker": "t.Fatal(\"an update link did not copy the mapped user field\", d)"
     }
   ],
   "plugin-symbol/sso/SSOUserResolutionInput": [
@@ -44787,6 +44822,11 @@
       "test": "adapters/sqlstore/sso_saml_resolve_user_test.go",
       "marker": "t.Fatal(\"the SAML resolver input named the wrong protocol or provider\", in.Protocol, in.ProviderID)",
       "complete": true
+    },
+    {
+      "label": "Pass UserInfo claims apart from the ID token claims and the picture as the profile image",
+      "test": "adapters/sqlstore/sso_resolve_user_test.go",
+      "marker": "t.Fatal(\"the resolver did not receive UserInfo claims apart from the ID token claims\", in.Claims, in.IDTokenClaims, in.User)"
     }
   ],
   "plugin-symbol/sso/SSOProviderUserProfile": [
@@ -44919,6 +44959,11 @@
       "label": "Run ProvisionUser for a SAML sign-in without OIDC tokens",
       "test": "adapters/sqlstore/sso_saml_resolve_user_test.go",
       "marker": "t.Fatal(\"ProvisionUser received OIDC tokens or no profile for a SAML sign-in\", calls)"
+    },
+    {
+      "label": "Answer 500 for a panicking ProvisionUser and remove its session",
+      "test": "adapters/sqlstore/sso_provision_user_test.go",
+      "marker": "t.Fatal(\"a panicking ProvisionUser still published a session\", code, session)"
     }
   ],
   "plugin-symbol/sso/SSOOptions/provisionUserOnEveryLogin": [

@@ -99,6 +99,11 @@ func describeSSORequest(op object, route plainauth.HTTPRoute, info plainauth.HTT
 		properties["clientSecret"] = object{"type": "string", "minLength": 1, "writeOnly": true}
 		properties["skipDiscovery"] = object{"type": "boolean"}
 		properties["tokenEndpointAuthentication"] = object{"enum": []string{"client_secret_basic", "client_secret_post", "private_key_jwt"}}
+		// Every field is optional in a partial update; unknown keys and null
+		// are refused.
+		properties["pkce"] = object{"type": "boolean"}
+		delete(config, "required")
+		config["additionalProperties"] = false
 		update := responseObject(object{"providerId": providerID, "issuer": object{"type": "string", "format": "uri"}, "domain": text, "oidcConfig": config}, "providerId")
 		update["additionalProperties"] = false
 		if info.SAMLStateCookie != "" {

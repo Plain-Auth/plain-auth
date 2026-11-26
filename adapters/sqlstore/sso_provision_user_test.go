@@ -108,6 +108,17 @@ func TestEnterpriseProvisionUser(t *testing.T) {
 			if code, _, session := signIn(once, "second"); code != 500 || session {
 				t.Fatal("a failed ProvisionUser still published a session", code, session)
 			}
+			panicking := newSSOHost(t, store, idp, sso.Options{ProvisionUser: func(context.Context, sso.Provisioning) error { panic("crm down") }})
+			if code, _, session := signIn(panicking, "third"); code != 500 || session {
+				t.Fatal("a panicking ProvisionUser still published a session", code, session)
+			}
+			third, err := store.FindAccountUser(ctx, "third@acme.example")
+			must(err)
+			var left int
+			must(store.db.QueryRowContext(ctx, store.bind(`SELECT COUNT(*) FROM "session" WHERE "userId"=?`), third.ID).Scan(&left))
+			if left != 0 {
+				t.Fatal("a panicking ProvisionUser left the unpublished session", left)
+			}
 			second, err := store.FindAccountUser(ctx, "second@acme.example")
 			if err != nil {
 				t.Fatal("a failed ProvisionUser removed the new user", err)

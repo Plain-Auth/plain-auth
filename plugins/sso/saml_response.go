@@ -453,7 +453,7 @@ func (o Options) samlFinish(c auth.EndpointContext) (any, error) {
 		return enterpriseFailure(c, flow, "saml_error", samlExpired)
 	}
 	profile, err := samlProfile(a, p.SAML.Mapping, o.SAML.TrustEmailVerified)
-	if err != nil {
+	if err != nil || !auth.ValidEnterpriseProfile(profile) {
 		return fail("invalid_saml_response")
 	}
 	var resolved UserResolution
@@ -481,7 +481,7 @@ func (o Options) samlFinish(c auth.EndpointContext) (any, error) {
 	}
 	// SAML relays the trusted callback URL for both new and returning users.
 	flow.NewUserCallbackURL = ""
-	result, err := c.CompleteEnterpriseFlowWith(flow, "sso-saml", profile, auth.OAuthTokens{}, auth.EnterpriseCompletion{DisableSignUp: o.DisableImplicitSignUp && !flow.RequestSignUp,
+	result, err := c.CompleteEnterpriseFlowWith(flow, "sso-saml", profile, auth.OAuthTokens{}, auth.EnterpriseCompletion{DisableSignUp: o.DisableImplicitSignUp && !flow.RequestSignUp, OverrideUserInfo: resolved.updates(),
 		Committed: o.provisioned(p.Provider, profile, nil)}, complete)
 	if out, e, ok := provisioningFailure(c, err); ok {
 		return out, e

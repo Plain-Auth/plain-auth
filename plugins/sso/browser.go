@@ -322,24 +322,23 @@ func (o Options) finish(c auth.EndpointContext) (any, error) {
 	if err != nil {
 		return fail("invalid_provider")
 	}
+	if !auth.ValidEnterpriseProfile(profile) {
+		return enterpriseFailure(c, flow, "invalid_provider", "missing_user_info")
+	}
 	var resolved UserResolution
 	if o.ResolveUser != nil {
 		if idClaims == nil {
 			return enterpriseFailure(c, flow, "invalid_provider", "id_token_required_for_user_resolution")
 		}
-		// A profile without a subject or email is refused by the sign-in.
-		if profile.Subject != "" && profile.Email != "" {
-			// The resolver runs before the sign-in transaction, never inside
-			// it; the store rechecks the selected user and the identity under
-			// lock.
-			resolved, err = o.resolveUser(c, UserResolutionInput{Protocol: "oidc", ProviderID: p.ProviderID, AccountKey: AccountKey{Issuer: p.Issuer, AccountID: profile.Subject},
-				User: providerUser(profile), Claims: cloneClaims(profile.Data), IDTokenClaims: cloneClaims(idClaims), ProviderReference: p.Reference})
-			if err != nil {
-				return enterpriseFailure(c, flow, errResolution.Code, errResolution.Message)
-			}
-			if resolved.Action == ResolveReject {
-				return enterpriseFailure(c, flow, resolved.Code, resolved.Message)
-			}
+		// The resolver runs before the sign-in transaction, never inside it;
+		// the store rechecks the selected user and the identity under lock.
+		resolved, err = o.resolveUser(c, UserResolutionInput{Protocol: "oidc", ProviderID: p.ProviderID, AccountKey: AccountKey{Issuer: p.Issuer, AccountID: profile.Subject},
+			User: providerUser(profile), Claims: cloneClaims(profile.Data), IDTokenClaims: cloneClaims(idClaims), ProviderReference: p.Reference})
+		if err != nil {
+			return enterpriseFailure(c, flow, errResolution.Code, errResolution.Message)
+		}
+		if resolved.Action == ResolveReject {
+			return enterpriseFailure(c, flow, resolved.Code, resolved.Message)
 		}
 	}
 	idToken, _ := token.Extra("id_token").(string)
@@ -353,7 +352,7 @@ func (o Options) finish(c auth.EndpointContext) (any, error) {
 		return store.CompleteEnterpriseLogin(ctx, p.Reference, !o.DisableOrganizationProvisioning, id, sub, t, u, s, opts)
 	}
 	raw := tokens
-	result, err := c.CompleteEnterpriseFlowWith(flow, "sso-oidc", profile, tokens, auth.EnterpriseCompletion{DisableSignUp: o.DisableImplicitSignUp && !flow.RequestSignUp, OverrideUserInfo: p.OIDC.OverrideUserInfo,
+	result, err := c.CompleteEnterpriseFlowWith(flow, "sso-oidc", profile, tokens, auth.EnterpriseCompletion{DisableSignUp: o.DisableImplicitSignUp && !flow.RequestSignUp, OverrideUserInfo: p.OIDC.OverrideUserInfo || resolved.updates(),
 		Committed: o.provisioned(p.Provider, profile, &raw)}, complete)
 	if out, e, ok := provisioningFailure(c, err); ok {
 		return out, e

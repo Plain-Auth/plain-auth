@@ -247,8 +247,12 @@ func TestEnterpriseSAMLDocumentation(t *testing.T) {
 		if _, present := paths["/sso/update-provider"]; !present {
 			t.Fatal("provider update route missing", enabled)
 		}
-		if node(paths, "/sso/update-provider", "post", "requestBody", "content", "application/json", "schema", "properties", "oidcConfig", "properties")["clientSecret"] == nil {
+		partial := node(paths, "/sso/update-provider", "post", "requestBody", "content", "application/json", "schema", "properties", "oidcConfig")
+		if node(partial, "properties")["clientSecret"] == nil {
 			t.Fatal("the update route does not describe OIDC fields", enabled)
+		}
+		if _, required := partial["required"]; required || partial["additionalProperties"] != false || node(partial, "properties", "pkce")["type"] != "boolean" {
+			t.Fatal("the update route requires OIDC fields or accepts unknown ones", enabled)
 		}
 		if !enabled {
 			continue

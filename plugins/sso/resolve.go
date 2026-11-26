@@ -30,7 +30,7 @@ const (
 
 // UserResolution is a ResolveUser decision. A link signs the identity in to
 // UserID; Profile "preserve" keeps that user's profile and "update" copies
-// the provider's name, image and email to it. A rejection needs Code, which
+// the provider's name, image, email and mapped user fields to it. A rejection needs Code, which
 // the browser receives as error, and Message, when set, as
 // error_description.
 type UserResolution struct {
@@ -58,6 +58,10 @@ func (r UserResolution) valid() bool {
 	}
 	return false
 }
+
+// updates reports a link that copies the provider's profile, so the
+// mapped user fields are prepared for it.
+func (r UserResolution) updates() bool { return r.Action == ResolveLink && r.Profile == "update" }
 
 func (r UserResolution) apply(opts *auth.OAuthLoginOptions) {
 	if r.Action == ResolveLink {

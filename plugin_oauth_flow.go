@@ -205,6 +205,10 @@ func (c EndpointContext) CompleteEnterpriseFlow(f OAuthFlow, method string, p OA
 	return c.CompleteEnterpriseFlowWith(f, method, p, tokens, EnterpriseCompletion{DisableSignUp: disableSignup}, complete)
 }
 
+// ValidEnterpriseProfile reports whether a provider profile has a usable
+// subject and email; CompleteEnterpriseFlow refuses one that does not.
+func ValidEnterpriseProfile(p OAuthProfile) bool { return validSocialProfile(p) }
+
 // EnterpriseCompletion adjusts how CompleteEnterpriseFlowWith signs a
 // provider identity in.
 type EnterpriseCompletion struct {
@@ -236,6 +240,8 @@ func (c EndpointContext) CompleteEnterpriseFlowWith(f OAuthFlow, method string, 
 	if f.IssuerLoginQuery != "" && (login.query != f.IssuerLoginQuery || login.resume == nil) {
 		return nil, invalidEnterpriseState()
 	}
+	// The gate, the link copy and the store all see the fitted fields.
+	p.AdditionalFields = c.Auth.fitEnterpriseFields(p.AdditionalFields)
 	options := OAuthLoginOptions{DisableSignUp: o.DisableSignUp, ProfileFields: c.Auth.enterpriseProfileFields(p, o.OverrideUserInfo)}
 	result, created, err := c.Auth.completeProfileWith(c.Request.Context(), c.Request, method, f.Provider, p, tokens, options, complete)
 	if err != nil {

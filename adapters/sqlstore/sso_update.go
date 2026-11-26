@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"reflect"
 
 	"github.com/Plain-Org/plain-auth/plugins/sso"
 )
@@ -81,8 +82,9 @@ func (s *Store) UpdateSSOProvider(ctx context.Context, actor sso.Actor, id, reco
 					return e
 				}
 				// Carry a proven domain across other edits, as a SAML certificate
-				// rotation does; a new domain or identity needs a fresh proof.
-				if verified && next.Domain == current.Domain && !identityChanged {
+				// rotation does. A new domain, identity or claim mapping needs a
+				// fresh proof: the mapping chooses the email the proof vouches for.
+				if verified && next.Domain == current.Domain && !identityChanged && sameMapping(current.Provider, next) {
 					return s.putOriginRecord(ctx, tx, originDigest("dp-", recordID), "enterprise-domain-proof", "verified:"+reference)
 				}
 				if _, e = tx.ExecContext(ctx, s.bind(`UPDATE "ssoProvider" SET "domainVerified"=? WHERE `+s.scimExact(`"id"`)+`=?`), false, recordID); e != nil {
@@ -99,4 +101,13 @@ func (s *Store) UpdateSSOProvider(ctx context.Context, actor sso.Actor, id, reco
 		return sso.Provider{}, err
 	}
 	return result, nil
+}
+
+// sameMapping reports whether an update leaves the OIDC claim mapping as it
+// was.
+func sameMapping(a, b sso.Provider) bool {
+	if a.OIDC == nil || b.OIDC == nil {
+		return a.OIDC == b.OIDC
+	}
+	return reflect.DeepEqual(a.OIDC.Mapping, b.OIDC.Mapping)
 }

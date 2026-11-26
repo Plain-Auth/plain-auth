@@ -65,14 +65,6 @@ func (a *Auth) enterpriseProfileFields(p OAuthProfile, override bool) *OAuthProf
 		return nil
 	}
 	writable := a.writableProfileFields(p)
-	for name, value := range writable {
-		if fitted, ok := enterpriseFieldValue(a.opts.UserAdditionalFields[name], value); ok {
-			writable[name] = fitted
-		} else {
-			delete(writable, name)
-			a.Logger().Warn("enterprise provider sent several values for a user field; none was written", "field", name)
-		}
-	}
 	prepared := func(create bool) func() (UserFieldValues, error) {
 		values, err := a.prepareUserFields(writable, create, false)
 		return func() (UserFieldValues, error) {
@@ -87,6 +79,29 @@ func (a *Auth) enterpriseProfileFields(p OAuthProfile, override bool) *OAuthProf
 		fields.Update = prepared(false)
 	}
 	return fields
+}
+
+// fitEnterpriseFields returns a copy of a provider's additional fields
+// with each declared user field fitted to its type; a value with several
+// entries is dropped with a warning.
+func (a *Auth) fitEnterpriseFields(fields map[string]any) map[string]any {
+	if fields == nil {
+		return nil
+	}
+	out := make(map[string]any, len(fields))
+	for name, value := range fields {
+		field, declared := a.opts.UserAdditionalFields[name]
+		if !declared {
+			out[name] = value
+			continue
+		}
+		if fitted, ok := enterpriseFieldValue(field, value); ok {
+			out[name] = fitted
+		} else {
+			a.Logger().Warn("enterprise provider sent several values for a user field; none was written", "field", name)
+		}
+	}
+	return out
 }
 
 // enterpriseFieldValue fits a provider value to a scalar user field. A list

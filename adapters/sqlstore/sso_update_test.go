@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"sync"
 	"testing"
 	"time"
@@ -50,7 +51,7 @@ func TestEnterpriseProviderUpdate(t *testing.T) {
 			h := newSSOHost(t, store, idp, sso.Options{DomainVerification: &sso.DomainVerificationOptions{Resolver: dns}, GuardProviderMutation: guard})
 			owner := h.signUp("owner@service.test")
 			w := h.register(owner, map[string]any{"providerId": "acme", "issuer": idp.URL, "domain": "acme.example", "oidcConfig": map[string]any{"clientId": "enterprise-client", "clientSecret": "first-secret", "skipDiscovery": true,
-				"authorizationEndpoint": idp.URL + "/authorize", "tokenEndpoint": idp.URL + "/token", "jwksEndpoint": idp.URL + "/keys"}})
+				"authorizationEndpoint": idp.URL + "/authorize", "tokenEndpoint": idp.URL + "/token", "jwksEndpoint": idp.URL + "/keys", "mapping": map[string]any{"email": "mail", "name": "n"}}})
 			var registered struct{ DomainVerificationToken string }
 			if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &registered) != nil || registered.DomainVerificationToken == "" {
 				t.Fatal("registration failed", w.Code, w.Body.String())
@@ -63,12 +64,18 @@ func TestEnterpriseProviderUpdate(t *testing.T) {
 				body["providerId"] = "acme"
 				return h.call("POST", "sso/update-provider", cookie, body)
 			}
-			verified := func() bool {
+			verifiedProvider := func(id string) bool {
 				t.Helper()
 				var p struct{ DomainVerified bool }
-				w := h.call("GET", "sso/get-provider?providerId=acme", owner, nil)
+				w := h.call("GET", "sso/get-provider?providerId="+id, owner, nil)
 				must(json.Unmarshal(w.Body.Bytes(), &p))
 				return p.DomainVerified
+			}
+			verified := func() bool { t.Helper(); return verifiedProvider("acme") }
+			lastReview := func() sso.ProviderMutation {
+				mu.Lock()
+				defer mu.Unlock()
+				return reviewed[len(reviewed)-1]
 			}
 			stored := func() (issuer string, cfg sso.Config) {
 				t.Helper()
@@ -113,6 +120,41 @@ func TestEnterpriseProviderUpdate(t *testing.T) {
 				t.Fatal("a domain change kept the DNS proof")
 			}
 
+			// On a second verified provider, a claim mapping change and an
+			// identity change each need a fresh DNS proof.
+			w = h.register(owner, map[string]any{"providerId": "beta", "issuer": idp.URL, "domain": "beta.example", "oidcConfig": map[string]any{"clientId": "enterprise-client", "clientSecret": "first-secret", "skipDiscovery": true,
+				"authorizationEndpoint": idp.URL + "/authorize", "tokenEndpoint": idp.URL + "/token", "jwksEndpoint": idp.URL + "/keys"}})
+			var beta struct{ DomainVerificationToken string }
+			if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &beta) != nil {
+				t.Fatal("registration failed", w.Code, w.Body.String())
+			}
+			prove := func(token string) {
+				t.Helper()
+				dns.put("_plain-auth-token-beta.beta.example.", token)
+				if w := h.call("POST", "sso/verify-domain", owner, map[string]any{"providerId": "beta"}); w.Code >= 300 || !verifiedProvider("beta") {
+					t.Fatal("domain verification failed", w.Code, w.Body.String())
+				}
+			}
+			challenge := func() string {
+				t.Helper()
+				var c struct{ DomainVerificationToken string }
+				w := h.call("POST", "sso/request-domain-verification", owner, map[string]any{"providerId": "beta"})
+				must(json.Unmarshal(w.Body.Bytes(), &c))
+				return c.DomainVerificationToken
+			}
+			prove(beta.DomainVerificationToken)
+			if w := h.call("POST", "sso/update-provider", owner, map[string]any{"providerId": "beta", "oidcConfig": map[string]any{"mapping": map[string]any{"email": "nickname"}}}); w.Code != 200 || verifiedProvider("beta") {
+				t.Fatal("a claim mapping change kept the DNS proof", w.Code, w.Body.String())
+			}
+			prove(challenge())
+			if w := h.call("POST", "sso/update-provider", owner, map[string]any{"providerId": "beta", "oidcConfig": map[string]any{"clientId": "other-client"}}); w.Code != 200 || verifiedProvider("beta") {
+				t.Fatal("an identity change kept the DNS proof", w.Code, w.Body.String())
+			}
+			if m := lastReview(); !m.AuthenticationBoundaryChanged || m.LinkedAccounts != 0 {
+				t.Fatal("the guard did not see the identity change", m)
+			}
+			prove(challenge())
+
 			var userID string
 			must(store.db.QueryRowContext(ctx, store.bind(`SELECT "id" FROM "user" WHERE "email"=?`), "owner@service.test").Scan(&userID))
 			now := store.date(time.Now())
@@ -124,14 +166,20 @@ func TestEnterpriseProviderUpdate(t *testing.T) {
 			if _, cfg := stored(); cfg.ClientID != "enterprise-client" {
 				t.Fatal("an identity change was accepted while accounts are linked", cfg.ClientID)
 			}
+			if m := lastReview(); m.Action != "update" || m.ProviderID != "acme" || m.ID == "" || m.Reference == "" || m.LinkedAccounts != 1 || !m.AuthenticationBoundaryChanged {
+				t.Fatal("the guard did not see the linked accounts and the identity change", m)
+			}
 			if w := update(owner, map[string]any{"issuer": "https://other-idp.example.test"}); w.Code != 409 {
 				t.Fatal("an issuer change was accepted while accounts are linked", w.Code, w.Body.String())
 			}
 			if w := update(owner, map[string]any{"oidcConfig": map[string]any{"scopes": []string{"openid", "email"}, "mapping": map[string]any{"name": "display"}}}); w.Code != 200 {
 				t.Fatal("a scope and mapping update was refused while accounts are linked", w.Code, w.Body.String())
 			}
-			if _, cfg := stored(); cfg.Mapping["name"] != "display" {
-				t.Fatal("the supplied mapping was not stored", cfg.Mapping)
+			if _, cfg := stored(); !reflect.DeepEqual(cfg.Mapping, map[string]any{"name": "display"}) {
+				t.Fatal("the supplied mapping did not replace the earlier one", cfg.Mapping)
+			}
+			if m := lastReview(); m.LinkedAccounts != 1 || m.AuthenticationBoundaryChanged {
+				t.Fatal("the guard saw a scope and mapping update as an identity change", m)
 			}
 			mu.Lock()
 			refuse = true

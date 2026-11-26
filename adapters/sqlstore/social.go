@@ -390,7 +390,13 @@ func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tok
 		}
 	}
 	if options.SelectUserID != "" && options.UpdateSelectedProfile {
-		if u, err = s.syncOAuthProfile(ctx, tx, u, candidate, authn.UserFieldValues{}, session.CreatedAt); err != nil {
+		var values authn.UserFieldValues
+		if fields != nil && fields.Update != nil {
+			if values, err = fields.Update(); err != nil {
+				return u, false, err
+			}
+		}
+		if u, err = s.syncOAuthProfile(ctx, tx, u, candidate, values, session.CreatedAt); err != nil {
 			return u, false, err
 		}
 	}
