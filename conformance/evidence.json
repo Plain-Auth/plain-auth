@@ -9658,6 +9658,12 @@
       "label": "Discover filter, patch and pagination capabilities without a directory credential",
       "test": "conformance/scim-contract.mjs",
       "marker": "export async function directoryContract("
+    },
+    {
+      "label": "Publish bearer authentication only, report bulk, sorting, ETags and password changes as unsupported, and locate the document at the public directory URL",
+      "test": "plugins/scim/http_test.go",
+      "marker": "func TestSCIMDiscoveryDocumentsAndRefusedRoutes(",
+      "complete": true
     }
   ],
   "plugin/scim/GET /scim/v2/Schemas": [
@@ -9682,6 +9688,11 @@
       "label": "Retrieve the core Group schema on the public directory mount",
       "test": "conformance/scim-contract.mjs",
       "marker": "export async function groupContract("
+    },
+    {
+      "label": "Answer an unknown schema ID with a SCIM 404",
+      "test": "plugins/scim/http_test.go",
+      "marker": "t.Fatal(\"an unknown schema ID did not return a SCIM 404\", w.Code, w.Body.String())"
     }
   ],
   "plugin/scim/GET /scim/v2/ResourceTypes": [
@@ -45037,6 +45048,22 @@
       "label": "Let a sign-in on another node complete while the deletion guard decides",
       "test": "adapters/sqlstore/sso_delete_test.go",
       "marker": "t.Fatal(\"a sign-in waited on or failed during a guard that should run outside the transaction\", during)"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L523/Bulk requests, POST-based search, `/Me`, ETags, cursors, or sorting": [
+    {
+      "label": "Refuse Bulk and /Me with 404 and POST search with 405, and advertise no sorting or ETags",
+      "test": "plugins/scim/http_test.go",
+      "marker": "t.Fatal(\"a Bulk or Me request was not refused with 404\", route, w.Code, w.Body.String())",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L525/A built-in OAuth token endpoint, Basic authentication, or mutual TLS": [
+    {
+      "label": "Refuse Basic credentials with 401 and a Bearer challenge",
+      "test": "plugins/scim/http_test.go",
+      "marker": "t.Fatal(\"Basic authentication was not refused with a bearer challenge\", w.Code, w.Header().Get(\"WWW-Authenticate\"), w.Body.String())",
+      "complete": true
     }
   ]
 }

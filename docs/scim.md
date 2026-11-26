@@ -105,7 +105,7 @@ Retirement preserves directory and application records, releases profile ownersh
 | `PATCH /Users/{id}` | Apply a set of attribute changes in a single transaction |
 | `DELETE /Users/{id}` | Remove the directory resource and retain its scoped external identity for future provisioning |
 
-Send `Authorization: Bearer <directory credential>` with resource requests. The read and write scopes are independent. Browser session cookies confer no directory privileges. POST, PUT and PATCH accept `application/scim+json` and `application/json`. The handler returns SCIM JSON and the protocol's string-valued `status` in error responses.
+`ServiceProviderConfig` publishes bearer authentication only and reports bulk, sorting, ETags and password changes as unsupported. Bulk, `/Me`, POST search, sorting, ETags and cursors are not supported: unknown routes, schema IDs and resource types return a SCIM 404, and `POST /Users/.search` returns 405 with an `Allow` header, where another runtime answers it with 404. Only Bearer credentials are accepted; Basic credentials answer 401 with a `Bearer` challenge, and mutual TLS and a built-in token endpoint are not supported. [Discovery and refused-route tests](../plugins/scim/http_test.go) Send `Authorization: Bearer <directory credential>` with resource requests. The read and write scopes are independent. Browser session cookies confer no directory privileges. POST, PUT and PATCH accept `application/scim+json` and `application/json`. The handler returns SCIM JSON and the protocol's string-valued `status` in error responses.
 
 ```json
 {

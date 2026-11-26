@@ -2,16 +2,16 @@
 
 ## Verification progress
 
-**2,535 of 6,419 inventory entries are fully verified (39.5%).**
+**2,538 of 6,419 inventory entries are fully verified (39.5%).**
 
 | Inventory status | Entries |
 | --- | ---: |
-| Fully verified | 2,535 |
-| Partially verified | 1,662 |
-| No linked test evidence | 2,222 |
+| Fully verified | 2,538 |
+| Partially verified | 1,661 |
+| No linked test evidence | 2,220 |
 | Not applicable to a Go server | 606 |
 
-The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 7,077 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
+The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 7,081 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
 
 Entries that exist only for JavaScript clients, frameworks or runtimes are listed as not applicable, with the reason, and are left out of the totals. Backlog entries stay open on the roadmap but are not scheduled.
 
@@ -120,7 +120,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Organization](plugins/organization.md) | 1044 | 73 | 41 |
 | [Passkey](plugins/passkey.md) | 168 | 45 | 10 |
 | [Phone number](plugins/phone-number.md) | 148 | 30 | 0 |
-| [SCIM provisioning](plugins/scim.md) | 302 | 192 | 6 |
+| [SCIM provisioning](plugins/scim.md) | 309 | 189 | 6 |
 | [Sign in with Ethereum](plugins/siwe.md) | 122 | 7 | 0 |
 | [Single sign-on](plugins/sso.md) | 684 | 193 | 10 |
 | [Stripe](plugins/stripe.md) | 206 | 175 | 0 |

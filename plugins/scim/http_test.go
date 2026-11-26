@@ -2,9 +2,12 @@ package scim
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -157,5 +160,72 @@ func TestSCIMIdentityNeedsIdentityStore(t *testing.T) {
 		}}})
 	if err == nil || !strings.Contains(err.Error(), "IdentityStore") {
 		t.Fatal("scim.New accepted identity resolution on a store that cannot apply it", err)
+	}
+}
+
+// The discovery documents advertise bearer authentication only, and Bulk,
+// /Me, POST search and Basic credentials are refused.
+func TestSCIMDiscoveryDocumentsAndRefusedRoutes(t *testing.T) {
+	host, err := auth.New(auth.Options{BaseURL: "https://directory.example.test", BasePath: "/identity", Secret: strings.Repeat("a", 32), Store: memory.New()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	h, err := New(host, Options{Store: failureStore{}, Connections: []Connection{{Directory: Directory{ID: "a"}, Credentials: []Credential{{ID: "one", Token: "one"}}}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	call := func(method, path, authorization string) (*httptest.ResponseRecorder, map[string]any) {
+		r := httptest.NewRequest(method, "https://directory.example.test/identity/scim/v2/"+path, strings.NewReader("{}"))
+		r.Header.Set("Content-Type", MediaType)
+		if authorization != "" {
+			r.Header.Set("Authorization", authorization)
+		}
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, r)
+		var out map[string]any
+		_ = json.Unmarshal(w.Body.Bytes(), &out)
+		return w, out
+	}
+	w, cfg := call("GET", "ServiceProviderConfig", "")
+	if w.Code != 200 {
+		t.Fatal("service provider config was not served", w.Code)
+	}
+	if !reflect.DeepEqual(cfg["authenticationSchemes"], []any{map[string]any{"name": "OAuth Bearer Token", "description": "Authentication using a bearer token in the Authorization header.", "specUri": "https://www.rfc-editor.org/info/rfc6750", "type": "oauthbearertoken", "primary": true}}) {
+		t.Fatal("service provider config lost its bearer authentication scheme", cfg["authenticationSchemes"])
+	}
+	if !reflect.DeepEqual(cfg["bulk"], map[string]any{"supported": false, "maxOperations": 0.0, "maxPayloadSize": 0.0}) {
+		t.Fatal("service provider config advertised bulk operations", cfg["bulk"])
+	}
+	for _, key := range []string{"sort", "etag", "changePassword"} {
+		if !reflect.DeepEqual(cfg[key], map[string]any{"supported": false}) {
+			t.Fatal("service provider config advertised sorting, ETags or password changes", key, cfg[key])
+		}
+	}
+	if !reflect.DeepEqual(cfg["meta"], map[string]any{"resourceType": "ServiceProviderConfig", "location": "https://directory.example.test/identity/scim/v2/ServiceProviderConfig"}) {
+		t.Fatal("service provider config meta is not the public directory location", cfg["meta"])
+	}
+	refusedWith := func(w *httptest.ResponseRecorder, body map[string]any, status int) bool {
+		schemas, _ := body["schemas"].([]any)
+		return w.Code == status && len(schemas) == 1 && schemas[0] == errorSchema && body["status"] == strconv.Itoa(status)
+	}
+	if w, body := call("GET", "Schemas/urn:example:unknown:2.0:Thing", ""); !refusedWith(w, body, 404) {
+		t.Fatal("an unknown schema ID did not return a SCIM 404", w.Code, w.Body.String())
+	}
+	if w, body := call("GET", "ResourceTypes/Unknown", ""); !refusedWith(w, body, 404) {
+		t.Fatal("an unknown resource type did not return a SCIM 404", w.Code, w.Body.String())
+	}
+	for _, route := range [][2]string{{"GET", "Bulk"}, {"POST", "Bulk"}, {"GET", "Me"}} {
+		if w, body := call(route[0], route[1], "Bearer one"); !refusedWith(w, body, 404) {
+			t.Fatal("a Bulk or Me request was not refused with 404", route, w.Code, w.Body.String())
+		}
+	}
+	if w, _ := call("POST", "Users/.search", "Bearer one"); w.Code != 405 || w.Header().Get("Allow") != "GET, PUT, PATCH, DELETE" {
+		t.Fatal("POST-based User search was not refused with 405", w.Code, w.Header().Get("Allow"))
+	}
+	if w, _ := call("POST", ".search", "Bearer one"); w.Code != 404 {
+		t.Fatal("a root search request was not refused with 404", w.Code)
+	}
+	if w, body := call("GET", "Users", "Basic b25lOm9uZQ=="); w.Code != 401 || w.Header().Get("WWW-Authenticate") != `Bearer realm="SCIM"` || body["status"] != "401" {
+		t.Fatal("Basic authentication was not refused with a bearer challenge", w.Code, w.Header().Get("WWW-Authenticate"), w.Body.String())
 	}
 }

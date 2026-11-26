@@ -16,15 +16,15 @@
     - [x] `id` ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L168))
       - [x] Report the static credential's ID on the principal the store receives ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L168))
     - [x] `token` ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L146))
-      - [x] Reject unknown, ambiguous and duplicate static bearer credentials ([test](../../../plugins/scim/http_test.go#L20))
+      - [x] Reject unknown, ambiguous and duplicate static bearer credentials ([test](../../../plugins/scim/http_test.go#L23))
       - [x] Authenticate a static credential sent as a Bearer token ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L146))
-      - [x] Refuse a token changed in the options after the handler was built ([test](../../../plugins/scim/http_test.go#L56))
-      - [x] Refuse a request that sends two Authorization headers ([test](../../../plugins/scim/http_test.go#L94))
+      - [x] Refuse a token changed in the options after the handler was built ([test](../../../plugins/scim/http_test.go#L59))
+      - [x] Refuse a request that sends two Authorization headers ([test](../../../plugins/scim/http_test.go#L97))
     - [x] `scopes` ([test](../../../conformance/scim-contract.mjs#L59))
       - [x] Require a write scope for changes and a read scope for retrieval ([test](../../../adapters/sqlstore/scim_test.go#L33))
       - [x] Create, read, patch and delete Users with a credential configured without scopes on both runtimes ([test](../../../conformance/scim-contract.mjs#L59))
       - [x] Create, patch, replace and delete Groups with a credential configured without scopes on both runtimes ([test](../../../conformance/scim-contract.mjs#L107))
-      - [x] Refuse an unsupported scope, an empty token or a reused token when the handler is built ([test](../../../plugins/scim/http_test.go#L28))
+      - [x] Refuse an unsupported scope, an empty token or a reused token when the handler is built ([test](../../../plugins/scim/http_test.go#L31))
     - [x] `expiresAt` ([test](../../../adapters/sqlstore/scim_test.go#L96))
       - [x] Return a bearer challenge for an expired credential ([test](../../../adapters/sqlstore/scim_test.go#L33))
       - [x] Answer 401 with a bearer challenge for a credential past its expiry while the directory's other credentials still work ([test](../../../adapters/sqlstore/scim_test.go#L96))
@@ -64,7 +64,7 @@
     - [x] `id` ([test](../../../adapters/sqlstore/scim_test.go#L143))
       - [x] Isolate two directory identifiers differing only in case on every SQL engine ([test](../../../adapters/sqlstore/scim_test.go#L33))
       - [x] Hide a User created by one directory from a directory whose ID differs only in case ([test](../../../adapters/sqlstore/scim_test.go#L143))
-      - [x] Refuse a duplicate static connection ID or one that uses the reserved managed prefix ([test](../../../plugins/scim/http_test.go#L28))
+      - [x] Refuse a duplicate static connection ID or one that uses the reserved managed prefix ([test](../../../plugins/scim/http_test.go#L31))
     - [x] `credentials` ([test](../../../adapters/sqlstore/scim_test.go#L68))
       - [x] Resolve separate scoped credentials for one directory ([test](../../../adapters/sqlstore/scim_test.go#L33))
       - [x] Accept several credentials on one directory, each with its own scopes, and refuse the expired one ([test](../../../adapters/sqlstore/scim_test.go#L68))
@@ -81,7 +81,7 @@
   - [ ] `SCIMGroupAuthorizationSource`
   - [ ] `SCIMIdentity`
     - [x] Resolve incoming SCIM Users to existing accounts before the directory transaction, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_identity_test.go#L20))
-    - [x] Refuse identity resolution on a store that cannot apply it ([test](../../../plugins/scim/http_test.go#L159))
+    - [x] Refuse identity resolution on a store that cannot apply it ([test](../../../plugins/scim/http_test.go#L162))
   - [x] `SCIMIdentityResolution` ([test](../../../adapters/sqlstore/scim_identity_test.go#L158))
     - [x] Create on the zero value, link with manage or preserve, answer 409 for a missing account and 500 for a failing or invalid decision ([test](../../../adapters/sqlstore/scim_identity_test.go#L158))
   - [x] `SCIMIdentityResolutionContext` ([test](../../../adapters/sqlstore/scim_identity_test.go#L117))
@@ -106,7 +106,7 @@
   - [ ] `SCIMOAuthBearerPrincipal`
     - [x] Expose the verified credential ID, operation scopes, expiry and scoped directory through request context ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L35))
   - [ ] `SCIMOptions`
-    - [x] Refuse to install a reserved or duplicate connection ID, an empty, whitespace or reused token and an unsupported scope ([test](../../../plugins/scim/http_test.go#L30))
+    - [x] Refuse to install a reserved or duplicate connection ID, an empty, whitespace or reused token and an unsupported scope ([test](../../../plugins/scim/http_test.go#L33))
     - [ ] `connections`
       - [x] Serve a verifier-resolved directory when no code-defined connection is configured ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L132))
       - [x] Authenticate managed credentials when no code-defined connection is configured ([test](../../../adapters/sqlstore/scim_managed_test.go#L62))
@@ -137,23 +137,25 @@
   - [ ] `SCIMTransactionContext`
   - [ ] `decommissionSCIMConnection (server API only)`
     - [x] Persist a terminal binding before first use and read its completion timestamp from either implementation ([test](../../../conformance/core.test.mjs#L1058))
-  - [ ] `GET /scim/v2/ServiceProviderConfig`
+  - [x] `GET /scim/v2/ServiceProviderConfig` ([test](../../../plugins/scim/http_test.go#L168))
     - [x] Discover filter, patch and pagination capabilities without a directory credential ([test](../../../conformance/scim-contract.mjs#L45))
+    - [x] Publish bearer authentication only, report bulk, sorting, ETags and password changes as unsupported, and locate the document at the public directory URL ([test](../../../plugins/scim/http_test.go#L168))
   - [ ] `GET /scim/v2/Schemas`
     - [x] List the supported core User schema without a bearer credential ([test](../../../adapters/sqlstore/scim_test.go#L33))
     - [x] Discover the core Group schema ([test](../../../conformance/scim-contract.mjs#L92))
   - [ ] `GET /scim/v2/Schemas/:schemaId`
     - [x] Read the registered core User schema from a custom mount ([test](../../../adapters/sqlstore/scim_test.go#L33))
     - [x] Retrieve the core Group schema on the public directory mount ([test](../../../conformance/scim-contract.mjs#L92))
+    - [x] Answer an unknown schema ID with a SCIM 404 ([test](../../../plugins/scim/http_test.go#L212))
   - [ ] `GET /scim/v2/ResourceTypes`
     - [x] List the registered User resource type publicly ([test](../../../adapters/sqlstore/scim_test.go#L33))
     - [x] Discover Groups only when the store provides the Group operations ([test](../../../conformance/scim-contract.mjs#L92))
     - [x] Serve the resource type list without a bearer credential ([test](../../../adapters/sqlstore/scim_test.go#L92))
     - [x] List the Group resource type on both runtimes ([test](../../../conformance/scim-contract.mjs#L102))
   - [ ] `GET /scim/v2/ResourceTypes/:resourceTypeId`
-    - [x] Resolve the User resource type and reject an unavailable resource type ([test](../../../plugins/scim/http_test.go#L20))
+    - [x] Resolve the User resource type and reject an unavailable resource type ([test](../../../plugins/scim/http_test.go#L23))
     - [x] Retrieve the Group resource type on both implementations ([test](../../../conformance/scim-contract.mjs#L92))
-    - [x] Return 404 for the Group resource type when the store has no Group operations ([test](../../../plugins/scim/http_test.go#L57))
+    - [x] Return 404 for the Group resource type when the store has no Group operations ([test](../../../plugins/scim/http_test.go#L60))
     - [x] Return the User resource type with the core User schema on both runtimes ([test](../../../conformance/scim-contract.mjs#L56))
   - [ ] `POST /scim/v2/Groups`
     - [x] Create directory-owned Groups, deduplicate direct members and reject foreign User and nested Group references ([test](../../../adapters/sqlstore/scim_groups_test.go#L20))
@@ -303,8 +305,8 @@
       - `type` — *not applicable: TypeScript credential discriminant; the other runtime declares the "bearer" literal only in its option type (packages/scim/src/configuration.ts) and never reads it at run time, and Go credentials are a bearer-only struct with no type field*
       - [ ] `id`
         - [x] Expose a static credential's ID in the directory principal the store receives ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L168))
-      - [x] `token` ([test](../../../plugins/scim/http_test.go#L28))
-        - [x] Refuse an empty token, a token with whitespace and one token shared by two connections when building the handler ([test](../../../plugins/scim/http_test.go#L28))
+      - [x] `token` ([test](../../../plugins/scim/http_test.go#L31))
+        - [x] Refuse an empty token, a token with whitespace and one token shared by two connections when building the handler ([test](../../../plugins/scim/http_test.go#L31))
       - [x] `scopes` ([test](../../../adapters/sqlstore/scim_groups_test.go#L62))
         - [x] Refuse Group creation to credentials scoped to Group reads or to Users, while a credential without scopes provisions both Users and Groups ([test](../../../adapters/sqlstore/scim_groups_test.go#L62))
       - [ ] `expiresAt`
@@ -473,10 +475,12 @@
     - [ ] Nested Groups or non-User Group members
       - [x] Reject a Group created with another Group as a member with 400 ([test](../../../adapters/sqlstore/scim_groups_test.go#L111))
       - [x] Reject adding a Group ID as a member with 400 invalidValue on both runtimes ([test](../../../conformance/scim-contract.mjs#L112))
-    - [ ] Bulk requests, POST-based search, `/Me`, ETags, cursors, or sorting
+    - [x] Bulk requests, POST-based search, `/Me`, ETags, cursors, or sorting ([test](../../../plugins/scim/http_test.go#L219))
+      - [x] Refuse Bulk and /Me with 404 and POST search with 405, and advertise no sorting or ETags ([test](../../../plugins/scim/http_test.go#L219))
     - [ ] Operators other than equality and logical `and`
       - [x] Reject a User filter using the co operator with 400 ([test](../../../adapters/sqlstore/scim_test.go#L159))
-    - [ ] A built-in OAuth token endpoint, Basic authentication, or mutual TLS
+    - [x] A built-in OAuth token endpoint, Basic authentication, or mutual TLS ([test](../../../plugins/scim/http_test.go#L229))
+      - [x] Refuse Basic credentials with 401 and a Bearer challenge ([test](../../../plugins/scim/http_test.go#L229))
     - [ ] HTTP management endpoints, SCIM request audit records, or webhooks
       - [x] Answer 404 for a catalog method name requested under the SCIM HTTP path ([test](../../../adapters/sqlstore/scim_managed_test.go#L248))
   - [ ] Schema
