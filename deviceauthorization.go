@@ -193,6 +193,7 @@ func deviceRandomCode(ctx context.Context, generator func(context.Context) (stri
 	return string(code), nil
 }
 
+// An absent or empty client_id gets one short description.
 func (o DeviceAuthorizationOptions) checkClient(ctx context.Context, id string) error {
 	if id == "" {
 		return deviceError("invalid_request", "client_id is required")
@@ -270,6 +271,9 @@ func (o DeviceAuthorizationOptions) token(c EndpointContext) (any, error) {
 		return nil, err
 	}
 	ctx := c.Request.Context()
+	// Refuse a missing or different grant type, or a missing code, with the
+	// OAuth error the device already parses rather than a generic validation
+	// error.
 	if fields["grant_type"] != DeviceGrantType || fields["device_code"] == "" {
 		return nil, deviceError("invalid_request", "A device code and device grant type are required")
 	}
@@ -324,6 +328,7 @@ func reviewDevice(action string) func(EndpointContext) (any, error) {
 		if action != "review" {
 			code, _ = c.Body["userCode"].(string)
 		}
+		// A missing user code gets the same OAuth error as an unknown one.
 		if code == "" {
 			return nil, deviceOutcome("invalid_user_code")
 		}

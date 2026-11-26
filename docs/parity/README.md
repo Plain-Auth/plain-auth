@@ -2,16 +2,16 @@
 
 ## Verification progress
 
-**2,204 of 6,437 inventory entries are fully verified (34.2%).**
+**2,215 of 6,437 inventory entries are fully verified (34.4%).**
 
 | Inventory status | Entries |
 | --- | ---: |
-| Fully verified | 2,204 |
-| Partially verified | 1,529 |
-| No linked test evidence | 2,704 |
+| Fully verified | 2,215 |
+| Partially verified | 1,520 |
+| No linked test evidence | 2,702 |
 | Not applicable to a Go server | 588 |
 
-The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 6,144 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
+The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 6,164 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
 
 Entries that exist only for JavaScript clients, frameworks or runtimes are listed as not applicable, with the reason, and are left out of the totals. Backlog entries stay open on the roadmap but are not scheduled.
 
@@ -99,7 +99,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Captcha](plugins/captcha.md) | 153 | 26 | 0 |
 | [Client ID metadata documents](plugins/cimd.md) | 0 | 48 | 0 |
 | [Custom session](plugins/custom-session.md) | 21 | 3 | 0 |
-| [Device authorization](plugins/device-authorization.md) | 145 | 52 | 3 |
+| [Device authorization](plugins/device-authorization.md) | 176 | 41 | 3 |
 | [Electron](plugins/electron.md) | 0 | 12 | 40 |
 | [Email otp](plugins/email-otp.md) | 245 | 48 | 0 |
 | [Expo](plugins/expo.md) | 0 | 5 | 14 |

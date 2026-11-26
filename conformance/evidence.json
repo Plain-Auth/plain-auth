@@ -4006,6 +4006,22 @@
       "label": "Require an allowed client and reject repeated form parameters",
       "test": "adapters/sqlstore/deviceauthorization_test.go",
       "marker": "client_id=tv&client_id=cli"
+    },
+    {
+      "label": "Refuse a code request whose client_id is omitted or empty, in a form or JSON body, before the request callback",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "client_id=&scope=read"
+    },
+    {
+      "label": "Give OnDeviceAuthRequest the accepted client ID and scope of each accepted code request",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "OnDeviceAuthRequest got %q"
+    },
+    {
+      "label": "Send Pragma no-cache and the plain verification URI with every issued code",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "device code response lost its verification URI or Pragma header",
+      "complete": true
     }
   ],
   "plugin/device-authorization/POST /device/token": [
@@ -4023,6 +4039,17 @@
       "label": "Reject OAuth authorization server grants on the first-party endpoint",
       "test": "adapters/sqlstore/deviceauthorization_test.go",
       "marker": "Protect OAuth client grants"
+    },
+    {
+      "label": "Refuse a request without the device grant type, a device code or a client ID with invalid_request before the client is validated or the code is read, leaving the polling timer untouched",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "A device code and device grant type are required"
+    },
+    {
+      "label": "Send Cache-Control no-store with the issued token",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "device token response is cacheable",
+      "complete": true
     }
   ],
   "plugin/device-authorization/GET /device": [
@@ -4035,6 +4062,12 @@
       "label": "Recognize formatted display codes and enforce the verification rate limit",
       "test": "adapters/sqlstore/deviceauthorization_test.go",
       "marker": "check(verify(limited, u, owner), 429, \"\")"
+    },
+    {
+      "label": "Refuse a lookup without user_code with invalid_request",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "send(first, \"GET\", \"/device\", \"\", \"\", nil)",
+      "complete": true
     }
   ],
   "plugin/device-authorization/POST /device/approve": [
@@ -4047,6 +4080,22 @@
       "label": "Approvals interoperate across servers sharing grant records",
       "test": "conformance/core.test.mjs",
       "marker": "device grants created in either runtime can issue a first-party session in the other"
+    },
+    {
+      "label": "Refuse an approval for a user code that matches no grant with invalid_request",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "decide(first, \"approve\", \"0000-0000\", owner)"
+    },
+    {
+      "label": "Refuse an approval or denial of an expired user code with expired_token",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "\"expired_token\", \"User code has expired\""
+    },
+    {
+      "label": "Refuse another decision on a code already approved or denied with Device code already processed",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "refuse(decide(second, \"approve\", u, owner), 400, \"invalid_request\", \"Device code already processed\")",
+      "complete": true
     }
   ],
   "plugin/device-authorization/POST /device/deny": [
@@ -4054,6 +4103,22 @@
       "label": "Apply one denial to a pre-bound grant and consume it at the next poll",
       "test": "adapters/sqlstore/deviceauthorization_test.go",
       "marker": "check(poll(second, d, \"tv\"), 400, \"access_denied\")"
+    },
+    {
+      "label": "Refuse a denial without a session with 401 unauthorized",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "decide(first, \"deny\", u, nil)"
+    },
+    {
+      "label": "Refuse a denial for an unclaimed code with invalid_request",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "Device code has not been claimed by a verifying session"
+    },
+    {
+      "label": "Refuse a denial of an expired user code with expired_token",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "\"expired_token\", \"User code has expired\"",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/device-authorization.mdx#L236": [
@@ -4061,6 +4126,12 @@
       "label": "Accept JSON and URL-encoded code requests",
       "test": "adapters/sqlstore/deviceauthorization_test.go",
       "marker": "client_id=tv&client_id=cli"
+    },
+    {
+      "label": "The code response includes the plain verification_uri beside the user code and the complete link",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "device code response lost its verification URI or Pragma header",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/device-authorization.mdx#L278": [
@@ -4114,6 +4185,12 @@
       "label": "Consume denied grants and refuse a second decision",
       "test": "adapters/sqlstore/deviceauthorization_test.go",
       "marker": "check(poll(second, d, \"tv\"), 400, \"access_denied\")"
+    },
+    {
+      "label": "A denial without a session returns 401 unauthorized",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "decide(first, \"deny\", u, nil)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/device-authorization.mdx#L545": [
@@ -4134,6 +4211,22 @@
       "label": "Handle custom case-sensitive codes and duplicate generation",
       "test": "adapters/sqlstore/deviceauthorization_test.go",
       "marker": "fixed.GenerateUserCode ="
+    },
+    {
+      "label": "Default codes in lower case and with whitespace or punctuation are accepted at GET /device, approve and deny",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "spaced := func(code string) string"
+    },
+    {
+      "label": "Issuance makes three attempts for colliding generated codes, then returns server_error",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "want one for the first code and three for the colliding request",
+      "complete": true
+    },
+    {
+      "label": "Default user codes come from the documented alphabet",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "default user code used a character outside the alphabet"
     }
   ],
   "docs/content/docs/plugins/device-authorization.mdx#L590": [
@@ -36576,6 +36669,12 @@
       "label": "The request hook runs once per issued code",
       "test": "adapters/sqlstore/deviceauthorization_test.go",
       "marker": "device generation defaults or request callback changed"
+    },
+    {
+      "label": "The hook receives the accepted client ID and the requested scope, empty when none was sent",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "OnDeviceAuthRequest got %q",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/device-authorization.mdx#L771/device()": [
@@ -39149,6 +39248,22 @@
       "label": "Answer VALIDATION_ERROR to a trustDevice that is not a boolean, before reading the challenge and without sending a code, and accept a boolean without remembering the browser at the send or at a later verification that leaves it out",
       "test": "adapters/sqlstore/twofactor_options_test.go",
       "marker": "trustDevice on send-otp remembered the browser",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L308/Parameter `grant_type`": [
+    {
+      "label": "A missing or different grant_type, or a missing device_code, gets invalid_request before the client check",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "A device code and device grant type are required",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L741/User Code Format": [
+    {
+      "label": "Default user codes use only ABCDEFGHJKLMNPQRSTUVWXYZ23456789, leaving out 0, O, 1 and I",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "default user code used a character outside the alphabet",
       "complete": true
     }
   ]
