@@ -9,12 +9,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"runtime"
-	"runtime/debug"
-	"strings"
 
 	"github.com/Plain-Org/plain-auth/internal/configenv"
-	"github.com/Plain-Org/plain-auth/schema"
 )
 
 func generateSecret() string { var b [32]byte; rand.Read(b[:]); return hex.EncodeToString(b[:]) }
@@ -24,6 +20,7 @@ func initConfig(args []string, out, errOut io.Writer) error {
 	fs.SetOutput(errOut)
 	filename := fs.String("env-file", ".env", "Destination for a new environment file")
 	public := fs.String("url", "http://127.0.0.1:3000", "Public HTTP(S) URL")
+	dir := workDirFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return nil
@@ -32,6 +29,9 @@ func initConfig(args []string, out, errOut io.Writer) error {
 	}
 	if fs.NArg() != 0 {
 		return errors.New("unexpected positional argument")
+	}
+	if err := enterDir(*dir); err != nil {
+		return err
 	}
 	if _, _, err := configenv.ServerEndpoint(*public, ""); err != nil {
 		return fmt.Errorf("init: %w", err)
@@ -63,14 +63,5 @@ func initConfig(args []string, out, errOut io.Writer) error {
 		return err
 	}
 	_, err = fmt.Fprintf(out, "Created %s. Load it into the host environment before startup.\n", *filename)
-	return err
-}
-
-func printInfo(out io.Writer) error {
-	version := "development"
-	if build, ok := debug.ReadBuildInfo(); ok && build.Main.Version != "" {
-		version = build.Main.Version
-	}
-	_, err := fmt.Fprintf(out, "authctl %s\nGo %s (%s/%s)\nSQL dialects: sqlite, postgres, mysql\nSchema profiles: %s\n", version, runtime.Version(), runtime.GOOS, runtime.GOARCH, strings.Join(schema.Profiles(), ", "))
 	return err
 }

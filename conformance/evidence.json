@@ -229,7 +229,8 @@
     {
       "label": "Report missing tables, missing columns and extra required columns on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/check_test.go",
-      "marker": "func TestReadOnlySchemaCheck("
+      "marker": "func TestReadOnlySchemaCheck(",
+      "complete": true
     },
     {
       "label": "Check a combined plugin deployment using each live SQL catalog",
@@ -270,59 +271,14 @@
       "label": "Report mapped wallet drift through the process exit code and JSON findings on three SQL engines",
       "test": "cmd/authctl/wallet_schema_test.go",
       "marker": "read-only check missed mapped wallet table"
-    },
-    {
-      "label": "Report missing tables, missing columns and extra required columns on SQLite, PostgreSQL and MySQL",
-      "test": "adapters/sqlstore/check_test.go",
-      "marker": "func TestReadOnlySchemaCheck(t *testing.T) {",
-      "complete": true
-    },
-    {
-      "label": "Check a combined plugin deployment using each live SQL catalog",
-      "test": "adapters/sqlstore/check_test.go",
-      "marker": "func TestCheckSchemaSelectedProfiles(t *testing.T) {"
-    },
-    {
-      "label": "Resolve PostgreSQL tables in the connection's search path",
-      "test": "adapters/sqlstore/check_test.go",
-      "marker": "func TestCheckSchemaPostgresSearchPath(t *testing.T) {"
-    },
-    {
-      "label": "Return distinct success, drift and operational exit codes with JSON findings and redacted connection errors",
-      "test": "cmd/authctl/check_test.go",
-      "marker": "func TestCheckSchemaProcess(t *testing.T) {"
-    },
-    {
-      "label": "Report an uninstalled Polar profile and an empty finding list after provisioning",
-      "test": "cmd/authctl/main_test.go",
-      "marker": "t.Fatal(\"pending billing setup not reported\", err, out.String())"
-    },
-    {
-      "label": "Report missing or incompatible configured session columns on all three engines without changing the database",
-      "test": "adapters/sqlstore/check_session_fields_test.go",
-      "marker": "t.Fatal(\"check mutated a populated target\", got)"
-    },
-    {
-      "label": "Report missing, incompatible and generated user columns in read-only JSON checks across all three engines",
-      "test": "cmd/authctl/user_fields_test.go",
-      "marker": "t.Fatal(\"generated user column accepted as writable\")"
-    },
-    {
-      "label": "Reject malformed user configuration before opening a target database",
-      "test": "cmd/authctl/user_fields_test.go",
-      "marker": "func TestUserFieldCommandsValidateBeforeConnecting(t *testing.T) {"
-    },
-    {
-      "label": "Report mapped wallet drift through the process exit code and JSON findings on three SQL engines",
-      "test": "cmd/authctl/wallet_schema_test.go",
-      "marker": "t.Fatal(\"read-only check missed mapped wallet table\")"
     }
   ],
   "cli/generate": [
     {
-      "label": "Emit SQL DDL for SQLite, PostgreSQL and MySQL",
+      "label": "Emit SQL DDL for SQLite, PostgreSQL and MySQL to standard output, or to a file with --output",
       "test": "cmd/authctl/main_test.go",
-      "marker": "if err := runCommand(\"generate\", \"--dialect\", dialect)"
+      "marker": "if err := runCommand(\"generate\", \"--dialect\", dialect)",
+      "complete": true
     },
     {
       "label": "Compare every base-profile combination and independent SCIM profile witnesses across all three dialects",
@@ -360,46 +316,17 @@
       "marker": "func TestGenerateDateFieldDDL("
     },
     {
-      "label": "Emit SQL DDL for SQLite, PostgreSQL and MySQL",
-      "test": "cmd/authctl/main_test.go",
-      "marker": "if err := runCommand(\"generate\", \"--dialect\", dialect); err != nil {"
-    },
-    {
       "label": "The Go schema generator behind authctl generate prints the same DDL as the other runtime for every verified plugin combination on three dialects, and the authctl binary prints that DDL for no plugin or a single plugin",
       "test": "conformance/schema.test.mjs",
       "marker": "test(\"the CLI emits the pinned plugin schema across exhaustive base combinations and SCIM and organization billing witnesses on three dialects\", async () => {"
-    },
-    {
-      "label": "Generate the optional Polar checkout and delivery tables on every SQL dialect",
-      "test": "cmd/authctl/main_test.go",
-      "marker": "func TestPolarSchemaCommands(t *testing.T) {"
-    },
-    {
-      "label": "Emit physical columns from a JSON field definition for each supported SQL dialect",
-      "test": "cmd/authctl/session_fields_test.go",
-      "marker": "func TestSessionFieldCommands(t *testing.T) {"
-    },
-    {
-      "label": "Generate the selected plugin schema with independent user and session JSON declarations on all three dialects",
-      "test": "cmd/authctl/user_fields_test.go",
-      "marker": "t.Fatal(\"generated combined schema\", err)"
-    },
-    {
-      "label": "Generate the configured wallet model alongside user and session fields from one portable JSON declaration",
-      "test": "cmd/authctl/wallet_schema_test.go",
-      "marker": "t.Fatal(\"wallet CLI generated different SQL than the configured public API\")"
-    },
-    {
-      "label": "Generate typed date columns for both models on each SQL dialect and reject invalid static timestamps",
-      "test": "cmd/authctl/user_fields_test.go",
-      "marker": "func TestGenerateDateFieldDDL(t *testing.T) {"
     }
   ],
   "cli/migrate": [
     {
-      "label": "Initialize the SQLite schema and repeat the migration",
+      "label": "Initialize the SQLite schema and repeat the migration, applying it without a confirmation step",
       "test": "cmd/authctl/main_test.go",
-      "marker": "if err := runCommand(\"migrate\", \"--dialect\", \"sqlite\"); err != nil"
+      "marker": "if err := runCommand(\"migrate\", \"--dialect\", \"sqlite\"); err != nil",
+      "complete": true
     },
     {
       "label": "Apply the selected profiles twice on populated SQLite while retaining the user",
@@ -435,46 +362,6 @@
       "label": "Replay the mapped wallet schema with profile fields and the API-key ledger while retaining a populated wallet",
       "test": "cmd/authctl/wallet_schema_test.go",
       "marker": "repeated CLI migration lost mapped wallet ownership"
-    },
-    {
-      "label": "Initialize the SQLite schema and repeat the migration",
-      "test": "cmd/authctl/main_test.go",
-      "marker": "if err := runCommand(\"migrate\", \"--dialect\", \"sqlite\"); err != nil {"
-    },
-    {
-      "label": "Apply the selected profiles twice on populated SQLite while retaining the user",
-      "test": "conformance/schema.test.mjs",
-      "marker": "test(\"adding plugin profiles to a populated SQLite database preserves existing accounts and matches a fresh schema\", async () => {"
-    },
-    {
-      "label": "Upgrade existing PostgreSQL and MySQL schemas with combined team, billing and factor profiles",
-      "test": "adapters/sqlstore/profiles_test.go",
-      "marker": "func TestServerPluginSchemaUpgrade(t *testing.T) {"
-    },
-    {
-      "label": "Reopen a populated SCIM profile twice on SQLite, PostgreSQL and MySQL and retain the original account",
-      "test": "adapters/sqlstore/scim_test.go",
-      "marker": "func TestSCIMDirectoryLifecycle(t *testing.T) {"
-    },
-    {
-      "label": "Preserve Polar delivery receipts and their uniqueness across repeated CLI-compatible migrations on three SQL engines",
-      "test": "integrations/polar/schema_test.go",
-      "marker": "func TestCheckoutLedgerSchemaMigration(t *testing.T) {"
-    },
-    {
-      "label": "Backfill existing sessions, preserve the owner's data and report incompatible definitions on live servers",
-      "test": "cmd/authctl/session_fields_live_test.go",
-      "marker": "t.Fatal(\"old row lost its default\", err)"
-    },
-    {
-      "label": "Upgrade a populated account with zero, false and null values while preserving its original fields and session schema",
-      "test": "cmd/authctl/user_fields_test.go",
-      "marker": "t.Fatalf(\"populated account backfill: %#v\", physical)"
-    },
-    {
-      "label": "Replay the mapped wallet schema with profile fields and the API-key ledger while retaining a populated wallet",
-      "test": "cmd/authctl/wallet_schema_test.go",
-      "marker": "t.Fatal(\"repeated CLI migration lost mapped wallet ownership\", owner, err)"
     },
     {
       "label": "Refuse to add a required account column to populated rows without a default, then backfill it once a default is declared, on three SQL engines",
@@ -2005,9 +1892,10 @@
   ],
   "cli/init": [
     {
-      "label": "Write a private environment file once and preserve an existing file",
+      "label": "Write a private environment file once and preserve an existing file; init writes only this file, since Go options are code rather than a generated configuration module",
       "test": "cmd/authctl/setup_test.go",
-      "marker": "func TestInitializeEnvironment("
+      "marker": "func TestInitializeEnvironment(",
+      "complete": true
     },
     {
       "label": "Write a new environment file holding a 64-character AUTH_SECRET value and the quoted public URL, keep that AUTH_SECRET line out of standard output, and refuse to replace or alter an existing file",
@@ -5489,11 +5377,6 @@
       "label": "Create the first administrator in an existing database using a password supplied on standard input",
       "test": "cmd/authctl/admin_test.go",
       "marker": "func TestCreateAdminCommand("
-    },
-    {
-      "label": "Create the first administrator in an existing database using a password supplied on standard input",
-      "test": "cmd/authctl/admin_test.go",
-      "marker": "func TestCreateAdminCommand(t *testing.T) {"
     },
     {
       "label": "Refuse to run when the target has no admin schema, without creating a database at the AUTH_DSN path",
@@ -24306,9 +24189,97 @@
       "marker": "if err := runCommand(\"generate\", \"--dialect\", dialect); err != nil {"
     },
     {
-      "label": "Reject an unsupported --dialect value",
+      "label": "--dialect is required and selects SQLite, PostgreSQL or MySQL; an unsupported value is refused",
       "test": "cmd/authctl/main_test.go",
-      "marker": "if err := runCommand(\"generate\", \"--dialect\", \"invalid\"); err == nil {"
+      "marker": "if err := runCommand(\"generate\", \"--dialect\", \"invalid\"); err == nil {",
+      "complete": true
+    }
+  ],
+  "cli/check/-c, --cwd <cwd>": [
+    {
+      "label": "-c and --cwd run the command in another directory: relative files and a relative SQLite AUTH_DSN resolve there, nothing is written outside it, and a missing directory fails before anything is written",
+      "test": "cmd/authctl/cli_options_test.go",
+      "marker": "func TestWorkingDirectoryOption(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "cli/create-admin/-c, --cwd <cwd>": [
+    {
+      "label": "-c and --cwd run the command in another directory: relative files and a relative SQLite AUTH_DSN resolve there, nothing is written outside it, and a missing directory fails before anything is written",
+      "test": "cmd/authctl/cli_options_test.go",
+      "marker": "func TestWorkingDirectoryOption(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "cli/generate/-c, --cwd <cwd>": [
+    {
+      "label": "-c and --cwd run the command in another directory: relative files and a relative SQLite AUTH_DSN resolve there, nothing is written outside it, and a missing directory fails before anything is written",
+      "test": "cmd/authctl/cli_options_test.go",
+      "marker": "func TestWorkingDirectoryOption(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "cli/init/-c, --cwd <cwd>": [
+    {
+      "label": "-c and --cwd run the command in another directory: relative files and a relative SQLite AUTH_DSN resolve there, nothing is written outside it, and a missing directory fails before anything is written",
+      "test": "cmd/authctl/cli_options_test.go",
+      "marker": "func TestWorkingDirectoryOption(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "cli/migrate/-c, --cwd <cwd>": [
+    {
+      "label": "-c and --cwd run the command in another directory: relative files and a relative SQLite AUTH_DSN resolve there, nothing is written outside it, and a missing directory fails before anything is written",
+      "test": "cmd/authctl/cli_options_test.go",
+      "marker": "func TestWorkingDirectoryOption(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "cli/generate/--output <output>": [
+    {
+      "label": "Write the schema to a file, creating missing parents, or to a timestamped .sql file inside an existing directory; a failed generation writes nothing. Without --output the schema goes to standard output",
+      "test": "cmd/authctl/cli_options_test.go",
+      "marker": "func TestGenerateOutputFile(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "cli/generate/-y, --yes": [
+    {
+      "label": "An existing --output file is replaced only with -y or --yes; without either the run fails and leaves the file unchanged",
+      "test": "cmd/authctl/cli_options_test.go",
+      "marker": "func TestGenerateOutputFile(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "cli/migrate/-y, --yes": [
+    {
+      "label": "migrate applies the schema without asking and accepts -y and --yes",
+      "test": "cmd/authctl/cli_options_test.go",
+      "marker": "if err := run(context.Background(), []string{\"migrate\", \"--dialect\", \"sqlite\", flag}, io.Discard, io.Discard); err != nil {",
+      "complete": true
+    }
+  ],
+  "cli/info": [
+    {
+      "label": "info prints the authctl version, the Go runtime, platform and CPU count, the three SQL drivers with their versions and the schema profiles, prints no environment values, and refuses positional arguments",
+      "test": "cmd/authctl/cli_options_test.go",
+      "marker": "func TestInfoCommand(t *testing.T) {"
+    }
+  ],
+  "cli/info/-j, --json": [
+    {
+      "label": "-j and --json print the same report as JSON whose runtime, platform, CPU count, driver versions and schema profiles match the running binary",
+      "test": "cmd/authctl/cli_options_test.go",
+      "marker": "func TestInfoCommand(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "cli/info/-c, --copy": [
+    {
+      "label": "-c and --copy hand exactly the printed report to the platform clipboard command and say on standard error whether that worked; a failing clipboard still prints the report and exits successfully",
+      "test": "cmd/authctl/cli_options_test.go",
+      "marker": "func TestInfoCopy(t *testing.T) {",
+      "complete": true
     }
   ]
 }

@@ -93,4 +93,4 @@ Supply a comma-separated list in the form `2:<new-secret>,1:<old-secret>`. Each 
 
 The [configuration tests](../env_test.go) cover startup options, key rotation, trusted origins and rate limiting. A [process isolation test](../conformance/env.test.mjs) checks the server and client with their own synthetic environment.
 
-Run `go run ./cmd/authctl info` for runtime and SQL dialect information without printing environment values.
+Run `go run ./cmd/authctl info` for the authctl version, the Go runtime, the platform and CPU count, the SQL drivers and their versions, and the schema profiles. It prints no environment values. Add `-j` or `--json` for a JSON report, and `-c` or `--copy` to also copy the printed report to the clipboard with `pbcopy`, `xclip` or `clip`, with a notice on standard error saying whether that worked. [Info tests](../cmd/authctl/cli_options_test.go)

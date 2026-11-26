@@ -643,27 +643,9 @@
       "section": "CLI",
       "within": "`check`",
       "labels": [
-        "`-c, --cwd <cwd>`"
-      ],
-      "reason": "not applicable: selects where the JavaScript CLI looks for its auth.ts configuration. authctl reads the schema configuration from --dialect, --plugins, the JSON field-definition flags and AUTH_DSN, and resolves file paths against the process working directory."
-    },
-    {
-      "page": "runtime.md",
-      "section": "CLI",
-      "within": "`check`",
-      "labels": [
         "`--config <config>`"
       ],
       "reason": "not applicable: path to the JavaScript or TypeScript auth configuration module the CLI imports. Go configuration is compiled code; authctl takes the schema settings from --dialect, --plugins and the JSON field-definition flags instead."
-    },
-    {
-      "page": "runtime.md",
-      "section": "CLI",
-      "within": "`create-admin`",
-      "labels": [
-        "`-c, --cwd <cwd>`"
-      ],
-      "reason": "not applicable: selects where the JavaScript CLI looks for its auth.ts configuration. authctl create-admin targets the database named by --dialect and AUTH_DSN."
     },
     {
       "page": "runtime.md",
@@ -677,20 +659,10 @@
     {
       "page": "runtime.md",
       "section": "CLI",
-      "within": "`create-admin`",
       "labels": [
         "`--y`"
       ],
-      "reason": "not applicable: deprecated Commander alias of -y. Go's flag package parses --y and -y as the same flag, so this has no behaviour separate from the -y, --yes item."
-    },
-    {
-      "page": "runtime.md",
-      "section": "CLI",
-      "within": "`generate`",
-      "labels": [
-        "`-c, --cwd <cwd>`"
-      ],
-      "reason": "not applicable: selects where the JavaScript CLI looks for its auth.ts configuration and resolves --output. authctl generate takes its configuration from flags and JSON field-definition files and writes to standard output, so the process working directory is the only base it needs."
+      "reason": "not applicable: deprecated alias of -y. Go's flag package parses --y and -y as the same flag, so it has no behaviour separate from the -y, --yes item."
     },
     {
       "page": "runtime.md",
@@ -759,6 +731,15 @@
         "Additional fields endpoints, types and options"
       ],
       "reason": "not applicable: TypeScript type inference; the plugin consists only of the client-side inferAdditionalFields helper (client.ts), with no endpoints or server behaviour"
+    },
+    {
+      "page": "runtime.md",
+      "section": "CLI",
+      "within": "`info`",
+      "labels": [
+        "`--cwd <cwd>`"
+      ],
+      "reason": "not applicable: names the JavaScript project whose package.json and auth configuration the report describes; authctl info reports its own build, the Go runtime and the platform"
     }
   ],
   "backlog": [

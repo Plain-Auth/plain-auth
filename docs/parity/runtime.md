@@ -426,31 +426,23 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
     - [x] Report missing, incompatible and generated user columns in read-only JSON checks across all three engines ([test](../../cmd/authctl/user_fields_test.go#L178))
     - [x] Reject malformed user configuration before opening a target database ([test](../../cmd/authctl/user_fields_test.go#L36))
     - [x] Report mapped wallet drift through the process exit code and JSON findings on three SQL engines ([test](../../cmd/authctl/wallet_schema_test.go#L142))
-    - [x] Report missing tables, missing columns and extra required columns on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/check_test.go#L17))
-    - [x] Check a combined plugin deployment using each live SQL catalog ([test](../../adapters/sqlstore/check_test.go#L131))
-    - [x] Resolve PostgreSQL tables in the connection's search path ([test](../../adapters/sqlstore/check_test.go#L159))
-    - [x] Return distinct success, drift and operational exit codes with JSON findings and redacted connection errors ([test](../../cmd/authctl/check_test.go#L42))
-    - [x] Report an uninstalled Polar profile and an empty finding list after provisioning ([test](../../cmd/authctl/main_test.go#L104))
-    - [x] Report missing or incompatible configured session columns on all three engines without changing the database ([test](../../adapters/sqlstore/check_session_fields_test.go#L46))
-    - [x] Report missing, incompatible and generated user columns in read-only JSON checks across all three engines ([test](../../cmd/authctl/user_fields_test.go#L178))
-    - [x] Reject malformed user configuration before opening a target database ([test](../../cmd/authctl/user_fields_test.go#L36))
-    - [x] Report mapped wallet drift through the process exit code and JSON findings on three SQL engines ([test](../../cmd/authctl/wallet_schema_test.go#L142))
     - [x] `check schema` ([test](../../cmd/authctl/check_test.go#L18))
       - [x] Run check schema against a missing SQLite file: status 2, no DSN in the error and no file created; after migration it prints an empty JSON list ([test](../../cmd/authctl/check_test.go#L18))
       - [x] Exit 2 with only a stderr diagnostic when check schema cannot read SQLite, PostgreSQL or MySQL targets in a child process ([test](../../cmd/authctl/check_test.go#L78))
       - [x] Exit 0 with an empty JSON list and no diagnostics for a passing check schema --json run in a child process ([test](../../cmd/authctl/check_test.go#L91))
       - [x] Exit 0 for check schema --help ([test](../../cmd/authctl/check_test.go#L89))
       - [x] Return an error and name the missing Polar table from check schema --json ([test](../../cmd/authctl/main_test.go#L104))
-    - `-c, --cwd <cwd>` — *not applicable: selects where the JavaScript CLI looks for its auth.ts configuration. authctl reads the schema configuration from --dialect, --plugins, the JSON field-definition flags and AUTH_DSN, and resolves file paths against the process working directory.*
+    - [x] `-c, --cwd <cwd>` ([test](../../cmd/authctl/cli_options_test.go#L21))
+      - [x] -c and --cwd run the command in another directory: relative files and a relative SQLite AUTH_DSN resolve there, nothing is written outside it, and a missing directory fails before anything is written ([test](../../cmd/authctl/cli_options_test.go#L21))
     - `--config <config>` — *not applicable: path to the JavaScript or TypeScript auth configuration module the CLI imports. Go configuration is compiled code; authctl takes the schema settings from --dialect, --plugins and the JSON field-definition flags instead.*
   - [ ] `create-admin`
-    - [x] Create the first administrator in an existing database using a password supplied on standard input ([test](../../cmd/authctl/admin_test.go#L17))
     - [x] Create the first administrator in an existing database using a password supplied on standard input ([test](../../cmd/authctl/admin_test.go#L17))
     - [x] Refuse to run when the target has no admin schema, without creating a database at the AUTH_DSN path ([test](../../cmd/authctl/admin_test.go#L33))
     - [x] Let the created administrator sign in with the admin role and list users through the admin service ([test](../../cmd/authctl/admin_test.go#L74))
     - [x] Hash the bootstrapped administrator's password with the instance's configured hasher and refuse a second bootstrap ([test](../../adapters/sqlstore/password_codec_test.go#L54))
     - [x] Apply the application's user-create database hook when it bootstraps the administrator through its Auth instance ([test](../../adapters/sqlstore/database_hooks_test.go#L251))
-    - `-c, --cwd <cwd>` — *not applicable: selects where the JavaScript CLI looks for its auth.ts configuration. authctl create-admin targets the database named by --dialect and AUTH_DSN.*
+    - [x] `-c, --cwd <cwd>` ([test](../../cmd/authctl/cli_options_test.go#L21))
+      - [x] -c and --cwd run the command in another directory: relative files and a relative SQLite AUTH_DSN resolve there, nothing is written outside it, and a missing directory fails before anything is written ([test](../../cmd/authctl/cli_options_test.go#L21))
     - `--config <config>` — *not applicable: path to the JavaScript auth configuration that supplies the database and admin plugin. authctl targets the database named by --dialect and AUTH_DSN and checks that its admin schema is installed.*
     - [ ] `--email <email>`
       - [x] Create the administrator under the --email address and sign in with that address ([test](../../cmd/authctl/admin_test.go#L66))
@@ -466,9 +458,9 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
       - [x] Create the first administrator while a member account already exists, leaving exactly one admin and both credentials, on three SQL engines ([test](../../adapters/sqlstore/admin_test.go#L373))
     - [ ] `-y, --yes`
       - [x] Create the first administrator while a member account already exists, leaving exactly one admin and both credentials, on three SQL engines ([test](../../adapters/sqlstore/admin_test.go#L373))
-    - `--y` — *not applicable: deprecated Commander alias of -y. Go's flag package parses --y and -y as the same flag, so this has no behaviour separate from the -y, --yes item.*
-  - [ ] `generate`
-    - [x] Emit SQL DDL for SQLite, PostgreSQL and MySQL ([test](../../cmd/authctl/main_test.go#L29))
+    - `--y` — *not applicable: deprecated alias of -y. Go's flag package parses --y and -y as the same flag, so it has no behaviour separate from the -y, --yes item.*
+  - [x] `generate` ([test](../../cmd/authctl/main_test.go#L29))
+    - [x] Emit SQL DDL for SQLite, PostgreSQL and MySQL to standard output, or to a file with --output ([test](../../cmd/authctl/main_test.go#L29))
     - [x] Compare every base-profile combination and independent SCIM profile witnesses across all three dialects ([test](../../conformance/schema.test.mjs#L106))
     - [x] Prove SCIM adds exactly seven disjoint tables and preserves every preexisting schema statement ([test](../../conformance/schema.test.mjs#L169))
     - [x] Generate the optional Polar checkout and delivery tables on every SQL dialect ([test](../../cmd/authctl/main_test.go#L79))
@@ -476,32 +468,33 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
     - [x] Generate the selected plugin schema with independent user and session JSON declarations on all three dialects ([test](../../cmd/authctl/user_fields_test.go#L111))
     - [x] Generate the configured wallet model alongside user and session fields from one portable JSON declaration ([test](../../cmd/authctl/wallet_schema_test.go#L124))
     - [x] Generate typed date columns for both models on each SQL dialect and reject invalid static timestamps ([test](../../cmd/authctl/user_fields_test.go#L205))
-    - [x] Emit SQL DDL for SQLite, PostgreSQL and MySQL ([test](../../cmd/authctl/main_test.go#L29))
     - [x] The Go schema generator behind authctl generate prints the same DDL as the other runtime for every verified plugin combination on three dialects, and the authctl binary prints that DDL for no plugin or a single plugin ([test](../../conformance/schema.test.mjs#L106))
-    - [x] Generate the optional Polar checkout and delivery tables on every SQL dialect ([test](../../cmd/authctl/main_test.go#L79))
-    - [x] Emit physical columns from a JSON field definition for each supported SQL dialect ([test](../../cmd/authctl/session_fields_test.go#L13))
-    - [x] Generate the selected plugin schema with independent user and session JSON declarations on all three dialects ([test](../../cmd/authctl/user_fields_test.go#L111))
-    - [x] Generate the configured wallet model alongside user and session fields from one portable JSON declaration ([test](../../cmd/authctl/wallet_schema_test.go#L124))
-    - [x] Generate typed date columns for both models on each SQL dialect and reject invalid static timestamps ([test](../../cmd/authctl/user_fields_test.go#L205))
-    - `-c, --cwd <cwd>` — *not applicable: selects where the JavaScript CLI looks for its auth.ts configuration and resolves --output. authctl generate takes its configuration from flags and JSON field-definition files and writes to standard output, so the process working directory is the only base it needs.*
+    - [x] `-c, --cwd <cwd>` ([test](../../cmd/authctl/cli_options_test.go#L21))
+      - [x] -c and --cwd run the command in another directory: relative files and a relative SQLite AUTH_DSN resolve there, nothing is written outside it, and a missing directory fails before anything is written ([test](../../cmd/authctl/cli_options_test.go#L21))
     - `--config <config>` — *not applicable: path to the JavaScript or TypeScript auth configuration module the CLI imports to learn the adapter, plugins and schema customizations. Go configuration is compiled code; authctl takes the same schema inputs from --dialect, --plugins and the JSON field-definition flags.*
-    - [ ] `--output <output>`
+    - [x] `--output <output>` ([test](../../cmd/authctl/cli_options_test.go#L65))
+      - [x] Write the schema to a file, creating missing parents, or to a timestamped .sql file inside an existing directory; a failed generation writes nothing. Without --output the schema goes to standard output ([test](../../cmd/authctl/cli_options_test.go#L65))
     - `--adapter <adapter>` — *not applicable: chooses the Prisma, Drizzle or Kysely schema generator, which are JavaScript ORM and query-builder formats. authctl has one SQL DDL generator, chosen by --dialect.*
-    - [ ] `--dialect <dialect>`
+    - [x] `--dialect <dialect>` ([test](../../cmd/authctl/main_test.go#L50))
       - [x] Generate prints output containing CREATE TABLE for --dialect postgres, mysql and sqlite before the test configures any database ([test](../../cmd/authctl/main_test.go#L29))
-      - [x] Reject an unsupported --dialect value ([test](../../cmd/authctl/main_test.go#L50))
-    - [ ] `-y, --yes`
-    - [ ] `--y`
+      - [x] --dialect is required and selects SQLite, PostgreSQL or MySQL; an unsupported value is refused ([test](../../cmd/authctl/main_test.go#L50))
+    - [x] `-y, --yes` ([test](../../cmd/authctl/cli_options_test.go#L65))
+      - [x] An existing --output file is replaced only with -y or --yes; without either the run fails and leaves the file unchanged ([test](../../cmd/authctl/cli_options_test.go#L65))
+    - `--y` — *not applicable: deprecated alias of -y. Go's flag package parses --y and -y as the same flag, so it has no behaviour separate from the -y, --yes item.*
   - [ ] `info`
-    - [ ] `--cwd <cwd>`
+    - [x] info prints the authctl version, the Go runtime, platform and CPU count, the three SQL drivers with their versions and the schema profiles, prints no environment values, and refuses positional arguments ([test](../../cmd/authctl/cli_options_test.go#L134))
+    - `--cwd <cwd>` — *not applicable: names the JavaScript project whose package.json and auth configuration the report describes; authctl info reports its own build, the Go runtime and the platform*
     - `--config <config>` — *not applicable: loads the TypeScript auth configuration module to print its redacted options; Go options are plainauth.Options compiled into the host program, with no configuration file a separate tool can load*
-    - [ ] `-j, --json`
-    - [ ] `-c, --copy`
-  - [ ] `init`
-    - [x] Write a private environment file once and preserve an existing file ([test](../../cmd/authctl/setup_test.go#L13))
+    - [x] `-j, --json` ([test](../../cmd/authctl/cli_options_test.go#L134))
+      - [x] -j and --json print the same report as JSON whose runtime, platform, CPU count, driver versions and schema profiles match the running binary ([test](../../cmd/authctl/cli_options_test.go#L134))
+    - [x] `-c, --copy` ([test](../../cmd/authctl/cli_options_test.go#L170))
+      - [x] -c and --copy hand exactly the printed report to the platform clipboard command and say on standard error whether that worked; a failing clipboard still prints the report and exits successfully ([test](../../cmd/authctl/cli_options_test.go#L170))
+  - [x] `init` ([test](../../cmd/authctl/setup_test.go#L13))
+    - [x] Write a private environment file once and preserve an existing file; init writes only this file, since Go options are code rather than a generated configuration module ([test](../../cmd/authctl/setup_test.go#L13))
     - [x] Write a new environment file holding a 64-character AUTH_SECRET value and the quoted public URL, keep that AUTH_SECRET line out of standard output, and refuse to replace or alter an existing file ([test](../../cmd/authctl/setup_test.go#L13))
     - [x] Reject unusable public URLs without writing an environment file ([test](../../cmd/authctl/setup_test.go#L40))
-    - [ ] `-c, --cwd <cwd>`
+    - [x] `-c, --cwd <cwd>` ([test](../../cmd/authctl/cli_options_test.go#L21))
+      - [x] -c and --cwd run the command in another directory: relative files and a relative SQLite AUTH_DSN resolve there, nothing is written outside it, and a missing directory fails before anything is written ([test](../../cmd/authctl/cli_options_test.go#L21))
     - `--config <config>` — *not applicable: path of the TypeScript auth configuration module the wizard creates or edits; Go configuration is plainauth.Options in the host's own code, with no configuration file*
     - `--package-manager <package-manager>` — *not applicable: chooses npm, pnpm, yarn or bun to install JavaScript packages; Go modules are added with go get*
   - [ ] `login`
@@ -514,16 +507,8 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
     - [ ] `--claude-code`
     - [ ] `--open-code`
     - [ ] `--manual`
-  - [ ] `migrate`
-    - [x] Initialize the SQLite schema and repeat the migration ([test](../../cmd/authctl/main_test.go#L38))
-    - [x] Apply the selected profiles twice on populated SQLite while retaining the user ([test](../../conformance/schema.test.mjs#L129))
-    - [x] Upgrade existing PostgreSQL and MySQL schemas with combined team, billing and factor profiles ([test](../../adapters/sqlstore/profiles_test.go#L14))
-    - [x] Reopen a populated SCIM profile twice on SQLite, PostgreSQL and MySQL and retain the original account ([test](../../adapters/sqlstore/scim_test.go#L33))
-    - [x] Preserve Polar delivery receipts and their uniqueness across repeated CLI-compatible migrations on three SQL engines ([test](../../integrations/polar/schema_test.go#L11))
-    - [x] Backfill existing sessions, preserve the owner's data and report incompatible definitions on live servers ([test](../../cmd/authctl/session_fields_live_test.go#L128))
-    - [x] Upgrade a populated account with zero, false and null values while preserving its original fields and session schema ([test](../../cmd/authctl/user_fields_test.go#L167))
-    - [x] Replay the mapped wallet schema with profile fields and the API-key ledger while retaining a populated wallet ([test](../../cmd/authctl/wallet_schema_test.go#L169))
-    - [x] Initialize the SQLite schema and repeat the migration ([test](../../cmd/authctl/main_test.go#L38))
+  - [x] `migrate` ([test](../../cmd/authctl/main_test.go#L38))
+    - [x] Initialize the SQLite schema and repeat the migration, applying it without a confirmation step ([test](../../cmd/authctl/main_test.go#L38))
     - [x] Apply the selected profiles twice on populated SQLite while retaining the user ([test](../../conformance/schema.test.mjs#L129))
     - [x] Upgrade existing PostgreSQL and MySQL schemas with combined team, billing and factor profiles ([test](../../adapters/sqlstore/profiles_test.go#L14))
     - [x] Reopen a populated SCIM profile twice on SQLite, PostgreSQL and MySQL and retain the original account ([test](../../adapters/sqlstore/scim_test.go#L33))
@@ -534,10 +519,12 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
     - [x] Refuse to add a required account column to populated rows without a default, then backfill it once a default is declared, on three SQL engines ([test](../../cmd/authctl/account_fields_test.go#L60))
     - [x] Refuse to migrate a configured session column whose existing type is incompatible, on PostgreSQL and MySQL ([test](../../cmd/authctl/session_fields_live_test.go#L136))
     - [x] Return an error from migrate when AUTH_DSN is empty ([test](../../cmd/authctl/main_test.go#L55))
-    - [ ] `-c, --cwd <cwd>`
+    - [x] `-c, --cwd <cwd>` ([test](../../cmd/authctl/cli_options_test.go#L21))
+      - [x] -c and --cwd run the command in another directory: relative files and a relative SQLite AUTH_DSN resolve there, nothing is written outside it, and a missing directory fails before anything is written ([test](../../cmd/authctl/cli_options_test.go#L21))
     - `--config <config>` — *not applicable: loads the JavaScript or TypeScript auth configuration that supplies the database and plugins; Go options are compiled into the host program, and authctl takes the schema from --dialect, AUTH_DSN, --plugins and the field-definition files*
-    - [ ] `-y, --yes`
-    - [ ] `--y`
+    - [x] `-y, --yes` ([test](../../cmd/authctl/cli_options_test.go#L126))
+      - [x] migrate applies the schema without asking and accepts -y and --yes ([test](../../cmd/authctl/cli_options_test.go#L126))
+    - `--y` — *not applicable: deprecated alias of -y. Go's flag package parses --y and -y as the same flag, so it has no behaviour separate from the -y, --yes item.*
   - [x] `secret` ([test](../../cmd/authctl/main_test.go#L24))
     - [x] Generate an environment assignment containing 32 random bytes in hexadecimal ([test](../../cmd/authctl/main_test.go#L24))
   - `upgrade` — *not applicable: npm package management; it rewrites package.json for the synchronized npm release train and runs the package manager, while Go module versions are upgraded with go get*

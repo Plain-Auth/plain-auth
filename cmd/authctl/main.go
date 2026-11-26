@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"time"
 
 	"github.com/Plain-Org/plain-auth/adapters/sqlstore"
 	"github.com/Plain-Org/plain-auth/schema"
@@ -19,13 +20,16 @@ import (
 const usage = `Usage: authctl <command>
 
   init      [--env-file .env] [--url URL]       Write a new local configuration
-  info                                         Show runtime and driver details
+  info      [--json] [--copy]                  Show runtime and driver details
   check [schema] --dialect sqlite|postgres|mysql  Check target columns without writing to the database
-  generate  --dialect sqlite|postgres|mysql     Write the auth schema to stdout
+  generate  --dialect sqlite|postgres|mysql [--output PATH [--yes]]
+                                               Write the auth schema to stdout or a file
   migrate   --dialect sqlite|postgres|mysql     Apply the schema to AUTH_DSN
   create-admin --dialect D --name N --email E --password-stdin
                                                Create the first administrator in AUTH_DSN
   secret                                       Print a new signing secret
+
+  init, check, generate, migrate and create-admin accept -c/--cwd DIR to run in DIR.
 
   check, generate and migrate accept --plugins with comma-separated schema profiles.
   check, generate and migrate accept --user-fields FILE, --session-fields FILE, --account-fields FILE and --organization-role-fields FILE with JSON field definitions.
@@ -53,10 +57,7 @@ func run(ctx context.Context, args []string, out, errOut io.Writer) error {
 	case "init":
 		return initConfig(args[1:], out, errOut)
 	case "info":
-		if len(args) != 1 {
-			return errors.New("info takes no arguments")
-		}
-		return printInfo(out)
+		return printInfo(args[1:], out, errOut)
 	case "secret":
 		if len(args) != 1 {
 			return errors.New("secret takes no arguments")
@@ -78,12 +79,21 @@ func run(ctx context.Context, args []string, out, errOut io.Writer) error {
 		accountFile := schemaPathFlag(fs, "account-fields", "account fields")
 		roleFile := schemaPathFlag(fs, "organization-role-fields", "organization role fields")
 		walletFile := schemaPathFlag(fs, "wallet-schema", "wallet schema")
+		dir := workDirFlag(fs)
+		var output string
+		var yes *bool
 		var asJSON, prepareKeyLedger bool
 		if args[0] == "check" {
 			fs.BoolVar(&asJSON, "json", false, "Write findings as a JSON array")
 		}
 		if args[0] == "migrate" {
 			fs.BoolVar(&prepareKeyLedger, "api-key-ledger", false, "Install the API-key schema and backfill its permanent digest ledger")
+			// migrate never asks before applying; the switch is accepted for scripts.
+			yes = yesFlag(fs, "Apply without confirmation (migrate never asks)")
+		}
+		if args[0] == "generate" {
+			fs.StringVar(&output, "output", "", "Write the schema to this file, or to a timestamped .sql file in this directory")
+			yes = yesFlag(fs, "Replace an existing --output file")
 		}
 		if err := fs.Parse(args[1:]); err != nil {
 			if errors.Is(err, flag.ErrHelp) {
@@ -93,6 +103,9 @@ func run(ctx context.Context, args []string, out, errOut io.Writer) error {
 		}
 		if fs.NArg() != 0 {
 			return errors.New("unexpected positional argument")
+		}
+		if err := enterDir(*dir); err != nil {
+			return err
 		}
 		var profiles []string
 		if *pluginNames != "" {
@@ -132,6 +145,9 @@ func run(ctx context.Context, args []string, out, errOut io.Writer) error {
 			return err
 		}
 		if args[0] == "generate" {
+			if output != "" {
+				return writeSchema(output, ddl, *yes, time.Now(), out)
+			}
 			_, err = io.WriteString(out, ddl)
 			return err
 		}

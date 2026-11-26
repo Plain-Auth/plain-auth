@@ -81,7 +81,7 @@ Each row tracks the behavior exposed by a published entry point. The Go implemen
   - [ ] Database adapter contract (`./db/adapter`)
   - [ ] Minimal database adapter contract (`./db/adapter/minimal`)
   - [ ] Schema discovery and migration (`./db/migration`)
-    - [x] Emit SQL DDL for SQLite, PostgreSQL and MySQL ([test](../../cmd/authctl/main_test.go#L29))
+    - [x] Emit SQL DDL for SQLite, PostgreSQL and MySQL to standard output, or to a file with --output ([test](../../cmd/authctl/main_test.go#L29))
     - [x] Compare every base-profile combination and independent SCIM profile witnesses across all three dialects ([test](../../conformance/schema.test.mjs#L106))
     - [x] Prove SCIM adds exactly seven disjoint tables and preserves every preexisting schema statement ([test](../../conformance/schema.test.mjs#L169))
     - [x] Generate the optional Polar checkout and delivery tables on every SQL dialect ([test](../../cmd/authctl/main_test.go#L79))
@@ -89,13 +89,7 @@ Each row tracks the behavior exposed by a published entry point. The Go implemen
     - [x] Generate the selected plugin schema with independent user and session JSON declarations on all three dialects ([test](../../cmd/authctl/user_fields_test.go#L111))
     - [x] Generate the configured wallet model alongside user and session fields from one portable JSON declaration ([test](../../cmd/authctl/wallet_schema_test.go#L124))
     - [x] Generate typed date columns for both models on each SQL dialect and reject invalid static timestamps ([test](../../cmd/authctl/user_fields_test.go#L205))
-    - [x] Emit SQL DDL for SQLite, PostgreSQL and MySQL ([test](../../cmd/authctl/main_test.go#L29))
     - [x] The Go schema generator behind authctl generate prints the same DDL as the other runtime for every verified plugin combination on three dialects, and the authctl binary prints that DDL for no plugin or a single plugin ([test](../../conformance/schema.test.mjs#L106))
-    - [x] Generate the optional Polar checkout and delivery tables on every SQL dialect ([test](../../cmd/authctl/main_test.go#L79))
-    - [x] Emit physical columns from a JSON field definition for each supported SQL dialect ([test](../../cmd/authctl/session_fields_test.go#L13))
-    - [x] Generate the selected plugin schema with independent user and session JSON declarations on all three dialects ([test](../../cmd/authctl/user_fields_test.go#L111))
-    - [x] Generate the configured wallet model alongside user and session fields from one portable JSON declaration ([test](../../cmd/authctl/wallet_schema_test.go#L124))
-    - [x] Generate typed date columns for both models on each SQL dialect and reject invalid static timestamps ([test](../../cmd/authctl/user_fields_test.go#L205))
   - Adapter binding for prisma (`./adapters/prisma`) — *not applicable: JavaScript only*
   - Adapter binding for drizzle (`./adapters/drizzle`) — *not applicable: JavaScript only*
   - [ ] Adapter binding for mongodb (`./adapters/mongodb`)

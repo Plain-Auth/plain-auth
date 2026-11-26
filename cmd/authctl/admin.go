@@ -20,10 +20,14 @@ func createAdmin(ctx context.Context, args []string, in io.Reader, out, errOut i
 	email := fs.String("email", "", "Administrator email")
 	name := fs.String("name", "", "Administrator display name")
 	readPassword := fs.Bool("password-stdin", false, "Read one password from standard input")
+	dir := workDirFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return nil
 		}
+		return err
+	}
+	if err := enterDir(*dir); err != nil {
 		return err
 	}
 	if fs.NArg() != 0 || *dialect == "" || *name == "" || *email == "" || !*readPassword {
