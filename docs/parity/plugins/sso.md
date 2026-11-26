@@ -290,14 +290,15 @@
     - [ ] `issuer`
       - [x] Reject an enterprise ID token whose issuer differs from the provider issuer, among other invalid ID tokens ([test](../../../adapters/sqlstore/sso_browser_test.go#L338))
       - [x] Reject a discovery document whose issuer differs from the provider issuer ([test](../../../plugins/sso/discovery_test.go#L66))
-    - [ ] `pkce`
+    - [x] `pkce` ([test](../../../adapters/sqlstore/sso_oidc_contract_test.go#L79))
       - [x] Send an S256 code challenge in each enterprise authorization request ([test](../../../adapters/sqlstore/sso_browser_test.go#L263))
       - [x] Default pkce to true at registration on both runtimes ([test](../../../conformance/sso-providers.mjs#L66))
       - [x] Store and return pkce false for a provider registered with it off ([test](../../../conformance/sso-providers.mjs#L92))
-    - [x] `clientId` ([test](../../../adapters/sqlstore/sso_oidc_contract_test.go#L72))
+      - [x] Send no challenge in the authorization and no verifier in the exchange with PKCE off, and still sign in, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_oidc_contract_test.go#L79))
+    - [x] `clientId` ([test](../../../adapters/sqlstore/sso_oidc_contract_test.go#L86))
       - [x] Send the registered client ID and secret in the code exchange, which the test token endpoint requires before it issues an ID token ([test](../../../adapters/sqlstore/sso_browser_test.go#L119))
       - [x] Return only the last four characters of the client ID ([test](../../../conformance/sso-providers.mjs#L74))
-      - [x] Refuse an ID token for another client and mask the client ID to its last four characters in reads, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_oidc_contract_test.go#L72))
+      - [x] Refuse an ID token for another client and mask the client ID to its last four characters in reads, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_oidc_contract_test.go#L86))
     - [ ] `clientSecret`
       - [x] Send the registered client secret in the code exchange, which the test token endpoint requires before it issues an ID token ([test](../../../adapters/sqlstore/sso_browser_test.go#L119))
       - [x] Keep the client secret out of the provider read ([test](../../../conformance/sso-providers.mjs#L77))
@@ -610,9 +611,9 @@
     - [x] Your customers, each for their own domain ([test](../../../conformance/sso-domains.mjs#L87))
       - [x] Refuse sign-in with HTTP 401 through a new provider until verify-domain succeeds, then sign in by email domain on both runtimes ([test](../../../conformance/sso-domains.mjs#L87))
     - [ ] Nobody at runtime
-    - [x] `providerId` ([test](../../../adapters/sqlstore/sso_oidc_contract_test.go#L95))
+    - [x] `providerId` ([test](../../../adapters/sqlstore/sso_oidc_contract_test.go#L109))
       - [x] Reject a duplicate provider ID, a built-in sign-in method name and a trusted provider name in another case with 422 ([test](../../../adapters/sqlstore/sso_test.go#L180))
-      - [x] Refuse a configured social provider's ID in another case with 422, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_oidc_contract_test.go#L95))
+      - [x] Refuse a configured social provider's ID in another case with 422, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_oidc_contract_test.go#L109))
     - [ ] `issuer`
       - [x] Reject an OIDC registration whose discovered issuer differs from the submitted issuer ([test](../../../adapters/sqlstore/sso_test.go#L241))
     - [x] `domain` ([test](../../../adapters/sqlstore/sso_test.go#L226))
@@ -643,9 +644,9 @@
         - [x] Ask for the provider's stored scopes, or the default set, when a sign-in names none, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_oidc_contract_test.go#L64))
       - [x] Parameter `loginHint` (optional) ([test](../../../adapters/sqlstore/sso_browser_test.go#L263))
         - [x] Send loginHint to the OIDC provider as login_hint ([test](../../../adapters/sqlstore/sso_browser_test.go#L263))
-      - [x] Parameter `additionalParams` (optional) ([test](../../../adapters/sqlstore/sso_oidc_contract_test.go#L91))
+      - [x] Parameter `additionalParams` (optional) ([test](../../../adapters/sqlstore/sso_oidc_contract_test.go#L105))
         - [x] Add a prompt parameter to the OIDC authorization request and reject a reserved state parameter ([test](../../../adapters/sqlstore/sso_browser_test.go#L470))
-        - [x] Refuse client_id and redirect_uri as additional parameters and any additionalParams on a SAML sign-in, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_oidc_contract_test.go#L91))
+        - [x] Refuse client_id and redirect_uri as additional parameters and any additionalParams on a SAML sign-in, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_oidc_contract_test.go#L105))
       - [ ] Parameter `requestSignUp` (optional)
         - [x] Create a new user when requestSignUp is true although implicit sign-up is disabled ([test](../../../adapters/sqlstore/sso_browser_test.go#L346))
         - [x] Ignore requestSignUp for SAML, so DisableImplicitSignUp refuses the sign-up ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L434))
@@ -797,8 +798,8 @@
     - [ ] Registration body
       - [x] Additional fields ([test](../../../adapters/sqlstore/sso_fields_test.go#L63))
         - [x] Take declared provider fields at the top level of a registration and refuse missing required, server-only and mistyped values, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_fields_test.go#L63))
-    - [x] oidcConfig ([test](../../../adapters/sqlstore/sso_oidc_contract_test.go#L111))
-      - [x] Default the scopes, require clientId at registration and store an overrideUserInfo update, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_oidc_contract_test.go#L111))
+    - [x] oidcConfig ([test](../../../adapters/sqlstore/sso_oidc_contract_test.go#L125))
+      - [x] Default the scopes, require clientId at registration and store an overrideUserInfo update, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_oidc_contract_test.go#L125))
     - [ ] samlConfig
   - [ ] Endpoints
     - [x] `POST /sso/register` ([test](../../../plugins/openapi/sso_directory_test.go#L109))

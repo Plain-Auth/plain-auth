@@ -41919,6 +41919,12 @@
       "label": "Store and return pkce false for a provider registered with it off",
       "test": "conformance/sso-providers.mjs",
       "marker": "assert.equal(manual.oidcConfig.pkce, false);"
+    },
+    {
+      "label": "Send no challenge in the authorization and no verifier in the exchange with PKCE off, and still sign in, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_oidc_contract_test.go",
+      "marker": "t.Fatal(\"a PKCE-off sign-in failed or sent a verifier\", done.Code, done.Header().Get(\"Location\"))",
+      "complete": true
     }
   ],
   "plugin-symbol/sso/OIDCConfig/clientId": [

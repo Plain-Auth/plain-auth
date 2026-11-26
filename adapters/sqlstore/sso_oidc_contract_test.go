@@ -64,6 +64,20 @@ func TestEnterpriseOIDCContract(t *testing.T) {
 					t.Fatal("a sign-in asked for the wrong scopes", id, got, want)
 				}
 			}
+			// With PKCE off the authorization carries no challenge and the
+			// exchange no verifier.
+			if register("nopkce", oidc(map[string]any{"pkce": false})) != 200 {
+				t.Fatal("a registration with PKCE off was refused")
+			}
+			w := h.call("POST", "sign-in/sso", "", map[string]any{"providerId": "nopkce", "callbackURL": "/home"})
+			var started struct{ URL string }
+			must(json.Unmarshal(w.Body.Bytes(), &started))
+			if u, err := url.Parse(started.URL); err != nil || u.Query().Has("code_challenge") || u.Query().Has("code_challenge_method") {
+				t.Fatal("a PKCE-off authorization carried a challenge", started.URL)
+			}
+			if done := h.signIn(map[string]any{"providerId": "nopkce"}, "kai@nopkce.example", "kai", "client_secret_basic", ""); done.Header().Get("Location") != "https://service.test/home" {
+				t.Fatal("a PKCE-off sign-in failed or sent a verifier", done.Code, done.Header().Get("Location"))
+			}
 			// An ID token for another client is refused.
 			idp.mu.Lock()
 			idp.claims = map[string]map[string]any{"other-audience": {"aud": "other-client"}}

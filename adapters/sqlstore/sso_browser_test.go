@@ -116,7 +116,7 @@ func (i *ssoIssuer) serve(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		}
-		if !ok || basic != (grant.style == "client_secret_basic") || uid != "enterprise-client" || secret != "oidc-secret" || r.PostForm.Get("redirect_uri") != grant.redirect || oauth2.S256ChallengeFromVerifier(r.PostForm.Get("code_verifier")) != grant.challenge {
+		if !ok || basic != (grant.style == "client_secret_basic") || uid != "enterprise-client" || secret != "oidc-secret" || r.PostForm.Get("redirect_uri") != grant.redirect || (grant.challenge != "" || r.PostForm.Get("code_verifier") != "") && oauth2.S256ChallengeFromVerifier(r.PostForm.Get("code_verifier")) != grant.challenge {
 			http.Error(w, `{"error":"invalid_grant"}`, 400)
 			return
 		}
