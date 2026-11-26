@@ -215,6 +215,12 @@ type EnterpriseCompletion struct {
 	// does for a social provider. A changed email is stored unverified
 	// unless the profile verifies it.
 	OverrideUserInfo bool
+	// Committed runs once the store has committed and the after hooks have
+	// run, before any cookie is set and outside any transaction; created
+	// reports whether the sign-in created the user. An error removes the
+	// session the sign-in would have issued and is returned; a user it
+	// created stays.
+	Committed func(ctx context.Context, u User, created bool) error
 }
 
 // CompleteEnterpriseFlowWith is CompleteEnterpriseFlow with options.
@@ -234,6 +240,11 @@ func (c EndpointContext) CompleteEnterpriseFlowWith(f OAuthFlow, method string, 
 	result, created, err := c.Auth.completeProfileWith(c.Request.Context(), c.Request, method, f.Provider, p, tokens, options, complete)
 	if err != nil {
 		return nil, err
+	}
+	if o.Committed != nil {
+		if err = o.Committed(c.Request.Context(), result.User, created); err != nil {
+			return nil, c.Auth.discardUnpublishedSession(c.Request.Context(), result.Token, err)
+		}
 	}
 	var next any = login
 	if f.IssuerLoginQuery == "" {

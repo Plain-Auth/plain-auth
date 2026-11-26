@@ -346,8 +346,11 @@
       - [x] Inspect the locked OIDC provider and linked-account count before deletion, and roll back a rejected mutation with a private conflict response ([test](../../../adapters/sqlstore/sso_delete_test.go#L145))
       - [x] Give the guard a locked metadata update of a linked SAML directory, with its record, reference, linked-account count and a changed authentication boundary, and reject the update when the guard refuses ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L161))
       - [x] Review a general provider update with its linked-account count and identity change, and store nothing when the guard refuses ([test](../../../adapters/sqlstore/sso_update_test.go#L102))
-    - [ ] `provisionUser`
-    - [ ] `provisionUserOnEveryLogin`
+    - [x] `provisionUser` ([test](../../../adapters/sqlstore/sso_provision_user_test.go#L19))
+      - [x] Run ProvisionUser after a new enterprise user's sign-in commits, with the stored user, mapped profile, OIDC tokens and provider, and on failure answer 500, keep the user and remove the session, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_provision_user_test.go#L19))
+      - [x] Run ProvisionUser for a SAML sign-in without OIDC tokens ([test](../../../adapters/sqlstore/sso_saml_resolve_user_test.go#L107))
+    - [x] `provisionUserOnEveryLogin` ([test](../../../adapters/sqlstore/sso_provision_user_test.go#L103))
+      - [x] Run ProvisionUser only for a new user by default and for every sign-in with ProvisionUserOnEveryLogin ([test](../../../adapters/sqlstore/sso_provision_user_test.go#L103))
     - [ ] `organizationProvisioning`
       - [x] Preserve existing roles and pending invitations, serialize competing removal and roll back new identities at capacity ([test](../../../adapters/sqlstore/sso_browser_test.go#L457))
       - [x] Add a new enterprise user to the provider's organization with the member role ([test](../../../adapters/sqlstore/sso_browser_test.go#L306))
@@ -400,9 +403,9 @@
     - [x] Accept only complete continue, link and reject decisions ([test](../../../plugins/sso/resolve_test.go#L6))
   - [ ] `SSOUserResolutionContext`
     - [x] Run the resolver outside the sign-in transaction, so it can read through the store ([test](../../../adapters/sqlstore/sso_resolve_user_test.go#L119))
-  - [x] `SSOUserResolutionInput` ([test](../../../adapters/sqlstore/sso_saml_resolve_user_test.go#L74))
+  - [x] `SSOUserResolutionInput` ([test](../../../adapters/sqlstore/sso_saml_resolve_user_test.go#L81))
     - [x] Pass the protocol, provider, account key, provider profile, claims, ID token claims and provider reference to ResolveUser ([test](../../../adapters/sqlstore/sso_resolve_user_test.go#L143))
-    - [x] Pass a SAML input with the protocol saml and the directory's provider ID ([test](../../../adapters/sqlstore/sso_saml_resolve_user_test.go#L74))
+    - [x] Pass a SAML input with the protocol saml and the directory's provider ID ([test](../../../adapters/sqlstore/sso_saml_resolve_user_test.go#L81))
   - [x] `OIDCMapping` ([test](../../../adapters/sqlstore/sso_claim_mapping_test.go#L14))
     - [x] Map the email, name, image and declared user field claims of an enterprise sign-up, ignore mapping.emailVerified and refuse other mapping shapes, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_claim_mapping_test.go#L14))
     - [x] Accept only claim names for each mapping key and extraFields entry ([test](../../../plugins/sso/identity_test.go#L124))
@@ -489,6 +492,7 @@
       - [x] Accept a signed IdP logout request once across replicas and revoke the matching sessions ([test](../../../adapters/sqlstore/sso_saml_idp_logout_test.go#L231))
     - [ ] User resolution and provisioning
       - [x] Resolve OIDC users to a chosen account before the sign-in transaction ([test](../../../adapters/sqlstore/sso_resolve_user_test.go#L113))
+      - [x] Run provisioning code after an enterprise sign-in commits ([test](../../../adapters/sqlstore/sso_provision_user_test.go#L95))
     - [ ] Organization provisioning
       - [x] Add a new enterprise user to the provider's organization with the member role ([test](../../../adapters/sqlstore/sso_browser_test.go#L306))
     - [x] DNS domain verification ([test](../../../conformance/sso-domains.mjs#L57))
@@ -631,24 +635,25 @@
       - [x] Overwrite a returning user's name, email, image and mapped fields at each OIDC sign-in and store a changed email unverified ([test](../../../adapters/sqlstore/sso_profile_override_test.go#L117))
   - [ ] Resolve SSO users
     - [x] Link a verified OIDC identity to a chosen user without email matching, and reject or continue it ([test](../../../adapters/sqlstore/sso_resolve_user_test.go#L149))
-    - [x] Link a SAML identity to a chosen user and reject a sign-in from the resolver ([test](../../../adapters/sqlstore/sso_saml_resolve_user_test.go#L103))
-    - [x] `accountKey.issuer` ([test](../../../adapters/sqlstore/sso_saml_resolve_user_test.go#L77))
+    - [x] Link a SAML identity to a chosen user and reject a sign-in from the resolver ([test](../../../adapters/sqlstore/sso_saml_resolve_user_test.go#L117))
+    - [x] `accountKey.issuer` ([test](../../../adapters/sqlstore/sso_saml_resolve_user_test.go#L84))
       - [x] Use the ID token issuer as the OIDC account key issuer ([test](../../../adapters/sqlstore/sso_resolve_user_test.go#L126))
-      - [x] Use the IdP entity ID as the SAML account key issuer ([test](../../../adapters/sqlstore/sso_saml_resolve_user_test.go#L77))
-    - [x] `accountKey.accountId` ([test](../../../adapters/sqlstore/sso_saml_resolve_user_test.go#L80))
+      - [x] Use the IdP entity ID as the SAML account key issuer ([test](../../../adapters/sqlstore/sso_saml_resolve_user_test.go#L84))
+    - [x] `accountKey.accountId` ([test](../../../adapters/sqlstore/sso_saml_resolve_user_test.go#L87))
       - [x] Use the ID token subject as the OIDC account key ID ([test](../../../adapters/sqlstore/sso_resolve_user_test.go#L129))
-      - [x] Use the signed NameID as the SAML account key ID ([test](../../../adapters/sqlstore/sso_saml_resolve_user_test.go#L80))
+      - [x] Use the signed NameID as the SAML account key ID ([test](../../../adapters/sqlstore/sso_saml_resolve_user_test.go#L87))
     - [x] `providerUser` ([test](../../../adapters/sqlstore/sso_resolve_user_test.go#L132))
       - [x] Pass the normalized provider profile to the resolver ([test](../../../adapters/sqlstore/sso_resolve_user_test.go#L132))
     - [x] `verifiedIdTokenClaims` ([test](../../../adapters/sqlstore/sso_resolve_user_test.go#L135))
       - [x] Pass the verified ID token claims to the resolver ([test](../../../adapters/sqlstore/sso_resolve_user_test.go#L135))
     - [x] `providerClaims` ([test](../../../adapters/sqlstore/sso_resolve_user_test.go#L138))
       - [x] Pass the provider claims to the resolver ([test](../../../adapters/sqlstore/sso_resolve_user_test.go#L138))
-    - [x] `providerAttributes` ([test](../../../adapters/sqlstore/sso_saml_resolve_user_test.go#L83))
-      - [x] Pass the verified assertion attributes, one value as a string and several as a list, to the SAML resolver ([test](../../../adapters/sqlstore/sso_saml_resolve_user_test.go#L83))
+    - [x] `providerAttributes` ([test](../../../adapters/sqlstore/sso_saml_resolve_user_test.go#L90))
+      - [x] Pass the verified assertion attributes, one value as a string and several as a list, to the SAML resolver ([test](../../../adapters/sqlstore/sso_saml_resolve_user_test.go#L90))
     - [x] `providerReference` ([test](../../../adapters/sqlstore/sso_resolve_user_test.go#L143))
       - [x] Pass the accepted provider configuration's reference to the resolver ([test](../../../adapters/sqlstore/sso_resolve_user_test.go#L143))
-  - [ ] User provisioning
+  - [x] User provisioning ([test](../../../adapters/sqlstore/sso_provision_user_test.go#L113))
+    - [x] Provision a new enterprise user after the sign-in commits and keep the user when provisioning fails ([test](../../../adapters/sqlstore/sso_provision_user_test.go#L113))
   - [ ] Link a provider to an organization
     - [x] Require organization membership (400) and an owner or admin role (403) to register a provider for an organization, and let current organization admins read it ([test](../../../adapters/sqlstore/sso_test.go#L175))
   - [ ] Organization provisioning

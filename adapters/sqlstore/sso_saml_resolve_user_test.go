@@ -37,7 +37,14 @@ func TestEnterpriseSAMLResolveUser(t *testing.T) {
 				inputs, readErr = append(inputs, in), e
 				return decision, nil
 			}
-			h := p.pluginHost(sso.Options{SAML: &sso.SAMLOptions{}, ResolveUser: resolve}, nil)
+			var provisioned []sso.Provisioning
+			provision := func(_ context.Context, pr sso.Provisioning) error {
+				mu.Lock()
+				defer mu.Unlock()
+				provisioned = append(provisioned, pr)
+				return nil
+			}
+			h := p.pluginHost(sso.Options{SAML: &sso.SAMLOptions{}, ResolveUser: resolve, ProvisionUser: provision, ProvisionUserOnEveryLogin: true}, nil)
 			assert := func(nameID string) func(*saml.Assertion) {
 				return func(a *saml.Assertion) {
 					a.Subject.NameID.Value = nameID
@@ -91,6 +98,13 @@ func TestEnterpriseSAMLResolveUser(t *testing.T) {
 			var owner string
 			if err := p.store.db.QueryRowContext(ctx, p.store.bind(`SELECT "userId" FROM "account" WHERE "providerId"=? AND "accountId"=?`), "acme", "employee").Scan(&owner); err != nil || owner != "selected" {
 				t.Fatal("the SAML identity was not linked to the resolved user", owner, err)
+			}
+
+			mu.Lock()
+			calls := append([]sso.Provisioning(nil), provisioned...)
+			mu.Unlock()
+			if len(calls) != 1 || calls[0].Token != nil || calls[0].UserInfo.Subject != "employee" || calls[0].User.ID != "selected" {
+				t.Fatal("ProvisionUser received OIDC tokens or no profile for a SAML sign-in", calls)
 			}
 
 			before := sessions()

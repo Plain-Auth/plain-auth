@@ -66,7 +66,7 @@ The SQL adapter rechecks the provider's immutable record ID and configuration be
 
 An organization-bound provider adds the authenticated user as a member of the bound tenant in the session transaction. Existing roles and live invitations are preserved. A full or deleted organization cannot leave a partial identity or session. These checks also apply on sign-in nodes that share the organization database and serve only the SSO routes. Set `DisableOrganizationProvisioning` to manage membership separately. [Membership and concurrent removal tests](../adapters/sqlstore/sso_browser_test.go)
 
-The native client starts the flow with `SignInSSO`. A Go flow must finish on a Go instance. The released client can use Go-created enterprise accounts on both tested implementations. Imported links require an explicit source classification before the Go runtime can use them. Arbitrary OIDC callback aliases, provisioning hooks and automatic organization assignment on ordinary signup remain open.
+The native client starts the flow with `SignInSSO`. A Go flow must finish on a Go instance. The released client can use Go-created enterprise accounts on both tested implementations. Imported links require an explicit source classification before the Go runtime can use them. Arbitrary OIDC callback aliases and automatic organization assignment on ordinary signup remain open.
 
 ### Update a provider
 
@@ -89,6 +89,19 @@ A resolver that fails, panics or returns an invalid decision, including an empty
 The input names the `Protocol` (`"oidc"` or `"saml"`), the `ProviderID`, and the `AccountKey`: for OIDC the ID token's issuer and subject. `User` is the normalized profile: email, its verification, name and image; mapped extra fields are not included, so read other claims from `Claims`, which holds the UserInfo claims, or the ID token claims without a UserInfo endpoint, with numbers as `json.Number`. `IDTokenClaims` is the verified ID token payload. `ProviderReference` is an opaque, transient fingerprint of the provider configuration the sign-in accepted; never store it as a tenant or user binding. Validate claims before using them for authorization. SAML sign-ins, including portal sign-ins, call the same resolver with the IdP entity ID and the signed NameID as the account key and the verified assertion attributes as `Claims`, one value as a string and several as a list; `IDTokenClaims` is nil, and a rejected portal sign-in goes to its landing page. With a resolver, every OIDC sign-in needs an ID token: a provider that returns none redirects with `error=invalid_provider` and `error_description=id_token_required_for_user_resolution`.
 
 `ResolveUser` runs before the sign-in transaction, never inside it, so read through the store or your own database; the store then locks the chosen user and the identity and refuses a decision they no longer allow, whereas another runtime runs the resolver inside the transaction and hands it that transaction. It needs a store implementing `sso.UserResolutionStore`, as the SQL store does. [Resolver tests](../adapters/sqlstore/sso_resolve_user_test.go)
+
+## Run code after an enterprise sign-in
+
+Set `sso.Options.ProvisionUser` to run code after an enterprise sign-in creates a user and its account link, for example to create the user's record in your application. It runs after the sign-in transaction commits and after the database hooks, outside any transaction and before the session cookie is set. It receives an `sso.Provisioning` with the stored `User`, the mapped provider profile in `UserInfo` (raw claims or SAML attributes in `UserInfo.Data`), the OIDC tokens in `Token` (nil for SAML) and the `Provider`. Set `ProvisionUserOnEveryLogin` to run it on every sign-in; keep it idempotent.
+
+```go
+sso.Options{ProvisionUser: func(ctx context.Context, p sso.Provisioning) error {
+	department, _ := p.UserInfo.Data["department"].(string)
+	return app.UpsertProfile(ctx, p.User.ID, department)
+}}
+```
+
+An `*auth.APIError` from the callback is the response, and any other error answers 500. Either way the user stays, the session the sign-in would have issued is removed, and without `ProvisionUserOnEveryLogin` the callback does not run for that user again. The store adds organization membership inside the sign-in transaction, so `ProvisionUser` runs after it; another runtime runs it before organization assignment. [Provisioning tests](../adapters/sqlstore/sso_provision_user_test.go)
 
 ## Verify directory domains with DNS
 

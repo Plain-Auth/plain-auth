@@ -65,6 +65,17 @@ type Options struct {
 	// every OIDC sign-in needs an ID token. It needs a store implementing
 	// UserResolutionStore.
 	ResolveUser func(context.Context, UserResolutionInput) (UserResolution, error)
+	// ProvisionUser runs after an enterprise sign-in creates a user and its
+	// account, outside any transaction and before the session cookie is set.
+	// An *auth.APIError is the response and any other error answers 500;
+	// either way the session is removed, the user stays and, without
+	// ProvisionUserOnEveryLogin, the callback does not run for that user
+	// again.
+	ProvisionUser func(context.Context, Provisioning) error
+	// ProvisionUserOnEveryLogin runs ProvisionUser on every enterprise
+	// sign-in, not only the one that creates the user. Keep the callback
+	// idempotent.
+	ProvisionUserOnEveryLogin bool
 	// HTTPClient supplies discovery transport and optional TLS settings.
 	HTTPClient *http.Client
 }

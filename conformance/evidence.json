@@ -44690,6 +44690,11 @@
       "label": "Resolve OIDC users to a chosen account before the sign-in transaction",
       "test": "adapters/sqlstore/sso_resolve_user_test.go",
       "marker": "t.Fatal(\"a resolver link did not finish the enterprise sign-in\", got)"
+    },
+    {
+      "label": "Run provisioning code after an enterprise sign-in commits",
+      "test": "adapters/sqlstore/sso_provision_user_test.go",
+      "marker": "t.Fatal(\"ProvisionUser ran inside the sign-in transaction or before the membership committed\", e, n)"
     }
   ],
   "docs/content/docs/plugins/sso/provisioning.mdx#L54": [
@@ -44782,6 +44787,35 @@
       "label": "Pass the verified assertion attributes, one value as a string and several as a list, to the SAML resolver",
       "test": "adapters/sqlstore/sso_saml_resolve_user_test.go",
       "marker": "t.Fatal(\"the resolver did not receive the verified assertion attributes\", in.Claims)",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/sso/SSOOptions/provisionUser": [
+    {
+      "label": "Run ProvisionUser after a new enterprise user's sign-in commits, with the stored user, mapped profile, OIDC tokens and provider, and on failure answer 500, keep the user and remove the session, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_provision_user_test.go",
+      "marker": "func TestEnterpriseProvisionUser(",
+      "complete": true
+    },
+    {
+      "label": "Run ProvisionUser for a SAML sign-in without OIDC tokens",
+      "test": "adapters/sqlstore/sso_saml_resolve_user_test.go",
+      "marker": "t.Fatal(\"ProvisionUser received OIDC tokens or no profile for a SAML sign-in\", calls)"
+    }
+  ],
+  "plugin-symbol/sso/SSOOptions/provisionUserOnEveryLogin": [
+    {
+      "label": "Run ProvisionUser only for a new user by default and for every sign-in with ProvisionUserOnEveryLogin",
+      "test": "adapters/sqlstore/sso_provision_user_test.go",
+      "marker": "t.Fatal(\"ProvisionUserOnEveryLogin did not run ProvisionUser for a returning user\", made())",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/sso/provisioning.mdx#L144": [
+    {
+      "label": "Provision a new enterprise user after the sign-in commits and keep the user when provisioning fails",
+      "test": "adapters/sqlstore/sso_provision_user_test.go",
+      "marker": "t.Fatal(\"a failed ProvisionUser removed the new user\", err)",
       "complete": true
     }
   ]

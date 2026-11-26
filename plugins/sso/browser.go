@@ -352,7 +352,12 @@ func (o Options) finish(c auth.EndpointContext) (any, error) {
 		}
 		return store.CompleteEnterpriseLogin(ctx, p.Reference, !o.DisableOrganizationProvisioning, id, sub, t, u, s, opts)
 	}
-	result, err := c.CompleteEnterpriseFlowWith(flow, "sso-oidc", profile, tokens, auth.EnterpriseCompletion{DisableSignUp: o.DisableImplicitSignUp && !flow.RequestSignUp, OverrideUserInfo: p.OIDC.OverrideUserInfo}, complete)
+	raw := tokens
+	result, err := c.CompleteEnterpriseFlowWith(flow, "sso-oidc", profile, tokens, auth.EnterpriseCompletion{DisableSignUp: o.DisableImplicitSignUp && !flow.RequestSignUp, OverrideUserInfo: p.OIDC.OverrideUserInfo,
+		Committed: o.provisioned(p.Provider, profile, &raw)}, complete)
+	if out, e, ok := provisioningFailure(c, err); ok {
+		return out, e
+	}
 	if refused := auth.UserInfoRefusal(err); refused != nil {
 		return enterpriseFailure(c, flow, refused.Code, refused.Message)
 	}

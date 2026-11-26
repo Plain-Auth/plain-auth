@@ -481,7 +481,11 @@ func (o Options) samlFinish(c auth.EndpointContext) (any, error) {
 	}
 	// SAML relays the trusted callback URL for both new and returning users.
 	flow.NewUserCallbackURL = ""
-	result, err := c.CompleteEnterpriseFlow(flow, "sso-saml", profile, auth.OAuthTokens{}, o.DisableImplicitSignUp && !flow.RequestSignUp, complete)
+	result, err := c.CompleteEnterpriseFlowWith(flow, "sso-saml", profile, auth.OAuthTokens{}, auth.EnterpriseCompletion{DisableSignUp: o.DisableImplicitSignUp && !flow.RequestSignUp,
+		Committed: o.provisioned(p.Provider, profile, nil)}, complete)
+	if out, e, ok := provisioningFailure(c, err); ok {
+		return out, e
+	}
 	if refused := auth.UserInfoRefusal(err); refused != nil {
 		return enterpriseFailure(c, flow, refused.Code, refused.Message)
 	}
