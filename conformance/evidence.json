@@ -42509,6 +42509,11 @@
       "label": "Let only one of two concurrent logins carrying the same assertion ID succeed",
       "test": "adapters/sqlstore/sso_saml_test.go",
       "marker": "t.Fatal(\"an SP-initiated assertion replay was not reported as replay_detected\""
+    },
+    {
+      "label": "Refuse an RSA-SHA1-signed response with saml_deprecated_algorithm, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "t.Fatal(\"an RSA-SHA1 response did not fail with saml_deprecated_algorithm\", location)"
     }
   ],
   "docs/content/docs/plugins/sso/index.mdx#L22/SAML Single Logout": [
@@ -45373,6 +45378,11 @@
       "label": "Accept an RSA-SHA512 response",
       "test": "adapters/sqlstore/sso_saml_policy_test.go",
       "marker": "an RSA-SHA512 response was refused"
+    },
+    {
+      "label": "Refuse a directory with an ECDSA certificate and store nothing; directory certificates must be RSA, a documented deviation, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "t.Fatal(\"a directory with an ECDSA certificate was registered\", status)"
     }
   ],
   "docs/content/docs/plugins/sso/saml-security.mdx#L94/Digest": [

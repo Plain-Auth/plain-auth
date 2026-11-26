@@ -2,12 +2,18 @@ package sqlstore
 
 import (
 	"bytes"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"encoding/xml"
 	"log/slog"
+	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -662,6 +668,24 @@ func TestEnterpriseSAMLResponsePolicy(t *testing.T) {
 				}
 				if status, code, _ := register(def, "bad-digest", map[string]any{"digestAlgorithm": "sha1"}); status != 400 || code != "SAML_DEPRECATED_CONFIG_ALGORITHM" {
 					t.Fatal("registration accepted a deprecated digestAlgorithm", status, code)
+				}
+				// An ECDSA directory certificate is refused, a documented deviation.
+				ecKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+				if err != nil {
+					t.Fatal(err)
+				}
+				tmpl := &x509.Certificate{SerialNumber: big.NewInt(1), Subject: pkix.Name{CommonName: "ec-idp"}, NotBefore: time.Now().Add(-time.Hour), NotAfter: time.Now().Add(time.Hour)}
+				der, err := x509.CreateCertificate(rand.Reader, tmpl, tmpl, &ecKey.PublicKey, ecKey)
+				if err != nil {
+					t.Fatal(err)
+				}
+				ecPEM := string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}))
+				if status, _, _ := register(def, "ecdsa", map[string]any{"cert": ecPEM}); status != 400 {
+					t.Fatal("a directory with an ECDSA certificate was registered", status)
+				}
+				var ecRows int
+				if err := p.store.db.QueryRowContext(t.Context(), p.store.bind(`SELECT COUNT(*) FROM "ssoProvider" WHERE "providerId"=?`), "ecdsa").Scan(&ecRows); err != nil || ecRows != 0 {
+					t.Fatal("a refused ECDSA directory was stored", ecRows, err)
 				}
 				if status, code, _ := register(def, "bad-unknown", map[string]any{"signatureAlgorithm": "md5"}); status != 400 || code != "SAML_UNKNOWN_ALGORITHM" {
 					t.Fatal("registration accepted an unknown signatureAlgorithm", status, code)
