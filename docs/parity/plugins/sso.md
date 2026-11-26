@@ -7,12 +7,12 @@
 - [ ] Single sign-on endpoints, types and options
   - `ssoClient` — *not applicable: JavaScript only. ssoClient is the browser SDK plugin: $InferServerPlugin typing for the domainVerification and additional-field options, plus GET path methods for /sso/providers and /sso/get-provider. A Go server only serves those routes, and the Go caller is client/sso.go.*
   - [ ] `DEFAULT_CLOCK_SKEW_MS`
-    - [x] Default the SAML clock skew to three minutes, the most the SAML library allows process-wide ([test](../../../plugins/sso/saml_test.go#L277))
-  - [x] `DEFAULT_MAX_SAML_METADATA_SIZE` ([test](../../../plugins/sso/saml_test.go#L60))
-    - [x] Resolve an unset SAML metadata size limit to 100 KiB, and refuse a negative limit or one above 1 MiB when building the plugin ([test](../../../plugins/sso/saml_test.go#L60))
+    - [x] Default the SAML clock skew to three minutes, the most the SAML library allows process-wide ([test](../../../plugins/sso/saml_test.go#L285))
+  - [x] `DEFAULT_MAX_SAML_METADATA_SIZE` ([test](../../../plugins/sso/saml_test.go#L61))
+    - [x] Resolve an unset SAML metadata size limit to 100 KiB, and refuse a negative limit or one above 1 MiB when building the plugin ([test](../../../plugins/sso/saml_test.go#L61))
     - [x] Refuse an inline IdP metadata update padded past 100 KiB on a host with the default limit ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L81))
-  - [x] `DEFAULT_MAX_SAML_RESPONSE_SIZE` ([test](../../../plugins/sso/saml_test.go#L266))
-    - [x] Default the SAMLResponse limit to 256 KiB, keep a configured one and refuse a negative size or one above 1 MiB ([test](../../../plugins/sso/saml_test.go#L266))
+  - [x] `DEFAULT_MAX_SAML_RESPONSE_SIZE` ([test](../../../plugins/sso/saml_test.go#L274))
+    - [x] Default the SAMLResponse limit to 256 KiB, keep a configured one and refuse a negative size or one above 1 MiB ([test](../../../plugins/sso/saml_test.go#L274))
     - [x] Refuse a SAMLResponse one byte over the default limit at the ACS ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L201))
   - [ ] `sso`
     - [x] Build enterprise hosts with sso.New and complete OIDC sign-in through per-provider and shared callbacks on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_browser_test.go#L185))
@@ -172,7 +172,7 @@
     - [x] Require an approved immutable registration and its browser Origin, apply session and signup policy, and claim one portal assertion across SQL replicas in all three databases ([test](../../../adapters/sqlstore/sso_saml_portal_test.go#L24))
     - [x] Exclude a new registration that reuses the approved provider name after deletion ([test](../../../adapters/sqlstore/sso_saml_test.go#L760))
     - [x] Reject a signed portal assertion when the provider catalog changes after host approval and before the final SQL transaction ([test](../../../adapters/sqlstore/sso_saml_test.go#L473))
-    - [x] A SAML profile carries the raw attributes ValidateUserInfo sees, one value as a string and several as a list ([test](../../../plugins/sso/saml_test.go#L158))
+    - [x] A SAML profile carries the raw attributes ValidateUserInfo sees, one value as a string and several as a list ([test](../../../plugins/sso/saml_test.go#L159))
     - [x] A response with a bad signature still spends the browser's RelayState with its verification hooks ([test](../../../adapters/sqlstore/sso_saml_test.go#L314))
     - [x] A declined RelayState answers 400 INVALID_OAUTH_STATE and keeps the flow for a retry ([test](../../../adapters/sqlstore/sso_saml_test.go#L324))
     - [x] The logout binding's verification create hooks follow the sign-in's session hooks once ([test](../../../adapters/sqlstore/sso_saml_hooks_test.go#L105))
@@ -191,33 +191,33 @@
     - [x] Run the logout request's create and the binding's delete verification hooks in one pass; a declined request signs out but its LogoutResponse answers 400 ([test](../../../adapters/sqlstore/sso_saml_hooks_test.go#L192))
   - [ ] `AlgorithmValidationOptions`
     - [x] Apply the signature allow-list to the assertion signature inside an allowed response, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L254))
-    - [x] Refuse deprecated, unlisted and unknown signature methods and digests with their SAML_ codes, naming only exported URIs ([test](../../../plugins/sso/saml_test.go#L336))
+    - [x] Refuse deprecated, unlisted and unknown signature methods and digests with their SAML_ codes, naming only exported URIs ([test](../../../plugins/sso/saml_test.go#L344))
     - [x] Apply the signature allow-list to a decrypted assertion ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L302))
     - [x] Apply the signature allow-list to the response signature around an allowed plain or encrypted assertion, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L260))
-    - [x] Refuse a signature whose method is missing, repeated, foreign, prefixed or empty ([test](../../../plugins/sso/saml_test.go#L437))
+    - [x] Refuse a signature whose method is missing, repeated, foreign, prefixed or empty ([test](../../../plugins/sso/saml_test.go#L445))
     - [ ] `onDeprecated`
       - [x] Always reject deprecated algorithms: an RSA-SHA1 response fails with saml_deprecated_algorithm (there is no warn or allow mode) ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L233))
     - [ ] `allowedSignatureAlgorithms`
       - [x] Refuse a response signed outside the signature allow-list with saml_algorithm_not_allowed and accept a listed one, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L242))
-      - [x] Refuse deprecated and short-form signature allow-list entries when building the plugin ([test](../../../plugins/sso/saml_test.go#L453))
+      - [x] Refuse deprecated and short-form signature allow-list entries when building the plugin ([test](../../../plugins/sso/saml_test.go#L461))
       - [x] Apply the signature allow-list to a directory's signatureAlgorithm at registration ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L352))
     - [ ] `allowedDigestAlgorithms`
       - [x] Refuse a response whose signature digest is outside the digest allow-list, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L248))
-      - [x] Refuse a SHA-1 digest allow-list entry when building the plugin ([test](../../../plugins/sso/saml_test.go#L456))
-      - [x] Apply the digest allow-list to a directory's digestAlgorithm ([test](../../../plugins/sso/saml_test.go#L500))
+      - [x] Refuse a SHA-1 digest allow-list entry when building the plugin ([test](../../../plugins/sso/saml_test.go#L464))
+      - [x] Apply the digest allow-list to a directory's digestAlgorithm ([test](../../../plugins/sso/saml_test.go#L508))
     - [ ] `allowedKeyEncryptionAlgorithms`
     - [ ] `allowedDataEncryptionAlgorithms`
-  - [x] `DataEncryptionAlgorithm` ([test](../../../plugins/sso/saml_test.go#L328))
-    - [x] Export the Triple DES, AES-CBC and AES-GCM content cipher URIs, equal to the decrypter's ([test](../../../plugins/sso/saml_test.go#L328))
-    - [x] Name AES-256-GCM, the only accepted content cipher, with the decrypter's URI ([test](../../../plugins/sso/saml_test.go#L320))
+  - [x] `DataEncryptionAlgorithm` ([test](../../../plugins/sso/saml_test.go#L336))
+    - [x] Export the Triple DES, AES-CBC and AES-GCM content cipher URIs, equal to the decrypter's ([test](../../../plugins/sso/saml_test.go#L336))
+    - [x] Name AES-256-GCM, the only accepted content cipher, with the decrypter's URI ([test](../../../plugins/sso/saml_test.go#L328))
   - [ ] `DeprecatedAlgorithmBehavior`
     - [x] Reject deprecated algorithms, the only behaviour offered ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L233))
-  - [x] `DigestAlgorithm` ([test](../../../plugins/sso/saml_test.go#L313))
-    - [x] Export the SHA-1, SHA-256, SHA-384 and SHA-512 digest URIs as DigestAlgorithm constants ([test](../../../plugins/sso/saml_test.go#L313))
-  - [x] `KeyEncryptionAlgorithm` ([test](../../../plugins/sso/saml_test.go#L317))
-    - [x] Export the RSA 1.5, RSA-OAEP and xmlenc11 RSA-OAEP key transport URIs, equal to the decrypter's ([test](../../../plugins/sso/saml_test.go#L317))
-  - [x] `SignatureAlgorithm` ([test](../../../plugins/sso/saml_test.go#L305))
-    - [x] Export the RSA and ECDSA XML Signature method URIs as SignatureAlgorithm constants ([test](../../../plugins/sso/saml_test.go#L305))
+  - [x] `DigestAlgorithm` ([test](../../../plugins/sso/saml_test.go#L321))
+    - [x] Export the SHA-1, SHA-256, SHA-384 and SHA-512 digest URIs as DigestAlgorithm constants ([test](../../../plugins/sso/saml_test.go#L321))
+  - [x] `KeyEncryptionAlgorithm` ([test](../../../plugins/sso/saml_test.go#L325))
+    - [x] Export the RSA 1.5, RSA-OAEP and xmlenc11 RSA-OAEP key transport URIs, equal to the decrypter's ([test](../../../plugins/sso/saml_test.go#L325))
+  - [x] `SignatureAlgorithm` ([test](../../../plugins/sso/saml_test.go#L313))
+    - [x] Export the RSA and ECDSA XML Signature method URIs as SignatureAlgorithm constants ([test](../../../plugins/sso/saml_test.go#L313))
   - [ ] `SAMLConditions`
     - [x] Reject a signed assertion whose NotBefore is an hour in the future ([test](../../../adapters/sqlstore/sso_saml_test.go#L612))
     - [x] Reject a signed assertion whose NotOnOrAfter passed an hour ago ([test](../../../adapters/sqlstore/sso_saml_test.go#L611))
@@ -226,7 +226,7 @@
     - [ ] `clockSkew`
       - [x] Accept an assertion expired two minutes ago under the default skew and refuse it under a one-minute skew, within the three-minute tolerance, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L416))
       - [x] Refuse an assertion valid only in two minutes under a one-minute skew ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L422))
-      - [x] Refuse a negative clock skew or one above three minutes, and keep a narrower one ([test](../../../plugins/sso/saml_test.go#L283))
+      - [x] Refuse a negative clock skew or one above three minutes, and keep a narrower one ([test](../../../plugins/sso/saml_test.go#L291))
       - [x] Narrow the bearer confirmation deadline with the clock skew before the user is provisioned ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L438))
     - [x] `requireTimestamps` ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L448))
       - [x] Refuse an assertion without timestamp conditions under RequireTimestamps, and accept one that has NotBefore, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L448))
@@ -292,11 +292,12 @@
     - [ ] `entryPoint`
       - [x] Send the SAML request to the IdP sign-in URL, from entryPoint or, when IdP metadata XML is registered with a placeholder entryPoint, from the document ([test](../../../conformance/sso-saml.mjs#L277))
     - [ ] `cert`
-      - [x] Accept a single certificate string or a list of certificates in samlConfig.cert ([test](../../../plugins/sso/saml_test.go#L25))
+      - [x] Accept a single certificate string or a list of certificates in samlConfig.cert ([test](../../../plugins/sso/saml_test.go#L26))
       - [x] Return the registered signing certificate on both runtimes ([test](../../../conformance/sso-saml.mjs#L206))
     - [ ] `audience`
       - [x] Reject a signed assertion addressed to a different audience ([test](../../../adapters/sqlstore/sso_saml_test.go#L603))
     - [ ] `callbackUrl`
+      - [x] Land a portal sign-in on the directory's callbackUrl when no IdP-initiated landing page is configured ([test](../../../adapters/sqlstore/sso_saml_mapping_test.go#L103))
     - [ ] `idpInitiatedCallbackUrl`
       - [x] Send an approved IdP-initiated sign-in to the directory's idpInitiatedCallbackUrl rather than the host-wide fallback ([test](../../../adapters/sqlstore/sso_saml_portal_test.go#L114))
       - [x] Land a portal sign-in on the directory's relative idpInitiatedCallbackUrl, and on the host-wide landing page when the directory names an untrusted absolute URL, on both runtimes ([test](../../../conformance/sso-saml.mjs#L248))
@@ -313,17 +314,17 @@
       - [x] Sign the HTTP-Redirect AuthnRequest when the directory sets authnRequestsSigned, and have the IdP verify it ([test](../../../adapters/sqlstore/sso_saml_test.go#L249))
     - [x] `signatureAlgorithm` ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L369))
       - [x] Register, store and return a directory's signatureAlgorithm, refusing deprecated, unknown and unlisted values with their codes and storing nothing, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L369))
-      - [x] Accept short forms in any case and full URIs for signatureAlgorithm ([test](../../../plugins/sso/saml_test.go#L482))
+      - [x] Accept short forms in any case and full URIs for signatureAlgorithm ([test](../../../plugins/sso/saml_test.go#L490))
     - [x] `digestAlgorithm` ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L346))
       - [x] Register and return a directory's digestAlgorithm and refuse a deprecated one, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L346))
-      - [x] Refuse an unknown or unlisted digestAlgorithm ([test](../../../plugins/sso/saml_test.go#L500))
+      - [x] Refuse an unknown or unlisted digestAlgorithm ([test](../../../plugins/sso/saml_test.go#L508))
     - [x] `identifierFormat` ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L385))
       - [x] Advertise the directory's identifierFormat in the SP metadata, request it in the AuthnRequest and sign in with a persistent NameID the IdP enforces, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L385))
       - [x] Advertise the directory's identifierFormat in the SP metadata ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L381))
     - [ ] `privateKey`
     - [ ] `mapping`
       - [x] Fill the user name from the displayName attribute by default on both runtimes ([test](../../../conformance/sso-saml.mjs#L294))
-      - [x] A SAML profile carries the raw attributes, one value as a string and several as a list, with the email lower-cased ([test](../../../plugins/sso/saml_test.go#L158))
+      - [x] A SAML profile carries the raw attributes, one value as a string and several as a list, with the email lower-cased ([test](../../../plugins/sso/saml_test.go#L159))
   - [ ] `SAMLIdentityProviderMetadata`
     - [x] Use the entity ID from submitted IdP metadata XML ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L62))
     - [x] Reject an assertion from an issuer other than the manually configured entityID ([test](../../../adapters/sqlstore/sso_saml_test.go#L601))
@@ -372,7 +373,7 @@
       - [x] Resolve the signing key before each code exchange with the provider's record, tenant, key ID and issuer, refuse private_key_jwt without a resolver, and fail the callback before any token request when no key is returned, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_private_key_test.go#L20))
     - [ ] `saml`
       - [x] Run SP-initiated SAML sign-in, single logout and reviewed IdP portal sign-in under the plugin's SAML options on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_test.go#L117))
-      - [x] Default the inline IdP metadata limit to 100 KiB and reject a negative limit or one above 1 MiB ([test](../../../plugins/sso/saml_test.go#L47))
+      - [x] Default the inline IdP metadata limit to 100 KiB and reject a negative limit or one above 1 MiB ([test](../../../plugins/sso/saml_test.go#L48))
   - [ ] `SSOProvider`
     - [x] Return the registered provider's record with its provider ID, OIDC configuration and redirect URI to the released client on both runtimes ([test](../../../conformance/sso-providers.mjs#L65))
   - [ ] `SSOProviderMutationGuardContext`
@@ -390,7 +391,9 @@
   - [x] `OIDCMapping` ([test](../../../adapters/sqlstore/sso_claim_mapping_test.go#L14))
     - [x] Map the email, name, image and declared user field claims of an enterprise sign-up, ignore mapping.emailVerified and refuse other mapping shapes, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_claim_mapping_test.go#L14))
     - [x] Accept only claim names for each mapping key and extraFields entry ([test](../../../plugins/sso/identity_test.go#L124))
-  - [ ] `SAMLMapping`
+  - [x] `SAMLMapping` ([test](../../../adapters/sqlstore/sso_saml_mapping_test.go#L25))
+    - [x] Map a directory's email, first and last name, display name and declared user field attributes at a portal sign-in, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_mapping_test.go#L25))
+    - [x] Pass a mapped attribute's one value as a string and several as a list, and skip a missing attribute ([test](../../../plugins/sso/saml_test.go#L222))
   - [ ] `AuthnRequestRecord`
     - [x] Reject a signed assertion whose InResponseTo names a different request than the one the browser started, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_test.go#L609))
   - [x] `SAMLSessionRecord` ([test](../../../adapters/sqlstore/sso_saml_logout_test.go#L61))
@@ -699,8 +702,8 @@
     - [x] Redirect a SAMLResponse over the default or configured limit with saml_error before decoding it, and accept one under the limit, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L207))
     - [x] Accept a SAMLResponse under the default limit ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L212))
   - [x] One assertion ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L173))
-    - [x] Pass the envelope check only with exactly one top-level signed assertion, refusing a second, a nested or a missing assertion ([test](../../../plugins/sso/saml_test.go#L236))
-    - [x] Count plain and encrypted assertions anywhere in a response, so none or more than one is named by its error code ([test](../../../plugins/sso/saml_test.go#L251))
+    - [x] Pass the envelope check only with exactly one top-level signed assertion, refusing a second, a nested or a missing assertion ([test](../../../plugins/sso/saml_test.go#L244))
+    - [x] Count plain and encrypted assertions anywhere in a response, so none or more than one is named by its error code ([test](../../../plugins/sso/saml_test.go#L259))
     - [x] Redirect with error=saml_multiple_assertions and store no user or session for a response the IdP signed over two assertions, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L173))
   - [ ] Signature
     - [x] Reject a SAML response signed by a key other than the provider's certificate ([test](../../../adapters/sqlstore/sso_saml_test.go#L665))
@@ -749,8 +752,8 @@
       - [x] Refuse an RSA-SHA1 response with saml_deprecated_algorithm and accept RSA-SHA384 and RSA-SHA512 responses, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L233))
       - [x] Accept an RSA-SHA512 response ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L239))
     - [ ] Digest
-      - [x] Report a SHA-1 digest as deprecated ([test](../../../plugins/sso/saml_test.go#L376))
-      - [x] Refuse an unknown digest method ([test](../../../plugins/sso/saml_test.go#L379))
+      - [x] Report a SHA-1 digest as deprecated ([test](../../../plugins/sso/saml_test.go#L384))
+      - [x] Refuse an unknown digest method ([test](../../../plugins/sso/saml_test.go#L387))
       - [x] Accept a response signed with a SHA-384 digest ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L236))
     - [ ] Key encryption
       - [x] Sign in on both runtimes with an assertion whose key is wrapped with RSA-OAEP using SHA-256 ([test](../../../conformance/core.test.mjs#L1569))
@@ -764,12 +767,12 @@
     - [ ] `"allow"`
       - [x] Refuse a deprecated algorithm rather than allow it: an RSA-SHA1 response fails with saml_deprecated_algorithm ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L233))
     - [x] `SAML_UNKNOWN_ALGORITHM` ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L349))
-      - [x] Refuse an unknown signature method with SAML_UNKNOWN_ALGORITHM without echoing it ([test](../../../plugins/sso/saml_test.go#L382))
-      - [x] Refuse ECDSA-SHA1 as an unrecognized signature method ([test](../../../plugins/sso/saml_test.go#L385))
+      - [x] Refuse an unknown signature method with SAML_UNKNOWN_ALGORITHM without echoing it ([test](../../../plugins/sso/saml_test.go#L390))
+      - [x] Refuse ECDSA-SHA1 as an unrecognized signature method ([test](../../../plugins/sso/saml_test.go#L393))
       - [x] Refuse registration with an unknown signatureAlgorithm with 400 SAML_UNKNOWN_ALGORITHM, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L349))
     - [x] `SAML_ALGORITHM_NOT_ALLOWED` ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L352))
       - [x] Redirect a response signed outside the allow-list with saml_algorithm_not_allowed, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L242))
-      - [x] Apply the allow-list before the deprecation check ([test](../../../plugins/sso/saml_test.go#L367))
+      - [x] Apply the allow-list before the deprecation check ([test](../../../plugins/sso/saml_test.go#L375))
       - [x] Refuse registration with a signatureAlgorithm outside the allow-list with 400 SAML_ALGORITHM_NOT_ALLOWED, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L352))
     - [x] `SAML_DEPRECATED_ALGORITHM` ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L284))
       - [x] Redirect an RSA-SHA1 response with saml_deprecated_algorithm and its message, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L233))
@@ -777,10 +780,10 @@
       - [x] Redirect an RSA 1.5 key transport with saml_deprecated_algorithm whatever the content cipher, before naming Triple DES ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L289))
     - [ ] `SAML_DEPRECATED_CONFIG_ALGORITHM`
       - [x] Refuse registration with a deprecated signatureAlgorithm with 400 SAML_DEPRECATED_CONFIG_ALGORITHM and its message, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L343))
-      - [x] Name a deprecated digestAlgorithm in SAML_DEPRECATED_CONFIG_ALGORITHM ([test](../../../plugins/sso/saml_test.go#L506))
+      - [x] Name a deprecated digestAlgorithm in SAML_DEPRECATED_CONFIG_ALGORITHM ([test](../../../plugins/sso/saml_test.go#L514))
   - [ ] Size limits
     - [x] Reject an IdP metadata update larger than the default 100 KiB limit ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L81))
-    - [x] Refuse a negative or over-1 MiB MaxMetadataSize and default it to 100 KiB ([test](../../../plugins/sso/saml_test.go#L47))
+    - [x] Refuse a negative or over-1 MiB MaxMetadataSize and default it to 100 KiB ([test](../../../plugins/sso/saml_test.go#L48))
     - [x] `saml_error` ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L201))
       - [x] Redirect an oversized SAMLResponse with error=saml_error and the size message ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L201))
 
@@ -827,13 +830,14 @@
     - [ ] `name`
       - [x] Fill a new user's name from displayName when no given name or surname is sent ([test](../../../adapters/sqlstore/sso_saml_test.go#L507))
       - [x] Fill the user's name from displayName on both runtimes ([test](../../../conformance/sso-saml.mjs#L294))
-    - [x] `firstName` ([test](../../../plugins/sso/saml_test.go#L208))
-      - [x] Join the givenName attribute, or the mapped firstName attribute, into the user's name ([test](../../../plugins/sso/saml_test.go#L208))
-      - [x] Use a first name alone as the user's name ([test](../../../plugins/sso/saml_test.go#L202))
-    - [x] `lastName` ([test](../../../plugins/sso/saml_test.go#L199))
-      - [x] Join the surname attribute, or the mapped lastName attribute, after the first name ([test](../../../plugins/sso/saml_test.go#L199))
-      - [x] Use a last name alone as the user's name ([test](../../../plugins/sso/saml_test.go#L205))
-    - [ ] `extraFields`
+    - [x] `firstName` ([test](../../../plugins/sso/saml_test.go#L209))
+      - [x] Join the givenName attribute, or the mapped firstName attribute, into the user's name ([test](../../../plugins/sso/saml_test.go#L209))
+      - [x] Use a first name alone as the user's name ([test](../../../plugins/sso/saml_test.go#L203))
+    - [x] `lastName` ([test](../../../plugins/sso/saml_test.go#L200))
+      - [x] Join the surname attribute, or the mapped lastName attribute, after the first name ([test](../../../plugins/sso/saml_test.go#L200))
+      - [x] Use a last name alone as the user's name ([test](../../../plugins/sso/saml_test.go#L206))
+    - [x] `extraFields` ([test](../../../adapters/sqlstore/sso_saml_mapping_test.go#L113))
+      - [x] Register a directory with mapping.extraFields and save the mapped department on the new user, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_mapping_test.go#L113))
   - [ ] ACS and callback URLs
     - [x] Land an IdP-initiated sign-in on the provider's idpInitiatedCallbackUrl ([test](../../../adapters/sqlstore/sso_saml_portal_test.go#L114))
     - [x] Fall back to the plugin's IdP-initiated landing page when the provider's is not a trusted origin, on both runtimes ([test](../../../conformance/sso-saml.mjs#L248))

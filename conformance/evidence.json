@@ -44534,5 +44534,33 @@
       "test": "adapters/sqlstore/sso_profile_override_test.go",
       "marker": "t.Fatal(\"overrideUserInfo did not store the changed email unverified\", moved)"
     }
+  ],
+  "plugin-symbol/sso/SAMLMapping": [
+    {
+      "label": "Map a directory's email, first and last name, display name and declared user field attributes at a portal sign-in, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_mapping_test.go",
+      "marker": "func TestEnterpriseSAMLDirectoryMapping(",
+      "complete": true
+    },
+    {
+      "label": "Pass a mapped attribute's one value as a string and several as a list, and skip a missing attribute",
+      "test": "plugins/sso/saml_test.go",
+      "marker": "extraFields did not pass one value as a string and several as a list"
+    }
+  ],
+  "docs/content/docs/plugins/sso/saml.mdx#L160/`extraFields`": [
+    {
+      "label": "Register a directory with mapping.extraFields and save the mapped department on the new user, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_mapping_test.go",
+      "marker": "t.Fatal(\"SAML extraFields did not fill the department user field\", dept)",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/sso/SAMLConfig/callbackUrl": [
+    {
+      "label": "Land a portal sign-in on the directory's callbackUrl when no IdP-initiated landing page is configured",
+      "test": "adapters/sqlstore/sso_saml_mapping_test.go",
+      "marker": "t.Fatal(\"the portal sign-in did not land on the directory callbackUrl\", w.Code, w.Header().Get(\"Location\"))"
+    }
   ]
 }

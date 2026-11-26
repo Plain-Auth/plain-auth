@@ -134,6 +134,10 @@ type SAMLMapping struct {
 	LastName      string `json:"lastName,omitempty"`
 	Name          string `json:"name,omitempty"`
 	EmailVerified string `json:"emailVerified,omitempty"`
+	// ExtraFields maps user field names to SAML attribute names. Only
+	// declared user fields that are not ServerOnly are written, when the
+	// user is created.
+	ExtraFields map[string]string `json:"extraFields,omitempty"`
 }
 
 // SAMLService is a published SAML protocol binding and its destination.

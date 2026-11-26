@@ -254,6 +254,25 @@ func samlProfile(a *saml.Assertion, m SAMLMapping, trust bool) (auth.OAuthProfil
 		}
 	}
 	result := auth.OAuthProfile{Subject: id, Email: strings.ToLower(email), Name: name, Data: raw}
+	// A mapped attribute passes one value as a string and several as a list.
+	for field, attribute := range m.ExtraFields {
+		values := attrs[attribute]
+		if len(values) == 0 {
+			continue
+		}
+		if result.AdditionalFields == nil {
+			result.AdditionalFields = map[string]any{}
+		}
+		if len(values) == 1 {
+			result.AdditionalFields[field] = values[0]
+			continue
+		}
+		list := make([]any, len(values))
+		for i, v := range values {
+			list[i] = v
+		}
+		result.AdditionalFields[field] = list
+	}
 	if trust && m.EmailVerified != "" {
 		verified, e := get(m.EmailVerified, "")
 		if e != nil {

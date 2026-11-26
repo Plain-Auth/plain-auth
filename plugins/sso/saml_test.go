@@ -10,6 +10,7 @@ import (
 	"github.com/crewjam/saml"
 	"github.com/crewjam/saml/xmlenc"
 	"math/big"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -215,6 +216,13 @@ func TestSAMLProfileNameParts(t *testing.T) {
 	}
 	if _, err := profile(SAMLMapping{}, attr("givenName", "Ada", "Augusta")); err == nil {
 		t.Fatal("several values for a name attribute were accepted")
+	}
+	mapped, err := profile(SAMLMapping{ExtraFields: map[string]string{"department": "dept", "teams": "team", "absent": "none"}}, attr("dept", "Research"), attr("team", "blue", "green"))
+	if err != nil || mapped.AdditionalFields["department"] != "Research" || !reflect.DeepEqual(mapped.AdditionalFields["teams"], []any{"blue", "green"}) {
+		t.Fatal("extraFields did not pass one value as a string and several as a list", mapped.AdditionalFields, err)
+	}
+	if _, has := mapped.AdditionalFields["absent"]; has {
+		t.Fatal("extraFields set a field for a missing attribute")
 	}
 }
 
