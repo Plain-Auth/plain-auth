@@ -60,11 +60,18 @@ func (a *Auth) adminUpdateFields(ctx context.Context, actor *User, u *User, req 
 			}
 		}
 	}
+	roleValue, roleInData := req.Data["role"]
+	if req.Role != nil || roleInData {
+		// Check the grant before the value, so a caller without
+		// user:set-role learns nothing about a role sent in data.
+		if err := a.requireAdminFieldGrant(actor, "set-role"); err != nil {
+			return err
+		}
+	}
 	role := req.Role
-	if v, ok := req.Data["role"]; ok && role == nil {
+	if roleInData && role == nil {
 		var err error
-		role, err = parseAdminRoles(v)
-		if err != nil {
+		if role, err = parseAdminRoles(roleValue); err != nil {
 			return err
 		}
 	}
@@ -72,9 +79,6 @@ func (a *Auth) adminUpdateFields(ctx context.Context, actor *User, u *User, req 
 		return validationError("Role is required")
 	}
 	if role != nil {
-		if err := a.requireAdminFieldGrant(actor, "set-role"); err != nil {
-			return err
-		}
 		if len(role) == 0 {
 			return validationError("Role is required")
 		}
@@ -223,10 +227,12 @@ func (a *Auth) adminHTTP(c EndpointContext, name string) (any, error) {
 		}
 		req.Query = q
 	case "set-role", "create-user", "update-user":
-		if v, ok := b["role"]; ok {
-			req.Role, err = parseAdminRoles(v)
-			if err != nil {
-				return nil, err
+		// A top-level role is checked with the request body, before
+		// authentication; update-user takes a role only inside data, so a
+		// top-level role is ignored there.
+		if v, ok := b["role"]; ok && name != "update-user" {
+			if req.Role, err = parseAdminRoles(v); err != nil {
+				return nil, validationError("Invalid role")
 			}
 		}
 		if v, ok := b["data"]; ok {
@@ -278,6 +284,8 @@ func (a *Auth) adminHTTP(c EndpointContext, name string) (any, error) {
 			req.BanDuration = time.Duration(n * float64(time.Second))
 		}
 	case "has-permission":
+		// One presence check refuses a missing or singular permission set
+		// with VALIDATION_ERROR.
 		raw, ok := b["permissions"].(map[string]any)
 		if !ok {
 			return nil, validationError("Permissions are required")

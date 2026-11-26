@@ -88,7 +88,7 @@
       - [x] Example with local JWKS ([test](../../../conformance/core.test.mjs#L451))
         - [x] Build a local key set from the fetched keys and verify the token with the server URL as issuer and audience ([test](../../../conformance/core.test.mjs#L451))
     - [ ] OAuth Provider Mode
-      - [x] Disable both the browser token endpoint and the session JWT response header while retaining ordinary sessions ([test](../../../conformance/core.test.mjs#L1379))
+      - [x] Disable both the browser token endpoint and the session JWT response header while retaining ordinary sessions ([test](../../../conformance/core.test.mjs#L1382))
       - [x] Report a token signed with a published key but carrying no authorized party as inactive at introspection ([test](../../../conformance/oauth-signed-introspection.mjs#L104))
     - [ ] Remote JWKS Url
     - [ ] Custom JWKS Path

@@ -340,6 +340,10 @@ func (t *adminTX) SetPassword(user, hash string) error {
 	}
 	return s.invalidateFactorChallenges(t.ctx, t.tx, user)
 }
+
+// UserSessions lists the user's unexpired sessions. The other runtime also
+// lists expired rows; they cannot sign in, and their handles would not
+// revoke them.
 func (t *adminTX) UserSessions(user string) ([]authn.Session, error) {
 	s := t.s
 	rows, err := t.tx.QueryContext(t.ctx, s.bind(`SELECT "id","userId",COALESCE("ipAddress",''),COALESCE("userAgent",''),"createdAt","updatedAt","expiresAt","impersonatedBy" FROM "session" WHERE "userId"=? AND "expiresAt">? ORDER BY "createdAt" DESC,"id"`), user, s.date(t.now))
@@ -366,6 +370,10 @@ func (t *adminTX) RevokeListedSession(userID, sessionID string) error {
 	_, err := t.s.deleteSessionsTx(t.ctx, t.tx, `"userId"=? AND "id"=?`, userID, sessionID)
 	return err
 }
+
+// RevokeUserSessions ends the user's sessions and the sessions the user
+// started by impersonating someone else, which have no live source once the
+// user's own sessions end. The other runtime deletes only the user's own.
 func (t *adminTX) RevokeUserSessions(id string) error {
 	_, err := t.s.deleteSessionsTx(t.ctx, t.tx, `"userId"=? OR "impersonatedBy"=?`, id, id)
 	if err != nil {
@@ -467,6 +475,9 @@ func adminFilter(field, op string, values []string) (string, []any, error) {
 		if field != "name" && field != "email" && field != "role" && field != "banReason" && field != "id" {
 			return "", nil, bad
 		}
+		// The pattern operators match % and _ literally, where the other
+		// runtime passes them to LIKE as wildcards, so a search for one
+		// address never also returns accounts an operator might then act on.
 		v := strings.NewReplacer("!", "!!", "%", "!%", "_", "!_").Replace(values[0])
 		if op != "starts_with" {
 			v = "%" + v

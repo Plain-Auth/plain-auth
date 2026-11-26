@@ -44,7 +44,7 @@
   - [ ] `twoFactorClient`
     - [x] Complete delivered second-factor enrollment, code verification and remembered sign-in through the pinned browser client ([test](../../../conformance/core.test.mjs#L712))
     - [x] Enroll an authenticator, verify it, sign in and spend backup codes through the pinned browser client on both servers ([test](../../../conformance/core.test.mjs#L292))
-    - [x] Read the provisioning URI through the pinned browser client after an imported authenticator signs in, on both servers ([test](../../../conformance/core.test.mjs#L1146))
+    - [x] Read the provisioning URI through the pinned browser client after an imported authenticator signs in, on both servers ([test](../../../conformance/core.test.mjs#L1149))
   - [ ] `TWO_FACTOR_ERROR_CODES`
   - [ ] `POST /two-factor/enable`
     - [x] Require a password and issue a provisioning URI and ten backup codes ([test](../../../adapters/sqlstore/twofactor_test.go#L121))
@@ -164,7 +164,7 @@
       - [ ] Getting TOTP URI
         - [ ] `POST /two-factor/get-totp-uri`
           - [x] Return the enrollment's provisioning URI to the signed-in owner who supplies the account password ([test](../../../adapters/sqlstore/twofactor_test.go#L127))
-          - [x] Return the imported seed in the provisioning URI through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L1147))
+          - [x] Return the imported seed in the provisioning URI through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L1150))
           - [x] Parameter `password` (optional) ([test](../../../adapters/sqlstore/twofactor_options_test.go#L113))
             - [x] Answer INVALID_PASSWORD to a URI read from an account with a password that leaves it out under a passwordless switch or sends a wrong one, return the URI to a passwordless account that sends none, and answer VALIDATION_ERROR to a password that is missing without a switch or is not a string ([test](../../../adapters/sqlstore/twofactor_options_test.go#L113))
         - Example: Using React — *not applicable: JavaScript only*
@@ -180,7 +180,7 @@
             - [x] Set the remembered-browser cookie for an authenticator code sent with trustDevice, and skip the challenge at the next sign-in from that browser ([test](../../../adapters/sqlstore/twofactor_hooks_test.go#L274))
             - [x] Refuse a trustDevice that is not a boolean; for one that is, remember the browser for thirty days in the cookie and the store, drop its don't-remember marker, and skip the challenge at the next sign-in, which renews the cookie for thirty days ([test](../../../adapters/sqlstore/twofactor_options_test.go#L239))
       - [x] Importing Existing TOTP Secrets ([test](../../../adapters/sqlstore/twofactor_import_test.go#L18))
-        - [x] Sign in through the released client using the same external Base32 seed enrolled through each server's trusted provisioning process ([test](../../../conformance/core.test.mjs#L1117))
+        - [x] Sign in through the released client using the same external Base32 seed enrolled through each server's trusted provisioning process ([test](../../../conformance/core.test.mjs#L1120))
         - [x] Read the normalized imported key with the configured eight-digit, 45-second authenticator settings on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/twofactor_import_test.go#L97))
         - [x] Import a Base32 seed for an existing account, store it encrypted, require it at the next sign-in and accept eight-digit, 45-second codes from it on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/twofactor_import_test.go#L18))
     - [ ] OTP

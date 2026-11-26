@@ -8,11 +8,11 @@ Each row tracks the behavior exposed by a published entry point. The Go implemen
 
 - [ ] API keys
   - [ ] Default interface (`.`)
-    - [x] Issue a user-owned key and return its secret to the official client ([test](../../conformance/core.test.mjs#L871))
-    - [x] Issue a key whose reference identifies the caller’s organization ([test](../../conformance/core.test.mjs#L943))
+    - [x] Issue a user-owned key and return its secret to the official client ([test](../../conformance/core.test.mjs#L874))
+    - [x] Issue a key whose reference identifies the caller’s organization ([test](../../conformance/core.test.mjs#L946))
   - [ ] Client integration (`./client`)
-    - [x] Create, retrieve, update, list and revoke user-owned keys with the official client ([test](../../conformance/core.test.mjs#L871))
-    - [x] Manage organization keys alongside separately authenticated automation clients ([test](../../conformance/core.test.mjs#L922))
+    - [x] Create, retrieve, update, list and revoke user-owned keys with the official client ([test](../../conformance/core.test.mjs#L874))
+    - [x] Manage organization keys alongside separately authenticated automation clients ([test](../../conformance/core.test.mjs#L925))
   - [ ] Configuration and result types (`./types`)
 
 ## Authentication server and framework bindings
@@ -281,7 +281,7 @@ Each row tracks the behavior exposed by a published entry point. The Go implemen
     - [x] Provision and synchronize directory Users over authenticated SCIM HTTP using compatible SQL records ([test](../../conformance/scim-contract.mjs#L45))
     - [x] Exchange canonical Group and membership records with the reference runtime ([test](../../conformance/scim-contract.mjs#L92))
     - [x] Issue, rotate, authenticate and revoke managed directory credentials from either runtime on shared SQLite ([test](../../conformance/scim-managed.mjs#L13))
-    - [x] Retire managed directories across runtimes and retain their canonical status and audit records ([test](../../conformance/core.test.mjs#L1042))
+    - [x] Retire managed directories across runtimes and retain their canonical status and audit records ([test](../../conformance/core.test.mjs#L1045))
 
 ## Single sign-on
 

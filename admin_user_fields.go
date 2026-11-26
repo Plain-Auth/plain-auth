@@ -116,11 +116,13 @@ func (a *Auth) createAdministrativeUser(ctx context.Context, tx AdminUserCreator
 	if plan.approved {
 		u.ID = plan.user.ID
 	}
-	if len(u.Email) > 254 || strings.Contains(u.Email, "..") || !emailPattern.MatchString(u.Email) || req.Name == "" {
-		return nil, validationError("A valid email and name are required")
-	}
 	if err := a.adminUpdateFields(ctx, actor, &u, req, true); err != nil {
 		return nil, err
+	}
+	// The address is checked after the role and ban grants, so a caller
+	// without them learns nothing from it.
+	if len(u.Email) > 254 || strings.Contains(u.Email, "..") || !emailPattern.MatchString(u.Email) {
+		return nil, adminError(400, "INVALID_EMAIL", "Invalid email")
 	}
 	// The approved run stores the values the gate saw, computed defaults
 	// included. A session actor cannot set server-only fields.

@@ -6036,6 +6036,12 @@
       "label": "Assign a configured role and reject an unknown role",
       "test": "adapters/sqlstore/admin_test.go",
       "marker": "adminBrowser.AdminSetRole(ctx, target, \"unknown\")"
+    },
+    {
+      "label": "Refuse a role change from an account without the set-role grant and answer USER_NOT_FOUND for a missing account",
+      "test": "adapters/sqlstore/admin_policy_test.go",
+      "marker": "_, err = member.AdminSetRole(ctx, steward.ID, \"admin\")",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/admin.mdx#L241": [
@@ -6117,6 +6123,17 @@
       "label": "ValidateUserInfo checks an administrator's new user outside the transaction, after the permission and email checks, and a refusal stores nothing",
       "test": "conformance/goapi/user_validation_test.go",
       "marker": "func TestValidateUserInfoAdminCreate(t *testing.T) {"
+    },
+    {
+      "label": "Refuse a malformed top-level or data role, an undefined role and an invalid address, check the set-role and ban grants before the data role and the address, accept an empty name, and store a mixed-case address in lower case",
+      "test": "adapters/sqlstore/admin_policy_test.go",
+      "marker": "t.Fatal(\"an administrator-created address was not stored in lower case\")",
+      "complete": true
+    },
+    {
+      "label": "Answer INVALID_EMAIL for an invalid address through the released client on both servers",
+      "test": "conformance/core.test.mjs",
+      "marker": "(await api.createUser({ email: \"not-an-email\", name: \"Invalid\" })).error.code"
     }
   ],
   "docs/content/docs/plugins/admin.mdx#L82": [
@@ -6152,6 +6169,12 @@
       "label": "Keep one owner under competing authorized assignments on three database engines",
       "test": "adapters/sqlstore/phone_admin_test.go",
       "marker": "concurrent phone assignment did not produce one owner"
+    },
+    {
+      "label": "Refuse empty data, a data role without set-role or of the wrong type, a self-ban, a taken or invalid address and a missing account, ignore a top-level role, and sign out an account banned through its data",
+      "test": "adapters/sqlstore/admin_policy_test.go",
+      "marker": "t.Fatal(\"a ban set through update-user left the account signed in\", err)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/admin.mdx#L279": [
@@ -6177,6 +6200,12 @@
       "label": "Project stored public values and omit hidden fields on each listed account",
       "test": "adapters/sqlstore/admin_user_fields_test.go",
       "marker": "administrative browse exposed hidden fields"
+    },
+    {
+      "label": "Refuse a caller without the user list grant, return 100 accounts on the default page of a larger table without echoing bounds, and echo an explicit limit and offset",
+      "test": "adapters/sqlstore/admin_policy_test.go",
+      "marker": "t.Fatal(\"default user page\", len(listed), reported, total, limit, offset)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/admin.mdx#L113": [
@@ -6202,6 +6231,12 @@
       "label": "List a protected account without issuing a bearer credential",
       "test": "adapters/sqlstore/admin_test.go",
       "marker": "revocation handle authenticated as a bearer credential"
+    },
+    {
+      "label": "Refuse session listing to an account without the session list grant",
+      "test": "adapters/sqlstore/admin_policy_test.go",
+      "marker": "_, err = member.AdminListUserSessions(ctx, chiefUser.ID)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/admin.mdx#L336": [
@@ -6209,6 +6244,12 @@
       "label": "Retrieve the target’s current session through the typed client",
       "test": "adapters/sqlstore/admin_test.go",
       "marker": "found, err := adminBrowser.AdminListUserSessions"
+    },
+    {
+      "label": "List every unexpired session of a user signed in on three clients, leave out an expired row, and replace each token with a revocation handle",
+      "test": "adapters/sqlstore/admin_listing_test.go",
+      "marker": "if s.UserID != ana.User.ID || seen[s.ID]",
+      "complete": true
     }
   ],
   "plugin/admin/POST /admin/unban-user": [
@@ -6216,6 +6257,12 @@
       "label": "Clear a ban and permit sign-in after the password is reset",
       "test": "adapters/sqlstore/admin_test.go",
       "marker": "err = adminBrowser.AdminUnbanUser"
+    },
+    {
+      "label": "Refuse an unban without the ban grant and answer USER_NOT_FOUND for a missing account",
+      "test": "adapters/sqlstore/admin_policy_test.go",
+      "marker": "_, err = member.AdminUnbanUser(ctx, deputy.ID)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/admin.mdx#L321": [
@@ -6246,6 +6293,12 @@
       "label": "Enforce a newly migrated ban on established browser sessions and new session issuance across running SQL instances",
       "test": "adapters/sqlstore/admin_live_schema_test.go",
       "marker": "cold node issued session after ban"
+    },
+    {
+      "label": "Refuse a ban without the ban grant, answer USER_NOT_FOUND for a missing account, and apply the default reason and the configured duration to a ban that gives neither",
+      "test": "adapters/sqlstore/admin_policy_test.go",
+      "marker": "must(chief.Do(ctx, http.MethodPost, \"/admin/ban-user\", map[string]string{\"userId\": deputy.ID}, &out))",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/admin.mdx#L298": [
@@ -6275,6 +6328,12 @@
       "label": "Preserve the delegated-session identity when a running node first observes the administrative schema",
       "test": "adapters/sqlstore/admin_live_schema_test.go",
       "marker": "live session reader lost its delegated-session authority"
+    },
+    {
+      "label": "Refuse impersonation without the grant, answer USER_NOT_FOUND for a missing account, last one hour by default, and admit a protected account under AllowImpersonatingAdmins",
+      "test": "adapters/sqlstore/admin_policy_test.go",
+      "marker": "t.Fatal(\"AllowImpersonatingAdmins did not admit a protected account\", err)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/admin.mdx#L381": [
@@ -6282,6 +6341,22 @@
       "label": "Issue a bounded delegated login and enforce administrator impersonation permissions",
       "test": "adapters/sqlstore/admin_test.go",
       "marker": "delegated session duration differs from policy"
+    },
+    {
+      "label": "Set the impersonation session cookie without Max-Age or Expires and mark the browser session",
+      "test": "adapters/sqlstore/admin_policy_test.go",
+      "marker": "impersonation cookie outlives the browser session",
+      "complete": true
+    },
+    {
+      "label": "Let a role granted impersonate-admins impersonate an administrator",
+      "test": "adapters/sqlstore/admin_policy_test.go",
+      "marker": "a role granted impersonate-admins could not impersonate an administrator"
+    },
+    {
+      "label": "Give an impersonation session a one-hour lifetime by default",
+      "test": "adapters/sqlstore/admin_policy_test.go",
+      "marker": "t.Fatal(\"an impersonation did not last the default hour\", d)"
     }
   ],
   "plugin/admin/POST /admin/stop-impersonating": [
@@ -6289,6 +6364,17 @@
       "label": "Restore the initiating login and preserve its original persistence",
       "test": "adapters/sqlstore/admin_test.go",
       "marker": "original login persistence lost"
+    },
+    {
+      "label": "Refuse a stop from a direct session with 400 and its message, and answer 401 without a session",
+      "test": "adapters/sqlstore/admin_policy_test.go",
+      "marker": "t.Fatal(\"a direct session's stop was not refused with its message\", err)",
+      "complete": true
+    },
+    {
+      "label": "Refuse a stop from a direct session with 400, no code and the same message through the released client on both servers",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.deepEqual([direct.error.status, direct.error.code, direct.error.message], [400, undefined, \"You are not impersonating anyone\"]);"
     }
   ],
   "docs/content/docs/plugins/admin.mdx#L409": [
@@ -6344,6 +6430,12 @@
       "label": "Revoke the target’s sessions through the administrative API",
       "test": "adapters/sqlstore/admin_test.go",
       "marker": "must(bootstrap.AdminRevokeUserSessions(ctx, target))"
+    },
+    {
+      "label": "Refuse revoking an account's sessions without the session revoke grant",
+      "test": "adapters/sqlstore/admin_policy_test.go",
+      "marker": "expect(member.AdminRevokeUserSessions(ctx, chiefUser.ID), 403, \"YOU_ARE_NOT_ALLOWED_TO_REVOKE_USERS_SESSIONS\")",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/admin.mdx#L366": [
@@ -6351,6 +6443,12 @@
       "label": "Revoke the target’s sessions through the administrative API",
       "test": "adapters/sqlstore/admin_test.go",
       "marker": "must(bootstrap.AdminRevokeUserSessions(ctx, target))"
+    },
+    {
+      "label": "End all three sessions of a user signed in on three clients and keep another user's session",
+      "test": "adapters/sqlstore/admin_listing_test.go",
+      "marker": "a session survived revoke-user-sessions",
+      "complete": true
     }
   ],
   "plugin/admin/POST /admin/remove-user": [
@@ -6358,6 +6456,12 @@
       "label": "Remove a user while guarding the acting administrator’s own account",
       "test": "adapters/sqlstore/admin_test.go",
       "marker": "expect(bootstrap.AdminRemoveUser(ctx, u.ID)"
+    },
+    {
+      "label": "Refuse removal without the delete grant, answer USER_NOT_FOUND for an unknown account, and delete a signed-in account's sessions without a prior revocation",
+      "test": "adapters/sqlstore/admin_policy_test.go",
+      "marker": "t.Fatal(\"removing a signed-in account left its sessions or records\", err)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/admin.mdx#L420": [
@@ -6377,6 +6481,12 @@
       "label": "Replace the credential password and sign in with the new value",
       "test": "adapters/sqlstore/admin_test.go",
       "marker": "must(adminBrowser.AdminSetPassword("
+    },
+    {
+      "label": "Refuse a password change without the grant, check the length bounds before the account lookup, answer USER_NOT_FOUND for a missing account, and add a credential to an account without one",
+      "test": "adapters/sqlstore/admin_policy_test.go",
+      "marker": "t.Fatal(\"an account without a credential did not receive one\", err)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/admin.mdx#L260": [
@@ -6384,6 +6494,12 @@
       "label": "Replace the credential password and sign in with the new value",
       "test": "adapters/sqlstore/admin_test.go",
       "marker": "must(adminBrowser.AdminSetPassword("
+    },
+    {
+      "label": "Create a credential account for a user created without a password and sign in with the password an administrator set",
+      "test": "adapters/sqlstore/admin_listing_test.go",
+      "marker": "a password set for an account without one does not sign in",
+      "complete": true
     }
   ],
   "plugin/admin/POST /admin/has-permission": [
@@ -6396,6 +6512,12 @@
       "label": "Deny a mixed request containing an empty action list over HTTP on all three SQL engines",
       "test": "adapters/sqlstore/admin_test.go",
       "marker": "empty resource requirement granted administrative access"
+    },
+    {
+      "label": "Answer 400 VALIDATION_ERROR before the session check for a request without a permission set, refuse a singular permission key, and answer 401 without a session",
+      "test": "adapters/sqlstore/admin_policy_test.go",
+      "marker": "_, err = guest.AdminHasPermission(ctx, authn.AdminPermissions{\"user\": {\"get\"}})",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/admin.mdx#L586": [
@@ -6410,6 +6532,12 @@
       "label": "Evaluate permissions for a configured default role",
       "test": "plugins/admin/admin_test.go",
       "marker": "default/explicit grants"
+    },
+    {
+      "label": "Store a custom default role on a sign-up and on an account an administrator creates without a role",
+      "test": "adapters/sqlstore/admin_policy_test.go",
+      "marker": "t.Fatal(\"a new account did not store the configured default role\", id)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/admin.mdx#L771": [
@@ -6417,6 +6545,12 @@
       "label": "Evaluate permissions for a configured default role",
       "test": "plugins/admin/admin_test.go",
       "marker": "default/explicit grants"
+    },
+    {
+      "label": "Store a custom default role on a sign-up and on an account an administrator creates without a role",
+      "test": "adapters/sqlstore/admin_policy_test.go",
+      "marker": "t.Fatal(\"a new account did not store the configured default role\", id)",
+      "complete": true
     }
   ],
   "plugin-symbol/admin/AdminOptions/adminRoles": [
@@ -6424,6 +6558,17 @@
       "label": "Validate administrative role names against the configured role registry",
       "test": "plugins/admin/admin_test.go",
       "marker": "AdminRoles: []string{\"missing\"}"
+    },
+    {
+      "label": "Protect a holder of a custom protected role from an operator without impersonate-admins, while the built-in admin role left out of the list is not protected",
+      "test": "adapters/sqlstore/admin_policy_test.go",
+      "marker": "_, err = chief.AdminImpersonate(ctx, steward.ID)",
+      "complete": true
+    },
+    {
+      "label": "Refuse a protected role name that matches a configured role only when case is ignored",
+      "test": "plugins/admin/admin_test.go",
+      "marker": "t.Fatal(\"a protected role name that differs only in case was accepted\")"
     }
   ],
   "docs/content/docs/plugins/admin.mdx#L781": [
@@ -6431,6 +6576,12 @@
       "label": "Validate administrative role names against the configured role registry",
       "test": "plugins/admin/admin_test.go",
       "marker": "AdminRoles: []string{\"missing\"}"
+    },
+    {
+      "label": "Protect a holder of a custom protected role from an operator without impersonate-admins",
+      "test": "adapters/sqlstore/admin_policy_test.go",
+      "marker": "_, err = chief.AdminImpersonate(ctx, steward.ID)",
+      "complete": true
     }
   ],
   "plugin-symbol/admin/AdminOptions/adminUserIds": [
@@ -6490,6 +6641,12 @@
       "label": "Apply the configured reason when suspending a user",
       "test": "adapters/sqlstore/admin_test.go",
       "marker": "*banned.BanReason != \"Account review\""
+    },
+    {
+      "label": "Store No reason for a ban that gives no reason when no default reason is configured",
+      "test": "adapters/sqlstore/admin_policy_test.go",
+      "marker": "t.Fatal(\"a ban without a reason did not store the default reason\", u.BanReason)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/admin.mdx#L820": [
@@ -6497,6 +6654,12 @@
       "label": "Apply the configured reason when suspending a user",
       "test": "adapters/sqlstore/admin_test.go",
       "marker": "*banned.BanReason != \"Account review\""
+    },
+    {
+      "label": "Store No reason for a ban that gives no reason when no default reason is configured",
+      "test": "adapters/sqlstore/admin_policy_test.go",
+      "marker": "t.Fatal(\"a ban without a reason did not store the default reason\", u.BanReason)",
+      "complete": true
     }
   ],
   "plugin-symbol/admin/AdminOptions/bannedUserMessage": [
@@ -6518,6 +6681,12 @@
       "label": "Bound an impersonation to its configured lifetime despite sliding refresh",
       "test": "adapters/sqlstore/admin_test.go",
       "marker": "delegated session duration differs from policy"
+    },
+    {
+      "label": "Give an impersonation session a one-hour lifetime when no duration is configured, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/admin_policy_test.go",
+      "marker": "t.Fatal(\"an impersonation did not last the default hour\", d)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/admin.mdx#L810": [
@@ -6525,6 +6694,12 @@
       "label": "Bound an impersonation to its configured lifetime despite sliding refresh",
       "test": "adapters/sqlstore/admin_test.go",
       "marker": "delegated session duration differs from policy"
+    },
+    {
+      "label": "Give an impersonation session a one-hour lifetime when no duration is configured",
+      "test": "adapters/sqlstore/admin_policy_test.go",
+      "marker": "t.Fatal(\"an impersonation did not last the default hour\", d)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/admin.mdx#L164": [
@@ -6532,6 +6707,12 @@
       "label": "Filter by role and search by email",
       "test": "adapters/sqlstore/admin_test.go",
       "marker": "admin search/filter/pagination"
+    },
+    {
+      "label": "List users with a starts_with name search, an ends_with email search and eq email and role filters, matching a LIKE wildcard in the value only literally, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/admin_listing_test.go",
+      "marker": "t.Fatal(\"starts_with name search\", page)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/admin.mdx#L168": [
@@ -6539,6 +6720,12 @@
       "label": "Page a sorted result set with its total",
       "test": "adapters/sqlstore/admin_test.go",
       "marker": "page.Total != 2"
+    },
+    {
+      "label": "Echo the limit and offset a paged listing was given and leave both out of an unpaged listing, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/admin_listing_test.go",
+      "marker": "a paged listing did not echo its limit and offset",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/admin.mdx#L439": [
@@ -6559,6 +6746,12 @@
       "label": "Evaluate grants for user and session actions",
       "test": "plugins/admin/admin_test.go",
       "marker": "default administrative grants"
+    },
+    {
+      "label": "Grant the built-in admin role every built-in action except impersonate-admins and the user role none",
+      "test": "plugins/admin/admin_test.go",
+      "marker": "t.Fatal(\"unexpected default admin grants\", adminGrants)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/admin.mdx#L745": [
@@ -6566,6 +6759,17 @@
       "label": "Keep the incorrect-password response independent of ban status",
       "test": "adapters/sqlstore/admin_test.go",
       "marker": "expect(err, \"INVALID_EMAIL_OR_PASSWORD\")"
+    },
+    {
+      "label": "Return the default role and empty ban fields in a protected duplicate sign-up exactly as in a real one, under required verification and without auto sign-in",
+      "test": "conformance/goapi/synthetic_user_test.go",
+      "marker": "a duplicate sign-up's admin fields differ from a real sign-up",
+      "complete": true
+    },
+    {
+      "label": "Override the duplicate sign-up's role through CustomSyntheticUser and keep a generated ban flag over an unfit value",
+      "test": "conformance/goapi/synthetic_user_test.go",
+      "marker": "CustomSyntheticUser did not shape the admin fields"
     }
   ],
   "plugin-symbol/admin/UserWithRole": [
@@ -39303,6 +39507,11 @@
       "test": "plugins/admin/admin_test.go",
       "marker": "t.Fatal(\"unexpected default admin grants\", adminGrants)",
       "complete": true
+    },
+    {
+      "label": "An operator holding the copied built-in admin role creates, updates, bans, impersonates and removes accounts over HTTP on three databases",
+      "test": "adapters/sqlstore/admin_policy_test.go",
+      "marker": "must(chief.AdminRemoveUser(ctx, editorAccount.ID))"
     }
   ],
   "plugin-symbol/admin/userAc": [
@@ -39318,6 +39527,50 @@
       "label": "Return an independent copy of the built-in admin and user roles for a custom role map to extend",
       "test": "plugins/admin/admin_test.go",
       "marker": "t.Fatal(\"changing a copy of the defaults changed the built-in grants\")",
+      "complete": true
+    },
+    {
+      "label": "Serve a role map built from the default roles over HTTP on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/admin_policy_test.go",
+      "marker": "roles := admin.DefaultRoles()"
+    }
+  ],
+  "plugin-symbol/admin/AdminOptions/defaultBanExpiresIn": [
+    {
+      "label": "Expire a ban that gives no duration after the configured default duration",
+      "test": "adapters/sqlstore/admin_policy_test.go",
+      "marker": "t.Fatal(\"a ban without a duration did not use the configured default\", d)",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/admin/AdminOptions/allowImpersonatingAdmins": [
+    {
+      "label": "Let an operator impersonate a protected holder only when AllowImpersonatingAdmins is set",
+      "test": "adapters/sqlstore/admin_policy_test.go",
+      "marker": "t.Fatal(\"AllowImpersonatingAdmins did not admit a protected account\", err)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L588/Has Permission": [
+    {
+      "label": "Check two resources that both carry actions in one request, and fail when one of them names an action the role lacks",
+      "test": "adapters/sqlstore/admin_policy_test.go",
+      "marker": "a check with an undefined action on one resource passed"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L607/Parameter `permission` (optional)": [
+    {
+      "label": "Refuse a has-permission body that sends a singular permission key instead of a permissions object with 400",
+      "test": "adapters/sqlstore/admin_policy_test.go",
+      "marker": "t.Fatal(\"a singular permission key was not refused\", single)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L830": [
+    {
+      "label": "Expire a ban that gives no duration after the configured default duration",
+      "test": "adapters/sqlstore/admin_policy_test.go",
+      "marker": "t.Fatal(\"a ban without a duration did not use the configured default\", d)",
       "complete": true
     }
   ]

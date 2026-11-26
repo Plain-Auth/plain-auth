@@ -32,6 +32,9 @@ func TestAdministrativeRolePolicy(t *testing.T) {
 			t.Fatal("invalid admin policy accepted")
 		}
 	}
+	if _, err := admin.New(admin.Options{AdminRoles: []string{"Admin"}}); err == nil {
+		t.Fatal("a protected role name that differs only in case was accepted")
+	}
 }
 
 // The default role control holds the built-in vocabulary, and the default

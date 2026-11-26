@@ -50,7 +50,7 @@ The command refuses when an account already holds one of the requested roles, so
 
 ## Permissions
 
-`AdminUserIDs` grants full administrative authority to explicit account IDs. `AdminRoles` identifies roles that receive the extra protection against impersonating administrators. `Roles` maps role names to resources and actions. For a custom role map, define every assigned role, including `DefaultRole` and the names in `AdminRoles`. A single assigned role must grant the entire permission request.
+`AdminUserIDs` grants full administrative authority to explicit account IDs. `AdminRoles` identifies roles that receive the extra protection against impersonating administrators. `Roles` maps role names to resources and actions. For a custom role map, define every assigned role, including `DefaultRole` and the names in `AdminRoles`. A single assigned role must grant the entire permission request. Sign-up and administrator-created accounts without a role store `DefaultRole`. `AdminRoles` replaces the default `["admin"]`, so name every role to protect. Without `AdminRoles`, a custom role map must define `admin`. `DefaultRole` and every name in `AdminRoles` must match a role in the map exactly, including case. `admin.New` refuses a name that differs only in case, because such a protected role would protect no account.
 
 ```go
 p, err := admin.New(admin.Options{
@@ -80,7 +80,7 @@ p, err := admin.New(admin.Options{Roles: roles})
 
 [Default role tests](../plugins/admin/admin_test.go)
 
-Creating a user with an explicit role requires both `user:create` and `user:set-role`. Updating an email or its verification status requires `user:set-email`. Ban-related fields require `user:ban`. Password changes use a dedicated endpoint. Profile updates accept the standard name, image, email, verification, role and ban fields. Roles assigned through the API must exist in the configured role map. To use role checks in your own handlers, see [Role permissions](access.md).
+Creating a user with an explicit role requires both `user:create` and `user:set-role`. Updating an email or its verification status requires `user:set-email`. Ban-related fields require `user:ban`. Password changes use a dedicated endpoint. Profile updates accept the standard name, image, email, verification, role and ban fields. Roles assigned through the API must exist in the configured role map. A role in `data` requires `user:set-role` before its value is checked. To use role checks in your own handlers, see [Role permissions](access.md).
 
 ## Create users with application profile fields
 
@@ -108,27 +108,29 @@ The profile, optional password credential and field readback share a transaction
 
 | Operation under the auth mount | Request and response |
 | --- | --- |
-| `POST /admin/create-user` | Send `name`, `email` and optionally `password`, `role` or `data`. Returns `{user}`. Omitting the password creates a profile without a credential account. |
+| `POST /admin/create-user` | Send `name`, `email` and optionally `password`, `role` or `data`. Returns `{user}`. Omitting the password creates a profile without a credential account. The address is stored in lower case. A top-level `role` must be a string or a list of strings, checked with the other body fields (400 `VALIDATION_ERROR`). A role in `data` requires `user:set-role` before its value is checked, and an undefined role answers 400 `YOU_ARE_NOT_ALLOWED_TO_SET_NON_EXISTENT_VALUE`. An invalid address answers 400 `INVALID_EMAIL` after the role and ban permission checks. |
 | `GET /admin/get-user?id=…` | Returns the user. |
 | `GET /admin/list-users` | Returns `{users,total}` and echoes explicit nonzero `limit` and `offset`. The default page contains up to 100 users. |
-| `POST /admin/update-user` | Send `{userId,data}`. Returns the updated user. |
+| `POST /admin/update-user` | Send `{userId,data}`. Returns the updated user. Empty `data` answers 400 `NO_DATA_TO_UPDATE`. Setting `banned` to true revokes the account's sessions. Other top-level fields, including `role`, are ignored. |
 | `POST /admin/set-role` | Send `userId` and one role or an array of roles. Returns `{user}`. |
-| `POST /admin/set-user-password` | Send `{userId,newPassword}`. Updates or creates the credential account and returns `{status:true}`. |
+| `POST /admin/set-user-password` | Send `{userId,newPassword}`. Updates or creates the credential account and returns `{status:true}`. The new password must meet the configured length bounds, which are checked before the account is looked up. |
 | `POST /admin/ban-user` | Send `userId`, optional `banReason`, and optional `banExpiresIn` in seconds. Returns `{user}`. |
 | `POST /admin/unban-user` | Send `{userId}` to clear the ban, reason and expiration. Returns `{user}`. |
-| `POST /admin/list-user-sessions` | Send `{userId}`. Returns `{sessions}`. The `token` field on each entry is an operator-bound revocation handle. |
+| `POST /admin/list-user-sessions` | Send `{userId}`. Returns the unexpired `{sessions}`; expired rows, which another runtime also lists, cannot sign in and are left out. The `token` field on each entry is an operator-bound revocation handle. |
 | `POST /admin/revoke-user-session` | Send the listed handle in `{sessionToken}` from the same operator account. Requires the `session:revoke` permission and returns `{success:true}`. |
 | `POST /admin/revoke-user-sessions` | Send `{userId}`. Returns `{success:true}`. |
 | `POST /admin/impersonate-user` | Send `{userId}`. Returns `{session,user}` and sets a temporary browser session. |
-| `POST /admin/stop-impersonating` | Send `{}` from that browser. Returns the original session and user. |
-| `POST /admin/remove-user` | Send `{userId}`. Deletes the account and returns `{success:true}`. |
-| `POST /admin/has-permission` | Send a `permissions` object such as `{"permissions":{"user":["get"]}}`. Returns `{success,error:null}` for the authenticated caller. |
+| `POST /admin/stop-impersonating` | Send `{}` from that browser. Returns the original session and user. From a direct session it answers 400 with the message `You are not impersonating anyone` and no code. Without a session it answers 401. |
+| `POST /admin/remove-user` | Send `{userId}`. Deletes the account and its sessions, without a prior revocation, and returns `{success:true}`. |
+| `POST /admin/has-permission` | Send a `permissions` object such as `{"permissions":{"user":["get"]}}`. Returns `{success,error:null}` for the authenticated caller. A body without a `permissions` object, including one that sends `permission`, answers 400 `VALIDATION_ERROR` before the session is checked. Without a session it answers 401. |
 
-User listing supports `searchValue`, `searchField`, `searchOperator`, `filterField`, `filterOperator`, `filterValue`, `sortBy` and `sortDirection`. Operators include `eq`, `ne`, `lt`, `lte`, `gt`, `gte`, `contains`, `starts_with`, `ends_with`, `in` and `not_in`. Repeat the `filterValue` query parameter for an array. Search defaults to email substring matching. The Go client accepts a `plainauth.AdminQuery` for the same operations.
+User listing supports `searchValue`, `searchField`, `searchOperator`, `filterField`, `filterOperator`, `filterValue`, `sortBy` and `sortDirection`. Operators include `eq`, `ne`, `lt`, `lte`, `gt`, `gte`, `contains`, `starts_with`, `ends_with`, `in` and `not_in`. Repeat the `filterValue` query parameter for an array. Search defaults to email substring matching. The Go client accepts a `plainauth.AdminQuery` for the same operations. The pattern operators `contains`, `starts_with` and `ends_with` match `%` and `_` in the value literally, where another runtime passes them on as wildcards, so a search for an address such as `first_last@` never also returns `firstXlast@` accounts that an operator might then ban or remove. [Listing and session tests](../adapters/sqlstore/admin_listing_test.go)
+
+An operator without the operation's grant receives 403 with its `YOU_ARE_NOT_ALLOWED_TO_…` code, and an operation that names an account that does not exist receives 404 `USER_NOT_FOUND`. A missing account answers before its role or profile data are checked; `set-user-password` checks the password length first. [Refusal and default tests](../adapters/sqlstore/admin_policy_test.go)
 
 ## Bans and impersonation
 
-Banning an account revokes its sessions. An administrative password reset, ban or account-wide session revocation also clears pending second-factor challenges and remembered-browser grants. Session creation checks the current ban inside the database transaction, including sign-ins through other enabled authentication methods. An email sign-in by a banned account is refused with `BANNED_USER` before the email-verification check, so a banned account is never sent a verification mail. A permanent ban clears any previous expiry. A successful login after a temporary ban expires clears the ban fields. Set `DefaultBanReason`, `DefaultBanDuration` and `BannedUserMessage` to customize the policy. An administrator cannot ban or delete their own account.
+Banning an account revokes its sessions. Revoking a user's sessions, banning them or removing them also ends the sessions they opened by impersonating someone else, which no longer have a live source; another runtime deletes only the user's own sessions. An administrative password reset, ban or account-wide session revocation also clears pending second-factor challenges and remembered-browser grants. Session creation checks the current ban inside the database transaction, including sign-ins through other enabled authentication methods. An email sign-in by a banned account is refused with `BANNED_USER` before the email-verification check, so a banned account is never sent a verification mail. A permanent ban clears any previous expiry. A successful login after a temporary ban expires clears the ban fields. Set `DefaultBanReason`, `DefaultBanDuration` and `BannedUserMessage` to customize the policy. A ban without `banReason` stores `DefaultBanReason`, which defaults to `No reason`. A ban without `banExpiresIn` expires after `DefaultBanDuration`; zero keeps it until an administrator lifts it. An administrator cannot ban or delete their own account.
 
 Impersonation issues a separate browser-only session with its operator recorded in `impersonatedBy`. It expires after one hour by default. Set `ImpersonationSessionDuration` to change the lifetime. The ordinary session list hides delegated sessions. The administrative session list includes their metadata. Its opaque handles contain only record identifiers and an expiry. A handle authorizes a single-session revocation when the issuing operator holds the revocation grant. Delegated sessions created by the service depend on their original login and cannot authorize administrative operations. The initiating browser can return to that exact login, preserving its original persistence setting. Impersonating an administrator requires an explicit grant of `user:impersonate-admins`, an allowlisted administrator ID, or `AllowImpersonatingAdmins`.
 

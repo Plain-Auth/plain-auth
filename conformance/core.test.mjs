@@ -757,6 +757,7 @@ test("the official admin client manages roles, bans, sessions and impersonation 
     const api = actor.admin;
     assert.equal(ok(await api.hasPermission({ permissions: { user: ["list"] } })).success, true);
     const created = ok(await api.createUser({ email: "admin-target" + i + "@example.test", name: "Target", password })).user;
+    assert.equal((await api.createUser({ email: "not-an-email", name: "Invalid" })).error.code, "INVALID_EMAIL");
     ok(await api.setRole({ userId: created.id, role: "user" }));
     const auth = ok(await target.signIn.email({ email: created.email, password }));
     assert.equal((await target.admin.getUser({ query: { id: account.id } })).error.code, "YOU_ARE_NOT_ALLOWED_TO_GET_USER");
@@ -782,6 +783,8 @@ test("the official admin client manages roles, bans, sessions and impersonation 
     const restored = ok(await api.stopImpersonating());
     assert.equal(restored.user.id, account.id);
     assert.equal(restored.session.token, original.token);
+    const direct = await api.stopImpersonating();
+    assert.deepEqual([direct.error.status, direct.error.code, direct.error.message], [400, undefined, "You are not impersonating anyone"]);
     assert.deepEqual(ok(await api.revokeUserSessions({ userId: created.id })), { success: true });
     assert.equal(ok(await target.getSession()), null);
     assert.deepEqual(ok(await api.removeUser({ userId: created.id })), { success: true });

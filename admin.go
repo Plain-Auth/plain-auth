@@ -22,12 +22,37 @@ type AdminUserFields struct {
 
 type AdminPermissions map[string][]string
 type AdminOptions struct {
-	DefaultRole                                      string
-	AdminRoles, AdminUserIDs                         []string
-	Roles                                            map[string]AdminPermissions
-	DefaultBanReason, BannedUserMessage              string
-	DefaultBanDuration, ImpersonationSessionDuration time.Duration
-	AllowImpersonatingAdmins                         bool
+	// DefaultRole is stored on accounts created without a role, by sign-up
+	// or by an administrator. It defaults to "user" and must be a key of
+	// Roles.
+	DefaultRole string
+	// AdminRoles lists the protected roles. Impersonating a holder needs
+	// user:impersonate-admins or AllowImpersonatingAdmins, and only another
+	// protected operator can change a holder's phone number. It defaults to
+	// ["admin"] and replaces that default when set. Each name must match a
+	// key of Roles exactly, including case.
+	AdminRoles []string
+	// AdminUserIDs grants every administrative permission to these account
+	// IDs and protects them like AdminRoles holders.
+	AdminUserIDs []string
+	// Roles maps role names to grants. Nil selects DefaultAdminRoles; a
+	// non-nil map replaces the built-in roles.
+	Roles map[string]AdminPermissions
+	// DefaultBanReason is stored when a ban gives no reason. It defaults to
+	// "No reason".
+	DefaultBanReason string
+	// BannedUserMessage is the BANNED_USER message a banned account
+	// receives.
+	BannedUserMessage string
+	// DefaultBanDuration sets the expiry of a ban that gives no duration.
+	// Zero keeps the ban until an administrator lifts it.
+	DefaultBanDuration time.Duration
+	// ImpersonationSessionDuration bounds an impersonation session. It
+	// defaults to one hour.
+	ImpersonationSessionDuration time.Duration
+	// AllowImpersonatingAdmins lets an operator with user:impersonate
+	// impersonate holders of AdminRoles and AdminUserIDs.
+	AllowImpersonatingAdmins bool
 }
 
 // AdminQuery configures a paginated search. Field and operator names are validated by the SQL adapter.
@@ -117,6 +142,8 @@ func NewAdmin(options AdminOptions) (Plugin, error) {
 	}
 	options.AdminRoles = slices.Clone(options.AdminRoles)
 	options.AdminUserIDs = slices.Clone(options.AdminUserIDs)
+	// Names match exactly, including case: a protected role that differed
+	// from a configured role only in case would protect no account.
 	for _, role := range append(slices.Clone(options.AdminRoles), options.DefaultRole) {
 		if _, ok := roles[role]; !ok {
 			return Plugin{}, errors.New("authn: administrative and default roles must be defined")
@@ -289,7 +316,7 @@ func (a *Auth) executeAdmin(ctx context.Context, h http.Header, req AdminRequest
 		}
 		if op == "stop-impersonating" {
 			if actor.Session.ImpersonatedBy == nil {
-				return adminError(400, "NOT_IMPERSONATING", "You are not impersonating anyone")
+				return &APIError{Status: 400, Message: "You are not impersonating anyone"}
 			}
 			original, mode := a.adminReturnCredential(h, actor.Session.Token)
 			if original == "" {
@@ -335,6 +362,14 @@ func (a *Auth) executeAdmin(ctx context.Context, h http.Header, req AdminRequest
 		if op == "revoke-user-sessions" {
 			return tx.RevokeUserSessions(req.UserID)
 		}
+		if op == "set-user-password" {
+			// The length is checked before the account is looked up.
+			if err := a.validatePasswordLength(req.Password, true); err != nil {
+				return err
+			}
+		}
+		// set-role and update-user check their values after this lookup, so a
+		// missing account answers USER_NOT_FOUND first.
 		u, err := tx.User(req.UserID)
 		if err != nil {
 			return err
@@ -363,9 +398,6 @@ func (a *Auth) executeAdmin(ctx context.Context, h http.Header, req AdminRequest
 			out.original = token
 			return nil
 		case "set-user-password":
-			if err := a.validatePasswordLength(req.Password, true); err != nil {
-				return err
-			}
 			hash, err := a.hashCredential(ctx, "/admin/set-user-password", req.Password)
 			if err != nil {
 				return err
