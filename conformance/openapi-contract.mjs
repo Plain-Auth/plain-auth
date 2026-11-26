@@ -42,6 +42,14 @@ export async function compareOpenAPI(t, goFixture) {
     assert.ok(html.includes("moon"));
     schemas.push(doc);
   }
+  // Operations both documents describe carry the same tags.
+  assert.deepEqual(schemas[1].tags.map(tag => tag.name), schemas[0].tags.map(tag => tag.name));
+  for (const [path, item] of Object.entries(schemas[0].paths)) {
+    for (const [method, op] of Object.entries(item)) {
+      const own = schemas[1].paths[path]?.[method];
+      if (own) assert.deepEqual(own.tags, op.tags, method + " " + path + " tags");
+    }
+  }
   for (const [path, method] of [["/sign-up/email","post"],["/sign-in/email","post"],["/sign-in/username","post"],["/is-username-available","post"],["/sign-in/phone-number","post"],["/phone-number/verify","post"],["/phone-number/send-otp","post"],["/phone-number/request-password-reset","post"],["/phone-number/reset-password","post"]]) {
     const [r,g] = schemas.map(doc=> doc.paths[path][method]);
     assert.equal(g.operationId, r.operationId ?? "post" + path.replaceAll("/","_"));

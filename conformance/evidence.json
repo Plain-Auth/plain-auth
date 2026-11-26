@@ -37480,5 +37480,23 @@
       "marker": "INVALID_SESSION_TOKEN carried another message",
       "complete": true
     }
+  ],
+  "plugin-symbol/open-api/generator": [
+    {
+      "label": "openapi.Generate returns a document for a configured instance, and each concurrent caller gets its own copy",
+      "test": "plugins/openapi/openapi_test.go",
+      "marker": "func TestConcurrentSchemaGeneration("
+    },
+    {
+      "label": "Generated operations use the Default tag for core routes and the capitalized plugin ID for plugin routes, an endpoint's own tags replace the plugin tag, and the document lists the Default group",
+      "test": "plugins/openapi/openapi_test.go",
+      "marker": "func TestOperationTags(t *testing.T) {",
+      "complete": true
+    },
+    {
+      "label": "Every operation that both live documents share carries the same tags, and both documents list the same tag groups",
+      "test": "conformance/openapi-contract.mjs",
+      "marker": "if (own) assert.deepEqual(own.tags, op.tags, method + \" \" + path + \" tags\");"
+    }
   ]
 }

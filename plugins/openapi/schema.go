@@ -12,6 +12,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/Plain-Org/plain-auth"
 	"github.com/Plain-Org/plain-auth/plugins/organization"
@@ -619,11 +621,7 @@ func standardOperation(r plainauth.HTTPRoute, info plainauth.HTTPDescription, a 
 	if _, ok := op["operationId"]; !ok {
 		op["operationId"] = strings.ToLower(r.Method) + strings.NewReplacer("/", "_", ":", "").Replace(r.Path)
 	}
-	tag := r.Plugin
-	if tag == "" {
-		tag = "Core"
-	}
-	op["tags"] = []string{tag}
+	op["tags"] = []string{operationTag(r.Plugin)}
 	op["security"] = []object{}
 	optionalSession := r.Path == "/get-session" || r.Path == "/device" || r.Plugin == "phone-number" && r.Path == "/phone-number/verify"
 	if builtin && (sessionProtection(r) || optionalSession) {
@@ -705,6 +703,17 @@ func standardOperation(r plainauth.HTTPRoute, info plainauth.HTTPDescription, a 
 	return op, nil
 }
 
+// operationTag groups core operations under Default and plugin operations
+// under the plugin ID with its first letter capitalized, such as Two-factor.
+// Tags in an endpoint's OpenAPI metadata replace it.
+func operationTag(plugin string) string {
+	if plugin == "" {
+		return "Default"
+	}
+	first, size := utf8.DecodeRuneInString(plugin)
+	return string(unicode.ToUpper(first)) + plugin[size:]
+}
+
 // Generate returns a fresh OpenAPI document for this configured instance.
 func Generate(a *plainauth.Auth) (map[string]any, error) {
 	if a == nil {
@@ -742,6 +751,7 @@ func Generate(a *plainauth.Auth) (map[string]any, error) {
 		methods[strings.ToLower(r.Method)] = op
 	}
 	return object{"openapi": "3.1.1", "info": object{"title": "Plain Auth", "version": "1.0"}, "servers": []object{{"url": info.ServerURL}},
+		"tags":  []object{{"name": "Default", "description": "Endpoints included with every Plain Auth instance. They are not part of any plugin."}},
 		"paths": paths, "components": object{"schemas": models(a, info), "securitySchemes": schemes,
 			"responses": object{"Error": object{"description": "Request failed", "content": content("application/json", modelRef("Error"))}}}}, nil
 }

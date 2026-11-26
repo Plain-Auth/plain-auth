@@ -8,7 +8,10 @@
   - `FieldSchema` — *not applicable: TypeScript type*
   - `OpenAPIModelSchema` — *not applicable: TypeScript type*
   - `Path` — *not applicable: TypeScript type*
-  - [ ] `generator`
+  - [x] `generator` ([test](../../../plugins/openapi/openapi_test.go#L275))
+    - [x] openapi.Generate returns a document for a configured instance, and each concurrent caller gets its own copy ([test](../../../plugins/openapi/openapi_test.go#L194))
+    - [x] Generated operations use the Default tag for core routes and the capitalized plugin ID for plugin routes, an endpoint's own tags replace the plugin tag, and the document lists the Default group ([test](../../../plugins/openapi/openapi_test.go#L275))
+    - [x] Every operation that both live documents share carries the same tags, and both documents list the same tag groups ([test](../../../conformance/openapi-contract.mjs#L50))
   - `OpenAPISchema` — *not applicable: TypeScript type*
   - `OpenAPIParameter` — *not applicable: TypeScript type*
   - [x] `GET /open-api/generate-schema` ([test](../../../plugins/openapi/openapi_test.go#L88))
@@ -16,11 +19,11 @@
     - [x] Describe enterprise provider management, redacted reads, browser sign-in and both bound callback routes against the configured SQL handler ([test](../../../plugins/openapi/sso_directory_test.go#L24))
     - [x] Describe the enabled enterprise DNS management inputs, outputs and session credentials ([test](../../../plugins/openapi/sso_domain_test.go#L28))
     - [x] Publish declared success codes, empty 204 responses and explicit operation overrides while preserving redirects ([test](../../../plugins/openapi/endpoint_status_test.go#L12))
-    - [x] Serve the mounted versioned JSON document and match required fields for core and username operations ([test](../../../conformance/openapi-contract.mjs#L48))
+    - [x] Serve the mounted versioned JSON document and match required fields for core and username operations ([test](../../../conformance/openapi-contract.mjs#L56))
     - [x] Expose the actual response fields, cookie name, optional bearer scheme and custom operation metadata ([test](../../../plugins/openapi/openapi_test.go#L76))
     - [x] Resolve every local schema reference and suppress unavailable routes for a configured SQL-backed instance ([test](../../../plugins/openapi/profile_test.go#L192))
     - [x] Describe the public user model and writable registration fields across owner updates, administrative creation and first OTP sign-in ([test](../../../plugins/openapi/user_fields_test.go#L21))
-    - [x] Compare both live schema endpoints and verify required signup inputs, partial profile updates and hidden response fields ([test](../../../conformance/openapi-contract.mjs#L64))
+    - [x] Compare both live schema endpoints and verify required signup inputs, partial profile updates and hidden response fields ([test](../../../conformance/openapi-contract.mjs#L72))
     - [x] Describe date-time fields in public models, JSON input and email signup form input ([test](../../../plugins/openapi/user_fields_test.go#L178))
     - [x] GET /open-api/generate-schema answers 200 application/json with OpenAPI 3.1.1 and the mounted server URL, lists installed routes and leaves disabled ones out ([test](../../../plugins/openapi/openapi_test.go#L88))
   - [x] `GET /reference (configurable)` ([test](../../../plugins/openapi/openapi_test.go#L172))

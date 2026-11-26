@@ -268,3 +268,43 @@ func TestOAuthProxyCompletionSchema(t *testing.T) {
 		}
 	}
 }
+
+// Core operations carry the Default tag and plugin operations the plugin ID
+// with its first letter capitalized; an endpoint's own tags replace it, and
+// the document lists the Default group.
+func TestOperationTags(t *testing.T) {
+	name, err := auth.NewUsername(auth.UsernameOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ok := func(auth.EndpointContext) (any, error) { return true, nil }
+	custom := auth.Plugin{ID: "billing-report", Endpoints: []auth.Endpoint{
+		{Method: "GET", Path: "/billing/summary", Handler: ok},
+		{Method: "GET", Path: "/billing/export", OpenAPI: json.RawMessage(`{"operationId":"exportBilling","tags":["Billing","Exports"]}`), Handler: ok},
+	}}
+	_, s := fixture(t, openapi.Options{}, name, custom)
+	doc := schemaDoc(t, s)
+	for _, tc := range []struct {
+		path, method string
+		want         []string
+	}{
+		{"/sign-up/email", "post", []string{"Default"}},
+		{"/get-session", "get", []string{"Default"}},
+		{"/sign-in/username", "post", []string{"Username"}},
+		{"/billing/summary", "get", []string{"Billing-report"}},
+		{"/billing/export", "get", []string{"Billing", "Exports"}},
+	} {
+		raw, _ := node(doc, "paths", tc.path, tc.method)["tags"].([]any)
+		var got []string
+		for _, tag := range raw {
+			got = append(got, tag.(string))
+		}
+		if !slices.Equal(got, tc.want) {
+			t.Fatal("operation tags", tc.path, got)
+		}
+	}
+	groups, _ := doc["tags"].([]any)
+	if len(groups) != 1 || groups[0].(obj)["name"] != "Default" || groups[0].(obj)["description"] == "" {
+		t.Fatal("document tag groups", groups)
+	}
+}
