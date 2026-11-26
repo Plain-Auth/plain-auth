@@ -123,7 +123,7 @@ directory, err := sso.New(sso.Options{
 })
 ```
 
-With an authorized administrator's cookie, send an identity provider registration to `POST /sso/register`. The native client exposes `RegisterSAMLProvider`. The top-level `issuer` is a URL and supplies the default service provider entity ID. Use `spMetadata.entityID` to give the application its own identifier. Set `idpMetadata.entityID` to the exact issuer in the IdP's signed assertions, and supply its trusted RSA signing certificate. The app accepts a PEM certificate or an array of up to eight certificates for planned overlap. A certificate list in `idpMetadata.cert` takes precedence over `samlConfig.cert`.
+With an authorized administrator's cookie, send an identity provider registration to `POST /sso/register`. The native client exposes `RegisterSAMLProvider`. The top-level `issuer` is a URL and supplies the default service provider entity ID and expected assertion audience. Use `spMetadata.entityID` to give the application its own identifier. Set `idpMetadata.entityID` to the exact issuer in the IdP's signed assertions, and supply its trusted RSA signing certificate. The app accepts a PEM certificate or an array of up to eight certificates for planned overlap. A certificate list in `idpMetadata.cert` takes precedence over `samlConfig.cert`.
 
 ```json
 {

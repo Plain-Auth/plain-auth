@@ -16,6 +16,7 @@ require (
 	github.com/jackc/pgx/v5 v5.13.0
 	github.com/mattn/go-sqlite3 v1.14.53
 	github.com/pquerna/otp v1.5.0
+	github.com/russellhaering/goxmldsig v1.6.1
 	github.com/stripe/stripe-go/v87 v87.2.0
 	golang.org/x/crypto v0.59.0
 	golang.org/x/net v0.62.0
@@ -34,7 +35,6 @@ require (
 	github.com/jackc/puddle/v2 v2.2.3 // indirect
 	github.com/jonboulle/clockwork v0.5.0 // indirect
 	github.com/philhofer/fwd v1.2.0 // indirect
-	github.com/russellhaering/goxmldsig v1.6.1 // indirect
 	github.com/shopspring/decimal v1.5.0 // indirect
 	github.com/tinylib/msgp v1.6.4 // indirect
 	github.com/x448/float16 v0.8.4 // indirect

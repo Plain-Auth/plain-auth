@@ -43934,6 +43934,12 @@
       "label": "Count plain and encrypted assertions anywhere in a response, so none or more than one is named by its error code",
       "test": "plugins/sso/saml_test.go",
       "marker": "the assertion count did not name a missing or second assertion"
+    },
+    {
+      "label": "Redirect with error=saml_multiple_assertions and store no user or session for a response the IdP signed over two assertions, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_defaults_test.go",
+      "marker": "a response signed over two assertions signed in",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/sso/saml.mdx#L158/`firstName`": [
@@ -43960,6 +43966,24 @@
       "label": "Use a last name alone as the user's name",
       "test": "plugins/sso/saml_test.go",
       "marker": "a last name alone did not become the name"
+    }
+  ],
+  "docs/content/docs/plugins/sso/saml.mdx#L20/SP entity ID": [
+    {
+      "label": "Publish the registered issuer as the SP entity ID when spMetadata.entityID is unset",
+      "test": "adapters/sqlstore/sso_saml_defaults_test.go",
+      "marker": "the SP metadata did not default its entity ID to the registered issuer"
+    },
+    {
+      "label": "Send the registered issuer as the AuthnRequest issuer",
+      "test": "adapters/sqlstore/sso_saml_defaults_test.go",
+      "marker": "the AuthnRequest did not name the registered issuer as its SP entity ID"
+    },
+    {
+      "label": "Accept an assertion addressed to the default SP entity ID and refuse one for another audience, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_defaults_test.go",
+      "marker": "an assertion addressed to the default SP entity ID did not sign in",
+      "complete": true
     }
   ]
 }

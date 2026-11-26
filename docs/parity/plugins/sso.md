@@ -634,9 +634,10 @@
 
 - [ ] SAML response validation
   - [ ] Size limit
-  - [ ] One assertion
+  - [x] One assertion ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L173))
     - [x] Pass the envelope check only with exactly one top-level signed assertion, refusing a second, a nested or a missing assertion ([test](../../../plugins/sso/saml_test.go#L228))
     - [x] Count plain and encrypted assertions anywhere in a response, so none or more than one is named by its error code ([test](../../../plugins/sso/saml_test.go#L243))
+    - [x] Redirect with error=saml_multiple_assertions and store no user or session for a response the IdP signed over two assertions, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L173))
   - [ ] Signature
     - [x] Reject a SAML response signed by a key other than the provider's certificate ([test](../../../adapters/sqlstore/sso_saml_test.go#L661))
     - [x] Reject an encrypted assertion whose only signature is on the response ([test](../../../adapters/sqlstore/sso_saml_test.go#L568))
@@ -708,7 +709,10 @@
     - [x] ACS URL ([test](../../../adapters/sqlstore/sso_saml_test.go#L190))
       - [x] Advertise the ACS at the auth mount's /sso/saml2/sp/acs/{providerId} in SP metadata ([test](../../../adapters/sqlstore/sso_saml_test.go#L190))
       - [x] Advertise the mounted ACS location in SP metadata on both runtimes ([test](../../../conformance/sso-saml.mjs#L231))
-    - [ ] SP entity ID
+    - [x] SP entity ID ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L155))
+      - [x] Publish the registered issuer as the SP entity ID when spMetadata.entityID is unset ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L77))
+      - [x] Send the registered issuer as the AuthnRequest issuer ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L93))
+      - [x] Accept an assertion addressed to the default SP entity ID and refuse one for another audience, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L155))
   - [ ] Register a SAML provider
     - [x] Register a SAML provider from IdP metadata XML through the released client and return the XML ([test](../../../conformance/sso-saml.mjs#L205))
     - [x] Register a SAML provider from an IdP entity ID and signing certificate through the released client and return the certificate ([test](../../../conformance/sso-saml.mjs#L206))
