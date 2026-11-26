@@ -21,6 +21,29 @@ import (
 
 var ErrInvalidSAML = apiError(400, "Invalid or unsupported SAML configuration")
 
+// errSAMLKeyMaterial refuses private keys in a provider registration or
+// update.
+var errSAMLKeyMaterial = apiError(400, "SAML private keys are not accepted in a provider registration; configure the request signing and decryption keys on the server")
+
+// samlKeyFields reports whether a samlConfig body carries private key
+// material. Keys stay out of the provider catalog: another runtime stores
+// them in the row and returns them in the registration response; this host
+// signs and decrypts with SAMLOptions.RequestSigner and Encryption.
+func samlKeyFields(input map[string]any) bool {
+	if _, ok := input["privateKey"]; ok {
+		return true
+	}
+	for _, section := range []string{"spMetadata", "idpMetadata"} {
+		fields, _ := input[section].(map[string]any)
+		for _, key := range []string{"privateKey", "privateKeyPass", "encPrivateKey", "encPrivateKeyPass"} {
+			if _, ok := fields[key]; ok {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // SAMLOptions enables SP-initiated SAML. Request signing keys stay in the host.
 type SAMLOptions struct {
 	// EnableSingleLogout enables SP-initiated signed HTTP-Redirect logout.

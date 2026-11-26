@@ -18,6 +18,10 @@ import (
 var _ sso.BrowserStore = (*Store)(nil)
 
 const browserProviderCols = `p."id",p."providerId",p."issuer",p."domain",p."userId",p."organizationId",p."oidcConfig",p."samlConfig"`
+
+// browserProviderWhere serves one protocol per provider: another runtime
+// lets a row hold both, which puts OIDC subjects and SAML NameIDs from
+// different authorities in one account namespace.
 const browserProviderWhere = `((p."oidcConfig" IS NOT NULL AND p."samlConfig" IS NULL) OR (p."oidcConfig" IS NULL AND p."samlConfig" IS NOT NULL))`
 
 func scanBrowserProvider(row rowScanner) (sso.BrowserProvider, error) {

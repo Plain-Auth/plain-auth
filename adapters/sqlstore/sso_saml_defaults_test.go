@@ -75,6 +75,83 @@ func TestEnterpriseSAMLDefaults(t *testing.T) {
 			if w := call("POST", "sso/register", owner, map[string]any{"providerId": "uncertified", "issuer": spIssuer, "domain": "uncertified.example", "samlConfig": map[string]any{"entryPoint": entry, "idpMetadata": map[string]any{"entityID": idpEntity}}}); w.Code != 400 || !strings.Contains(w.Body.String(), `"code":"CERT_SOURCE_MISSING"`) {
 				t.Fatal("a SAML registration without a certificate source did not answer CERT_SOURCE_MISSING", w.Code, w.Body.String())
 			}
+			// Private keys are refused in registrations and updates, and a
+			// stored row carrying one is not served.
+			keyed := func(id string, edit func(cfg map[string]any)) map[string]any {
+				cfg := map[string]any{"entryPoint": entry, "cert": idpPEM, "idpMetadata": map[string]any{"entityID": idpEntity}, "spMetadata": map[string]any{}}
+				edit(cfg)
+				return map[string]any{"providerId": id, "issuer": spIssuer, "domain": id + ".example", "samlConfig": cfg}
+			}
+			rows := func(id string) int {
+				var n int
+				must(store.db.QueryRowContext(ctx, store.bind(`SELECT COUNT(*) FROM "ssoProvider" WHERE "providerId"=?`), id).Scan(&n))
+				return n
+			}
+			const keyRefusal = "SAML private keys are not accepted in a provider registration; configure the request signing and decryption keys on the server"
+			for _, edit := range []func(map[string]any){
+				func(cfg map[string]any) { cfg["privateKey"] = "PEM" },
+				func(cfg map[string]any) { cfg["spMetadata"].(map[string]any)["encPrivateKey"] = "PEM" },
+				func(cfg map[string]any) { cfg["idpMetadata"].(map[string]any)["privateKeyPass"] = "secret" },
+			} {
+				if w := call("POST", "sso/register", owner, keyed("keyed", edit)); w.Code != 400 || !strings.Contains(w.Body.String(), keyRefusal) || rows("keyed") != 0 {
+					t.Fatal("a SAML registration carrying a private key was not refused", w.Code, w.Body.String())
+				}
+			}
+			if w := call("POST", "sso/update-provider", owner, map[string]any{"providerId": "acme", "samlConfig": map[string]any{"spMetadata": map[string]any{"privateKey": "PEM"}}}); w.Code != 400 || !strings.Contains(w.Body.String(), keyRefusal) {
+				t.Fatal("a SAML update carrying a private key was not refused", w.Code, w.Body.String())
+			}
+			var ownerID string
+			must(store.db.QueryRowContext(ctx, store.bind(`SELECT "id" FROM "user" WHERE "email"=?`), "owner@example.test").Scan(&ownerID))
+			storedKey, err := json.Marshal(keyed("stored-key", func(cfg map[string]any) { cfg["spMetadata"].(map[string]any)["privateKey"] = "PEM" })["samlConfig"])
+			must(err)
+			_, err = store.db.ExecContext(ctx, store.bind(`INSERT INTO "ssoProvider" ("id","providerId","issuer","samlConfig","domain","userId") VALUES (?,?,?,?,?,?)`), "record-stored-key", "stored-key", spIssuer, string(storedKey), "stored-key.example", ownerID)
+			must(err)
+			if w := call("GET", "sso/providers", owner, nil); w.Code != 200 || strings.Contains(w.Body.String(), "stored-key") {
+				t.Fatal("a stored SAML row carrying a private key was listed", w.Code, w.Body.String())
+			}
+			if w := call("POST", "sign-in/sso", "", map[string]any{"providerId": "stored-key", "providerType": "saml", "callbackURL": "/home"}); w.Code != 404 {
+				t.Fatal("a stored SAML row carrying a private key started a sign-in", w.Code, w.Body.String())
+			}
+			// Each provider holds one protocol, with SAML on or off, and a
+			// stored row holding both is not served.
+			oidcOnly, err := sso.New(sso.Options{})
+			must(err)
+			oidcHost, err := auth.New(auth.Options{BaseURL: "https://service.test", BasePath: "/identity", RateLimit: new(bool), Store: store, Secret: strings.Repeat("k", 32), Plugins: []auth.Plugin{oidcOnly}})
+			must(err)
+			oidcBody := map[string]any{"clientId": "application", "clientSecret": "private", "skipDiscovery": true,
+				"authorizationEndpoint": "https://idp.example.test/authorize", "tokenEndpoint": "https://idp.example.test/token", "jwksEndpoint": "https://idp.example.test/keys"}
+			both := keyed("both", func(cfg map[string]any) {})
+			both["oidcConfig"] = oidcBody
+			for _, h := range []*auth.Auth{host, oidcHost} {
+				var buf bytes.Buffer
+				must(json.NewEncoder(&buf).Encode(both))
+				req := httptest.NewRequest("POST", "https://service.test/identity/sso/register", &buf)
+				req.Header.Set("Content-Type", "application/json")
+				req.Header.Set("Origin", "https://service.test")
+				req.Header.Set("Cookie", owner)
+				w := httptest.NewRecorder()
+				h.ServeHTTP(w, req)
+				if w.Code != 400 || !strings.Contains(w.Body.String(), "Register OIDC and SAML as separate providers") || rows("both") != 0 {
+					t.Fatal("a registration holding both protocols was not refused", w.Code, w.Body.String())
+				}
+			}
+			oidcJSON, err := json.Marshal(oidcBody)
+			must(err)
+			samlJSON, err := json.Marshal(keyed("dual", func(cfg map[string]any) {})["samlConfig"])
+			must(err)
+			_, err = store.db.ExecContext(ctx, store.bind(`INSERT INTO "ssoProvider" ("id","providerId","issuer","oidcConfig","samlConfig","domain","userId") VALUES (?,?,?,?,?,?,?)`), "record-dual", "dual", spIssuer, string(oidcJSON), string(samlJSON), "dual.example", ownerID)
+			must(err)
+			if w := call("GET", "sso/providers", owner, nil); w.Code != 200 || strings.Contains(w.Body.String(), `"dual"`) {
+				t.Fatal("a stored row holding both protocols was listed", w.Code, w.Body.String())
+			}
+			if w := call("GET", "sso/get-provider?providerId=dual", owner, nil); w.Code != 404 {
+				t.Fatal("a stored row holding both protocols was returned", w.Code, w.Body.String())
+			}
+			for _, kind := range []string{"oidc", "saml"} {
+				if w := call("POST", "sign-in/sso", "", map[string]any{"providerId": "dual", "providerType": kind, "callbackURL": "/home"}); w.Code != 404 {
+					t.Fatal("a stored row holding both protocols started a sign-in", kind, w.Code, w.Body.String())
+				}
+			}
 			// A providerType the provider lacks names the missing protocol.
 			if w := call("POST", "sso/register", owner, map[string]any{"providerId": "oidc-one", "issuer": "https://idp.example.test", "domain": "oidc.example",
 				"oidcConfig": map[string]any{"clientId": "application", "clientSecret": "private", "skipDiscovery": true,

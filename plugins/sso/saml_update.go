@@ -38,6 +38,9 @@ func (o Options) updateSAMLMetadata(c auth.EndpointContext, store Store, actor A
 		return nil, ErrMissing
 	}
 	config, _ := c.Body["samlConfig"].(map[string]any)
+	if samlKeyFields(config) {
+		return nil, errSAMLKeyMaterial
+	}
 	metadata, _ := config["idpMetadata"].(map[string]any)
 	raw, _ := metadata["metadata"].(string)
 	if len(c.Body) != 2 || len(config) != 1 || len(metadata) != 1 || raw == "" || len(raw) > o.SAML.metadataLimit() {

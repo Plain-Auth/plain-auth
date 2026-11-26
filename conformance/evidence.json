@@ -42346,6 +42346,12 @@
       "label": "Start a SAML sign-in for the directory named by providerId when providerType is saml",
       "test": "adapters/sqlstore/sso_saml_test.go",
       "marker": "ProviderType: \"saml\", CallbackURL: \"/home\", NewUserCallbackURL: \"/welcome\", ErrorCallbackURL: \"/failed\""
+    },
+    {
+      "label": "Refuse a registration holding both protocols with or without SAML, and serve no stored row holding both, for either providerType; one protocol per provider is a documented deviation, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_defaults_test.go",
+      "marker": "t.Fatal(\"a stored row holding both protocols started a sign-in\"",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/sso/index.mdx#L274": [
@@ -43222,6 +43228,12 @@
       "label": "Publish the host's request-signing certificate in SP metadata",
       "test": "adapters/sqlstore/sso_saml_test.go",
       "marker": "t.Fatal(\"wrong request-signing certificate\")"
+    },
+    {
+      "label": "Refuse spMetadata.privateKey in a SAML update; requests are signed with the host-held RequestSigner, a documented deviation",
+      "test": "adapters/sqlstore/sso_saml_defaults_test.go",
+      "marker": "t.Fatal(\"a SAML update carrying a private key was not refused\"",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/sso/saml.mdx#L119": [
@@ -43239,6 +43251,12 @@
       "label": "Sign in with an independently encrypted signed assertion through the released client on both runtimes",
       "test": "conformance/core.test.mjs",
       "marker": "test(\"enterprise SAML accepts an independently encrypted signed assertion"
+    },
+    {
+      "label": "Refuse spMetadata.encPrivateKey in a registration; assertions are decrypted with the host-held SAMLOptions.Encryption, a documented deviation",
+      "test": "adapters/sqlstore/sso_saml_defaults_test.go",
+      "marker": "t.Fatal(\"a SAML registration carrying a private key was not refused\"",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/sso/saml.mdx#L125": [
@@ -46244,6 +46262,19 @@
       "label": "Refuse deprecated or unknown encryption allow-list entries when the plugin is built",
       "test": "plugins/sso/saml_test.go",
       "marker": "t.Fatal(\"a deprecated or unknown encryption allow-list entry was accepted\""
+    }
+  ],
+  "plugin-symbol/sso/SAMLConfig/privateKey": [
+    {
+      "label": "Refuse samlConfig.privateKey, spMetadata.encPrivateKey and idpMetadata.privateKeyPass in a registration and an update with 400, and skip a stored row carrying a key; keys stay host-held, a documented deviation, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_defaults_test.go",
+      "marker": "t.Fatal(\"a SAML registration carrying a private key was not refused\"",
+      "complete": true
+    },
+    {
+      "label": "Skip a stored SAML row that carries a private key in reads and sign-in",
+      "test": "adapters/sqlstore/sso_saml_defaults_test.go",
+      "marker": "t.Fatal(\"a stored SAML row carrying a private key started a sign-in\""
     }
   ]
 }

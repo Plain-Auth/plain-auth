@@ -299,6 +299,15 @@ func New(o Options) (auth.Plugin, error) {
 		}
 		oidc, ok := c.Body["oidcConfig"].(map[string]any)
 		samlInput, usesSAML := c.Body["samlConfig"].(map[string]any)
+		// One protocol per provider: another runtime lets a row hold both,
+		// which puts OIDC subjects and SAML NameIDs from different
+		// authorities in one account namespace.
+		if ok && usesSAML {
+			return nil, apiError(400, "Register OIDC and SAML as separate providers")
+		}
+		if usesSAML && samlKeyFields(samlInput) {
+			return nil, errSAMLKeyMaterial
+		}
 		if (usesSAML && (ok || o.SAML == nil)) || (!usesSAML && (!ok || c.Body["samlConfig"] != nil)) {
 			return nil, apiError(400, "Supply an OpenID Connect configuration")
 		}
