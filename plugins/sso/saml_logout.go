@@ -243,11 +243,11 @@ func (o Options) finishLogout(c auth.EndpointContext) (any, error) {
 	// A request with neither message redirects with another runtime's error,
 	// to a trusted RelayState or the application origin, before any provider
 	// lookup.
-	if e == nil && !q.Has("SAMLRequest") && !q.Has("SAMLResponse") {
+	if e == nil && q.Get("SAMLRequest") == "" && q.Get("SAMLResponse") == "" {
 		self, _ := c.CallbackURL(c.Request.URL.Path)
 		return c.Redirect(httporigin.SetQuery(samlLanding(c, self, q.Get("RelayState")), url.Values{"error": {"invalid_request"}, "error_description": {"missing_logout_data"}}))
 	}
-	if e == nil && q.Has("SAMLRequest") && o.SAML.EnableIDPInitiatedLogout {
+	if e == nil && q.Get("SAMLRequest") != "" && o.SAML.EnableIDPInitiatedLogout {
 		return o.receiveIDPLogout(c, q, store)
 	}
 	if e != nil || len(q) != 4 {

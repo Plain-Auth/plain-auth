@@ -145,7 +145,7 @@ func hydrate(ctx context.Context, trusted func(string) bool, client *http.Client
 			// uses exact TrustedOrigins entries only; another runtime also
 			// honours wildcard patterns.
 			if !trusted(raw) {
-				return discoveryError(400, "discovery_untrusted_origin", fmt.Sprintf("The %s %q is not trusted by your trusted origins configuration", f.name, raw))
+				return discoveryError(400, "discovery_untrusted_origin", untrustedPrefix+"The "+f.name+" \""+whatwgURL(raw)+"\" is not trusted by your trusted origins configuration.")
 			}
 			if f.stored != nil && *f.stored == "" {
 				*f.stored = raw
@@ -252,15 +252,39 @@ func fetchDiscovery(ctx context.Context, client *http.Client, endpoint string) (
 	return doc, nil
 }
 
+// untrustedPrefix starts another runtime's route message for an untrusted
+// discovery URL; the callback's error_description leaves it out.
+const untrustedPrefix = "Untrusted OIDC discovery URL: "
+
 // untrustedDiscovery refuses a discovery URL outside the trusted origins
-// with another runtime's message, which also reaches the callback's
-// error_description.
+// with another runtime's message.
 func untrustedDiscovery(raw string) error {
-	shown := raw
-	if u, err := url.Parse(raw); err == nil {
-		shown = u.String()
+	return discoveryError(400, "discovery_untrusted_origin", untrustedPrefix+"The main discovery endpoint \""+whatwgURL(raw)+"\" is not trusted by your trusted origins configuration.")
+}
+
+// whatwgURL writes an absolute URL as another runtime's URL parser does:
+// lowercase scheme and host, no default port and "/" for an empty path.
+func whatwgURL(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil || !u.IsAbs() {
+		return raw
 	}
-	return discoveryError(400, "discovery_untrusted_origin", "The main discovery endpoint \""+shown+"\" is not trusted by your trusted origins configuration.")
+	u.Scheme = strings.ToLower(u.Scheme)
+	host, port := strings.ToLower(u.Hostname()), u.Port()
+	if u.Scheme == "https" && port == "443" || u.Scheme == "http" && port == "80" {
+		port = ""
+	}
+	if strings.Contains(host, ":") {
+		host = "[" + host + "]"
+	}
+	u.Host = host
+	if port != "" {
+		u.Host += ":" + port
+	}
+	if u.Path == "" && u.Opaque == "" {
+		u.Path = "/"
+	}
+	return u.String()
 }
 
 // requestTrust trusts the exact origins configured for the request ctx

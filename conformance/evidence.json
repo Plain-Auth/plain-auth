@@ -10478,6 +10478,12 @@
       "label": "Refuse a Group with 1,001 members or a nested Group member, and the classic Entra marker without its option, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/scim_groups_test.go",
       "marker": "t.Fatal(\"a Group with 1,001 members was not refused with invalidValue\", code, kind)"
+    },
+    {
+      "label": "Refuse a Group with more than the member limit, a Group-typed member, no displayName or an account ID as member value with 400 invalidValue, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_groups_contract_test.go",
+      "marker": "t.Fatal(\"an unusable Group was not refused\"",
+      "complete": true
     }
   ],
   "plugin/scim/GET /scim/v2/Groups/:groupId": [
@@ -10485,6 +10491,11 @@
       "label": "Read the other implementation's canonical membership edges with trusted display names and User links",
       "test": "conformance/scim-contract.mjs",
       "marker": "export async function groupContract("
+    },
+    {
+      "label": "Narrow a single Group read with attributes or excludedAttributes and refuse both together with invalidValue, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_groups_contract_test.go",
+      "marker": "t.Fatal(\"attributes did not narrow a Group read\""
     }
   ],
   "plugin/scim/GET /scim/v2/Groups": [
@@ -10492,6 +10503,12 @@
       "label": "Filter by display name and external ID, paginate and return a nested member projection",
       "test": "conformance/scim-contract.mjs",
       "marker": "export async function groupContract("
+    },
+    {
+      "label": "List Groups in creation order, filter by id and refuse a members filter with invalidFilter, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_groups_contract_test.go",
+      "marker": "t.Fatal(\"the Group list is not in creation order\"",
+      "complete": true
     }
   ],
   "plugin/scim/PUT /scim/v2/Groups/:groupId": [
@@ -10509,6 +10526,12 @@
       "label": "Replace a Group's display name on both runtimes",
       "test": "conformance/scim-contract.mjs",
       "marker": "assert.equal(replaced.displayName,\"Replaced\");"
+    },
+    {
+      "label": "Answer 404 for another directory's Group and 409 uniqueness for another Group's name in different case, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_groups_contract_test.go",
+      "marker": "call(h, \"PUT\", path, \"first\", group(\"DESIGN\", a), 409, \"uniqueness\")",
+      "complete": true
     }
   ],
   "plugin/scim/PATCH /scim/v2/Groups/:groupId": [
@@ -10521,6 +10544,12 @@
       "label": "Drop a null-only subattribute of a PATCH member entry, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/scim_groups_test.go",
       "marker": "t.Fatal(\"a PATCH member entry with a null-only type was refused\", w.Code, w.Body.String())"
+    },
+    {
+      "label": "Answer 404 for another directory's Group and 409 uniqueness for another Group's name in different case, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_groups_contract_test.go",
+      "marker": "call(h, \"PATCH\", path, \"first\", patch(op(\"replace\", \"displayName\", \"design\")), 409, \"uniqueness\")",
+      "complete": true
     }
   ],
   "plugin/scim/DELETE /scim/v2/Groups/:groupId": [
@@ -11226,9 +11255,9 @@
       "marker": "func TestEnterpriseProviderManagement("
     },
     {
-      "label": "Report an unreadable stored SAML certificate in the summary instead of failing the read, on SQLite, PostgreSQL and MySQL",
+      "label": "Report an unreadable stored SAML certificate in the provider list instead of failing the read, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/sso_saml_defaults_test.go",
-      "marker": "t.Fatal(\"an unreadable certificate was not reported in the summary\""
+      "marker": "t.Fatal(\"an unreadable certificate was not reported in the provider list\""
     }
   ],
   "plugin/sso/GET /sso/get-provider": [
@@ -11302,6 +11331,11 @@
       "test": "plugins/sso/discovery_test.go",
       "marker": "t.Fatal(\"discovery replaced configured values\"",
       "complete": true
+    },
+    {
+      "label": "Name an untrusted discovery URL with another runtime's route prefix and URL form, and leave the prefix out of the callback's description",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "t.Fatal(\"an untrusted URL was not normalized\""
     }
   ],
   "plugin-symbol/sso/fetchDiscoveryDocument": [
@@ -43606,6 +43640,12 @@
       "label": "Refuse the classic Entra Group marker on creation without AcceptLegacyEntraGroupSchema",
       "test": "adapters/sqlstore/scim_groups_test.go",
       "marker": "t.Fatal(\"the classic Entra Group marker was accepted without its option\", code, kind)"
+    },
+    {
+      "label": "Refuse a Group carrying the legacy Entra marker with 400 invalidValue unless AcceptLegacyEntraGroupSchema is set, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_groups_contract_test.go",
+      "marker": "call(strict, \"POST\", \"Groups\", \"first\", entra, 400, \"invalidValue\")",
+      "complete": true
     }
   ],
   "plugin-symbol/scim/SCIMConnection": [
@@ -43889,6 +43929,12 @@
       "label": "Refuse Group listing to a write-only credential while a groups.read credential lists and reads Groups",
       "test": "adapters/sqlstore/scim_groups_test.go",
       "marker": "call(h, \"GET\", \"Groups\", \"writegroups\", nil, 403)"
+    },
+    {
+      "label": "Refuse a Group read to groups-write and users-only tokens, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_groups_contract_test.go",
+      "marker": "call(h, \"GET\", path, token, nil, 403, \"\")",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L180/`scim.groups.write`": [
@@ -43901,6 +43947,12 @@
       "label": "Refuse Group deletion to a read-only credential with 403",
       "test": "adapters/sqlstore/scim_projection_test.go",
       "marker": "call(one, \"DELETE\", \"Groups/\"+a, \"north-read\", nil, 403)"
+    },
+    {
+      "label": "Refuse PUT and PATCH to groups-read and users-only tokens and accept a groups-write PATCH, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_groups_contract_test.go",
+      "marker": "call(h, \"PATCH\", path, \"writegroups\", patch(op(\"add\", \"displayName\", \"Engineering\")), 200, \"\")",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L199": [
@@ -44190,6 +44242,12 @@
       "label": "Find a Group by lowercase displayName and externalId on both runtimes",
       "test": "conformance/scim-contract.mjs",
       "marker": "displayName eq \"sales\" and externalId eq \"org-02\""
+    },
+    {
+      "label": "Return exactly one Group for an id filter, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_groups_contract_test.go",
+      "marker": "t.Fatal(\"an id filter did not return that Group\"",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L374/`active`": [
@@ -44211,6 +44269,12 @@
       "label": "Replace a Group displayName sent as a one-element array through PATCH",
       "test": "adapters/sqlstore/scim_groups_test.go",
       "marker": "if updated[\"displayName\"] != \"Updated\" || len(updated[\"members\"].([]any)) != 2 {"
+    },
+    {
+      "label": "Apply a PATCH add of displayName, refuse an empty one with invalidValue and another Group's name with uniqueness, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_groups_contract_test.go",
+      "marker": "t.Fatal(\"PATCH add did not set displayName\"",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L397/`members`": [
@@ -44223,6 +44287,12 @@
       "label": "Remove one supplied member and add another in one PATCH at the 1,000 member limit",
       "test": "adapters/sqlstore/scim_groups_test.go",
       "marker": "t.Fatal(\"wrong membership boundary\")"
+    },
+    {
+      "label": "Set the members with a PATCH replace and clear them with a pathless remove, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_groups_contract_test.go",
+      "marker": "t.Fatal(\"PATCH remove members did not clear them\"",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L400/`members[value eq \"<scim-user-id>\"]`": [
@@ -44260,6 +44330,12 @@
       "label": "Reject adding a Group ID as a member with 400 invalidValue on both runtimes",
       "test": "conformance/scim-contract.mjs",
       "marker": "const bad=await call(\"PATCH\",path,400,patch({op:\"add\",path:\"members\",value:[{value:group.id}]}));"
+    },
+    {
+      "label": "Refuse a Group-typed member with 400 invalidValue, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_groups_contract_test.go",
+      "marker": "t.Fatal(\"an unusable Group was not refused\"",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L524/Operators other than equality and logical `and`": [
@@ -46380,6 +46456,12 @@
       "label": "Refuse the classic Entra Group marker on creation by default",
       "test": "adapters/sqlstore/scim_groups_test.go",
       "marker": "t.Fatal(\"the classic Entra Group marker was accepted without its option\", code, kind)"
+    },
+    {
+      "label": "Refuse the legacy Entra Group marker without AcceptLegacyEntraGroupSchema, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_groups_contract_test.go",
+      "marker": "call(strict, \"POST\", \"Groups\", \"first\", entra, 400, \"invalidValue\")",
+      "complete": true
     }
   ],
   "plugin-symbol/scim/SCIMScope": [
@@ -46387,6 +46469,12 @@
       "label": "Refuse User creation with a read-only scope and listing with a write-only scope, and let the read scope list",
       "test": "adapters/sqlstore/scim_groups_test.go",
       "marker": "t.Fatal(\"a read-only credential created a User\", code)"
+    },
+    {
+      "label": "Refuse POST Users to a users-read-only token and GET Users to a users-write-only one, beside the Group scopes, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_groups_contract_test.go",
+      "marker": "call(h, \"GET\", \"Users\", \"userswrite\", nil, 403, \"\")",
+      "complete": true
     }
   ],
   "plugin-symbol/sso/AlgorithmValidationOptions/allowedKeyEncryptionAlgorithms": [
@@ -46476,6 +46564,30 @@
       "label": "Refuse a client_secret_basic or client_secret_post registration without clientSecret, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/sso_private_key_test.go",
       "marker": "t.Fatal(\"a secret method without clientSecret was accepted\"",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L19/`compatibility`": [
+    {
+      "label": "Refuse the legacy Entra Group marker without AcceptLegacyEntraGroupSchema, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_groups_contract_test.go",
+      "marker": "call(strict, \"POST\", \"Groups\", \"first\", entra, 400, \"invalidValue\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/groups-and-roles.mdx#L9": [
+    {
+      "label": "Refuse a Group without displayName and one whose member value is an account ID, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_groups_contract_test.go",
+      "marker": "t.Fatal(\"an unusable Group was not refused\"",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/index.mdx#L168": [
+    {
+      "label": "Grant no authorization for a Group membership by itself, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_groups_contract_test.go",
+      "marker": "t.Fatal(\"a Group membership granted an authorization\"",
       "complete": true
     }
   ]

@@ -152,7 +152,7 @@ func (o Options) updateProvider(c auth.EndpointContext, store Store, actor Actor
 			return next, identity || !SameSAMLIdentity(*current.SAML, *cfg), nil
 		}
 		if samlPatch != nil {
-			return next, false, apiError(400, "Cannot update SAML config for a provider that doesn't have SAML configured")
+			return next, false, errNotSAML
 		}
 		if current.OIDC == nil {
 			if patch != nil {

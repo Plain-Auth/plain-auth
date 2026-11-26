@@ -480,7 +480,7 @@ func callbackDiscoveryMessage(e *auth.APIError) string {
 	case "discovery_invalid_json":
 		return "Discovery endpoint returned invalid JSON"
 	}
-	for _, prefix := range []string{"OIDC discovery document is missing required fields: ", "OIDC issuer mismatch: "} {
+	for _, prefix := range []string{"OIDC discovery document is missing required fields: ", "OIDC issuer mismatch: ", untrustedPrefix} {
 		if rest, ok := strings.CutPrefix(e.Message, prefix); ok {
 			return rest
 		}

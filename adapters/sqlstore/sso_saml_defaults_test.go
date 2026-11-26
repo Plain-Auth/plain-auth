@@ -159,6 +159,9 @@ func TestEnterpriseSAMLDefaults(t *testing.T) {
 			if w := call("GET", "sso/get-provider?providerId=broken-cert", owner, nil); w.Code != 200 || !strings.Contains(w.Body.String(), `"certificate":[{"error":"Failed to parse certificate"}]`) {
 				t.Fatal("an unreadable certificate was not reported in the summary", w.Code, w.Body.String())
 			}
+			if w := call("GET", "sso/providers", owner, nil); w.Code != 200 || !strings.Contains(w.Body.String(), `"certificate":[{"error":"Failed to parse certificate"}]`) {
+				t.Fatal("an unreadable certificate was not reported in the provider list", w.Code, w.Body.String())
+			}
 			// Oversized IdP metadata names the limit at registration and update.
 			const tooLarge = "IdP metadata exceeds maximum allowed size (102400 bytes)"
 			huge := strings.Repeat(" ", 100*1024+1)

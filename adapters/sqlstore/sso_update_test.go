@@ -288,8 +288,10 @@ func TestEnterpriseProviderUpdate(t *testing.T) {
 			if w := saml.call("POST", "sso/update-provider", owner, map[string]any{"providerId": "directory", "oidcConfig": map[string]any{"scopes": []string{"openid"}}}); w.Code != 400 || !strings.Contains(w.Body.String(), "Cannot update OIDC config for a provider that doesn't have OIDC configured") {
 				t.Fatal("a SAML directory accepted an OIDC update", w.Code, w.Body.String())
 			}
-			if w := saml.call("POST", "sso/update-provider", owner, map[string]any{"providerId": "acme", "samlConfig": map[string]any{"audience": "urn:example:audience"}}); w.Code != 400 || !strings.Contains(w.Body.String(), "Cannot update SAML config for a provider that doesn't have SAML configured") {
-				t.Fatal("an OIDC provider accepted a SAML update", w.Code, w.Body.String())
+			for _, patch := range []map[string]any{{"audience": "urn:example:audience"}, {"idpMetadata": map[string]any{"metadata": "<EntityDescriptor/>"}}} {
+				if w := saml.call("POST", "sso/update-provider", owner, map[string]any{"providerId": "acme", "samlConfig": patch}); w.Code != 400 || !strings.Contains(w.Body.String(), "Cannot update SAML config for a provider that doesn't have SAML configured") {
+					t.Fatal("an OIDC provider accepted a SAML update", patch, w.Code, w.Body.String())
+				}
 			}
 			// samlConfig merges its fields under the registration checks.
 			if w := samlUpdate(map[string]any{"audience": "urn:example:audience", "callbackUrl": "/landing", "mapping": map[string]any{"email": "mail"},
@@ -324,6 +326,17 @@ func TestEnterpriseProviderUpdate(t *testing.T) {
 				if w := samlUpdate(c.patch); w.Code != 400 || !strings.Contains(w.Body.String(), c.text) {
 					t.Fatal("an unusable SAML merge was not refused", c.patch, w.Code, w.Body.String())
 				}
+			}
+			// Only the algorithms a patch names are checked against the policy.
+			if w := samlUpdate(map[string]any{"digestAlgorithm": "sha384"}); w.Code != 200 {
+				t.Fatal("a digest algorithm merge was refused", w.Code, w.Body.String())
+			}
+			narrowed := newSSOHost(t, store, idp, sso.Options{SAML: &sso.SAMLOptions{Algorithms: sso.SAMLAlgorithms{AllowedDigestAlgorithms: []sso.DigestAlgorithm{sso.DigestSHA256}}}, DomainVerification: &sso.DomainVerificationOptions{Resolver: dns}})
+			if w := narrowed.call("POST", "sso/update-provider", owner, map[string]any{"providerId": "directory", "samlConfig": map[string]any{"signatureAlgorithm": "rsa-sha256"}}); w.Code != 200 {
+				t.Fatal("an update naming one algorithm was refused for the stored other", w.Code, w.Body.String())
+			}
+			if w := narrowed.call("POST", "sso/update-provider", owner, map[string]any{"providerId": "directory", "samlConfig": map[string]any{"digestAlgorithm": "sha384"}}); w.Code != 400 || !strings.Contains(w.Body.String(), "SAML_ALGORITHM_NOT_ALLOWED") {
+				t.Fatal("an update naming an algorithm outside the allow-list was accepted", w.Code, w.Body.String())
 			}
 			// With a linked account an identity change answers 409 and a
 			// certificate rotation goes through.

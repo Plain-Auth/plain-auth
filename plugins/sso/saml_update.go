@@ -16,6 +16,9 @@ type SAMLMetadataStore interface {
 
 var ErrMetadataStorageSize = &auth.APIError{Status: 400, Message: "SAML configuration exceeds the database column capacity"}
 
+// errNotSAML refuses samlConfig on a provider without SAML.
+var errNotSAML = apiError(400, "Cannot update SAML config for a provider that doesn't have SAML configured")
+
 var ErrLinkedIdentity = &auth.APIError{Status: 409, Message: "Cannot change SSO provider identity fields while linked accounts exist"}
 
 // WithIDPMetadata builds the effective assertion authority from the new XML alone.
@@ -52,13 +55,16 @@ func (o Options) updateSAMLMetadata(c auth.EndpointContext, store Store, actor A
 	if err != nil {
 		return nil, err
 	}
-	if len(visible) != 1 || visible[0].SAML == nil {
+	if len(visible) != 1 {
 		return nil, ErrMissing
 	}
-	// The size is checked once the caller may see the provider, as in
-	// another runtime.
+	// The size is checked once the caller may see the provider, then the
+	// protocol, as in another runtime.
 	if len(raw) > o.SAML.metadataLimit() {
 		return nil, metadataTooLarge(o.SAML.metadataLimit())
+	}
+	if visible[0].SAML == nil {
+		return nil, errNotSAML
 	}
 	current, err := store.(BrowserStore).FindBrowserProvider(ctx, Selector{ProviderID: id, Protocol: "saml"})
 	if err != nil {
@@ -157,6 +163,8 @@ func (o Options) mergeSAMLUpdate(current SAMLConfig, patch map[string]any, issue
 			continue
 		case "entryPoint", "cert", "audience", "callbackUrl", "mapping", "wantAssertionsSigned", "authnRequestsSigned", "identifierFormat", "signatureAlgorithm", "digestAlgorithm":
 		default:
+			// Refused where another runtime drops it, so a misspelled
+			// policy field is never silently ignored.
 			return nil, apiError(400, "Unsupported SAML update field")
 		}
 		if value == nil {
@@ -175,12 +183,16 @@ func (o Options) mergeSAMLUpdate(current SAMLConfig, patch map[string]any, issue
 	if err = requireCertSource(next); err != nil {
 		return nil, err
 	}
-	_, signature := patch["signatureAlgorithm"]
-	_, digest := patch["digestAlgorithm"]
-	if signature || digest {
-		if err = o.SAML.Algorithms.checkConfig(*next); err != nil {
-			return nil, err
-		}
+	// Only the algorithms the patch names are checked, as in another runtime.
+	var supplied SAMLConfig
+	if _, ok := patch["signatureAlgorithm"]; ok {
+		supplied.SignatureAlgorithm = next.SignatureAlgorithm
+	}
+	if _, ok := patch["digestAlgorithm"]; ok {
+		supplied.DigestAlgorithm = next.DigestAlgorithm
+	}
+	if err = o.SAML.Algorithms.checkConfig(supplied); err != nil {
+		return nil, err
 	}
 	if !next.MetadataValidAt(time.Now()) {
 		return nil, ErrInvalidSAML

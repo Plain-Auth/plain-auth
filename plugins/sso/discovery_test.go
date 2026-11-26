@@ -197,7 +197,7 @@ func TestDiscoveryErrorCodes(t *testing.T) {
 	for _, field := range []string{"token_endpoint", "authorization_endpoint", "jwks_uri", "userinfo_endpoint", "revocation_endpoint", "end_session_endpoint", "introspection_endpoint"} {
 		served = strings.Replace(doc, "}", `,"`+field+`":"https://elsewhere.example.test/`+field+`"}`, 1)
 		var e *auth.APIError
-		if err := fetch("/served"); !errors.As(err, &e) || e.Status != 400 || e.Code != "discovery_untrusted_origin" || e.Message != `The `+field+` "https://elsewhere.example.test/`+field+`" is not trusted by your trusted origins configuration` {
+		if err := fetch("/served"); !errors.As(err, &e) || e.Status != 400 || e.Code != "discovery_untrusted_origin" || e.Message != `Untrusted OIDC discovery URL: The `+field+` "https://elsewhere.example.test/`+field+`" is not trusted by your trusted origins configuration.` {
 			t.Fatal("a discovered URL on an untrusted origin was not refused with discovery_untrusted_origin", field, err)
 		}
 	}
@@ -344,6 +344,16 @@ func TestDiscoveryHydratedConfiguration(t *testing.T) {
 
 // The callback reports a discovery failure with the raw message, as another
 // runtime does, without the registration prefix.
+// An untrusted discovery URL is written as another runtime's URL parser
+// writes it.
+func TestUntrustedDiscoveryURL(t *testing.T) {
+	for raw, want := range map[string]string{"https://IDP.Example.test:443": "https://idp.example.test/", "HTTP://idp.test:80/x": "http://idp.test/x", "https://idp.test:8443/a?b=c": "https://idp.test:8443/a?b=c", "https://[2001:DB8::1]:443/": "https://[2001:db8::1]/"} {
+		if got := whatwgURL(raw); got != want {
+			t.Fatal("an untrusted URL was not normalized", raw, got, want)
+		}
+	}
+}
+
 func TestCallbackDiscoveryMessage(t *testing.T) {
 	for _, c := range []struct{ code, message, want string }{
 		{"discovery_incomplete", "OIDC discovery document is missing required fields: Discovery document is missing required fields: jwks_uri", "Discovery document is missing required fields: jwks_uri"},
@@ -351,6 +361,7 @@ func TestCallbackDiscoveryMessage(t *testing.T) {
 		{"discovery_not_found", "Discovery document not found", "Discovery endpoint not found"},
 		{"discovery_timeout", "Discovery timed out", "Discovery request timed out"},
 		{"discovery_invalid_json", "Invalid discovery document", "Discovery endpoint returned invalid JSON"},
+		{"discovery_untrusted_origin", `Untrusted OIDC discovery URL: The main discovery endpoint "https://idp.test/" is not trusted by your trusted origins configuration.`, `The main discovery endpoint "https://idp.test/" is not trusted by your trusted origins configuration.`},
 	} {
 		if got := callbackDiscoveryMessage(&auth.APIError{Code: c.code, Message: c.message}); got != c.want {
 			t.Fatal("the callback discovery message differs from the raw one", c.code, got)

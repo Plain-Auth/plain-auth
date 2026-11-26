@@ -60,9 +60,10 @@
     - [x] Return a created User with its derived display name, normalized emails and active state on both runtimes ([test](../../../conformance/scim-contract.mjs#L59))
     - [x] Bound the serialized size on parsed values, ignoring unknown subattributes and surrounding spaces, and refuse a User over the bound ([test](../../../plugins/scim/http_test.go#L420))
   - [ ] `SCIMCompatibilityOptions`
-    - [ ] `microsoftEntra`
+    - [x] `microsoftEntra` ([test](../../../adapters/sqlstore/scim_groups_contract_test.go#L106))
       - [x] Create a Group whose schemas include the classic Entra marker when AcceptLegacyEntraGroupSchema is on ([test](../../../adapters/sqlstore/scim_groups_test.go#L96))
       - [x] Refuse the classic Entra Group marker on creation without AcceptLegacyEntraGroupSchema ([test](../../../adapters/sqlstore/scim_groups_test.go#L407))
+      - [x] Refuse a Group carrying the legacy Entra marker with 400 invalidValue unless AcceptLegacyEntraGroupSchema is set, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_groups_contract_test.go#L106))
   - [x] `SCIMConnection` ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L163))
     - [x] Expose the authenticated directory ID and provisioning domain on the request's principal ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L163))
     - [x] Hand the store the same directory that the request authenticated ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L29))
@@ -144,8 +145,9 @@
     - [ ] `identity`
       - [x] Link a SCIM User to an existing account through Identity.ResolveUser ([test](../../../adapters/sqlstore/scim_identity_test.go#L111))
     - [ ] `projection`
-    - [ ] `compatibility`
+    - [x] `compatibility` ([test](../../../adapters/sqlstore/scim_groups_contract_test.go#L106))
       - [x] Refuse the classic Entra Group marker on creation by default ([test](../../../adapters/sqlstore/scim_groups_test.go#L407))
+      - [x] Refuse the legacy Entra Group marker without AcceptLegacyEntraGroupSchema, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_groups_contract_test.go#L106))
   - [ ] `SCIMPrincipal`
   - [x] `SCIMProjectedRoleGrant` ([test](../../../adapters/sqlstore/scim_projection_test.go#L259))
     - [x] Hand the reconciler grants sorted by grant key, each with its Group ([test](../../../adapters/sqlstore/scim_projection_test.go#L259))
@@ -163,8 +165,9 @@
   - [ ] `SCIMRoleProjection`
     - [x] Grant one reader role per Group source when the mapper returns a padded copy, a repeat, an unknown role and an empty value ([test](../../../adapters/sqlstore/scim_projection_test.go#L78))
     - [x] Restore the same trimmed role in the native runtime's grant when its mapper returns padded, repeated and unknown roles ([test](../../../conformance/scim-contract.mjs#L230))
-  - [ ] `SCIMScope`
+  - [x] `SCIMScope` ([test](../../../adapters/sqlstore/scim_groups_contract_test.go#L60))
     - [x] Refuse User creation with a read-only scope and listing with a write-only scope, and let the read scope list ([test](../../../adapters/sqlstore/scim_groups_test.go#L410))
+    - [x] Refuse POST Users to a users-read-only token and GET Users to a users-write-only one, beside the Group scopes, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_groups_contract_test.go#L60))
   - [ ] `SCIMStaticBearerPrincipal`
     - [x] Keep static principals and reserved managed credentials out of the application verifier ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L35))
     - [x] Expose the static-bearer kind and credential ID of a code-defined token through request context ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L168))
@@ -195,21 +198,26 @@
     - [x] Retrieve the Group resource type on both implementations ([test](../../../conformance/scim-contract.mjs#L92))
     - [x] Return 404 for the Group resource type when the store has no Group operations ([test](../../../plugins/scim/http_test.go#L73))
     - [x] Return the User resource type with the core User schema on both runtimes ([test](../../../conformance/scim-contract.mjs#L56))
-  - [ ] `POST /scim/v2/Groups`
+  - [x] `POST /scim/v2/Groups` ([test](../../../adapters/sqlstore/scim_groups_contract_test.go#L100))
     - [x] Create directory-owned Groups, deduplicate direct members and reject foreign User and nested Group references ([test](../../../adapters/sqlstore/scim_groups_test.go#L20))
     - [x] Persist a canonical grant key verified across two independent runtimes ([test](../../../conformance/scim-contract.mjs#L230))
     - [x] Refuse a Group with 1,001 members or a nested Group member, and the classic Entra marker without its option, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_groups_test.go#L400))
+    - [x] Refuse a Group with more than the member limit, a Group-typed member, no displayName or an account ID as member value with 400 invalidValue, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_groups_contract_test.go#L100))
   - [ ] `GET /scim/v2/Groups/:groupId`
     - [x] Read the other implementation's canonical membership edges with trusted display names and User links ([test](../../../conformance/scim-contract.mjs#L92))
-  - [ ] `GET /scim/v2/Groups`
+    - [x] Narrow a single Group read with attributes or excludedAttributes and refuse both together with invalidValue, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_groups_contract_test.go#L138))
+  - [x] `GET /scim/v2/Groups` ([test](../../../adapters/sqlstore/scim_groups_contract_test.go#L128))
     - [x] Filter by display name and external ID, paginate and return a nested member projection ([test](../../../conformance/scim-contract.mjs#L92))
-  - [ ] `PUT /scim/v2/Groups/:groupId`
+    - [x] List Groups in creation order, filter by id and refuse a members filter with invalidFilter, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_groups_contract_test.go#L128))
+  - [x] `PUT /scim/v2/Groups/:groupId` ([test](../../../adapters/sqlstore/scim_groups_contract_test.go#L148))
     - [x] Replace a Group profile and its member set and retain the underlying Users ([test](../../../adapters/sqlstore/scim_groups_test.go#L20))
     - [x] Replace a Group's member set so a member the replacement omits is no longer listed ([test](../../../adapters/sqlstore/scim_groups_test.go#L163))
     - [x] Replace a Group's display name on both runtimes ([test](../../../conformance/scim-contract.mjs#L122))
-  - [ ] `PATCH /scim/v2/Groups/:groupId`
+    - [x] Answer 404 for another directory's Group and 409 uniqueness for another Group's name in different case, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_groups_contract_test.go#L148))
+  - [x] `PATCH /scim/v2/Groups/:groupId` ([test](../../../adapters/sqlstore/scim_groups_contract_test.go#L149))
     - [x] Apply concurrent membership changes, enforce the 1,000-member limit and roll back invalid multi-operation updates ([test](../../../adapters/sqlstore/scim_groups_test.go#L20))
     - [x] Drop a null-only subattribute of a PATCH member entry, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_groups_test.go#L434))
+    - [x] Answer 404 for another directory's Group and 409 uniqueness for another Group's name in different case, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_groups_contract_test.go#L149))
   - [x] `DELETE /scim/v2/Groups/:groupId` ([test](../../../adapters/sqlstore/scim_groups_test.go#L114))
     - [x] Physically remove the scoped membership edges without deleting Users or another directory's Group ([test](../../../adapters/sqlstore/scim_groups_test.go#L20))
     - [x] Remove one directory grant while another connection changes the same subject ([test](../../../adapters/sqlstore/scim_projection_test.go#L335))
@@ -287,7 +295,8 @@
 ## Groups and custom roles
 
 - [ ] Groups and custom roles
-  - [ ] Provision groups and memberships
+  - [x] Provision groups and memberships ([test](../../../adapters/sqlstore/scim_groups_contract_test.go#L100))
+    - [x] Refuse a Group without displayName and one whose member value is an account ID, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_groups_contract_test.go#L100))
   - [ ] Map Groups to custom roles
     - [x] Project mapped Group roles inside the directory transaction while preserving a manually assigned role ([test](../../../adapters/sqlstore/scim_projection_test.go#L195))
     - [ ] `roles.map`
@@ -318,7 +327,8 @@
     - [x] Authentication ([test](../../../plugins/scim/http_test.go#L290))
       - [x] Advertise bearer token authentication only and refuse Basic credentials with a bearer challenge ([test](../../../plugins/scim/http_test.go#L290))
     - [ ] Token
-  - [ ] How provisioning maps to your application
+  - [x] How provisioning maps to your application ([test](../../../adapters/sqlstore/scim_groups_contract_test.go#L114))
+    - [x] Grant no authorization for a Group membership by itself, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_groups_contract_test.go#L114))
   - [ ] Provision users
     - [ ] Link an existing authentication User
       - [x] Link an incoming SCIM User to an existing authentication user ([test](../../../adapters/sqlstore/scim_identity_test.go#L126))
@@ -345,7 +355,8 @@
       - [x] Configure Identity.ResolveUser to link incoming Users ([test](../../../adapters/sqlstore/scim_identity_test.go#L138))
     - [x] `projection` ([test](../../../adapters/sqlstore/scim_projection_test.go#L20))
       - [x] Map Group memberships to validated roles and apply them through the application reconciler inside the directory transaction ([test](../../../adapters/sqlstore/scim_projection_test.go#L20))
-    - [ ] `compatibility`
+    - [x] `compatibility` ([test](../../../adapters/sqlstore/scim_groups_contract_test.go#L106))
+      - [x] Refuse the legacy Entra Group marker without AcceptLegacyEntraGroupSchema, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_groups_contract_test.go#L106))
     - [ ] Connection options
       - [ ] `id`
       - [ ] `credentials`
@@ -386,11 +397,13 @@
         - [x] Refuse User listing to a write-only credential while a read-only credential lists and reads Users ([test](../../../adapters/sqlstore/scim_test.go#L98))
       - [ ] `scim.users.write`
         - [x] Refuse User creation to a read-only credential with 403 ([test](../../../adapters/sqlstore/scim_test.go#L97))
-      - [ ] `scim.groups.read`
+      - [x] `scim.groups.read` ([test](../../../adapters/sqlstore/scim_groups_contract_test.go#L118))
         - [x] Refuse Group listing to a write-only credential while a groups.read credential lists and reads Groups ([test](../../../adapters/sqlstore/scim_groups_test.go#L69))
-      - [ ] `scim.groups.write`
+        - [x] Refuse a Group read to groups-write and users-only tokens, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_groups_contract_test.go#L118))
+      - [x] `scim.groups.write` ([test](../../../adapters/sqlstore/scim_groups_contract_test.go#L124))
         - [x] Refuse Group creation to read-only and Users-only credentials with 403 ([test](../../../adapters/sqlstore/scim_groups_test.go#L67))
         - [x] Refuse Group deletion to a read-only credential with 403 ([test](../../../adapters/sqlstore/scim_projection_test.go#L284))
+        - [x] Refuse PUT and PATCH to groups-read and users-only tokens and accept a groups-write PATCH, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_groups_contract_test.go#L124))
   - [ ] HTTP behavior
     - [x] Report two spellings of one attribute, even with a null value, as invalidSyntax in a User, a role, a pathless PATCH value and a Group ([test](../../../plugins/scim/http_test.go#L296))
     - [x] Refuse a Group PATCH value naming displayName twice as invalidSyntax over HTTP ([test](../../../adapters/sqlstore/scim_groups_test.go#L341))
@@ -505,8 +518,9 @@
     - [ ] User
       - [x] Find a User by case-insensitive userName with externalId, by work email value and by any email value ([test](../../../adapters/sqlstore/scim_test.go#L149))
       - [x] Find a User by lowercase userName and an uppercase work email value on both runtimes ([test](../../../conformance/scim-contract.mjs#L66))
-    - [ ] Group
+    - [x] Group ([test](../../../adapters/sqlstore/scim_groups_contract_test.go#L132))
       - [x] Find a Group by lowercase displayName and externalId on both runtimes ([test](../../../conformance/scim-contract.mjs#L116))
+      - [x] Return exactly one Group for an id filter, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_groups_contract_test.go#L132))
   - [x] Response attributes ([test](../../../plugins/scim/selection_test.go#L29))
     - [x] Select and exclude nested, case-insensitive and core-qualified paths, ignore unknown paths, refuse empty parts, inner whitespace and combined parameters, and keep emptied array entries on exclusion ([test](../../../plugins/scim/selection_test.go#L29))
     - [x] Apply nested selections to POST, PUT, PATCH, collection and Group responses and ignore an unknown path, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L781))
@@ -557,15 +571,17 @@
         - [x] Set, merge and clear the Enterprise manager through the classic aliases, refuse a writable displayName and keep the manager under the URN, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L939))
         - [x] Drop an emptied manager from the extension ([test](../../../adapters/sqlstore/scim_attributes_test.go#L955))
         - [x] Answer invalidPath for the manager alias behind the core User schema prefix ([test](../../../adapters/sqlstore/scim_attributes_test.go#L958))
-    - [ ] Group PATCH paths
+    - [x] Group PATCH paths ([test](../../../adapters/sqlstore/scim_groups_test.go#L251))
       - [x] Apply schema-prefixed and pathless Group PATCH values, remove a member by a prefixed selector and clear members with null ([test](../../../adapters/sqlstore/scim_groups_test.go#L251))
-      - [ ] `displayName`
+      - [x] `displayName` ([test](../../../adapters/sqlstore/scim_groups_contract_test.go#L152))
         - [x] Replace a Group displayName sent as a one-element array through PATCH ([test](../../../adapters/sqlstore/scim_groups_test.go#L150))
+        - [x] Apply a PATCH add of displayName, refuse an empty one with invalidValue and another Group's name with uniqueness, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_groups_contract_test.go#L152))
       - [x] `externalId` ([test](../../../adapters/sqlstore/scim_groups_test.go#L359))
         - [x] Add, replace, filter, remove and null a Group externalId through PATCH ([test](../../../adapters/sqlstore/scim_groups_test.go#L359))
-      - [ ] `members`
+      - [x] `members` ([test](../../../adapters/sqlstore/scim_groups_contract_test.go#L160))
         - [x] Add members from concurrent PATCH requests on two servers without losing either ([test](../../../adapters/sqlstore/scim_groups_test.go#L147))
         - [x] Remove one supplied member and add another in one PATCH at the 1,000 member limit ([test](../../../adapters/sqlstore/scim_groups_test.go#L243))
+        - [x] Set the members with a PATCH replace and clear them with a pathless remove, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_groups_contract_test.go#L160))
       - [x] `members[value eq "<scim-user-id>"]` ([test](../../../adapters/sqlstore/scim_groups_test.go#L149))
         - [x] Remove one member selected by its User ID through a member filter path ([test](../../../adapters/sqlstore/scim_groups_test.go#L149))
   - [ ] Identity callbacks
@@ -598,9 +614,10 @@
       - [x] Ignore a supplied User groups value and leave groups out of the User schema ([test](../../../adapters/sqlstore/scim_attributes_test.go#L148))
     - [x] Passwords, instant messaging addresses, photos, or X.509 certificates ([test](../../../adapters/sqlstore/scim_attributes_test.go#L163))
       - [x] Never return or store a password, ims, photos or X.509 certificates ([test](../../../adapters/sqlstore/scim_attributes_test.go#L163))
-    - [ ] Nested Groups or non-User Group members
+    - [x] Nested Groups or non-User Group members ([test](../../../adapters/sqlstore/scim_groups_contract_test.go#L100))
       - [x] Reject a Group created with another Group as a member with 400 ([test](../../../adapters/sqlstore/scim_groups_test.go#L111))
       - [x] Reject adding a Group ID as a member with 400 invalidValue on both runtimes ([test](../../../conformance/scim-contract.mjs#L112))
+      - [x] Refuse a Group-typed member with 400 invalidValue, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_groups_contract_test.go#L100))
     - [ ] Bulk requests, POST-based search, `/Me`, ETags, cursors, or sorting
       - [x] Refuse Bulk and /Me with 404 and POST search with 405, and advertise no sorting or ETags ([test](../../../plugins/scim/http_test.go#L278))
     - [ ] Operators other than equality and logical `and`
