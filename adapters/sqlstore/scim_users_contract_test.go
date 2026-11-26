@@ -101,7 +101,12 @@ func TestSCIMUserContract(t *testing.T) {
 				}
 			}
 			// A deleted User answers 404 to a second DELETE.
-			call("DELETE", lowerPath, "writer", nil, 204, "")
+			// A single read looks the User up before its projection, and a
+			// deletion ignores one, as in another runtime.
+			const conflicting = "?attributes=userName&excludedAttributes=emails"
+			call("GET", lowerPath+conflicting, "writer", nil, 400, "invalidValue")
+			call("DELETE", lowerPath+conflicting, "writer", nil, 204, "")
+			call("GET", lowerPath+conflicting, "writer", nil, 404, "")
 			call("DELETE", lowerPath, "writer", nil, 404, "")
 			// POST narrows its response, creates inactive Users and refuses
 			// malformed bodies.
@@ -122,6 +127,12 @@ func TestSCIMUserContract(t *testing.T) {
 				entry := raw.(map[string]any)
 				if entry["meta"].(map[string]any)["location"] != "https://directory.test"+directoryPath+"ResourceTypes/"+entry["id"].(string) {
 					t.Fatal("a resource type has the wrong location", entry)
+				}
+			}
+			for _, id := range []string{"User", "Group"} {
+				entry := call("GET", "ResourceTypes/"+id, "", nil, 200, "")
+				if entry["id"] != id || entry["meta"].(map[string]any)["location"] != "https://directory.test"+directoryPath+"ResourceTypes/"+id {
+					t.Fatal("a resource type read has the wrong location", entry)
 				}
 			}
 		})

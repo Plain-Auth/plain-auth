@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -197,17 +198,31 @@ func TestSCIMDirectoryLifecycle(t *testing.T) {
 			must(e)
 			call(a, "PATCH", path, "writer", patch(replace("active", false)), 409)
 			call(b, "DELETE", path, "writer", nil, 409)
+			call(a, "PUT", path, "writer", body, 409)
 			_, e = first.db.ExecContext(ctx, first.bind(`DELETE FROM "scimProjectionGrant" WHERE "id"=?`), "grant")
 			must(e)
+			// A replacement cannot take another account's email.
+			if w := scimRequest(a, "PUT", path, "writer", req(existing.Email, "ID01")); w.Code != 409 || !strings.Contains(w.Body.String(), `"scimType":"uniqueness"`) {
+				t.Fatal("a replacement took another account's email", w.Code, w.Body.String())
+			}
 			call(a, "PATCH", path, "writer", patch(replace("active", "false")), 200)
 			var n int
 			must(first.db.QueryRowContext(ctx, first.bind(`SELECT COUNT(*) FROM "session" WHERE "userId"=?`), account.ID).Scan(&n))
 			if n != 0 {
 				t.Fatal("session survived deactivation")
 			}
-			again := call(b, "POST", "Users", "writer", body, 201)
+			// A reprovisioned User takes the new payload, active, at its old
+			// location.
+			repost := maps.Clone(body)
+			repost["displayName"] = "Reprovisioned"
+			reposted := scimRequest(b, "POST", "Users", "writer", repost)
+			var again map[string]any
+			must(json.Unmarshal(reposted.Body.Bytes(), &again))
 			if again["id"] != id || again["active"] != true {
 				t.Fatal(again)
+			}
+			if reposted.Code != 201 || again["displayName"] != "Reprovisioned" || again["title"] != nil || again["locale"] != nil || reposted.Header().Get("Location") != "https://directory.example.test"+directoryPath+"Users/"+id {
+				t.Fatal("a reprovisioned User did not take the new payload at its location", reposted.Code, reposted.Header(), again)
 			}
 			newProfile := req("changed@example.test", "ID01")
 			newProfile["displayName"] = "Updated"

@@ -163,6 +163,9 @@ func TestSCIMManagedCredentials(t *testing.T) {
 			if !state.Credentials[0].LastUsedAt.Equal(*last) {
 				t.Fatal("did not throttle last-use update")
 			}
+			// Creation times have millisecond precision; the state lists
+			// credentials newest first.
+			time.Sleep(5 * time.Millisecond)
 			start = make(chan struct{})
 			for j := range 4 {
 				c := []*scim.Catalog{catalog, other}[j%2]
@@ -204,11 +207,13 @@ func TestSCIMManagedCredentials(t *testing.T) {
 			_, e = other.Revoke(ctx, d, i.Credential.CredentialID, "another")
 			must(e)
 			call(two, "GET", "Users", i.Token, nil, 401)
+			time.Sleep(5 * time.Millisecond)
 			fast, e := catalog.Rotate(ctx, d, "operator", policy)
 			must(e)
 			_, e = a.db.ExecContext(ctx, a.bind(`UPDATE "scimManagedCredential" SET "expiresAt"=? WHERE "credentialId"=?`), a.date(time.Now().Add(-time.Second)), fast.Credential.CredentialID)
 			must(e)
 			call(two, "GET", "Users", fast.Token, nil, 401)
+			time.Sleep(5 * time.Millisecond)
 			next, e := other.Rotate(ctx, d, "operator", policy)
 			must(e)
 			call(one, "GET", "Users", next.Token, nil, 200)
@@ -243,6 +248,43 @@ func TestSCIMManagedCredentials(t *testing.T) {
 				must(e)
 				if dir == "asc" && page.Events[0].Sequence != 1 || dir == "desc" && page.Events[0].Sequence != 6 {
 					t.Fatal(page)
+				}
+			}
+			ids := []string{}
+			for _, cred := range state.Credentials {
+				ids = append(ids, cred.CredentialID)
+			}
+			if !slices.Equal(ids, []string{next.Credential.CredentialID, fast.Credential.CredentialID, rotated.Credential.CredentialID, i.Credential.CredentialID}) {
+				t.Fatal("the managed state does not list credentials newest first", ids)
+			}
+			// Each event names its actor and, for a credential event, the
+			// credential.
+			for j, want := range []struct {
+				actor      string
+				credential string
+			}{{"owner", ""}, {"owner", i.Credential.CredentialID}, {"operator", rotated.Credential.CredentialID}, {"admin", i.Credential.CredentialID}, {"operator", fast.Credential.CredentialID}, {"operator", next.Credential.CredentialID}} {
+				v := log.Events[j]
+				if v.ActorID != want.actor || (v.CredentialID == nil) != (want.credential == "") || v.CredentialID != nil && *v.CredentialID != want.credential || v.CreatedAt.IsZero() {
+					t.Fatal("an audit event lacks its actor, credential or time", j+1, v, want)
+				}
+			}
+			// The default page is the latest hundred events, oldest first.
+			current := next
+			for total := 6; total <= 100; total += 2 {
+				_, e = catalog.Revoke(ctx, d, current.Credential.CredentialID, "operator")
+				must(e)
+				current, e = catalog.Rotate(ctx, d, "operator", policy)
+				must(e)
+			}
+			log, e = other.Events(ctx, d, scim.EventQuery{})
+			must(e)
+			if log.Total != 102 || len(log.Events) != 100 || log.Events[0].Sequence != 3 || log.Events[99].Sequence != 102 {
+				t.Fatal("the default audit page is not the latest hundred events in order", log.Total, len(log.Events))
+			}
+			for _, q := range []scim.EventQuery{{Limit: 101}, {Offset: -1}, {SortDirection: "up"}} {
+				var se *scim.Error
+				if _, e := other.Events(ctx, d, q); !errors.As(e, &se) || se.Status != 400 || se.Type != "invalidValue" {
+					t.Fatal("an unusable audit page was accepted", q, e)
 				}
 			}
 			call(one, "POST", "createSCIMManagedConnection", next.Token, nil, 404)

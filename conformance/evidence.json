@@ -9742,6 +9742,12 @@
       "label": "Give each resource type its own location, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/scim_users_contract_test.go",
       "marker": "t.Fatal(\"a resource type has the wrong location\""
+    },
+    {
+      "label": "Return the same resource type list as the other runtime, apart from locations",
+      "test": "conformance/scim-contract.mjs",
+      "marker": "assert.deepEqual(await resourceTypes(b), await resourceTypes(a), \"the resource type list differs between runtimes\");",
+      "complete": true
     }
   ],
   "plugin/scim/GET /scim/v2/ResourceTypes/:resourceTypeId": [
@@ -9764,6 +9770,17 @@
       "label": "Return the User resource type with the core User schema on both runtimes",
       "test": "conformance/scim-contract.mjs",
       "marker": "assert.equal(discovery.schema,userSchema);"
+    },
+    {
+      "label": "Return the same Group resource type as the other runtime, apart from its location",
+      "test": "conformance/scim-contract.mjs",
+      "marker": "\"the Group resource type differs between runtimes\");"
+    },
+    {
+      "label": "Give the User and Group resource type reads their own location under the public base, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_users_contract_test.go",
+      "marker": "t.Fatal(\"a resource type read has the wrong location\", entry)",
+      "complete": true
     }
   ],
   "plugin/scim/POST /scim/v2/Users": [
@@ -9814,6 +9831,11 @@
       "label": "Omit an excluded role subattribute when reading one User on both runtimes",
       "test": "conformance/scim-roles.mjs",
       "marker": "?excludedAttributes=roles.value"
+    },
+    {
+      "label": "Answer 404 for a missing User before reading a conflicting projection on both runtimes",
+      "test": "conformance/scim-contract.mjs",
+      "marker": "await call(\"GET\",\"Users/absent?attributes=userName&excludedAttributes=emails\",404);"
     }
   ],
   "plugin/scim/GET /scim/v2/Users": [
@@ -9859,6 +9881,12 @@
       "label": "Refuse a PUT to another User's userName with 409 uniqueness, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/scim_users_contract_test.go",
       "marker": "call(\"PUT\", lowerPath, \"writer\", user(\"writer\", \"operator\", \"id01\", \"lower@example.test\"), 409, \"uniqueness\")"
+    },
+    {
+      "label": "Refuse a replacement that takes another account's email with 409 uniqueness, and any replacement while an imported grant needs reconciliation, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_test.go",
+      "marker": "t.Fatal(\"a replacement took another account's email\", w.Code, w.Body.String())",
+      "complete": true
     }
   ],
   "plugin/scim/PATCH /scim/v2/Users/:userId": [
@@ -9904,6 +9932,22 @@
       "label": "Answer 404 to a second DELETE of a User and 403 to a read-only token, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/scim_users_contract_test.go",
       "marker": "call(\"DELETE\", lowerPath, \"writer\", nil, 404, \"\")"
+    },
+    {
+      "label": "Give a deleted User's Group a new lastModified, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_groups_test.go",
+      "marker": "t.Fatal(\"deleting a member did not revise its Group\", replaced[\"meta\"], got[\"meta\"])"
+    },
+    {
+      "label": "Keep the sessions of an account whose source in another domain stays active, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_projection_test.go",
+      "marker": "t.Fatal(\"deleting one source ended the sessions of an account with another active source\")",
+      "complete": true
+    },
+    {
+      "label": "Delete a User whatever projection the request names, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_users_contract_test.go",
+      "marker": "call(\"DELETE\", lowerPath+conflicting, \"writer\", nil, 204, \"\")"
     }
   ],
   "plugin-symbol/scim/SCIMBearerCredentialOptions/token": [
@@ -10534,6 +10578,12 @@
       "label": "Narrow a single Group read with attributes or excludedAttributes and refuse both together with invalidValue, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/scim_groups_contract_test.go",
       "marker": "t.Fatal(\"attributes did not narrow a Group read\""
+    },
+    {
+      "label": "Answer 404 for a missing Group before reading a conflicting projection, and 400 invalidValue for an existing one, on both runtimes",
+      "test": "conformance/scim-contract.mjs",
+      "marker": "await call(\"GET\",\"Groups/absent?attributes=displayName&excludedAttributes=members\",404);",
+      "complete": true
     }
   ],
   "plugin/scim/GET /scim/v2/Groups": [
@@ -10606,6 +10656,11 @@
       "test": "adapters/sqlstore/scim_groups_test.go",
       "marker": "call(replica, \"DELETE\", path, \"second\", nil, 404)",
       "complete": true
+    },
+    {
+      "label": "Delete a Group whatever projection the request names, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_groups_test.go",
+      "marker": "call(replica, \"DELETE\", path+\"?attributes=displayName&excludedAttributes=members\", \"first\", nil, 204)"
     }
   ],
   "plugin-symbol/scim/SCIMMicrosoftEntraCompatibilityOptions/acceptLegacyGroupSchema": [
@@ -10934,6 +10989,12 @@
       "label": "Return public managed credential metadata only to the matching domain",
       "test": "adapters/sqlstore/scim_managed_test.go",
       "marker": "func TestSCIMManagedCredentials("
+    },
+    {
+      "label": "List a managed connection's credentials newest first with their statuses, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_managed_test.go",
+      "marker": "t.Fatal(\"the managed state does not list credentials newest first\", ids)",
+      "complete": true
     }
   ],
   "plugin/scim/ rotateSCIMManagedCredential (server API only)": [
@@ -10967,6 +11028,12 @@
       "label": "Read the other implementation’s ordered audit events and total with pagination",
       "test": "conformance/scim-managed.mjs",
       "marker": "export async function managedCatalog("
+    },
+    {
+      "label": "Return the latest hundred events oldest first by default and refuse a limit over 100, a negative offset or an unknown direction with 400 invalidValue, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_managed_test.go",
+      "marker": "t.Fatal(\"the default audit page is not the latest hundred events in order\", log.Total, len(log.Events))",
+      "complete": true
     }
   ],
   "plugin-symbol/scim/SCIM_MANAGED_CREATION_REQUEST_ID_CONFLICT": [
@@ -11028,6 +11095,12 @@
       "label": "Record active for a provisioned connection and complete after its retirement, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/scim_decommission_test.go",
       "marker": "t.Fatal(\"a retired connection's binding is not complete\", got)"
+    },
+    {
+      "label": "Record active for a populated managed connection, reconciling after an interrupted retirement and complete once retired, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_decommission_test.go",
+      "marker": "t.Fatal(\"an interrupted retirement's binding is not reconciling\", got)",
+      "complete": true
     }
   ],
   "plugin/organization/ addMember (server API only)": [
@@ -43818,6 +43891,11 @@
       "label": "Hand each SCIM Group to the role mapper with its externalId, which selects the mapped roles",
       "test": "adapters/sqlstore/scim_projection_test.go",
       "marker": "if in.Group.ExternalID == \"directory-readers\" {"
+    },
+    {
+      "label": "Hand the mapper the Group's ID, display name and empty externalId, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_projection_test.go",
+      "marker": "t.Fatal(\"the role mapper did not receive the source and Group\", m)"
     }
   ],
   "plugin-symbol/scim/SCIMBearerCredentialOptions/id": [
@@ -43975,7 +44053,8 @@
     {
       "label": "Answer a reconciler's SCIM error as is and roll the provisioning back, and hide a plain error behind a 500, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/scim_projection_test.go",
-      "marker": "t.Fatal(\"a reconciler's SCIM error was not answered as is\", w.Code, w.Body.String())"
+      "marker": "t.Fatal(\"a reconciler's SCIM error was not answered as is\", w.Code, w.Body.String())",
+      "complete": true
     }
   ],
   "plugin-symbol/scim/SCIMRoleProjection": [
@@ -43988,6 +44067,12 @@
       "label": "Restore the same trimmed role in the native runtime's grant when its mapper returns padded, repeated and unknown roles",
       "test": "conformance/scim-contract.mjs",
       "marker": "assert.equal(restored[field],initial[field],field);"
+    },
+    {
+      "label": "Answer a role mapper's or role lookup's SCIM error as is, hide a plain one behind a 500 and store nothing, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_projection_test.go",
+      "marker": "t.Fatal(\"a role callback's error was not answered like the reconciler's\", c.status, w.Code, w.Body.String())",
+      "complete": true
     }
   ],
   "plugin/scim/ reconcileSCIMProjection (server API only)": [
@@ -44034,6 +44119,12 @@
       "label": "Project the account active while another source in the domain stays active, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/scim_projection_test.go",
       "marker": "t.Fatal(\"the account was projected inactive while another source stays active\", lastUser)"
+    },
+    {
+      "label": "Project the account inactive with no grants once its last participating source is deleted, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_projection_test.go",
+      "marker": "t.Fatal(\"the account was not projected inactive once no source participates\", lastUser)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/scim/groups-and-roles.mdx#L104": [
@@ -44046,6 +44137,12 @@
       "label": "Withdraw every projected role by disabling the policy and keep them when the reconciler fails",
       "test": "adapters/sqlstore/scim_projection_test.go",
       "marker": "t.Fatal(\"failed withdrawal committed\")"
+    },
+    {
+      "label": "Withdraw the roles after a role mapping change by replaying the domain, and restore them on the next replay from the other instance, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_projection_test.go",
+      "marker": "unmapped.Store(true)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L14/`connections`": [
@@ -44329,6 +44426,12 @@
       "label": "Create a User with 201 and reprovision an inactive User posted again with the same externalId under the same ID",
       "test": "adapters/sqlstore/scim_test.go",
       "marker": "if again[\"id\"] != id || again[\"active\"] != true {"
+    },
+    {
+      "label": "Reprovision an inactive User posted again as active with the new payload, dropping attributes it omits, at its old Location, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_test.go",
+      "marker": "t.Fatal(\"a reprovisioned User did not take the new payload at its location\", reposted.Code, reposted.Header(), again)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L236/`GET /scim/v2/Users`": [
@@ -44565,6 +44668,12 @@
       "label": "List the Group resource type and Group schema in public discovery collections and fetch each by ID on both runtimes",
       "test": "conformance/scim-contract.mjs",
       "marker": "for (const [collection, name] of [[\"ResourceTypes\",\"Group\"],[\"Schemas\",groupSchema]]) {"
+    },
+    {
+      "label": "List exactly the User and Group resource types with totalResults 2 on both runtimes",
+      "test": "conformance/scim-contract.mjs",
+      "marker": "if (collection===\"ResourceTypes\") { assert.deepEqual(page.Resources.map(resource=>resource.id),[\"User\",\"Group\"]); assert.equal(page.totalResults,2); }",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L318/`GET /scim/v2/ResourceTypes/:resourceTypeId`": [
@@ -46892,6 +47001,12 @@
       "label": "Hand the reconciler the domain's sources sorted by SCIM User ID, a deactivated one inactive beside an active one",
       "test": "adapters/sqlstore/scim_projection_test.go",
       "marker": "t.Fatal(\"a deactivated source was not passed inactive beside the active one\", sources)"
+    },
+    {
+      "label": "Hand the reconciler each source's connection ID beside its domain and activity, and drop a retired directory's source from participation, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_projection_test.go",
+      "marker": "t.Fatal(\"a retired directory's source still participates\", lastUser)",
+      "complete": true
     }
   ],
   "plugin-symbol/scim/SCIMProjectedUserState": [
@@ -46899,6 +47014,12 @@
       "label": "Hand the reconciler the domain, account and sorted sources after a deactivation",
       "test": "adapters/sqlstore/scim_projection_test.go",
       "marker": "t.Fatal(\"the reconciler did not receive the domain's sorted sources\", lastUser)"
+    },
+    {
+      "label": "Project an account with one deactivated source inactive, with no grants and that one inactive source, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_projection_test.go",
+      "marker": "t.Fatal(\"a deactivated single source was not projected inactive without grants\", lastUser)",
+      "complete": true
     }
   ],
   "plugin-symbol/scim/SCIMOptions/compatibility": [
@@ -47047,7 +47168,8 @@
     {
       "label": "Grant no authorization for a Group membership by itself, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/scim_groups_contract_test.go",
-      "marker": "t.Fatal(\"a Group membership granted an authorization\""
+      "marker": "t.Fatal(\"a Group membership granted an authorization\"",
+      "complete": true
     },
     {
       "label": "Grant nothing for Users with roles and Groups until a projection is enabled, on SQLite, PostgreSQL and MySQL",
@@ -47181,6 +47303,28 @@
       "test": "adapters/sqlstore/scim_projection_test.go",
       "marker": "t.Fatal(\"Users and Groups granted access without a projection\")",
       "complete": true
+    }
+  ],
+  "plugin-symbol/scim/SCIMManagedConnectionEvent": [
+    {
+      "label": "Record each audit event's actor, credential ID (none for connection creation) and time, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_managed_test.go",
+      "marker": "t.Fatal(\"an audit event lacks its actor, credential or time\", j+1, v, want)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/groups-and-roles.mdx#L78/`roles.map`": [
+    {
+      "label": "Hand the mapper the directory, SCIM User, account and Group, grant a role returned padded once and skip an empty one, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_projection_test.go",
+      "marker": "t.Fatal(\"a padded role was not granted once\", reconciled.Grants)"
+    }
+  ],
+  "plugin-symbol/scim/SCIMGroupAuthorizationSource": [
+    {
+      "label": "Hand the mapper and the reconciler's grant an empty externalId for a Group created without one, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_projection_test.go",
+      "marker": "t.Fatal(\"the role mapper did not receive the source and Group\", m)"
     }
   ]
 }

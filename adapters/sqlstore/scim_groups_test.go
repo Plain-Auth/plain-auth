@@ -160,14 +160,22 @@ func TestSCIMGroupMembershipLifecycle(t *testing.T) {
 			call(h, "DELETE", path, "first", nil, 409)
 			_, e = s.db.ExecContext(ctx, s.bind(`DELETE FROM "scimProjectionGrant" WHERE "id"=?`), "grant")
 			must(e)
-			call(h, "PUT", path, "first", profile("Replacement", "new", one, two), 200)
+			replaced := call(h, "PUT", path, "first", profile("Replacement", "new", one, two), 200)
+			time.Sleep(5 * time.Millisecond) // revisions have millisecond precision
 			call(replica, "DELETE", "Users/"+one, "first", nil, 204)
 			got = call(h, "GET", path, "readgroups", nil, 200)
 			ms = got["members"].([]any)
 			if len(ms) != 1 || ms[0].(map[string]any)["value"] != two {
 				t.Fatal(ms)
 			}
-			call(replica, "DELETE", path, "first", nil, 204)
+			// Losing a member is a new Group revision.
+			before, _ := time.Parse(time.RFC3339Nano, replaced["meta"].(map[string]any)["lastModified"].(string))
+			after, _ := time.Parse(time.RFC3339Nano, got["meta"].(map[string]any)["lastModified"].(string))
+			if !after.After(before) {
+				t.Fatal("deleting a member did not revise its Group", replaced["meta"], got["meta"])
+			}
+			// A deletion ignores a projection, as in another runtime.
+			call(replica, "DELETE", path+"?attributes=displayName&excludedAttributes=members", "first", nil, 204)
 			call(h, "GET", path, "first", nil, 404)
 			var n int
 			must(s.db.QueryRowContext(ctx, s.bind(`SELECT COUNT(*) FROM "scimGroupMember" WHERE "groupId"=?`), id).Scan(&n))

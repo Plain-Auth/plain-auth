@@ -26,11 +26,14 @@ func (h *Handler) groupResource(g Group, members bool) map[string]any {
 	return m
 }
 func (h *Handler) serveGroups(w http.ResponseWriter, r *http.Request, d Directory, id string, single bool) {
-	p, e := selectionQuery(r.URL.Query(), GroupSchema)
-	if e != nil {
-		writeError(w, e)
+	// A single read looks the Group up before its projection, and a deletion
+	// takes none, as in another runtime.
+	p, selectErr := selectionQuery(r.URL.Query(), GroupSchema)
+	if selectErr != nil && !(r.Method == http.MethodGet && single) && r.Method != http.MethodDelete {
+		writeError(w, selectErr)
 		return
 	}
+	var e error
 	ctx := r.Context()
 	var g Group
 	switch r.Method {
@@ -53,7 +56,9 @@ func (h *Handler) serveGroups(w http.ResponseWriter, r *http.Request, d Director
 			write(w, 200, list(items, total, q.Offset+1))
 			return
 		}
-		g, e = h.groups.SCIMGetGroup(ctx, d, id, p.returns("members"))
+		if g, e = h.groups.SCIMGetGroup(ctx, d, id, selectErr != nil || p.returns("members")); e == nil {
+			e = selectErr
+		}
 	case http.MethodDelete:
 		e = h.groups.SCIMDeleteGroup(ctx, d, id)
 		if e == nil {

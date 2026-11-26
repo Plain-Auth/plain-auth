@@ -156,6 +156,9 @@ func TestSCIMGroupContract(t *testing.T) {
 				t.Fatal("excludedAttributes did not narrow a Group read", excluded)
 			}
 			call(h, "GET", path+"?attributes=displayName&excludedAttributes=members", "readgroups", nil, 400, "invalidValue")
+			// A missing Group answers 404 before its projection is read, as in
+			// another runtime.
+			call(h, "GET", "Groups/absent?attributes=displayName&excludedAttributes=members", "readgroups", nil, 404, "")
 			// Another directory cannot see the Group, and names stay unique.
 			call(h, "PUT", path, "second", group("Engineering", a), 404, "")
 			call(h, "PATCH", path, "second", patch(op("replace", "displayName", "Elsewhere")), 404, "")

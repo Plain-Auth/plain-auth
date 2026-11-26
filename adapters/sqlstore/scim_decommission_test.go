@@ -114,10 +114,21 @@ func TestSCIMDirectoryRetirement(t *testing.T) {
 			stamp := s.date(time.Now())
 			_, e = s.db.ExecContext(ctx, s.bind(`INSERT INTO "scimProjectionGrant" ("id","connectionId","provisioningDomainId","scimUserId","userId","sourceKind","sourceId","role","grantKey","createdAt","updatedAt") VALUES (?,?,?,?,?,'user',?,'app-role','test-grant',?,?)`), "test-grant", d.ID, d.ProvisioningDomainID, resource, grantOwner, resource, stamp, stamp)
 			must(e)
+			bindingStatus := func() string {
+				var v string
+				must(s.db.QueryRowContext(ctx, s.bind(`SELECT "decommissionStatus" FROM "scimConnectionBinding" WHERE "connectionKey"=?`), scimKey("scim-connection", d.ID)).Scan(&v))
+				return v
+			}
+			if got := bindingStatus(); got != "active" {
+				t.Fatal("a populated managed connection's binding is not active", got)
+			}
 			_, e = one.Catalog().Decommission(ctx, d, "first-admin")
 			var typed *scim.Error
 			if !errors.As(e, &typed) || typed.Status != 409 {
 				t.Fatal(e)
+			}
+			if got := bindingStatus(); got != "reconciling" {
+				t.Fatal("an interrupted retirement's binding is not reconciling", got)
 			}
 			call(two, i.Token, "GET", nil, 401)
 			openState, e := two.Catalog().Get(ctx, d)

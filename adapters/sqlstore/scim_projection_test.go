@@ -59,7 +59,7 @@ func TestSCIMGroupApplicationProjection(t *testing.T) {
 			exec(`INSERT INTO "hostRole" ("role") VALUES ('reader'),('editor')`)
 			var fail atomic.Int32
 			var calls atomic.Int32
-			var pause atomic.Bool
+			var pause, unmapped atomic.Bool
 			entered, release := make(chan struct{}), make(chan struct{})
 			// The callbacks record their inputs for the assertions below.
 			var seenMu sync.Mutex
@@ -73,6 +73,9 @@ func TestSCIMGroupApplicationProjection(t *testing.T) {
 					seenMu.Unlock()
 					if fail.Load() == 1 {
 						return nil, errors.New("fixture mapping error")
+					}
+					if unmapped.Load() {
+						return nil, nil
 					}
 					if in.Group.ExternalID == "directory-readers" {
 						return []string{" reader ", "reader", "missing", ""}, nil
@@ -329,7 +332,7 @@ func TestSCIMGroupApplicationProjection(t *testing.T) {
 				t.Fatal("the reconciler did not receive the domain's sorted sources", lastUser)
 			}
 			for _, src := range sources {
-				if src.ProvisioningDomainID != domain || (src.SCIMUserID == n) == src.Active || src.SCIMUserID != n && src.SCIMUserID != s {
+				if src.ProvisioningDomainID != domain || (src.SCIMUserID == n) == src.Active || src.SCIMUserID != n && src.SCIMUserID != s || src.SCIMUserID == n && src.ID != "north" || src.SCIMUserID == s && src.ID != "south" {
 					t.Fatal("a deactivated source was not passed inactive beside the active one", sources)
 				}
 			}
@@ -359,6 +362,15 @@ func TestSCIMGroupApplicationProjection(t *testing.T) {
 			expect(0, 0)
 			exec(`INSERT INTO "hostRole" ("role") VALUES ('editor')`)
 			_, e = second.ReconcileSCIMProjection(ctx, domain)
+			must(e)
+			expect(0, 1)
+			// So is a role mapping change.
+			unmapped.Store(true)
+			_, e = second.ReconcileSCIMProjection(t.Context(), domain)
+			must(e)
+			expect(0, 0)
+			unmapped.Store(false)
+			_, e = first.ReconcileSCIMProjection(t.Context(), domain)
 			must(e)
 			expect(0, 1)
 			fail.Store(3)
@@ -408,8 +420,25 @@ func TestSCIMGroupApplicationProjection(t *testing.T) {
 			_, e = first.SCIMDecommission(ctx, scim.Directory{ID: "north", ProvisioningDomainID: domain})
 			must(e)
 			expect(1, 0)
+			seenMu.Lock()
+			if lastUser.UserID != owner || !lastUser.Active || slices.ContainsFunc(lastUser.Sources, func(src scim.IdentitySource) bool { return src.SCIMUserID == n && src.Active }) {
+				t.Fatal("a retired directory's source still participates", lastUser)
+			}
+			seenMu.Unlock()
+			// The account keeps its sessions while a source in another domain
+			// stays active.
+			kept := time.Now().UTC()
+			must(base.CreateSession(ctx, auth.StoredSession{Session: auth.Session{ID: "kept-session", UserID: owner, Token: "kept-token", CreatedAt: kept, UpdatedAt: kept, ExpiresAt: kept.Add(time.Hour)}}))
 			call(two, "DELETE", "Users/"+s, "south", nil, 204)
 			expect(0, 0)
+			if count(`SELECT COUNT(*) FROM "session" WHERE "id"='kept-session'`) != 1 {
+				t.Fatal("deleting one source ended the sessions of an account with another active source")
+			}
+			seenMu.Lock()
+			if lastUser.UserID != owner || lastUser.Active || len(lastUser.Grants) != 0 || slices.ContainsFunc(lastUser.Sources, func(src scim.IdentitySource) bool { return src.Active }) {
+				t.Fatal("the account was not projected inactive once no source participates", lastUser)
+			}
+			seenMu.Unlock()
 			var leftover int
 			must(base.db.QueryRowContext(ctx, base.bind(`SELECT COUNT(*) FROM "scimUser" WHERE "id"=?`), n).Scan(&leftover))
 			if leftover != 1 {
@@ -420,6 +449,15 @@ func TestSCIMGroupApplicationProjection(t *testing.T) {
 			owned := call(two, "POST", "Users", "south", usr("deleted"), 201)["id"].(string)
 			subject := value(`SELECT "userId" FROM "scimUser" WHERE "id"=?`, owned)
 			call(two, "POST", "Groups", "south", group("deleted user", "directory-editors", owned), 201)
+			// A deactivated single source leaves the account inactive with no
+			// grants, and reactivating it restores them.
+			call(two, "PATCH", "Users/"+owned, "south", change("replace", "active", false), 200)
+			seenMu.Lock()
+			if lastUser.ProvisioningDomainID != domain || lastUser.UserID != subject || lastUser.Active || len(lastUser.Grants) != 0 || len(lastUser.Sources) != 1 || lastUser.Sources[0].Active || lastUser.Sources[0].SCIMUserID != owned || lastUser.Sources[0].ID != "south" {
+				t.Fatal("a deactivated single source was not projected inactive without grants", lastUser)
+			}
+			seenMu.Unlock()
+			call(two, "PATCH", "Users/"+owned, "south", change("replace", "active", true), 200)
 			stamp := time.Now().UTC()
 			session := auth.StoredSession{Session: auth.Session{ID: "delete-session", UserID: subject, Token: "delete-token", CreatedAt: stamp, UpdatedAt: stamp, ExpiresAt: stamp.Add(time.Hour)}}
 			must(first.CreateSession(ctx, session))
@@ -533,8 +571,21 @@ func TestSCIMProjectionCallbackErrors(t *testing.T) {
 			store, e := OpenWithSchema(ctx, dialect, organizationTestDSN(t, dialect), ddl)
 			must(e)
 			defer store.Close()
-			var reconcileErr error
-			policy := scim.Projection{PolicyID: "errors-v1", ReconcileUser: func(context.Context, scim.ProjectionTx, scim.ProjectedUser) error { return reconcileErr }}
+			var reconcileErr, mapErr, existsErr error
+			var mapped []scim.RoleMapping
+			var reconciled scim.ProjectedUser
+			policy := scim.Projection{PolicyID: "errors-v1",
+				Map: func(_ context.Context, _ scim.ProjectionTx, m scim.RoleMapping) ([]string, error) {
+					mapped = append(mapped, m)
+					return []string{" reader ", ""}, mapErr
+				},
+				Exists: func(_ context.Context, _ scim.ProjectionTx, l scim.RoleLookup) (bool, error) {
+					return l.Role == "reader", existsErr
+				},
+				ReconcileUser: func(_ context.Context, _ scim.ProjectionTx, u scim.ProjectedUser) error {
+					reconciled = u
+					return reconcileErr
+				}}
 			configured, e := store.EnableSCIMProjection(ctx, "Tenant", policy)
 			must(e)
 			host, e := auth.New(auth.Options{BaseURL: "https://directory.example.test", BasePath: "/identity/custom", Secret: strings.Repeat("a", 32), Store: configured})
@@ -558,6 +609,58 @@ func TestSCIMProjectionCallbackErrors(t *testing.T) {
 			w = scimRequest(h, "POST", "Users", "writer", map[string]any{"schemas": []string{scim.UserSchema}, "userName": "failed@example.test"})
 			if w.Code != 500 || strings.Contains(w.Body.String(), "private application detail") || !strings.Contains(w.Body.String(), "SCIM projection reconciliation failed") {
 				t.Fatal("a reconciler's plain error was not hidden behind a 500", w.Code, w.Body.String())
+			}
+			// The role mapper's and role lookup's errors are answered the same
+			// way, and nothing is stored.
+			reconcileErr = nil
+			w = scimRequest(h, "POST", "Users", "writer", map[string]any{"schemas": []string{scim.UserSchema}, "userName": "member@example.test"})
+			if w.Code != 201 {
+				t.Fatal("the member was not provisioned", w.Code, w.Body.String())
+			}
+			var member struct{ ID string }
+			must(json.Unmarshal(w.Body.Bytes(), &member))
+			group := map[string]any{"schemas": []string{scim.GroupSchema}, "displayName": "Readers", "members": []map[string]any{{"value": member.ID}}}
+			for _, c := range []struct {
+				mapErr, existsErr error
+				status            int
+				detail            string
+			}{
+				{&scim.Error{Status: 409, Type: "uniqueness", Detail: "The application refused this group"}, nil, 409, "The application refused this group"},
+				{nil, &scim.Error{Status: 409, Type: "uniqueness", Detail: "The application refused this role"}, 409, "The application refused this role"},
+				{errors.New("private mapping detail"), nil, 500, "SCIM role mapping failed"},
+				{nil, errors.New("private lookup detail"), 500, "SCIM role validation failed"},
+			} {
+				mapErr, existsErr = c.mapErr, c.existsErr
+				w := scimRequest(h, "POST", "Groups", "writer", group)
+				if w.Code != c.status || !strings.Contains(w.Body.String(), c.detail) || strings.Contains(w.Body.String(), "private") {
+					t.Fatal("a role callback's error was not answered like the reconciler's", c.status, w.Code, w.Body.String())
+				}
+				var n int
+				must(store.db.QueryRowContext(ctx, store.bind(`SELECT COUNT(*) FROM "scimGroup"`)).Scan(&n))
+				if n != 0 {
+					t.Fatal("a role callback's error did not roll the Group back")
+				}
+			}
+			mapErr, existsErr, mapped = nil, nil, nil
+			w = scimRequest(h, "POST", "Groups", "writer", group)
+			if w.Code != 201 {
+				t.Fatal("the Group was not created", w.Code, w.Body.String())
+			}
+			var created struct{ ID string }
+			must(json.Unmarshal(w.Body.Bytes(), &created))
+			// The mapper receives the directory, the source, the account and the
+			// Group, whose missing externalId is empty; a padded role is trimmed
+			// and an empty one skipped.
+			account, e := store.FindAccountUser(ctx, "member@example.test")
+			must(e)
+			if len(mapped) == 0 {
+				t.Fatal("the role mapper was not called")
+			}
+			if m := mapped[len(mapped)-1]; m.ID != "ACME" || m.ProvisioningDomainID != "Tenant" || m.SCIMUserID != member.ID || m.UserID != account.ID || m.Group.ID != created.ID || m.Group.DisplayName != "Readers" || m.Group.ExternalID != "" {
+				t.Fatal("the role mapper did not receive the source and Group", m)
+			}
+			if len(reconciled.Grants) != 1 || reconciled.Grants[0].Role != "reader" || reconciled.Grants[0].Group.ID != created.ID || reconciled.Grants[0].Group.ExternalID != "" {
+				t.Fatal("a padded role was not granted once", reconciled.Grants)
 			}
 		})
 	}

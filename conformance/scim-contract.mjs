@@ -100,12 +100,17 @@ export async function groupContract(t, goFixture) {
     for (const [collection, name] of [["ResourceTypes","Group"],["Schemas",groupSchema]]) {
       const page=await call("GET",collection,200,undefined,false);
       assert.ok(page.Resources.some(resource=>resource.id===name));
+      if (collection==="ResourceTypes") { assert.deepEqual(page.Resources.map(resource=>resource.id),["User","Group"]); assert.equal(page.totalResults,2); }
       assert.equal((await call("GET",collection+"/"+name,200,undefined,false)).id,name);
     }
     const one=await call("POST","Users",201,makeUser("First"));
     const two=await call("POST","Users",201,makeUser("Second"));
     const group=await call("POST","Groups",201,profile("Sales","org-02",[one.id,one.id]));
     const path="Groups/"+group.id;
+    // A single read looks the resource up before its projection.
+    await call("GET","Groups/absent?attributes=displayName&excludedAttributes=members",404);
+    await call("GET","Users/absent?attributes=userName&excludedAttributes=emails",404);
+    assert.equal((await call("GET",path+"?attributes=displayName&excludedAttributes=members",400)).scimType,"invalidValue");
     assert.equal(group.members.length,1);assert.equal(group.members[0].type,"User");assert.equal(group.members[0].display,"First");
     assert.equal(new URL(group.members[0].$ref).pathname,"/api/auth/scim/v2/Users/"+one.id);
     const duplicate=await call("POST","Groups",409,profile("SALES","other",[]));assert.equal(duplicate.scimType,"uniqueness");
@@ -250,6 +255,9 @@ export async function enterpriseProfileContract(t, goFixture) {
     assert.deepEqual(unlocated(await b("GET","Schemas/"+id,200,undefined,false)), unlocated(await a("GET","Schemas/"+id,200,undefined,false)), "the "+id+" schema differs between runtimes");
   }
   assert.deepEqual(unlocated(await b("GET","ResourceTypes/User",200,undefined,false)), unlocated(await a("GET","ResourceTypes/User",200,undefined,false)), "the User resource type differs between runtimes");
+  assert.deepEqual(unlocated(await b("GET","ResourceTypes/Group",200,undefined,false)), unlocated(await a("GET","ResourceTypes/Group",200,undefined,false)), "the Group resource type differs between runtimes");
+  const resourceTypes = async call => { const page = await call("GET","ResourceTypes",200,undefined,false); return {...page, Resources: page.Resources.map(unlocated)}; };
+  assert.deepEqual(await resourceTypes(b), await resourceTypes(a), "the resource type list differs between runtimes");
   assert.deepEqual((await b("GET","Schemas",200,undefined,false)).Resources.map(s => s.id), (await a("GET","Schemas",200,undefined,false)).Resources.map(s => s.id));
 
   // Each runtime reads and patches an Enterprise User with multi-valued

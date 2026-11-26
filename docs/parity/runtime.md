@@ -691,7 +691,7 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
     - [x] Initialize the SQLite schema and repeat the migration, applying it without a confirmation step ([test](../../cmd/authctl/main_test.go#L38))
     - [x] Apply the selected profiles twice on populated SQLite while retaining the user ([test](../../conformance/schema.test.mjs#L129))
     - [x] Upgrade existing PostgreSQL and MySQL schemas with combined team, billing and factor profiles ([test](../../adapters/sqlstore/profiles_test.go#L14))
-    - [x] Reopen a populated SCIM profile twice on SQLite, PostgreSQL and MySQL and retain the original account ([test](../../adapters/sqlstore/scim_test.go#L33))
+    - [x] Reopen a populated SCIM profile twice on SQLite, PostgreSQL and MySQL and retain the original account ([test](../../adapters/sqlstore/scim_test.go#L34))
     - [x] Preserve Polar delivery receipts and their uniqueness across repeated CLI-compatible migrations on three SQL engines ([test](../../integrations/polar/schema_test.go#L11))
     - [x] Backfill existing sessions, preserve the owner's data and report incompatible definitions on live servers ([test](../../cmd/authctl/session_fields_live_test.go#L128))
     - [x] Upgrade a populated account with zero, false and null values while preserving its original fields and session schema ([test](../../cmd/authctl/user_fields_test.go#L167))

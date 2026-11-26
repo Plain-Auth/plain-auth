@@ -96,9 +96,11 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.serveGroups(w, r, d, id, single)
 		return
 	}
-	pr, err := selectionQuery(r.URL.Query(), UserSchema)
-	if err != nil {
-		writeError(w, err)
+	// A single read looks the User up before its projection, and a deletion
+	// takes none, as in another runtime.
+	pr, selectErr := selectionQuery(r.URL.Query(), UserSchema)
+	if selectErr != nil && !(r.Method == http.MethodGet && single) && r.Method != http.MethodDelete {
+		writeError(w, selectErr)
 		return
 	}
 	ctx := r.Context()
@@ -123,7 +125,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			write(w, 200, list(items, total, q.Offset+1))
 			return
 		}
-		rec, err = h.store.SCIMGet(ctx, d, id)
+		if rec, err = h.store.SCIMGet(ctx, d, id); err == nil {
+			err = selectErr
+		}
 	case http.MethodDelete:
 		err = h.store.SCIMDelete(ctx, d, id)
 		if err == nil {
