@@ -283,7 +283,7 @@ func (a *Auth) checkDatabaseHooks() error {
 		}
 		// A plugin that runs the hooks around its own records says what its
 		// store needs for them.
-		hooks := VerificationHookSet{CreateBefore: len(d.verification.create.before) > 0, Delete: d.verification.delete.set()}
+		hooks := VerificationHookSet{CreateBefore: len(d.verification.create.before) > 0, UpdateBefore: len(d.verification.update.before) > 0, Delete: d.verification.delete.set()}
 		for _, p := range a.opts.Plugins {
 			if p.ValidateVerificationStore != nil {
 				if err := p.ValidateVerificationStore(a.opts.Store, hooks); err != nil {

@@ -71,7 +71,8 @@ type Plugin struct {
 	ValidateStore         func(Store) error
 	// ValidateVerificationStore is set by a plugin that keeps verification
 	// records in its own store and runs their hooks with
-	// EndpointContext.CreateVerification and SpendVerification. When
+	// EndpointContext.CreateVerification and SpendVerification, or with
+	// GateVerifications when its store decides them in a transaction. When
 	// verification hooks are set, New calls it with the store and the hooks
 	// that are set, and fails with its error, which names what the store
 	// lacks, rather than let the plugin spend a record its hooks never saw.

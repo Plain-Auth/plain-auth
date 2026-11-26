@@ -19127,6 +19127,16 @@
       "label": "Map each committed two-factor change to the after hooks of the records it wrote, reporting a code removed with its challenge as removed",
       "test": "twofactor_hooks_test.go",
       "marker": "func TestFactorHooksFollowCommittedChanges(t *testing.T) {"
+    },
+    {
+      "label": "Let a store ask about the verification records it writes inside its transaction: a stopped call runs their before hooks outside and again bound to what they saw, a declined record is left unwritten while the call commits the rest, after hooks run once the call commits, and a store that commits while a record awaits its hooks is refused",
+      "test": "conformance/goapi/database_verification_gate_test.go",
+      "marker": "func TestPluginVerificationGate(t *testing.T) {"
+    },
+    {
+      "label": "Rerun a gated store call until its records' hooks have answered, at most four times, keeping each answer for the request and running hooks without the gate or a sign-in plan in their context",
+      "test": "verification_gate_test.go",
+      "marker": "func TestVerificationGate(t *testing.T) {"
     }
   ],
   "docs/content/docs/concepts/database.mdx#L881": [
