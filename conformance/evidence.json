@@ -1007,6 +1007,12 @@
       "label": "Read the normalized imported key with the configured eight-digit, 45-second authenticator settings on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/twofactor_import_test.go",
       "marker": "imported authenticator URI lost the external key, digit count or period"
+    },
+    {
+      "label": "Import a Base32 seed for an existing account, store it encrypted, require it at the next sign-in and accept eight-digit, 45-second codes from it on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/twofactor_import_test.go",
+      "marker": "func TestImportedAuthenticatorAcrossSQLServers(",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/2fa.mdx#L490": [
@@ -1019,6 +1025,12 @@
       "label": "Upgrade existing PostgreSQL and MySQL schemas with combined team, billing and factor profiles",
       "test": "adapters/sqlstore/profiles_test.go",
       "marker": "func TestServerPluginSchemaUpgrade("
+    },
+    {
+      "label": "Emit the user.twoFactorEnabled column and the twoFactor table with the same DDL as the other runtime on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
     }
   ],
   "plugin/organization/POST /organization/create": [
@@ -3318,6 +3330,11 @@
       "label": "Verify service tokens against their issuer’s published keys and reject a different issuer’s keys",
       "test": "conformance/core.test.mjs",
       "marker": "test(\"isolated issuers publish public keys"
+    },
+    {
+      "label": "Put the signed-in user's profile in the default token, with the user as subject and the configured lifetime",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "incorrect default profile or configured lifetime"
     }
   ],
   "plugin/jwt/GET /jwks (configurable)": [
@@ -3330,6 +3347,11 @@
       "label": "Retain rotated public keys through the grace interval and remove retired keys from publication",
       "test": "adapters/sqlstore/jwt_test.go",
       "marker": "expired key remained published"
+    },
+    {
+      "label": "Serve exactly one public key with no private members to an anonymous client of either server",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(keys.keys[0].d, undefined);"
     }
   ],
   "plugin-symbol/jwt/JwtOptions/jwt": [
@@ -3337,6 +3359,11 @@
       "label": "Use custom application claims while binding the token subject to the authenticated user",
       "test": "adapters/sqlstore/jwt_test.go",
       "marker": "custom payload or subject binding changed"
+    },
+    {
+      "label": "Sign with the configured issuer, audience and lifetime, and fail independent verification against another issuer or audience",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "unexpected issuer or audience accepted"
     }
   ],
   "plugin-symbol/jwt/JwtOptions/jwks": [
@@ -3344,6 +3371,11 @@
       "label": "Generate ES256 keys and validate their signatures with a separate verifier",
       "test": "adapters/sqlstore/jwt_test.go",
       "marker": "independent verifier rejected ES256"
+    },
+    {
+      "label": "Mint a new key after the current one expires, and keep the previous public key published during the default grace period",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "public rotation grace: %v"
     }
   ],
   "plugin-symbol/jwt/JwtOptions/disableSettingJwtHeader": [
@@ -3351,6 +3383,12 @@
       "label": "Suppress the assertion on session retrieval when requested",
       "test": "adapters/sqlstore/jwt_test.go",
       "marker": "disabled JWT header emitted"
+    },
+    {
+      "label": "By default, send the token header on session retrieval and expose it to browsers; omit it once disabled",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "missing get-session JWT header",
+      "complete": true
     }
   ],
   "plugin/stripe/POST /subscription/upgrade": [
@@ -3990,6 +4028,12 @@
       "label": "Restrict pre-bound requests to the specified signed-in account",
       "test": "adapters/sqlstore/deviceauthorization_test.go",
       "marker": "pre-bound grant leaked owner metadata"
+    },
+    {
+      "label": "The bound user denies a pre-bound code without first claiming it at GET /device",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "check(decide(first, \"deny\", u, owner), 200, \"\")",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/device-authorization.mdx#L298": [
@@ -3997,6 +4041,12 @@
       "label": "Issue the approving user a separate first-party bearer session",
       "test": "adapters/sqlstore/deviceauthorization_test.go",
       "marker": "device session was not bound to approving owner"
+    },
+    {
+      "label": "Polls return authorization_pending, slow_down, access_denied and expired_token, and an approved code returns a bearer session token",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "func TestDeviceAuthorizationFlow(",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/device-authorization.mdx#L364": [
@@ -4011,6 +4061,12 @@
       "label": "Allow only the claimant to record the pending decision",
       "test": "adapters/sqlstore/deviceauthorization_test.go",
       "marker": "check(decide(first, \"approve\", u, owner), 200, \"\")"
+    },
+    {
+      "label": "An approval without a session returns 401 unauthorized, and the signed-in claimant's approval succeeds",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "check(decide(first, \"approve\", u, nil), 401, \"unauthorized\")",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/device-authorization.mdx#L447": [
@@ -4025,6 +4081,12 @@
       "label": "Validate clients at both code and token endpoints",
       "test": "adapters/sqlstore/deviceauthorization_test.go",
       "marker": "check(poll(first, d, \"invalid\"), 400, \"invalid_client\")"
+    },
+    {
+      "label": "Accept any client ID when no validator is configured",
+      "test": "client/deviceauthorization_test.go",
+      "marker": "p, err := deviceauthorization.New(deviceauthorization.Options{})",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/device-authorization.mdx#L561": [
@@ -4039,6 +4101,12 @@
       "label": "Return OAuth status, error code and description to the Go client",
       "test": "client/deviceauthorization_test.go",
       "marker": "lost OAuth error:"
+    },
+    {
+      "label": "Each listed error comes with an error_description: authorization_pending, slow_down, expired_token, access_denied, invalid_client and invalid_grant",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "r.data[\"error_description\"] == nil",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/device-authorization.mdx#L777": [
@@ -4610,6 +4678,11 @@
       "label": "Sign trusted claims with a configured algorithm or a pinned key and keep the operation server-only",
       "test": "adapters/sqlstore/jwt_test.go",
       "marker": "server-only signer exposed as HTTP route"
+    },
+    {
+      "label": "Sign with caller-chosen audiences, issue, expiry and not-before times, and verify a multi-audience token",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "multi-audience assertion rejected"
     }
   ],
   "plugin/jwt/ verifyJWT (server API only)": [
@@ -4617,6 +4690,11 @@
       "label": "Reject untrusted signatures, wrong identities and expired or inactive tokens",
       "test": "adapters/sqlstore/jwt_test.go",
       "marker": "accepted out-of-window assertion"
+    },
+    {
+      "label": "Return verified claims and refuse tokens checked against another issuer, audience or subject, or with an altered payload",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "accepted mismatched verification constraints"
     }
   ],
   "plugin-symbol/jwt/JWSAlgorithms": [
@@ -5287,6 +5365,12 @@
       "label": "Generate the canonical columns on SQLite, PostgreSQL and MySQL, including combined plugin selections",
       "test": "conformance/schema.test.mjs",
       "marker": "test(\"the CLI emits the pinned plugin schema"
+    },
+    {
+      "label": "Migrate a populated SQLite database to each plugin profile, admin included, and match a fresh schema from the other runtime",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"adding plugin profiles to a populated SQLite database",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/anonymous.mdx#L202": [
@@ -5363,6 +5447,16 @@
       "label": "Complete delivered second-factor enrollment, code verification and remembered sign-in through the pinned browser client",
       "test": "conformance/core.test.mjs",
       "marker": "test(\"the public client completes delivered second-factor"
+    },
+    {
+      "label": "Enroll an authenticator, verify it, sign in and spend backup codes through the pinned browser client on both servers",
+      "test": "conformance/core.test.mjs",
+      "marker": "test(\"authenticator enrollment and backup challenges"
+    },
+    {
+      "label": "Read the provisioning URI through the pinned browser client after an imported authenticator signs in, on both servers",
+      "test": "conformance/core.test.mjs",
+      "marker": "const { totpURI } = ok(await client.twoFactor.getTotpUri({ password }));"
     }
   ],
   "plugin-symbol/2fa/OTPOptions/period": [
@@ -5452,6 +5546,11 @@
       "label": "Read application-coded recovery material and round-trip a custom backup cipher",
       "test": "adapters/sqlstore/twofactor_delivery_test.go",
       "marker": "custom backup-code codec did not round trip"
+    },
+    {
+      "label": "Store enrollment backup codes encrypted by default, so the stored column does not contain the first code",
+      "test": "adapters/sqlstore/twofactor_test.go",
+      "marker": "t.Fatal(\"unprotected factor material\")"
     }
   ],
   "plugin-symbol/2fa/TwoFactorOptions/skipVerificationOnEnable": [
@@ -5655,6 +5754,12 @@
       "label": "Assign a configured role and reject an unknown role",
       "test": "adapters/sqlstore/admin_test.go",
       "marker": "adminBrowser.AdminSetRole(ctx, target, \"unknown\")"
+    },
+    {
+      "label": "Change a user's role and apply the narrower grant to that user's existing session",
+      "test": "adapters/sqlstore/phone_admin_test.go",
+      "marker": "_, err = operator.AdminSetRole(ctx, agent.ID, \"profile\")",
+      "complete": true
     }
   ],
   "plugin/admin/GET /admin/get-user": [
@@ -5667,6 +5772,12 @@
       "label": "Read persisted public fields through an authorized operator after a host update",
       "test": "adapters/sqlstore/admin_user_fields_test.go",
       "marker": "checkUserField(t, *read, \"locale\", \"stored-new\")"
+    },
+    {
+      "label": "Answer USER_NOT_FOUND when an administrator fetches an account that was removed",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "expect(err, \"USER_NOT_FOUND\")",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/admin.mdx#L211": [
@@ -5674,6 +5785,12 @@
       "label": "Fetch the authorized record and deny an ordinary account",
       "test": "adapters/sqlstore/admin_test.go",
       "marker": "userBrowser.AdminGetUser(ctx, u.ID)"
+    },
+    {
+      "label": "Fetch an account by its id with the released client on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "ok(await api.getUser({ query: { id: created.id } })).role, \"user\")",
+      "complete": true
     }
   ],
   "plugin/admin/POST /admin/create-user": [
@@ -5718,6 +5835,12 @@
       "label": "Create a credential account and assign multiple roles",
       "test": "adapters/sqlstore/admin_test.go",
       "marker": "operator, err := bootstrap.AdminCreateUser"
+    },
+    {
+      "label": "An administrator creates an account that then signs in with its password",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "officer, err := bootstrap.AdminCreateUser(",
+      "complete": true
     }
   ],
   "plugin/admin/POST /admin/update-user": [
@@ -5747,6 +5870,12 @@
       "label": "Update a user’s profile and gate changes to protected fields",
       "test": "adapters/sqlstore/admin_test.go",
       "marker": "admin profile fields not updated"
+    },
+    {
+      "label": "Update a user's name and return the changed user through the released client on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "ok(await api.updateUser({ userId: created.id, data: { name: \"Updated\" } })).name, \"Updated\")",
+      "complete": true
     }
   ],
   "plugin/admin/GET /admin/list-users": [
@@ -5766,6 +5895,12 @@
       "label": "Combine search, role filtering, sorting and pagination",
       "test": "adapters/sqlstore/admin_test.go",
       "marker": "admin search/filter/pagination"
+    },
+    {
+      "label": "A provisioned administrator lists every account with no query",
+      "test": "cmd/authctl/admin_test.go",
+      "marker": "res, err := service.Admin(ctx, h, authn.AdminRequest{Operation: \"list-users\"})",
+      "complete": true
     }
   ],
   "plugin/admin/POST /admin/list-user-sessions": [
@@ -5799,6 +5934,12 @@
       "label": "Clear a ban and permit sign-in after the password is reset",
       "test": "adapters/sqlstore/admin_test.go",
       "marker": "err = adminBrowser.AdminUnbanUser"
+    },
+    {
+      "label": "Accept the account's unchanged password at sign-in after an unban",
+      "test": "adapters/sqlstore/admin_factor_test.go",
+      "marker": "_, err = challenged.SignInEmail(ctx, login)",
+      "complete": true
     }
   ],
   "plugin/admin/POST /admin/ban-user": [
@@ -5823,6 +5964,11 @@
       "label": "Revoke existing logins, deny new sessions and automatically clear expired bans",
       "test": "adapters/sqlstore/admin_test.go",
       "marker": "expired ban not cleared during login"
+    },
+    {
+      "label": "Revoke the banned user's existing session and refuse their next password sign-in with BANNED_USER",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "t.Fatal(\"existing session survived ban\")"
     }
   ],
   "plugin/admin/POST /admin/impersonate-user": [
@@ -5861,6 +6007,12 @@
       "label": "Restore the initiating login and preserve its original persistence",
       "test": "adapters/sqlstore/admin_test.go",
       "marker": "original login persistence lost"
+    },
+    {
+      "label": "Return to the administrator's original session after an impersonation ends",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "t.Fatal(\"failed to restore original login\")",
+      "complete": true
     }
   ],
   "plugin/admin/POST /admin/revoke-user-session": [
@@ -5873,6 +6025,12 @@
       "label": "Scope revocation to the issuing operator and require the current revoke grant",
       "test": "adapters/sqlstore/admin_test.go",
       "marker": "revocation handle escaped its operator binding"
+    },
+    {
+      "label": "Sign the target out once an authorized operator revokes its listed session",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "t.Fatal(\"revoked target still signed in\")",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/admin.mdx#L351": [
@@ -5885,6 +6043,11 @@
       "label": "Keep revocation handles bounded to the session lifetime and active encryption keys",
       "test": "admin_handle_test.go",
       "marker": "func TestAdministrativeRevocationHandleLifetimeAndKeyRotation("
+    },
+    {
+      "label": "Sign the target out after revoking the session picked from the administrative listing",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "t.Fatal(\"revoked target still signed in\")"
     }
   ],
   "plugin/admin/POST /admin/revoke-user-sessions": [
@@ -5913,6 +6076,11 @@
       "label": "Remove a user while guarding the acting administrator’s own account",
       "test": "adapters/sqlstore/admin_test.go",
       "marker": "expect(bootstrap.AdminRemoveUser(ctx, u.ID)"
+    },
+    {
+      "label": "Answer USER_NOT_FOUND when fetching a removed account",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "expect(err, \"USER_NOT_FOUND\")"
     }
   ],
   "plugin/admin/POST /admin/set-user-password": [
@@ -5981,6 +6149,12 @@
       "label": "Grant an explicitly configured identity administrative authority",
       "test": "adapters/sqlstore/admin_test.go",
       "marker": "configured admin ID lacks grants"
+    },
+    {
+      "label": "A configured administrator ID with no stored role impersonates another administrator over HTTP",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "t.Fatal(\"wrong administrator impersonated\")",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/admin.mdx#L798": [
@@ -5988,6 +6162,12 @@
       "label": "Grant an explicitly configured identity administrative authority",
       "test": "adapters/sqlstore/admin_test.go",
       "marker": "configured admin ID lacks grants"
+    },
+    {
+      "label": "Let a configured administrator id whose account holds only the ordinary user role create users, revoke sessions, ban, remove and impersonate another administrator",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "adminMask, err := bootstrap.AdminImpersonate(ctx, officer.ID)",
+      "complete": true
     }
   ],
   "plugin-symbol/admin/AdminOptions/roles": [
@@ -5995,6 +6175,12 @@
       "label": "Define custom roles and evaluate each role’s entire grant",
       "test": "plugins/admin/admin_test.go",
       "marker": "required statement split across independent roles"
+    },
+    {
+      "label": "A custom role that grants only user create provisions an ordinary account over HTTP",
+      "test": "adapters/sqlstore/admin_user_fields_test.go",
+      "marker": "creator could not provision a normal profile",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/admin.mdx#L463": [
@@ -6002,6 +6188,12 @@
       "label": "Define custom roles and evaluate each role’s entire grant",
       "test": "plugins/admin/admin_test.go",
       "marker": "required statement split across independent roles"
+    },
+    {
+      "label": "Configure custom operator and reader roles and enforce their grants on the administrative routes",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "\"operator\": {\"user\": {\"create\", \"update\", \"list\"}}, \"reader\": {\"user\": {\"get\"}, \"session\": {\"list\"}}},",
+      "complete": true
     }
   ],
   "plugin-symbol/admin/AdminOptions/defaultBanReason": [
@@ -6065,6 +6257,12 @@
       "label": "Give ordinary accounts no administrative grants",
       "test": "plugins/admin/admin_test.go",
       "marker": "default user received administrative permissions"
+    },
+    {
+      "label": "Store an account's two roles as one comma-separated value that a role filter matches",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "FilterValues: []string{\"operator,reader\", \"admin\"}",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/admin.mdx#L451": [
@@ -6086,6 +6284,12 @@
       "label": "Expose role and ban state on a newly created account",
       "test": "adapters/sqlstore/admin_test.go",
       "marker": "regular signup did not receive its default role"
+    },
+    {
+      "label": "Return banned, banReason and banExpires on a temporarily banned user",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "t.Fatal(\"temporary ban fields\")",
+      "complete": true
     }
   ],
   "plugin-symbol/admin/SessionWithImpersonatedBy": [
@@ -6093,6 +6297,12 @@
       "label": "Preserve the initiating administrator in the temporary session record",
       "test": "adapters/sqlstore/admin_test.go",
       "marker": "delegated session has no owner"
+    },
+    {
+      "label": "Return the acting administrator's ID as impersonatedBy on the delegated session through the released client, on either server",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(delegated.session.impersonatedBy, account.id);",
+      "complete": true
     }
   ],
   "plugin-symbol/admin/adminClient": [
@@ -6100,6 +6310,12 @@
       "label": "Exercise all fifteen administrative client routes on both runtimes with shared database records",
       "test": "conformance/core.test.mjs",
       "marker": "test(\"the official admin client manages"
+    },
+    {
+      "label": "Drive the fifteen administrative routes through the released admin client against the Go server and the other runtime sharing one database",
+      "test": "conformance/core.test.mjs",
+      "marker": "const actor = instrument(source, [adminClient()]).client;",
+      "complete": true
     }
   ],
   "cli/create-admin": [
@@ -10983,6 +11199,11 @@
       "label": "Disable both the browser token endpoint and the session JWT response header while retaining ordinary sessions",
       "test": "conformance/core.test.mjs",
       "marker": "disabled HTTP paths suppress core, username and JWT endpoints on a custom mount"
+    },
+    {
+      "label": "Report a token signed with a published key but carrying no authorized party as inactive at introspection",
+      "test": "conformance/oauth-signed-introspection.mjs",
+      "marker": "for (const token of [await sign({ exp: 1 }), await sign({ azp: undefined }), await sign({ sid }),"
     }
   ],
   "docs/content/docs/reference/security.mdx#L9": [
@@ -13365,6 +13586,12 @@
       "label": "Enforce role and ban permissions on nested data and refuse unauthorized accounts",
       "test": "conformance/admin-fields.mjs",
       "marker": "const denied = await creator.admin.createUser("
+    },
+    {
+      "label": "Store a custom user field supplied in data by an authorized creator over HTTP",
+      "test": "adapters/sqlstore/admin_user_fields_test.go",
+      "marker": "checkUserField(t, *view, \"locale\", \"web\")",
+      "complete": true
     }
   ],
   "plugin/oauth-proxy": [
@@ -34961,6 +35188,2131 @@
       "label": "Count GET /magic-link/verify separately under the same default rule and answer its sixth request in a minute with 429",
       "test": "adapters/sqlstore/magiclink_test.go",
       "marker": "default verify limit:"
+    }
+  ],
+  "plugin-symbol/2fa/encodeBackupCodes": [
+    {
+      "label": "Store enrollment backup codes encrypted by default, so the stored column does not contain the first code",
+      "test": "adapters/sqlstore/twofactor_test.go",
+      "marker": "t.Fatal(\"unprotected factor material\")"
+    },
+    {
+      "label": "Encode stored backup codes with the application's cipher and decode them back",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "custom backup-code codec did not round trip"
+    }
+  ],
+  "plugin-symbol/2fa/generateBackupCodes": [
+    {
+      "label": "Return ten backup codes at enrollment under the default settings",
+      "test": "adapters/sqlstore/twofactor_test.go",
+      "marker": "invalid provisioning material"
+    },
+    {
+      "label": "Generate the configured four codes, the first holding twelve characters split by a hyphen after the fifth",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "custom backup code amount or length was ignored"
+    },
+    {
+      "label": "Use the application's generator for enrollment codes",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "passwordless enrollment did not use custom backup generator"
+    }
+  ],
+  "plugin-symbol/2fa/BackupCodeOptions": [
+    {
+      "label": "Configure four twelve-character codes stored plain, see the amount and length at enrollment and read the codes back through ViewBackupCodes",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "Backup:  twofactor.BackupOptions{Amount: 4, Length: 12, Store: \"plain\"},"
+    }
+  ],
+  "plugin-symbol/2fa/twoFactor": [
+    {
+      "label": "Gate password sign-in behind a challenge and finish it with an authenticator or backup code across two instances",
+      "test": "adapters/sqlstore/twofactor_test.go",
+      "marker": "func TestTwoFactorAcrossAuthInstances("
+    },
+    {
+      "label": "Challenge a username password sign-in for an enrolled account",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "username login failed to require enrolled second factor"
+    },
+    {
+      "label": "Challenge a phone-number password sign-in for an enrolled account",
+      "test": "adapters/sqlstore/phone_accounts_test.go",
+      "marker": "phone password sign-in bypassed MFA"
+    },
+    {
+      "label": "Limit /two-factor/verify-totp to three requests per ten seconds under the built-in rules",
+      "test": "ratelimit_test.go",
+      "marker": "for _, route := range []string{\"/sign-in/email\", \"/two-factor/verify-totp\"} {"
+    }
+  ],
+  "plugin-symbol/2fa/TOTPOptions": [
+    {
+      "label": "Configure eight digits and a 45-second period, see both in the provisioning URI and get an eight-digit code from GenerateTOTP",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "TOTP: twofactor.TOTPOptions{Digits: 8, Period: 45 * time.Second}, SkipVerificationOnEnable: true,"
+    }
+  ],
+  "plugin-symbol/2fa/TOTPOptions/issuer": [
+    {
+      "label": "Return the same URI, with the configured issuer, from /two-factor/get-totp-uri as enrollment did",
+      "test": "adapters/sqlstore/twofactor_test.go",
+      "marker": "provisioning URI changed"
+    },
+    {
+      "label": "Name the plugin's issuer in the provisioning URI when set, and the application name otherwise",
+      "test": "conformance/goapi/freshness_test.go",
+      "marker": "t.Fatal(\"unexpected authenticator issuer\", tc, setup.TOTPURI, w.Body)"
+    }
+  ],
+  "plugin-symbol/2fa/TwoFactorOptions": [
+    {
+      "label": "Configure the trusted-browser lifetime and the challenge lifetime and observe each as a cookie max age",
+      "test": "adapters/sqlstore/twofactor_trust_test.go",
+      "marker": "withFactorDatabases(t, twofactor.Options{Issuer: \"Auth\", TrustDeviceMaxAge: 42 * time.Minute, ChallengeLifetime: 3 * time.Minute}"
+    },
+    {
+      "label": "Configure authenticator, backup-code, lockout and skip-verification settings and observe each",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "func TestAuthenticatorAndBackupSettings("
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L20/Enabling/disabling 2FA": [
+    {
+      "label": "Enroll and activate an authenticator so password sign-in is challenged, then disable it with the password and sign in with the password alone",
+      "test": "adapters/sqlstore/twofactor_test.go",
+      "marker": "disabled factor still gated credential",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L132": [
+    {
+      "label": "List totp and otp in twoFactorMethods for an email sign-in once both factors are active",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "verified authenticator and delivered channel were not both offered"
+    },
+    {
+      "label": "Challenge a username password sign-in for an enrolled account",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "username login failed to require enrolled second factor"
+    },
+    {
+      "label": "Challenge a phone-number password sign-in for an enrolled account",
+      "test": "adapters/sqlstore/phone_accounts_test.go",
+      "marker": "phone password sign-in bypassed MFA"
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L254/`POST /two-factor/get-totp-uri`": [
+    {
+      "label": "Return the enrollment's provisioning URI to the signed-in owner who supplies the account password",
+      "test": "adapters/sqlstore/twofactor_test.go",
+      "marker": "provisioning URI changed"
+    },
+    {
+      "label": "Return the imported seed in the provisioning URI through the released client on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(new URL(totpURI).searchParams.get(\"secret\"), seed);"
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L297/`POST /two-factor/verify-totp`": [
+    {
+      "label": "Activate a pending authenticator when its signed-in owner submits a current code",
+      "test": "adapters/sqlstore/twofactor_test.go",
+      "marker": "activated := request(second, \"two-factor/verify-totp\""
+    },
+    {
+      "label": "Refuse a code that completed one sign-in challenge when it is sent again with a new challenge",
+      "test": "adapters/sqlstore/twofactor_test.go",
+      "marker": "check(request(first, \"two-factor/verify-totp\", fmt.Sprintf(`{\"code\":%q}`, code), challenge()), 401)"
+    },
+    {
+      "label": "Confirm enrollment with a generated code through the released client on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(ok(await client.twoFactor.verifyTotp({ code: await generator.totp() })).user.id, user.id);"
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L303/Parameter `code`": [
+    {
+      "label": "Refuse an invalid authenticator code with 401 and accept a current one",
+      "test": "adapters/sqlstore/twofactor_test.go",
+      "marker": "check(request(second, \"two-factor/verify-totp\", `{\"code\":\"invalid\"}`, spent), 401)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L328": [
+    {
+      "label": "Call the configured sender with the challenged account and a numeric code",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "factor delivery exposed proof or addressed another user"
+    },
+    {
+      "label": "Complete a delivered-code challenge through the released client on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "test(\"the public client completes delivered second-factor codes and remembers its browser\""
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L351": [
+    {
+      "label": "Trigger the configured sender for the challenged account from /two-factor/send-otp without returning the code",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "factor delivery exposed proof or addressed another user",
+      "complete": true
+    },
+    {
+      "label": "Request a delivered code through the released client and receive status true on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(ok(await client.twoFactor.sendOtp({})).status,true);"
+    },
+    {
+      "label": "Request a delivered code through the Go client and deliver it to the signed-up account",
+      "test": "client/twofactor_delivery_test.go",
+      "marker": "if err = c.SendFactorOTP(ctx); err != nil || delivery.User.ID != signup.User.ID {"
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L355/`POST /two-factor/send-otp`": [
+    {
+      "label": "Store the delivered code with an attempt counter and the configured expiry",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "stored delivered OTP or expiry differs from configuration"
+    },
+    {
+      "label": "Accept a delivered code on the sign-in challenge it was sent for and refuse it on another challenge",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "h.request(h.second, \"two-factor/verify-otp\", map[string]string{\"code\": newer.code}, 200, a)"
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L370": [
+    {
+      "label": "Complete a delivered-code challenge through the released client on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(ok(await client.twoFactor.verifyOtp({code,trustDevice:true})).user.id,user.id);",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L374/`POST /two-factor/verify-otp`": [
+    {
+      "label": "Refuse further guesses with TOO_MANY_ATTEMPTS_REQUEST_NEW_CODE once a code's attempt budget is spent",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "delivery-specific attempt limit failed"
+    },
+    {
+      "label": "Refuse an expired delivered code with OTP_HAS_EXPIRED",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "expired delivered factor accepted"
+    },
+    {
+      "label": "Issue exactly one session when two servers verify the same delivered code at once",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "a delivered factor issued %d authenticated sessions"
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L380/Parameter `code`": [
+    {
+      "label": "Refuse a wrong delivered code with 401 and accept the delivered one",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "h.request(h.second, \"two-factor/verify-otp\", map[string]string{\"code\": \"wrong\"}, 401, challenge)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L384/Parameter `trustDevice` (optional)": [
+    {
+      "label": "Set the session and trust_device cookies when a delivered code is verified with trustDevice",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "h.cookie(w, \"trust_device\")"
+    },
+    {
+      "label": "Skip the challenge at the next Go client sign-in after a delivered code is verified with trustDevice",
+      "test": "client/twofactor_delivery_test.go",
+      "marker": "native cookie jar lost remembered-browser grant"
+    },
+    {
+      "label": "Sign in without a challenge after a delivered code is verified with trustDevice through the released client on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(remembered.user.id,user.id);"
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L389": [
+    {
+      "label": "Complete a sign-in challenge with a backup code issued at enrollment and refuse that code a second time, through the released client on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "test(\"authenticator enrollment and backup challenges work through the public client\"",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L393": [
+    {
+      "label": "Return ten new backup codes on regeneration and refuse a code from the previous set",
+      "test": "adapters/sqlstore/twofactor_test.go",
+      "marker": "backup regeneration failed",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L397/`POST /two-factor/generate-backup-codes`": [
+    {
+      "label": "Regenerate backup codes for a signed-in owner who supplies the password, and refuse an old code afterwards",
+      "test": "adapters/sqlstore/twofactor_test.go",
+      "marker": "check(request(second, \"two-factor/verify-backup-code\", fmt.Sprintf(`{\"code\":%q}`, enrollment.BackupCodes[1]), challenge()), 401)"
+    },
+    {
+      "label": "Return ten codes through the Go client, the first unlike the enrollment's first code",
+      "test": "client/account_test.go",
+      "marker": "regenerate backup codes:"
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L416": [
+    {
+      "label": "Accept a backup code for exactly one of two concurrent submissions of the same sign-in challenge to two servers, and refuse it at a later challenge",
+      "test": "adapters/sqlstore/twofactor_test.go",
+      "marker": "challenge consumption winners=%d denied=%d",
+      "complete": true
+    },
+    {
+      "label": "Refuse a used backup code through the released client on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.ok((await client.twoFactor.verifyBackupCode({ code: used })).error);"
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L420/`POST /two-factor/verify-backup-code`": [
+    {
+      "label": "Refuse a backup code that already completed a sign-in",
+      "test": "adapters/sqlstore/twofactor_test.go",
+      "marker": "check(request(second, \"two-factor/verify-backup-code\", payload, challenge()), 401)"
+    },
+    {
+      "label": "Answer 429 ACCOUNT_TEMPORARILY_LOCKED after the configured number of wrong backup codes across two servers",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "configured account lockout did not cover backup codes"
+    },
+    {
+      "label": "Accept an unused backup code sent with a signed-in session rather than a sign-in challenge",
+      "test": "adapters/sqlstore/twofactor_hooks_test.go",
+      "marker": "h.request(h.first, \"two-factor/verify-backup-code\", map[string]any{\"code\": u.backups[3]}, 200, u.session)"
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L426/Parameter `code`": [
+    {
+      "label": "Accept an unused backup code and refuse a spent one with 401",
+      "test": "adapters/sqlstore/twofactor_test.go",
+      "marker": "check(request(second, \"two-factor/verify-backup-code\", payload, challenge()), 401)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L430/Parameter `disableSession` (optional)": [
+    {
+      "label": "Verify a backup code with disableSession without returning a token or setting a session cookie",
+      "test": "adapters/sqlstore/twofactor_test.go",
+      "marker": "suppressed login issued a cookie",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L434/Parameter `trustDevice` (optional)": [
+    {
+      "label": "Set a Secure, HttpOnly, SameSite=Lax trust_device cookie with the configured lifetime after a backup-code proof with trustDevice",
+      "test": "adapters/sqlstore/twofactor_trust_test.go",
+      "marker": "invalid trusted-browser cookie attributes: %s"
+    },
+    {
+      "label": "Rotate the remembered grant on each sign-in it completes",
+      "test": "adapters/sqlstore/twofactor_trust_test.go",
+      "marker": "successful sign-in failed to rotate the remembered grant"
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L443": [
+    {
+      "label": "Return the enrollment's backup codes from the server-side ViewBackupCodes call on another server",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "trusted backup code listing failed",
+      "complete": true
+    },
+    {
+      "label": "Answer 404 for the listing over HTTP",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "h.request(service, \"two-factor/view-backup-codes\", map[string]string{\"userId\": id}, 404, withoutPassword)"
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L447/`POST /two-factor/view-backup-codes` (server API)": [
+    {
+      "label": "Return the stored codes for a server-supplied user ID through ViewBackupCodes",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "trusted backup code listing failed"
+    },
+    {
+      "label": "Answer 404 for the listing over HTTP",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "h.request(service, \"two-factor/view-backup-codes\", map[string]string{\"userId\": id}, 404, withoutPassword)"
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L453/Parameter `userId`": [
+    {
+      "label": "Return the backup codes of the account named by the user ID",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "custom backup-code codec did not round trip",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L458": [
+    {
+      "label": "Skip the second-factor prompt for a remembered browser and rotate its trust cookie on that sign-in",
+      "test": "adapters/sqlstore/twofactor_trust_test.go",
+      "marker": "valid rotated browser did not bypass the MFA prompt"
+    },
+    {
+      "label": "Refuse remembered grants that belong to another account, are tampered with, expired or predate a password reset, and still require the password",
+      "test": "adapters/sqlstore/twofactor_trust_test.go",
+      "marker": "func TestRememberedFactorDevice("
+    },
+    {
+      "label": "Sign in without a challenge after a delivered code is verified with trustDevice through the released client on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(remembered.user.id,user.id);"
+    },
+    {
+      "label": "Set the trust_device cookie after an authenticator code with trustDevice, and issue a session without a challenge at the next sign-in from that browser",
+      "test": "adapters/sqlstore/twofactor_hooks_test.go",
+      "marker": "trust := h.cookie(w, \"trust_device\")"
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L476": [
+    {
+      "label": "Use the plugin's issuer in the provisioning URI when set, and the application name otherwise",
+      "test": "conformance/goapi/freshness_test.go",
+      "marker": "func TestAppNameIsTheAuthenticatorIssuer(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L498/`twoFactorUserTableFields.twoFactorEnabled`": [
+    {
+      "label": "The generated optional user.twoFactorEnabled boolean column matches the other runtime's DDL on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    },
+    {
+      "label": "Report twoFactorEnabled as true in the session once the authenticator is verified, through the released client on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(ok(await client.getSession()).user.twoFactorEnabled, true);"
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L511/`twoFactorTableFields.id`": [
+    {
+      "label": "The generated twoFactor.id primary key column matches the other runtime's DDL on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L517/`twoFactorTableFields.userId`": [
+    {
+      "label": "The generated twoFactor.userId column referencing user.id matches the other runtime's DDL on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L524/`twoFactorTableFields.secret`": [
+    {
+      "label": "The generated twoFactor.secret column matches the other runtime's DDL on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    },
+    {
+      "label": "Keep the authenticator secret out of the stored secret column in readable form",
+      "test": "adapters/sqlstore/twofactor_test.go",
+      "marker": "unprotected factor material"
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L529/`twoFactorTableFields.backupCodes`": [
+    {
+      "label": "The generated twoFactor.backupCodes column matches the other runtime's DDL on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    },
+    {
+      "label": "Keep issued backup codes out of the stored backupCodes column in readable form",
+      "test": "adapters/sqlstore/twofactor_test.go",
+      "marker": "unprotected factor material"
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L535/`twoFactorTableFields.verified`": [
+    {
+      "label": "The generated twoFactor.verified boolean column matches the other runtime's DDL on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L540/`twoFactorTableFields.failedVerificationCount`": [
+    {
+      "label": "The generated twoFactor.failedVerificationCount column matches the other runtime's DDL on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    },
+    {
+      "label": "Reset the stored failure count to zero after a successful proof ends a lockout",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "successful proof did not recover from lockout"
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L546/`twoFactorTableFields.lockedUntil`": [
+    {
+      "label": "The generated nullable twoFactor.lockedUntil date column matches the other runtime's DDL on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    },
+    {
+      "label": "Store the lockout expiry the configured duration after the last failed proof",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "custom lockout duration ignored"
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L562/issuer": [
+    {
+      "label": "Use the configured issuer in the provisioning URI, and the application name when none is set",
+      "test": "conformance/goapi/freshness_test.go",
+      "marker": "func TestAppNameIsTheAuthenticatorIssuer(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L564/skipVerificationOnEnable": [
+    {
+      "label": "With the option set, enrollment activates the authenticator at once, so the next password sign-in is challenged",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "SkipVerificationOnEnable: true,",
+      "complete": true
+    },
+    {
+      "label": "Without the option, a pending authenticator is not offered at sign-in until its enrollment code is verified",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "verified authenticator and delivered channel were not both offered"
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L566/allowPasswordless": [
+    {
+      "label": "Enroll an account that has no credential password without one, and still require the password from an account that has one",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "h.request(service, \"two-factor/enable\", map[string]string{}, 400, service.SessionCookie(passwordLogin.Token, true))"
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L568/Issuer": [
+    {
+      "label": "Name the application, or the configured issuer, in the provisioning URI shown by authenticator apps",
+      "test": "conformance/goapi/freshness_test.go",
+      "marker": "func TestAppNameIsTheAuthenticatorIssuer(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L575/`twoFactorTotpOptionsType.digits`": [
+    {
+      "label": "Report digits=8 in the provisioning URI and accept an eight-digit code when configured",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "custom authenticator parameters were omitted",
+      "complete": true
+    },
+    {
+      "label": "Accept six-digit codes from a standard generator with the default settings",
+      "test": "adapters/sqlstore/twofactor_test.go",
+      "marker": "activated := request(second, \"two-factor/verify-totp\""
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L580/`twoFactorTotpOptionsType.period`": [
+    {
+      "label": "Accept 45-second codes and report period=45 in the provisioning URI when configured",
+      "test": "adapters/sqlstore/twofactor_import_test.go",
+      "marker": "imported authenticator URI lost the external key, digit count or period",
+      "complete": true
+    },
+    {
+      "label": "Accept 30-second codes from a standard generator with the default settings",
+      "test": "adapters/sqlstore/twofactor_test.go",
+      "marker": "activated := request(second, \"two-factor/verify-totp\""
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L594/`twoFactorOtpOptionsType.sendOTP`": [
+    {
+      "label": "Call the configured sender with the challenged account and the generated code",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "factor delivery exposed proof or addressed another user",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L598/`twoFactorOtpOptionsType.period`": [
+    {
+      "label": "Store a delivered code that expires after the configured two minutes",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "stored delivered OTP or expiry differs from configuration"
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L603/`twoFactorOtpOptionsType.storeOTP`": [
+    {
+      "label": "Store a hashed delivered code as its SHA-256 digest with the attempt counter",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "stored delivered OTP or expiry differs from configuration"
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L618/`twoFactorBackupCodeOptionsType.amount`": [
+    {
+      "label": "Issue the configured four backup codes at enrollment",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "custom backup code amount or length was ignored",
+      "complete": true
+    },
+    {
+      "label": "Issue ten backup codes at enrollment by default",
+      "test": "adapters/sqlstore/twofactor_test.go",
+      "marker": "invalid provisioning material"
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L623/`twoFactorBackupCodeOptionsType.length`": [
+    {
+      "label": "Issue twelve-character backup codes split by a hyphen after the fifth character when configured",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "custom backup code amount or length was ignored"
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L628/`twoFactorBackupCodeOptionsType.customBackupCodesGenerate`": [
+    {
+      "label": "Issue the codes returned by a host-supplied generator at enrollment",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "passwordless enrollment did not use custom backup generator",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L632/`twoFactorBackupCodeOptionsType.storeBackupCodes`": [
+    {
+      "label": "Round-trip backup codes through a host-supplied encryptor and decryptor",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "custom backup-code codec did not round trip"
+    },
+    {
+      "label": "Keep backup codes out of the stored record in readable form with the default setting",
+      "test": "adapters/sqlstore/twofactor_test.go",
+      "marker": "unprotected factor material"
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L642/Account lockout": [
+    {
+      "label": "Lock the account after ten wrong codes across two sign-in challenges and answer 429 to the next challenge",
+      "test": "adapters/sqlstore/twofactor_test.go",
+      "marker": "check(request(second, \"two-factor/verify-totp\", fmt.Sprintf(`{\"code\":%q}`, code), challenge()), 429)"
+    },
+    {
+      "label": "Answer 429 ACCOUNT_TEMPORARILY_LOCKED once the configured failure count is reached across servers",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "configured account lockout did not cover backup codes"
+    },
+    {
+      "label": "Reset the failure count after a successful proof once the lock has expired",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "successful proof did not recover from lockout"
+    },
+    {
+      "label": "Raise one stored failure count for a wrong backup code and then a wrong authenticator code on the same challenge",
+      "test": "adapters/sqlstore/twofactor_hooks_test.go",
+      "marker": "a wrong authenticator code was not counted:"
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L647/`twoFactorAccountLockoutOptionsType.enabled`": [
+    {
+      "label": "Enforce the lockout by default after ten wrong codes",
+      "test": "adapters/sqlstore/twofactor_test.go",
+      "marker": "check(request(second, \"two-factor/verify-totp\", fmt.Sprintf(`{\"code\":%q}`, code), challenge()), 429)"
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L652/`twoFactorAccountLockoutOptionsType.maxFailedAttempts`": [
+    {
+      "label": "Lock after the configured two wrong backup codes and not before",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "configured account lockout did not cover backup codes"
+    },
+    {
+      "label": "Lock on the tenth wrong code by default",
+      "test": "adapters/sqlstore/twofactor_test.go",
+      "marker": "check(request(second, \"two-factor/verify-totp\", fmt.Sprintf(`{\"code\":%q}`, code), challenge()), 429)"
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L657/`twoFactorAccountLockoutOptionsType.durationSeconds`": [
+    {
+      "label": "Store a lock that ends the configured two minutes later and accept a proof after it ends",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "custom lockout duration ignored"
+    }
+  ],
+  "plugin-symbol/device-authorization/DeviceAuthorizationOptions": [
+    {
+      "label": "Build verification links from a custom path, refuse a client that ValidateClient rejects, and call OnDeviceAuthRequest only for the accepted code request",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "opts := deviceauthorization.Options{VerificationURI: \"/activate?from=tv\""
+    },
+    {
+      "label": "Issue 40-character device codes and 8-character user codes by default",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "device generation defaults or request callback changed"
+    },
+    {
+      "label": "Default to a 30-minute code lifetime and a five-second polling interval",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "r.data[\"expires_in\"] != float64(1800)"
+    },
+    {
+      "label": "Issue codes from custom device and user code generators",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "fixed.GenerateDeviceCode ="
+    }
+  ],
+  "plugin-symbol/device-authorization/DeviceAuthorizationRequest": [
+    {
+      "label": "Accept client_id, scope and an optional user_id on a code request, treating an empty user_id as omitted and pre-binding a given one",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "\"client_id=tv&scope=read+profile\"+suffix",
+      "complete": true
+    },
+    {
+      "label": "Hide a pre-bound request's details from a reviewer who is not its account",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "pre-bound grant leaked owner metadata"
+    }
+  ],
+  "plugin-symbol/device-authorization/deviceAuthorization": [
+    {
+      "label": "Serve the code, token, verification, approve and deny routes against SQLite, PostgreSQL and MySQL stores",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "func TestDeviceAuthorizationFlow("
+    },
+    {
+      "label": "Answer 429 to the sixth GET /device lookup once five have been made",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "check(verify(limited, u, owner), 429, \"\")"
+    },
+    {
+      "label": "Share device grants with the other runtime through the released client",
+      "test": "conformance/core.test.mjs",
+      "marker": "device grants created in either runtime can issue a first-party session in the other"
+    }
+  ],
+  "plugin-symbol/device-authorization/DeviceCode": [
+    {
+      "label": "Generate the deviceCode table with the same columns, optional fields and unique indexes as the other runtime's migration on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "the CLI emits the pinned plugin schema across exhaustive base combinations",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L97/Device requests codes": [
+    {
+      "label": "POST /device/code returns a device code and a user code",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "invalid device issue response",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L98/User authorizes": [
+    {
+      "label": "A signed-in browser looks up the displayed user code at GET /device and approves it through the Go client",
+      "test": "client/deviceauthorization_test.go",
+      "marker": "if err := browser.ApproveDeviceCode(ctx, grant.UserCode); err != nil {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L99/Device polls for token": [
+    {
+      "label": "A poll before approval returns authorization_pending and the poll after approval returns the token",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "check(poll(first, d, \"tv\"), 400, \"authorization_pending\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L100/Access granted": [
+    {
+      "label": "The approved poll returns a session token stored for the approving user",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "device session was not bound to approving owner"
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L102": [
+    {
+      "label": "GET /device returns the requesting client and scopes to the signed-in owner so an approval page can show them",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "owner did not see request context"
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L121/Sign your own device into the same Better Auth application": [
+    {
+      "label": "An approved code exchanged at /device/token yields a session token that authenticates the approving user as a bearer credential",
+      "test": "client/deviceauthorization_test.go",
+      "marker": "t.Fatalf(\"bearer identity: %v\", err)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L240/`POST /device/code`": [
+    {
+      "label": "Issue codes for form requests carrying client_id and scope, with an empty or pre-bound user_id",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "issue := func(a *authn.Auth, suffix string) (device, user string) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L246/Parameter `client_id`": [
+    {
+      "label": "Reject a repeated client_id and one the validator refuses at POST /device/code",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "client_id=tv&client_id=cli"
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L250/Parameter `scope` (optional)": [
+    {
+      "label": "The token response returns the requested space-separated scope",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "invalid bearer response",
+      "complete": true
+    },
+    {
+      "label": "A code requested with only client_id and no scope is issued, approved and redeemed for a session",
+      "test": "adapters/sqlstore/session_hooks_planned_test.go",
+      "marker": "w = send(\"POST\", \"/device/code\", \"client_id=tv\", form)"
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L256/Parameter `user_id` (optional)": [
+    {
+      "label": "A code issued with user_id refuses another signed-in user's approval with access_denied, and the bound user can deny it",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "check(decide(first, \"approve\", u, other), 403, \"access_denied\")",
+      "complete": true
+    },
+    {
+      "label": "A code requested without user_id starts unclaimed, and exactly one of two concurrent signed-in GET /device lookups claims it",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "claim race must disclose grant details to exactly one owner"
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L302/`POST /device/token`": [
+    {
+      "label": "Exchange grant_type, device_code and client_id form fields for a session token",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "\"device_code\": {d}, \"client_id\": {c}",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L312/Parameter `device_code`": [
+    {
+      "label": "Only the exact issued device code redeems: a case-changed custom code returns invalid_grant",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "check(poll(limited, strings.ToUpper(d), \"tv\"), 400, \"invalid_grant\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L316/Parameter `client_id`": [
+    {
+      "label": "A poll from a client the validator rejects gets invalid_client, and one from another accepted client gets invalid_grant",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "check(poll(first, d, \"invalid\"), 400, \"invalid_client\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L368/Code Verification": [
+    {
+      "label": "Concurrent GET /device lookups let exactly one signed-in caller claim an unbound code",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "claim race must disclose grant details to exactly one owner",
+      "complete": true
+    },
+    {
+      "label": "GET /device refuses a user code that matches no issued grant with invalid_request",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "check(verify(limited, strings.ToLower(u), owner), 400, \"invalid_request\")"
+    },
+    {
+      "label": "GET /device refuses an expired user code with expired_token",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "check(verify(second, u, owner), 400, \"expired_token\")"
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L369/Authorization": [
+    {
+      "label": "Only the account that claimed the code can decide it; another signed-in account gets access_denied",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "check(decide(first, \"deny\", u, other), 403, \"access_denied\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L430": [
+    {
+      "label": "An approval without a session returns 401 unauthorized",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "check(decide(first, \"approve\", u, nil), 401, \"unauthorized\")"
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L436/`POST /device/approve`": [
+    {
+      "label": "The signed-in claimant approves by posting the JSON userCode; the same request without a session returns 401",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "check(decide(first, \"approve\", u, owner), 200, \"\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L442/Parameter `userCode`": [
+    {
+      "label": "Approve and deny requests carry the user code in the JSON userCode field",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "b, _ := json.Marshal(map[string]string{\"userCode\": code})",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L449/`POST /device/deny`": [
+    {
+      "label": "Denying a claimed code through the Go client makes the next poll return access_denied",
+      "test": "client/deviceauthorization_test.go",
+      "marker": "if err := browser.DenyDeviceCode(ctx, grant.UserCode); err != nil {"
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L455/Parameter `userCode`": [
+    {
+      "label": "The bound user denies a pre-bound code by posting its userCode",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "check(decide(first, \"deny\", u, owner), 200, \"\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L596/`authorization_pending`": [
+    {
+      "label": "A poll for an undecided code returns authorization_pending",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "check(poll(first, d, \"tv\"), 400, \"authorization_pending\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L597/`slow_down`": [
+    {
+      "label": "A poll inside the polling interval, even through another server, returns slow_down",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "check(poll(second, d, \"tv\"), 400, \"slow_down\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L598/`expired_token`": [
+    {
+      "label": "A poll for an expired device code returns expired_token",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "check(poll(second, d, \"tv\"), 400, \"expired_token\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L599/`access_denied`": [
+    {
+      "label": "The first poll after a denial returns access_denied",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "check(poll(second, d, \"tv\"), 400, \"access_denied\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L600/`invalid_client`": [
+    {
+      "label": "A code request from a client the validator rejects returns invalid_client",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "check(send(first, \"POST\", \"/device/code\", \"client_id=no\", form, nil), 400, \"invalid_client\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L601/`invalid_grant`": [
+    {
+      "label": "A poll from another accepted client, or with a consumed code, returns invalid_grant",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "check(poll(first, d, \"cli\"), 400, \"invalid_grant\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L603": [
+    {
+      "label": "The Go client requests a code, polls after browser approval and reads the session with the bearer token",
+      "test": "client/deviceauthorization_test.go",
+      "marker": "grant, err := machine.RequestDeviceCode(ctx, client.DeviceCodeRequest{ClientID: \"cli\", Scope: \"profile\"})"
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L737/Verification and polling limits": [
+    {
+      "label": "The sixth GET /device request from one client returns 429",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "check(verify(limited, u, owner), 429, \"\")"
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L738/Code Expiration": [
+    {
+      "label": "Codes default to an 1800-second lifetime, and an expired code returns expired_token at GET /device and when polled",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "check(verify(second, u, owner), 400, \"expired_token\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L739/Client Validation": [
+    {
+      "label": "With a validator configured, an unregistered client ID is rejected when polling with invalid_client",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "check(poll(first, d, \"invalid\"), 400, \"invalid_client\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L740/HTTPS and approval UI": [
+    {
+      "label": "A code stays pending after lookup until the user explicitly approves or denies it",
+      "test": "client/deviceauthorization_test.go",
+      "marker": "if err != nil || review.Status != \"pending\" || review.ClientID != \"cli\" {"
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L742/Authentication Required": [
+    {
+      "label": "An anonymous lookup sees only status and leaves the code unclaimed; the signed-in claimant alone can then decide it",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "anonymous reviewer saw private grant metadata",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L743/Pre-binding": [
+    {
+      "label": "Another signed-in user cannot see a pre-bound code's details or approve it, and the bound user denies it without claiming",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "pre-bound grant leaked owner metadata",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L749/verificationUri": [
+    {
+      "label": "A relative verification path with a query is resolved against the base URL in verification_uri_complete",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "r.data[\"verification_uri_complete\"] != origin+\"/activate?from=tv&user_code=\""
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L751/expiresIn": [
+    {
+      "label": "The default lifetime is reported as expires_in 1800",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "r.data[\"expires_in\"] != float64(1800)"
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L753/interval": [
+    {
+      "label": "The default polling interval is reported as 5 seconds",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "r.data[\"interval\"] != float64(5)"
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L755/userCodeLength": [
+    {
+      "label": "User codes default to eight characters",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "len(d) != 40 || len(u) != 8"
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L757/deviceCodeLength": [
+    {
+      "label": "Device codes default to 40 characters",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "len(d) != 40 || len(u) != 8"
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L759/generateDeviceCode": [
+    {
+      "label": "A custom device code generator's code is issued and must be polled with its exact case",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "fixed.GenerateDeviceCode ="
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L761/generateUserCode": [
+    {
+      "label": "A custom user code is matched exactly at GET /device: the exact code verifies and a lower-cased copy is refused",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "check(verify(limited, strings.ToLower(u), owner), 400, \"invalid_request\")"
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L763/validateClient": [
+    {
+      "label": "Client IDs the validator accepts get codes and tokens, and the others get invalid_client at both endpoints",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "return c == \"tv\" || c == \"cli\", nil",
+      "complete": true
+    },
+    {
+      "label": "Any client ID is accepted when no validator is configured",
+      "test": "client/deviceauthorization_test.go",
+      "marker": "p, err := deviceauthorization.New(deviceauthorization.Options{})"
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L765/onDeviceAuthRequest": [
+    {
+      "label": "The request hook runs once per issued code",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "device generation defaults or request callback changed"
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L771/device()": [
+    {
+      "label": "The browser client's device() lookup returns the owner's client and scope from either server",
+      "test": "conformance/core.test.mjs",
+      "marker": ".device({ query: { user_code: code.user_code } })",
+      "complete": true
+    },
+    {
+      "label": "GET /device, the endpoint device() calls, refuses a user code that matches no issued grant with invalid_request",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "check(verify(limited, strings.ToLower(u), owner), 400, \"invalid_request\")"
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L772/device.code()": [
+    {
+      "label": "The browser client's device.code() gets codes from either server",
+      "test": "conformance/core.test.mjs",
+      "marker": "await machine.device.code({ client_id: \"console\", scope: \"read\" })",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L773/device.token()": [
+    {
+      "label": "The browser client's device.token() redeems an approved code for a bearer session on the other server",
+      "test": "conformance/core.test.mjs",
+      "marker": "const grant = await otherMachine.device.token(args);",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L774/device.approve()": [
+    {
+      "label": "The browser client's device.approve() returns success for the signed-in claimant on either server",
+      "test": "conformance/core.test.mjs",
+      "marker": "(await identities.get(issuer).device.approve({ userCode: code.user_code })).data, { success: true }",
+      "complete": true
+    },
+    {
+      "label": "An approval without a session returns 401 unauthorized",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "check(decide(first, \"approve\", u, nil), 401, \"unauthorized\")"
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L775/device.deny()": [
+    {
+      "label": "The Go client denies a reviewed device code from the signed-in browser session, and the device's next poll fails with 400 access_denied",
+      "test": "client/deviceauthorization_test.go",
+      "marker": "browser.DenyDeviceCode(ctx, grant.UserCode)"
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L791/`deviceCodeTableFields.id`": [
+    {
+      "label": "The generated deviceCode.id primary key column equals the other runtime's generated DDL on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L797/`deviceCodeTableFields.deviceCode`": [
+    {
+      "label": "The generated not-null deviceCode.deviceCode column and its unique index equal the other runtime's generated DDL on three dialects, bounded to 191 characters on MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L803/`deviceCodeTableFields.userCode`": [
+    {
+      "label": "The generated not-null deviceCode.userCode column and its unique index equal the other runtime's generated DDL on three dialects, bounded to 191 characters on MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L809/`deviceCodeTableFields.userId`": [
+    {
+      "label": "The generated nullable deviceCode.userId column equals the other runtime's generated DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L815/`deviceCodeTableFields.clientId`": [
+    {
+      "label": "The generated nullable deviceCode.clientId column equals the other runtime's generated DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L821/`deviceCodeTableFields.scope`": [
+    {
+      "label": "The generated nullable deviceCode.scope column equals the other runtime's generated DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L827/`deviceCodeTableFields.status`": [
+    {
+      "label": "The generated not-null deviceCode.status column equals the other runtime's generated DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L832/`deviceCodeTableFields.expiresAt`": [
+    {
+      "label": "The generated not-null deviceCode.expiresAt date column equals the other runtime's generated DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L837/`deviceCodeTableFields.lastPolledAt`": [
+    {
+      "label": "The generated nullable deviceCode.lastPolledAt date column equals the other runtime's generated DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L843/`deviceCodeTableFields.pollingInterval`": [
+    {
+      "label": "The generated nullable deviceCode.pollingInterval integer column equals the other runtime's generated DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/admin/admin": [
+    {
+      "label": "Install admin.New with custom roles, a configured administrator ID, ban and impersonation options, and drive all fifteen administrative routes over HTTP on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "func TestAdminLifecycleAcrossEngines("
+    }
+  ],
+  "plugin-symbol/admin/ADMIN_ERROR_CODES": [
+    {
+      "label": "Return YOU_ARE_NOT_ALLOWED_TO_GET_USER, YOU_ARE_NOT_ALLOWED_TO_REVOKE_USERS_SESSIONS, YOU_ARE_NOT_ALLOWED_TO_CHANGE_USERS_ROLE, YOU_ARE_NOT_ALLOWED_TO_SET_USERS_EMAIL, YOU_ARE_NOT_ALLOWED_TO_BAN_USERS, USER_ID_CANNOT_BE_UPDATED, PASSWORD_CANNOT_BE_UPDATED_VIA_UPDATE_USER, YOU_ARE_NOT_ALLOWED_TO_SET_NON_EXISTENT_VALUE, YOU_CANNOT_BAN_YOURSELF, YOU_CANNOT_IMPERSONATE_ADMINS and YOU_CANNOT_REMOVE_YOURSELF from the administrative routes over HTTP, and BANNED_USER from email sign-in after a ban",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "func TestAdminLifecycleAcrossEngines("
+    },
+    {
+      "label": "Return YOU_ARE_NOT_ALLOWED_TO_CREATE_USERS after a live demotion and USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL for a taken address",
+      "test": "adapters/sqlstore/admin_user_fields_test.go",
+      "marker": "expectCode(err, \"YOU_ARE_NOT_ALLOWED_TO_CREATE_USERS\")"
+    },
+    {
+      "label": "Return YOU_ARE_NOT_ALLOWED_TO_SET_USERS_PHONE_NUMBER and YOU_ARE_NOT_ALLOWED_TO_UPDATE_USERS for phone edits without the grants",
+      "test": "adapters/sqlstore/phone_admin_test.go",
+      "marker": "phoneError(t, err, 403, \"YOU_ARE_NOT_ALLOWED_TO_UPDATE_USERS\")"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L70": [
+    {
+      "label": "authctl create-admin creates a verified administrator named Admin with the admin role, honours --no-email-verified, and refuses a populated database without --force or --yes on three SQL engines",
+      "test": "cmd/authctl/admin_test.go",
+      "marker": "func TestCreateAdminOptionsAcrossEngines("
+    },
+    {
+      "label": "A configured administrator user ID with no stored role holds administrative grants over HTTP",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "configured admin ID lacks grants"
+    },
+    {
+      "label": "Refuse an administrative listing from a signed-out client with UNAUTHORIZED",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "_, err = guest.AdminListUsers(ctx, authn.AdminQuery{})"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L86/`POST /admin/create-user`": [
+    {
+      "label": "Create an account from email, password, name, a single role string and extra data through the released client on either server, keeping the top-level name, email and role over values in data",
+      "test": "conformance/admin-fields.mjs",
+      "marker": "...target, role: \"user\", data: { ...target.data, role: \"admin\", name: \"ignored\", email: \"other@example.test\" },",
+      "complete": true
+    },
+    {
+      "label": "Create an account holding two roles given as an array",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "Role: []string{\"operator\", \"reader\"}"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L92/Parameter `email`": [
+    {
+      "label": "Store the top-level email on the created account through the released client on either server",
+      "test": "conformance/admin-fields.mjs",
+      "marker": "assert.equal(profile.email, target.email);",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L96/Parameter `password`": [
+    {
+      "label": "Sign in with the password set when the administrator created the account",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "authenticated, err := adminBrowser.SignInEmail(ctx, client.SignInRequest{Email: officer.Email, Password: \"officer-password-sample\"",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L100/Parameter `name`": [
+    {
+      "label": "Store the top-level name on the created account through the released client on either server",
+      "test": "conformance/admin-fields.mjs",
+      "marker": "assert.equal(profile.name, \"Target\");",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L104/Parameter `role` (optional)": [
+    {
+      "label": "Assign two roles given as an array at creation",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "Role: []string{\"operator\", \"reader\"}",
+      "complete": true
+    },
+    {
+      "label": "Assign a single role given as a string through the released client on either server",
+      "test": "conformance/admin-fields.mjs",
+      "marker": "assert.equal(profile.role, \"user\");"
+    },
+    {
+      "label": "Assign the user role when the request gives none",
+      "test": "adapters/sqlstore/admin_user_fields_test.go",
+      "marker": "view.Role != \"user\""
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L117/`GET /admin/list-users`": [
+    {
+      "label": "Combine an email search, a role filter, a descending name sort and limit and offset paging, and return the filtered total",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "admin search/filter/pagination"
+    },
+    {
+      "label": "Refuse the listing from a signed-out client with UNAUTHORIZED",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "_, err = guest.AdminListUsers(ctx, authn.AdminQuery{})"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L123/Parameter `searchValue` (optional)": [
+    {
+      "label": "Return exactly the account whose email matches the search value",
+      "test": "adapters/sqlstore/admin_user_fields_test.go",
+      "marker": "inconsistent administrative list",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L127/Parameter `searchField` (optional)": [
+    {
+      "label": "Search the email field when searchField is email",
+      "test": "adapters/sqlstore/admin_user_fields_test.go",
+      "marker": "SearchField: \"email\", SearchValue: browser.Email"
+    },
+    {
+      "label": "Search the email field when searchField is omitted",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "plainauth.AdminQuery{SearchValue: \"created@example.test\"}"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L131/Parameter `searchOperator` (optional)": [
+    {
+      "label": "Find the created account with a contains email search through the released client on either server",
+      "test": "conformance/admin-fields.mjs",
+      "marker": "searchOperator: \"contains\""
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L135/Parameter `limit` (optional)": [
+    {
+      "label": "Return one row when limit is 1 while the total counts every match",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "Limit: 1, Offset: 1"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L139/Parameter `offset` (optional)": [
+    {
+      "label": "Skip the first sorted match when offset is 1",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "page.Users[0].ID != officer.ID",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L143/Parameter `sortBy` (optional)": [
+    {
+      "label": "Order the filtered accounts by name",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "SortBy: \"name\"",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L147/Parameter `sortDirection` (optional)": [
+    {
+      "label": "Sort names in descending order",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "SortDirection: \"desc\""
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L151/Parameter `filterField` (optional)": [
+    {
+      "label": "Filter accounts on the role field",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "FilterField: \"role\"",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L155/Parameter `filterValue` (optional)": [
+    {
+      "label": "Filter on a list of role values",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "FilterValues: []string{\"operator,reader\", \"admin\"}"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L159/Parameter `filterOperator` (optional)": [
+    {
+      "label": "Match accounts whose role is in the given list",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "FilterOperator: \"in\""
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L215/`GET /admin/get-user`": [
+    {
+      "label": "Refuse get-user to a signed-in account without the user get grant and serve it to an administrator, through the released client on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "(await target.admin.getUser({ query: { id: account.id } })).error.code, \"YOU_ARE_NOT_ALLOWED_TO_GET_USER\")"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L221/Parameter `id`": [
+    {
+      "label": "Fetch the account named by the id query value and read its cleared ban fields",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "unbanned, err := bootstrap.AdminGetUser(ctx, target)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L226": [
+    {
+      "label": "Return the bare user object for an existing id and the USER_NOT_FOUND code for a removed account, through the released client on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "(await api.getUser({ query: { id: created.id } })).error.code, \"USER_NOT_FOUND\")"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L245/`POST /admin/set-role`": [
+    {
+      "label": "Accept a set-role request from an administrator through the released client on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "ok(await api.setRole({ userId: created.id, role: \"user\" }))"
+    },
+    {
+      "label": "Change a role over POST /admin/set-role through the typed client and enforce the new grant",
+      "test": "adapters/sqlstore/phone_admin_test.go",
+      "marker": "_, err = operator.AdminSetRole(ctx, agent.ID, \"profile\")"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L251/Parameter `userId` (optional)": [
+    {
+      "label": "Demote the account named by userId so its existing session can no longer create users",
+      "test": "adapters/sqlstore/admin_user_fields_test.go",
+      "marker": "if _, err := manager.AdminSetRole(ctx, created.User.ID, \"user\"); err != nil {"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L255/Parameter `role`": [
+    {
+      "label": "Set a role sent as a one-element array by the typed client",
+      "test": "adapters/sqlstore/phone_admin_test.go",
+      "marker": "_, err = operator.AdminSetRole(ctx, agent.ID, \"profile\")"
+    },
+    {
+      "label": "Accept a role sent as a single string through the released client on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "ok(await api.setRole({ userId: created.id, role: \"user\" }))"
+    },
+    {
+      "label": "Refuse a role that is not configured",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "adminBrowser.AdminSetRole(ctx, target, \"unknown\")"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L264/`POST /admin/set-user-password`": [
+    {
+      "label": "Return status true and let the account sign in with the new password on the other runtime",
+      "test": "conformance/core.test.mjs",
+      "marker": "ok(await api.setUserPassword({ userId: created.id, newPassword: password + \"-changed\" }))"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L270/Parameter `newPassword`": [
+    {
+      "label": "Sign in on the other runtime with the password an administrator set",
+      "test": "conformance/core.test.mjs",
+      "marker": "ok(await target.signIn.email({ email: created.email, password: password + \"-changed\" }))",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L274/Parameter `userId`": [
+    {
+      "label": "Sign the target account in with the password set for its userId",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "signed, err := userBrowser.SignInEmail(ctx, client.SignInRequest{Email: profile.Email, Password: \"replacement-password\"})",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L283/`POST /admin/update-user`": [
+    {
+      "label": "Return the updated user object itself from POST /admin/update-user on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "ok(await api.updateUser({ userId: created.id, data: { name: \"Updated\" } })).name, \"Updated\")",
+      "complete": true
+    },
+    {
+      "label": "Refuse an update with 401 UNAUTHORIZED once an administrator has revoked the caller's sessions",
+      "test": "adapters/sqlstore/phone_admin_test.go",
+      "marker": "phoneError(t, err, 401, \"UNAUTHORIZED\")"
+    },
+    {
+      "label": "Refuse an update with 403 to a signed-in account whose role lacks the user update grant",
+      "test": "adapters/sqlstore/phone_admin_test.go",
+      "marker": "phoneError(t, err, 403, \"YOU_ARE_NOT_ALLOWED_TO_UPDATE_USERS\")"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L289/Parameter `userId`": [
+    {
+      "label": "Update the account named by userId and return its new name, email and verification state",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "profile, err := adminBrowser.AdminUpdateUser(ctx, target,",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L302/`POST /admin/ban-user`": [
+    {
+      "label": "Return the banned user with its reason and refuse that account's sign-in on the other runtime",
+      "test": "conformance/core.test.mjs",
+      "marker": "ok(await api.banUser({ userId: created.id, banReason: \"Fixture\", banExpiresIn: 1800 })).user.banReason, \"Fixture\")"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L308/Parameter `userId`": [
+    {
+      "label": "Ban the account named by userId after refusing a request that names the acting administrator",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "banned, err := adminBrowser.AdminBanUser(ctx, target, \"\", time.Hour)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L312/Parameter `banReason` (optional)": [
+    {
+      "label": "Return the reason given to ban-user on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "ok(await api.banUser({ userId: created.id, banReason: \"Fixture\", banExpiresIn: 1800 })).user.banReason, \"Fixture\")",
+      "complete": true
+    },
+    {
+      "label": "Use the configured default reason when the request's reason is empty",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "*banned.BanReason != \"Account review\""
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L316/Parameter `banExpiresIn` (optional)": [
+    {
+      "label": "Set an expiry for a one-hour ban and store none for a later ban with a zero duration",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "t.Fatal(\"permanent ban retained previous expiry\")"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L325/`POST /admin/unban-user`": [
+    {
+      "label": "Return the unbanned user with banned false through the released client on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "ok(await api.unbanUser({ userId: created.id })).user.banned, false)"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L331/Parameter `userId`": [
+    {
+      "label": "Lift the ban on the account named by userId so its password sign-in proceeds",
+      "test": "adapters/sqlstore/admin_factor_test.go",
+      "marker": "_, err = staff.AdminUnbanUser(ctx, account.User.ID)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L340/`POST /admin/list-user-sessions`": [
+    {
+      "label": "Return the target's sessions under a sessions key through the released client on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "const listed = ok(await api.listUserSessions({ userId: created.id })).sessions;"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L346/Parameter `userId`": [
+    {
+      "label": "Return the one session belonging to the given userId",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(listed[0].userId, created.id);",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L355/`POST /admin/revoke-user-session`": [
+    {
+      "label": "Return success true and sign the target out on the other runtime",
+      "test": "conformance/core.test.mjs",
+      "marker": "ok(await api.revokeUserSession({ sessionToken: listed[0].token })), { success: true })"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L361/Parameter `sessionToken`": [
+    {
+      "label": "Revoke the session named by a token from the administrative listing",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "must(adminBrowser.AdminRevokeSession(ctx, found[0].Token))",
+      "complete": true
+    },
+    {
+      "label": "Revoke a session by its raw token, which also ends the delegated login that depends on it",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "must(bootstrap.AdminRevokeSession(ctx, *authenticated.Token))"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L370/`POST /admin/revoke-user-sessions`": [
+    {
+      "label": "Return success true and sign the target out on the other runtime",
+      "test": "conformance/core.test.mjs",
+      "marker": "ok(await api.revokeUserSessions({ userId: created.id })), { success: true })"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L376/Parameter `userId`": [
+    {
+      "label": "End the sessions of the account named by userId so its next administrative call answers 401",
+      "test": "adapters/sqlstore/phone_admin_test.go",
+      "marker": "must(operator.AdminRevokeUserSessions(ctx, agent.ID))",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L385/`POST /admin/impersonate-user`": [
+    {
+      "label": "Return a session whose impersonatedBy is the administrator, through the released client on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(delegated.session.impersonatedBy, account.id);"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L391/Parameter `userId`": [
+    {
+      "label": "Make the administrator's browser act as the account named by userId",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(ok(await actor.getSession()).user.id, created.id);",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L413/`POST /admin/stop-impersonating`": [
+    {
+      "label": "Restore the administrator's original session token through the released client on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(restored.session.token, original.token);"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L424/`POST /admin/remove-user`": [
+    {
+      "label": "Return success true from remove-user through the released client on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "ok(await api.removeUser({ userId: created.id })), { success: true })"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L430/Parameter `userId`": [
+    {
+      "label": "Remove the account named by userId",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "must(bootstrap.AdminRemoveUser(ctx, target))",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L443/`admin`": [
+    {
+      "label": "Let an account given the default admin role run every administrative route on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "db.prepare('UPDATE \"user\" SET \"role\"=? WHERE \"id\"=?').run(\"admin\", account.id);",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L445/`user`": [
+    {
+      "label": "Refuse get-user on both runtimes to an account holding the built-in user role",
+      "test": "conformance/core.test.mjs",
+      "marker": "(await target.admin.getUser({ query: { id: account.id } })).error.code, \"YOU_ARE_NOT_ALLOWED_TO_GET_USER\")"
+    },
+    {
+      "label": "Refuse get-user to an ordinary signed-up account whose configured user role has no grants, and report no user list grant for it",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "t.Fatal(\"public role received user listing\")"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L455/user": [
+    {
+      "label": "Refuse an email verification change to a role that holds update but not set-email",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "expect(err, \"YOU_ARE_NOT_ALLOWED_TO_SET_USERS_EMAIL\")"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L458/session": [
+    {
+      "label": "Let a role holding session list list sessions and refuse it revocation without session revoke",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "expect(staff.AdminRevokeSession(ctx, handle), \"YOU_ARE_NOT_ALLOWED_TO_REVOKE_USERS_SESSIONS\")"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L469": [
+    {
+      "label": "Create an access controller from a resource and action vocabulary and refuse roles outside it",
+      "test": "plugins/access/access_test.go",
+      "marker": "control := access.New(vocabulary)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L492": [
+    {
+      "label": "Define reader and manager roles with their own grants and evaluate each one separately",
+      "test": "plugins/admin/admin_test.go",
+      "marker": "custom := admin.Options{DefaultRole: \"reader\""
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L540": [
+    {
+      "label": "Pass custom profile and phone roles to the plugin and enforce the phone grant on administrative updates",
+      "test": "adapters/sqlstore/phone_admin_test.go",
+      "marker": "\"profile\": {\"user\": {\"create\", \"update\"}}, \"phone\": {\"user\": {\"update\", \"set-phone\"}}"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L592/`POST /admin/has-permission`": [
+    {
+      "label": "Report success true for an administrator's user list check through the released client on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "ok(await api.hasPermission({ permissions: { user: [\"list\"] } })).success, true)"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L603/Parameter `role` (optional)": [
+    {
+      "label": "Evaluate a role passed directly, with no user id, against the default grants",
+      "test": "plugins/admin/admin_test.go",
+      "marker": "policy.HasPermission(\"\", \"admin\"",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L611/Parameter `permissions` (optional)": [
+    {
+      "label": "Refuse a check for two user actions that the caller holds only through two separate roles",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "both, err := staff.AdminHasPermission(ctx, authn.AdminPermissions{\"user\": {\"create\", \"get\"}})"
+    },
+    {
+      "label": "Report success true for a permissions object naming the user list action, through the released client on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "ok(await api.hasPermission({ permissions: { user: [\"list\"] } })).success, true)"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L672/Check Role Permission": [
+    {
+      "label": "Evaluate the default admin role's grants locally, with no request or user",
+      "test": "plugins/admin/admin_test.go",
+      "marker": "policy.HasPermission(\"\", \"admin\""
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L704/`adminUserTableFields.role`": [
+    {
+      "label": "Give a regular sign-up the user role",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "regular signup did not receive its default role",
+      "complete": true
+    },
+    {
+      "label": "Emit the admin user and session columns the other runtime generates on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"the CLI emits the pinned plugin schema"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L711/`adminUserTableFields.banned`": [
+    {
+      "label": "Mark a banned account banned with its reason and expiry",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "t.Fatal(\"temporary ban fields\")",
+      "complete": true
+    },
+    {
+      "label": "Emit the admin user and session columns the other runtime generates on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"the CLI emits the pinned plugin schema"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L717/`adminUserTableFields.banReason`": [
+    {
+      "label": "Return the reason given to ban-user on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "ok(await api.banUser({ userId: created.id, banReason: \"Fixture\", banExpiresIn: 1800 })).user.banReason, \"Fixture\")",
+      "complete": true
+    },
+    {
+      "label": "Emit the admin user and session columns the other runtime generates on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"the CLI emits the pinned plugin schema"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L723/`adminUserTableFields.banExpires`": [
+    {
+      "label": "Lift a ban whose stored expiry has passed when the user next signs in",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "expired ban not cleared during login",
+      "complete": true
+    },
+    {
+      "label": "Emit the admin user and session columns the other runtime generates on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"the CLI emits the pinned plugin schema"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L736/`adminSessionTableFields.impersonatedBy`": [
+    {
+      "label": "Record the impersonating administrator's id on the temporary session",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "t.Fatal(\"delegated session has no owner\")",
+      "complete": true
+    },
+    {
+      "label": "Emit the admin user and session columns the other runtime generates on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"the CLI emits the pinned plugin schema"
+    }
+  ],
+  "plugin/jwt": [
+    {
+      "label": "Publish keys and issue signed tokens on both servers, and reject a token checked against the other server's keys",
+      "test": "conformance/core.test.mjs",
+      "marker": "await assert.rejects(jwtVerify(issued[0].token, issued[1].jwks));"
+    }
+  ],
+  "plugin-symbol/jwt/jwtClient": [
+    {
+      "label": "Read the key set and request a token through the published client against both servers",
+      "test": "conformance/core.test.mjs",
+      "marker": "test(\"isolated issuers publish public keys"
+    },
+    {
+      "label": "The Go client reads the key set without a session, is refused a token anonymously and receives one after sign-up",
+      "test": "client/jwt_test.go",
+      "marker": "anonymous signing accepted"
+    }
+  ],
+  "plugin-symbol/jwt/jwt": [
+    {
+      "label": "Install the plugin with issuer, audience, lifetime, rotation and key-path settings, and serve its key and token routes",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "func TestJWTIssuanceAndKeyRotation("
+    }
+  ],
+  "plugin-symbol/jwt/resolveSigningKey": [
+    {
+      "label": "Sign with a pinned key ID or algorithm, and refuse a pinned key ID that does not exist or does not match the requested algorithm",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "missing key generated replacement"
+    }
+  ],
+  "plugin-symbol/jwt/signJWT": [
+    {
+      "label": "Sign trusted claims with extra type and content-type header values under each configured algorithm, keeping the server-chosen subject",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "opts := auth.JWTSignOptions{Algorithm: algorithm, Type: \"events+jwt\", ContentType: \"application/json\""
+    }
+  ],
+  "plugin-symbol/jwt/getJwtToken": [
+    {
+      "label": "Build the token from a host payload function while keeping the authenticated user as subject",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "custom payload or subject binding changed"
+    }
+  ],
+  "plugin-symbol/jwt/JwtOptions": [
+    {
+      "label": "Apply issuer, audience, lifetime and key-path settings to issued tokens and the published key set",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "opts := jwtplugin.Options{Issuer: origin + \"/issuer\", Audience: \"service\", Expiration: 2 * time.Minute, RotationInterval: time.Hour, JWKSPath: \"/public-keys\"}"
+    }
+  ],
+  "plugin-symbol/jwt/JWKOptions": [
+    {
+      "label": "Generate and independently verify keys for each supported algorithm with the default RSA modulus length",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "independent verifier rejected %s:"
+    }
+  ],
+  "plugin-symbol/jwt/JWKOptions/alg": [
+    {
+      "label": "Issue and independently verify tokens for each of EdDSA, ES256, ES512, PS256 and RS256",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "independent verifier rejected %s:",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/jwt/JWKOptions/crv": [
+    {
+      "label": "Publish the default EdDSA key on the Ed25519 curve",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "invalid public key projection",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/jwt/Jwk": [
+    {
+      "label": "Publish a stored key under its row ID as key ID, with algorithm EdDSA, curve Ed25519 and no private members",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "invalid public key projection"
+    }
+  ],
+  "plugin-symbol/jwt/createJwk": [
+    {
+      "label": "Create the first signing key on demand and store its private half encrypted",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "stored private signing key was unprotected"
+    }
+  ],
+  "plugin-symbol/jwt/generateExportedKeyPair": [
+    {
+      "label": "Generate a key pair for each supported algorithm, publish the public half and verify tokens signed with the private half",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "independent verifier rejected %s:"
+    }
+  ],
+  "plugin-symbol/jwt/toExpJWT": [
+    {
+      "label": "Set the expiry from the configured relative lifetime",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "incorrect default profile or configured lifetime"
+    }
+  ],
+  "plugin-symbol/jwt/verifyJWT": [
+    {
+      "label": "Return the verified claims of a token signed with a published key",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "missing verified claims: %v"
+    }
+  ],
+  "docs/content/docs/plugins/jwt.mdx": [
+    {
+      "label": "Publish a key set and issue verifiable service tokens with the plugin on both servers",
+      "test": "conformance/core.test.mjs",
+      "marker": "test(\"isolated issuers publish public keys"
+    }
+  ],
+  "docs/content/docs/plugins/jwt.mdx#L75": [
+    {
+      "label": "Fetch the key set and a token through their endpoints with the published client on both servers",
+      "test": "conformance/core.test.mjs",
+      "marker": "const keys = (await client.jwks()).data;",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/jwt.mdx#L85/Using the client plugin (recommended)": [
+    {
+      "label": "Request a token with the published client's token action on both servers and read it from data.token",
+      "test": "conformance/core.test.mjs",
+      "marker": "const response = await client.token();",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/jwt.mdx#L102/Using your session token": [
+    {
+      "label": "Return the token as {token} from GET /token for a request carrying the session cookie",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "authenticated issuance failed"
+    }
+  ],
+  "docs/content/docs/plugins/jwt.mdx#L122/From `set-auth-jwt` header": [
+    {
+      "label": "Return a three-part token in the set-auth-jwt header on session retrieval and add it to the exposed headers",
+      "test": "adapters/sqlstore/custom_session_test.go",
+      "marker": "authoritative JWT or deployment headers changed by the session view"
+    }
+  ],
+  "docs/content/docs/plugins/jwt.mdx#L138": [
+    {
+      "label": "Verify a service token locally with the published key set, and match its key ID to the published key",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(protectedHeader.kid, keys.keys[0].kid);"
+    }
+  ],
+  "docs/content/docs/plugins/jwt.mdx#L164": [
+    {
+      "label": "Verify a token against keys fetched from the key endpoint by the client, with the server URL as issuer and audience",
+      "test": "conformance/core.test.mjs",
+      "marker": "algorithms: [\"EdDSA\"], issuer: target.baseURL, audience: target.baseURL,"
+    }
+  ],
+  "docs/content/docs/plugins/jwt.mdx#L190": [
+    {
+      "label": "Build a local key set from the fetched keys and verify the token with the server URL as issuer and audience",
+      "test": "conformance/core.test.mjs",
+      "marker": "const jwks = createLocalJWKSet(keys);",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/jwt.mdx#L267": [
+    {
+      "label": "Serve the key set at a configured path to anonymous callers",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "public bootstrap: %d %s"
+    },
+    {
+      "label": "Serve the key set at the default /jwks path to the Go client",
+      "test": "client/jwt_test.go",
+      "marker": "anonymous discovery failed"
+    }
+  ],
+  "docs/content/docs/plugins/jwt.mdx#L277/Server Configuration:": [
+    {
+      "label": "Advertise a configured key path in discovery and verify issued tokens with keys fetched from it",
+      "test": "conformance/oauth-issuer-metadata.mjs",
+      "marker": "const keys = createLocalJWKSet(await (await fetch(doc.jwks_uri)).json());",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/jwt.mdx#L390": [
+    {
+      "label": "Generate the jwks table for the jwt profile exactly as the other runtime does on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"the CLI emits the pinned plugin schema",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/jwt.mdx#L394": [
+    {
+      "label": "Add the jwks table to a populated SQLite database so that it matches the other runtime's fresh schema",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"adding plugin profiles to a populated SQLite database"
+    }
+  ],
+  "docs/content/docs/plugins/jwt.mdx#L400/`jwksTableFields.id`": [
+    {
+      "label": "The generated jwks.id column is a not-null string primary key (varchar(36) on MySQL), identical to the other runtime's DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/jwt.mdx#L406/`jwksTableFields.publicKey`": [
+    {
+      "label": "The generated jwks.publicKey column is not-null text, identical to the other runtime's DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/jwt.mdx#L411/`jwksTableFields.privateKey`": [
+    {
+      "label": "The generated jwks.privateKey column is not-null text, identical to the other runtime's DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/jwt.mdx#L416/`jwksTableFields.alg`": [
+    {
+      "label": "The generated nullable jwks.alg text column is identical to the other runtime's DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/jwt.mdx#L422/`jwksTableFields.crv`": [
+    {
+      "label": "The generated nullable jwks.crv text column is identical to the other runtime's DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/jwt.mdx#L428/`jwksTableFields.createdAt`": [
+    {
+      "label": "The generated jwks.createdAt column is a not-null date, identical to the other runtime's DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/jwt.mdx#L433/`jwksTableFields.expiresAt`": [
+    {
+      "label": "The generated nullable jwks.expiresAt date column is identical to the other runtime's DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/jwt.mdx#L458": [
+    {
+      "label": "Generate an EdDSA key on the Ed25519 curve when no algorithm is configured",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "invalid public key projection"
+    },
+    {
+      "label": "Issue and independently verify tokens for each configured algorithm",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "independent verifier rejected %s:"
+    }
+  ],
+  "docs/content/docs/plugins/jwt.mdx#L473": [
+    {
+      "label": "Sign with the default EdDSA key and verify the token independently against its published public key",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "independent verifier rejected signed JWT"
+    }
+  ],
+  "docs/content/docs/plugins/jwt.mdx#L475/Default Curve": [
+    {
+      "label": "Publish the default signing key as an EdDSA key on the Ed25519 curve",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "invalid public key projection",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/jwt.mdx#L480": [
+    {
+      "label": "Sign with a generated ES256 key and verify the token independently against the published key",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "independent verifier rejected ES256: %v",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/jwt.mdx#L484": [
+    {
+      "label": "Issue RS256 tokens and verify them independently against the published key",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "independent verifier rejected %s:"
+    }
+  ],
+  "docs/content/docs/plugins/jwt.mdx#L490": [
+    {
+      "label": "Issue PS256 tokens and verify them independently against the published key",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "independent verifier rejected %s:"
+    }
+  ],
+  "docs/content/docs/plugins/jwt.mdx#L502": [
+    {
+      "label": "Issue ES512 tokens and verify them independently against the published key",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "independent verifier rejected %s:",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/jwt.mdx#L520": [
+    {
+      "label": "Keep issuing tokens on both servers after the current key expires, and publish one new key beside the expired one",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "rotation: %d %s"
+    }
+  ],
+  "docs/content/docs/plugins/jwt.mdx#L536/`gracePeriod`": [
+    {
+      "label": "Keep an expired key published within the default 30-day grace period, and drop it once that period has passed",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "expired key remained published"
+    }
+  ],
+  "docs/content/docs/plugins/jwt.mdx#L538": [
+    {
+      "label": "Put the user's email in the default payload, and use only a host payload function's claims when one is configured",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "custom payload or subject binding changed"
+    }
+  ],
+  "docs/content/docs/plugins/jwt.mdx#L556": [
+    {
+      "label": "Sign with a configured issuer, audience and lifetime that an independent verifier accepts",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "independent verifier rejected signed JWT"
+    },
+    {
+      "label": "Default to the server URL as issuer and audience and to a 15-minute lifetime on both servers",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(payload.exp - payload.iat, 900);"
     }
   ]
 }

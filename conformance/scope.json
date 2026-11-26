@@ -887,6 +887,83 @@
         "Parameter `returnWebAuthnResponse` (optional)"
       ],
       "reason": "not applicable: browser WebAuthn client behaviour"
+    },
+    {
+      "page": "plugins/2fa.md",
+      "section": "Interfaces",
+      "labels": [
+        "`TwoFactorProvider`"
+      ],
+      "reason": "not applicable: TypeScript type"
+    },
+    {
+      "page": "plugins/2fa.md",
+      "section": "Interfaces",
+      "within": "`TOTPOptions`",
+      "labels": [
+        "`backupCodes`"
+      ],
+      "reason": "not applicable: TypeScript type field"
+    },
+    {
+      "page": "plugins/2fa.md",
+      "section": "Two-Factor Authentication (2FA)",
+      "labels": [
+        "Example: Using React",
+        "Client"
+      ],
+      "reason": "not applicable: JavaScript only"
+    },
+    {
+      "page": "plugins/device-authorization.md",
+      "section": "Interfaces",
+      "labels": [
+        "`deviceAuthorizationOptionsSchema`"
+      ],
+      "reason": "not applicable: JavaScript only"
+    },
+    {
+      "page": "plugins/device-authorization.md",
+      "section": "Device Authorization",
+      "labels": [
+        "Try It Out",
+        "Example Approval Page"
+      ],
+      "reason": "not applicable: JavaScript only"
+    },
+    {
+      "page": "plugins/admin.md",
+      "section": "Interfaces",
+      "labels": [
+        "`AdminClientOptions`",
+        "`InferAdminRolesFromOption`"
+      ],
+      "reason": "not applicable: JavaScript only"
+    },
+    {
+      "page": "plugins/admin.md",
+      "section": "Interfaces",
+      "within": "`AdminOptions`",
+      "labels": [
+        "`ac`"
+      ],
+      "reason": "not applicable: TypeScript type inference"
+    },
+    {
+      "page": "plugins/admin.md",
+      "section": "Admin",
+      "labels": [
+        "How to Implement Pagination"
+      ],
+      "reason": "not applicable: JavaScript example"
+    },
+    {
+      "page": "plugins/jwt.md",
+      "section": "Interfaces",
+      "labels": [
+        "`ResolvedSigningKey`"
+      ],
+      "reason": "not applicable: TypeScript type"
     }
   ],
   "backlog": [

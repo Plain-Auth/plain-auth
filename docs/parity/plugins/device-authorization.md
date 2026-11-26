@@ -7,13 +7,22 @@
 - [ ] Device authorization endpoints, types and options
   - [x] `deviceAuthorizationClient` ([test](../../../conformance/core.test.mjs#L459))
     - [x] Use the browser SDK methods across a shared SQLite installation ([test](../../../conformance/core.test.mjs#L459))
-  - [ ] `deviceAuthorizationOptionsSchema`
+  - `deviceAuthorizationOptionsSchema` — *not applicable: JavaScript only*
   - [ ] `DeviceAuthorizationOptions`
-  - [ ] `DeviceAuthorizationRequest`
+    - [x] Build verification links from a custom path, refuse a client that ValidateClient rejects, and call OnDeviceAuthRequest only for the accepted code request ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L30))
+    - [x] Issue 40-character device codes and 8-character user codes by default ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L111))
+    - [x] Default to a 30-minute code lifetime and a five-second polling interval ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L92))
+    - [x] Issue codes from custom device and user code generators ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L196))
+  - [x] `DeviceAuthorizationRequest` ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L88))
+    - [x] Accept client_id, scope and an optional user_id on a code request, treating an empty user_id as omitted and pre-binding a given one ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L88))
+    - [x] Hide a pre-bound request's details from a reviewer who is not its account ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L162))
   - [ ] `DeviceAuthorizationGrantAuthorization`
   - [ ] `DeviceAuthorizationGrant`
   - [ ] `DeviceAuthorizationPluginOptions`
   - [ ] `deviceAuthorization`
+    - [x] Serve the code, token, verification, approve and deny routes against SQLite, PostgreSQL and MySQL stores ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L19))
+    - [x] Answer 429 to the sixth GET /device lookup once five have been made ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L207))
+    - [x] Share device grants with the other runtime through the released client ([test](../../../conformance/core.test.mjs#L459))
   - [ ] `POST /device/code`
     - [x] Issue distinct indexed codes with expiry, polling interval, callback and display links ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L111))
     - [x] Require an allowed client and reject repeated form parameters ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L107))
@@ -32,99 +41,169 @@
   - [ ] `DeviceCodeRedemptionAuthorization`
   - [ ] `DeviceCodeRedemptionResult`
   - [ ] `redeemDeviceCode`
-  - [ ] `DeviceCode`
+  - [x] `DeviceCode` ([test](../../../conformance/schema.test.mjs#L106))
+    - [x] Generate the deviceCode table with the same columns, optional fields and unique indexes as the other runtime's migration on SQLite, PostgreSQL and MySQL ([test](../../../conformance/schema.test.mjs#L106))
 
 ## Device Authorization
 
 - [ ] Device Authorization
-  - [ ] Try It Out
+  - Try It Out — *not applicable: JavaScript only*
   - [ ] How It Works
-    - [ ] Device requests codes
-    - [ ] User authorizes
-    - [ ] Device polls for token
+    - [x] Device requests codes ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L93))
+      - [x] POST /device/code returns a device code and a user code ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L93))
+    - [x] User authorizes ([test](../../../client/deviceauthorization_test.go#L76))
+      - [x] A signed-in browser looks up the displayed user code at GET /device and approves it through the Go client ([test](../../../client/deviceauthorization_test.go#L76))
+    - [x] Device polls for token ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L115))
+      - [x] A poll before approval returns authorization_pending and the poll after approval returns the token ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L115))
     - [ ] Access granted
+      - [x] The approved poll returns a session token stored for the approving user ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L157))
     - [ ] Production security requirements
+      - [x] GET /device returns the requesting client and scopes to the signed-in owner so an approval page can show them ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L128))
   - [ ] Choose the token your device needs
-    - [ ] Sign your own device into the same authentication application
+    - [x] Sign your own device into the same authentication application ([test](../../../client/deviceauthorization_test.go#L87))
+      - [x] An approved code exchanged at /device/token yields a session token that authenticates the approving user as a bearer credential ([test](../../../client/deviceauthorization_test.go#L87))
     - [ ] Let a registered CLI, TV app, or other public client call an OAuth-protected API
     - [ ] Authorize a CLI to call an API
   - [ ] First-party session flow
     - [ ] Requesting Device Authorization
       - [x] Accept JSON and URL-encoded code requests ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L107))
       - [ ] `POST /device/code`
+        - [x] Issue codes for form requests carrying client_id and scope, with an empty or pre-bound user_id ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L86))
         - [ ] Parameter `client_id`
-        - [ ] Parameter `scope` (optional)
-        - [ ] Parameter `user_id` (optional)
-    - [ ] Pre-binding to a User
+          - [x] Reject a repeated client_id and one the validator refuses at POST /device/code ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L107))
+        - [x] Parameter `scope` (optional) ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L153))
+          - [x] The token response returns the requested space-separated scope ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L153))
+          - [x] A code requested with only client_id and no scope is issued, approved and redeemed for a session ([test](../../../adapters/sqlstore/session_hooks_planned_test.go#L148))
+        - [x] Parameter `user_id` (optional) ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L164))
+          - [x] A code issued with user_id refuses another signed-in user's approval with access_denied, and the bound user can deny it ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L164))
+          - [x] A code requested without user_id starts unclaimed, and exactly one of two concurrent signed-in GET /device lookups claims it ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L183))
+    - [x] Pre-binding to a User ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L165))
       - [x] Restrict pre-bound requests to the specified signed-in account ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L162))
+      - [x] The bound user denies a pre-bound code without first claiming it at GET /device ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L165))
     - [ ] Polling for a authentication session token
       - [x] Issue the approving user a separate first-party bearer session ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L157))
+      - [x] Polls return authorization_pending, slow_down, access_denied and expired_token, and an approved code returns a bearer session token ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L19))
       - [ ] `POST /device/token`
+        - [x] Exchange grant_type, device_code and client_id form fields for a session token ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L98))
         - [ ] Parameter `grant_type`
-        - [ ] Parameter `device_code`
-        - [ ] Parameter `client_id`
+        - [x] Parameter `device_code` ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L200))
+          - [x] Only the exact issued device code redeems: a case-changed custom code returns invalid_grant ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L200))
+        - [x] Parameter `client_id` ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L113))
+          - [x] A poll from a client the validator rejects gets invalid_client, and one from another accepted client gets invalid_grant ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L113))
     - [ ] User Authorization Flow
       - [x] Claim verification and restrict private scope metadata ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L122))
-      - [ ] Code Verification
-      - [ ] Authorization
+      - [x] Code Verification ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L183))
+        - [x] Concurrent GET /device lookups let exactly one signed-in caller claim an unbound code ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L183))
+        - [x] GET /device refuses a user code that matches no issued grant with invalid_request ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L201))
+        - [x] GET /device refuses an expired user code with expired_token ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L172))
+      - [x] Authorization ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L135))
+        - [x] Only the account that claimed the code can decide it; another signed-in account gets access_denied ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L135))
     - [ ] Approving or Denying Device
-      - [ ] Approve Device
+      - [x] An approval without a session returns 401 unauthorized ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L117))
+      - [x] Approve Device ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L117))
         - [x] Allow only the claimant to record the pending decision ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L136))
-        - [ ] `POST /device/approve`
-          - [ ] Parameter `userCode`
+        - [x] An approval without a session returns 401 unauthorized, and the signed-in claimant's approval succeeds ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L117))
+        - [x] `POST /device/approve` ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L136))
+          - [x] The signed-in claimant approves by posting the JSON userCode; the same request without a session returns 401 ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L136))
+          - [x] Parameter `userCode` ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L104))
+            - [x] Approve and deny requests carry the user code in the JSON userCode field ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L104))
       - [ ] Deny Device
         - [x] Consume denied grants and refuse a second decision ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L166))
         - [ ] `POST /device/deny`
-          - [ ] Parameter `userCode`
-      - [ ] Example Approval Page
+          - [x] Denying a claimed code through the Go client makes the next poll return access_denied ([test](../../../client/deviceauthorization_test.go#L66))
+          - [x] Parameter `userCode` ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L165))
+            - [x] The bound user denies a pre-bound code by posting its userCode ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L165))
+      - Example Approval Page — *not applicable: JavaScript only*
   - [ ] Advanced Configuration
-    - [ ] Client Validation
+    - [x] Client Validation ([test](../../../client/deviceauthorization_test.go#L30))
       - [x] Validate clients at both code and token endpoints ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L113))
+      - [x] Accept any client ID when no validator is configured ([test](../../../client/deviceauthorization_test.go#L30))
     - [ ] Custom Code Generation
       - [x] Handle custom case-sensitive codes and duplicate generation ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L197))
-  - [ ] Error Handling
+  - [x] Error Handling ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L81))
     - [x] Return OAuth status, error code and description to the Go client ([test](../../../client/deviceauthorization_test.go#L72))
-    - [ ] `authorization_pending`
-    - [ ] `slow_down`
-    - [ ] `expired_token`
-    - [ ] `access_denied`
-    - [ ] `invalid_client`
-    - [ ] `invalid_grant`
+    - [x] Each listed error comes with an error_description: authorization_pending, slow_down, expired_token, access_denied, invalid_client and invalid_grant ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L81))
+    - [x] `authorization_pending` ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L115))
+      - [x] A poll for an undecided code returns authorization_pending ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L115))
+    - [x] `slow_down` ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L116))
+      - [x] A poll inside the polling interval, even through another server, returns slow_down ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L116))
+    - [x] `expired_token` ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L173))
+      - [x] A poll for an expired device code returns expired_token ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L173))
+    - [x] `access_denied` ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L166))
+      - [x] The first poll after a denial returns access_denied ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L166))
+    - [x] `invalid_client` ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L108))
+      - [x] A code request from a client the validator rejects returns invalid_client ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L108))
+    - [x] `invalid_grant` ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L114))
+      - [x] A poll from another accepted client, or with a consumed code, returns invalid_grant ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L114))
   - [ ] Example: CLI Application
+    - [x] The Go client requests a code, polls after browser approval and reads the session with the bearer token ([test](../../../client/deviceauthorization_test.go#L57))
   - [ ] Security Considerations
     - [ ] Verification and polling limits
-    - [ ] Code Expiration
-    - [ ] Client Validation
+      - [x] The sixth GET /device request from one client returns 429 ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L207))
+    - [x] Code Expiration ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L172))
+      - [x] Codes default to an 1800-second lifetime, and an expired code returns expired_token at GET /device and when polled ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L172))
+    - [x] Client Validation ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L113))
+      - [x] With a validator configured, an unregistered client ID is rejected when polling with invalid_client ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L113))
     - [ ] HTTPS and approval UI
+      - [x] A code stays pending after lookup until the user explicitly approves or denies it ([test](../../../client/deviceauthorization_test.go#L62))
     - [ ] User Code Format
-    - [ ] Authentication Required
-    - [ ] Pre-binding
+    - [x] Authentication Required ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L122))
+      - [x] An anonymous lookup sees only status and leaves the code unclaimed; the signed-in claimant alone can then decide it ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L122))
+    - [x] Pre-binding ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L162))
+      - [x] Another signed-in user cannot see a pre-bound code's details or approve it, and the bound user denies it without claiming ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L162))
   - [ ] Options
     - [ ] Server
       - [ ] verificationUri
+        - [x] A relative verification path with a query is resolved against the base URL in verification_uri_complete ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L92))
       - [ ] expiresIn
+        - [x] The default lifetime is reported as expires_in 1800 ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L92))
       - [ ] interval
+        - [x] The default polling interval is reported as 5 seconds ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L92))
       - [ ] userCodeLength
+        - [x] User codes default to eight characters ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L110))
       - [ ] deviceCodeLength
+        - [x] Device codes default to 40 characters ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L110))
       - [ ] generateDeviceCode
+        - [x] A custom device code generator's code is issued and must be polled with its exact case ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L196))
       - [ ] generateUserCode
-      - [ ] validateClient
+        - [x] A custom user code is matched exactly at GET /device: the exact code verifies and a lower-cased copy is refused ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L201))
+      - [x] validateClient ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L30))
+        - [x] Client IDs the validator accepts get codes and tokens, and the others get invalid_client at both endpoints ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L30))
+        - [x] Any client ID is accepted when no validator is configured ([test](../../../client/deviceauthorization_test.go#L30))
       - [ ] onDeviceAuthRequest
+        - [x] The request hook runs once per issued code ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L111))
     - [ ] Client
-      - [ ] device()
-      - [ ] device.code()
-      - [ ] device.token()
-      - [ ] device.approve()
+      - [x] device() ([test](../../../conformance/core.test.mjs#L481))
+        - [x] The browser client's device() lookup returns the owner's client and scope from either server ([test](../../../conformance/core.test.mjs#L481))
+        - [x] GET /device, the endpoint device() calls, refuses a user code that matches no issued grant with invalid_request ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L201))
+      - [x] device.code() ([test](../../../conformance/core.test.mjs#L479))
+        - [x] The browser client's device.code() gets codes from either server ([test](../../../conformance/core.test.mjs#L479))
+      - [x] device.token() ([test](../../../conformance/core.test.mjs#L486))
+        - [x] The browser client's device.token() redeems an approved code for a bearer session on the other server ([test](../../../conformance/core.test.mjs#L486))
+      - [x] device.approve() ([test](../../../conformance/core.test.mjs#L484))
+        - [x] The browser client's device.approve() returns success for the signed-in claimant on either server ([test](../../../conformance/core.test.mjs#L484))
+        - [x] An approval without a session returns 401 unauthorized ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L117))
       - [ ] device.deny()
+        - [x] The Go client denies a reviewed device code from the signed-in browser session, and the device's next poll fails with 400 access_denied ([test](../../../client/deviceauthorization_test.go#L66))
   - [ ] Schema
     - [x] Compare canonical device fields and unique indexes on all three SQL dialects ([test](../../../conformance/schema.test.mjs#L106))
-    - [ ] `deviceCodeTableFields.id`
-    - [ ] `deviceCodeTableFields.deviceCode`
-    - [ ] `deviceCodeTableFields.userCode`
-    - [ ] `deviceCodeTableFields.userId`
-    - [ ] `deviceCodeTableFields.clientId`
-    - [ ] `deviceCodeTableFields.scope`
-    - [ ] `deviceCodeTableFields.status`
-    - [ ] `deviceCodeTableFields.expiresAt`
-    - [ ] `deviceCodeTableFields.lastPolledAt`
-    - [ ] `deviceCodeTableFields.pollingInterval`
+    - [x] `deviceCodeTableFields.id` ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] The generated deviceCode.id primary key column equals the other runtime's generated DDL on SQLite, PostgreSQL and MySQL ([test](../../../conformance/schema.test.mjs#L116))
+    - [x] `deviceCodeTableFields.deviceCode` ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] The generated not-null deviceCode.deviceCode column and its unique index equal the other runtime's generated DDL on three dialects, bounded to 191 characters on MySQL ([test](../../../conformance/schema.test.mjs#L116))
+    - [x] `deviceCodeTableFields.userCode` ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] The generated not-null deviceCode.userCode column and its unique index equal the other runtime's generated DDL on three dialects, bounded to 191 characters on MySQL ([test](../../../conformance/schema.test.mjs#L116))
+    - [x] `deviceCodeTableFields.userId` ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] The generated nullable deviceCode.userId column equals the other runtime's generated DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+    - [x] `deviceCodeTableFields.clientId` ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] The generated nullable deviceCode.clientId column equals the other runtime's generated DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+    - [x] `deviceCodeTableFields.scope` ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] The generated nullable deviceCode.scope column equals the other runtime's generated DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+    - [x] `deviceCodeTableFields.status` ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] The generated not-null deviceCode.status column equals the other runtime's generated DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+    - [x] `deviceCodeTableFields.expiresAt` ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] The generated not-null deviceCode.expiresAt date column equals the other runtime's generated DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+    - [x] `deviceCodeTableFields.lastPolledAt` ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] The generated nullable deviceCode.lastPolledAt date column equals the other runtime's generated DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+    - [x] `deviceCodeTableFields.pollingInterval` ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] The generated nullable deviceCode.pollingInterval integer column equals the other runtime's generated DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))

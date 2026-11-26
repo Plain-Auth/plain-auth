@@ -11,17 +11,23 @@
   - [ ] `userAc`
   - [ ] `defaultRoles`
   - [ ] `admin`
-  - [ ] `AdminClientOptions`
-    - [ ] `ac`
-    - [ ] `roles`
-  - [ ] `adminClient`
+    - [x] Install admin.New with custom roles, a configured administrator ID, ban and impersonation options, and drive all fifteen administrative routes over HTTP on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/admin_test.go#L21))
+  - `AdminClientOptions` — *not applicable: JavaScript only*
+    - `ac`
+    - `roles`
+  - [x] `adminClient` ([test](../../../conformance/core.test.mjs#L749))
     - [x] Exercise all fifteen administrative client routes on both runtimes with shared database records ([test](../../../conformance/core.test.mjs#L735))
+    - [x] Drive the fifteen administrative routes through the released admin client against the Go server and the other runtime sharing one database ([test](../../../conformance/core.test.mjs#L749))
   - [ ] `ADMIN_ERROR_CODES`
+    - [x] Return YOU_ARE_NOT_ALLOWED_TO_GET_USER, YOU_ARE_NOT_ALLOWED_TO_REVOKE_USERS_SESSIONS, YOU_ARE_NOT_ALLOWED_TO_CHANGE_USERS_ROLE, YOU_ARE_NOT_ALLOWED_TO_SET_USERS_EMAIL, YOU_ARE_NOT_ALLOWED_TO_BAN_USERS, USER_ID_CANNOT_BE_UPDATED, PASSWORD_CANNOT_BE_UPDATED_VIA_UPDATE_USER, YOU_ARE_NOT_ALLOWED_TO_SET_NON_EXISTENT_VALUE, YOU_CANNOT_BAN_YOURSELF, YOU_CANNOT_IMPERSONATE_ADMINS and YOU_CANNOT_REMOVE_YOURSELF from the administrative routes over HTTP, and BANNED_USER from email sign-in after a ban ([test](../../../adapters/sqlstore/admin_test.go#L21))
+    - [x] Return YOU_ARE_NOT_ALLOWED_TO_CREATE_USERS after a live demotion and USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL for a taken address ([test](../../../adapters/sqlstore/admin_user_fields_test.go#L200))
+    - [x] Return YOU_ARE_NOT_ALLOWED_TO_SET_USERS_PHONE_NUMBER and YOU_ARE_NOT_ALLOWED_TO_UPDATE_USERS for phone edits without the grants ([test](../../../adapters/sqlstore/phone_admin_test.go#L79))
   - [ ] `POST /admin/set-role`
     - [x] Assign a configured role and reject an unknown role ([test](../../../adapters/sqlstore/admin_test.go#L154))
-  - [ ] `GET /admin/get-user`
+  - [x] `GET /admin/get-user` ([test](../../../adapters/sqlstore/admin_test.go#L308))
     - [x] Fetch the authorized record and deny an ordinary account ([test](../../../adapters/sqlstore/admin_test.go#L95))
     - [x] Read persisted public fields through an authorized operator after a host update ([test](../../../adapters/sqlstore/admin_user_fields_test.go#L136))
+    - [x] Answer USER_NOT_FOUND when an administrator fetches an account that was removed ([test](../../../adapters/sqlstore/admin_test.go#L308))
   - [ ] `POST /admin/create-user`
     - [x] Create a credential account and assign multiple roles ([test](../../../adapters/sqlstore/admin_test.go#L104))
     - [x] Drop unproven phone numbers at account creation and admit explicit, authorized verified imports ([test](../../../conformance/phone-admin-contract.mjs#L46))
@@ -53,9 +59,10 @@
     - [x] Preserve the delegated-session identity when a running node first observes the administrative schema ([test](../../../adapters/sqlstore/admin_live_schema_test.go#L122))
   - [ ] `POST /admin/stop-impersonating`
     - [x] Restore the initiating login and preserve its original persistence ([test](../../../adapters/sqlstore/admin_test.go#L247))
-  - [ ] `POST /admin/revoke-user-session`
+  - [x] `POST /admin/revoke-user-session` ([test](../../../adapters/sqlstore/admin_test.go#L208))
     - [x] Invalidate a selected token and delegated credentials relying on it ([test](../../../adapters/sqlstore/admin_test.go#L269))
     - [x] Scope revocation to the issuing operator and require the current revoke grant ([test](../../../adapters/sqlstore/admin_test.go#L130))
+    - [x] Sign the target out once an authorized operator revokes its listed session ([test](../../../adapters/sqlstore/admin_test.go#L208))
   - [ ] `POST /admin/revoke-user-sessions`
     - [x] Revoke the target’s sessions through the administrative API ([test](../../../adapters/sqlstore/admin_test.go#L305))
   - [ ] `POST /admin/remove-user`
@@ -65,10 +72,12 @@
   - [ ] `POST /admin/has-permission`
     - [x] Evaluate the authenticated caller’s grants and keep separate roles independent ([test](../../../adapters/sqlstore/admin_test.go#L137))
     - [x] Deny a mixed request containing an empty action list over HTTP on all three SQL engines ([test](../../../adapters/sqlstore/admin_test.go#L142))
-  - [ ] `UserWithRole`
+  - [x] `UserWithRole` ([test](../../../adapters/sqlstore/admin_test.go#L171))
     - [x] Expose role and ban state on a newly created account ([test](../../../adapters/sqlstore/admin_test.go#L92))
-  - [ ] `SessionWithImpersonatedBy`
+    - [x] Return banned, banReason and banExpires on a temporarily banned user ([test](../../../adapters/sqlstore/admin_test.go#L171))
+  - [x] `SessionWithImpersonatedBy` ([test](../../../conformance/core.test.mjs#L775))
     - [x] Preserve the initiating administrator in the temporary session record ([test](../../../adapters/sqlstore/admin_test.go#L215))
+    - [x] Return the acting administrator's ID as impersonatedBy on the delegated session through the released client, on either server ([test](../../../conformance/core.test.mjs#L775))
   - [ ] `AdminOptions`
     - [ ] `defaultRole`
       - [x] Evaluate permissions for a configured default role ([test](../../../plugins/admin/admin_test.go#L20))
@@ -80,133 +89,231 @@
     - [ ] `impersonationSessionDuration`
       - [x] Bound an impersonation to its configured lifetime despite sliding refresh ([test](../../../adapters/sqlstore/admin_test.go#L218))
     - [ ] `schema`
-    - [ ] `ac`
-    - [ ] `roles`
+    - `ac` — *not applicable: TypeScript type inference*
+    - [x] `roles` ([test](../../../adapters/sqlstore/admin_user_fields_test.go#L126))
       - [x] Define custom roles and evaluate each role’s entire grant ([test](../../../plugins/admin/admin_test.go#L23))
-    - [ ] `adminUserIds`
+      - [x] A custom role that grants only user create provisions an ordinary account over HTTP ([test](../../../adapters/sqlstore/admin_user_fields_test.go#L126))
+    - [x] `adminUserIds` ([test](../../../adapters/sqlstore/admin_test.go#L253))
       - [x] Grant an explicitly configured identity administrative authority ([test](../../../adapters/sqlstore/admin_test.go#L83))
+      - [x] A configured administrator ID with no stored role impersonates another administrator over HTTP ([test](../../../adapters/sqlstore/admin_test.go#L253))
     - [ ] `bannedUserMessage`
       - [x] Use the configured denial message after successful password verification ([test](../../../adapters/sqlstore/admin_test.go#L181))
     - [ ] `allowImpersonatingAdmins`
-  - [ ] `InferAdminRolesFromOption`
+  - `InferAdminRolesFromOption` — *not applicable: JavaScript only*
 
 ## Admin
 
 - [ ] Admin
   - [ ] Usage
-    - [ ] Create User
+    - [x] authctl create-admin creates a verified administrator named Admin with the admin role, honours --no-email-verified, and refuses a populated database without --force or --yes on three SQL engines ([test](../../../cmd/authctl/admin_test.go#L98))
+    - [x] A configured administrator user ID with no stored role holds administrative grants over HTTP ([test](../../../adapters/sqlstore/admin_test.go#L83))
+    - [x] Refuse an administrative listing from a signed-out client with UNAUTHORIZED ([test](../../../adapters/sqlstore/admin_test.go#L86))
+    - [x] Create User ([test](../../../adapters/sqlstore/admin_test.go#L102))
       - [x] Create a credential account and assign multiple roles ([test](../../../adapters/sqlstore/admin_test.go#L104))
-      - [ ] `POST /admin/create-user`
-        - [ ] Parameter `email`
-        - [ ] Parameter `password`
-        - [ ] Parameter `name`
-        - [ ] Parameter `role` (optional)
-        - [ ] Parameter `data` (optional)
+      - [x] An administrator creates an account that then signs in with its password ([test](../../../adapters/sqlstore/admin_test.go#L102))
+      - [x] `POST /admin/create-user` ([test](../../../conformance/admin-fields.mjs#L63))
+        - [x] Create an account from email, password, name, a single role string and extra data through the released client on either server, keeping the top-level name, email and role over values in data ([test](../../../conformance/admin-fields.mjs#L63))
+        - [x] Create an account holding two roles given as an array ([test](../../../adapters/sqlstore/admin_test.go#L104))
+        - [x] Parameter `email` ([test](../../../conformance/admin-fields.mjs#L69))
+          - [x] Store the top-level email on the created account through the released client on either server ([test](../../../conformance/admin-fields.mjs#L69))
+        - [x] Parameter `password` ([test](../../../adapters/sqlstore/admin_test.go#L108))
+          - [x] Sign in with the password set when the administrator created the account ([test](../../../adapters/sqlstore/admin_test.go#L108))
+        - [x] Parameter `name` ([test](../../../conformance/admin-fields.mjs#L70))
+          - [x] Store the top-level name on the created account through the released client on either server ([test](../../../conformance/admin-fields.mjs#L70))
+        - [x] Parameter `role` (optional) ([test](../../../adapters/sqlstore/admin_test.go#L104))
+          - [x] Assign two roles given as an array at creation ([test](../../../adapters/sqlstore/admin_test.go#L104))
+          - [x] Assign a single role given as a string through the released client on either server ([test](../../../conformance/admin-fields.mjs#L68))
+          - [x] Assign the user role when the request gives none ([test](../../../adapters/sqlstore/admin_user_fields_test.go#L125))
+        - [x] Parameter `data` (optional) ([test](../../../adapters/sqlstore/admin_user_fields_test.go#L128))
           - [x] Persist typed fields from data and return public values through the released administrative client ([test](../../../conformance/admin-fields.mjs#L72))
           - [x] Create profiles with trusted server-owned values and omit protected fields from the native response ([test](../../../adapters/sqlstore/admin_user_fields_test.go#L77))
           - [x] Enforce role and ban permissions on nested data and refuse unauthorized accounts ([test](../../../conformance/admin-fields.mjs#L58))
+          - [x] Store a custom user field supplied in data by an authorized creator over HTTP ([test](../../../adapters/sqlstore/admin_user_fields_test.go#L128))
     - [ ] List Users
       - [x] Combine search, role filtering, sorting and pagination ([test](../../../adapters/sqlstore/admin_test.go#L164))
+      - [x] A provisioned administrator lists every account with no query ([test](../../../cmd/authctl/admin_test.go#L84))
       - [ ] `GET /admin/list-users`
-        - [ ] Parameter `searchValue` (optional)
+        - [x] Combine an email search, a role filter, a descending name sort and limit and offset paging, and return the filtered total ([test](../../../adapters/sqlstore/admin_test.go#L164))
+        - [x] Refuse the listing from a signed-out client with UNAUTHORIZED ([test](../../../adapters/sqlstore/admin_test.go#L86))
+        - [x] Parameter `searchValue` (optional) ([test](../../../adapters/sqlstore/admin_user_fields_test.go#L139))
+          - [x] Return exactly the account whose email matches the search value ([test](../../../adapters/sqlstore/admin_user_fields_test.go#L139))
         - [ ] Parameter `searchField` (optional)
+          - [x] Search the email field when searchField is email ([test](../../../adapters/sqlstore/admin_user_fields_test.go#L137))
+          - [x] Search the email field when searchField is omitted ([test](../../../adapters/sqlstore/username_test.go#L434))
         - [ ] Parameter `searchOperator` (optional)
+          - [x] Find the created account with a contains email search through the released client on either server ([test](../../../conformance/admin-fields.mjs#L76))
         - [ ] Parameter `limit` (optional)
-        - [ ] Parameter `offset` (optional)
-        - [ ] Parameter `sortBy` (optional)
+          - [x] Return one row when limit is 1 while the total counts every match ([test](../../../adapters/sqlstore/admin_test.go#L161))
+        - [x] Parameter `offset` (optional) ([test](../../../adapters/sqlstore/admin_test.go#L163))
+          - [x] Skip the first sorted match when offset is 1 ([test](../../../adapters/sqlstore/admin_test.go#L163))
+        - [x] Parameter `sortBy` (optional) ([test](../../../adapters/sqlstore/admin_test.go#L161))
+          - [x] Order the filtered accounts by name ([test](../../../adapters/sqlstore/admin_test.go#L161))
         - [ ] Parameter `sortDirection` (optional)
-        - [ ] Parameter `filterField` (optional)
+          - [x] Sort names in descending order ([test](../../../adapters/sqlstore/admin_test.go#L161))
+        - [x] Parameter `filterField` (optional) ([test](../../../adapters/sqlstore/admin_test.go#L161))
+          - [x] Filter accounts on the role field ([test](../../../adapters/sqlstore/admin_test.go#L161))
         - [ ] Parameter `filterValue` (optional)
+          - [x] Filter on a list of role values ([test](../../../adapters/sqlstore/admin_test.go#L161))
         - [ ] Parameter `filterOperator` (optional)
+          - [x] Match accounts whose role is in the given list ([test](../../../adapters/sqlstore/admin_test.go#L161))
       - [ ] Query Filtering
         - [x] Filter by role and search by email ([test](../../../adapters/sqlstore/admin_test.go#L164))
       - [ ] Pagination
         - [x] Page a sorted result set with its total ([test](../../../adapters/sqlstore/admin_test.go#L163))
-        - [ ] How to Implement Pagination
+        - How to Implement Pagination — *not applicable: JavaScript example*
     - [ ] Get User
       - [x] Fetch the authorized record and deny an ordinary account ([test](../../../adapters/sqlstore/admin_test.go#L95))
+      - [x] Fetch an account by its id with the released client on both runtimes ([test](../../../conformance/core.test.mjs#L758))
       - [ ] `GET /admin/get-user`
-        - [ ] Parameter `id`
+        - [x] Refuse get-user to a signed-in account without the user get grant and serve it to an administrator, through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L757))
+        - [x] Parameter `id` ([test](../../../adapters/sqlstore/admin_test.go#L300))
+          - [x] Fetch the account named by the id query value and read its cleared ban fields ([test](../../../adapters/sqlstore/admin_test.go#L300))
       - [ ] Returns
+        - [x] Return the bare user object for an existing id and the USER_NOT_FOUND code for a removed account, through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L783))
     - [ ] Set User Role
       - [x] Assign a configured role and reject an unknown role ([test](../../../adapters/sqlstore/admin_test.go#L154))
+      - [x] Change a user's role and apply the narrower grant to that user's existing session ([test](../../../adapters/sqlstore/phone_admin_test.go#L173))
       - [ ] `POST /admin/set-role`
+        - [x] Accept a set-role request from an administrator through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L755))
+        - [x] Change a role over POST /admin/set-role through the typed client and enforce the new grant ([test](../../../adapters/sqlstore/phone_admin_test.go#L173))
         - [ ] Parameter `userId` (optional)
+          - [x] Demote the account named by userId so its existing session can no longer create users ([test](../../../adapters/sqlstore/admin_user_fields_test.go#L195))
         - [ ] Parameter `role`
+          - [x] Set a role sent as a one-element array by the typed client ([test](../../../adapters/sqlstore/phone_admin_test.go#L173))
+          - [x] Accept a role sent as a single string through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L755))
+          - [x] Refuse a role that is not configured ([test](../../../adapters/sqlstore/admin_test.go#L154))
     - [ ] Set User Password
       - [x] Replace the credential password and sign in with the new value ([test](../../../adapters/sqlstore/admin_test.go#L195))
       - [ ] `POST /admin/set-user-password`
-        - [ ] Parameter `newPassword`
-        - [ ] Parameter `userId`
+        - [x] Return status true and let the account sign in with the new password on the other runtime ([test](../../../conformance/core.test.mjs#L772))
+        - [x] Parameter `newPassword` ([test](../../../conformance/core.test.mjs#L773))
+          - [x] Sign in on the other runtime with the password an administrator set ([test](../../../conformance/core.test.mjs#L773))
+        - [x] Parameter `userId` ([test](../../../adapters/sqlstore/admin_test.go#L196))
+          - [x] Sign the target account in with the password set for its userId ([test](../../../adapters/sqlstore/admin_test.go#L196))
     - [ ] Update user
       - [x] Update a user’s profile and gate changes to protected fields ([test](../../../adapters/sqlstore/admin_test.go#L159))
+      - [x] Update a user's name and return the changed user through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L759))
       - [ ] `POST /admin/update-user`
-        - [ ] Parameter `userId`
+        - [x] Return the updated user object itself from POST /admin/update-user on both runtimes ([test](../../../conformance/core.test.mjs#L759))
+        - [x] Refuse an update with 401 UNAUTHORIZED once an administrator has revoked the caller's sessions ([test](../../../adapters/sqlstore/phone_admin_test.go#L179))
+        - [x] Refuse an update with 403 to a signed-in account whose role lacks the user update grant ([test](../../../adapters/sqlstore/phone_admin_test.go#L79))
+        - [x] Parameter `userId` ([test](../../../adapters/sqlstore/admin_test.go#L156))
+          - [x] Update the account named by userId and return its new name, email and verification state ([test](../../../adapters/sqlstore/admin_test.go#L156))
         - [ ] Parameter `data`
     - [ ] Ban User
       - [x] Revoke existing logins, deny new sessions and automatically clear expired bans ([test](../../../adapters/sqlstore/admin_test.go#L303))
+      - [x] Revoke the banned user's existing session and refuse their next password sign-in with BANNED_USER ([test](../../../adapters/sqlstore/admin_test.go#L176))
       - [ ] `POST /admin/ban-user`
-        - [ ] Parameter `userId`
-        - [ ] Parameter `banReason` (optional)
+        - [x] Return the banned user with its reason and refuse that account's sign-in on the other runtime ([test](../../../conformance/core.test.mjs#L769))
+        - [x] Parameter `userId` ([test](../../../adapters/sqlstore/admin_test.go#L168))
+          - [x] Ban the account named by userId after refusing a request that names the acting administrator ([test](../../../adapters/sqlstore/admin_test.go#L168))
+        - [x] Parameter `banReason` (optional) ([test](../../../conformance/core.test.mjs#L769))
+          - [x] Return the reason given to ban-user on both runtimes ([test](../../../conformance/core.test.mjs#L769))
+          - [x] Use the configured default reason when the request's reason is empty ([test](../../../adapters/sqlstore/admin_test.go#L170))
         - [ ] Parameter `banExpiresIn` (optional)
+          - [x] Set an expiry for a one-hour ban and store none for a later ban with a zero duration ([test](../../../adapters/sqlstore/admin_test.go#L191))
     - [ ] Unban User
       - [x] Clear a ban and permit sign-in after the password is reset ([test](../../../adapters/sqlstore/admin_test.go#L193))
+      - [x] Accept the account's unchanged password at sign-in after an unban ([test](../../../adapters/sqlstore/admin_factor_test.go#L177))
       - [ ] `POST /admin/unban-user`
-        - [ ] Parameter `userId`
+        - [x] Return the unbanned user with banned false through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L771))
+        - [x] Parameter `userId` ([test](../../../adapters/sqlstore/admin_factor_test.go#L174))
+          - [x] Lift the ban on the account named by userId so its password sign-in proceeds ([test](../../../adapters/sqlstore/admin_factor_test.go#L174))
     - [ ] List User Sessions
       - [x] Retrieve the target’s current session through the typed client ([test](../../../adapters/sqlstore/admin_test.go#L198))
       - [ ] `POST /admin/list-user-sessions`
-        - [ ] Parameter `userId`
+        - [x] Return the target's sessions under a sessions key through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L763))
+        - [x] Parameter `userId` ([test](../../../conformance/core.test.mjs#L765))
+          - [x] Return the one session belonging to the given userId ([test](../../../conformance/core.test.mjs#L765))
     - [ ] Revoke User Session
       - [x] Invalidate a selected token and delegated credentials relying on it ([test](../../../adapters/sqlstore/admin_test.go#L269))
       - [x] Keep revocation handles bounded to the session lifetime and active encryption keys ([test](../../../admin_handle_test.go#L24))
+      - [x] Sign the target out after revoking the session picked from the administrative listing ([test](../../../adapters/sqlstore/admin_test.go#L208))
       - [ ] `POST /admin/revoke-user-session`
-        - [ ] Parameter `sessionToken`
+        - [x] Return success true and sign the target out on the other runtime ([test](../../../conformance/core.test.mjs#L767))
+        - [x] Parameter `sessionToken` ([test](../../../adapters/sqlstore/admin_test.go#L204))
+          - [x] Revoke the session named by a token from the administrative listing ([test](../../../adapters/sqlstore/admin_test.go#L204))
+          - [x] Revoke a session by its raw token, which also ends the delegated login that depends on it ([test](../../../adapters/sqlstore/admin_test.go#L265))
     - [ ] Revoke All Sessions for a User
       - [x] Revoke the target’s sessions through the administrative API ([test](../../../adapters/sqlstore/admin_test.go#L305))
       - [ ] `POST /admin/revoke-user-sessions`
-        - [ ] Parameter `userId`
+        - [x] Return success true and sign the target out on the other runtime ([test](../../../conformance/core.test.mjs#L780))
+        - [x] Parameter `userId` ([test](../../../adapters/sqlstore/phone_admin_test.go#L177))
+          - [x] End the sessions of the account named by userId so its next administrative call answers 401 ([test](../../../adapters/sqlstore/phone_admin_test.go#L177))
     - [ ] Impersonate User
       - [x] Issue a bounded delegated login and enforce administrator impersonation permissions ([test](../../../adapters/sqlstore/admin_test.go#L218))
       - [ ] `POST /admin/impersonate-user`
-        - [ ] Parameter `userId`
+        - [x] Return a session whose impersonatedBy is the administrator, through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L775))
+        - [x] Parameter `userId` ([test](../../../conformance/core.test.mjs#L776))
+          - [x] Make the administrator's browser act as the account named by userId ([test](../../../conformance/core.test.mjs#L776))
     - [ ] Stop Impersonating User
       - [x] Restore the initiating login and preserve its original persistence ([test](../../../adapters/sqlstore/admin_test.go#L247))
+      - [x] Return to the administrator's original session after an impersonation ends ([test](../../../adapters/sqlstore/admin_test.go#L232))
       - [ ] `POST /admin/stop-impersonating`
+        - [x] Restore the administrator's original session token through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L779))
     - [ ] Remove User
       - [x] Remove a user while guarding the acting administrator’s own account ([test](../../../adapters/sqlstore/admin_test.go#L309))
+      - [x] Answer USER_NOT_FOUND when fetching a removed account ([test](../../../adapters/sqlstore/admin_test.go#L308))
       - [ ] `POST /admin/remove-user`
-        - [ ] Parameter `userId`
+        - [x] Return success true from remove-user through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L782))
+        - [x] Parameter `userId` ([test](../../../adapters/sqlstore/admin_test.go#L306))
+          - [x] Remove the account named by userId ([test](../../../adapters/sqlstore/admin_test.go#L306))
   - [ ] Access Control
     - [ ] Roles
       - [x] Give ordinary accounts no administrative grants ([test](../../../plugins/admin/admin_test.go#L16))
-      - [ ] `admin`
+      - [x] Store an account's two roles as one comma-separated value that a role filter matches ([test](../../../adapters/sqlstore/admin_test.go#L161))
+      - [x] `admin` ([test](../../../conformance/core.test.mjs#L747))
+        - [x] Let an account given the default admin role run every administrative route on both runtimes ([test](../../../conformance/core.test.mjs#L747))
       - [ ] `user`
+        - [x] Refuse get-user on both runtimes to an account holding the built-in user role ([test](../../../conformance/core.test.mjs#L757))
+        - [x] Refuse get-user to an ordinary signed-up account whose configured user role has no grants, and report no user list grant for it ([test](../../../adapters/sqlstore/admin_test.go#L100))
     - [ ] Permissions
       - [x] Evaluate grants for user and session actions ([test](../../../plugins/admin/admin_test.go#L13))
       - [ ] user
+        - [x] Refuse an email verification change to a role that holds update but not set-email ([test](../../../adapters/sqlstore/admin_test.go#L147))
       - [ ] session
+        - [x] Let a role holding session list list sessions and refuse it revocation without session revoke ([test](../../../adapters/sqlstore/admin_test.go#L125))
     - [ ] Custom Permissions
       - [x] Define custom roles and evaluate each role’s entire grant ([test](../../../plugins/admin/admin_test.go#L23))
-      - [ ] Create Access Control
+      - [x] Configure custom operator and reader roles and enforce their grants on the administrative routes ([test](../../../adapters/sqlstore/admin_test.go#L50))
+      - [x] Create Access Control ([test](../../../plugins/access/access_test.go#L44))
+        - [x] Create an access controller from a resource and action vocabulary and refuse roles outside it ([test](../../../plugins/access/access_test.go#L44))
       - [ ] Create Roles
+        - [x] Define reader and manager roles with their own grants and evaluate each one separately ([test](../../../plugins/admin/admin_test.go#L18))
       - [ ] Pass Roles to the Plugin
+        - [x] Pass custom profile and phone roles to the plugin and enforce the phone grant on administrative updates ([test](../../../adapters/sqlstore/phone_admin_test.go#L38))
     - [ ] Access Control Usage
       - [x] Evaluate the authenticated caller’s grants and keep separate roles independent ([test](../../../adapters/sqlstore/admin_test.go#L137))
       - [ ] Has Permission
       - [ ] `POST /admin/has-permission`
+        - [x] Report success true for an administrator's user list check through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L753))
         - [ ] Parameter `userId` (optional)
-        - [ ] Parameter `role` (optional)
+        - [x] Parameter `role` (optional) ([test](../../../plugins/admin/admin_test.go#L12))
+          - [x] Evaluate a role passed directly, with no user id, against the default grants ([test](../../../plugins/admin/admin_test.go#L12))
         - [ ] Parameter `permission` (optional)
         - [ ] Parameter `permissions` (optional)
+          - [x] Refuse a check for two user actions that the caller holds only through two separate roles ([test](../../../adapters/sqlstore/admin_test.go#L134))
+          - [x] Report success true for a permissions object naming the user list action, through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L753))
       - [ ] Check Role Permission
+        - [x] Evaluate the default admin role's grants locally, with no request or user ([test](../../../plugins/admin/admin_test.go#L12))
   - [ ] Schema
     - [x] Generate the canonical columns on SQLite, PostgreSQL and MySQL, including combined plugin selections ([test](../../../conformance/schema.test.mjs#L106))
-    - [ ] `adminUserTableFields.role`
-    - [ ] `adminUserTableFields.banned`
-    - [ ] `adminUserTableFields.banReason`
-    - [ ] `adminUserTableFields.banExpires`
-    - [ ] `adminSessionTableFields.impersonatedBy`
+    - [x] Migrate a populated SQLite database to each plugin profile, admin included, and match a fresh schema from the other runtime ([test](../../../conformance/schema.test.mjs#L129))
+    - [x] `adminUserTableFields.role` ([test](../../../adapters/sqlstore/admin_test.go#L92))
+      - [x] Give a regular sign-up the user role ([test](../../../adapters/sqlstore/admin_test.go#L92))
+      - [x] Emit the admin user and session columns the other runtime generates on SQLite, PostgreSQL and MySQL ([test](../../../conformance/schema.test.mjs#L106))
+    - [x] `adminUserTableFields.banned` ([test](../../../adapters/sqlstore/admin_test.go#L171))
+      - [x] Mark a banned account banned with its reason and expiry ([test](../../../adapters/sqlstore/admin_test.go#L171))
+      - [x] Emit the admin user and session columns the other runtime generates on SQLite, PostgreSQL and MySQL ([test](../../../conformance/schema.test.mjs#L106))
+    - [x] `adminUserTableFields.banReason` ([test](../../../conformance/core.test.mjs#L769))
+      - [x] Return the reason given to ban-user on both runtimes ([test](../../../conformance/core.test.mjs#L769))
+      - [x] Emit the admin user and session columns the other runtime generates on SQLite, PostgreSQL and MySQL ([test](../../../conformance/schema.test.mjs#L106))
+    - [x] `adminUserTableFields.banExpires` ([test](../../../adapters/sqlstore/admin_test.go#L303))
+      - [x] Lift a ban whose stored expiry has passed when the user next signs in ([test](../../../adapters/sqlstore/admin_test.go#L303))
+      - [x] Emit the admin user and session columns the other runtime generates on SQLite, PostgreSQL and MySQL ([test](../../../conformance/schema.test.mjs#L106))
+    - [x] `adminSessionTableFields.impersonatedBy` ([test](../../../adapters/sqlstore/admin_test.go#L215))
+      - [x] Record the impersonating administrator's id on the temporary session ([test](../../../adapters/sqlstore/admin_test.go#L215))
+      - [x] Emit the admin user and session columns the other runtime generates on SQLite, PostgreSQL and MySQL ([test](../../../conformance/schema.test.mjs#L106))
     - [ ] Email Enumeration Protection
       - [x] Keep the incorrect-password response independent of ban status ([test](../../../adapters/sqlstore/admin_test.go#L184))
   - [ ] Options
@@ -214,8 +321,9 @@
       - [x] Evaluate permissions for a configured default role ([test](../../../plugins/admin/admin_test.go#L20))
     - [ ] Admin Roles
       - [x] Validate administrative role names against the configured role registry ([test](../../../plugins/admin/admin_test.go#L28))
-    - [ ] Admin userIds
+    - [x] Admin userIds ([test](../../../adapters/sqlstore/admin_test.go#L250))
       - [x] Grant an explicitly configured identity administrative authority ([test](../../../adapters/sqlstore/admin_test.go#L83))
+      - [x] Let a configured administrator id whose account holds only the ordinary user role create users, revoke sessions, ban, remove and impersonate another administrator ([test](../../../adapters/sqlstore/admin_test.go#L250))
     - [ ] impersonationSessionDuration
       - [x] Bound an impersonation to its configured lifetime despite sliding refresh ([test](../../../adapters/sqlstore/admin_test.go#L218))
     - [ ] Default Ban Reason

@@ -5,93 +5,150 @@
 ## Interfaces
 
 - [ ] JSON Web Tokens endpoints, types and options
+  - [x] Publish keys and issue signed tokens on both servers, and reject a token checked against the other server's keys ([test](../../../conformance/core.test.mjs#L455))
   - [ ] `jwtClient`
+    - [x] Read the key set and request a token through the published client against both servers ([test](../../../conformance/core.test.mjs#L433))
+    - [x] The Go client reads the key set without a session, is refused a token anonymously and receives one after sign-up ([test](../../../client/jwt_test.go#L48))
   - [ ] `signJWT (server API only)`
     - [x] Sign trusted claims with a configured algorithm or a pinned key and keep the operation server-only ([test](../../../adapters/sqlstore/jwt_test.go#L296))
+    - [x] Sign with caller-chosen audiences, issue, expiry and not-before times, and verify a multi-audience token ([test](../../../adapters/sqlstore/jwt_test.go#L285))
   - [ ] `verifyJWT (server API only)`
     - [x] Reject untrusted signatures, wrong identities and expired or inactive tokens ([test](../../../adapters/sqlstore/jwt_test.go#L277))
+    - [x] Return verified claims and refuse tokens checked against another issuer, audience or subject, or with an altered payload ([test](../../../adapters/sqlstore/jwt_test.go#L260))
   - [ ] `GET /jwks (configurable)`
     - [x] Publish public keys to anonymous clients at a configured path and serialize concurrent initialization ([test](../../../adapters/sqlstore/jwt_test.go#L91))
     - [x] Retain rotated public keys through the grace interval and remove retired keys from publication ([test](../../../adapters/sqlstore/jwt_test.go#L159))
+    - [x] Serve exactly one public key with no private members to an anonymous client of either server ([test](../../../conformance/core.test.mjs#L440))
   - [ ] `GET /token`
     - [x] Require an authenticated session and stop issuing tokens for a revoked session ([test](../../../adapters/sqlstore/jwt_test.go#L193))
     - [x] Verify Ed25519 signatures and configured issuer, audience and expiration independently ([test](../../../adapters/sqlstore/jwt_test.go#L122))
     - [x] Verify service tokens against their issuer’s published keys and reject a different issuer’s keys ([test](../../../conformance/core.test.mjs#L433))
+    - [x] Put the signed-in user's profile in the default token, with the user as subject and the configured lifetime ([test](../../../adapters/sqlstore/jwt_test.go#L126))
   - [ ] `jwt`
+    - [x] Install the plugin with issuer, audience, lifetime, rotation and key-path settings, and serve its key and token routes ([test](../../../adapters/sqlstore/jwt_test.go#L22))
   - [ ] `resolveSigningKey`
+    - [x] Sign with a pinned key ID or algorithm, and refuse a pinned key ID that does not exist or does not match the requested algorithm ([test](../../../adapters/sqlstore/jwt_test.go#L265))
   - [ ] `signJWT`
+    - [x] Sign trusted claims with extra type and content-type header values under each configured algorithm, keeping the server-chosen subject ([test](../../../adapters/sqlstore/jwt_test.go#L223))
   - [ ] `getJwtToken`
+    - [x] Build the token from a host payload function while keeping the authenticated user as subject ([test](../../../adapters/sqlstore/jwt_test.go#L187))
   - [ ] `JwtOptions`
+    - [x] Apply issuer, audience, lifetime and key-path settings to issued tokens and the published key set ([test](../../../adapters/sqlstore/jwt_test.go#L42))
     - [ ] `sessionCookieCache`
     - [ ] `jwks`
       - [x] Generate ES256 keys and validate their signatures with a separate verifier ([test](../../../adapters/sqlstore/jwt_test.go#L183))
+      - [x] Mint a new key after the current one expires, and keep the previous public key published during the default grace period ([test](../../../adapters/sqlstore/jwt_test.go#L152))
     - [ ] `jwt`
       - [x] Use custom application claims while binding the token subject to the authenticated user ([test](../../../adapters/sqlstore/jwt_test.go#L187))
-    - [ ] `disableSettingJwtHeader`
+      - [x] Sign with the configured issuer, audience and lifetime, and fail independent verification against another issuer or audience ([test](../../../adapters/sqlstore/jwt_test.go#L129))
+    - [x] `disableSettingJwtHeader` ([test](../../../adapters/sqlstore/jwt_test.go#L135))
       - [x] Suppress the assertion on session retrieval when requested ([test](../../../adapters/sqlstore/jwt_test.go#L140))
+      - [x] By default, send the token header on session retrieval and expose it to browsers; omit it once disabled ([test](../../../adapters/sqlstore/jwt_test.go#L135))
     - [ ] `schema`
     - [ ] `adapter`
   - [ ] `JWKOptions`
-    - [ ] `alg`
-    - [ ] `crv`
+    - [x] Generate and independently verify keys for each supported algorithm with the default RSA modulus length ([test](../../../adapters/sqlstore/jwt_test.go#L241))
+    - [x] `alg` ([test](../../../adapters/sqlstore/jwt_test.go#L241))
+      - [x] Issue and independently verify tokens for each of EdDSA, ES256, ES512, PS256 and RS256 ([test](../../../adapters/sqlstore/jwt_test.go#L241))
+    - [x] `crv` ([test](../../../adapters/sqlstore/jwt_test.go#L91))
+      - [x] Publish the default EdDSA key on the Ed25519 curve ([test](../../../adapters/sqlstore/jwt_test.go#L91))
     - [ ] `modulusLength`
   - [x] `JWSAlgorithms` ([test](../../../adapters/sqlstore/jwt_test.go#L241))
     - [x] Issue and independently verify each of the five supported JWS algorithms ([test](../../../adapters/sqlstore/jwt_test.go#L241))
   - [ ] `Jwk`
-  - [ ] `ResolvedSigningKey`
+    - [x] Publish a stored key under its row ID as key ID, with algorithm EdDSA, curve Ed25519 and no private members ([test](../../../adapters/sqlstore/jwt_test.go#L91))
+  - `ResolvedSigningKey` — *not applicable: TypeScript type*
   - [ ] `createJwk`
+    - [x] Create the first signing key on demand and store its private half encrypted ([test](../../../adapters/sqlstore/jwt_test.go#L101))
   - [ ] `generateExportedKeyPair`
+    - [x] Generate a key pair for each supported algorithm, publish the public half and verify tokens signed with the private half ([test](../../../adapters/sqlstore/jwt_test.go#L241))
   - [ ] `toExpJWT`
+    - [x] Set the expiry from the configured relative lifetime ([test](../../../adapters/sqlstore/jwt_test.go#L126))
   - [ ] `verifyJWT`
+    - [x] Return the verified claims of a token signed with a published key ([test](../../../adapters/sqlstore/jwt_test.go#L245))
 
 ## JWT
 
 - [ ] JWT
-  - [ ] Usage
+  - [x] Publish a key set and issue verifiable service tokens with the plugin on both servers ([test](../../../conformance/core.test.mjs#L433))
+  - [x] Usage ([test](../../../conformance/core.test.mjs#L438))
+    - [x] Fetch the key set and a token through their endpoints with the published client on both servers ([test](../../../conformance/core.test.mjs#L438))
   - [ ] JWT
     - [ ] Retrieve the token
-      - [ ] Using the client plugin (recommended)
+      - [x] Using the client plugin (recommended) ([test](../../../conformance/core.test.mjs#L443))
+        - [x] Request a token with the published client's token action on both servers and read it from data.token ([test](../../../conformance/core.test.mjs#L443))
       - [ ] Using your session token
+        - [x] Return the token as {token} from GET /token for a request carrying the session cookie ([test](../../../adapters/sqlstore/jwt_test.go#L118))
       - [ ] From `set-auth-jwt` header
+        - [x] Return a three-part token in the set-auth-jwt header on session retrieval and add it to the exposed headers ([test](../../../adapters/sqlstore/custom_session_test.go#L81))
     - [ ] Verifying the token
+      - [x] Verify a service token locally with the published key set, and match its key ID to the published key ([test](../../../conformance/core.test.mjs#L452))
       - [ ] Example using jose with remote JWKS
-      - [ ] Example with local JWKS
+        - [x] Verify a token against keys fetched from the key endpoint by the client, with the server URL as issuer and audience ([test](../../../conformance/core.test.mjs#L448))
+      - [x] Example with local JWKS ([test](../../../conformance/core.test.mjs#L446))
+        - [x] Build a local key set from the fetched keys and verify the token with the server URL as issuer and audience ([test](../../../conformance/core.test.mjs#L446))
     - [ ] OAuth Provider Mode
       - [x] Disable both the browser token endpoint and the session JWT response header while retaining ordinary sessions ([test](../../../conformance/core.test.mjs#L1374))
+      - [x] Report a token signed with a published key but carrying no authorized party as inactive at introspection ([test](../../../conformance/oauth-signed-introspection.mjs#L104))
     - [ ] Remote JWKS Url
     - [ ] Custom JWKS Path
-      - [ ] Server Configuration:
+      - [x] Serve the key set at a configured path to anonymous callers ([test](../../../adapters/sqlstore/jwt_test.go#L87))
+      - [x] Serve the key set at the default /jwks path to the Go client ([test](../../../client/jwt_test.go#L45))
+      - [x] Server Configuration: ([test](../../../conformance/oauth-issuer-metadata.mjs#L94))
+        - [x] Advertise a configured key path in discovery and verify issued tokens with keys fetched from it ([test](../../../conformance/oauth-issuer-metadata.mjs#L94))
       - [ ] Client Configuration:
     - [ ] Custom Signing
       - [ ] Localized Signing
       - [ ] Remote Signing
   - [ ] Schema
+    - [x] Generate the jwks table for the jwt profile exactly as the other runtime does on SQLite, PostgreSQL and MySQL ([test](../../../conformance/schema.test.mjs#L106))
     - [ ] JWKS
-      - [ ] `jwksTableFields.id`
-      - [ ] `jwksTableFields.publicKey`
-      - [ ] `jwksTableFields.privateKey`
-      - [ ] `jwksTableFields.alg`
-      - [ ] `jwksTableFields.crv`
-      - [ ] `jwksTableFields.createdAt`
-      - [ ] `jwksTableFields.expiresAt`
+      - [x] Add the jwks table to a populated SQLite database so that it matches the other runtime's fresh schema ([test](../../../conformance/schema.test.mjs#L129))
+      - [x] `jwksTableFields.id` ([test](../../../conformance/schema.test.mjs#L116))
+        - [x] The generated jwks.id column is a not-null string primary key (varchar(36) on MySQL), identical to the other runtime's DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] `jwksTableFields.publicKey` ([test](../../../conformance/schema.test.mjs#L116))
+        - [x] The generated jwks.publicKey column is not-null text, identical to the other runtime's DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] `jwksTableFields.privateKey` ([test](../../../conformance/schema.test.mjs#L116))
+        - [x] The generated jwks.privateKey column is not-null text, identical to the other runtime's DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] `jwksTableFields.alg` ([test](../../../conformance/schema.test.mjs#L116))
+        - [x] The generated nullable jwks.alg text column is identical to the other runtime's DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] `jwksTableFields.crv` ([test](../../../conformance/schema.test.mjs#L116))
+        - [x] The generated nullable jwks.crv text column is identical to the other runtime's DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] `jwksTableFields.createdAt` ([test](../../../conformance/schema.test.mjs#L116))
+        - [x] The generated jwks.createdAt column is a not-null date, identical to the other runtime's DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] `jwksTableFields.expiresAt` ([test](../../../conformance/schema.test.mjs#L116))
+        - [x] The generated nullable jwks.expiresAt date column is identical to the other runtime's DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
   - [ ] Options
     - [ ] Session cookie cache
     - [ ] Algorithm of the Key Pair
+      - [x] Generate an EdDSA key on the Ed25519 curve when no algorithm is configured ([test](../../../adapters/sqlstore/jwt_test.go#L91))
+      - [x] Issue and independently verify tokens for each configured algorithm ([test](../../../adapters/sqlstore/jwt_test.go#L241))
       - [ ] EdDSA
-        - [ ] Default Curve
+        - [x] Sign with the default EdDSA key and verify the token independently against its published public key ([test](../../../adapters/sqlstore/jwt_test.go#L122))
+        - [x] Default Curve ([test](../../../adapters/sqlstore/jwt_test.go#L91))
+          - [x] Publish the default signing key as an EdDSA key on the Ed25519 curve ([test](../../../adapters/sqlstore/jwt_test.go#L91))
         - [ ] Optional Property
-      - [ ] ES256
+      - [x] ES256 ([test](../../../adapters/sqlstore/jwt_test.go#L183))
+        - [x] Sign with a generated ES256 key and verify the token independently against the published key ([test](../../../adapters/sqlstore/jwt_test.go#L183))
       - [ ] RSA256
+        - [x] Issue RS256 tokens and verify them independently against the published key ([test](../../../adapters/sqlstore/jwt_test.go#L241))
         - [ ] Optional Property
       - [ ] PS256
+        - [x] Issue PS256 tokens and verify them independently against the published key ([test](../../../adapters/sqlstore/jwt_test.go#L241))
         - [ ] Optional Property
       - [ ] ECDH-ES
         - [ ] Optional Property
-      - [ ] ES512
+      - [x] ES512 ([test](../../../adapters/sqlstore/jwt_test.go#L241))
+        - [x] Issue ES512 tokens and verify them independently against the published key ([test](../../../adapters/sqlstore/jwt_test.go#L241))
     - [ ] Disable private key encryption
     - [ ] Key Rotation
+      - [x] Keep issuing tokens on both servers after the current key expires, and publish one new key beside the expired one ([test](../../../adapters/sqlstore/jwt_test.go#L147))
       - [ ] `rotationInterval`
       - [ ] `gracePeriod`
+        - [x] Keep an expired key published within the default 30-day grace period, and drop it once that period has passed ([test](../../../adapters/sqlstore/jwt_test.go#L159))
     - [ ] Modify JWT payload
+      - [x] Put the user's email in the default payload, and use only a host payload function's claims when one is configured ([test](../../../adapters/sqlstore/jwt_test.go#L187))
     - [ ] Modify Issuer, Audience, Subject or Expiration time
+      - [x] Sign with a configured issuer, audience and lifetime that an independent verifier accepts ([test](../../../adapters/sqlstore/jwt_test.go#L122))
+      - [x] Default to the server URL as issuer and audience and to a 15-minute lifetime on both servers ([test](../../../conformance/core.test.mjs#L451))
     - [ ] Custom Adapter

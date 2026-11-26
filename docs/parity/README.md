@@ -2,16 +2,16 @@
 
 ## Verification progress
 
-**1,971 of 6,455 inventory entries are fully verified (30.5%).**
+**2,096 of 6,439 inventory entries are fully verified (32.6%).**
 
 | Inventory status | Entries |
 | --- | ---: |
-| Fully verified | 1,971 |
-| Partially verified | 1,397 |
-| No linked test evidence | 3,087 |
-| Not applicable to a Go server | 570 |
+| Fully verified | 2,096 |
+| Partially verified | 1,501 |
+| No linked test evidence | 2,842 |
+| Not applicable to a Go server | 586 |
 
-The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 5,501 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
+The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 5,852 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
 
 Entries that exist only for JavaScript clients, frameworks or runtimes are listed as not applicable, with the reason, and are left out of the totals. Backlog entries stay open on the roadmap but are not scheduled.
 
@@ -89,24 +89,24 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 
 | Checklist | Checked | Open | Not applicable |
 | --- | ---: | ---: | ---: |
-| [Two-factor authentication](plugins/2fa.md) | 47 | 141 | 0 |
+| [Two-factor authentication](plugins/2fa.md) | 179 | 110 | 6 |
 | [Access](plugins/access.md) | 21 | 3 | 4 |
 | [Additional fields](plugins/additional-fields.md) | 0 | 0 | 2 |
-| [Admin](plugins/admin.md) | 75 | 141 | 0 |
+| [Admin](plugins/admin.md) | 222 | 96 | 6 |
 | [Anonymous](plugins/anonymous.md) | 67 | 12 | 0 |
 | [API keys](plugins/api-key.md) | 114 | 210 | 0 |
 | [Bearer](plugins/bearer.md) | 30 | 0 | 0 |
 | [Captcha](plugins/captcha.md) | 146 | 29 | 0 |
 | [Client ID metadata documents](plugins/cimd.md) | 0 | 48 | 0 |
 | [Custom session](plugins/custom-session.md) | 21 | 3 | 0 |
-| [Device authorization](plugins/device-authorization.md) | 22 | 99 | 0 |
+| [Device authorization](plugins/device-authorization.md) | 145 | 52 | 3 |
 | [Electron](plugins/electron.md) | 0 | 12 | 40 |
 | [Email otp](plugins/email-otp.md) | 242 | 49 | 0 |
 | [Expo](plugins/expo.md) | 0 | 5 | 14 |
 | [Generic OAuth](plugins/generic-oauth.md) | 452 | 151 | 0 |
 | [Have I Been Pwned](plugins/have-i-been-pwned.md) | 46 | 0 | 0 |
 | [Internationalization](plugins/i18n.md) | 183 | 6 | 0 |
-| [JSON Web Tokens](plugins/jwt.md) | 13 | 75 | 0 |
+| [JSON Web Tokens](plugins/jwt.md) | 87 | 57 | 1 |
 | [Last login method](plugins/last-login-method.md) | 98 | 19 | 2 |
 | [Magic link](plugins/magic-link.md) | 106 | 5 | 0 |
 | [Model Context Protocol](plugins/mcp.md) | 0 | 108 | 0 |
