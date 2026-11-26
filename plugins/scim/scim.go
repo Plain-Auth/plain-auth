@@ -43,6 +43,8 @@ type Options struct {
 	AcceptLegacyEntraGroupSchema bool
 	Store                        Store
 	Connections                  []Connection
+	// Identity links incoming Users to existing accounts; see Identity.
+	Identity *Identity
 }
 
 // Profile contains the mutable attributes of one normalized directory user.
@@ -101,6 +103,7 @@ type Handler struct {
 	credentials []staticBearer
 	declared    map[string]Directory
 	verify      VerifyBearerToken
+	resolveUser func(context.Context, IdentityResolutionInput) (IdentityResolution, error)
 }
 
 // New wraps host with SCIM routes under its configured public auth mount.
@@ -125,6 +128,12 @@ func New(host *auth.Auth, opts Options) (*Handler, error) {
 		}
 	}
 	h.groups, _ = opts.Store.(GroupStore)
+	if opts.Identity != nil && opts.Identity.ResolveUser != nil {
+		if _, ok := opts.Store.(IdentityStore); !ok {
+			return nil, errors.New("scim: identity resolution requires a store implementing IdentityStore")
+		}
+		h.resolveUser = opts.Identity.ResolveUser
+	}
 	usedTokens := map[[32]byte]bool{}
 	for _, c := range opts.Connections {
 		if _, exists := h.declared[c.ID]; !identifier(c.ID) || exists || len(c.Credentials) == 0 && h.verify == nil || strings.HasPrefix(c.ID, managedConnectionPrefix) {

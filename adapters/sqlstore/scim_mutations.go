@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	authn "github.com/Plain-Org/plain-auth"
 	"github.com/Plain-Org/plain-auth/plugins/scim"
 )
 
@@ -50,14 +51,63 @@ func (s *Store) scimOwner(ctx context.Context, tx *sql.Tx, id string) (string, e
 	return source.String, err
 }
 
-func (s *Store) SCIMCreate(ctx context.Context, d scim.Directory, p scim.Profile) (out scim.Record, err error) {
+var _ scim.IdentityStore = (*Store)(nil)
+
+func (s *Store) SCIMCreate(ctx context.Context, d scim.Directory, p scim.Profile) (scim.Record, error) {
+	return s.SCIMCreateResolved(ctx, d, p, scim.IdentityResolution{})
+}
+
+// SCIMReuse reports, in a read transaction that closes before any resolver
+// runs, whether creating p reclaims an inactive SCIM User or a deleted
+// User's account through its externalId.
+func (s *Store) SCIMReuse(ctx context.Context, d scim.Directory, p scim.Profile) (reuse bool, err error) {
+	err = s.scimTx(ctx, d, func(tx *sql.Tx) error {
+		if p.ExternalID != "" {
+			u, e := s.scimFind(ctx, tx, d, `"externalIdKey"`, scimKey("scim-user-external-id", d.ID, p.ExternalID))
+			switch {
+			case e == nil:
+				if u.Active {
+					return scim.ErrConflict
+				}
+				reuse = true
+				return nil
+			case !errors.Is(e, scim.ErrNotFound):
+				return e
+			}
+			t, e := s.scimTomb(ctx, tx, d, p.ExternalID)
+			if e != nil {
+				return e
+			}
+			if t.id != "" {
+				reuse = true
+				return nil
+			}
+		}
+		_, e := s.scimFind(ctx, tx, d, `"userNameKey"`, scimKey("scim-user-name", d.ID, strings.ToLower(p.UserName)))
+		if e == nil {
+			return scim.ErrConflict
+		}
+		if errors.Is(e, scim.ErrNotFound) {
+			return nil
+		}
+		return e
+	})
+	return
+}
+
+// SCIMCreateResolved creates a SCIM User and its account, or attaches it to
+// the account a resolver linked.
+func (s *Store) SCIMCreateResolved(ctx context.Context, d scim.Directory, p scim.Profile, r scim.IdentityResolution) (out scim.Record, err error) {
+	link := r.Action == "link"
 	err = s.scimWriteTx(ctx, d, func(tx *sql.Tx) error {
 		now := time.Now().UTC().Truncate(time.Millisecond)
 		if p.ExternalID != "" {
 			u, e := s.scimFind(ctx, tx, d, `"externalIdKey"`, scimKey("scim-user-external-id", d.ID, p.ExternalID))
 			switch {
 			case e == nil:
-				if u.Active {
+				// A link decided before an inactive User was reclaimed no
+				// longer applies.
+				if u.Active || link {
 					return scim.ErrConflict
 				}
 				out, e = s.scimReplace(ctx, tx, d, u, p, now)
@@ -70,8 +120,22 @@ func (s *Store) SCIMCreate(ctx context.Context, d scim.Directory, p scim.Profile
 		if e != nil {
 			return e
 		}
+		if t.id != "" && link {
+			return scim.ErrConflict
+		}
 		u := directoryUser{Record: scim.Record{ID: rand.Text(), Profile: p, CreatedAt: now, UpdatedAt: now}, owner: t.owner}
-		if t.id == "" {
+		switch {
+		case link:
+			if e = s.lockAccount(ctx, tx, r.UserID); errors.Is(e, authn.ErrNotFound) {
+				return scim.ErrResolvedUserMissing
+			} else if e != nil {
+				return e
+			}
+			u.owner = r.UserID
+			if e = s.scimAttach(ctx, tx, u.owner, u.ID, r.Profile, p, now); e != nil {
+				return e
+			}
+		case t.id == "":
 			u.owner = rand.Text()
 			_, e = tx.ExecContext(ctx, s.bind(`INSERT INTO "user" ("id","name","email","emailVerified","createdAt","updatedAt") VALUES (?,?,?,?,?,?)`), u.owner, p.DisplayName, p.PrimaryEmail, false, s.date(now), s.date(now))
 			if e != nil {
@@ -81,26 +145,8 @@ func (s *Store) SCIMCreate(ctx context.Context, d scim.Directory, p scim.Profile
 			if e != nil {
 				return e
 			}
-		} else {
-			source, e := s.scimOwner(ctx, tx, u.owner)
-			if e != nil {
-				return e
-			}
-			switch t.profile {
-			case "manage":
-				if source != "" {
-					return scim.ErrConflict
-				}
-				if e = s.scimUpdateCore(ctx, tx, u.owner, p, now); e != nil {
-					return e
-				}
-				_, e = tx.ExecContext(ctx, s.bind(`UPDATE "scimSubject" SET "profileSourceId"=?,"revision"="revision"+1,"updatedAt"=? WHERE "userId"=?`), u.ID, s.date(now), u.owner)
-			case "preserve":
-				_, e = tx.ExecContext(ctx, s.bind(`UPDATE "scimSubject" SET "revision"="revision"+1,"updatedAt"=? WHERE "userId"=?`), s.date(now), u.owner)
-			default:
-				return scim.ErrConflict
-			}
-			if e != nil {
+		default:
+			if e = s.scimAttach(ctx, tx, u.owner, u.ID, t.profile, p, now); e != nil {
 				return e
 			}
 			if _, e = tx.ExecContext(ctx, s.bind(`DELETE FROM "scimIdentityTombstone" WHERE "id"=?`), t.id); e != nil {
@@ -119,6 +165,35 @@ func (s *Store) SCIMCreate(ctx context.Context, d scim.Directory, p scim.Profile
 		return s.projectSCIMUser(ctx, tx, d.ProvisioningDomainID, u.owner, false)
 	})
 	return
+}
+
+// scimAttach joins source to an existing account's subject, creating the
+// subject when the account has none, and hands the account's email and name
+// to the source for profile "manage".
+func (s *Store) scimAttach(ctx context.Context, tx *sql.Tx, owner, source, profile string, p scim.Profile, now time.Time) error {
+	current, e := s.scimOwner(ctx, tx, owner)
+	if errors.Is(e, sql.ErrNoRows) {
+		_, e = tx.ExecContext(ctx, s.bind(`INSERT INTO "scimSubject" ("id","userId","profileSourceId","revision","createdAt","updatedAt") VALUES (?,?,NULL,1,?,?)`), rand.Text(), owner, s.date(now), s.date(now))
+		current = ""
+	}
+	if e != nil {
+		return e
+	}
+	switch profile {
+	case "manage":
+		if current != "" {
+			return scim.ErrConflict
+		}
+		if e = s.scimUpdateCore(ctx, tx, owner, p, now); e != nil {
+			return e
+		}
+		_, e = tx.ExecContext(ctx, s.bind(`UPDATE "scimSubject" SET "profileSourceId"=?,"revision"="revision"+1,"updatedAt"=? WHERE "userId"=?`), source, s.date(now), owner)
+	case "preserve":
+		_, e = tx.ExecContext(ctx, s.bind(`UPDATE "scimSubject" SET "revision"="revision"+1,"updatedAt"=? WHERE "userId"=?`), s.date(now), owner)
+	default:
+		return scim.ErrConflict
+	}
+	return e
 }
 
 func (s *Store) SCIMUpdate(ctx context.Context, d scim.Directory, id string, change func(scim.Record) (scim.Profile, error)) (out scim.Record, err error) {

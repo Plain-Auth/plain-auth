@@ -156,7 +156,24 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				if err = h.host.ValidateUserInfo(ctx, check); err != nil {
 					break
 				}
-				rec, err = h.store.SCIMCreate(ctx, d, profile)
+				if h.resolveUser == nil {
+					rec, err = h.store.SCIMCreate(ctx, d, profile)
+					break
+				}
+				store := h.store.(IdentityStore)
+				var reuse bool
+				if reuse, err = store.SCIMReuse(ctx, d, profile); err != nil {
+					break
+				}
+				var resolved IdentityResolution
+				if !reuse {
+					// Resolve outside any transaction; the store rechecks the
+					// decision in its own.
+					if resolved, err = h.resolve(ctx, d, profile); err != nil {
+						break
+					}
+				}
+				rec, err = store.SCIMCreateResolved(ctx, d, profile, resolved)
 			} else {
 				rec, err = h.store.SCIMUpdate(ctx, d, id, func(Record) (Profile, error) { return profile, nil })
 			}

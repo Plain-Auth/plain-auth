@@ -80,9 +80,14 @@
   - [ ] `SCIMEnterpriseUser`
   - [ ] `SCIMGroupAuthorizationSource`
   - [ ] `SCIMIdentity`
-  - [ ] `SCIMIdentityResolution`
-  - [ ] `SCIMIdentityResolutionContext`
-  - [ ] `SCIMIdentityResolutionInput`
+    - [x] Resolve incoming SCIM Users to existing accounts before the directory transaction, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_identity_test.go#L20))
+    - [x] Refuse identity resolution on a store that cannot apply it ([test](../../../plugins/scim/http_test.go#L159))
+  - [x] `SCIMIdentityResolution` ([test](../../../adapters/sqlstore/scim_identity_test.go#L158))
+    - [x] Create on the zero value, link with manage or preserve, answer 409 for a missing account and 500 for a failing or invalid decision ([test](../../../adapters/sqlstore/scim_identity_test.go#L158))
+  - [x] `SCIMIdentityResolutionContext` ([test](../../../adapters/sqlstore/scim_identity_test.go#L117))
+    - [x] Run the SCIM resolver outside the directory transaction, so it can read through the store ([test](../../../adapters/sqlstore/scim_identity_test.go#L117))
+  - [x] `SCIMIdentityResolutionInput` ([test](../../../adapters/sqlstore/scim_identity_test.go#L120))
+    - [x] Pass the connection, provisioning domain and normalized User to the SCIM resolver ([test](../../../adapters/sqlstore/scim_identity_test.go#L120))
   - [ ] `SCIMIdentitySource`
   - [ ] `SCIMIdentityState`
   - [ ] `SCIMManagedBearerPrincipal`
@@ -110,6 +115,7 @@
     - [ ] `managedConnections`
       - [x] Authenticate and revoke server-issued managed credentials on both implementations ([test](../../../conformance/scim-managed.mjs#L13))
     - [ ] `identity`
+      - [x] Link a SCIM User to an existing account through Identity.ResolveUser ([test](../../../adapters/sqlstore/scim_identity_test.go#L111))
     - [ ] `projection`
     - [ ] `compatibility`
   - [ ] `SCIMPrincipal`
@@ -204,6 +210,7 @@
     - [x] Create, reject conflicts, reprovision inactive Users and restore an external identity after deletion ([test](../../../conformance/scim-contract.mjs#L45))
     - [x] Normalize directory role values, type and primary flags and replace the role profile when reprovisioning the same inactive external identity ([test](../../../conformance/scim-roles.mjs#L59))
     - [x] ValidateUserInfo checks a provisioned user with method scim on SQLite, PostgreSQL and MySQL, and a refusal answers a SCIM 403 with the message and stores nothing ([test](../../../adapters/sqlstore/scim_user_validation_test.go#L17))
+    - [x] Link an existing account from a POST, and skip the resolver for a reclaimed deleted or inactive User's externalId ([test](../../../adapters/sqlstore/scim_identity_test.go#L190))
   - [x] `GET /scim/v2/Users/:userId` ([test](../../../adapters/sqlstore/scim_test.go#L143))
     - [x] Read a scoped User written by the other implementation from shared SQLite ([test](../../../conformance/scim-contract.mjs#L45))
     - [x] Read canonical directory role arrays from SQLite records written by either implementation ([test](../../../conformance/scim-roles.mjs#L75))
@@ -259,9 +266,12 @@
   - [ ] How provisioning maps to your application
   - [ ] Provision users
     - [ ] Link an existing authentication User
+      - [x] Link an incoming SCIM User to an existing authentication user ([test](../../../adapters/sqlstore/scim_identity_test.go#L126))
       - [ ] `{ action: "create" }`
-      - [ ] `{ action: "link", userId, profile: "manage" }`
-      - [ ] `{ action: "link", userId, profile: "preserve" }`
+      - [x] `{ action: "link", userId, profile: "manage" }` ([test](../../../adapters/sqlstore/scim_identity_test.go#L146))
+        - [x] Hand the linked account's email and name to the managing source, unverify a changed email, and refuse a second managing source ([test](../../../adapters/sqlstore/scim_identity_test.go#L146))
+      - [x] `{ action: "link", userId, profile: "preserve" }` ([test](../../../adapters/sqlstore/scim_identity_test.go#L132))
+        - [x] Keep a linked account's email and name across PATCH, refuse two links from one connection and allow one per connection ([test](../../../adapters/sqlstore/scim_identity_test.go#L132))
   - [ ] Authenticate provisioned users with SSO
   - [ ] Handle activation and deletion
 
@@ -275,6 +285,7 @@
     - [ ] `authentication`
     - [ ] `managedConnections`
     - [ ] `identity`
+      - [x] Configure Identity.ResolveUser to link incoming Users ([test](../../../adapters/sqlstore/scim_identity_test.go#L138))
     - [ ] `projection`
     - [ ] `compatibility`
     - [ ] Connection options
@@ -430,7 +441,8 @@
       - [x] `members[value eq "<scim-user-id>"]` ([test](../../../adapters/sqlstore/scim_groups_test.go#L149))
         - [x] Remove one member selected by its User ID through a member filter path ([test](../../../adapters/sqlstore/scim_groups_test.go#L149))
   - [ ] Identity callbacks
-    - [ ] `identity.resolveUser`
+    - [x] `identity.resolveUser` ([test](../../../adapters/sqlstore/scim_identity_test.go#L174))
+      - [x] Answer 409 for a link to a missing account and create on an empty decision ([test](../../../adapters/sqlstore/scim_identity_test.go#L174))
     - [ ] `identity.reconcileUser`
   - [ ] Projection callbacks
     - [ ] `projection.roles.map`

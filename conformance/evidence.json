@@ -9743,6 +9743,11 @@
       "label": "ValidateUserInfo checks a provisioned user with method scim on SQLite, PostgreSQL and MySQL, and a refusal answers a SCIM 403 with the message and stores nothing",
       "test": "adapters/sqlstore/scim_user_validation_test.go",
       "marker": "func TestSCIMUserValidation(t *testing.T) {"
+    },
+    {
+      "label": "Link an existing account from a POST, and skip the resolver for a reclaimed deleted or inactive User's externalId",
+      "test": "adapters/sqlstore/scim_identity_test.go",
+      "marker": "t.Fatal(\"the SCIM resolver ran for a deleted User's externalId\", w.Code, stableCalls)"
     }
   ],
   "plugin/scim/GET /scim/v2/Users/:userId": [
@@ -44886,6 +44891,88 @@
       "label": "Provision a new enterprise user after the sign-in commits and keep the user when provisioning fails",
       "test": "adapters/sqlstore/sso_provision_user_test.go",
       "marker": "t.Fatal(\"a failed ProvisionUser removed the new user\", err)",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/scim/SCIMIdentity": [
+    {
+      "label": "Resolve incoming SCIM Users to existing accounts before the directory transaction, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_identity_test.go",
+      "marker": "func TestSCIMIdentityResolution("
+    },
+    {
+      "label": "Refuse identity resolution on a store that cannot apply it",
+      "test": "plugins/scim/http_test.go",
+      "marker": "t.Fatal(\"scim.New accepted identity resolution on a store that cannot apply it\", err)"
+    }
+  ],
+  "plugin-symbol/scim/SCIMIdentityResolution": [
+    {
+      "label": "Create on the zero value, link with manage or preserve, answer 409 for a missing account and 500 for a failing or invalid decision",
+      "test": "adapters/sqlstore/scim_identity_test.go",
+      "marker": "t.Fatal(\"a link to a missing account stored identity state\", w.Code, w.Body.String())",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/scim/SCIMIdentityResolutionContext": [
+    {
+      "label": "Run the SCIM resolver outside the directory transaction, so it can read through the store",
+      "test": "adapters/sqlstore/scim_identity_test.go",
+      "marker": "t.Fatal(\"the SCIM resolver could not read the store, so it ran inside the directory transaction\", e)",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/scim/SCIMIdentityResolutionInput": [
+    {
+      "label": "Pass the connection, provisioning domain and normalized User to the SCIM resolver",
+      "test": "adapters/sqlstore/scim_identity_test.go",
+      "marker": "t.Fatal(\"the SCIM resolver did not receive the connection, domain and canonical User\", in)",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/scim/SCIMOptions/identity": [
+    {
+      "label": "Link a SCIM User to an existing account through Identity.ResolveUser",
+      "test": "adapters/sqlstore/scim_identity_test.go",
+      "marker": "t.Fatal(\"a preserve link was not created\", w.Code, w.Body.String())"
+    }
+  ],
+  "docs/content/docs/plugins/scim/index.mdx#L185": [
+    {
+      "label": "Link an incoming SCIM User to an existing authentication user",
+      "test": "adapters/sqlstore/scim_identity_test.go",
+      "marker": "t.Fatal(\"the SCIM source was not linked to the resolved account\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/index.mdx#L215/`{ action: \"link\", userId, profile: \"manage\" }`": [
+    {
+      "label": "Hand the linked account's email and name to the managing source, unverify a changed email, and refuse a second managing source",
+      "test": "adapters/sqlstore/scim_identity_test.go",
+      "marker": "t.Fatal(\"a manage link did not hand the account's email and name to the source\", w.Code, name, email, verified, source)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/index.mdx#L216/`{ action: \"link\", userId, profile: \"preserve\" }`": [
+    {
+      "label": "Keep a linked account's email and name across PATCH, refuse two links from one connection and allow one per connection",
+      "test": "adapters/sqlstore/scim_identity_test.go",
+      "marker": "t.Fatal(\"a preserved SCIM source changed the account's email or name\", name, email, verified)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L17/`identity`": [
+    {
+      "label": "Configure Identity.ResolveUser to link incoming Users",
+      "test": "adapters/sqlstore/scim_identity_test.go",
+      "marker": "t.Fatal(\"two connections could not link preserved sources to one account\", w.Code, w.Body.String())"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L406": [
+    {
+      "label": "Answer 409 for a link to a missing account and create on an empty decision",
+      "test": "adapters/sqlstore/scim_identity_test.go",
+      "marker": "t.Fatal(\"an empty SCIM resolution did not create an account\", w.Code, w.Body.String())",
       "complete": true
     }
   ]

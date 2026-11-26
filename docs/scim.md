@@ -99,7 +99,7 @@ Retirement preserves directory and application records, releases profile ownersh
 | `GET /ServiceProviderConfig` | Publishes bearer authentication, PATCH and filter capabilities |
 | `GET /Schemas` and `GET /Schemas/{id}` | Describe the supported core User and Group attributes |
 | `GET /ResourceTypes` and `GET /ResourceTypes/{id}` | Discover the Users and Groups resources |
-| `POST /Users` | Create a directory User and an unverified application user, or reprovision by a retained external ID |
+| `POST /Users` | Create a directory User and an unverified application user, reprovision by a retained external ID, or with `Identity.ResolveUser` link an existing account |
 | `GET /Users/{id}` and `GET /Users` | Read a User or page through resources owned by this connection |
 | `PUT /Users/{id}` | Replace the mutable core profile |
 | `PATCH /Users/{id}` | Apply a set of attribute changes in a single transaction |
@@ -120,6 +120,28 @@ Send `Authorization: Bearer <directory credential>` with resource requests. The 
 Creation returns 201 with `Location` and `Content-Location`. Reads and updates return 200. Deletion returns 204. The server normalizes email addresses to lowercase and uses the explicit primary email, the work email or the first email, in that order. When emails are omitted, the username must be an email address. A new directory identity cannot take ownership of an existing application's account by providing its email. Conflicts with existing usernames, external IDs and managed emails return 409. A connection requesting another connection's User ID receives 404.
 
 The directory User that supplies an account’s profile can update its name and primary email. Changing that email clears its verified flag. With either the `scim` or `scim-managed` schema, deactivating or deleting a directory User revokes the account’s SQL sessions when it loses its last active, participating directory source. An account with another active source keeps its sessions. Other configured sign-in methods retain their own policies. Reprovisioning an inactive User with the same scoped external ID reuses its resource ID. Reprovisioning after deletion allocates a new resource ID and restores the binding to the same application user. Deleting the application account removes the associated directory records.
+
+### Link an existing account
+
+By default a POST creates an account owned by the directory, and an email another account already uses answers 409. Set `scim.Options.Identity` with `ResolveUser` to link an incoming User to an existing account instead:
+
+```go
+scim.Options{Identity: &scim.Identity{ResolveUser: func(ctx context.Context, in scim.IdentityResolutionInput) (scim.IdentityResolution, error) {
+	userID, found, err := app.DirectoryAccount(ctx, in.ConnectionID, in.Resource.ExternalID)
+	if err != nil || !found {
+		return scim.IdentityResolution{}, err
+	}
+	return scim.IdentityResolution{Action: "link", UserID: userID, Profile: "preserve"}, nil
+}}}
+```
+
+| Decision | Effect |
+| --- | --- |
+| zero value or `Action: "create"` | Creates an account managed by this source. |
+| `link` with `Profile: "manage"` | Links the existing account and lets this source manage its email and name; a changed email becomes unverified. Only one source manages an account, so a second managing link answers 409 `uniqueness`. |
+| `link` with `Profile: "preserve"` | Links the existing account without changing its email or name, also on later PATCH and PUT. Separate connections may link preserved sources to one account; one connection cannot link two. |
+
+The input carries the `ConnectionID`, the `ProvisioningDomainID` and a copy of the normalized User in `Resource`: userName, displayName, externalId, primary email, active and the canonical attributes. Never link by an unverified email match. `ResolveUser` runs before the directory transaction, so read through the store or your own database. It does not run for a POST whose externalId reclaims an inactive SCIM User or a deleted User's account, and `ValidateUserInfo` still checks every POST, linked or not. A link to an account that does not exist answers 409 `The resolved user does not exist`. An error, a panic or an invalid decision answers 500 `SCIM identity resolution failed`, and a `*scim.Error` is answered as is; another runtime reads an invalid decision as a preserved link. A link the data no longer allows when the transaction runs, such as an externalId reclaimed meanwhile, answers 409. It needs a store implementing `scim.IdentityStore`, as the SQL store does. A lifecycle reconciler for linked accounts is not available yet. [Identity tests](../adapters/sqlstore/scim_identity_test.go)
 
 ## User queries and updates
 
@@ -223,6 +245,6 @@ The example assumes the application owns an `applicationRole` catalog and a sepa
 
 The first activation reconciles existing directory sources and validates imported grants. Unknown provenance returns a conflict and leaves existing grants intact. A lifecycle-only policy can omit both role callbacks when the domain has no existing role grants. An imported grant must identify its actual directory Group, source User, domain and application account. Changes to Group membership or metadata, User deactivation and reprovisioning, deletion and directory retirement recompute affected assignments from active sources. Retirement closes directory access before processing its resumable batches. A failed batch preserves the prior application assignments for that batch. Retry retirement after the host callback recovers. Linked sources share a subject only when they already have the same stored application user ID. Directory emails and `User.roles` do not establish identity or grant application privileges.
 
-After changing a mapping or the application role catalog, call `configured.ReconcileSCIMProjection(ctx, domainID)`. Call `configured.DisableSCIMProjection(ctx, domainID)` to submit empty grant sets to the current reconciler and release the domain. User activity and source metadata still describe the current directory facts during withdrawal. Activation, withdrawal and explicit replay each run in a single transaction across the domain. Plan a maintenance window for large domains. Paged replay, custom identity resolution and a built-in organization-role policy remain open.
+After changing a mapping or the application role catalog, call `configured.ReconcileSCIMProjection(ctx, domainID)`. Call `configured.DisableSCIMProjection(ctx, domainID)` to submit empty grant sets to the current reconciler and release the domain. User activity and source metadata still describe the current directory facts during withdrawal. Activation, withdrawal and explicit replay each run in a single transaction across the domain. Plan a maintenance window for large domains. Paged replay, an application lifecycle reconciler and a built-in organization-role policy remain open.
 
 The first activation creates the small `plainauthSCIMProjectionPolicy` table. Its keys have no expiry. Transaction-scoped PostgreSQL locks, MySQL connection locks held through commit, and SQLite’s immediate transactions serialize domain writes with policy changes. A MySQL connection with an uncertain transaction or lock-release result is discarded. Expiring verification records has no effect on policy ownership. Updated Go nodes sharing a domain must use the same policy ID and equivalent callbacks. While a policy is active, an unconfigured node can read the directory, and its writes receive a conflict. Older binaries, external SQL writers and other directory implementations cannot enforce this extension. Route writes and account deletion through the configured Go store when those processes share the database. [Three-database projection and failure tests](../adapters/sqlstore/scim_projection_test.go) · [MySQL connection lifecycle tests](../adapters/sqlstore/scim_projection_mysql_test.go) · [Shared SQLite HTTP comparison](../conformance/scim-contract.mjs)

@@ -145,3 +145,17 @@ func TestSCIMRespectsDisabledHTTPPaths(t *testing.T) {
 		}
 	}
 }
+
+func TestSCIMIdentityNeedsIdentityStore(t *testing.T) {
+	host, err := auth.New(auth.Options{BaseURL: "https://directory.example.test", Secret: strings.Repeat("a", 32), Store: memory.New()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = New(host, Options{Store: failureStore{}, Connections: []Connection{{Directory: Directory{ID: "a"}, Credentials: []Credential{{ID: "one", Token: "token"}}}},
+		Identity: &Identity{ResolveUser: func(context.Context, IdentityResolutionInput) (IdentityResolution, error) {
+			return IdentityResolution{}, nil
+		}}})
+	if err == nil || !strings.Contains(err.Error(), "IdentityStore") {
+		t.Fatal("scim.New accepted identity resolution on a store that cannot apply it", err)
+	}
+}
