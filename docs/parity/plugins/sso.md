@@ -948,6 +948,7 @@
     - [ ] `"reject"`
       - [x] Refuse an RSA-SHA1 response with saml_deprecated_algorithm, the only deprecated-algorithm mode ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L242))
       - [x] Refuse a Triple DES encrypted assertion with saml_deprecated_algorithm ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L296))
+      - [x] Refuse a deprecated signatureAlgorithm in a SAML update, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_update_test.go#L321))
     - [x] `"allow"` ([test](../../../plugins/sso/saml_test.go#L506))
       - [x] Refuse a deprecated algorithm rather than allow it: an RSA-SHA1 response fails with saml_deprecated_algorithm ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L242))
       - [x] Refuse a deprecated algorithm in an allow-list when the plugin is built; there is no allow mode, a documented deviation ([test](../../../plugins/sso/saml_test.go#L506))
@@ -963,9 +964,10 @@
       - [x] Redirect an RSA-SHA1 response with saml_deprecated_algorithm and its message, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L242))
       - [x] Redirect Triple DES and RSA 1.5 encrypted assertions with saml_deprecated_algorithm and their messages, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L296))
       - [x] Redirect an RSA 1.5 key transport with saml_deprecated_algorithm whatever the content cipher, before naming Triple DES ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L301))
-    - [ ] `SAML_DEPRECATED_CONFIG_ALGORITHM`
+    - [x] `SAML_DEPRECATED_CONFIG_ALGORITHM` ([test](../../../adapters/sqlstore/sso_update_test.go#L321))
       - [x] Refuse registration with a deprecated signatureAlgorithm with 400 SAML_DEPRECATED_CONFIG_ALGORITHM and its message, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L661))
       - [x] Name a deprecated digestAlgorithm in SAML_DEPRECATED_CONFIG_ALGORITHM ([test](../../../plugins/sso/saml_test.go#L592))
+      - [x] Refuse a deprecated signatureAlgorithm in a SAML update with SAML_DEPRECATED_CONFIG_ALGORITHM, beside the registration check, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_update_test.go#L321))
   - [ ] Size limits
     - [x] Reject an IdP metadata update larger than the default 100 KiB limit ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L81))
     - [x] Refuse a negative or over-1 MiB MaxMetadataSize and default it to 100 KiB ([test](../../../plugins/sso/saml_test.go#L65))

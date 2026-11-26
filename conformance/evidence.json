@@ -10858,6 +10858,12 @@
       "label": "Authenticate and revoke server-issued managed credentials on both implementations",
       "test": "conformance/scim-managed.mjs",
       "marker": "export async function managedCatalog("
+    },
+    {
+      "label": "Leave a handler without the option without a catalog and refuse managed tokens, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_managed_contract_test.go",
+      "marker": "t.Fatal(\"a managed token was accepted without the managed option\", w.Code)",
+      "complete": true
     }
   ],
   "plugin/scim/ createSCIMManagedConnection (server API only)": [
@@ -10883,6 +10889,12 @@
       "label": "List the other implementation’s connection for its provisioning domain",
       "test": "conformance/scim-managed.mjs",
       "marker": "export async function managedCatalog("
+    },
+    {
+      "label": "List a domain's connections newest first and refuse a list without a domain, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_managed_contract_test.go",
+      "marker": "t.Fatal(\"the connection list is not newest first\", list, e)",
+      "complete": true
     }
   ],
   "plugin/scim/ getSCIMManagedConnection (server API only)": [
@@ -10897,6 +10909,12 @@
       "label": "Accept both overlapping secrets while rotating credentials across implementations",
       "test": "conformance/scim-managed.mjs",
       "marker": "export async function managedCatalog("
+    },
+    {
+      "label": "Refuse a rotation past the credential cap with ErrManagedConflict and no token, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_managed_contract_test.go",
+      "marker": "t.Fatal(\"a rotation past the credential cap was accepted\", e)",
+      "complete": true
     }
   ],
   "plugin/scim/ revokeSCIMManagedCredential (server API only)": [
@@ -10904,6 +10922,12 @@
       "label": "Revoke once and prevent an already verified resource write from proceeding after commit",
       "test": "adapters/sqlstore/scim_managed_test.go",
       "marker": "func TestSCIMManagedCredentials("
+    },
+    {
+      "label": "Refuse an unknown credential with ErrManagedNotFound and record the revoking actor, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_managed_contract_test.go",
+      "marker": "t.Fatal(\"an unknown credential was revoked\", e)",
+      "complete": true
     }
   ],
   "plugin/scim/ listSCIMManagedConnectionEvents (server API only)": [
@@ -10918,6 +10942,12 @@
       "label": "Reject the duplicate creation request without exposing the previously issued bearer",
       "test": "adapters/sqlstore/scim_managed_test.go",
       "marker": "func TestSCIMManagedCredentials("
+    },
+    {
+      "label": "Refuse a spent creation request ID in another domain with ErrCreationRequestConflict and no token, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_managed_contract_test.go",
+      "marker": "t.Fatal(\"a spent creation request ID was accepted in another domain\", e)",
+      "complete": true
     }
   ],
   "plugin/scim/ decommissionSCIMConnection (server API only)": [
@@ -10943,6 +10973,12 @@
       "label": "Resume failed and expired leases across instances, retain independently sourced sessions and record one completion",
       "test": "adapters/sqlstore/scim_decommission_test.go",
       "marker": "func TestSCIMDirectoryRetirement("
+    },
+    {
+      "label": "Refuse a retirement without an actor or of a code-defined connection, and end the active credentials, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_managed_contract_test.go",
+      "marker": "t.Fatal(\"retirement did not end the active credentials only\", c)",
+      "complete": true
     }
   ],
   "plugin-symbol/scim/SCIMConnectionDecommissionStatus": [
@@ -44582,6 +44618,12 @@
       "label": "Reject a User filter using the co operator with 400",
       "test": "adapters/sqlstore/scim_test.go",
       "marker": "userName co \"operator\""
+    },
+    {
+      "label": "Refuse every filter operator but equality and and with invalidFilter",
+      "test": "plugins/scim/selection_test.go",
+      "marker": "t.Fatal(\"an unsupported filter operator was accepted\", filter, err)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L526/HTTP management endpoints, SCIM request audit records, or webhooks": [
@@ -45305,6 +45347,11 @@
       "label": "Refuse a Triple DES encrypted assertion with saml_deprecated_algorithm",
       "test": "adapters/sqlstore/sso_saml_policy_test.go",
       "marker": "a 3DES assertion did not fail with saml_deprecated_algorithm"
+    },
+    {
+      "label": "Refuse a deprecated signatureAlgorithm in a SAML update, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_update_test.go",
+      "marker": "{map[string]any{\"signatureAlgorithm\": \"rsa-sha1\"}, \"SAML_DEPRECATED_CONFIG_ALGORITHM\"},"
     }
   ],
   "docs/content/docs/plugins/sso/saml-security.mdx#L127/`SAML_UNKNOWN_ALGORITHM`": [
@@ -45444,6 +45491,12 @@
       "label": "Name a deprecated digestAlgorithm in SAML_DEPRECATED_CONFIG_ALGORITHM",
       "test": "plugins/sso/saml_test.go",
       "marker": "a SHA-1 digestAlgorithm was not refused as deprecated"
+    },
+    {
+      "label": "Refuse a deprecated signatureAlgorithm in a SAML update with SAML_DEPRECATED_CONFIG_ALGORITHM, beside the registration check, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_update_test.go",
+      "marker": "{map[string]any{\"signatureAlgorithm\": \"rsa-sha1\"}, \"SAML_DEPRECATED_CONFIG_ALGORITHM\"},",
+      "complete": true
     }
   ],
   "plugin-symbol/sso/SAMLConfig/identifierFormat": [
@@ -46946,6 +46999,54 @@
       "label": "Retire a connection with a User and a Group, reconciling one User in one batch and keeping the SCIM rows, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/scim_decommission_test.go",
       "marker": "t.Fatal(\"retirement removed the directory rows\", table)",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/scim/SCIMManagedConnection": [
+    {
+      "label": "Give an issued connection its creation request ID, domain, active status, creator and time, with no retirement fields, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_managed_contract_test.go",
+      "marker": "t.Fatal(\"the issued connection lacks its creation record\", c)",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/scim/SCIMManagedCredential": [
+    {
+      "label": "Give an issued credential its policy scopes, expiry and creator, and a revoked one its actor and time, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_managed_contract_test.go",
+      "marker": "t.Fatal(\"a revoked credential lacks its actor or time\", c)",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/scim/SCIMManagedCredentialStatus": [
+    {
+      "label": "Mark the active credentials decommissioned on retirement and keep revoked ones, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_managed_contract_test.go",
+      "marker": "t.Fatal(\"retirement did not end the active credentials only\", c)",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/scim/SCIMManagedConnectionEventType": [
+    {
+      "label": "End the audit trail of a retired connection with connection.decommissioning and connection.decommissioned, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_managed_contract_test.go",
+      "marker": "t.Fatal(\"retirement did not end the audit trail with its two events\", final.Events)",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/scim/SCIMManagedConnectionStatus": [
+    {
+      "label": "Report active for an issued connection, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_managed_contract_test.go",
+      "marker": "t.Fatal(\"the issued connection lacks its creation record\", c)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L16/`managedConnections`": [
+    {
+      "label": "Retire through the catalog and leave a handler without the option without a catalog, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_managed_contract_test.go",
+      "marker": "t.Fatal(\"a handler without the managed option has a catalog\")",
       "complete": true
     }
   ]

@@ -1,6 +1,7 @@
 package scim
 
 import (
+	"errors"
 	"net/url"
 	"reflect"
 	"testing"
@@ -63,5 +64,21 @@ func TestSCIMUserResponseSelectionTree(t *testing.T) {
 	}
 	if s, _ := selectionQuery(url.Values{"excludedAttributes": {"members"}}, GroupSchema); s.returns("members") || !s.returns("displayName") {
 		t.Fatal("excluding members still loaded them")
+	}
+}
+
+// Filters support only equality joined by "and", as another runtime does;
+// every other operator is refused as invalidFilter.
+func TestUnsupportedFilterOperators(t *testing.T) {
+	for _, filter := range []string{`userName eq "a" or userName eq "b"`, `not (userName eq "a")`, `userName pr`, `userName ne "a"`, `meta.created gt "2026-01-01"`,
+		`userName sw "a"`, `(userName eq "a")`, `userName co "a"`, `userName ew "a"`, `userName ge "a"`, `userName lt "a"`, `userName le "a"`} {
+		_, err := query(url.Values{"filter": {filter}}, equality)
+		var e *Error
+		if !errors.As(err, &e) || e.Status != 400 || e.Type != "invalidFilter" {
+			t.Fatal("an unsupported filter operator was accepted", filter, err)
+		}
+	}
+	if q, err := query(url.Values{"filter": {`userName eq "a" and externalId eq "b"`}}, equality); err != nil || len(q.Filters) != 2 {
+		t.Fatal("an and of equalities was refused", err)
 	}
 }

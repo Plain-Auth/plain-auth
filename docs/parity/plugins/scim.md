@@ -113,8 +113,8 @@
   - [ ] `SCIMIdentitySource`
     - [x] Hand the reconciler the domain's sources sorted by SCIM User ID, a deactivated one inactive beside an active one ([test](../../../adapters/sqlstore/scim_projection_test.go#L329))
   - [ ] `SCIMIdentityState`
-  - [x] `SCIMManagedBearerPrincipal` ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L60))
-    - [x] Give a managed credential's principal its connection, domain, credential, scopes and expiry, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L60))
+  - [x] `SCIMManagedBearerPrincipal` ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L81))
+    - [x] Give a managed credential's principal its connection, domain, credential, scopes and expiry, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L81))
   - [ ] `SCIMManagedConnectionOptions`
     - [x] `credentialHashSecret` ([test](../../../plugins/scim/managed_test.go#L50))
       - [x] Authenticate the other implementation’s issued credential from a shared keyed digest ([test](../../../conformance/scim-managed.mjs#L13))
@@ -144,16 +144,17 @@
       - [x] Refuse a configuration without connections, verifier or catalog, a connection without credentials, duplicate or padded credential IDs at startup ([test](../../../plugins/scim/http_test.go#L52))
     - [ ] `authentication`
       - [x] Allow a verifier-only directory and preserve static credential precedence ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L35))
-    - [ ] `managedConnections`
+    - [x] `managedConnections` ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L161))
       - [x] Authenticate and revoke server-issued managed credentials on both implementations ([test](../../../conformance/scim-managed.mjs#L13))
+      - [x] Leave a handler without the option without a catalog and refuse managed tokens, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L161))
     - [ ] `identity`
       - [x] Link a SCIM User to an existing account through Identity.ResolveUser ([test](../../../adapters/sqlstore/scim_identity_test.go#L111))
     - [ ] `projection`
     - [x] `compatibility` ([test](../../../adapters/sqlstore/scim_groups_contract_test.go#L147))
       - [x] Refuse the classic Entra Group marker on creation by default ([test](../../../adapters/sqlstore/scim_groups_test.go#L407))
       - [x] Refuse the legacy Entra Group marker without AcceptLegacyEntraGroupSchema and accept it with the option, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_groups_contract_test.go#L147))
-  - [x] `SCIMPrincipal` ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L60))
-    - [x] Report managed-bearer principals beside the static-bearer and oauth-bearer ones, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L60))
+  - [x] `SCIMPrincipal` ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L81))
+    - [x] Report managed-bearer principals beside the static-bearer and oauth-bearer ones, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L81))
   - [x] `SCIMProjectedRoleGrant` ([test](../../../adapters/sqlstore/scim_projection_test.go#L259))
     - [x] Hand the reconciler grants sorted by grant key, each with its Group ([test](../../../adapters/sqlstore/scim_projection_test.go#L259))
   - [ ] `SCIMProjectedUserState`
@@ -249,27 +250,37 @@
     - [x] Issue a finite scoped bearer once under concurrent creates with the same request ID ([test](../../../adapters/sqlstore/scim_managed_test.go#L31))
     - [x] Refuse issuance without a future expiry or with empty or repeated scopes ([test](../../../adapters/sqlstore/scim_managed_test.go#L72))
     - [x] Refuse a creation request ID under 16 characters and an empty actor with 400 invalidValue and no token, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L49))
-  - [ ] `listSCIMManagedConnections (server API only)`
+  - [x] `listSCIMManagedConnections (server API only)` ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L74))
     - [x] List the other implementation’s connection for its provisioning domain ([test](../../../conformance/scim-managed.mjs#L13))
+    - [x] List a domain's connections newest first and refuse a list without a domain, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L74))
   - [ ] `getSCIMManagedConnection (server API only)`
     - [x] Return public managed credential metadata only to the matching domain ([test](../../../adapters/sqlstore/scim_managed_test.go#L31))
-  - [ ] `rotateSCIMManagedCredential (server API only)`
+  - [x] `rotateSCIMManagedCredential (server API only)` ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L130))
     - [x] Accept both overlapping secrets while rotating credentials across implementations ([test](../../../conformance/scim-managed.mjs#L13))
-  - [ ] `revokeSCIMManagedCredential (server API only)`
+    - [x] Refuse a rotation past the credential cap with ErrManagedConflict and no token, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L130))
+  - [x] `revokeSCIMManagedCredential (server API only)` ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L117))
     - [x] Revoke once and prevent an already verified resource write from proceeding after commit ([test](../../../adapters/sqlstore/scim_managed_test.go#L31))
+    - [x] Refuse an unknown credential with ErrManagedNotFound and record the revoking actor, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L117))
   - [ ] `listSCIMManagedConnectionEvents (server API only)`
     - [x] Read the other implementation’s ordered audit events and total with pagination ([test](../../../conformance/scim-managed.mjs#L13))
-  - [ ] `decommissionSCIMManagedConnection (server API only)`
+  - [x] `decommissionSCIMManagedConnection (server API only)` ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L146))
     - [x] Retire a provisioned directory from either implementation, invalidate its credentials and revoke the last source’s sessions ([test](../../../conformance/core.test.mjs#L1063))
     - [x] Resume failed and expired leases across instances, retain independently sourced sessions and record one completion ([test](../../../adapters/sqlstore/scim_decommission_test.go#L16))
-  - [ ] `SCIMManagedConnection`
+    - [x] Refuse a retirement without an actor or of a code-defined connection, and end the active credentials, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L146))
+  - [x] `SCIMManagedConnection` ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L58))
+    - [x] Give an issued connection its creation request ID, domain, active status, creator and time, with no retirement fields, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L58))
   - [ ] `SCIMManagedConnectionEvent`
-  - [ ] `SCIMManagedConnectionEventType`
-  - [ ] `SCIMManagedConnectionStatus`
-  - [ ] `SCIMManagedCredential`
-  - [ ] `SCIMManagedCredentialStatus`
-  - [ ] `SCIM_MANAGED_CREATION_REQUEST_ID_CONFLICT`
+  - [x] `SCIMManagedConnectionEventType` ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L152))
+    - [x] End the audit trail of a retired connection with connection.decommissioning and connection.decommissioned, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L152))
+  - [x] `SCIMManagedConnectionStatus` ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L58))
+    - [x] Report active for an issued connection, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L58))
+  - [x] `SCIMManagedCredential` ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L123))
+    - [x] Give an issued credential its policy scopes, expiry and creator, and a revoked one its actor and time, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L123))
+  - [x] `SCIMManagedCredentialStatus` ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L146))
+    - [x] Mark the active credentials decommissioned on retirement and keep revoked ones, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L146))
+  - [x] `SCIM_MANAGED_CREATION_REQUEST_ID_CONFLICT` ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L65))
     - [x] Reject the duplicate creation request without exposing the previously issued bearer ([test](../../../adapters/sqlstore/scim_managed_test.go#L31))
+    - [x] Refuse a spent creation request ID in another domain with ErrCreationRequestConflict and no token, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L65))
   - [ ] `reconcileSCIMProjection (server API only)`
     - [x] Replay a domain from either instance after the application's role catalog changes ([test](../../../adapters/sqlstore/scim_projection_test.go#L357))
     - [x] Replay one domain without removing a role projected in another domain ([test](../../../adapters/sqlstore/scim_projection_test.go#L444))
@@ -341,8 +352,8 @@
       - [x] Serve directory routes under the auth mount's /scim/v2 path and link created Users from the configured base URL ([test](../../../adapters/sqlstore/scim_test.go#L125))
     - [x] Authentication ([test](../../../plugins/scim/http_test.go#L300))
       - [x] Advertise bearer token authentication only and refuse Basic credentials with a bearer challenge ([test](../../../plugins/scim/http_test.go#L300))
-    - [x] Token ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L67))
-      - [x] Accept a code-defined token, a managed token and its rotation on one handler, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L67))
+    - [x] Token ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L88))
+      - [x] Accept a code-defined token, a managed token and its rotation on one handler, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L88))
   - [ ] How provisioning maps to your application
     - [x] Grant no authorization for a Group membership by itself, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_groups_contract_test.go#L120))
   - [ ] Provision users
@@ -367,7 +378,8 @@
       - [x] Refuse a handler with no connection, verifier or catalog ([test](../../../plugins/scim/http_test.go#L52))
     - [x] `authentication` ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L35))
       - [x] Verify bearer tokens through the application verifier for declared and application-resolved connections ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L35))
-    - [ ] `managedConnections`
+    - [x] `managedConnections` ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L158))
+      - [x] Retire through the catalog and leave a handler without the option without a catalog, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L158))
     - [ ] `identity`
       - [x] Configure Identity.ResolveUser to link incoming Users ([test](../../../adapters/sqlstore/scim_identity_test.go#L138))
     - [x] `projection` ([test](../../../adapters/sqlstore/scim_projection_test.go#L20))
@@ -413,9 +425,9 @@
         - [x] Issue exactly one extra credential under four concurrent rotations at the active-credential cap while the earlier token keeps working ([test](../../../adapters/sqlstore/scim_managed_test.go#L184))
       - [x] `revokeSCIMManagedCredential` ([test](../../../adapters/sqlstore/scim_managed_test.go#L199))
         - [x] Answer 401 for a revoked credential, including a request already in flight when the revocation commits ([test](../../../adapters/sqlstore/scim_managed_test.go#L199))
-      - [x] `listSCIMManagedConnectionEvents` ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L76))
+      - [x] `listSCIMManagedConnectionEvents` ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L97))
         - [x] Return contiguous lifecycle events and page them by limit, offset and ascending or descending order ([test](../../../adapters/sqlstore/scim_managed_test.go#L229))
-        - [x] Refuse audit pages over 100 events, a negative offset or an unknown sort, and default to 100 events, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L76))
+        - [x] Refuse audit pages over 100 events, a negative offset or an unknown sort, and default to 100 events, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L97))
       - [x] `decommissionSCIMManagedConnection` ([test](../../../adapters/sqlstore/scim_decommission_test.go#L160))
         - [x] Disable a managed connection's credentials, resume an interrupted reconciliation on another server and record it as decommissioned ([test](../../../adapters/sqlstore/scim_decommission_test.go#L160))
       - [x] `scim.users.read` ([test](../../../adapters/sqlstore/scim_users_contract_test.go#L83))
@@ -554,11 +566,11 @@
     - [x] Group ([test](../../../adapters/sqlstore/scim_groups_contract_test.go#L142))
       - [x] Find a Group by lowercase displayName and externalId on both runtimes ([test](../../../conformance/scim-contract.mjs#L116))
       - [x] Return exactly one Group for a case-insensitive displayName or an externalId filter, as for an id filter, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_groups_contract_test.go#L142))
-  - [x] Response attributes ([test](../../../plugins/scim/selection_test.go#L29))
-    - [x] Select and exclude nested, case-insensitive and core-qualified paths, ignore unknown paths, refuse empty parts, inner whitespace and combined parameters, and keep emptied array entries on exclusion ([test](../../../plugins/scim/selection_test.go#L29))
+  - [x] Response attributes ([test](../../../plugins/scim/selection_test.go#L30))
+    - [x] Select and exclude nested, case-insensitive and core-qualified paths, ignore unknown paths, refuse empty parts, inner whitespace and combined parameters, and keep emptied array entries on exclusion ([test](../../../plugins/scim/selection_test.go#L30))
     - [x] Apply nested selections to POST, PUT, PATCH, collection and Group responses and ignore an unknown path, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L781))
     - [x] Select nested Group member and meta fields ([test](../../../adapters/sqlstore/scim_attributes_test.go#L819))
-    - [x] Read inner whitespace in a selection path as JavaScript does ([test](../../../plugins/scim/selection_test.go#L50))
+    - [x] Read inner whitespace in a selection path as JavaScript does ([test](../../../plugins/scim/selection_test.go#L51))
   - [ ] PATCH
     - [x] Accept an empty Operations array, an empty pathless value and 101 operations, keep lastModified and the revision for an unchanged PATCH, take case-insensitive and omitted ops, and refuse an unknown op, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L269))
     - [ ] User PATCH paths
@@ -658,13 +670,14 @@
     - [x] Bulk requests, POST-based search, `/Me`, ETags, cursors, or sorting ([test](../../../plugins/scim/http_test.go#L244))
       - [x] Refuse Bulk and /Me with 404 and POST search with 405, and advertise no sorting or ETags ([test](../../../plugins/scim/http_test.go#L288))
       - [x] Publish exactly another runtime's ServiceProviderConfig members, with bulk, sort, ETags and password changes unsupported ([test](../../../plugins/scim/http_test.go#L244))
-    - [ ] Operators other than equality and logical `and`
+    - [x] Operators other than equality and logical `and` ([test](../../../plugins/scim/selection_test.go#L78))
       - [x] Reject a User filter using the co operator with 400 ([test](../../../adapters/sqlstore/scim_test.go#L159))
+      - [x] Refuse every filter operator but equality and and with invalidFilter ([test](../../../plugins/scim/selection_test.go#L78))
     - [x] A built-in OAuth token endpoint, Basic authentication, or mutual TLS ([test](../../../plugins/scim/http_test.go#L300))
       - [x] Refuse Basic credentials with 401 and a Bearer challenge ([test](../../../plugins/scim/http_test.go#L300))
-    - [x] HTTP management endpoints, SCIM request audit records, or webhooks ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L105))
+    - [x] HTTP management endpoints, SCIM request audit records, or webhooks ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L174))
       - [x] Answer 404 for a catalog method name requested under the SCIM HTTP path ([test](../../../adapters/sqlstore/scim_managed_test.go#L248))
-      - [x] Answer 404 for every managed operation name under the SCIM and auth paths, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L105))
+      - [x] Answer 404 for every managed operation name under the SCIM and auth paths, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L174))
   - [x] Schema ([test](../../../conformance/schema.test.mjs#L106))
     - [x] Emit the SCIM and managed SCIM tables from the schema CLI exactly as the other runtime's migration on SQLite, PostgreSQL and MySQL ([test](../../../conformance/schema.test.mjs#L106))
     - [x] `scimConnectionBinding` ([test](../../../conformance/schema.test.mjs#L106))
@@ -695,9 +708,9 @@
     - [x] `scimManagedCredential` ([test](../../../adapters/sqlstore/scim_managed_test.go#L143))
       - [x] Persist only a fixed-length keyed digest of a managed token, never the token or its credential ID ([test](../../../adapters/sqlstore/scim_managed_test.go#L143))
       - [x] Report revoked, expired and active managed credentials with distinct statuses ([test](../../../adapters/sqlstore/scim_managed_test.go#L221))
-    - [x] `scimManagedConnectionEvent` ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L89))
+    - [x] `scimManagedConnectionEvent` ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L110))
       - [x] Emit the scimManagedConnectionEvent table from the schema CLI exactly as the other runtime's migration ([test](../../../conformance/schema.test.mjs#L106))
       - [x] Record connection creation, issuance, rotation and revocation events in sequence order ([test](../../../adapters/sqlstore/scim_managed_test.go#L233))
-      - [x] Record each audit event's actor, and the credential for credential events only, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L89))
+      - [x] Record each audit event's actor, and the credential for credential events only, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L110))
     - [x] Legacy SCIM cutover ([test](../../../adapters/sqlstore/scim_attributes_test.go#L346))
       - [x] Serve GET, PUT and PATCH for a row without serializedAttributes from its mirror columns, write canonical attributes on its next change and read an empty value the same way, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L346))
