@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -191,6 +192,11 @@ func TestPasskeySoftwareAuthenticator(t *testing.T) {
 			row := register(false, false)
 			if row["credentialID"] != base64.RawURLEncoding.EncodeToString(key.id) || row["userId"] != owner.User.ID || row["id"] == row["credentialID"] {
 				t.Fatal("stored credential identity mismatch")
+			}
+			again, _ := request(first, "generate-register-options", nil, 200, session)
+			excluded, _ := again["excludeCredentials"].([]any)
+			if len(excluded) != 1 || !reflect.DeepEqual(excluded[0], map[string]any{"type": "public-key", "id": row["credentialID"], "transports": []any{"internal"}}) {
+				t.Fatalf("registration options did not exclude the enrolled credential: %v", excluded)
 			}
 			register(false, true)
 			gr := httptest.NewRequest("POST", origin+"/api/auth/sign-in/anonymous", strings.NewReader("{}"))

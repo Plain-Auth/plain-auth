@@ -2792,6 +2792,16 @@
       "label": "Run the challenge's verification create hooks; a declined challenge is never stored and its options redeem nothing",
       "test": "adapters/sqlstore/passkey_hooks_test.go",
       "marker": "// A declined challenge returns options that redeem nothing."
+    },
+    {
+      "label": "Exclude the account's enrolled credential, with its transports, from later registration options on three SQL engines",
+      "test": "adapters/sqlstore/passkey_test.go",
+      "marker": "registration options did not exclude the enrolled credential"
+    },
+    {
+      "label": "Refuse an unknown authenticator attachment with a validation error before the session is read, and issue no challenge cookie",
+      "test": "adapters/sqlstore/passkey_options_test.go",
+      "marker": "an unknown authenticator attachment was not refused"
     }
   ],
   "plugin/passkey/GET /passkey/generate-authenticate-options": [
@@ -34888,6 +34898,11 @@
       "label": "Require user verification in sign-in options when configured, on both servers",
       "test": "conformance/core.test.mjs",
       "marker": "assert.equal(login.data.userVerification, \"required\");"
+    },
+    {
+      "label": "Advertise the configured authenticator attachment and resident-key requirement in registration options",
+      "test": "adapters/sqlstore/passkey_options_test.go",
+      "marker": "func TestPasskeyAuthenticatorSelection("
     }
   ],
   "plugin-symbol/passkey/PasskeyOptions/registration": [
@@ -38755,6 +38770,98 @@
       "label": "Return the stored metadata object on a later lookup",
       "test": "adapters/sqlstore/apikey_test.go",
       "marker": "denied permission consumed a use or lost metadata"
+    }
+  ],
+  "docs/content/docs/plugins/passkey.mdx#L498/authenticatorSelection": [
+    {
+      "label": "Advertise the configured authenticator attachment and resident-key requirement in registration options, and the defaults when they are unset",
+      "test": "adapters/sqlstore/passkey_options_test.go",
+      "marker": "func TestPasskeyAuthenticatorSelection(",
+      "complete": true
+    },
+    {
+      "label": "Refuse an unknown authenticator attachment or resident-key requirement when the plugin is built",
+      "test": "plugins/passkey/passkey_test.go",
+      "marker": "func TestAuthenticatorSelectionConfiguration("
+    }
+  ],
+  "docs/content/docs/plugins/passkey.mdx#L500/`authenticatorAttachment`": [
+    {
+      "label": "Leave the attachment unset by default, advertise the configured one, and let a request's attachment replace it",
+      "test": "adapters/sqlstore/passkey_options_test.go",
+      "marker": "{\"request replaces configured\", ",
+      "complete": true
+    },
+    {
+      "label": "Leave the authenticator attachment out of registration options when none is configured or requested",
+      "test": "adapters/sqlstore/passkey_options_test.go",
+      "marker": "{\"defaults\", pk.AuthenticatorSelection{}"
+    }
+  ],
+  "docs/content/docs/plugins/passkey.mdx#L501/`platform`": [
+    {
+      "label": "Advertise platform authenticators when a registration request asks for them",
+      "test": "adapters/sqlstore/passkey_options_test.go",
+      "marker": "{\"platform request\", "
+    },
+    {
+      "label": "Advertise platform authenticators when the plugin is configured for them",
+      "test": "adapters/sqlstore/passkey_options_test.go",
+      "marker": "{\"configured platform\", ",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/passkey.mdx#L502/`cross-platform`": [
+    {
+      "label": "Advertise cross-platform authenticators when a registration request asks for them",
+      "test": "adapters/sqlstore/passkey_options_test.go",
+      "marker": "{\"cross-platform request\", "
+    },
+    {
+      "label": "Advertise cross-platform authenticators when the plugin is configured for them",
+      "test": "adapters/sqlstore/passkey_options_test.go",
+      "marker": "{\"configured cross-platform\", ",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/passkey.mdx#L504/`residentKey`": [
+    {
+      "label": "Advertise a required, preferred or discouraged resident key, with requireResidentKey true only for required",
+      "test": "adapters/sqlstore/passkey_options_test.go",
+      "marker": "t.Fatalf(\"registration options advertised %v, want %v\"",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/passkey.mdx#L505/`required`": [
+    {
+      "label": "Advertise residentKey required with requireResidentKey true when it is configured",
+      "test": "adapters/sqlstore/passkey_options_test.go",
+      "marker": "{\"configured cross-platform\", ",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/passkey.mdx#L506/`preferred`": [
+    {
+      "label": "Advertise residentKey preferred with requireResidentKey false when nothing is configured",
+      "test": "adapters/sqlstore/passkey_options_test.go",
+      "marker": "{\"defaults\", pk.AuthenticatorSelection{}",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/passkey.mdx#L507/`discouraged`": [
+    {
+      "label": "Advertise residentKey discouraged with requireResidentKey false when it is configured",
+      "test": "adapters/sqlstore/passkey_options_test.go",
+      "marker": "{\"configured platform\", ",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/passkey.mdx#L148/Parameter `authenticatorAttachment` (optional)": [
+    {
+      "label": "Advertise the attachment a registration request asks for, and refuse any other, empty or repeated value with a validation error before the session is read",
+      "test": "adapters/sqlstore/passkey_options_test.go",
+      "marker": "an unknown authenticator attachment was not refused",
+      "complete": true
     }
   ]
 }

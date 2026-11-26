@@ -83,12 +83,32 @@ func challengeRecord(id, kind string, state ceremony, expiresAt time.Time) authn
 }
 
 type Options struct {
-	Registration            RegistrationOptions
+	Registration RegistrationOptions
+	// AuthenticatorSelection chooses the authenticators that registration
+	// options ask for. User verification stays RequireUserVerification.
+	AuthenticatorSelection  AuthenticatorSelection
 	RPID                    string
 	RPName                  string
 	Origins                 []string
 	RequireUserVerification bool
 	ChallengeLifetime       time.Duration
+}
+
+// AuthenticatorSelection is the authenticator selection that registration
+// options advertise. Zero fields keep the defaults.
+type AuthenticatorSelection struct {
+	// Attachment limits registration to "platform" authenticators, which are
+	// built into the device (such as a fingerprint reader), or to
+	// "cross-platform" ones (such as a security key). Empty allows both. A
+	// request's authenticatorAttachment query replaces it.
+	Attachment protocol.AuthenticatorAttachment
+	// ResidentKey asks for a discoverable credential: "required",
+	// "preferred" (the default) or "discouraged". Sign-in finds the account
+	// by the credential's user handle, and only a discoverable credential is
+	// sure to return one: a credential that is not discoverable cannot sign
+	// in here. Discouraged makes such credentials likely, and preferred
+	// allows them on authenticators that cannot store discoverable ones.
+	ResidentKey protocol.ResidentKeyRequirement
 }
 
 type service struct {
@@ -168,9 +188,25 @@ func New(o Options) (authn.Plugin, error) {
 	if o.RequireUserVerification {
 		uv = protocol.VerificationRequired
 	}
+	sel := o.AuthenticatorSelection
+	if sel.Attachment != "" && sel.Attachment != protocol.Platform && sel.Attachment != protocol.CrossPlatform {
+		return authn.Plugin{}, errors.New("passkey: authenticator attachment must be platform or cross-platform")
+	}
+	if sel.ResidentKey == "" {
+		sel.ResidentKey = protocol.ResidentKeyRequirementPreferred
+	}
+	if !slices.Contains([]protocol.ResidentKeyRequirement{protocol.ResidentKeyRequirementRequired, protocol.ResidentKeyRequirementPreferred, protocol.ResidentKeyRequirementDiscouraged}, sel.ResidentKey) {
+		return authn.Plugin{}, errors.New("passkey: resident key must be required, preferred or discouraged")
+	}
+	// As in the other runtime's options, requireResidentKey is always sent
+	// and is true only for required.
+	selection := protocol.AuthenticatorSelection{AuthenticatorAttachment: sel.Attachment, ResidentKey: sel.ResidentKey, RequireResidentKey: protocol.ResidentKeyNotRequired(), UserVerification: uv}
+	if sel.ResidentKey == protocol.ResidentKeyRequirementRequired {
+		selection.RequireResidentKey = protocol.ResidentKeyRequired()
+	}
 	timeout := wa.TimeoutConfig{Enforce: true, Timeout: o.ChallengeLifetime, TimeoutUVD: o.ChallengeLifetime}
 	web, err := wa.New(&wa.Config{RPID: o.RPID, RPDisplayName: o.RPName, RPOrigins: origins,
-		AuthenticatorSelection: protocol.AuthenticatorSelection{ResidentKey: protocol.ResidentKeyRequirementPreferred, UserVerification: uv},
+		AuthenticatorSelection: selection,
 		Timeouts:               wa.TimeoutsConfig{Registration: timeout, Login: timeout}})
 	if err != nil {
 		return authn.Plugin{}, err
@@ -332,6 +368,11 @@ func (r Record) credential() (wa.Credential, error) {
 	return out, nil
 }
 func (s service) beginRegistration(c authn.EndpointContext) (any, error) {
+	q := c.Request.URL.Query()
+	// As in the other runtime, the query is validated before the session is read.
+	if values, ok := q["authenticatorAttachment"]; ok && (len(values) != 1 || values[0] != string(protocol.Platform) && values[0] != string(protocol.CrossPlatform)) {
+		return nil, problem(400, "VALIDATION_ERROR", `[query.authenticatorAttachment] Invalid option: expected one of "platform"|"cross-platform"`)
+	}
 	user, state, err := s.registrationActor(c)
 	if err != nil {
 		return nil, err
@@ -348,14 +389,10 @@ func (s service) beginRegistration(c authn.EndpointContext) (any, error) {
 		user.credentials = append(user.credentials, cred)
 	}
 	opts := []wa.RegistrationOption{wa.WithExclusions(user.credentials.CredentialDescriptors())}
-	q := c.Request.URL.Query()
 	if name := q.Get("name"); name != "" {
 		user.Name = name
 	}
 	if attachment := q.Get("authenticatorAttachment"); attachment != "" {
-		if attachment != "platform" && attachment != "cross-platform" {
-			return nil, ErrRegistration
-		}
 		cfg := s.web.Config.AuthenticatorSelection
 		cfg.AuthenticatorAttachment = protocol.AuthenticatorAttachment(attachment)
 		opts = append(opts, wa.WithAuthenticatorSelection(cfg))

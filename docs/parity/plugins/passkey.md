@@ -13,52 +13,55 @@
     - [x] Fetch registration options through the published client from both servers after an email sign-up ([test](../../../conformance/core.test.mjs#L418))
   - [ ] `PASSKEY_ERROR_CODES`
   - [ ] `passkey`
-    - [x] Register, sign in, list, rename and delete passkeys through the plugin's endpoints on three SQL engines ([test](../../../adapters/sqlstore/passkey_test.go#L86))
+    - [x] Register, sign in, list, rename and delete passkeys through the plugin's endpoints on three SQL engines ([test](../../../adapters/sqlstore/passkey_test.go#L87))
   - [ ] `GET /passkey/generate-register-options`
-    - [x] Bind registration to a fresh account session and a secure one-use challenge ([test](../../../adapters/sqlstore/passkey_test.go#L173))
+    - [x] Bind registration to a fresh account session and a secure one-use challenge ([test](../../../adapters/sqlstore/passkey_test.go#L174))
     - [x] Use the public client to request options with the configured relying-party name, ID and public-key algorithms ([test](../../../conformance/core.test.mjs#L408))
     - [x] Resolve a provisional enrollment identity and bind its display name and context to the ceremony ([test](../../../adapters/sqlstore/passkey_first_test.go#L85))
     - [x] Run the challenge's verification create hooks; a declined challenge is never stored and its options redeem nothing ([test](../../../adapters/sqlstore/passkey_hooks_test.go#L264))
+    - [x] Exclude the account's enrolled credential, with its transports, from later registration options on three SQL engines ([test](../../../adapters/sqlstore/passkey_test.go#L199))
+    - [x] Refuse an unknown authenticator attachment with a validation error before the session is read, and issue no challenge cookie ([test](../../../adapters/sqlstore/passkey_options_test.go#L149))
   - [ ] `GET /passkey/generate-authenticate-options`
-    - [x] Generate discoverable options and allow the current account’s enrolled credentials ([test](../../../adapters/sqlstore/passkey_test.go#L278))
+    - [x] Generate discoverable options and allow the current account’s enrolled credentials ([test](../../../adapters/sqlstore/passkey_test.go#L284))
     - [x] Run the challenge's verification create hooks for a signed-out caller, naming no owner ([test](../../../adapters/sqlstore/passkey_hooks_test.go#L314))
     - [x] Return a challenge of at least 22 characters in sign-in options requested through the published client, on both servers ([test](../../../conformance/core.test.mjs#L416))
   - [ ] `POST /passkey/verify-registration`
-    - [x] Verify the attested key and preserve distinct credential and record IDs ([test](../../../adapters/sqlstore/passkey_test.go#L193))
+    - [x] Verify the attested key and preserve distinct credential and record IDs ([test](../../../adapters/sqlstore/passkey_test.go#L194))
     - [x] Commit the passwordless user, unique credential and optional browser session together on three SQL backends ([test](../../../adapters/sqlstore/passkey_first_test.go#L98))
     - [x] Roll back account provisioning when another enrollment already owns the same credential ([test](../../../adapters/sqlstore/passkey_first_test.go#L175))
     - [x] ValidateUserInfo refuses a new passkey account with the app's code and stores nothing ([test](../../../adapters/sqlstore/passkey_first_test.go#L126))
     - [x] Spend the challenge with its verification delete hooks before the attestation is verified; a declined spend answers CHALLENGE_NOT_FOUND and keeps it ([test](../../../adapters/sqlstore/passkey_hooks_test.go#L280))
     - [x] Run the challenge's verification delete hooks before the session hooks of a registration that signs in ([test](../../../adapters/sqlstore/passkey_hooks_test.go#L255))
-    - [x] Refuse to finish a registration under a different account's session than the one that began it ([test](../../../adapters/sqlstore/passkey_test.go#L178))
-    - [x] Refuse to register a credential the account has already enrolled ([test](../../../adapters/sqlstore/passkey_test.go#L182))
+    - [x] Refuse to finish a registration under a different account's session than the one that began it ([test](../../../adapters/sqlstore/passkey_test.go#L179))
+    - [x] Refuse to register a credential the account has already enrolled ([test](../../../adapters/sqlstore/passkey_test.go#L183))
   - [ ] `POST /passkey/verify-authentication`
-    - [x] Verify a signed assertion and atomically persist its counter and session ([test](../../../adapters/sqlstore/passkey_test.go#L237))
+    - [x] Verify a signed assertion and atomically persist its counter and session ([test](../../../adapters/sqlstore/passkey_test.go#L243))
     - [x] Authenticate a real assertion after the trusted callback chooses a different final account ID ([test](../../../adapters/sqlstore/passkey_first_test.go#L115))
     - [x] Spend the challenge with its verification delete hooks before the assertion is verified and before the session hooks ([test](../../../adapters/sqlstore/passkey_hooks_test.go#L325))
-    - [x] Refuse an assertion whose signature counter did not advance ([test](../../../adapters/sqlstore/passkey_test.go#L245))
-    - [x] Refuse an assertion whose challenge has expired ([test](../../../adapters/sqlstore/passkey_test.go#L253))
+    - [x] Refuse an assertion whose signature counter did not advance ([test](../../../adapters/sqlstore/passkey_test.go#L251))
+    - [x] Refuse an assertion whose challenge has expired ([test](../../../adapters/sqlstore/passkey_test.go#L259))
   - [ ] `GET /passkey/list-user-passkeys`
-    - [x] List only credentials owned by the authenticated account ([test](../../../adapters/sqlstore/passkey_test.go#L256))
-    - [x] List the signed-in owner's passkey with its stored signature counter ([test](../../../adapters/sqlstore/passkey_test.go#L267))
+    - [x] List only credentials owned by the authenticated account ([test](../../../adapters/sqlstore/passkey_test.go#L262))
+    - [x] List the signed-in owner's passkey with its stored signature counter ([test](../../../adapters/sqlstore/passkey_test.go#L273))
   - [ ] `POST /passkey/delete-passkey`
-    - [x] Remove an owned key and reject subsequent assertions ([test](../../../adapters/sqlstore/passkey_test.go#L281))
-    - [x] Refuse to delete another account's passkey ([test](../../../adapters/sqlstore/passkey_test.go#L260))
+    - [x] Remove an owned key and reject subsequent assertions ([test](../../../adapters/sqlstore/passkey_test.go#L287))
+    - [x] Refuse to delete another account's passkey ([test](../../../adapters/sqlstore/passkey_test.go#L266))
   - [ ] `POST /passkey/update-passkey`
-    - [x] Rename an owned credential and refuse changes from another account ([test](../../../adapters/sqlstore/passkey_test.go#L259))
-    - [x] Return the renamed passkey under passkey in the update response ([test](../../../adapters/sqlstore/passkey_test.go#L263))
+    - [x] Rename an owned credential and refuse changes from another account ([test](../../../adapters/sqlstore/passkey_test.go#L265))
+    - [x] Return the renamed passkey under passkey in the update response ([test](../../../adapters/sqlstore/passkey_test.go#L269))
   - [ ] `Passkey`
-    - [x] Return a registered passkey with its own record ID, the base64url credential ID and the owner's user ID ([test](../../../adapters/sqlstore/passkey_test.go#L193))
+    - [x] Return a registered passkey with its own record ID, the base64url credential ID and the owner's user ID ([test](../../../adapters/sqlstore/passkey_test.go#L194))
   - [ ] `PasskeyOptions`
     - [ ] `rpID`
       - [x] Return the configured relying-party ID in sign-in options, on both servers ([test](../../../conformance/core.test.mjs#L414))
     - [ ] `rpName`
       - [x] Return the configured relying-party name and ID in registration options, on both servers ([test](../../../conformance/core.test.mjs#L420))
     - [ ] `origin`
-      - [x] Require explicitly configured secure origins within the relying-party ID ([test](../../../plugins/passkey/passkey_test.go#L12))
-      - [x] Refuse a signed assertion whose client data names an origin outside the configured list ([test](../../../adapters/sqlstore/passkey_test.go#L246))
+      - [x] Require explicitly configured secure origins within the relying-party ID ([test](../../../plugins/passkey/passkey_test.go#L13))
+      - [x] Refuse a signed assertion whose client data names an origin outside the configured list ([test](../../../adapters/sqlstore/passkey_test.go#L252))
     - [ ] `authenticatorSelection`
       - [x] Require user verification in sign-in options when configured, on both servers ([test](../../../conformance/core.test.mjs#L415))
+      - [x] Advertise the configured authenticator attachment and resident-key requirement in registration options ([test](../../../adapters/sqlstore/passkey_options_test.go#L104))
     - [ ] `advanced`
     - [ ] `schema`
     - [ ] `registration`
@@ -71,7 +74,7 @@
   - [ ] `PasskeyRegistrationOptions`
     - [ ] `requireSession`
       - [x] Opt into first-use registration and keep existing-session enrollment bound to the original live session ([test](../../../adapters/sqlstore/passkey_first_test.go#L162))
-      - [x] Refuse registration options to a caller without a session under the default registration settings ([test](../../../adapters/sqlstore/passkey_test.go#L189))
+      - [x] Refuse registration options to a caller without a session under the default registration settings ([test](../../../adapters/sqlstore/passkey_test.go#L190))
     - [ ] `resolveUser`
       - [x] Accept a validated application enrollment context and a provisional user identity ([test](../../../adapters/sqlstore/passkey_first_test.go#L45))
     - [ ] `afterVerification`
@@ -92,15 +95,16 @@
       - [x] Start a registration without a session using a context that ResolveUser checks, create the account in AfterVerification, return and set a session when createSession is true, and refuse a signed-in ceremony finished after sign-out, on three SQL backends ([test](../../../adapters/sqlstore/passkey_first_test.go#L19))
   - [ ] Usage
     - [ ] Add/Register a passkey
-      - [x] Enroll two independent public-key credentials from a fresh session ([test](../../../adapters/sqlstore/passkey_test.go#L273))
+      - [x] Enroll two independent public-key credentials from a fresh session ([test](../../../adapters/sqlstore/passkey_test.go#L279))
       - [x] Use the public addPasskey action with application context, createSession and the real WebAuthn result ([test](../../../conformance/passkey-first-browser.mjs#L68))
-      - [x] Refuse registration options without a session, then enroll a credential for the signed-in account ([test](../../../adapters/sqlstore/passkey_test.go#L189))
+      - [x] Refuse registration options without a session, then enroll a credential for the signed-in account ([test](../../../adapters/sqlstore/passkey_test.go#L190))
       - [ ] Browser client action `passkey.addPasskey`
         - [x] Enroll through the published client's addPasskey action on both servers with a Chrome virtual authenticator ([test](../../../conformance/passkey-first-browser.mjs#L59))
         - [ ] Parameter `name` (optional)
           - [x] Use the requested name as the WebAuthn account name in the registration options ([test](../../../adapters/sqlstore/passkey_first_test.go#L84))
           - [x] Keep the client-supplied passkey name instead of the label the server callback returns ([test](../../../adapters/sqlstore/passkey_first_test.go#L123))
-        - [ ] Parameter `authenticatorAttachment` (optional)
+        - [x] Parameter `authenticatorAttachment` (optional) ([test](../../../adapters/sqlstore/passkey_options_test.go#L149))
+          - [x] Advertise the attachment a registration request asks for, and refuse any other, empty or repeated value with a validation error before the session is read ([test](../../../adapters/sqlstore/passkey_options_test.go#L149))
         - [ ] Parameter `returnWebAuthnResponse` (optional)
           - [x] Return the browser's WebAuthn response from addPasskey with returnWebAuthnResponse, with an ID that matches the credential the server stored, on both servers ([test](../../../conformance/passkey-first-browser.mjs#L68))
         - [x] Parameter `context` (optional) ([test](../../../adapters/sqlstore/passkey_first_test.go#L82))
@@ -108,37 +112,37 @@
         - [x] Parameter `createSession` (optional) ([test](../../../adapters/sqlstore/passkey_first_test.go#L98))
           - [x] Return the new session and user, with a cookie that authenticates, when createSession is true, and return neither when it is false ([test](../../../adapters/sqlstore/passkey_first_test.go#L98))
     - [ ] Sign in with a passkey
-      - [x] Sign in with a locally generated software authenticator and honor counter progression ([test](../../../adapters/sqlstore/passkey_test.go#L267))
+      - [x] Sign in with a locally generated software authenticator and honor counter progression ([test](../../../adapters/sqlstore/passkey_test.go#L273))
       - [x] Sign in using the passkey the browser enrolled before login ([test](../../../conformance/passkey-first-browser.mjs#L72))
-      - [x] Sign in with a software authenticator's assertion and get a session that another instance accepts ([test](../../../adapters/sqlstore/passkey_test.go#L237))
+      - [x] Sign in with a software authenticator's assertion and get a session that another instance accepts ([test](../../../adapters/sqlstore/passkey_test.go#L243))
       - [ ] Browser client action `signIn.passkey`
         - [x] Sign in with the published client's signIn.passkey action on both servers through a Chrome virtual authenticator ([test](../../../conformance/passkey-first-browser.mjs#L71))
         - Parameter `autoFill` (optional) — *not applicable: browser WebAuthn client behaviour*
         - Parameter `returnWebAuthnResponse` (optional) — *not applicable: browser WebAuthn client behaviour*
     - Extensions — *not applicable: browser WebAuthn client behaviour*
     - [ ] List passkeys
-      - [x] Keep another user’s keys out of the results ([test](../../../adapters/sqlstore/passkey_test.go#L256))
-      - [x] List the signed-in owner's passkey with its stored counter, while another account lists none ([test](../../../adapters/sqlstore/passkey_test.go#L265))
+      - [x] Keep another user’s keys out of the results ([test](../../../adapters/sqlstore/passkey_test.go#L262))
+      - [x] List the signed-in owner's passkey with its stored counter, while another account lists none ([test](../../../adapters/sqlstore/passkey_test.go#L271))
       - [ ] `GET /passkey/list-user-passkeys`
         - [x] List no passkeys through the published client for a newly signed-up account on both servers ([test](../../../conformance/core.test.mjs#L423))
-        - [x] Keep another account's passkeys out of the signed-in caller's list ([test](../../../adapters/sqlstore/passkey_test.go#L256))
+        - [x] Keep another account's passkeys out of the signed-in caller's list ([test](../../../adapters/sqlstore/passkey_test.go#L262))
     - [ ] Naming passkeys by authenticator
     - [ ] Deleting passkeys
-      - [x] Delete a credential through an owner-authorized request ([test](../../../adapters/sqlstore/passkey_test.go#L281))
-      - [x] Refuse another account's request to delete a passkey by ID, then delete it for its owner ([test](../../../adapters/sqlstore/passkey_test.go#L260))
+      - [x] Delete a credential through an owner-authorized request ([test](../../../adapters/sqlstore/passkey_test.go#L287))
+      - [x] Refuse another account's request to delete a passkey by ID, then delete it for its owner ([test](../../../adapters/sqlstore/passkey_test.go#L266))
       - [ ] `POST /passkey/delete-passkey`
-        - [x] Delete the owner's passkey through another instance, after which the same credential can be registered again ([test](../../../adapters/sqlstore/passkey_test.go#L281))
-        - [x] Parameter `id` ([test](../../../adapters/sqlstore/passkey_test.go#L258))
-          - [x] Delete and rename a passkey by the stored record ID that registration returned ([test](../../../adapters/sqlstore/passkey_test.go#L258))
+        - [x] Delete the owner's passkey through another instance, after which the same credential can be registered again ([test](../../../adapters/sqlstore/passkey_test.go#L287))
+        - [x] Parameter `id` ([test](../../../adapters/sqlstore/passkey_test.go#L264))
+          - [x] Delete and rename a passkey by the stored record ID that registration returned ([test](../../../adapters/sqlstore/passkey_test.go#L264))
     - [ ] Updating passkey names
-      - [x] Persist the new name on the current account’s credential ([test](../../../adapters/sqlstore/passkey_test.go#L263))
-      - [x] Refuse another account's rename, and rename the owner's passkey, returning the new name ([test](../../../adapters/sqlstore/passkey_test.go#L259))
+      - [x] Persist the new name on the current account’s credential ([test](../../../adapters/sqlstore/passkey_test.go#L269))
+      - [x] Refuse another account's rename, and rename the owner's passkey, returning the new name ([test](../../../adapters/sqlstore/passkey_test.go#L265))
       - [ ] `POST /passkey/update-passkey`
-        - [x] Return the renamed passkey to its signed-in owner ([test](../../../adapters/sqlstore/passkey_test.go#L261))
-        - [x] Parameter `id` ([test](../../../adapters/sqlstore/passkey_test.go#L258))
-          - [x] Rename and delete a passkey by the stored record ID that registration returned ([test](../../../adapters/sqlstore/passkey_test.go#L258))
+        - [x] Return the renamed passkey to its signed-in owner ([test](../../../adapters/sqlstore/passkey_test.go#L267))
+        - [x] Parameter `id` ([test](../../../adapters/sqlstore/passkey_test.go#L264))
+          - [x] Rename and delete a passkey by the stored record ID that registration returned ([test](../../../adapters/sqlstore/passkey_test.go#L264))
         - [ ] Parameter `name`
-          - [x] Return the passkey with the requested new name ([test](../../../adapters/sqlstore/passkey_test.go#L262))
+          - [x] Return the passkey with the requested new name ([test](../../../adapters/sqlstore/passkey_test.go#L268))
     - Conditional UI — *not applicable: browser WebAuthn client behaviour*
       - Update input fields
       - Preload the passkeys
@@ -174,16 +178,28 @@
     - [x] rpName ([test](../../../conformance/core.test.mjs#L420))
       - [x] Return the configured relying-party ID and name in the registration options from both servers ([test](../../../conformance/core.test.mjs#L420))
     - [ ] origin
-      - [x] Refuse an assertion whose client data reports an origin outside the configured list ([test](../../../adapters/sqlstore/passkey_test.go#L246))
-      - [x] Refuse wildcard, foreign, insecure, path-bearing and credential-bearing origins when the plugin is built ([test](../../../plugins/passkey/passkey_test.go#L12))
-    - [ ] authenticatorSelection
-    - [ ] `authenticatorAttachment`
-    - [ ] `platform`
-    - [ ] `cross-platform`
-    - [ ] `residentKey`
-    - [ ] `required`
-    - [ ] `preferred`
-    - [ ] `discouraged`
+      - [x] Refuse an assertion whose client data reports an origin outside the configured list ([test](../../../adapters/sqlstore/passkey_test.go#L252))
+      - [x] Refuse wildcard, foreign, insecure, path-bearing and credential-bearing origins when the plugin is built ([test](../../../plugins/passkey/passkey_test.go#L13))
+    - [x] authenticatorSelection ([test](../../../adapters/sqlstore/passkey_options_test.go#L104))
+      - [x] Advertise the configured authenticator attachment and resident-key requirement in registration options, and the defaults when they are unset ([test](../../../adapters/sqlstore/passkey_options_test.go#L104))
+      - [x] Refuse an unknown authenticator attachment or resident-key requirement when the plugin is built ([test](../../../plugins/passkey/passkey_test.go#L35))
+    - [x] `authenticatorAttachment` ([test](../../../adapters/sqlstore/passkey_options_test.go#L127))
+      - [x] Leave the attachment unset by default, advertise the configured one, and let a request's attachment replace it ([test](../../../adapters/sqlstore/passkey_options_test.go#L127))
+      - [x] Leave the authenticator attachment out of registration options when none is configured or requested ([test](../../../adapters/sqlstore/passkey_options_test.go#L123))
+    - [x] `platform` ([test](../../../adapters/sqlstore/passkey_options_test.go#L128))
+      - [x] Advertise platform authenticators when a registration request asks for them ([test](../../../adapters/sqlstore/passkey_options_test.go#L124))
+      - [x] Advertise platform authenticators when the plugin is configured for them ([test](../../../adapters/sqlstore/passkey_options_test.go#L128))
+    - [x] `cross-platform` ([test](../../../adapters/sqlstore/passkey_options_test.go#L126))
+      - [x] Advertise cross-platform authenticators when a registration request asks for them ([test](../../../adapters/sqlstore/passkey_options_test.go#L125))
+      - [x] Advertise cross-platform authenticators when the plugin is configured for them ([test](../../../adapters/sqlstore/passkey_options_test.go#L126))
+    - [x] `residentKey` ([test](../../../adapters/sqlstore/passkey_options_test.go#L138))
+      - [x] Advertise a required, preferred or discouraged resident key, with requireResidentKey true only for required ([test](../../../adapters/sqlstore/passkey_options_test.go#L138))
+    - [x] `required` ([test](../../../adapters/sqlstore/passkey_options_test.go#L126))
+      - [x] Advertise residentKey required with requireResidentKey true when it is configured ([test](../../../adapters/sqlstore/passkey_options_test.go#L126))
+    - [x] `preferred` ([test](../../../adapters/sqlstore/passkey_options_test.go#L123))
+      - [x] Advertise residentKey preferred with requireResidentKey false when nothing is configured ([test](../../../adapters/sqlstore/passkey_options_test.go#L123))
+    - [x] `discouraged` ([test](../../../adapters/sqlstore/passkey_options_test.go#L128))
+      - [x] Advertise residentKey discouraged with requireResidentKey false when it is configured ([test](../../../adapters/sqlstore/passkey_options_test.go#L128))
     - [ ] `userVerification`
       - [x] Ask for required user verification in the sign-in options when it is configured, on both servers ([test](../../../conformance/core.test.mjs#L415))
     - [ ] advanced
