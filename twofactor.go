@@ -116,6 +116,8 @@ func NewTwoFactor(opts TwoFactorOptions) Plugin {
 		if settingsErr != nil {
 			return settingsErr
 		}
+		// A lifetime under a second would set a cookie that expires at once;
+		// the other runtime accepts any number of seconds.
 		if opts.TrustDeviceMaxAge < time.Second || opts.ChallengeLifetime < time.Second {
 			return errors.New("two-factor cookie lifetimes must be at least one second")
 		}
@@ -466,6 +468,8 @@ func (p *factorRequest) verify(state FactorState) (FactorChange, error) {
 	// The refusals that compare nothing come before any comparison.
 	switch p.route {
 	case "/two-factor/verify-totp":
+		// The challenge, the factor and the lockout are checked first; the
+		// other runtime refuses a disabled authenticator before them.
 		if p.auth.factorOptions.TOTP.Disabled || record.Secret == "" {
 			return ch, &APIError{400, "TOTP_NOT_CONFIGURED", "TOTP is not available"}
 		}
@@ -503,6 +507,9 @@ func (p *factorRequest) verify(state FactorState) (FactorChange, error) {
 			if previousPeriod == 0 {
 				previousPeriod = 30 * time.Second
 			}
+			// A sign-in code must come from a later period than the last one a
+			// sign-in accepted, so no code signs in twice. The other runtime
+			// keeps no such record.
 			valid = state.LastTOTPStep < 0 || step*int64(p.auth.factorOptions.TOTP.Period/time.Second) > state.LastTOTPStep*int64(previousPeriod/time.Second)
 			if valid {
 				ch.UsedTOTPStep = &step
@@ -634,10 +641,24 @@ func (p *factorRequest) manage(state FactorState) (FactorChange, error) {
 	if p.route == "/two-factor/generate-backup-codes" && o.Backup.AllowPasswordless != nil {
 		allowPasswordless = *o.Backup.AllowPasswordless
 	}
-	if state.PasswordHash != "" || !allowPasswordless {
-		password, err := requiredString(p.body, "password")
-		if err != nil {
+	// password is an optional string under a passwordless switch and a
+	// required one otherwise, as the body schema has it.
+	_, sent := p.body["password"]
+	password := ""
+	if sent || !allowPasswordless {
+		var err error
+		if password, err = requiredString(p.body, "password"); err != nil {
 			return ch, err
+		}
+	}
+	// The password is checked before each route's own refusals
+	// (TOTP_NOT_CONFIGURED, TWO_FACTOR_NOT_ENABLED), so every factor change
+	// answers the password first.
+	if state.PasswordHash != "" || !allowPasswordless {
+		// An account with a password that leaves it out is refused like a
+		// wrong one.
+		if !sent {
+			return ch, &APIError{400, "INVALID_PASSWORD", "Invalid password"}
 		}
 		if err := p.auth.validatePasswordLength(password, false); err != nil {
 			return ch, err

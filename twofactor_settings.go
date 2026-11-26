@@ -19,16 +19,20 @@ import (
 // FactorTOTPOptions configures authenticator apps. Digits accepts 6 or 8.
 // Period must be a whole number of seconds.
 type FactorTOTPOptions struct {
-	Digits            int
-	Period            time.Duration
-	Disabled          bool
+	Digits   int
+	Period   time.Duration
+	Disabled bool
+	// AllowPasswordless, when set, replaces TwoFactorOptions.AllowPasswordless
+	// for /two-factor/get-totp-uri.
 	AllowPasswordless *bool
 }
 type FactorBackupOptions struct {
-	Amount, Length    int
-	Generate          func(context.Context) ([]string, error)
-	Store             string
-	Encrypt, Decrypt  EmailOTPTransform
+	Amount, Length   int
+	Generate         func(context.Context) ([]string, error)
+	Store            string
+	Encrypt, Decrypt EmailOTPTransform
+	// AllowPasswordless, when set, replaces TwoFactorOptions.AllowPasswordless
+	// for /two-factor/generate-backup-codes.
 	AllowPasswordless *bool
 }
 type FactorLockoutOptions struct {
@@ -79,12 +83,16 @@ func (o *TwoFactorOptions) setDefaults() error {
 	if o.TOTP.Digits != 6 && o.TOTP.Digits != 8 || o.TOTP.Period < time.Second || o.TOTP.Period%time.Second != 0 || int64(o.TOTP.Period/time.Second) > 1<<32-1 {
 		return errors.New("invalid authenticator digit count or period")
 	}
+	// Generated codes are distinct and both values are bounded, so generation
+	// always ends; the other runtime accepts any length and may repeat a code.
 	if o.Backup.Amount < 1 || o.Backup.Amount > 256 || o.Backup.Length < 1 || o.Backup.Length > 256 || (o.Backup.Generate == nil && o.Backup.Length == 1 && o.Backup.Amount > 62) {
 		return errors.New("invalid backup code amount or length")
 	}
 	if o.Lockout.MaxFailedAttempts < 1 || o.Lockout.Duration < time.Second {
 		return errors.New("invalid factor lockout policy")
 	}
+	// A delivered code is kept to at most 128 digits; the other runtime
+	// accepts any digit count.
 	if o.OTP.Digits < 1 || o.OTP.Digits > 128 || o.OTP.Period < time.Second || o.OTP.AllowedAttempts < 1 {
 		return errors.New("invalid delivered factor code settings")
 	}

@@ -198,6 +198,11 @@ func TestAuthenticatorAndBackupSettings(t *testing.T) {
 		if err != nil || len(view) != 4 || view[0] != info.BackupCodes[0] {
 			t.Fatal("trusted backup code listing failed", err)
 		}
+		var column string
+		listed, _ := json.Marshal(info.BackupCodes)
+		if err = h.store.db.QueryRowContext(ctx, h.store.bind(`SELECT "backupCodes" FROM "twoFactor" WHERE "userId"=?`), reg.User.ID).Scan(&column); err != nil || column != string(listed) {
+			t.Fatal("plain backup codes were not stored as the JSON list of issued codes", column, err)
+		}
 		raw, err := base32.StdEncoding.WithPadding(base32.NoPadding).DecodeString(u.Query().Get("secret"))
 		if err != nil {
 			t.Fatal(err)

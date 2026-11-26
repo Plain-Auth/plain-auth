@@ -114,6 +114,7 @@ type enrolledAccount struct {
 	userID  string
 	backups []string
 	session *http.Cookie
+	secret  string // the authenticator's Base32 secret
 }
 
 func (h *factorHarness) enroll() enrolledAccount {
@@ -141,7 +142,7 @@ func (h *factorHarness) enroll() enrolledAccount {
 		h.t.Fatal(err)
 	}
 	verified := h.request(h.second, "two-factor/verify-totp", map[string]string{"code": code}, 200, c)
-	return enrolledAccount{in, reg.User.ID, body.BackupCodes, h.cookie(verified, "session_token")}
+	return enrolledAccount{in, reg.User.ID, body.BackupCodes, h.cookie(verified, "session_token"), u.Query().Get("secret")}
 }
 func (h *factorHarness) trust(u enrolledAccount, backup string) *http.Cookie {
 	h.t.Helper()

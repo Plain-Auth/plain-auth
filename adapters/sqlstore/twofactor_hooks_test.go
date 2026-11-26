@@ -178,7 +178,7 @@ func TestVerificationHooksAroundTwoFactor(t *testing.T) {
 			}
 			verified := h.request(h.second, "two-factor/verify-totp", map[string]string{"code": code}, 200, c)
 			drain()
-			return enrolledAccount{in, reg.User.ID, body.BackupCodes, h.cookie(verified, "session_token")}, secret
+			return enrolledAccount{in, reg.User.ID, body.BackupCodes, h.cookie(verified, "session_token"), secret}, secret
 		}
 		signIn := func(a *auth.Auth, u enrolledAccount, status int, cookies ...*http.Cookie) *httptest.ResponseRecorder {
 			t.Helper()

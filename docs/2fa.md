@@ -39,7 +39,7 @@ A host can also enable authenticator enrollment from a personal application key.
 | `POST /two-factor/disable` | `password` | Removes the factor, invalidates outstanding challenges and replaces existing sessions with a new session for the caller. |
 | `POST /two-factor/verify-backup-code` | `code`, optional `disableSession` | During sign-in, setting `disableSession` to `true` consumes the challenge and backup code without issuing a session. |
 
-A challenge expires after ten minutes or five failed proofs. Ten consecutive failed verification attempts lock verification on the account for fifteen minutes. A successful proof resets the account failure count. Password changes and password recovery invalidate outstanding challenges. Each accepted sign-in TOTP time step can grant one login. Backup codes can each be spent once across all instances.
+A challenge expires after ten minutes or five failed proofs. Ten consecutive failed verification attempts lock verification on the account for fifteen minutes. A successful proof resets the account failure count. Password changes and password recovery invalidate outstanding challenges. The server accepts an authenticator code from the current period and from the periods just before and after it. A sign-in then accepts only a code from a later period than the last one accepted, so each period grants at most one login. The management routes check the password first, so a wrong one answers `INVALID_PASSWORD` even where authenticators are disabled or no factor is enrolled. Backup codes can each be spent once across all instances.
 
 Provisioning secrets use authenticated encryption at rest. Backup codes use the same protection by default. Every encrypted record identifies its key version. A single configured secret uses version zero. To rotate it, include it as version zero in the key list and place the new key first. Keep each version available until the credentials it protects have been replaced. The session user's `twoFactorEnabled` field reports enrollment status.
 
@@ -47,7 +47,7 @@ Provisioning secrets use authenticated encryption at rest. Backup codes use the 
 
 A browser completing a sign-in challenge can include `"trustDevice":true` with a valid authenticator code, delivered code or backup code. The server issues an HTTP-only signed cookie and records an expiring grant for that account. On the next password sign-in it consumes the old grant, creates the session and issues a replacement grant in one transaction. Concurrent sign-ins presenting the same cookie can use it once. A missing, expired, altered or differently owned grant leads to a new second-factor challenge.
 
-`TrustDeviceMaxAge` defaults to 30 days and `ChallengeLifetime` defaults to 10 minutes. Set both on `twofactor.Options`. Password changes, password resets and disabling the factor invalidate the account's remembered grants. For native credentials, pass the incoming signed cookie value in `RequestMeta.TrustedDeviceCookie` and return any `AuthResult.TrustedDeviceCookie` to the browser. `Auth.TrustedDeviceCookieName()` returns the namespace for this instance.
+`TrustDeviceMaxAge` defaults to 30 days and `ChallengeLifetime` defaults to 10 minutes. `New` refuses a negative lifetime or one under a second. Set both on `twofactor.Options`. Password changes, password resets and disabling the factor invalidate the account's remembered grants. For native credentials, pass the incoming signed cookie value in `RequestMeta.TrustedDeviceCookie` and return any `AuthResult.TrustedDeviceCookie` to the browser. `Auth.TrustedDeviceCookieName()` returns the namespace for this instance.
 
 ## Deliver a second-factor code
 
@@ -79,14 +79,14 @@ An account enrolled with delivered codes can set up an authenticator while conti
 | Setting on `twofactor.Options` | Behavior |
 | --- | --- |
 | `TOTP.Digits`, `TOTP.Period` | Six or eight digits, with a whole-second period. Defaults to six digits and 30 seconds. The provisioning URI carries both values. |
-| `TOTP.Disabled` | Disables the authenticator method. |
-| `Backup.Amount`, `Backup.Length` | Defaults to ten codes of ten random characters each, separated after the first five. |
+| `TOTP.Disabled` | Disables the authenticator method. `/two-factor/enable` without `"method":"otp"`, `/two-factor/get-totp-uri` and `/two-factor/verify-totp` answer `TOTP_NOT_CONFIGURED`. `/two-factor/verify-totp` answers a missing challenge, a missing factor and a locked account first, and compares or counts no code. Sign-in leaves `totp` out of `twoFactorMethods`. Backup codes and delivered codes keep working. |
+| `Backup.Amount`, `Backup.Length` | Defaults to ten codes of ten random characters each, separated after the first five. Generated codes are distinct. `New` refuses a negative value, one above 256, and a one-character length with more than 62 codes. |
 | `Backup.Generate` | Supplies a distinct, nonempty set of application-generated recovery codes. |
 | `Backup.Store` | Accepts `encrypted` (default) or `plain`. A paired `Backup.Encrypt` and `Backup.Decrypt` supplies a custom storage format. |
-| `OTP.Digits`, `OTP.Period`, `OTP.AllowedAttempts` | Delivered codes default to six decimal digits, three minutes and five comparisons. The challenge also limits failed proofs across resends. |
+| `OTP.Digits`, `OTP.Period`, `OTP.AllowedAttempts` | Delivered codes default to six decimal digits, three minutes and five comparisons. The challenge also limits failed proofs across resends. `New` refuses a negative digit count or one above 128. |
 | `OTP.Store` | Accepts `plain` (default), `hashed` or `encrypted`. An application can supply `OTP.Hash` or paired `OTP.Encrypt` and `OTP.Decrypt` instead. |
 | `Lockout.MaxFailedAttempts`, `Lockout.Duration`, `Lockout.Disabled` | Configure the account-wide failure count and lockout interval or disable that counter. The challenge attempt cap still applies. |
-| `AllowPasswordless` | Allows a signed-in account without a credential password to manage its factors. Accounts with a password must supply it. `TOTP.AllowPasswordless` and `Backup.AllowPasswordless` enable the corresponding URI and code-management operations separately. |
+| `AllowPasswordless` | Allows a signed-in account without a credential password to manage its factors without one. `TOTP.AllowPasswordless` and `Backup.AllowPasswordless` override it, in either direction, for `/two-factor/get-totp-uri` and `/two-factor/generate-backup-codes`. Where a switch is on, `password` is optional, and an account with a password that leaves it out gets `INVALID_PASSWORD`. Where it is off, a missing `password` is a `VALIDATION_ERROR`. A `password` that is sent must be a string. |
 | `SkipVerificationOnEnable` | Enables authenticator enrollment immediately after the password check and replaces the existing sessions. |
 
 Trusted Go code can call `Auth.GenerateTOTP(rawSecret)` and `Auth.ViewBackupCodes(ctx, userID)`. Authorize requests for recovery material before passing the account ID to the latter operation. Both functions stay inside the Go process.

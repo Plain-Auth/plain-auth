@@ -5363,6 +5363,12 @@
       "label": "Spend and replace a remembered browser through its verification hooks; a declined spend or replacement keeps the grant and asks for the second factor",
       "test": "adapters/sqlstore/twofactor_hooks_test.go",
       "marker": "// A remembered browser rotates its grant through the verification hooks."
+    },
+    {
+      "label": "Set a thirty-day remembered-browser cookie and store a grant that expires thirty days after it was created when no lifetime is set, and renew the cookie for thirty days at the next trusted sign-in",
+      "test": "adapters/sqlstore/twofactor_options_test.go",
+      "marker": "default remembered browser does not last thirty days in the cookie and the store",
+      "complete": true
     }
   ],
   "plugin-symbol/2fa/TwoFactorOptions/twoFactorCookieMaxAge": [
@@ -5370,6 +5376,12 @@
       "label": "Use the configured pending challenge duration for the browser cookie",
       "test": "adapters/sqlstore/twofactor_trust_test.go",
       "marker": "configured challenge lifetime ignored"
+    },
+    {
+      "label": "Set a ten-minute challenge cookie on the sign-in response and store a challenge that expires ten minutes after it was created when no lifetime is set",
+      "test": "adapters/sqlstore/twofactor_options_test.go",
+      "marker": "default challenge does not last ten minutes in the cookie and the store",
+      "complete": true
     }
   ],
   "plugin-symbol/one-tap/GoogleOneTapOptions/clientId": [
@@ -5560,6 +5572,12 @@
       "label": "Deliver an eight-digit decimal code privately to the correct user",
       "test": "adapters/sqlstore/twofactor_delivery_test.go",
       "marker": "factor delivery exposed proof or addressed another user"
+    },
+    {
+      "label": "Deliver a six-digit decimal code that completes the sign-in when no digit count is set, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/twofactor_options_test.go",
+      "marker": "default delivered code is not six decimal digits",
+      "complete": true
     }
   ],
   "plugin-symbol/2fa/OTPOptions/sendOTP": [
@@ -5607,6 +5625,12 @@
       "label": "Reject trusted code generation on a host that disabled authenticator support",
       "test": "adapters/sqlstore/twofactor_delivery_test.go",
       "marker": "disabled authenticator generated a code"
+    },
+    {
+      "label": "With authenticators disabled, answer TOTP_NOT_CONFIGURED to authenticator enrollment, URI reads and sign-in codes, right or wrong, without counting them, leave totp out of twoFactorMethods and still accept a backup code",
+      "test": "adapters/sqlstore/twofactor_options_test.go",
+      "marker": "func TestDisabledAuthenticator(t *testing.T) {",
+      "complete": true
     }
   ],
   "plugin-symbol/2fa/BackupCodeOptions/amount": [
@@ -5621,6 +5645,12 @@
       "label": "Generate twelve random characters per code and format the recovery codes",
       "test": "adapters/sqlstore/twofactor_delivery_test.go",
       "marker": "custom backup code amount or length was ignored"
+    },
+    {
+      "label": "Generate codes of five random characters, a hyphen and five more when no length is set, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/twofactor_options_test.go",
+      "marker": "default backup code %q is not five characters, a hyphen and five more",
+      "complete": true
     }
   ],
   "plugin-symbol/2fa/BackupCodeOptions/customBackupCodesGenerate": [
@@ -5640,6 +5670,11 @@
       "label": "Store enrollment backup codes encrypted by default, so the stored column does not contain the first code",
       "test": "adapters/sqlstore/twofactor_test.go",
       "marker": "t.Fatal(\"unprotected factor material\")"
+    },
+    {
+      "label": "Store plain backup codes as the JSON list of the issued codes",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "plain backup codes were not stored as the JSON list of issued codes"
     }
   ],
   "plugin-symbol/2fa/TwoFactorOptions/skipVerificationOnEnable": [
@@ -5654,6 +5689,12 @@
       "label": "Allow a passwordless account to enroll while preserving the password requirement on credential accounts",
       "test": "adapters/sqlstore/twofactor_delivery_test.go",
       "marker": "passwordLogin.Token, true)"
+    },
+    {
+      "label": "Let a passwordless account enroll, read the provisioning URI, replace its backup codes and disable the factor without a password, while an account with a password that leaves it out or sends a wrong one gets INVALID_PASSWORD and a password that is not a string gets VALIDATION_ERROR, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/twofactor_options_test.go",
+      "marker": "func TestFactorManagementPasswords(t *testing.T) {",
+      "complete": true
     }
   ],
   "plugin-symbol/2fa/TwoFactorOptions/accountLockout": [
@@ -5682,6 +5723,32 @@
       "label": "Read plain and custom-encoded backup codes under configurable generation options",
       "test": "adapters/sqlstore/twofactor_delivery_test.go",
       "marker": "custom backup-code codec did not round trip"
+    },
+    {
+      "label": "Configure four twelve-character codes stored plain, find the stored column holding the JSON list of the issued codes, and use a custom generator and cipher",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "plain backup codes were not stored as the JSON list of issued codes",
+      "complete": true
+    },
+    {
+      "label": "Generate codes of five characters, a hyphen and five more under default options",
+      "test": "adapters/sqlstore/twofactor_options_test.go",
+      "marker": "default backup code %q is not five characters, a hyphen and five more"
+    },
+    {
+      "label": "Let the backup-code switch override the plugin-wide passwordless switch for regeneration",
+      "test": "adapters/sqlstore/twofactor_options_test.go",
+      "marker": "// Each method's own switch overrides the plugin-wide one, in both directions."
+    },
+    {
+      "label": "Store backup codes encrypted when no storage mode is set, so the stored column does not contain the first code",
+      "test": "adapters/sqlstore/twofactor_test.go",
+      "marker": "t.Fatal(\"unprotected factor material\")"
+    },
+    {
+      "label": "Return ten backup codes at enrollment when no amount is set",
+      "test": "adapters/sqlstore/twofactor_test.go",
+      "marker": "invalid provisioning material"
     }
   ],
   "plugin-symbol/anonymous/anonymousClient": [
@@ -39022,6 +39089,53 @@
       "label": "Refuse a configuration without browser origins when the plugin is built, so no request finds its origin unconfigured",
       "test": "plugins/passkey/passkey_test.go",
       "marker": "t.Fatal(\"a configuration without browser origins was accepted\")"
+    }
+  ],
+  "plugin-symbol/2fa/TOTPOptions/allowPasswordless": [
+    {
+      "label": "Return the provisioning URI to a passwordless account without a password when the authenticator switch is on, even with the plugin-wide switch off; answer VALIDATION_ERROR when it is off, even with the plugin-wide switch on; and still require the password of an account that has one",
+      "test": "adapters/sqlstore/twofactor_options_test.go",
+      "marker": "// Each method's own switch overrides the plugin-wide one, in both directions.",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/2fa/BackupCodeOptions/allowPasswordless": [
+    {
+      "label": "Let a passwordless account replace its backup codes without a password when the backup-code switch is on, even with the plugin-wide switch off; answer VALIDATION_ERROR when it is off, even with the plugin-wide switch on; and still require the password of an account that has one",
+      "test": "adapters/sqlstore/twofactor_options_test.go",
+      "marker": "// Each method's own switch overrides the plugin-wide one, in both directions.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L260/Parameter `password` (optional)": [
+    {
+      "label": "Answer INVALID_PASSWORD to a URI read from an account with a password that leaves it out under a passwordless switch or sends a wrong one, return the URI to a passwordless account that sends none, and answer VALIDATION_ERROR to a password that is missing without a switch or is not a string",
+      "test": "adapters/sqlstore/twofactor_options_test.go",
+      "marker": "// An account with a password must still send it: left out or wrong, it is refused as INVALID_PASSWORD.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L403/Parameter `password` (optional)": [
+    {
+      "label": "Answer INVALID_PASSWORD to backup-code regeneration from an account with a password that leaves it out under a passwordless switch or sends a wrong one, replace a passwordless account's codes when it sends none, and answer VALIDATION_ERROR to a password that is missing without a switch or is not a string",
+      "test": "adapters/sqlstore/twofactor_options_test.go",
+      "marker": "// An account with a password must still send it: left out or wrong, it is refused as INVALID_PASSWORD.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L293": [
+    {
+      "label": "Accept a sign-in authenticator code from the period before or after the current one, and refuse with INVALID_CODE codes two periods away or from a period earlier than the last accepted one, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/twofactor_options_test.go",
+      "marker": "func TestAuthenticatorStepWindow(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L307/Parameter `trustDevice` (optional)": [
+    {
+      "label": "Set the remembered-browser cookie for an authenticator code sent with trustDevice, and skip the challenge at the next sign-in from that browser",
+      "test": "adapters/sqlstore/twofactor_hooks_test.go",
+      "marker": "trust := h.cookie(w, \"trust_device\")"
     }
   ]
 }
