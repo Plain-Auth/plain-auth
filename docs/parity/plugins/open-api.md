@@ -8,7 +8,7 @@
   - `FieldSchema` — *not applicable: TypeScript type*
   - `OpenAPIModelSchema` — *not applicable: TypeScript type*
   - `Path` — *not applicable: TypeScript type*
-  - [x] `generator` ([test](../../../plugins/openapi/openapi_test.go#L283))
+  - [ ] `generator`
     - [x] openapi.Generate returns a document for a configured instance, and each concurrent caller gets its own copy ([test](../../../plugins/openapi/openapi_test.go#L202))
     - [x] Generated operations use the Default tag for core routes and the capitalized plugin ID for plugin routes, an endpoint's own tags replace the plugin tag, and the document lists the Default group ([test](../../../plugins/openapi/openapi_test.go#L283))
     - [x] Every operation that both live documents share carries the same tags, and both documents list the same tag groups ([test](../../../conformance/openapi-contract.mjs#L50))

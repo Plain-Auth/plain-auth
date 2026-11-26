@@ -53,7 +53,7 @@ Use `memory.New()` from `adapters/memory` for development with a single process.
 
 Links expire after five minutes by default. Set `ExpiresIn` to change their lifetime. With `HashTokens: true`, the database stores a SHA-256 digest of the token using unpadded URL-safe Base64. The default stores the raw token under a purpose-specific key. Applications with their own token services can supply `GenerateToken` and `HashToken` callbacks. `GenerateToken` receives the address exactly as the request sent it, before it is lowercased for storage and delivery, and must return a hard-to-guess token of at most 240 bytes. Configure one hashing mode and use the same configuration on all instances. [`StoreVerificationIdentifier`](databases.md#verification-identifiers) then applies to the `magic-link:` identifier built from that stored key.
 
-When rate limiting is enabled on the auth server, each endpoint accepts five requests per peer per minute. The request and verify routes keep separate counts, and a refused request answers 429 with `X-Retry-After`. Set `RateLimit` to a `plainauth.RateLimitRule` to change the maximum and window. The rule uses the server's configured rate-limit storage.
+When rate limiting is enabled on the auth server, each endpoint accepts five requests per peer per minute. The request and verify routes keep separate counts, and a refused request answers 429 with `X-Retry-After`. Set `RateLimit` to a `plainauth.RateLimitRule` to change the maximum and window; a zero `Max` or `Window` keeps its default, and a negative one is refused. The rule uses the server's configured rate-limit storage.
 
 ## Observe or cancel links with hooks
 

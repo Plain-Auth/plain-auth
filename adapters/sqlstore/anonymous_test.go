@@ -311,7 +311,7 @@ func TestAnonymousPhoneHandoff(t *testing.T) {
 			}
 			const origin = "https://phone-guest.example"
 			off := false
-			a, err := authn.New(authn.Options{Store: store, BaseURL: origin, Secret: strings.Repeat("p", 32), RateLimit: &off, Plugins: []authn.Plugin{guests, phone}})
+			a, err := authn.New(authn.Options{Store: store, BaseURL: origin, Secret: strings.Repeat("p", 32), RateLimit: &off, EmailAndPassword: true, Plugins: []authn.Plugin{guests, phone}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -370,6 +370,24 @@ func TestAnonymousPhoneHandoff(t *testing.T) {
 			}
 			if s, err := c2.GetSession(ctx); err != nil || s == nil || s.User.ID != g2.User.ID {
 				t.Fatal("a phone number update signed the guest out", err)
+			}
+			owner := browser()
+			const pw = "phone-guest-password"
+			if _, err := owner.SignUpEmail(ctx, client.SignUpRequest{Name: "Owner", Email: "owner@phone-guest.example", Password: pw}); err != nil {
+				t.Fatal(err)
+			}
+			verify(owner, "+12025550144", false, true)
+			c3 := browser()
+			g3, err := c3.SignInAnonymous(ctx)
+			if err != nil {
+				t.Fatal(err)
+			}
+			byPassword, err := c3.SignInPhoneNumber(ctx, client.PhoneSignInRequest{PhoneNumber: "+12025550144", Password: pw})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := guestStore.IsAnonymous(ctx, g3.User.ID); len(links) != 2 || links[1].AnonymousUser.User.ID != g3.User.ID || links[1].NewUser.User.ID != byPassword.User.ID || links[1].Request.URL.Path != "/api/auth/sign-in/phone-number" || !errors.Is(err, authn.ErrNotFound) {
+				t.Fatal("a phone password sign-in did not hand off and remove the guest", links, err)
 			}
 		})
 	}

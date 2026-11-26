@@ -310,3 +310,65 @@ func TestMagicLinkDefaults(t *testing.T) {
 		})
 	}
 }
+
+// A configured rule limits both routes, and a zero field keeps its default.
+func TestMagicLinkConfiguredRateLimit(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		rule  auth.RateLimitRule
+		max   int
+		retry string
+	}{
+		{"both fields", auth.RateLimitRule{Max: 2, Window: 30 * time.Second}, 2, "30"},
+		{"max only", auth.RateLimitRule{Max: 1}, 1, "60"},
+		{"window only", auth.RateLimitRule{Window: 20 * time.Second}, 5, "20"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			s, err := Open(t.Context(), "sqlite", organizationTestDSN(t, "sqlite"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer s.Close()
+			var msg magiclink.Message
+			rule := tc.rule
+			p, err := magiclink.New(magiclink.Options{RateLimit: &rule, Send: func(_ context.Context, m magiclink.Message) error { msg = m; return nil }})
+			if err != nil {
+				t.Fatal(err)
+			}
+			const origin = "https://configured.test"
+			on := true
+			a, err := auth.New(auth.Options{BaseURL: origin, Store: s, Secret: "magic-link-configured-secret-000000000", RateLimit: &on, Plugins: []auth.Plugin{p}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			call := func(method, target, body string) *httptest.ResponseRecorder {
+				r := httptest.NewRequest(method, target, strings.NewReader(body))
+				r.Header.Set("Content-Type", "application/json")
+				w := httptest.NewRecorder()
+				a.ServeHTTP(w, r)
+				return w
+			}
+			for i := 1; i <= tc.max; i++ {
+				if w := call("POST", origin+"/api/auth/sign-in/magic-link", `{"email":"configured@example.test"}`); w.Code != 200 {
+					t.Fatalf("request %d within the configured limit: HTTP %d", i, w.Code)
+				}
+			}
+			if w := call("POST", origin+"/api/auth/sign-in/magic-link", `{"email":"configured@example.test"}`); w.Code != 429 || w.Header().Get("X-Retry-After") != tc.retry {
+				t.Fatalf("configured request limit: HTTP %d, retry %q", w.Code, w.Header().Get("X-Retry-After"))
+			}
+			for i := 1; i <= tc.max; i++ {
+				if w := call("GET", msg.URL, ""); w.Code != 302 {
+					t.Fatalf("verification %d within the configured limit: HTTP %d", i, w.Code)
+				}
+			}
+			if w := call("GET", msg.URL, ""); w.Code != 429 || w.Header().Get("X-Retry-After") != tc.retry {
+				t.Fatalf("configured verify limit: HTTP %d, retry %q", w.Code, w.Header().Get("X-Retry-After"))
+			}
+		})
+	}
+	for _, bad := range []auth.RateLimitRule{{Max: -1}, {Window: -time.Second}} {
+		if _, err := magiclink.New(magiclink.Options{RateLimit: &bad, Send: func(context.Context, magiclink.Message) error { return nil }}); err == nil {
+			t.Fatalf("a negative magic link rate limit %+v was accepted", bad)
+		}
+	}
+}

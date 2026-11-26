@@ -2634,7 +2634,12 @@
     {
       "label": "Count GET /magic-link/verify separately under the same default rule and answer its sixth request in a minute with 429",
       "test": "adapters/sqlstore/magiclink_test.go",
-      "marker": "default verify limit:",
+      "marker": "default verify limit:"
+    },
+    {
+      "label": "Limit the request and verify routes to a configured maximum and window, keep the default for a zero field, and refuse a negative one",
+      "test": "adapters/sqlstore/magiclink_test.go",
+      "marker": "func TestMagicLinkConfiguredRateLimit(",
       "complete": true
     }
   ],
@@ -5410,7 +5415,7 @@
     {
       "label": "Run the success callback with the account and response before navigating to the callback URL",
       "test": "conformance/one-tap-browser.test.mjs",
-      "marker": "assert.deepEqual(events, [[\"success\", \"Owner\", \"issued\"], \"navigate https://app.test/home\"]);"
+      "marker": "assert.deepEqual(events, [[\"success\", \"Owner\", \"issued\"], \"success done\", \"navigate https://app.test/home\"]);"
     },
     {
       "label": "Refuse to start with an already-aborted signal without contacting the server",
@@ -5808,10 +5813,14 @@
       "marker": "phone verification did not hand off the guest"
     },
     {
-      "label": "Transfer guest records in the callback and delete the guest when it signs in with a password, completing handoff on every sign-in method with the entries above",
+      "label": "Transfer guest records in the callback and delete the guest when it signs in with a password",
       "test": "adapters/sqlstore/anonymous_test.go",
-      "marker": "guest was not atomically transferred and removed",
-      "complete": true
+      "marker": "guest was not atomically transferred and removed"
+    },
+    {
+      "label": "Hand a guest off to the account it signs in to with a phone number and password, and remove the guest, on the memory and SQL stores",
+      "test": "adapters/sqlstore/anonymous_test.go",
+      "marker": "a phone password sign-in did not hand off and remove the guest"
     }
   ],
   "docs/content/docs/plugins/anonymous.mdx#L123": [
@@ -32299,6 +32308,11 @@
       "label": "Record email after a password sign-in in a script-readable cookie",
       "test": "plugins/lastlogin/lastlogin_test.go",
       "marker": "incorrect method cookie: %v"
+    },
+    {
+      "label": "Record siwe only for SIWE's own routes, so an SSO provider ID containing siwe records nothing",
+      "test": "plugins/lastlogin/route_test.go",
+      "marker": "func TestMethodForRoute("
     }
   ],
   "docs/content/docs/plugins/last-login-method.mdx#L152": [
@@ -35365,7 +35379,12 @@
     {
       "label": "Count GET /magic-link/verify separately under the same default rule and answer its sixth request in a minute with 429",
       "test": "adapters/sqlstore/magiclink_test.go",
-      "marker": "default verify limit:",
+      "marker": "default verify limit:"
+    },
+    {
+      "label": "Limit the request and verify routes to a configured maximum and window, keep the default for a zero field, and refuse a negative one",
+      "test": "adapters/sqlstore/magiclink_test.go",
+      "marker": "func TestMagicLinkConfiguredRateLimit(",
       "complete": true
     }
   ],
@@ -37620,8 +37639,7 @@
     {
       "label": "Generated operations use the Default tag for core routes and the capitalized plugin ID for plugin routes, an endpoint's own tags replace the plugin tag, and the document lists the Default group",
       "test": "plugins/openapi/openapi_test.go",
-      "marker": "func TestOperationTags(t *testing.T) {",
-      "complete": true
+      "marker": "func TestOperationTags(t *testing.T) {"
     },
     {
       "label": "Every operation that both live documents share carries the same tags, and both documents list the same tag groups",
@@ -37633,16 +37651,14 @@
     {
       "label": "authtest.New and NewWithOrganizations serve exactly the routes of the same options built with plainauth.New",
       "test": "authtest/server_test.go",
-      "marker": "func TestFixtureServerAddsNoRoutes(t *testing.T) {",
-      "complete": true
+      "marker": "func TestFixtureServerAddsNoRoutes(t *testing.T) {"
     }
   ],
   "plugin-symbol/test-utils/TestHelpers": [
     {
       "label": "On a server from authtest.New, SaveOrganization, AddMember and DeleteOrganization return ErrOrganizationSetup (deviation: the helpers always exist and refuse instead)",
       "test": "authtest/server_test.go",
-      "marker": "t.Fatal(\"organization helper ran without NewWithOrganizations\", name, err)",
-      "complete": true
+      "marker": "t.Fatal(\"organization helper ran without NewWithOrganizations\", name, err)"
     }
   ],
   "docs/content/docs/plugins/test-utils.mdx#L44": [

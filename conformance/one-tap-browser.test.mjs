@@ -205,14 +205,40 @@ test("One Tap sends fetchOptions headers to both auth requests and runs onSucces
   });
   await assert.rejects(startOneTap({ fetchOptions: { signal: AbortSignal.abort() } }), { name: "AbortError" });
   assert.equal(requests.length, 0);
+  let release, settled = false;
+  const gate = new Promise((ok) => { release = ok; });
   const flow = await startOneTap({ callbackURL: "/home", fetchOptions: { headers: { "X-Tenant": "blue", "Content-Type": "text/plain" }, credentials: "include", mode: "cors",
-    onSuccess: (ctx) => events.push(["success", ctx.data.user.name, ctx.response.headers.get("x-session-note")]) } });
-  await config.callback({ credential: "signed" });
+    onSuccess: async (ctx) => {
+      events.push(["success", ctx.data.user.name, ctx.response.headers.get("x-session-note")]);
+      await gate;
+      events.push("success done");
+    } } });
+  flow.result.then(() => { settled = true; });
+  const delivered = config.callback({ credential: "signed" });
+  for (let i = 0; i < 20 && events.length === 0; i++) await new Promise((ok) => setImmediate(ok));
+  assert.deepEqual([events, settled], [[["success", "Owner", "issued"]], false]);
+  release();
+  await delivered;
   assert.deepEqual(requests.map((r) => [new URL(r.url).pathname, r.options.headers.get("x-tenant"), r.options.headers.get("content-type"), r.options.credentials, r.options.mode]),
     [["/api/auth/one-tap/nonce", "blue", "application/json", "same-origin", "same-origin"], ["/api/auth/one-tap/callback", "blue", "application/json", "same-origin", "same-origin"]]);
   assert.deepEqual(requests[1].body, { idToken: "signed", callbackURL: "https://app.test/home" });
-  assert.deepEqual(events, [["success", "Owner", "issued"], "navigate https://app.test/home"]);
+  assert.deepEqual(events, [["success", "Owner", "issued"], "success done", "navigate https://app.test/home"]);
   assert.equal((await flow.result).user.name, "Owner");
+});
+
+test("a slow onSuccess after Google returns a credential still completes once the browser challenge deadline passes", async (t) => {
+  const { startOneTap } = await import(moduleURL.href + "?slow-success");
+  let config;
+  const navigations = [];
+  globalThis.window = { location: { href: "https://app.test/", origin: "https://app.test", assign: (u) => navigations.push(u) } };
+  globalThis.google = { accounts: { id: { initialize(o) { config = o; }, prompt() {}, cancel() {} } } };
+  t.after(() => { delete globalThis.window; delete globalThis.google; });
+  t.mock.method(globalThis, "fetch", async () => Response.json({ user: { name: "Owner" } }));
+  const flow = await startOneTap({ nonce: "n", clientId: "id", nonceExpiresAt: Date.now() + 40, callbackURL: "/home",
+    fetchOptions: { onSuccess: () => new Promise((ok) => setTimeout(ok, 120)) } });
+  await config.callback({ credential: "signed" });
+  assert.equal((await flow.result).user.name, "Owner");
+  assert.deepEqual(navigations, ["https://app.test/home"]);
 });
 
 test("aborting the fetchOptions signal ends One Tap without posting a later credential", async (t) => {

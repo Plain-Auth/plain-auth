@@ -59,7 +59,7 @@
       - [x] `POST /sign-in/anonymous` ([test](../../../conformance/core.test.mjs#L799))
         - [x] Create a guest flagged isAnonymous through the official client on both servers ([test](../../../conformance/core.test.mjs#L799))
         - [x] Give a guest an address at anonymous.placeholder.invalid when no domain is configured ([test](../../../conformance/core.test.mjs#L800))
-    - [x] Link Account ([test](../../../adapters/sqlstore/anonymous_test.go#L163))
+    - [ ] Link Account
       - [x] Wait for MFA completion before transferring guest data ([test](../../../adapters/sqlstore/anonymous_test.go#L217))
       - [x] Carry a guest through a provider redirect without the primary cookie ([test](../../../adapters/sqlstore/anonymous_oauth_test.go#L98))
       - [x] Complete guest handoff with the official Google One Tap client ([test](../../../conformance/core.test.mjs#L1769))
@@ -67,7 +67,8 @@
       - [x] Link after local verification of the email OTP ([test](../../../adapters/sqlstore/anonymous_test.go#L186))
       - [x] Link a guest after the email sign-in link is verified ([test](../../../adapters/sqlstore/anonymous_test.go#L194))
       - [x] Hand a guest off to the account it signs in to with a phone code and remove the guest, on the memory and SQL stores ([test](../../../adapters/sqlstore/anonymous_test.go#L344))
-      - [x] Transfer guest records in the callback and delete the guest when it signs in with a password, completing handoff on every sign-in method with the entries above ([test](../../../adapters/sqlstore/anonymous_test.go#L163))
+      - [x] Transfer guest records in the callback and delete the guest when it signs in with a password ([test](../../../adapters/sqlstore/anonymous_test.go#L163))
+      - [x] Hand a guest off to the account it signs in to with a phone number and password, and remove the guest, on the memory and SQL stores ([test](../../../adapters/sqlstore/anonymous_test.go#L390))
     - [x] Delete Anonymous User ([test](../../../adapters/sqlstore/anonymous_test.go#L172))
       - [x] Distinguish guest deletion from sign-out ([test](../../../adapters/sqlstore/anonymous_test.go#L178))
       - [x] Delete the signed-in guest so that it has no session and no user row ([test](../../../adapters/sqlstore/anonymous_test.go#L172))

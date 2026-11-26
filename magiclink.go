@@ -83,9 +83,16 @@ func NewMagicLink(options MagicLinkOptions) (Plugin, error) {
 	if options.HashTokens && options.HashToken != nil {
 		return Plugin{}, errors.New("choose one magic link token hasher")
 	}
-	rule := RateLimitRule{Max: 5, Window: time.Minute}
+	var rule RateLimitRule
 	if options.RateLimit != nil {
 		rule = *options.RateLimit
+	}
+	// As in the other runtime, each zero field takes its default.
+	if rule.Max == 0 {
+		rule.Max = 5
+	}
+	if rule.Window == 0 {
+		rule.Window = time.Minute
 	}
 	if rule.Max < 1 || rule.Window <= 0 {
 		return Plugin{}, errors.New("invalid magic link rate limit")

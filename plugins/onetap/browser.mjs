@@ -125,7 +125,10 @@ export async function startOneTap({
       callback: async (response) => {
         if (used || signal.aborted) return;
         used = true;
+        // Once Google returns a credential, the server enforces the nonce
+        // lifetime, so a slow callback or onSuccess is not cut short here.
         clearTimeout(timer);
+        clearTimeout(expiryTimer);
         try {
           if (typeof response?.credential !== "string" || !response.credential) throw new Error("Google did not return a credential");
           const body = { idToken: response.credential };

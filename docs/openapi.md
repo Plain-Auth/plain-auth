@@ -25,7 +25,7 @@ Under the default mount, the schema is at `/api/auth/open-api/generate-schema` a
 
 Only installed HTTP operations appear. The inventory reflects configuration such as email/password signup, deferred session refresh, social providers, username display fields, team management, and separately enabled billing routes. Registered OAuth callbacks use `/callback/{id}`. Email credentials accept JSON and form data, and OAuth form callbacks accept `application/x-www-form-urlencoded`.
 
-Each operation carries one tag. Built-in operations use `Default`, and plugin operations use the plugin ID with its first letter capitalized, such as `Two-factor`; the document's `tags` list describes the `Default` group. [Tag tests](../plugins/openapi/openapi_test.go)
+Built-in operations carry the `Default` tag, and plugin operations carry the plugin ID with its first letter capitalized, such as `Two-factor`. Tags declared in an endpoint's OpenAPI metadata replace that tag; the document's `tags` list describes the `Default` group. [Tag tests](../plugins/openapi/openapi_test.go)
 
 The `User`, `Session` and linked `Account` models describe public Go response fields. Dates use the `date-time` format. Enabled model sets include organization, team, passkey, API-key and subscription records. The common error response requires a message and allows an optional code. Custom session projections and provider-specific or otherwise unconstrained results have an open response schema.
 

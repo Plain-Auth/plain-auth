@@ -30,6 +30,7 @@
   - [ ] `lastLoginMethod`
     - [x] Publish the email preference cookie and expose the stored method on the session after sign-up on both runtimes ([test](../../../conformance/core.test.mjs#L28))
     - [x] Record email after a password sign-in in a script-readable cookie ([test](../../../plugins/lastlogin/lastlogin_test.go#L42))
+    - [x] Record siwe only for SIWE's own routes, so an SSO provider ID containing siwe records nothing ([test](../../../plugins/lastlogin/route_test.go#L7))
 
 ## Last Login Method
 

@@ -5,7 +5,7 @@
 ## Interfaces
 
 - [ ] Test utils endpoints, types and options
-  - [x] `testUtils` ([test](../../../authtest/server_test.go#L175))
+  - [ ] `testUtils`
     - [x] authtest.New and NewWithOrganizations serve exactly the routes of the same options built with plainauth.New ([test](../../../authtest/server_test.go#L175))
   - [x] `LoginResult` ([test](../../../authtest/server_test.go#L88))
     - [x] Return the authenticated user, session, signed cookie, request headers and token ([test](../../../authtest/server_test.go#L88))
@@ -23,7 +23,7 @@
   - [x] `TestCookie` ([test](../../../conformance/browser-fixture-cookies.mjs#L28))
     - [x] Import the published browser cookie JSON shape into Chrome and authenticate with either implementation ([test](../../../conformance/browser-fixture-cookies.mjs#L28))
     - [x] Preserve the original deadline, browser flags, host scope and session-only expiry omission ([test](../../../authtest/browser_cookie_test.go#L68))
-  - [x] `TestHelpers` ([test](../../../authtest/server_test.go#L234))
+  - [ ] `TestHelpers`
     - [x] On a server from authtest.New, SaveOrganization, AddMember and DeleteOrganization return ErrOrganizationSetup (deviation: the helpers always exist and refuse instead) ([test](../../../authtest/server_test.go#L234))
   - [ ] `TestUtilsOptions`
     - [x] `captureOTP` ([test](../../../authtest/fixtures_test.go#L42))

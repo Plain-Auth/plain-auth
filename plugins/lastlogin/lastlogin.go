@@ -113,7 +113,9 @@ func methodForRoute(route string) string {
 	if strings.Contains(route, "/passkey/verify-authentication") {
 		return "passkey"
 	}
-	if strings.Contains(route, "siwe") {
+	// The route is the request path, so only SIWE's own routes match: an
+	// SSO provider ID such as "siwe-guild" in a callback path records nothing.
+	if strings.HasPrefix(route, "/siwe/") {
 		return "siwe"
 	}
 	return ""
