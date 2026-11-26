@@ -451,6 +451,7 @@
       - [x] Keep the SAML sign-in state for RequestTTL, five minutes by default, while an OIDC attempt keeps ten, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L379))
   - [ ] `SSOProvider`
     - [x] Return the registered provider's record with its provider ID, OIDC configuration and redirect URI to the released client on both runtimes ([test](../../../conformance/sso-providers.mjs#L65))
+    - [x] Return a provider's declared fields beside its built-in keys and update them without changing its identity, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_fields_test.go#L85))
   - [x] `SSOProviderMutationGuardContext` ([test](../../../adapters/sqlstore/sso_delete_test.go#L228))
     - [x] Run the deletion, metadata and update guards outside the store's transaction on a snapshot of the provider and its linked accounts, review a provider changed meanwhile again, and give up with SSO_PROVIDER_CHANGED when it keeps changing, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_delete_test.go#L228))
     - [x] Let a sign-in on another node complete while the deletion guard decides ([test](../../../adapters/sqlstore/sso_delete_test.go#L160))
@@ -763,9 +764,11 @@
     - [ ] Providers
     - [ ] SAML
     - [ ] Schema options
+      - [x] Generate and validate additional ssoProvider columns; custom table and column names are not supported ([test](../../../adapters/sqlstore/sso_fields_test.go#L75))
   - [ ] Provider configuration
     - [ ] Registration body
-      - [ ] Additional fields
+      - [x] Additional fields ([test](../../../adapters/sqlstore/sso_fields_test.go#L61))
+        - [x] Take declared provider fields at the top level of a registration and refuse missing required, server-only and mistyped values, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_fields_test.go#L61))
     - [ ] oidcConfig
     - [ ] samlConfig
   - [ ] Endpoints
@@ -815,7 +818,10 @@
       - [x] Answer 404 on both DNS routes when domain verification is off ([test](../../../plugins/openapi/sso_domain_test.go#L83))
       - [x] Answer 401 on both DNS routes without a session ([test](../../../plugins/openapi/sso_domain_test.go#L111))
       - [x] Verify a provider's domains once each publishes the token, and answer 204 ([test](../../../conformance/sso-domains.mjs#L92))
-  - [ ] Additional provider fields
+  - [x] Additional provider fields ([test](../../../adapters/sqlstore/sso_fields_test.go#L70))
+    - [x] Store declared provider fields from the top level of registration and update bodies, refuse missing required, server-only and mistyped values, and return every field but a hidden one, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_fields_test.go#L70))
+    - [x] Refuse provider field names and columns that shadow a built-in provider key when the plugin is built ([test](../../../plugins/sso/provider_fields_test.go#L19))
+    - [x] Describe the settable provider fields in the registration and update bodies and the returned ones in provider responses ([test](../../../plugins/openapi/sso_directory_test.go#L362))
   - [ ] Schema
     - [x] Emit the same SQL as the other runtime for every SSO and DNS-verification profile combination on SQLite, PostgreSQL and MySQL ([test](../../../conformance/schema.test.mjs#L106))
     - [x] Add the domainVerified column only with DNS verification, and match the other runtime's SQLite schema after an upgrade ([test](../../../conformance/schema.test.mjs#L252))

@@ -83,7 +83,7 @@ func (o Options) updateSAMLMetadata(c auth.EndpointContext, store Store, actor A
 	if err != nil {
 		return nil, err
 	}
-	public := sanitized(c, p)
+	public := o.public(c, p)
 	_, public.DomainVerified, err = o.domainStatus(ctx, store, p, "")
 	return public, err
 }

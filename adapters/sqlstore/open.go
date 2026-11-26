@@ -28,6 +28,7 @@ type Store struct {
 	organizationRoles        org.RolePolicy
 	dynamicOrganizationRoles bool
 	roleFields               map[string]org.RoleField
+	ssoFields                map[string]auth.SessionField
 	roleReadNames            []string
 	roleReadColumns          string
 	invitationLimit          *org.InvitationLimit

@@ -156,8 +156,8 @@ func (s *Store) deleteSSOProvider(ctx context.Context, actor sso.Actor, id, reco
 			return err
 		}
 	}
-	q := `SELECT ` + browserProviderCols + ` FROM "ssoProvider" p WHERE ` + browserProviderWhere + ` AND ` + s.scimExact(`p."providerId"`) + `=? AND ` + s.scimExact(`p."id"`) + `=?`
-	p, err := scanBrowserProvider(tx.QueryRowContext(ctx, s.readForUpdate(q), id, recordID))
+	q := `SELECT ` + s.providerCols() + ` FROM "ssoProvider" p WHERE ` + browserProviderWhere + ` AND ` + s.scimExact(`p."providerId"`) + `=? AND ` + s.scimExact(`p."id"`) + `=?`
+	p, err := s.scanBrowserProvider(tx.QueryRowContext(ctx, s.readForUpdate(q), id, recordID))
 	if errors.Is(err, sql.ErrNoRows) {
 		return sso.ErrMissing
 	}

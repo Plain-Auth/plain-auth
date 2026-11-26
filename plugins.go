@@ -68,7 +68,11 @@ type Plugin struct {
 	// ProjectDeviceSessions also applies SessionResponse to each remembered account.
 	ProjectDeviceSessions bool
 	serviceJWT            *JWTOptions
-	ValidateStore         func(Store) error
+	// ConfigureStore returns the store view this instance uses, such as one
+	// that reads the plugin's declared columns. New calls it once, in plugin
+	// order, and later plugins and ValidateStore see the returned view.
+	ConfigureStore func(Store) (Store, error)
+	ValidateStore  func(Store) error
 	// ValidateVerificationStore is set by a plugin that keeps verification
 	// records in its own store and runs their hooks with
 	// EndpointContext.CreateVerification and SpendVerification, or with

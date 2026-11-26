@@ -42063,6 +42063,11 @@
       "label": "Return the registered provider's record with its provider ID, OIDC configuration and redirect URI to the released client on both runtimes",
       "test": "conformance/sso-providers.mjs",
       "marker": "assert.equal(record.providerId, providerId);"
+    },
+    {
+      "label": "Return a provider's declared fields beside its built-in keys and update them without changing its identity, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_fields_test.go",
+      "marker": "t.Fatal(\"a provider field update was refused\""
     }
   ],
   "plugin-symbol/sso/SSOProviderMutationGuardInput": [
@@ -46385,6 +46390,39 @@
       "label": "Refuse samlConfig.privateKey, spMetadata.encPrivateKey, idpMetadata.privateKeyPass and spMetadata.privateKey in an update, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/sso_saml_defaults_test.go",
       "marker": "t.Fatal(\"a SAML update carrying a private key was not refused\", patch"
+    }
+  ],
+  "docs/content/docs/plugins/sso/reference.mdx#L511": [
+    {
+      "label": "Store declared provider fields from the top level of registration and update bodies, refuse missing required, server-only and mistyped values, and return every field but a hidden one, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_fields_test.go",
+      "marker": "t.Fatal(\"a registration did not return its fields without the hidden one\"",
+      "complete": true
+    },
+    {
+      "label": "Refuse provider field names and columns that shadow a built-in provider key when the plugin is built",
+      "test": "plugins/sso/provider_fields_test.go",
+      "marker": "t.Fatal(\"a provider field shadowing a built-in key was accepted\""
+    },
+    {
+      "label": "Describe the settable provider fields in the registration and update bodies and the returned ones in provider responses",
+      "test": "plugins/openapi/sso_directory_test.go",
+      "marker": "t.Fatal(\"the provider response does not describe the returned fields\""
+    }
+  ],
+  "docs/content/docs/plugins/sso/reference.mdx#L248/Additional fields": [
+    {
+      "label": "Take declared provider fields at the top level of a registration and refuse missing required, server-only and mistyped values, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_fields_test.go",
+      "marker": "t.Fatal(\"an unusable provider field was not refused\"",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/sso/reference.mdx#L192": [
+    {
+      "label": "Generate and validate additional ssoProvider columns; custom table and column names are not supported",
+      "test": "adapters/sqlstore/sso_fields_test.go",
+      "marker": "t.Fatal(\"the provider fields were not stored\""
     }
   ]
 }

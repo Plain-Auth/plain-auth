@@ -330,6 +330,13 @@ func New(opts Options) (*Auth, error) {
 			a.opts.Store = a.adminStore
 			opts.Store = a.adminStore
 		}
+		if p.ConfigureStore != nil {
+			store, err := p.ConfigureStore(opts.Store)
+			if err != nil {
+				return nil, err
+			}
+			a.opts.Store, opts.Store = store, store
+		}
 	}
 	for _, p := range opts.Plugins {
 

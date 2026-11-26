@@ -24,10 +24,16 @@ const browserProviderCols = `p."id",p."providerId",p."issuer",p."domain",p."user
 // different authorities in one account namespace.
 const browserProviderWhere = `((p."oidcConfig" IS NOT NULL AND p."samlConfig" IS NULL) OR (p."oidcConfig" IS NULL AND p."samlConfig" IS NOT NULL))`
 
-func scanBrowserProvider(row rowScanner) (sso.BrowserProvider, error) {
+// scanBrowserProvider reads a row selected with providerCols.
+func (s *Store) scanBrowserProvider(row rowScanner) (sso.BrowserProvider, error) {
 	var p sso.BrowserProvider
 	var oidc, saml sql.NullString
-	if err := row.Scan(&p.ID, &p.ProviderID, &p.Issuer, &p.Domain, &p.UserID, &p.OrganizationID, &oidc, &saml); err != nil {
+	dest := s.providerFieldDest([]any{&p.ID, &p.ProviderID, &p.Issuer, &p.Domain, &p.UserID, &p.OrganizationID, &oidc, &saml})
+	if err := row.Scan(dest...); err != nil {
+		return p, err
+	}
+	var err error
+	if p.AdditionalFields, err = s.providerFields(dest, 8); err != nil {
 		return p, err
 	}
 	raw, err := providerConfiguration(&p.Provider, oidc, saml)
@@ -80,7 +86,7 @@ func (s *Store) FindVerifiedBrowserProvider(ctx context.Context, sel sso.Selecto
 }
 func (s *Store) findBrowserProvider(ctx context.Context, sel sso.Selector, requireProof bool) (sso.BrowserProvider, error) {
 	var found sso.BrowserProvider
-	query := `SELECT ` + browserProviderCols + ` FROM "ssoProvider" p WHERE ` + browserProviderWhere
+	query := `SELECT ` + s.providerCols() + ` FROM "ssoProvider" p WHERE ` + browserProviderWhere
 	if sel.Protocol == "oidc" {
 		query += ` AND p."oidcConfig" IS NOT NULL`
 	} else if sel.Protocol == "saml" {
@@ -117,7 +123,7 @@ func (s *Store) findBrowserProvider(ctx context.Context, sel sso.Selector, requi
 	}
 	var matches []candidate
 	for rows.Next() {
-		p, e := scanBrowserProvider(rows)
+		p, e := s.scanBrowserProvider(rows)
 		if errors.Is(e, sso.ErrInvalidSAML) {
 			continue
 		}
@@ -217,8 +223,8 @@ func (s *Store) completeEnterpriseLogin(ctx context.Context, ref string, role st
 					return auth.ErrIDTokenUsed
 				}
 			}
-			q := `SELECT ` + browserProviderCols + ` FROM "ssoProvider" p WHERE ` + browserProviderWhere + ` AND ` + s.scimExact(`p."providerId"`) + `=?`
-			p, err := scanBrowserProvider(tx.QueryRowContext(ctx, s.readForUpdate(q), id))
+			q := `SELECT ` + s.providerCols() + ` FROM "ssoProvider" p WHERE ` + browserProviderWhere + ` AND ` + s.scimExact(`p."providerId"`) + `=?`
+			p, err := s.scanBrowserProvider(tx.QueryRowContext(ctx, s.readForUpdate(q), id))
 			if errors.Is(err, sql.ErrNoRows) || err == nil && (ref == "" || p.Reference != ref) {
 				return sso.ErrChanged
 			}

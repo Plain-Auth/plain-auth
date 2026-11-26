@@ -319,3 +319,46 @@ func TestEnterpriseSAMLDocumentation(t *testing.T) {
 		}
 	}
 }
+
+// Declared SSO provider fields appear in the bodies a request may set and
+// in the responses that return them.
+func TestSSOProviderFieldsOpenAPI(t *testing.T) {
+	fields := map[string]sso.ProviderField{"tier": {Type: plainauth.FieldString, Required: true}, "note": {Type: plainauth.FieldString, ServerOnly: true}, "region": {Type: plainauth.FieldString, Hidden: true, Default: "eu"}}
+	ddl, err := schema.GenerateWithAdditionalFields("sqlite", []string{"sso"}, schema.AdditionalFields{SSOProvider: fields})
+	if err != nil {
+		t.Fatal(err)
+	}
+	store, err := sqlstore.OpenWithSchema(t.Context(), "sqlite", filepath.Join(t.TempDir(), "fields.db"), ddl)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { store.Close() })
+	plugin, err := sso.New(sso.Options{ProviderAdditionalFields: fields})
+	if err != nil {
+		t.Fatal(err)
+	}
+	reference, err := openapi.New(openapi.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	const origin = "https://fields.example.test"
+	host, err := plainauth.New(plainauth.Options{BaseURL: origin, BasePath: "/identity", Store: store, Secret: strings.Repeat("a", 48), Plugins: []plainauth.Plugin{plugin, reference}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	wire := ssoWire{t, host, origin}
+	paths := node(wire.decode(wire.call("GET", "/open-api/generate-schema", nil, nil, 200)), "paths")
+	register := node(paths, "/sso/register", "post", "requestBody", "content", "application/json", "schema")
+	required, _ := register["required"].([]any)
+	if node(register, "properties", "tier")["type"] != "string" || node(register, "properties")["note"] != nil || !slices.Contains(required, any("tier")) {
+		t.Fatal("the registration body does not describe the settable provider fields", register)
+	}
+	update := node(paths, "/sso/update-provider", "post", "requestBody", "content", "application/json", "schema")
+	if node(update, "properties", "tier")["type"] != "string" || node(update, "properties")["note"] != nil {
+		t.Fatal("the update body does not describe the settable provider fields", update)
+	}
+	read := node(paths, "/sso/get-provider", "get", "responses", "200", "content", "application/json", "schema", "properties")
+	if node(read, "tier")["type"] != "string" || node(read, "note")["type"] != "string" || read["region"] != nil {
+		t.Fatal("the provider response does not describe the returned fields", read)
+	}
+}

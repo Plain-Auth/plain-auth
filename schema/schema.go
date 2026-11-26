@@ -112,12 +112,16 @@ type AccountField = sessionfields.Field
 // RoleField declares an additional column on an organization role.
 type RoleField = sessionfields.Field
 
+// SSOProviderField declares an additional column on an SSO provider.
+type SSOProviderField = sessionfields.Field
+
 // AdditionalFields declares additional columns independently for each model.
 type AdditionalFields struct {
 	User             map[string]UserField
 	Session          map[string]SessionField
 	Account          map[string]AccountField
 	OrganizationRole map[string]RoleField
+	SSOProvider      map[string]SSOProviderField
 }
 
 // Normalize validates each namespace and returns owned copies of its declarations.
@@ -136,6 +140,10 @@ func (f AdditionalFields) Normalize() (AdditionalFields, error) {
 		return AdditionalFields{}, err
 	}
 	f.OrganizationRole, err = sessionfields.NormalizeRole(f.OrganizationRole)
+	if err != nil {
+		return AdditionalFields{}, err
+	}
+	f.SSOProvider, err = sessionfields.NormalizeSSOProvider(f.SSOProvider)
 	return f, err
 }
 
@@ -178,6 +186,8 @@ func GenerateWithOptions(dialect string, profiles []string, opts Options) (strin
 				extras = fields.Account
 			case "organizationRole":
 				extras = fields.OrganizationRole
+			case "ssoProvider":
+				extras = fields.SSOProvider
 			}
 			if len(extras) > 0 {
 				for _, name := range sessionfields.Names(extras) {

@@ -126,8 +126,8 @@ func (s *Store) withManagedSSOProvider(ctx context.Context, actor sso.Actor, id 
 	} else if err != nil {
 		return err
 	}
-	q := `SELECT ` + browserProviderCols + ` FROM "ssoProvider" p WHERE ` + browserProviderWhere + ` AND ` + s.scimExact(`p."providerId"`) + `=?`
-	p, err := scanBrowserProvider(tx.QueryRowContext(ctx, s.readForUpdate(q), id))
+	q := `SELECT ` + s.providerCols() + ` FROM "ssoProvider" p WHERE ` + browserProviderWhere + ` AND ` + s.scimExact(`p."providerId"`) + `=?`
+	p, err := s.scanBrowserProvider(tx.QueryRowContext(ctx, s.readForUpdate(q), id))
 	if errors.Is(err, sql.ErrNoRows) {
 		return sso.ErrMissing
 	}

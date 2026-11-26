@@ -70,7 +70,7 @@ func (s *Store) sessionColumnCatalog(ctx context.Context, db interface {
 func (s *Store) fieldColumnCatalog(ctx context.Context, db interface {
 	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
 }, model string) (map[string]sessionColumn, error) {
-	if model != "user" && model != "session" && model != "account" && model != "organizationRole" {
+	if model != "user" && model != "session" && model != "account" && model != "organizationRole" && model != "ssoProvider" {
 		return nil, errors.New("sqlstore: invalid profile table")
 	}
 	query := `SELECT name,type,"notnull",hidden<>0,3 FROM pragma_table_xinfo(?)`

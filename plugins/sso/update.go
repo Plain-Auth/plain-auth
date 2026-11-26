@@ -3,6 +3,7 @@ package sso
 import (
 	"context"
 	"encoding/json"
+	"maps"
 
 	auth "github.com/Plain-Org/plain-auth"
 )
@@ -42,7 +43,9 @@ func (o Options) updateProvider(c auth.EndpointContext, store Store, actor Actor
 				return nil, apiError(400, "Unsupported update field")
 			}
 		default:
-			return nil, apiError(400, "Unsupported update field")
+			if _, declared := o.ProviderAdditionalFields[key]; !declared {
+				return nil, apiError(400, "Unsupported update field")
+			}
 		}
 	}
 	if len(c.Body) == 1 {
@@ -81,6 +84,10 @@ func (o Options) updateProvider(c auth.EndpointContext, store Store, actor Actor
 			return nil, apiError(400, "Invalid OpenID Connect configuration")
 		}
 	}
+	fields, err := o.providerFieldInput(c.Body, false)
+	if err != nil {
+		return nil, err
+	}
 	var samlPatch map[string]any
 	if raw, ok := c.Body["samlConfig"]; ok {
 		if samlPatch, ok = raw.(map[string]any); !ok {
@@ -112,6 +119,14 @@ func (o Options) updateProvider(c auth.EndpointContext, store Store, actor Actor
 		}
 		if domain != nil {
 			next.Domain = *domain
+		}
+		// Declared fields never change the provider's identity.
+		if fields != nil {
+			next.AdditionalFields = maps.Clone(current.AdditionalFields)
+			if next.AdditionalFields == nil {
+				next.AdditionalFields = make(map[string]any, len(fields))
+			}
+			maps.Copy(next.AdditionalFields, fields)
 		}
 		if current.SAML != nil {
 			if patch != nil {
@@ -170,7 +185,7 @@ func (o Options) updateProvider(c auth.EndpointContext, store Store, actor Actor
 	if err != nil {
 		return nil, err
 	}
-	public := sanitized(c, p)
+	public := o.public(c, p)
 	_, public.DomainVerified, err = o.domainStatus(ctx, store, p, "")
 	return public, err
 }

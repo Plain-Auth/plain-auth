@@ -50,8 +50,8 @@ func (s *Store) recordSAMLSession(ctx context.Context, tx *sql.Tx, provider, ref
 }
 
 func (s *Store) lockedLogoutProvider(ctx context.Context, tx *sql.Tx, id, ref string) (sso.BrowserProvider, error) {
-	q := `SELECT ` + browserProviderCols + ` FROM "ssoProvider" p WHERE ` + browserProviderWhere + ` AND ` + s.scimExact(`p."providerId"`) + `=?`
-	p, err := scanBrowserProvider(tx.QueryRowContext(ctx, s.readForUpdate(q), id))
+	q := `SELECT ` + s.providerCols() + ` FROM "ssoProvider" p WHERE ` + browserProviderWhere + ` AND ` + s.scimExact(`p."providerId"`) + `=?`
+	p, err := s.scanBrowserProvider(tx.QueryRowContext(ctx, s.readForUpdate(q), id))
 	if errors.Is(err, sql.ErrNoRows) || err == nil && (p.SAML == nil || p.Reference != ref || ref == "" || p.ProviderID != id) {
 		return p, sso.ErrChanged
 	}

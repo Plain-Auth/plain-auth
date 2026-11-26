@@ -96,6 +96,21 @@ func NormalizeRole(fields map[string]Field) (map[string]Field, error) {
 	return normalize(fields, "organization role", RoleNameOK)
 }
 
+// SSOProviderNameOK reserves the provider columns and the keys of provider
+// requests and responses.
+func SSOProviderNameOK(name string) bool {
+	switch strings.ToLower(name) {
+	case "id", "issuer", "oidcconfig", "samlconfig", "userid", "providerid", "organizationid", "domain", "domainverified", "type", "spmetadataurl", "redirecturi",
+		"domainverificationtoken", "overrideuserinfo", "createdat", "updatedat", "constructor", "prototype":
+		return false
+	}
+	return identifier.MatchString(name)
+}
+
+func NormalizeSSOProvider(fields map[string]Field) (map[string]Field, error) {
+	return normalize(fields, "SSO provider", SSOProviderNameOK)
+}
+
 func NormalizeAccount(fields map[string]Field) (map[string]Field, error) {
 	return normalize(fields, "account", AccountNameOK)
 }

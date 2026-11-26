@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -14,12 +15,18 @@ import (
 	"unicode/utf8"
 
 	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/internal/sessionfields"
 	"golang.org/x/net/idna"
 )
 
 type Options struct {
 	// SAML enables service-provider initiated sign-in with signed assertions.
 	SAML *SAMLOptions
+	// ProviderAdditionalFields declares extra provider columns, also declared
+	// in schema.AdditionalFields.SSOProvider. Registration and update take
+	// them at the top level of the body, and responses return all but Hidden
+	// ones. They are not part of the provider's identity.
+	ProviderAdditionalFields map[string]ProviderField
 	// DomainVerification enables DNS ownership checks for managed OIDC domains.
 	DomainVerification *DomainVerificationOptions
 	// GuardProviderMutation reviews a provider deletion, SAML metadata
@@ -127,6 +134,9 @@ type Provider struct {
 	OrganizationID *string     `json:"organizationId,omitempty"`
 	OIDC           *Config     `json:"oidcConfig"`
 	SAML           *SAMLConfig `json:"samlConfig,omitempty"`
+	// AdditionalFields holds the declared provider fields by name, Hidden
+	// ones included.
+	AdditionalFields map[string]any `json:"-"`
 }
 
 type Registered struct {
@@ -135,6 +145,8 @@ type Registered struct {
 	SAMLConfig              any    `json:"samlConfig"`
 	DomainVerified          *bool  `json:"domainVerified,omitempty"`
 	DomainVerificationToken string `json:"domainVerificationToken,omitempty"`
+	// AdditionalFields holds the declared provider fields the response shows.
+	AdditionalFields map[string]any `json:"-"`
 }
 
 type PublicConfig struct {
@@ -172,6 +184,8 @@ type PublicProvider struct {
 	DomainVerified bool              `json:"domainVerified"`
 	OIDC           *PublicConfig     `json:"oidcConfig,omitempty"`
 	SPMetadataURL  string            `json:"spMetadataUrl"`
+	// AdditionalFields holds the declared provider fields the response shows.
+	AdditionalFields map[string]any `json:"-"`
 }
 
 type Actor struct {
@@ -265,6 +279,11 @@ func New(o Options) (auth.Plugin, error) {
 	if o.ProvidersLimit != nil && o.ResolveProvidersLimit != nil {
 		return auth.Plugin{}, errors.New("sso: choose ProvidersLimit or ResolveProvidersLimit")
 	}
+	fields, err := sessionfields.NormalizeSSOProvider(o.ProviderAdditionalFields)
+	if err != nil {
+		return auth.Plugin{}, fmt.Errorf("sso: %w", err)
+	}
+	o.ProviderAdditionalFields = fields
 	if o.DefaultOrganizationRole != "" && !organizationRole(o.DefaultOrganizationRole) {
 		return auth.Plugin{}, errors.New("sso: DefaultOrganizationRole must be member or admin")
 	}
@@ -354,6 +373,11 @@ func New(o Options) (auth.Plugin, error) {
 				return nil, ErrNotMember
 			}
 			p.OrganizationID = &id
+		}
+		// The fields and their defaults are read before the store's checks,
+		// so no host default runs inside a transaction.
+		if p.AdditionalFields, err = o.providerFieldInput(c.Body, true); err != nil {
+			return nil, err
 		}
 		ctx := c.Request.Context()
 		if err = store.CheckSSORegistration(ctx, actor, p, limit); err != nil {
@@ -450,6 +474,7 @@ func New(o Options) (auth.Plugin, error) {
 		}
 		result.Provider = p
 		result.RedirectURI = callback
+		result.AdditionalFields = o.publicFields(p.AdditionalFields)
 		return result, nil
 	}
 	read := func(c auth.EndpointContext, store Store, actor Actor) (any, error) {
@@ -467,7 +492,7 @@ func New(o Options) (auth.Plugin, error) {
 		}
 		out := make([]PublicProvider, 0, len(list))
 		for _, p := range list {
-			public := sanitized(c, p)
+			public := o.public(c, p)
 			_, public.DomainVerified, err = o.domainStatus(c.Request.Context(), store, p, "")
 			if err != nil {
 				return nil, err
@@ -487,6 +512,9 @@ func New(o Options) (auth.Plugin, error) {
 		callback.OpenAPI = json.RawMessage(`{"x-plainauth-idp-initiated":true}`)
 	}
 	plugin := auth.Plugin{ID: "sso", ValidateStore: func(s auth.Store) error {
+		if _, ok := s.(ProviderFieldStore); len(o.ProviderAdditionalFields) > 0 && !ok {
+			return errors.New("sso: ProviderAdditionalFields require a ProviderFieldStore")
+		}
 		if _, ok := s.(Store); !ok {
 			return errors.New("sso: provider management requires a directory store")
 		}
@@ -558,7 +586,27 @@ func New(o Options) (auth.Plugin, error) {
 		}
 		return nil
 	}
+	if len(o.ProviderAdditionalFields) > 0 {
+		plugin.ConfigureStore = o.configureProviderFields
+		doc, err := o.providerFieldsOpenAPI()
+		if err != nil {
+			return auth.Plugin{}, err
+		}
+		for i, ep := range plugin.Endpoints {
+			switch ep.Path {
+			case "/sso/register", "/sso/update-provider", "/sso/get-provider", "/sso/providers":
+				plugin.Endpoints[i].OpenAPI = doc
+			}
+		}
+	}
 	return plugin, nil
+}
+
+// public is sanitized with the provider's visible declared fields.
+func (o Options) public(c auth.EndpointContext, p Provider) PublicProvider {
+	out := sanitized(c, p)
+	out.AdditionalFields = o.publicFields(p.AdditionalFields)
+	return out
 }
 
 func sanitized(c auth.EndpointContext, p Provider) PublicProvider {

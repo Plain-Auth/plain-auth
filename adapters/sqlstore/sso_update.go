@@ -73,7 +73,13 @@ func (s *Store) UpdateSSOProvider(ctx context.Context, actor sso.Actor, id, reco
 				if next.SAML != nil {
 					column = `"samlConfig"`
 				}
-				_, e = tx.ExecContext(ctx, s.bind(`UPDATE "ssoProvider" SET "issuer"=?,"domain"=?,`+column+`=? WHERE `+s.scimExact(`"id"`)+`=?`), next.Issuer, next.Domain, string(raw), recordID)
+				set, args := `"issuer"=?,"domain"=?,`+column+`=?`, []any{next.Issuer, next.Domain, string(raw)}
+				extra, values := s.providerFieldWrite(next.AdditionalFields, false)
+				for i, field := range extra {
+					set += "," + field + "=?"
+					args = append(args, values[i])
+				}
+				_, e = tx.ExecContext(ctx, s.bind(`UPDATE "ssoProvider" SET `+set+` WHERE `+s.scimExact(`"id"`)+`=?`), append(args, recordID)...)
 				if e != nil {
 					return e
 				}

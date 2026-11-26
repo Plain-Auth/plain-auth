@@ -126,7 +126,15 @@ func (s *Store) ssoRegister(ctx context.Context, a sso.Actor, p sso.Provider, li
 		}
 		oidcConfig = string(cfg)
 	}
-	_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "ssoProvider" ("id","issuer","domain","oidcConfig","samlConfig","providerId","userId","organizationId") VALUES (?,?,?,?,?,?,?,?)`), p.ID, p.Issuer, p.Domain, oidcConfig, samlConfig, p.ProviderID, a.UserID, p.OrganizationID)
+	columns, params := `"id","issuer","domain","oidcConfig","samlConfig","providerId","userId","organizationId"`, "?,?,?,?,?,?,?,?"
+	args := []any{p.ID, p.Issuer, p.Domain, oidcConfig, samlConfig, p.ProviderID, a.UserID, p.OrganizationID}
+	extra, values := s.providerFieldWrite(p.AdditionalFields, true)
+	for i, column := range extra {
+		columns += "," + column
+		params += ",?"
+		args = append(args, values[i])
+	}
+	_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "ssoProvider" (`+columns+`) VALUES (`+params+`)`), args...)
 	if duplicateConstraint(err) {
 		return sso.ErrDuplicate
 	}
@@ -169,7 +177,7 @@ func (s *Store) ReadSSOProviders(ctx context.Context, a sso.Actor, id string) ([
 	if err != nil {
 		return nil, err
 	}
-	q := `SELECT ` + browserProviderCols
+	q := `SELECT ` + s.providerCols()
 	args := []any{}
 	if orgTables {
 		q += `,m."role"`
@@ -201,11 +209,14 @@ func (s *Store) ReadSSOProviders(ctx context.Context, a sso.Actor, id string) ([
 		var p sso.Provider
 		var oidc, saml sql.NullString
 		var role sql.NullString
-		dest := []any{&p.ID, &p.ProviderID, &p.Issuer, &p.Domain, &p.UserID, &p.OrganizationID, &oidc, &saml}
+		dest := s.providerFieldDest([]any{&p.ID, &p.ProviderID, &p.Issuer, &p.Domain, &p.UserID, &p.OrganizationID, &oidc, &saml})
 		if orgTables {
 			dest = append(dest, &role)
 		}
 		if err = rows.Scan(dest...); err != nil {
+			return nil, err
+		}
+		if p.AdditionalFields, err = s.providerFields(dest, 8); err != nil {
 			return nil, err
 		}
 		allowed := p.UserID == a.UserID

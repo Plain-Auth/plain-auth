@@ -2,6 +2,7 @@ package openapi
 
 import (
 	"encoding/json"
+	"maps"
 	"reflect"
 	"slices"
 
@@ -51,11 +52,11 @@ func ssoResponse(path string, info plainauth.HTTPDescription) object {
 			fields["domainVerificationToken"] = text
 			required = append(required, "domainVerified", "domainVerificationToken")
 		}
-		return responseObject(fields, required...)
+		return returnedProviderFields(responseObject(fields, required...), routeProviderFields(info, path))
 	case "/sso/providers":
-		return responseObject(object{"providers": array(modelSchema(reflect.TypeFor[sso.PublicProvider]()))}, "providers")
+		return responseObject(object{"providers": array(returnedProviderFields(modelSchema(reflect.TypeFor[sso.PublicProvider]()), routeProviderFields(info, path)))}, "providers")
 	case "/sso/get-provider", "/sso/update-provider":
-		return modelSchema(reflect.TypeFor[sso.PublicProvider]())
+		return returnedProviderFields(modelSchema(reflect.TypeFor[sso.PublicProvider]()), routeProviderFields(info, path))
 	case "/sso/delete-provider":
 		return responseObject(object{"success": object{"const": true}}, "success")
 	case "/sign-in/sso":
@@ -90,6 +91,7 @@ func describeSSORequest(op object, route plainauth.HTTPRoute, info plainauth.HTT
 			registration["required"] = []string{"providerId", "domain", "issuer"}
 			registration["oneOf"] = []object{{"required": []string{"oidcConfig"}}, {"required": []string{"samlConfig"}}}
 		}
+		withProviderFields(registration, providerFields(route.OpenAPI), true)
 		body(registration)
 
 	case "/sso/update-provider":
@@ -115,6 +117,7 @@ func describeSSORequest(op object, route plainauth.HTTPRoute, info plainauth.HTT
 					"singleSignOnService": object{"type": "array"}, "singleLogoutService": object{"type": "array"}}}, "spMetadata": object{"type": "object", "properties": object{"entityID": text, "binding": text, "isAssertionEncrypted": object{"type": "boolean"}}}}, "additionalProperties": false}
 			update["properties"].(object)["samlConfig"] = saml
 		}
+		withProviderFields(update, providerFields(route.OpenAPI), false)
 		body(update)
 	case "/sso/providers":
 		op["description"] = "List the caller’s personal directories and directories in organizations they own or administer. Client identifiers are masked."
@@ -219,4 +222,70 @@ func describeSSORequest(op object, route plainauth.HTTPRoute, info plainauth.HTT
 		}
 		op["parameters"] = params
 	}
+}
+
+// providerField is one declared SSO provider field from the sso plugin's
+// x-plainauth-provider-fields extension.
+type providerField struct {
+	Schema   object `json:"schema"`
+	Input    bool   `json:"input"`
+	Required bool   `json:"required"`
+	Returned bool   `json:"returned"`
+}
+
+func providerFields(raw json.RawMessage) map[string]providerField {
+	var doc struct {
+		Fields map[string]providerField `json:"x-plainauth-provider-fields"`
+	}
+	if len(raw) != 0 {
+		_ = json.Unmarshal(raw, &doc)
+	}
+	return doc.Fields
+}
+
+// routeProviderFields returns the declared fields of the sso route at path.
+func routeProviderFields(info plainauth.HTTPDescription, path string) map[string]providerField {
+	for _, r := range info.Routes {
+		if r.Plugin == "sso" && r.Path == path {
+			return providerFields(r.OpenAPI)
+		}
+	}
+	return nil
+}
+
+// withProviderFields adds the declared fields a request may set to a body
+// schema, requiring the required ones at registration.
+func withProviderFields(schema object, fields map[string]providerField, create bool) {
+	properties := schema["properties"].(object)
+	required, _ := schema["required"].([]string)
+	for _, name := range slices.Sorted(maps.Keys(fields)) {
+		f := fields[name]
+		if !f.Input {
+			continue
+		}
+		properties[name] = f.Schema
+		if create && f.Required {
+			required = append(required, name)
+		}
+	}
+	if len(required) > 0 {
+		schema["required"] = required
+	}
+}
+
+// returnedProviderFields adds the declared fields responses return.
+func returnedProviderFields(schema object, fields map[string]providerField) object {
+	if len(fields) == 0 {
+		return schema
+	}
+	properties, _ := schema["properties"].(object)
+	if properties == nil {
+		return schema
+	}
+	for name, f := range fields {
+		if f.Returned {
+			properties[name] = f.Schema
+		}
+	}
+	return schema
 }
