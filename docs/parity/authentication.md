@@ -633,7 +633,8 @@
       - [x] `postLogoutRedirectURI` ([test](../../conformance/goapi/oauth_logout_test.go#L70))
         - [x] Provider sign-out sends the provider's PostLogoutRedirectURI, resolved against the base URL, as post_logout_redirect_uri, unless the request names its own callbackURL ([test](../../conformance/goapi/oauth_logout_test.go#L70))
         - [x] A provider sign-out whose callbackURL is on a foreign origin is refused ([test](../../conformance/goapi/oauth_logout_test.go#L53))
-      - [ ] `disableProviderLogout`
+      - [x] `disableProviderLogout` ([test](../../conformance/goapi/oauth_logout_test.go#L87))
+        - [x] With DisableProviderLogout on the provider, which every preset returns as an OAuthProvider, sign-out ends the local session and returns no provider logout URL, also when another configured provider offers logout ([test](../../conformance/goapi/oauth_logout_test.go#L87))
     - [ ] Community Provider Helpers
       - AgentID — *not applicable: JavaScript only. It is a third-party npm package that returns a TypeScript GenericOAuthConfig. A Go host registers such an issuer with providers.OpenIDConnect or its own OAuthProvider.*
       - EVE Online — *not applicable: JavaScript only. It is a third-party npm package that returns a TypeScript GenericOAuthConfig. A Go host configures EVE SSO as its own OAuthProvider.*

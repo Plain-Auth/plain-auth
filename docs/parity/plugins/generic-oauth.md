@@ -22,7 +22,8 @@
       - [x] OpenIDConnect discovery, as used by the Auth0, Keycloak and Okta presets, sets EndSessionEndpoint from the issuer's end_session_endpoint ([test](../../../providers/enterprise_oidc_test.go#L71))
     - [ ] `postLogoutRedirectURI`
       - [x] With PostLogoutRedirectURI /bye, provider sign-out sends the absolute /bye return URI, and a callbackURL in the request replaces it ([test](../../../conformance/goapi/oauth_logout_test.go#L56))
-    - [ ] `disableProviderLogout`
+    - [x] `disableProviderLogout` ([test](../../../conformance/goapi/oauth_logout_test.go#L87))
+      - [x] With DisableProviderLogout on the provider, which every preset returns as an OAuthProvider, sign-out ends the local session and returns no provider logout URL, also when another configured provider offers logout ([test](../../../conformance/goapi/oauth_logout_test.go#L87))
     - [ ] `pkce`
       - [x] For every catalog provider, the authorization URL carries a code challenge exactly when the provider uses PKCE, and providers built with DisablePKCE send none ([test](../../../providers/catalog_test.go#L178))
       - [x] A hand-built provider sends an S256 code challenge and a nonce by default, and the token request carries the matching verifier ([test](../../../conformance/goapi/oauth_test.go#L31))
@@ -56,7 +57,8 @@
       - [x] Discovery sets EndSessionEndpoint from the issuer's end_session_endpoint for the Auth0, Keycloak and Okta presets ([test](../../../providers/enterprise_oidc_test.go#L71))
     - [ ] `postLogoutRedirectURI`
       - [x] With PostLogoutRedirectURI /bye, provider sign-out sends the absolute /bye return URI, and a callbackURL in the request replaces it ([test](../../../conformance/goapi/oauth_logout_test.go#L56))
-    - [ ] `disableProviderLogout`
+    - [x] `disableProviderLogout` ([test](../../../conformance/goapi/oauth_logout_test.go#L87))
+      - [x] With DisableProviderLogout on the provider, which every preset returns as an OAuthProvider, sign-out ends the local session and returns no provider logout URL, also when another configured provider offers logout ([test](../../../conformance/goapi/oauth_logout_test.go#L87))
     - [ ] `pkce`
       - [x] The Auth0, Keycloak and Okta presets request openid profile email with a nonce and an S256 code challenge at the discovered authorization endpoint ([test](../../../providers/enterprise_oidc_test.go#L95))
       - [x] For every catalog provider, the authorization URL carries a code challenge exactly when the provider uses PKCE, and providers built with DisablePKCE send none ([test](../../../providers/catalog_test.go#L178))
@@ -86,7 +88,8 @@
       - [x] Provider sign-out revokes the local session and returns the configured EndSessionEndpoint with its own query, the ID token hint, state, client ID and post-logout return URI ([test](../../../conformance/goapi/oauth_logout_test.go#L71))
     - [ ] `postLogoutRedirectURI`
       - [x] With PostLogoutRedirectURI /bye, provider sign-out sends the absolute /bye return URI, and a callbackURL in the request replaces it ([test](../../../conformance/goapi/oauth_logout_test.go#L56))
-    - [ ] `disableProviderLogout`
+    - [x] `disableProviderLogout` ([test](../../../conformance/goapi/oauth_logout_test.go#L87))
+      - [x] With DisableProviderLogout on the provider, which every preset returns as an OAuthProvider, sign-out ends the local session and returns no provider logout URL, also when another configured provider offers logout ([test](../../../conformance/goapi/oauth_logout_test.go#L87))
     - [ ] `pkce`
       - [x] The Gumroad, HubSpot, LINE, Patreon, Slack and Yandex presets send their default scopes, the callback redirect URI and an S256 challenge in the authorization URL ([test](../../../providers/profile_presets_test.go#L112))
       - [x] For every catalog provider, the authorization URL carries a code challenge exactly when the provider uses PKCE, and providers built with DisablePKCE send none ([test](../../../providers/catalog_test.go#L178))
@@ -119,7 +122,8 @@
       - [x] Provider sign-out revokes the local session and returns the configured EndSessionEndpoint with its own query, the ID token hint, state, client ID and post-logout return URI ([test](../../../conformance/goapi/oauth_logout_test.go#L71))
     - [ ] `postLogoutRedirectURI`
       - [x] With PostLogoutRedirectURI /bye, provider sign-out sends the absolute /bye return URI, and a callbackURL in the request replaces it ([test](../../../conformance/goapi/oauth_logout_test.go#L56))
-    - [ ] `disableProviderLogout`
+    - [x] `disableProviderLogout` ([test](../../../conformance/goapi/oauth_logout_test.go#L87))
+      - [x] With DisableProviderLogout on the provider, which every preset returns as an OAuthProvider, sign-out ends the local session and returns no provider logout URL, also when another configured provider offers logout ([test](../../../conformance/goapi/oauth_logout_test.go#L87))
     - [ ] `pkce`
       - [x] The Gumroad, HubSpot, LINE, Patreon, Slack and Yandex presets send their default scopes, the callback redirect URI and an S256 challenge in the authorization URL ([test](../../../providers/profile_presets_test.go#L112))
       - [x] For every catalog provider, the authorization URL carries a code challenge exactly when the provider uses PKCE, and providers built with DisablePKCE send none ([test](../../../providers/catalog_test.go#L178))
@@ -154,7 +158,8 @@
       - [x] Discovery sets EndSessionEndpoint from the issuer's end_session_endpoint for the Auth0, Keycloak and Okta presets ([test](../../../providers/enterprise_oidc_test.go#L71))
     - [ ] `postLogoutRedirectURI`
       - [x] With PostLogoutRedirectURI /bye, provider sign-out sends the absolute /bye return URI, and a callbackURL in the request replaces it ([test](../../../conformance/goapi/oauth_logout_test.go#L56))
-    - [ ] `disableProviderLogout`
+    - [x] `disableProviderLogout` ([test](../../../conformance/goapi/oauth_logout_test.go#L87))
+      - [x] With DisableProviderLogout on the provider, which every preset returns as an OAuthProvider, sign-out ends the local session and returns no provider logout URL, also when another configured provider offers logout ([test](../../../conformance/goapi/oauth_logout_test.go#L87))
     - [ ] `pkce`
       - [x] The Auth0, Keycloak and Okta presets request openid profile email with a nonce and an S256 code challenge at the discovered authorization endpoint ([test](../../../providers/enterprise_oidc_test.go#L95))
       - [x] For every catalog provider, the authorization URL carries a code challenge exactly when the provider uses PKCE, and providers built with DisablePKCE send none ([test](../../../providers/catalog_test.go#L178))
@@ -185,7 +190,8 @@
       - [x] Provider sign-out revokes the local session and returns the configured EndSessionEndpoint with its own query, the ID token hint, state, client ID and post-logout return URI ([test](../../../conformance/goapi/oauth_logout_test.go#L71))
     - [ ] `postLogoutRedirectURI`
       - [x] With PostLogoutRedirectURI /bye, provider sign-out sends the absolute /bye return URI, and a callbackURL in the request replaces it ([test](../../../conformance/goapi/oauth_logout_test.go#L56))
-    - [ ] `disableProviderLogout`
+    - [x] `disableProviderLogout` ([test](../../../conformance/goapi/oauth_logout_test.go#L87))
+      - [x] With DisableProviderLogout on the provider, which every preset returns as an OAuthProvider, sign-out ends the local session and returns no provider logout URL, also when another configured provider offers logout ([test](../../../conformance/goapi/oauth_logout_test.go#L87))
     - [ ] `pkce`
       - [x] The Gumroad, HubSpot, LINE, Patreon, Slack and Yandex presets send their default scopes, the callback redirect URI and an S256 challenge in the authorization URL ([test](../../../providers/profile_presets_test.go#L112))
       - [x] For every catalog provider, the authorization URL carries a code challenge exactly when the provider uses PKCE, and providers built with DisablePKCE send none ([test](../../../providers/catalog_test.go#L178))
@@ -219,7 +225,8 @@
       - [x] Send the signed-out user to the configured end-session endpoint, keeping its query and adding the ID token hint, state and client ID ([test](../../../conformance/goapi/oauth_logout_test.go#L17))
     - [x] `postLogoutRedirectURI` ([test](../../../conformance/goapi/oauth_logout_test.go#L70))
       - [x] Send the configured post-logout return URI, or the sign-out's own callback URL, to the end-session endpoint and refuse an untrusted one ([test](../../../conformance/goapi/oauth_logout_test.go#L70))
-    - [ ] `disableProviderLogout`
+    - [x] `disableProviderLogout` ([test](../../../conformance/goapi/oauth_logout_test.go#L87))
+      - [x] With DisableProviderLogout on the provider, which every preset returns as an OAuthProvider, sign-out ends the local session and returns no provider logout URL, also when another configured provider offers logout ([test](../../../conformance/goapi/oauth_logout_test.go#L87))
     - [x] `pkce` ([test](../../../conformance/goapi/oauth_test.go#L30))
       - [x] Send an S256 code challenge and nonce to the authorization endpoint by default ([test](../../../conformance/goapi/oauth_test.go#L30))
       - [x] Omit the code challenge for catalog providers configured without PKCE ([test](../../../providers/catalog_test.go#L177))
@@ -253,7 +260,8 @@
       - [x] Send the signed-out user to the configured end-session endpoint, keeping its query and adding the ID token hint, state and client ID ([test](../../../conformance/goapi/oauth_logout_test.go#L17))
     - [x] `postLogoutRedirectURI` ([test](../../../conformance/goapi/oauth_logout_test.go#L70))
       - [x] Send the configured post-logout return URI, or the sign-out's own callback URL, to the end-session endpoint and refuse an untrusted one ([test](../../../conformance/goapi/oauth_logout_test.go#L70))
-    - [ ] `disableProviderLogout`
+    - [x] `disableProviderLogout` ([test](../../../conformance/goapi/oauth_logout_test.go#L87))
+      - [x] With DisableProviderLogout on the provider, which every preset returns as an OAuthProvider, sign-out ends the local session and returns no provider logout URL, also when another configured provider offers logout ([test](../../../conformance/goapi/oauth_logout_test.go#L87))
     - [x] `pkce` ([test](../../../providers/enterprise_oidc_test.go#L50))
       - [x] Verify the S256 code verifier from an enterprise preset's authorization at the token endpoint ([test](../../../providers/enterprise_oidc_test.go#L50))
       - [x] Omit the code challenge for catalog providers configured without PKCE ([test](../../../providers/catalog_test.go#L177))
@@ -283,7 +291,8 @@
       - [x] Send the signed-out user to the configured end-session endpoint, keeping its query and adding the ID token hint, state and client ID ([test](../../../conformance/goapi/oauth_logout_test.go#L17))
     - [x] `postLogoutRedirectURI` ([test](../../../conformance/goapi/oauth_logout_test.go#L70))
       - [x] Send the configured post-logout return URI, or the sign-out's own callback URL, to the end-session endpoint and refuse an untrusted one ([test](../../../conformance/goapi/oauth_logout_test.go#L70))
-    - [ ] `disableProviderLogout`
+    - [x] `disableProviderLogout` ([test](../../../conformance/goapi/oauth_logout_test.go#L87))
+      - [x] With DisableProviderLogout on the provider, which every preset returns as an OAuthProvider, sign-out ends the local session and returns no provider logout URL, also when another configured provider offers logout ([test](../../../conformance/goapi/oauth_logout_test.go#L87))
     - [x] `pkce` ([test](../../../providers/profile_presets_test.go#L111))
       - [x] Send an S256 code challenge in each profile preset's authorization URL ([test](../../../providers/profile_presets_test.go#L111))
       - [x] Omit the code challenge for catalog providers configured without PKCE ([test](../../../providers/catalog_test.go#L177))
@@ -313,7 +322,8 @@
       - [x] Send the signed-out user to the configured end-session endpoint, keeping its query and adding the ID token hint, state and client ID ([test](../../../conformance/goapi/oauth_logout_test.go#L17))
     - [x] `postLogoutRedirectURI` ([test](../../../conformance/goapi/oauth_logout_test.go#L70))
       - [x] Send the configured post-logout return URI, or the sign-out's own callback URL, to the end-session endpoint and refuse an untrusted one ([test](../../../conformance/goapi/oauth_logout_test.go#L70))
-    - [ ] `disableProviderLogout`
+    - [x] `disableProviderLogout` ([test](../../../conformance/goapi/oauth_logout_test.go#L87))
+      - [x] With DisableProviderLogout on the provider, which every preset returns as an OAuthProvider, sign-out ends the local session and returns no provider logout URL, also when another configured provider offers logout ([test](../../../conformance/goapi/oauth_logout_test.go#L87))
     - [x] `pkce` ([test](../../../providers/profile_presets_test.go#L111))
       - [x] Send an S256 code challenge in each profile preset's authorization URL ([test](../../../providers/profile_presets_test.go#L111))
       - [x] Omit the code challenge for catalog providers configured without PKCE ([test](../../../providers/catalog_test.go#L177))
@@ -343,7 +353,8 @@
       - [x] Send the signed-out user to the configured end-session endpoint, keeping its query and adding the ID token hint, state and client ID ([test](../../../conformance/goapi/oauth_logout_test.go#L17))
     - [x] `postLogoutRedirectURI` ([test](../../../conformance/goapi/oauth_logout_test.go#L70))
       - [x] Send the configured post-logout return URI, or the sign-out's own callback URL, to the end-session endpoint and refuse an untrusted one ([test](../../../conformance/goapi/oauth_logout_test.go#L70))
-    - [ ] `disableProviderLogout`
+    - [x] `disableProviderLogout` ([test](../../../conformance/goapi/oauth_logout_test.go#L87))
+      - [x] With DisableProviderLogout on the provider, which every preset returns as an OAuthProvider, sign-out ends the local session and returns no provider logout URL, also when another configured provider offers logout ([test](../../../conformance/goapi/oauth_logout_test.go#L87))
     - [x] `pkce` ([test](../../../providers/profile_presets_test.go#L111))
       - [x] Send an S256 code challenge in each profile preset's authorization URL ([test](../../../providers/profile_presets_test.go#L111))
       - [x] Omit the code challenge for catalog providers configured without PKCE ([test](../../../providers/catalog_test.go#L177))
@@ -380,7 +391,8 @@
       - [x] Take the provider logout URL from an enterprise preset's discovery document ([test](../../../providers/enterprise_oidc_test.go#L70))
     - [x] `postLogoutRedirectURI` ([test](../../../conformance/goapi/oauth_logout_test.go#L70))
       - [x] Send the configured post-logout return URI, or the sign-out's own callback URL, to the end-session endpoint and refuse an untrusted one ([test](../../../conformance/goapi/oauth_logout_test.go#L70))
-    - [ ] `disableProviderLogout`
+    - [x] `disableProviderLogout` ([test](../../../conformance/goapi/oauth_logout_test.go#L87))
+      - [x] With DisableProviderLogout on the provider, which every preset returns as an OAuthProvider, sign-out ends the local session and returns no provider logout URL, also when another configured provider offers logout ([test](../../../conformance/goapi/oauth_logout_test.go#L87))
     - [x] `clientId` ([test](../../../providers/catalog_test.go#L79))
       - [x] Send the configured client ID in every catalog provider's code exchange through real sign-in and callback requests ([test](../../../providers/catalog_test.go#L79))
     - [x] `clientSecret` ([test](../../../providers/catalog_test.go#L80))
@@ -498,7 +510,8 @@
         - [x] Read the end-session endpoint from the issuer's discovery document ([test](../../../providers/enterprise_oidc_test.go#L71))
       - [ ] postLogoutRedirectURI
         - [x] Send the provider's configured post-logout return URI when sign-out names no callback, and the requested one when it does ([test](../../../conformance/goapi/oauth_logout_test.go#L70))
-      - [ ] disableProviderLogout
+      - [x] disableProviderLogout ([test](../../../conformance/goapi/oauth_logout_test.go#L87))
+        - [x] With DisableProviderLogout on the provider, which every preset returns as an OAuthProvider, sign-out ends the local session and returns no provider logout URL, also when another configured provider offers logout ([test](../../../conformance/goapi/oauth_logout_test.go#L87))
       - [ ] clientId
         - [x] Send the configured client ID and secret with the authorization-code grant at each catalog provider's token endpoint ([test](../../../providers/catalog_test.go#L80))
       - [ ] clientSecret

@@ -29691,5 +29691,117 @@
       "test": "conformance/goapi/oauth_callback_errors_test.go",
       "marker": "func TestOAuthCallbackErrors("
     }
+  ],
+  "docs/content/docs/authentication/other-social-providers.mdx#L149/`disableProviderLogout`": [
+    {
+      "label": "With DisableProviderLogout on the provider, which every preset returns as an OAuthProvider, sign-out ends the local session and returns no provider logout URL, also when another configured provider offers logout",
+      "test": "conformance/goapi/oauth_logout_test.go",
+      "marker": "func TestDisableProviderLogout(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/generic-oauth/BaseOAuthProviderOptions/disableProviderLogout": [
+    {
+      "label": "With DisableProviderLogout on the provider, which every preset returns as an OAuthProvider, sign-out ends the local session and returns no provider logout URL, also when another configured provider offers logout",
+      "test": "conformance/goapi/oauth_logout_test.go",
+      "marker": "func TestDisableProviderLogout(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/generic-oauth/Auth0Options/disableProviderLogout": [
+    {
+      "label": "With DisableProviderLogout on the provider, which every preset returns as an OAuthProvider, sign-out ends the local session and returns no provider logout URL, also when another configured provider offers logout",
+      "test": "conformance/goapi/oauth_logout_test.go",
+      "marker": "func TestDisableProviderLogout(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/generic-oauth/GumroadOptions/disableProviderLogout": [
+    {
+      "label": "With DisableProviderLogout on the provider, which every preset returns as an OAuthProvider, sign-out ends the local session and returns no provider logout URL, also when another configured provider offers logout",
+      "test": "conformance/goapi/oauth_logout_test.go",
+      "marker": "func TestDisableProviderLogout(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/generic-oauth/HubSpotOptions/disableProviderLogout": [
+    {
+      "label": "With DisableProviderLogout on the provider, which every preset returns as an OAuthProvider, sign-out ends the local session and returns no provider logout URL, also when another configured provider offers logout",
+      "test": "conformance/goapi/oauth_logout_test.go",
+      "marker": "func TestDisableProviderLogout(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/generic-oauth/KeycloakOptions/disableProviderLogout": [
+    {
+      "label": "With DisableProviderLogout on the provider, which every preset returns as an OAuthProvider, sign-out ends the local session and returns no provider logout URL, also when another configured provider offers logout",
+      "test": "conformance/goapi/oauth_logout_test.go",
+      "marker": "func TestDisableProviderLogout(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/generic-oauth/LineOptions/disableProviderLogout": [
+    {
+      "label": "With DisableProviderLogout on the provider, which every preset returns as an OAuthProvider, sign-out ends the local session and returns no provider logout URL, also when another configured provider offers logout",
+      "test": "conformance/goapi/oauth_logout_test.go",
+      "marker": "func TestDisableProviderLogout(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/generic-oauth/MicrosoftEntraIdOptions/disableProviderLogout": [
+    {
+      "label": "With DisableProviderLogout on the provider, which every preset returns as an OAuthProvider, sign-out ends the local session and returns no provider logout URL, also when another configured provider offers logout",
+      "test": "conformance/goapi/oauth_logout_test.go",
+      "marker": "func TestDisableProviderLogout(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/generic-oauth/OktaOptions/disableProviderLogout": [
+    {
+      "label": "With DisableProviderLogout on the provider, which every preset returns as an OAuthProvider, sign-out ends the local session and returns no provider logout URL, also when another configured provider offers logout",
+      "test": "conformance/goapi/oauth_logout_test.go",
+      "marker": "func TestDisableProviderLogout(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/generic-oauth/PatreonOptions/disableProviderLogout": [
+    {
+      "label": "With DisableProviderLogout on the provider, which every preset returns as an OAuthProvider, sign-out ends the local session and returns no provider logout URL, also when another configured provider offers logout",
+      "test": "conformance/goapi/oauth_logout_test.go",
+      "marker": "func TestDisableProviderLogout(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/generic-oauth/SlackOptions/disableProviderLogout": [
+    {
+      "label": "With DisableProviderLogout on the provider, which every preset returns as an OAuthProvider, sign-out ends the local session and returns no provider logout URL, also when another configured provider offers logout",
+      "test": "conformance/goapi/oauth_logout_test.go",
+      "marker": "func TestDisableProviderLogout(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/generic-oauth/YandexOptions/disableProviderLogout": [
+    {
+      "label": "With DisableProviderLogout on the provider, which every preset returns as an OAuthProvider, sign-out ends the local session and returns no provider logout URL, also when another configured provider offers logout",
+      "test": "conformance/goapi/oauth_logout_test.go",
+      "marker": "func TestDisableProviderLogout(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/generic-oauth/GenericOAuthConfig/disableProviderLogout": [
+    {
+      "label": "With DisableProviderLogout on the provider, which every preset returns as an OAuthProvider, sign-out ends the local session and returns no provider logout URL, also when another configured provider offers logout",
+      "test": "conformance/goapi/oauth_logout_test.go",
+      "marker": "func TestDisableProviderLogout(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/generic-oauth.mdx#L268/disableProviderLogout": [
+    {
+      "label": "With DisableProviderLogout on the provider, which every preset returns as an OAuthProvider, sign-out ends the local session and returns no provider logout URL, also when another configured provider offers logout",
+      "test": "conformance/goapi/oauth_logout_test.go",
+      "marker": "func TestDisableProviderLogout(t *testing.T) {",
+      "complete": true
+    }
   ]
 }
