@@ -274,6 +274,14 @@ func (a *Auth) factorEndpoint(route string, c EndpointContext) (any, error) {
 		subject.UserID = keySession.User.ID
 	}
 	isSend := route == "/two-factor/send-otp"
+	// trustDevice is accepted on send-otp as a boolean, checked before the
+	// session or challenge as the body schema is, and otherwise ignored: the
+	// browser is remembered only by the proof at /two-factor/verify-otp.
+	if v, ok := c.Body["trustDevice"]; isSend && ok {
+		if _, valid := v.(bool); !valid {
+			return nil, fieldTypeError("trustDevice", "boolean", c.Body)
+		}
+	}
 	subject.ReadDelivery = isSend || route == "/two-factor/verify-otp"
 	isProof := route == "/two-factor/verify-totp" || route == "/two-factor/verify-backup-code" || route == "/two-factor/verify-otp"
 	if subject.SessionToken == "" && keySession == nil {
@@ -388,6 +396,9 @@ func (a *Auth) factorEndpoint(route string, c EndpointContext) (any, error) {
 	if op.trustedCookie != nil {
 		expireOtherScopes(c.ResponseHeader, c.Request, op.trustedCookie)
 		c.ResponseHeader.Add("Set-Cookie", op.trustedCookie.String())
+		// Remembering the browser also drops its don't-remember marker, so
+		// the new session renews like a remembered one.
+		a.writeRememberPreference(c.ResponseHeader, r, true)
 	}
 	return op.out, nil
 }

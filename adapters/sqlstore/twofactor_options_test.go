@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"strings"
 	"sync"
@@ -183,22 +184,51 @@ func TestTwoFactorDefaults(t *testing.T) {
 		if life := h.lifetime(h.first.VerifySignedSessionToken(challenge.Value)); challenge.MaxAge != 600 || life != 10*time.Minute {
 			t.Fatal("default challenge does not last ten minutes in the cookie and the store", challenge.MaxAge, life)
 		}
-		h.request(h.second, "two-factor/send-otp", map[string]any{}, 200, challenge)
+		h.answer(h.first, "two-factor/send-otp", map[string]any{"trustDevice": "yes"}, 400, "VALIDATION_ERROR")
+		h.answer(h.first, "two-factor/send-otp", map[string]any{"trustDevice": "yes"}, 400, "VALIDATION_ERROR", challenge)
+		mu.Lock()
+		refused := len(delivered)
+		mu.Unlock()
+		if refused != 0 {
+			t.Fatal("a refused send-otp delivered a code")
+		}
+		sentReply := h.request(h.second, "two-factor/send-otp", map[string]any{"trustDevice": true}, 200, challenge)
 		mu.Lock()
 		sent := delivered
 		mu.Unlock()
 		if len(sent) != 1 || len(sent[0].Code) != 6 || strings.Trim(sent[0].Code, "0123456789") != "" {
 			t.Fatal("default delivered code is not six decimal digits", sent)
 		}
-		h.cookie(h.request(h.first, "two-factor/verify-otp", map[string]any{"code": sent[0].Code}, 200, challenge), "session_token")
+		delivered := h.request(h.first, "two-factor/verify-otp", map[string]any{"code": sent[0].Code}, 200, challenge)
+		h.cookie(delivered, "session_token")
+		// setsCookie reports whether w sets, rather than expires, the named cookie.
+		setsCookie := func(w *httptest.ResponseRecorder, name string) bool {
+			for _, c := range w.Result().Cookies() {
+				if strings.HasSuffix(c.Name, "."+name) && c.MaxAge >= 0 {
+					return true
+				}
+			}
+			return false
+		}
+		if setsCookie(sentReply, "trust_device") || setsCookie(delivered, "trust_device") {
+			t.Fatal("trustDevice on send-otp remembered the browser")
+		}
 
-		challenge = h.challenge(h.first, owner)
+		login := h.request(h.first, "sign-in/email", map[string]any{"email": owner.input.Email, "password": owner.input.Password, "rememberMe": false}, 200)
+		challenge, marker := h.cookie(login, "two_factor"), h.cookie(login, "dont_remember")
 		code, err := totp.GenerateCode(owner.secret, time.Now())
 		if err != nil {
 			t.Fatal(err)
 		}
-		h.answer(h.second, "two-factor/verify-totp", map[string]any{"code": code, "trustDevice": "yes"}, 400, "VALIDATION_ERROR", challenge)
-		proved := h.request(h.second, "two-factor/verify-totp", map[string]any{"code": code, "trustDevice": true}, 200, challenge)
+		h.answer(h.second, "two-factor/verify-totp", map[string]any{"code": code, "trustDevice": "yes"}, 400, "VALIDATION_ERROR", challenge, marker)
+		proved := h.request(h.second, "two-factor/verify-totp", map[string]any{"code": code, "trustDevice": true}, 200, challenge, marker)
+		cleared := false
+		for _, c := range proved.Result().Cookies() {
+			cleared = cleared || strings.HasSuffix(c.Name, ".dont_remember") && c.MaxAge < 0
+		}
+		if !cleared {
+			t.Fatal("trustDevice kept the don't-remember marker")
+		}
 		trust := h.cookie(proved, "trust_device")
 		grant := strings.TrimPrefix(h.first.VerifySignedSessionToken(trust.Value), h.first.TrustedDeviceCookieName()+"|"+owner.userID+"|")
 		if life := h.lifetime(grant); trust.MaxAge != 30*24*60*60 || life != 30*24*time.Hour {

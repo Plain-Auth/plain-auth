@@ -39136,6 +39136,20 @@
       "label": "Set the remembered-browser cookie for an authenticator code sent with trustDevice, and skip the challenge at the next sign-in from that browser",
       "test": "adapters/sqlstore/twofactor_hooks_test.go",
       "marker": "trust := h.cookie(w, \"trust_device\")"
+    },
+    {
+      "label": "Refuse a trustDevice that is not a boolean; for one that is, remember the browser for thirty days in the cookie and the store, drop its don't-remember marker, and skip the challenge at the next sign-in, which renews the cookie for thirty days",
+      "test": "adapters/sqlstore/twofactor_options_test.go",
+      "marker": "the remembered browser did not skip the challenge and renew for thirty days",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L361/Parameter `trustDevice` (optional)": [
+    {
+      "label": "Answer VALIDATION_ERROR to a trustDevice that is not a boolean, before reading the challenge and without sending a code, and accept a boolean without remembering the browser at the send or at a later verification that leaves it out",
+      "test": "adapters/sqlstore/twofactor_options_test.go",
+      "marker": "trustDevice on send-otp remembered the browser",
+      "complete": true
     }
   ]
 }

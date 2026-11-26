@@ -45,7 +45,7 @@ Provisioning secrets use authenticated encryption at rest. Backup codes use the 
 
 ## Remember a browser
 
-A browser completing a sign-in challenge can include `"trustDevice":true` with a valid authenticator code, delivered code or backup code. The server issues an HTTP-only signed cookie and records an expiring grant for that account. On the next password sign-in it consumes the old grant, creates the session and issues a replacement grant in one transaction. Concurrent sign-ins presenting the same cookie can use it once. A missing, expired, altered or differently owned grant leads to a new second-factor challenge.
+A browser completing a sign-in challenge can include `"trustDevice":true` with a valid authenticator code, delivered code or backup code. The server issues an HTTP-only signed cookie and records an expiring grant for that account. The proof also clears the browser's don't-remember marker, so a session started with `rememberMe` false renews like a remembered one. On the next password sign-in it consumes the old grant, creates the session and issues a replacement grant in one transaction. Concurrent sign-ins presenting the same cookie can use it once. A missing, expired, altered or differently owned grant leads to a new second-factor challenge.
 
 `TrustDeviceMaxAge` defaults to 30 days and `ChallengeLifetime` defaults to 10 minutes. `New` refuses a negative lifetime or one under a second. Set both on `twofactor.Options`. Password changes, password resets and disabling the factor invalidate the account's remembered grants. For native credentials, pass the incoming signed cookie value in `RequestMeta.TrustedDeviceCookie` and return any `AuthResult.TrustedDeviceCookie` to the browser. `Auth.TrustedDeviceCookieName()` returns the namespace for this instance.
 
@@ -65,7 +65,7 @@ plugin := twofactor.New(twofactor.Options{
 ```
 
 1. An authenticated account enrolls with `POST /two-factor/enable` and `{"method":"otp","password":"…"}`. Enrolling replaces the current session.
-2. A subsequent password sign-in returns a challenge and the available methods. The client calls `POST /two-factor/send-otp` with an empty JSON object to deliver a new code for that challenge. Sending another code replaces the previous one.
+2. A subsequent password sign-in returns a challenge and the available methods. The client calls `POST /two-factor/send-otp` with an empty JSON object to deliver a new code for that challenge. Sending another code replaces the previous one. The body may carry a boolean `trustDevice`, which is checked and otherwise ignored; the browser is remembered only when the `/two-factor/verify-otp` request sends `trustDevice`.
 3. Submit the code to `POST /two-factor/verify-otp` as `{"code":"012345","trustDevice":false}`. The server consumes the proof and challenge as it creates the session. An active signed-in session may also request a code for itself.
 
 An account enrolled with delivered codes can set up an authenticator while continuing to use its existing channel. Confirming the new authenticator adds it to the available methods. The Go HTTP client provides `EnableDeliveredFactor`, `SendFactorOTP`, `VerifyFactorOTP`, `VerifyTOTPWithTrust` and `VerifyBackupCodeWithTrust`.
