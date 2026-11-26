@@ -438,7 +438,7 @@
     - [ ] `defaultSSO`
     - [x] `defaultOverrideUserInfo` ([test](../../../adapters/sqlstore/sso_profile_override_test.go#L103))
       - [x] Store overrideUserInfo over the request's false and refresh the profile on sign-in ([test](../../../adapters/sqlstore/sso_profile_override_test.go#L103))
-    - [ ] `disableImplicitSignUp`
+    - [x] `disableImplicitSignUp` ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L434))
       - [x] Require an explicit signup request for new enterprise users and enforce host-wide signup controls ([test](../../../adapters/sqlstore/sso_browser_test.go#L345))
       - [x] Refuse an IdP-initiated SAML sign-in for a new user with signup_disabled when implicit sign-up is off ([test](../../../adapters/sqlstore/sso_saml_portal_test.go#L78))
       - [x] Let an existing SAML user return through the portal when implicit sign-up is off ([test](../../../adapters/sqlstore/sso_saml_portal_test.go#L127))
@@ -648,7 +648,7 @@
       - [x] Parameter `additionalParams` (optional) ([test](../../../adapters/sqlstore/sso_oidc_contract_test.go#L105))
         - [x] Add a prompt parameter to the OIDC authorization request and reject a reserved state parameter ([test](../../../adapters/sqlstore/sso_browser_test.go#L470))
         - [x] Refuse client_id and redirect_uri as additional parameters and any additionalParams on a SAML sign-in, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_oidc_contract_test.go#L105))
-      - [ ] Parameter `requestSignUp` (optional)
+      - [x] Parameter `requestSignUp` (optional) ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L434))
         - [x] Create a new user when requestSignUp is true although implicit sign-up is disabled ([test](../../../adapters/sqlstore/sso_browser_test.go#L346))
         - [x] Ignore requestSignUp for SAML, so DisableImplicitSignUp refuses the sign-up ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L434))
       - [x] Parameter `providerType` (optional) ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L228))
@@ -752,7 +752,7 @@
 - [ ] SSO users and organizations
   - [ ] How SSO users are matched
     - [x] Link a new enterprise identity to a verified local user only under a proved domain or subdomain with implicit linking on, and redirect with account_not_linked otherwise ([test](../../../adapters/sqlstore/sso_domain_test.go#L334))
-    - [ ] Block new users
+    - [x] Block new users ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L439))
       - [x] Refuse a new OIDC user when implicit sign-up is off and create the user when requestSignUp is true ([test](../../../adapters/sqlstore/sso_browser_test.go#L345))
       - [x] Refuse a SAML sign-up under DisableImplicitSignUp even with requestSignUp, with signup_disabled ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L434))
       - [x] Redirect a refused OIDC sign-up with error=signup disabled ([test](../../../adapters/sqlstore/sso_browser_test.go#L343))

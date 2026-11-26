@@ -11758,7 +11758,8 @@
     {
       "label": "Refuse a SAML sign-up under DisableImplicitSignUp even with requestSignUp",
       "test": "adapters/sqlstore/sso_saml_defaults_test.go",
-      "marker": "t.Fatal(\"requestSignUp let a SAML sign-up past DisableImplicitSignUp\", location)"
+      "marker": "t.Fatal(\"requestSignUp let a SAML sign-up past DisableImplicitSignUp\", location)",
+      "complete": true
     }
   ],
   "plugin-symbol/sso/SSOOptions/organizationProvisioning": [
@@ -42708,7 +42709,8 @@
     {
       "label": "Ignore requestSignUp for SAML, so DisableImplicitSignUp refuses the sign-up",
       "test": "adapters/sqlstore/sso_saml_defaults_test.go",
-      "marker": "t.Fatal(\"requestSignUp let a SAML sign-up past DisableImplicitSignUp\", location)"
+      "marker": "t.Fatal(\"requestSignUp let a SAML sign-up past DisableImplicitSignUp\", location)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/sso/index.mdx#L269/Parameter `providerType` (optional)": [
@@ -43013,7 +43015,8 @@
     {
       "label": "Land a refused SAML sign-up on the success callback",
       "test": "adapters/sqlstore/sso_saml_defaults_test.go",
-      "marker": "t.Fatal(\"a refused SAML sign-up did not land on the success callback\", location)"
+      "marker": "t.Fatal(\"a refused SAML sign-up did not land on the success callback\", location)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/sso/provisioning.mdx#L162": [
