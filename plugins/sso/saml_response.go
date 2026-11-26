@@ -406,13 +406,6 @@ func (o Options) samlFinish(c auth.EndpointContext) (any, error) {
 		changed    = "sso_provider_changed_during_authentication"
 		notAllowed = "IdP-initiated SSO not allowed"
 	)
-	// A refused sign-in result goes to the success callback, as another
-	// runtime sends it; other failures go to the error callback.
-	toCallback := func(code string) (any, error) {
-		f := flow
-		f.ErrorCallbackURL = ""
-		return enterpriseFailure(c, f, code, "")
-	}
 	p, err := store.FindBrowserProvider(c.Request.Context(), Selector{ProviderID: flow.Provider, Protocol: "saml"})
 	if err != nil {
 		if errors.Is(err, ErrMissing) {
@@ -425,6 +418,16 @@ func (o Options) samlFinish(c auth.EndpointContext) (any, error) {
 	}
 	if p.SAML == nil || p.ProviderID != flow.Provider || !available(c, p) || (!unsolicited && p.Reference != strings.TrimSuffix(flow.ProviderReference, ".dns")) {
 		return enterpriseFailure(c, flow, "invalid_state", changed)
+	}
+	// A refused sign-in result goes to the success callback, as another
+	// runtime sends it; other failures go to the error callback.
+	toCallback := func(code string) (any, error) {
+		f := flow
+		f.ErrorCallbackURL = ""
+		// A portal refusal without a configured landing page goes to the
+		// application origin, a page, where another runtime sends it to the
+		// auth base URL.
+		return enterpriseFailure(c, f, code, "")
 	}
 	if unsolicited {
 		flow.CallbackURL = samlLanding(c, flow.RedirectURI, p.SAML.IDPInitiatedCallbackURL, o.SAML.IDPInitiatedCallbackURL, p.SAML.CallbackURL)

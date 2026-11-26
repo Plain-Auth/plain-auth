@@ -248,7 +248,9 @@ func TestEnterpriseSAMLDefaults(t *testing.T) {
 				t.Fatal("a refused SAML sign-up did not land on the success callback", location)
 			}
 			// JSON keys are exact, so lowercased names carry no response.
-			if w := call("POST", "sso/saml2/sp/acs/acme", "", map[string]any{"samlresponse": "x", "relaystate": "y"}); w.Code != 400 {
+			// A case-insensitive reader would take this as an unsolicited
+			// response and redirect; an exact one finds no response.
+			if w := call("POST", "sso/saml2/sp/acs/acme", "", map[string]any{"samlresponse": "x"}); w.Code != 400 {
 				t.Fatal("a JSON SAML response with lowercased keys was read", w.Code, w.Body.String())
 			}
 		})

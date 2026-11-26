@@ -427,6 +427,12 @@ func TestSCIMGroupRouteRefusals(t *testing.T) {
 			if members, _ := stripped["members"].([]any); w.Code != 201 || stripped["externalId"] != nil || len(members) != 1 {
 				t.Fatal("a Group body did not drop values holding only nulls", w.Code, w.Body.String())
 			}
+			// A PATCH member entry drops its null subattributes too.
+			w = scimRequest(h, "PATCH", "Groups/"+stripped["id"].(string), "first", map[string]any{"schemas": []string{scim.PatchSchema}, "Operations": []any{
+				map[string]any{"op": "replace", "path": "members", "value": []map[string]any{{"value": member["id"], "type": map[string]any{"x": nil}}}}}})
+			if w.Code != 200 {
+				t.Fatal("a PATCH member entry with a null-only type was refused", w.Code, w.Body.String())
+			}
 			for _, entry := range []map[string]any{{"value": member["id"], "display": "a", "Display": "b"}, {"value": member["id"], "$ref": "a", "$REF": "b"}} {
 				if code, kind := status("POST", "Groups", "first", map[string]any{"schemas": []string{scim.GroupSchema}, "displayName": "Twice", "members": []map[string]any{entry}}); code != 400 || kind != "invalidSyntax" {
 					t.Fatal("a Group member naming a subattribute twice was not invalidSyntax", entry, code, kind)

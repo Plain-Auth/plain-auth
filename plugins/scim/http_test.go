@@ -141,13 +141,16 @@ func TestSCIMNormalizedProfileAndPatch(t *testing.T) {
 	if err != nil || untyped.PrimaryEmail != "first@example.test" {
 		t.Fatal("the first of two untyped emails did not become primary", untyped.PrimaryEmail, err)
 	}
+	if _, err := normalize(map[string]any{"schemas": []any{UserSchema}, "userName": "u@example.test", "emails": []any{map[string]any{"value": strings.Repeat("a", 241) + "@example.test"}}}); err != nil {
+		t.Fatal("a 254-character email address was refused", err)
+	}
 	// Name parts allow 256 code points and the formatted name 1,024.
 	if _, err := normalize(map[string]any{"schemas": []any{UserSchema}, "userName": "u@example.test", "name": map[string]any{"givenName": strings.Repeat("é", 256), "formatted": strings.Repeat("é", 1024)}}); err != nil {
 		t.Fatal("name parts at their limits were refused", err)
 	}
 	for _, bad := range []map[string]any{
 		{"userName": "u@example.test", "emails": many},
-		{"userName": "u@example.test", "emails": []any{map[string]any{"value": strings.Repeat("a", 243) + "@example.test"}}},
+		{"userName": "u@example.test", "emails": []any{map[string]any{"value": strings.Repeat("a", 242) + "@example.test"}}},
 		{"userName": "u@example.test", "emails": []any{map[string]any{"value": "not-an-email"}}},
 		{"userName": "u@example.test", "name": map[string]any{"givenName": strings.Repeat("é", 257)}},
 		{"userName": "u@example.test", "name": map[string]any{"formatted": strings.Repeat("é", 1025)}},

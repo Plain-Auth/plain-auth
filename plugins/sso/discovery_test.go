@@ -345,13 +345,15 @@ func TestDiscoveryHydratedConfiguration(t *testing.T) {
 // The callback reports a discovery failure with the raw message, as another
 // runtime does, without the registration prefix.
 func TestCallbackDiscoveryMessage(t *testing.T) {
-	for in, want := range map[string]string{
-		"OIDC discovery document is missing required fields: Discovery document is missing required fields: jwks_uri": "Discovery document is missing required fields: jwks_uri",
-		`OIDC issuer mismatch: Discovered issuer "a" does not match configured issuer "b"`:                            `Discovered issuer "a" does not match configured issuer "b"`,
-		"Discovery document not found": "Discovery document not found",
+	for _, c := range []struct{ code, message, want string }{
+		{"discovery_incomplete", "OIDC discovery document is missing required fields: Discovery document is missing required fields: jwks_uri", "Discovery document is missing required fields: jwks_uri"},
+		{"issuer_mismatch", `OIDC issuer mismatch: Discovered issuer "a" does not match configured issuer "b"`, `Discovered issuer "a" does not match configured issuer "b"`},
+		{"discovery_not_found", "Discovery document not found", "Discovery endpoint not found"},
+		{"discovery_timeout", "Discovery timed out", "Discovery request timed out"},
+		{"discovery_invalid_json", "Invalid discovery document", "Discovery endpoint returned invalid JSON"},
 	} {
-		if got := callbackDiscoveryMessage(in); got != want {
-			t.Fatal("the callback discovery message kept the registration prefix", got)
+		if got := callbackDiscoveryMessage(&auth.APIError{Code: c.code, Message: c.message}); got != c.want {
+			t.Fatal("the callback discovery message differs from the raw one", c.code, got)
 		}
 	}
 }

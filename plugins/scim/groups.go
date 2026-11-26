@@ -184,7 +184,9 @@ func (g *groupPatch) attribute(path, op string, val any, provided bool) error {
 			clear(g.ids)
 			return nil
 		}
-		entries, e := members(val)
+		// Null subattributes of added or replaced entries are omitted, as
+		// another runtime strips them.
+		entries, e := members(stripNulls(val, 0))
 		if e != nil {
 			return e
 		}

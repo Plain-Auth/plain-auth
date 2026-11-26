@@ -323,7 +323,7 @@ func TestEnterpriseOIDCBrowser(t *testing.T) {
 			if count(`SELECT COUNT(*) FROM "member" WHERE "organizationId"='tenant'`) != 1 {
 				t.Fatal("pending invite ignored")
 			}
-			target(finish(two, start(one, "acme", "existing@example.test", "someone", "client_secret_basic", "", withID)), "/retry?error=account_not_linked")
+			target(finish(two, start(one, "acme", "existing@example.test", "someone", "client_secret_basic", "", withID)), "/retry?error=account+not+linked")
 			shared := host(other, true, false, false)
 			g := start(shared, "staff", "irrelevant@example.test", "person", "client_secret_post", "", map[string]any{"domain": "staff.example"})
 			if !strings.HasPrefix(g.path, "sso/callback?") {
@@ -396,7 +396,7 @@ func TestEnterpriseOIDCBrowser(t *testing.T) {
 			if got := socialLogin("static-subject", "social@elsewhere.example"); got.Code != 200 {
 				t.Fatalf("independent static login failed: %d %s", got.Code, got.Body.String())
 			}
-			target(finish(two, start(one, "acme", "another@enterprise.example", "static-subject", "client_secret_basic", "", withID)), "/retry?error=account_not_linked")
+			target(finish(two, start(one, "acme", "another@enterprise.example", "static-subject", "client_secret_basic", "", withID)), "/retry?error=account+not+linked")
 			var managedID string
 			must(first.db.QueryRowContext(ctx, first.bind(`SELECT "id" FROM "account" WHERE "providerId"='acme' AND "accountId"='employee'`)).Scan(&managedID))
 			selection := auth.AccountSelection{UserID: session.User.ID, AccountID: managedID}

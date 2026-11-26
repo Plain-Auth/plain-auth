@@ -10516,6 +10516,11 @@
       "label": "Apply concurrent membership changes, enforce the 1,000-member limit and roll back invalid multi-operation updates",
       "test": "adapters/sqlstore/scim_groups_test.go",
       "marker": "func TestSCIMGroupMembershipLifecycle("
+    },
+    {
+      "label": "Drop a null-only subattribute of a PATCH member entry, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_groups_test.go",
+      "marker": "t.Fatal(\"a PATCH member entry with a null-only type was refused\", w.Code, w.Body.String())"
     }
   ],
   "plugin/scim/DELETE /scim/v2/Groups/:groupId": [
@@ -11553,6 +11558,11 @@
       "label": "Send the identity provider's error and description back, defaulting the description to the error and a missing code to invalid_request and authorization_code_not_found",
       "test": "adapters/sqlstore/sso_browser_test.go",
       "marker": "t.Fatal(\"the callback did not send the identity provider's error back\", c.query, w.Header().Get(\"Location\"))"
+    },
+    {
+      "label": "Report a callback discovery failure with another runtime's raw discovery message",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "t.Fatal(\"the callback discovery message differs from the raw one\", c.code, got)"
     }
   ],
   "plugin/sso/ /sso/callback": [
@@ -12800,7 +12810,7 @@
       "marker": "t.Fatal(\"a GET to the ACS did not return the browser as another runtime does\", c.relay, w.Code, w.Header().Get(\"Location\"))"
     },
     {
-      "label": "Read JSON SAML responses by exact key",
+      "label": "Read JSON SAML responses by exact key, so a lowercased SAMLResponse is not taken for an unsolicited response",
       "test": "adapters/sqlstore/sso_saml_defaults_test.go",
       "marker": "t.Fatal(\"a JSON SAML response with lowercased keys was read\", w.Code, w.Body.String())"
     }
@@ -43394,7 +43404,7 @@
       "marker": "account, e := first.FindAccountUser(ctx, \"primary@example.test\")"
     },
     {
-      "label": "Refuse 21 emails, a 255-character address and an invalid address, and make the first of two untyped emails primary",
+      "label": "Refuse 21 emails, a 255-character address and an invalid address, accept a 254-character address, and make the first of two untyped emails primary",
       "test": "plugins/scim/http_test.go",
       "marker": "t.Fatal(\"the first of two untyped emails did not become primary\", untyped.PrimaryEmail, err)",
       "complete": true

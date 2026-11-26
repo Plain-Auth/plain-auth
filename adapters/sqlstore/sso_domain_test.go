@@ -325,7 +325,7 @@ func TestEnterpriseDomainVerification(t *testing.T) {
 			must(e)
 			callbackHost = strict
 			w := browser("existing@team.proof.example", nil)
-			if w.Code != 302 || !strings.Contains(w.Header().Get("Location"), "account_not_linked") {
+			if w.Code != 302 || !strings.Contains(w.Header().Get("Location"), "error=account+not+linked") {
 				t.Fatal("DNS-based authority bypassed explicit account linking", w.Code, w.Header().Get("Location"))
 			}
 			callbackHost = plain
@@ -340,7 +340,7 @@ func TestEnterpriseDomainVerification(t *testing.T) {
 			}
 			for _, email := range []string{"existing@unrelated.example", "unverified@proof.example"} {
 				w := browser(email, nil)
-				if !strings.Contains(w.Header().Get("Location"), "account_not_linked") {
+				if !strings.Contains(w.Header().Get("Location"), "error=account+not+linked") {
 					t.Fatal("email outside trust scope linked", email, w.Code, w.Body.String())
 				}
 			}
@@ -364,7 +364,7 @@ func TestEnterpriseDomainVerification(t *testing.T) {
 				exec(`ALTER TABLE "user" MODIFY "email" varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL`)
 				person("résumé@team.proof.example", true)
 				w := browser("resume@team.proof.example", nil)
-				if !strings.Contains(w.Header().Get("Location"), "account_not_linked") {
+				if !strings.Contains(w.Header().Get("Location"), "error=account+not+linked") {
 					t.Fatal("collation-equivalent different mailbox was linked")
 				}
 			}

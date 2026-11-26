@@ -178,6 +178,7 @@
     - [x] Spend the flow with its verification delete hooks before the code exchange; a declined spend redirects with state_mismatch and keeps it ([test](../../../adapters/sqlstore/sso_hooks_test.go#L262))
     - [x] An identity provider's error callback still spends the flow with its verification hooks ([test](../../../adapters/sqlstore/sso_hooks_test.go#L286))
     - [x] Send the identity provider's error and description back, defaulting the description to the error and a missing code to invalid_request and authorization_code_not_found ([test](../../../adapters/sqlstore/sso_browser_test.go#L526))
+    - [x] Report a callback discovery failure with another runtime's raw discovery message ([test](../../../plugins/sso/discovery_test.go#L356))
   - [ ] `/sso/callback`
     - [x] Authenticate using the shared callback on both servers and preserve the canonical linked account in SQLite ([test](../../../conformance/sso-browser.mjs#L59))
     - [x] Resume the original client authorization with the enterprise employee’s new session and redeem the code after consent ([test](../../../conformance/oauth-enterprise-authorization.mjs#L43))
@@ -197,7 +198,7 @@
     - [x] A declined RelayState answers 400 INVALID_OAUTH_STATE and keeps the flow for a retry ([test](../../../adapters/sqlstore/sso_saml_test.go#L324))
     - [x] The logout binding's verification create hooks follow the sign-in's session hooks once ([test](../../../adapters/sqlstore/sso_saml_hooks_test.go#L105))
     - [x] Sign in from a JSON SAML response and answer a GET by returning a signed-in browser to a trusted RelayState, the origin otherwise, and others to the error page ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L230))
-    - [x] Read JSON SAML responses by exact key ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L252))
+    - [x] Read JSON SAML responses by exact key, so a lowercased SAMLResponse is not taken for an unsolicited response ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L254))
   - [ ] `GET / POST /sso/saml2/sp/slo/:providerId`
     - [x] Accept a signed HTTP-Redirect acknowledgement once across replicas and preserve a newer login during the round trip ([test](../../../adapters/sqlstore/sso_saml_logout_test.go#L243))
     - [x] Complete the strict Go Redirect return with an independent IdP and capture the pinned reference’s signed-response rejection ([test](../../../conformance/core.test.mjs#L1638))

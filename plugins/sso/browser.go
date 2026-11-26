@@ -315,7 +315,7 @@ func (o Options) finish(c auth.EndpointContext) (any, error) {
 	if p, err = o.withRuntimeDiscovery(c.Request.Context(), c.Auth, p); err != nil {
 		var ae *auth.APIError
 		if errors.As(err, &ae) {
-			return enterpriseFailure(c, flow, "discovery_failed", callbackDiscoveryMessage(ae.Message))
+			return enterpriseFailure(c, flow, "discovery_failed", callbackDiscoveryMessage(ae))
 		}
 		return enterpriseFailure(c, flow, "discovery_failed", "unexpected_discovery_error")
 	}
@@ -396,7 +396,9 @@ func (o Options) finish(c auth.EndpointContext) (any, error) {
 		return nil, err
 	}
 	if errors.Is(err, auth.ErrOAuthLinkRequired) {
-		return fail("account_not_linked")
+		// The OIDC code has spaces, as another runtime sends it; SAML and
+		// social sign-ins use account_not_linked.
+		return fail("account not linked")
 	}
 	if errors.Is(err, ErrChanged) {
 		return enterpriseFailure(c, flow, "SSO_PROVIDER_CHANGED", providerChanged)
@@ -457,13 +459,22 @@ func enterpriseFailure(c auth.EndpointContext, flow auth.OAuthFlow, code, descri
 // transaction, as another runtime does.
 const providerChanged = "SSO provider changed while account linking was in progress"
 
-// callbackDiscoveryMessage drops the registration prefix from a discovery
-// message, as another runtime's callback sends the raw one.
-func callbackDiscoveryMessage(message string) string {
+// callbackDiscoveryMessage returns the raw discovery message another
+// runtime's callback sends: the registration message without its prefix, or
+// that runtime's fixed message for the code.
+func callbackDiscoveryMessage(e *auth.APIError) string {
+	switch e.Code {
+	case "discovery_not_found":
+		return "Discovery endpoint not found"
+	case "discovery_timeout":
+		return "Discovery request timed out"
+	case "discovery_invalid_json":
+		return "Discovery endpoint returned invalid JSON"
+	}
 	for _, prefix := range []string{"OIDC discovery document is missing required fields: ", "OIDC issuer mismatch: "} {
-		if rest, ok := strings.CutPrefix(message, prefix); ok {
+		if rest, ok := strings.CutPrefix(e.Message, prefix); ok {
 			return rest
 		}
 	}
-	return message
+	return e.Message
 }
