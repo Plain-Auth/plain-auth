@@ -200,6 +200,37 @@ opts.SocialProviders = map[string]auth.OAuthProvider{"work": work}
 
 Construct each provider at startup. Discovery uses its configured issuer to obtain the authorization, token, and signing-key endpoints. The default scopes are `openid profile email`. Sign-in uses PKCE and verifies the signed ID token and browser nonce before issuing a session. The integration tests exercise a custom mount and isolate each issuer using a local HTTP transport. [End-to-end tests](../providers/enterprise_oidc_test.go)
 
+## Token endpoint authentication
+
+A provider's `TokenEndpointAuth.Method` chooses how its code exchange and refresh authenticate the client, and replaces `Config.Endpoint.AuthStyle`:
+
+| Method | Sends |
+| --- | --- |
+| `TokenAuthClientSecretBasic` | The client ID and secret in an HTTP Basic header |
+| `TokenAuthClientSecretPost` | The client ID and secret in the form |
+| `TokenAuthNone` | Only the client ID, for a public client with PKCE |
+| `TokenAuthPrivateKeyJWT` | The client ID and a signed assertion from `ClientAssertion`, a `func(ctx, plainauth.TokenRequest) (string, error)` called for every request |
+| `TokenAuthCustom` | Whatever `CustomizeRequest` sets in the form and headers; it receives only the grant fields and must not change them |
+
+```go
+vercel, _ := providers.New("vercel", os.Getenv("VERCEL_CLIENT_ID"), "")
+vercel.TokenEndpointAuth = plainauth.TokenEndpointAuth{
+	Method: plainauth.TokenAuthCustom,
+	CustomizeRequest: func(ctx context.Context, r plainauth.TokenRequest, form url.Values, _ http.Header) error {
+		token, err := workloadToken(ctx) // the platform's OIDC token for this deployment
+		if err != nil {
+			return err
+		}
+		form.Set("client_id", r.ClientID)
+		form.Set("client_assertion_type", "urn:vercel:params:oauth:client-assertion-type:oidc-bearer")
+		form.Set("client_assertion", token)
+		return nil
+	},
+}
+```
+
+`New` refuses a method that does not fit: a secret method without a secret, `none` or `private_key_jwt` with one, a callback without its method or with another, an unknown method, and a method together with `ExchangeCode` or `Refresh`, which replace these requests. Without a method, HTTP Basic authentication without a secret is refused too. A callback error or empty assertion fails the request without sending it, and the callback's error text is not logged or returned. The callbacks may run concurrently, within the request's time budget; a refresh runs while the stored credential is held. Behind the OAuth proxy they run on the production instance, which exchanges the code. A provider with neither a method nor an `AuthStyle` tries HTTP Basic first and then the form. [Token authentication tests](../conformance/goapi/oauth_token_auth_test.go) · [Cloudflare and Vercel tests](../providers/token_auth_test.go)
+
 ## Linked provider credentials
 
 By default, a returning social sign-in saves each fresh access token, refresh token, ID token and expiry the provider supplies. The account keeps the previous value for an omitted field. To keep the original credentials through routine sign-ins, set `Options.DisableAccountUpdateOnSignIn = true`. The first grant is still stored. Returning users receive sessions under the usual verification policy, and providers can still synchronize the user's profile. With a custom store, honor `OAuthLoginOptions.DisableAccountUpdateOnSignIn` when updating an existing provider account. [Credential policy tests](../adapters/sqlstore/oauth_account_update_test.go)

@@ -68,15 +68,17 @@
     - [ ] Scopes
       - [x] In the cloudflare subtest, sign-in requests exactly the default user-details.read scope ([test](../../providers/catalog_test.go#L162))
       - [x] Setting the Google preset's Config.Scopes to [openid] replaces its default scopes, and the sign-in and link authorization URLs send scope openid ([test](../../conformance/goapi/provider_contract_test.go#L67))
-    - [ ] Token authentication method
+    - [x] Token authentication method ([test](../../providers/token_auth_test.go#L38))
       - [x] In the cloudflare subtest, with a client secret the code exchange uses HTTP Basic client authentication ([test](../../providers/catalog_test.go#L58))
       - [x] Each catalog provider's refresh, cloudflare's included, uses its listed client authentication style, which is HTTP Basic with the client ID and secret for cloudflare ([test](../../providers/catalog_test.go#L309))
-    - [x] Clients without a secret ([test](../../providers/provider_flows_test.go#L189))
-      - [x] A Cloudflare client without a secret keeps PKCE, sends neither a client secret nor a Basic header, and refreshes with only client_id, grant_type and refresh_token ([test](../../providers/provider_flows_test.go#L189))
+      - [x] The token authentication method selects HTTP Basic or the form secret for Cloudflare's code exchange and refresh ([test](../../providers/token_auth_test.go#L38))
+    - [x] Clients without a secret ([test](../../providers/provider_flows_test.go#L195))
+      - [x] A Cloudflare client without a secret keeps PKCE, sends neither a client secret nor a Basic header, and refreshes with only client_id, grant_type and refresh_token ([test](../../providers/provider_flows_test.go#L195))
     - [ ] Client visibility
-    - [ ] Refresh tokens
+    - [x] Refresh tokens ([test](../../providers/token_auth_test.go#L38))
       - [x] In the cloudflare subtest, sign-in requests only user-details.read, so offline_access is not requested by default ([test](../../providers/catalog_test.go#L162))
       - [x] Each catalog provider with a refresh contract, cloudflare included, refreshes at its token URL with grant_type refresh_token and exactly its listed fields, and returns the new access and refresh tokens ([test](../../providers/catalog_test.go#L283))
+      - [x] With offline_access requested, the refresh token from the code exchange refreshes through /refresh-token with the chosen authentication ([test](../../providers/token_auth_test.go#L38))
     - [ ] Profile and email verification
       - [x] In the cloudflare subtest, the /user result maps to a session user named "A Person" from first_name and last_name, with the email, no image and emailVerified false ([test](../../providers/catalog_test.go#L203))
       - [x] In the cloudflare subtest, account-info returns the /user result object as the account data ([test](../../providers/catalog_test.go#L230))
@@ -103,15 +105,15 @@
     - [x] `email` ([test](../../providers/issuer_test.go#L135))
       - [x] In the cognito subtest, the session user's email and verification flag come from the ID token's email and email_verified claims ([test](../../providers/issuer_test.go#L135))
       - [x] Without an ID token, the Cognito provider's Resolve reads the hosted /oauth2/userinfo with the bearer token and counts email_verified "true" as verified ([test](../../providers/issuer_test.go#L142))
-    - [x] `phone` ([test](../../providers/provider_flows_test.go#L239))
-      - [x] The phone scope added to the configured or requested scopes reaches the hosted authorize URL ([test](../../providers/provider_flows_test.go#L239))
-    - [x] `aws.cognito.signin.user.admin` ([test](../../providers/provider_flows_test.go#L239))
-      - [x] The aws.cognito.signin.user.admin scope reaches the hosted authorize URL with %20 between scopes ([test](../../providers/provider_flows_test.go#L239))
+    - [x] `phone` ([test](../../providers/provider_flows_test.go#L245))
+      - [x] The phone scope added to the configured or requested scopes reaches the hosted authorize URL ([test](../../providers/provider_flows_test.go#L245))
+    - [x] `aws.cognito.signin.user.admin` ([test](../../providers/provider_flows_test.go#L245))
+      - [x] The aws.cognito.signin.user.admin scope reaches the hosted authorize URL with %20 between scopes ([test](../../providers/provider_flows_test.go#L245))
     - [ ] `getUserInfo`
       - [x] Without an ID token, the Cognito provider's Resolve reads the hosted /oauth2/userinfo with the bearer token and maps sub, username and the verification flag ([test](../../providers/issuer_test.go#L142))
       - [x] A provider's own Resolve function fetches the profile with the access token, and after the browser sign-in the session user has the email it returned ([test](../../conformance/goapi/oauth_test.go#L177))
-    - [x] `identityProvider` ([test](../../providers/provider_flows_test.go#L239))
-      - [x] The configured identity provider reaches the hosted authorize URL, and a call can override it ([test](../../providers/provider_flows_test.go#L239))
+    - [x] `identityProvider` ([test](../../providers/provider_flows_test.go#L245))
+      - [x] The configured identity provider reaches the hosted authorize URL, and a call can override it ([test](../../providers/provider_flows_test.go#L245))
     - [x] `refreshAccessToken` ([test](../../conformance/provider-credentials.mjs#L70))
       - [x] Through POST /refresh-token, a provider's custom refresh function receives the stored refresh token and its rotated refresh token is returned, matching the other runtime ([test](../../conformance/provider-credentials.mjs#L70))
   - [ ] Refresh tokens
@@ -134,8 +136,8 @@
       - [x] `provider` ([test](../../providers/catalog_test.go#L147))
         - [x] In the discord subtest, the sign-in/social body names provider "discord" and starts that provider's flow ([test](../../providers/catalog_test.go#L147))
   - [ ] Options
-    - [x] Bot Permissions (Optional) ([test](../../providers/catalog_options_test.go#L103))
-      - [x] Discord bot permissions are added to the authorization URL only with the bot scope ([test](../../providers/catalog_options_test.go#L103))
+    - [x] Bot Permissions (Optional) ([test](../../providers/catalog_options_test.go#L107))
+      - [x] Discord bot permissions are added to the authorization URL only with the bot scope ([test](../../providers/catalog_options_test.go#L107))
 
 ## Dropbox
 
@@ -305,8 +307,8 @@
       - [ ] `scopes`
         - [x] In the facebook subtest, sign-in requests exactly the default email public_profile scopes ([test](../../providers/catalog_test.go#L162))
         - [x] Setting the Google preset's Config.Scopes to [openid] replaces its default scopes, and the sign-in and link authorization URLs send scope openid ([test](../../conformance/goapi/provider_contract_test.go#L67))
-      - [x] `fields` ([test](../../providers/catalog_options_test.go#L39))
-        - [x] Extra Graph profile fields are requested after the default ones ([test](../../providers/catalog_options_test.go#L39))
+      - [x] `fields` ([test](../../providers/catalog_options_test.go#L43))
+        - [x] Extra Graph profile fields are requested after the default ones ([test](../../providers/catalog_options_test.go#L43))
     - [ ] Sign In with Facebook With ID or Access Token
 
 ## Figma
@@ -325,19 +327,19 @@
 ## GitHub
 
 - [ ] GitHub
-  - [x] Get your GitHub credentials ([test](../../providers/provider_flows_test.go#L88))
-    - [x] A GitHub OAuth app signs in through the browser with its client ID and secret and the read:user and user:email scopes ([test](../../providers/provider_flows_test.go#L88))
-  - [x] Configure the provider ([test](../../providers/provider_flows_test.go#L88))
-    - [x] providers.GitHub registered in SocialProviders sends its client ID and secret in the code exchange ([test](../../providers/provider_flows_test.go#L88))
-  - [x] Sign In with GitHub ([test](../../providers/provider_flows_test.go#L88))
-    - [x] A browser sign-in through providers.GitHub stores the numeric account ID and the verified primary email ([test](../../providers/provider_flows_test.go#L88))
-    - [x] `provider` ([test](../../providers/provider_flows_test.go#L88))
-      - [x] Posting provider github to /sign-in/social starts the GitHub authorization ([test](../../providers/provider_flows_test.go#L88))
+  - [x] Get your GitHub credentials ([test](../../providers/provider_flows_test.go#L94))
+    - [x] A GitHub OAuth app signs in through the browser with its client ID and secret and the read:user and user:email scopes ([test](../../providers/provider_flows_test.go#L94))
+  - [x] Configure the provider ([test](../../providers/provider_flows_test.go#L94))
+    - [x] providers.GitHub registered in SocialProviders sends its client ID and secret in the code exchange ([test](../../providers/provider_flows_test.go#L94))
+  - [x] Sign In with GitHub ([test](../../providers/provider_flows_test.go#L94))
+    - [x] A browser sign-in through providers.GitHub stores the numeric account ID and the verified primary email ([test](../../providers/provider_flows_test.go#L94))
+    - [x] `provider` ([test](../../providers/provider_flows_test.go#L94))
+      - [x] Posting provider github to /sign-in/social starts the GitHub authorization ([test](../../providers/provider_flows_test.go#L94))
   - [ ] Usage
-    - [x] Setting up your Github app ([test](../../providers/provider_flows_test.go#L151))
-      - [x] When GitHub refuses the email list, a user without a public email gets email_not_found and no session, and a public email signs in unverified ([test](../../providers/provider_flows_test.go#L151))
-    - [x] Why don't I have a refresh token? ([test](../../providers/provider_flows_test.go#L88))
-      - [x] A token response without a refresh token or expiry is kept as it is: get-access-token returns it without an expiry and refresh-token answers REFRESH_TOKEN_NOT_FOUND ([test](../../providers/provider_flows_test.go#L88))
+    - [x] Setting up your Github app ([test](../../providers/provider_flows_test.go#L157))
+      - [x] When GitHub refuses the email list, a user without a public email gets email_not_found and no session, and a public email signs in unverified ([test](../../providers/provider_flows_test.go#L157))
+    - [x] Why don't I have a refresh token? ([test](../../providers/provider_flows_test.go#L94))
+      - [x] A token response without a refresh token or expiry is kept as it is: get-access-token returns it without an expiry and refresh-token answers REFRESH_TOKEN_NOT_FOUND ([test](../../providers/provider_flows_test.go#L94))
 
 ## GitLab
 
@@ -352,10 +354,10 @@
         - [x] For gitlab, as for every catalog provider, the code exchange carries the client ID given to providers.New, with grant_type authorization_code and the callback's code ([test](../../providers/catalog_test.go#L80))
       - [x] `clientSecret` ([test](../../providers/catalog_test.go#L80))
         - [x] For gitlab, as for every catalog provider, the code exchange carries the client secret given to providers.New ([test](../../providers/catalog_test.go#L80))
-      - [x] `issuer` ([test](../../providers/catalog_options_test.go#L39))
-        - [x] An issuer for a self-managed instance is used for every GitLab endpoint, and gitlab.com without one ([test](../../providers/catalog_options_test.go#L39))
-    - [x] Example with self-hosted GitLab ([test](../../providers/catalog_options_test.go#L39))
-      - [x] A self-hosted GitLab at https://gitlab.company.com gets its authorize, token, profile and refresh endpoints there ([test](../../providers/catalog_options_test.go#L39))
+      - [x] `issuer` ([test](../../providers/catalog_options_test.go#L43))
+        - [x] An issuer for a self-managed instance is used for every GitLab endpoint, and gitlab.com without one ([test](../../providers/catalog_options_test.go#L43))
+    - [x] Example with self-hosted GitLab ([test](../../providers/catalog_options_test.go#L43))
+      - [x] A self-hosted GitLab at https://gitlab.company.com gets its authorize, token, profile and refresh endpoints there ([test](../../providers/catalog_options_test.go#L43))
   - [x] Sign In with GitLab ([test](../../providers/catalog_test.go#L187))
     - [x] For gitlab and each other catalog provider, sign-in/social followed by the provider callback exchanges the code once, reads the profile once and answers 302 with a session ([test](../../providers/catalog_test.go#L187))
     - [x] `provider` ([test](../../providers/catalog_test.go#L162))
@@ -631,7 +633,8 @@
       - [x] `clientSecret` ([test](../../providers/profile_presets_test.go#L63))
         - [x] Each profile preset (gumroad, hubspot, patreon, slack, yandex, LINE) sends the configured client secret as a form field in its code exchange ([test](../../providers/profile_presets_test.go#L63))
         - [x] The Auth0, Keycloak and Okta helpers send the configured client secret by HTTP Basic in the code exchange ([test](../../providers/enterprise_oidc_test.go#L51))
-      - [ ] `tokenEndpointAuth`
+      - [x] `tokenEndpointAuth` ([test](../../conformance/goapi/oauth_token_auth_test.go#L155))
+        - [x] TokenEndpointAuth on the OAuthProvider every preset returns selects Basic, form secret, a public client, a private_key_jwt assertion or a custom authentication for the code exchange and refresh, and a Method overrides the preset's own AuthStyle ([test](../../conformance/goapi/oauth_token_auth_test.go#L155))
       - [x] `scopes` ([test](../../conformance/goapi/provider_contract_test.go#L68))
         - [x] Replacing a preset's Config.Scopes puts exactly the new list in the sign-in authorization URL, without the preset's defaults ([test](../../conformance/goapi/provider_contract_test.go#L68))
         - [x] Each profile preset's authorization URL asks for that preset's default scopes, with the redirect URI under the custom base path and S256 PKCE ([test](../../providers/profile_presets_test.go#L111))
@@ -692,21 +695,21 @@
 ## PayPal
 
 - [ ] PayPal
-  - [x] Get your PayPal Credentials ([test](../../providers/catalog_options_test.go#L39))
-    - [x] Sandbox and live PayPal apps each sign in against their own environment's endpoints ([test](../../providers/catalog_options_test.go#L39))
+  - [x] Get your PayPal Credentials ([test](../../providers/catalog_options_test.go#L43))
+    - [x] Sandbox and live PayPal apps each sign in against their own environment's endpoints ([test](../../providers/catalog_options_test.go#L43))
   - [ ] Configure the provider
     - [x] The paypal preset, like each catalog preset, sends the configured client ID and secret in its code exchange ([test](../../providers/catalog_test.go#L79))
     - [x] The paypal preset authenticates to its sandbox token endpoint with HTTP Basic. The test checks each catalog preset's client authentication style ([test](../../providers/catalog_test.go#L58))
     - [ ] Options
-      - [x] `environment` ([test](../../providers/catalog_options_test.go#L39))
-        - [x] The sandbox endpoints by default and the live ones with Live ([test](../../providers/catalog_options_test.go#L39))
+      - [x] `environment` ([test](../../providers/catalog_options_test.go#L43))
+        - [x] The sandbox endpoints by default and the live ones with Live ([test](../../providers/catalog_options_test.go#L43))
       - [ ] `requestShippingAddress`
   - [ ] Sign In with PayPal
     - [x] `provider` ([test](../../providers/catalog_test.go#L162))
       - [x] POST /sign-in/social with each catalog provider's name, paypal included, redirects to that provider's own authorization endpoint ([test](../../providers/catalog_test.go#L162))
   - [ ] Additional Options:
-    - [x] `environment` ([test](../../providers/catalog_options_test.go#L39))
-      - [x] The sandbox is the default environment and Live selects the live endpoints ([test](../../providers/catalog_options_test.go#L39))
+    - [x] `environment` ([test](../../providers/catalog_options_test.go#L43))
+      - [x] The sandbox is the default environment and Live selects the live endpoints ([test](../../providers/catalog_options_test.go#L43))
     - [ ] `requestShippingAddress`
     - [ ] `scope`
       - [x] Each catalog preset's authorization URL asks for exactly its own scope list. PayPal's list is empty, so no scope is requested by default ([test](../../providers/catalog_test.go#L162))
@@ -761,7 +764,7 @@
       - [x] `profile` ([test](../../providers/catalog_test.go#L162))
         - [x] The railway preset's authorization URL asks for openid email profile by default. The test checks each catalog preset's scope list ([test](../../providers/catalog_test.go#L162))
       - [ ] `offline_access`
-        - [x] Each catalog preset with a refresh contract, railway included, exchanges a refresh token at its token endpoint and returns the new access token, refresh token and expiry ([test](../../providers/catalog_test.go#L324))
+        - [x] Each catalog preset with a refresh contract, railway included, exchanges a refresh token at its token endpoint and returns the new access token, refresh token and expiry ([test](../../providers/catalog_test.go#L333))
         - [x] The railway preset's refresh request authenticates with HTTP Basic using the configured client ID and secret ([test](../../providers/catalog_test.go#L309))
       - [ ] `workspace:viewer`
         - [x] On both runtimes, extra scopes passed to signIn.social or linkSocial are requested together with the provider's configured scopes ([test](../../conformance/social-signup.mjs#L54))
@@ -845,14 +848,14 @@
         - [x] The Salesforce code exchange carries the client ID and secret passed to New, with grant_type authorization_code and the callback code ([test](../../providers/catalog_test.go#L79))
       - [x] `clientSecret` ([test](../../providers/catalog_test.go#L79))
         - [x] The Salesforce code exchange carries the client ID and secret passed to New, with grant_type authorization_code and the callback code ([test](../../providers/catalog_test.go#L79))
-      - [x] `environment` ([test](../../providers/catalog_options_test.go#L39))
-        - [x] Production by default and the sandbox login host with Sandbox ([test](../../providers/catalog_options_test.go#L39))
-      - [x] `loginUrl` ([test](../../providers/catalog_options_test.go#L39))
-        - [x] A My Domain host is used for the authorize, token and user info endpoints ([test](../../providers/catalog_options_test.go#L39))
+      - [x] `environment` ([test](../../providers/catalog_options_test.go#L43))
+        - [x] Production by default and the sandbox login host with Sandbox ([test](../../providers/catalog_options_test.go#L43))
+      - [x] `loginUrl` ([test](../../providers/catalog_options_test.go#L43))
+        - [x] A My Domain host is used for the authorize, token and user info endpoints ([test](../../providers/catalog_options_test.go#L43))
       - [x] `redirectURI` ([test](../../conformance/goapi/oauth_redirect_uri_test.go#L96))
         - [x] A provider's own absolute Config.RedirectURL replaces the callback route as redirect_uri in both the authorization request and the code exchange, and non-absolute values are refused ([test](../../conformance/goapi/oauth_redirect_uri_test.go#L96))
-    - [x] Advanced Configuration ([test](../../providers/catalog_options_test.go#L39))
-      - [x] A sandbox with a My Domain login host uses the My Domain endpoints ([test](../../providers/catalog_options_test.go#L39))
+    - [x] Advanced Configuration ([test](../../providers/catalog_options_test.go#L43))
+      - [x] A sandbox with a My Domain login host uses the My Domain endpoints ([test](../../providers/catalog_options_test.go#L43))
   - [x] Environment Variables ([test](../../env_test.go#L30))
     - [x] With BaseURL unset, AUTH_URL supplies the base URL and base path, and explicit options take precedence over it ([test](../../env_test.go#L30))
     - [x] With a 127.0.0.1 BaseURL, the provider's redirect lands on BaseURL/api/auth/callback/<id> and that callback completes the sign-in ([test](../../conformance/goapi/oauth_test.go#L142))
@@ -966,6 +969,7 @@
   - [ ] Get your Vercel credentials
     - [x] With a 127.0.0.1 BaseURL, the provider's redirect lands on BaseURL/api/auth/callback/<id> and that callback completes the sign-in ([test](../../conformance/goapi/oauth_test.go#L142))
     - [x] The Vercel code exchange sends a code_verifier matching the S256 code_challenge of its authorization URL ([test](../../providers/catalog_test.go#L85))
+    - [x] A Vercel app signs in through the browser under a custom base path whose callback reaches the token request ([test](../../providers/token_auth_test.go#L114))
   - [x] Configure the provider ([test](../../providers/catalog_test.go#L79))
     - [x] The Vercel code exchange carries the client ID and secret passed to New, with grant_type authorization_code and the callback code ([test](../../providers/catalog_test.go#L79))
     - [x] The other runtime's Vercel provider, run on local fixtures, reproduces the checked-in catalog entry (endpoints, scopes, PKCE, client auth) and expected profile ([test](../../conformance/social-profiles.mjs#L37))
@@ -978,7 +982,9 @@
     - [x] The Vercel code exchange carries the client ID and secret passed to New, with grant_type authorization_code and the callback code ([test](../../providers/catalog_test.go#L79))
     - [x] The Vercel token request uses form-body (not HTTP Basic) client authentication, as the catalog records ([test](../../providers/catalog_test.go#L59))
     - [ ] Token endpoint authentication
-      - [ ] OIDC client authentication
+      - [x] A custom hook adds an OIDC workload token as the client assertion while the code, redirect URI and PKCE verifier stay unchanged ([test](../../providers/token_auth_test.go#L114))
+      - [x] OIDC client authentication ([test](../../providers/token_auth_test.go#L114))
+        - [x] A client assertion callback authenticates the Vercel code exchange without a secret, and the same with a secret is refused ([test](../../providers/token_auth_test.go#L114))
       - [ ] Private key JWT client authentication
     - [ ] Available Scopes
       - [x] sign-in/social for Vercel redirects to the catalog authorization endpoint with an empty scope value, since the catalog records no default scopes for Vercel ([test](../../providers/catalog_test.go#L162))

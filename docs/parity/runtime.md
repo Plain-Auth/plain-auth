@@ -345,8 +345,10 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
   - [ ] `cloudflare`
     - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
       - [x] The client ID given to providers.New reaches the token exchange through real /sign-in/social and callback requests ([test](../../providers/catalog_test.go#L79))
-    - [ ] `tokenEndpointAuth`
-    - [ ] `tokenEndpointAuthMethod`
+    - [x] `tokenEndpointAuth` ([test](../../providers/token_auth_test.go#L38))
+      - [x] Cloudflare uses HTTP Basic by default and the form secret with TokenAuthClientSecretPost on the code exchange and refresh; a public client or TokenAuthNone sends no secret; none with a secret and basic without one are refused ([test](../../providers/token_auth_test.go#L38))
+    - [x] `tokenEndpointAuthMethod` ([test](../../providers/token_auth_test.go#L38))
+      - [x] The single TokenEndpointAuth.Method also covers the deprecated method alias: Basic, form secret or none on both grants ([test](../../providers/token_auth_test.go#L38))
   - [ ] `cognito`
     - [ ] `clientId`
       - [x] Cognito's code exchange sends the configured client ID and secret in the token form ([test](../../providers/issuer_test.go#L61))
@@ -356,43 +358,43 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
       - [x] A code-exchange ID token from the user pool issuer built from the region and user pool ID is verified with keys fetched from that pool's JWKS URL ([test](../../providers/issuer_test.go#L70))
     - [x] `userPoolId` ([test](../../providers/issuer_test.go#L70))
       - [x] A code-exchange ID token from the user pool issuer built from the region and user pool ID is verified with keys fetched from that pool's JWKS URL ([test](../../providers/issuer_test.go#L70))
-    - [x] `requireClientSecret` ([test](../../providers/provider_flows_test.go#L239))
-      - [x] RequireClientSecret refuses a Cognito provider without a secret, while a public client builds without one ([test](../../providers/provider_flows_test.go#L239))
-    - [x] `identityProvider` ([test](../../providers/provider_flows_test.go#L239))
-      - [x] IdentityProvider is sent as identity_provider, and a call's additionalParams override it ([test](../../providers/provider_flows_test.go#L239))
+    - [x] `requireClientSecret` ([test](../../providers/provider_flows_test.go#L245))
+      - [x] RequireClientSecret refuses a Cognito provider without a secret, while a public client builds without one ([test](../../providers/provider_flows_test.go#L245))
+    - [x] `identityProvider` ([test](../../providers/provider_flows_test.go#L245))
+      - [x] IdentityProvider is sent as identity_provider, and a call's additionalParams override it ([test](../../providers/provider_flows_test.go#L245))
   - [ ] `discord`
     - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
       - [x] The client ID given to providers.New reaches the token exchange through real /sign-in/social and callback requests ([test](../../providers/catalog_test.go#L79))
-    - [x] `prompt` ([test](../../providers/catalog_options_test.go#L103))
+    - [x] `prompt` ([test](../../providers/catalog_options_test.go#L107))
       - [x] The Discord preset's authorization URL carries its default prompt=none ([test](../../providers/catalog_test.go#L167))
-      - [x] Setting prompt on the preset's AuthorizationParams replaces its default prompt on the authorization URL ([test](../../providers/catalog_options_test.go#L103))
-    - [x] `permissions` ([test](../../providers/catalog_options_test.go#L103))
-      - [x] Bot permissions are sent only when the bot scope is requested, from the preset's scopes or the call, and a call's own permissions win ([test](../../providers/catalog_options_test.go#L103))
+      - [x] Setting prompt on the preset's AuthorizationParams replaces its default prompt on the authorization URL ([test](../../providers/catalog_options_test.go#L107))
+    - [x] `permissions` ([test](../../providers/catalog_options_test.go#L107))
+      - [x] Bot permissions are sent only when the bot scope is requested, from the preset's scopes or the call, and a call's own permissions win ([test](../../providers/catalog_options_test.go#L107))
   - [ ] `dropbox`
     - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
       - [x] The client ID given to providers.New reaches the token exchange through real /sign-in/social and callback requests ([test](../../providers/catalog_test.go#L79))
-    - [x] `accessType` ([test](../../providers/catalog_options_test.go#L103))
-      - [x] DropboxOptions.AccessType is sent as token_access_type, and a call's additionalParams override it ([test](../../providers/catalog_options_test.go#L103))
+    - [x] `accessType` ([test](../../providers/catalog_options_test.go#L107))
+      - [x] DropboxOptions.AccessType is sent as token_access_type, and a call's additionalParams override it ([test](../../providers/catalog_options_test.go#L107))
   - [ ] `facebook`
     - [ ] `clientId`
       - [x] The client ID given to providers.New reaches the token exchange through real /sign-in/social and callback requests ([test](../../providers/catalog_test.go#L79))
       - [x] Facebook's token check sends the client ID and secret as the app token to debug_token ([test](../../providers/catalog_test.go#L123))
       - [x] Refuse a Facebook access token that debug_token reports as issued to another app ([test](../../providers/catalog_test.go#L249))
-    - [x] `fields` ([test](../../providers/catalog_options_test.go#L39))
-      - [x] FacebookOptions.Fields are appended to the Graph profile fields, which stay id, name, email and picture without them ([test](../../providers/catalog_options_test.go#L39))
-    - [x] `configId` ([test](../../providers/catalog_options_test.go#L103))
-      - [x] FacebookOptions.ConfigID is sent as config_id ([test](../../providers/catalog_options_test.go#L103))
+    - [x] `fields` ([test](../../providers/catalog_options_test.go#L43))
+      - [x] FacebookOptions.Fields are appended to the Graph profile fields, which stay id, name, email and picture without them ([test](../../providers/catalog_options_test.go#L43))
+    - [x] `configId` ([test](../../providers/catalog_options_test.go#L107))
+      - [x] FacebookOptions.ConfigID is sent as config_id ([test](../../providers/catalog_options_test.go#L107))
   - [ ] `figma`
     - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
       - [x] The client ID given to providers.New reaches the token exchange through real /sign-in/social and callback requests ([test](../../providers/catalog_test.go#L79))
   - [ ] `github`
-    - [x] `clientId` ([test](../../providers/provider_flows_test.go#L88))
-      - [x] The GitHub client ID reaches the authorize URL and, with the secret in the form, the single token request ([test](../../providers/provider_flows_test.go#L88))
+    - [x] `clientId` ([test](../../providers/provider_flows_test.go#L94))
+      - [x] The GitHub client ID reaches the authorize URL and, with the secret in the form, the single token request ([test](../../providers/provider_flows_test.go#L94))
   - [ ] `gitlab`
     - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
       - [x] The client ID given to providers.New reaches the token exchange through real /sign-in/social and callback requests ([test](../../providers/catalog_test.go#L79))
-    - [x] `issuer` ([test](../../providers/catalog_options_test.go#L39))
-      - [x] GitLabOptions.Issuer moves the authorize, token, profile and refresh endpoints to a self-managed instance, with or without a path; an insecure or query-bearing issuer is refused ([test](../../providers/catalog_options_test.go#L39))
+    - [x] `issuer` ([test](../../providers/catalog_options_test.go#L43))
+      - [x] GitLabOptions.Issuer moves the authorize, token, profile and refresh endpoints to a self-managed instance, with or without a path; an insecure or query-bearing issuer is refused ([test](../../providers/catalog_options_test.go#L43))
   - [ ] `google`
     - [x] `clientId` ([test](../../providers/google_test.go#L86))
       - [x] Reject a Google ID token addressed to an audience other than the configured client ID ([test](../../providers/providers_test.go#L31))
@@ -452,9 +454,9 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
   - [ ] `paypal`
     - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
       - [x] Authenticate each catalog provider's browser code exchange with the configured client ID and secret ([test](../../providers/catalog_test.go#L79))
-    - [x] `environment` ([test](../../providers/catalog_options_test.go#L39))
+    - [x] `environment` ([test](../../providers/catalog_options_test.go#L43))
       - [x] Send sign-in to each catalog provider's recorded endpoints, which for PayPal are the sandbox authorization, token and userinfo endpoints ([test](../../providers/catalog_test.go#L162))
-      - [x] PayPal uses the sandbox by default and the live web and API hosts with Live, for authorize, token, user info and refresh ([test](../../providers/catalog_options_test.go#L39))
+      - [x] PayPal uses the sandbox by default and the live web and API hosts with Live, for authorize, token, user info and refresh ([test](../../providers/catalog_options_test.go#L43))
     - `requestShippingAddress` — *not applicable: declared in the PayPal options type but never read by the provider, so it has no runtime behaviour*
   - [ ] `railway`
     - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
@@ -462,8 +464,8 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
   - [ ] `reddit`
     - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
       - [x] Authenticate each catalog provider's browser code exchange with the configured client ID and secret ([test](../../providers/catalog_test.go#L79))
-    - [x] `duration` ([test](../../providers/catalog_options_test.go#L103))
-      - [x] RedditOptions.Duration is sent as duration ([test](../../providers/catalog_options_test.go#L103))
+    - [x] `duration` ([test](../../providers/catalog_options_test.go#L107))
+      - [x] RedditOptions.Duration is sent as duration ([test](../../providers/catalog_options_test.go#L107))
   - [ ] `roblox`
     - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
       - [x] Authenticate each catalog provider's browser code exchange with the configured client ID and secret ([test](../../providers/catalog_test.go#L79))
@@ -472,11 +474,11 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
   - [ ] `salesforce`
     - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
       - [x] Authenticate each catalog provider's browser code exchange with the configured client ID and secret ([test](../../providers/catalog_test.go#L79))
-    - [x] `environment` ([test](../../providers/catalog_options_test.go#L39))
+    - [x] `environment` ([test](../../providers/catalog_options_test.go#L43))
       - [x] Send sign-in to each catalog provider's recorded endpoints, which for Salesforce are the production login.salesforce.com authorization, token and userinfo endpoints ([test](../../providers/catalog_test.go#L162))
-      - [x] Salesforce uses login.salesforce.com by default and test.salesforce.com with Sandbox for every endpoint, including refresh ([test](../../providers/catalog_options_test.go#L39))
-    - [x] `loginUrl` ([test](../../providers/catalog_options_test.go#L39))
-      - [x] A My Domain LoginURL replaces the login host for every endpoint and wins over Sandbox; a value that is not a bare host is refused ([test](../../providers/catalog_options_test.go#L39))
+      - [x] Salesforce uses login.salesforce.com by default and test.salesforce.com with Sandbox for every endpoint, including refresh ([test](../../providers/catalog_options_test.go#L43))
+    - [x] `loginUrl` ([test](../../providers/catalog_options_test.go#L43))
+      - [x] A My Domain LoginURL replaces the login host for every endpoint and wins over Sandbox; a value that is not a bare host is refused ([test](../../providers/catalog_options_test.go#L43))
     - [x] `redirectURI` ([test](../../conformance/goapi/oauth_redirect_uri_test.go#L22))
       - [x] Replace the callback route with a provider's Config.RedirectURL in the authorization request and the code exchange, and refuse a relative or non-HTTP URL ([test](../../conformance/goapi/oauth_redirect_uri_test.go#L22))
   - [ ] `slack`
@@ -506,8 +508,9 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
   - [ ] `vercel`
     - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
       - [x] Authenticate each catalog provider's browser code exchange with the configured client ID and secret ([test](../../providers/catalog_test.go#L79))
-    - [ ] `tokenEndpointAuth`
+    - [x] `tokenEndpointAuth` ([test](../../providers/token_auth_test.go#L114))
       - [x] Send client_id and client_secret in the form body, without HTTP Basic, for catalog providers that use body authentication such as Vercel ([test](../../providers/catalog_test.go#L62))
+      - [x] Vercel's secretless client authenticates its code exchange through a custom hook or a client assertion, and a secret method without a secret is refused ([test](../../providers/token_auth_test.go#L114))
   - [ ] `vk`
     - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
       - [x] Authenticate each catalog provider's browser code exchange with the configured client ID and secret ([test](../../providers/catalog_test.go#L79))

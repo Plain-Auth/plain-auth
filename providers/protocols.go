@@ -92,6 +92,13 @@ type refreshContract struct {
 	Fields      []string
 }
 
+// standard reports whether the refresh is a plain OAuth refresh at the
+// entry's token endpoint with its own client authentication, which the core
+// performs, honouring the provider's TokenEndpointAuth.
+func (f refreshContract) standard(e catalogEntry) bool {
+	return f.Method == "POST" && f.URL == e.Token && f.Basic == e.Basic && !slices.Contains(f.Fields, "client_key")
+}
+
 func (f refreshContract) exchange(ctx context.Context, c oauth2.Config, refresh string) (*oauth2.Token, error) {
 	if f.Method == "GET" {
 		fields := url.Values{"appid": {c.ClientID}, "grant_type": {"refresh_token"}, "refresh_token": {refresh}}

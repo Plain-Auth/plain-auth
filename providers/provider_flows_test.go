@@ -21,9 +21,15 @@ type browserFlow struct {
 	h         *auth.Auth
 	callback  *httptest.ResponseRecorder
 	authorize *url.URL
+	mount     string
 }
 
 func runBrowserFlow(t *testing.T, name string, p auth.OAuthProvider) browserFlow {
+	t.Helper()
+	return runBrowserFlowAt(t, "/api/auth", name, p)
+}
+
+func runBrowserFlowAt(t *testing.T, mount, name string, p auth.OAuthProvider) browserFlow {
 	t.Helper()
 	store, err := sqlite.Open(":memory:")
 	if err != nil {
@@ -31,11 +37,11 @@ func runBrowserFlow(t *testing.T, name string, p auth.OAuthProvider) browserFlow
 	}
 	t.Cleanup(func() { store.Close() })
 	const base = "https://app.example.org"
-	h, err := auth.New(auth.Options{Store: store, Secret: strings.Repeat("s", 32), BaseURL: base, SocialProviders: map[string]auth.OAuthProvider{name: p}})
+	h, err := auth.New(auth.Options{Store: store, Secret: strings.Repeat("s", 32), BaseURL: base, BasePath: mount, SocialProviders: map[string]auth.OAuthProvider{name: p}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	req := httptest.NewRequest("POST", base+"/api/auth/sign-in/social", strings.NewReader(`{"provider":"`+name+`","callbackURL":"/done","errorCallbackURL":"/oops"}`))
+	req := httptest.NewRequest("POST", base+mount+"/sign-in/social", strings.NewReader(`{"provider":"`+name+`","callbackURL":"/done","errorCallbackURL":"/oops"}`))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Origin", base)
 	res := httptest.NewRecorder()
@@ -44,20 +50,20 @@ func runBrowserFlow(t *testing.T, name string, p auth.OAuthProvider) browserFlow
 	if err != nil || res.Code != 200 {
 		t.Fatalf("start: %d %v", res.Code, err)
 	}
-	callback := httptest.NewRequest("GET", base+"/api/auth/callback/"+name+"?"+url.Values{"code": {"provider-code"}, "state": {u.Query().Get("state")}}.Encode(), nil)
+	callback := httptest.NewRequest("GET", base+mount+"/callback/"+name+"?"+url.Values{"code": {"provider-code"}, "state": {u.Query().Get("state")}}.Encode(), nil)
 	for _, c := range res.Result().Cookies() {
 		callback.AddCookie(c)
 	}
 	done := httptest.NewRecorder()
 	h.ServeHTTP(done, callback)
-	return browserFlow{h: h, callback: done, authorize: u}
+	return browserFlow{h: h, callback: done, authorize: u, mount: mount}
 }
 
 // call sends a request with the flow's session cookies and decodes the JSON
 // answer into out.
 func (f browserFlow) call(t *testing.T, method, path, body string, out any) int {
 	t.Helper()
-	req := httptest.NewRequest(method, "https://app.example.org/api/auth"+path, strings.NewReader(body))
+	req := httptest.NewRequest(method, "https://app.example.org"+f.mount+path, strings.NewReader(body))
 	if body != "" {
 		req.Header.Set("Content-Type", "application/json")
 	}

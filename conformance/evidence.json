@@ -25189,6 +25189,12 @@
       "label": "Send client_id and client_secret in the form body, without HTTP Basic, for catalog providers that use body authentication such as Vercel",
       "test": "providers/catalog_test.go",
       "marker": "id, secret = r.Form.Get(\"client_id\"), r.Form.Get(\"client_secret\")"
+    },
+    {
+      "label": "Vercel's secretless client authenticates its code exchange through a custom hook or a client assertion, and a secret method without a secret is refused",
+      "test": "providers/token_auth_test.go",
+      "marker": "func TestVercelClientAuthentication(t *testing.T) {",
+      "complete": true
     }
   ],
   "provider-option/vk/clientId": [
@@ -25503,6 +25509,12 @@
       "label": "Each catalog provider's refresh, cloudflare's included, uses its listed client authentication style, which is HTTP Basic with the client ID and secret for cloudflare",
       "test": "providers/catalog_test.go",
       "marker": "if basic != e.Refresh.Basic || (basic && (u != \"client\" || pw != \"secret\")) {"
+    },
+    {
+      "label": "The token authentication method selects HTTP Basic or the form secret for Cloudflare's code exchange and refresh",
+      "test": "providers/token_auth_test.go",
+      "marker": "func TestCloudflareTokenEndpointAuth(t *testing.T) {",
+      "complete": true
     }
   ],
   "docs/content/docs/authentication/cloudflare.mdx#L159": [
@@ -25515,6 +25527,12 @@
       "label": "Each catalog provider with a refresh contract, cloudflare included, refreshes at its token URL with grant_type refresh_token and exactly its listed fields, and returns the new access and refresh tokens",
       "test": "providers/catalog_test.go",
       "marker": "func TestCatalogRefreshContracts("
+    },
+    {
+      "label": "With offline_access requested, the refresh token from the code exchange refreshes through /refresh-token with the chosen authentication",
+      "test": "providers/token_auth_test.go",
+      "marker": "func TestCloudflareTokenEndpointAuth(t *testing.T) {",
+      "complete": true
     }
   ],
   "docs/content/docs/authentication/cloudflare.mdx#L179": [
@@ -27731,6 +27749,11 @@
       "label": "The Vercel code exchange sends a code_verifier matching the S256 code_challenge of its authorization URL",
       "test": "providers/catalog_test.go",
       "marker": "t.Fatal(\"PKCE mismatch\")"
+    },
+    {
+      "label": "A Vercel app signs in through the browser under a custom base path whose callback reaches the token request",
+      "test": "providers/token_auth_test.go",
+      "marker": "func TestVercelClientAuthentication(t *testing.T) {"
     }
   ],
   "docs/content/docs/authentication/vercel.mdx#L21": [
@@ -29362,6 +29385,11 @@
       "label": "Send client credentials in a Basic header or in the token form, as each catalog provider is configured",
       "test": "providers/catalog_test.go",
       "marker": "t.Fatalf(\"unexpected client auth for %s\", name)"
+    },
+    {
+      "label": "HTTP Basic client authentication without a secret is refused when the instance is built",
+      "test": "conformance/goapi/oauth_token_auth_test.go",
+      "marker": "func TestTokenEndpointAuthRefusals(t *testing.T) {"
     }
   ],
   "plugin-symbol/generic-oauth/GenericOAuthOptions/config": [
@@ -29686,6 +29714,11 @@
       "label": "Send client credentials in a Basic header or in the token form, as each catalog provider is configured",
       "test": "providers/catalog_test.go",
       "marker": "t.Fatalf(\"unexpected client auth for %s\", name)"
+    },
+    {
+      "label": "HTTP Basic client authentication without a secret is refused when the instance is built",
+      "test": "conformance/goapi/oauth_token_auth_test.go",
+      "marker": "func TestTokenEndpointAuthRefusals(t *testing.T) {"
     }
   ],
   "docs/content/docs/plugins/generic-oauth.mdx#L403": [
@@ -30225,6 +30258,150 @@
       "label": "When GitHub refuses the email list, a user without a public email gets email_not_found and no session, and a public email signs in unverified",
       "test": "providers/provider_flows_test.go",
       "marker": "func TestGitHubWithoutEmailPermission(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/generic-oauth/BaseOAuthProviderOptions/tokenEndpointAuth": [
+    {
+      "label": "TokenEndpointAuth on the OAuthProvider every preset returns selects Basic, form secret, a public client, a private_key_jwt assertion or a custom authentication for the code exchange and refresh, and a Method overrides the preset's own AuthStyle",
+      "test": "conformance/goapi/oauth_token_auth_test.go",
+      "marker": "func TestTokenEndpointAuthMethods(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/generic-oauth/GenericOAuthConfig/tokenEndpointAuth": [
+    {
+      "label": "TokenEndpointAuth on the OAuthProvider every preset returns selects Basic, form secret, a public client, a private_key_jwt assertion or a custom authentication for the code exchange and refresh, and a Method overrides the preset's own AuthStyle",
+      "test": "conformance/goapi/oauth_token_auth_test.go",
+      "marker": "func TestTokenEndpointAuthMethods(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/generic-oauth.mdx#L274/tokenEndpointAuth": [
+    {
+      "label": "TokenEndpointAuth on the OAuthProvider every preset returns selects Basic, form secret, a public client, a private_key_jwt assertion or a custom authentication for the code exchange and refresh, and a Method overrides the preset's own AuthStyle",
+      "test": "conformance/goapi/oauth_token_auth_test.go",
+      "marker": "func TestTokenEndpointAuthMethods(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/generic-oauth/Auth0Options/tokenEndpointAuth": [
+    {
+      "label": "TokenEndpointAuth on the OAuthProvider every preset returns selects Basic, form secret, a public client, a private_key_jwt assertion or a custom authentication for the code exchange and refresh, and a Method overrides the preset's own AuthStyle",
+      "test": "conformance/goapi/oauth_token_auth_test.go",
+      "marker": "func TestTokenEndpointAuthMethods(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/generic-oauth/KeycloakOptions/tokenEndpointAuth": [
+    {
+      "label": "TokenEndpointAuth on the OAuthProvider every preset returns selects Basic, form secret, a public client, a private_key_jwt assertion or a custom authentication for the code exchange and refresh, and a Method overrides the preset's own AuthStyle",
+      "test": "conformance/goapi/oauth_token_auth_test.go",
+      "marker": "func TestTokenEndpointAuthMethods(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/generic-oauth/OktaOptions/tokenEndpointAuth": [
+    {
+      "label": "TokenEndpointAuth on the OAuthProvider every preset returns selects Basic, form secret, a public client, a private_key_jwt assertion or a custom authentication for the code exchange and refresh, and a Method overrides the preset's own AuthStyle",
+      "test": "conformance/goapi/oauth_token_auth_test.go",
+      "marker": "func TestTokenEndpointAuthMethods(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/generic-oauth/MicrosoftEntraIdOptions/tokenEndpointAuth": [
+    {
+      "label": "TokenEndpointAuth on the OAuthProvider every preset returns selects Basic, form secret, a public client, a private_key_jwt assertion or a custom authentication for the code exchange and refresh, and a Method overrides the preset's own AuthStyle",
+      "test": "conformance/goapi/oauth_token_auth_test.go",
+      "marker": "func TestTokenEndpointAuthMethods(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/generic-oauth/GumroadOptions/tokenEndpointAuth": [
+    {
+      "label": "TokenEndpointAuth on the OAuthProvider every preset returns selects Basic, form secret, a public client, a private_key_jwt assertion or a custom authentication for the code exchange and refresh, and a Method overrides the preset's own AuthStyle",
+      "test": "conformance/goapi/oauth_token_auth_test.go",
+      "marker": "func TestTokenEndpointAuthMethods(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/generic-oauth/HubSpotOptions/tokenEndpointAuth": [
+    {
+      "label": "TokenEndpointAuth on the OAuthProvider every preset returns selects Basic, form secret, a public client, a private_key_jwt assertion or a custom authentication for the code exchange and refresh, and a Method overrides the preset's own AuthStyle",
+      "test": "conformance/goapi/oauth_token_auth_test.go",
+      "marker": "func TestTokenEndpointAuthMethods(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/generic-oauth/LineOptions/tokenEndpointAuth": [
+    {
+      "label": "TokenEndpointAuth on the OAuthProvider every preset returns selects Basic, form secret, a public client, a private_key_jwt assertion or a custom authentication for the code exchange and refresh, and a Method overrides the preset's own AuthStyle",
+      "test": "conformance/goapi/oauth_token_auth_test.go",
+      "marker": "func TestTokenEndpointAuthMethods(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/generic-oauth/PatreonOptions/tokenEndpointAuth": [
+    {
+      "label": "TokenEndpointAuth on the OAuthProvider every preset returns selects Basic, form secret, a public client, a private_key_jwt assertion or a custom authentication for the code exchange and refresh, and a Method overrides the preset's own AuthStyle",
+      "test": "conformance/goapi/oauth_token_auth_test.go",
+      "marker": "func TestTokenEndpointAuthMethods(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/generic-oauth/SlackOptions/tokenEndpointAuth": [
+    {
+      "label": "TokenEndpointAuth on the OAuthProvider every preset returns selects Basic, form secret, a public client, a private_key_jwt assertion or a custom authentication for the code exchange and refresh, and a Method overrides the preset's own AuthStyle",
+      "test": "conformance/goapi/oauth_token_auth_test.go",
+      "marker": "func TestTokenEndpointAuthMethods(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/generic-oauth/YandexOptions/tokenEndpointAuth": [
+    {
+      "label": "TokenEndpointAuth on the OAuthProvider every preset returns selects Basic, form secret, a public client, a private_key_jwt assertion or a custom authentication for the code exchange and refresh, and a Method overrides the preset's own AuthStyle",
+      "test": "conformance/goapi/oauth_token_auth_test.go",
+      "marker": "func TestTokenEndpointAuthMethods(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/authentication/other-social-providers.mdx#L140/`tokenEndpointAuth`": [
+    {
+      "label": "TokenEndpointAuth on the OAuthProvider every preset returns selects Basic, form secret, a public client, a private_key_jwt assertion or a custom authentication for the code exchange and refresh, and a Method overrides the preset's own AuthStyle",
+      "test": "conformance/goapi/oauth_token_auth_test.go",
+      "marker": "func TestTokenEndpointAuthMethods(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "provider-option/cloudflare/tokenEndpointAuth": [
+    {
+      "label": "Cloudflare uses HTTP Basic by default and the form secret with TokenAuthClientSecretPost on the code exchange and refresh; a public client or TokenAuthNone sends no secret; none with a secret and basic without one are refused",
+      "test": "providers/token_auth_test.go",
+      "marker": "func TestCloudflareTokenEndpointAuth(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "provider-option/cloudflare/tokenEndpointAuthMethod": [
+    {
+      "label": "The single TokenEndpointAuth.Method also covers the deprecated method alias: Basic, form secret or none on both grants",
+      "test": "providers/token_auth_test.go",
+      "marker": "func TestCloudflareTokenEndpointAuth(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/authentication/vercel.mdx#L65": [
+    {
+      "label": "A custom hook adds an OIDC workload token as the client assertion while the code, redirect URI and PKCE verifier stay unchanged",
+      "test": "providers/token_auth_test.go",
+      "marker": "func TestVercelClientAuthentication(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/authentication/vercel.mdx#L71": [
+    {
+      "label": "A client assertion callback authenticates the Vercel code exchange without a secret, and the same with a secret is refused",
+      "test": "providers/token_auth_test.go",
+      "marker": "func TestVercelClientAuthentication(t *testing.T) {",
       "complete": true
     }
   ]

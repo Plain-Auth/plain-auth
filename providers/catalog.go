@@ -103,7 +103,7 @@ func fromCatalog(name, clientID, secret string, entry catalogEntry) auth.OAuthPr
 	}
 	configureProtocol(&p, name)
 	p.DisableRefresh = entry.Refresh == nil
-	if entry.Refresh != nil {
+	if entry.Refresh != nil && !entry.Refresh.standard(entry) {
 		p.Refresh = entry.Refresh.exchange
 	}
 	return p

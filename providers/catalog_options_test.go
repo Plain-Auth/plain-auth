@@ -26,7 +26,11 @@ func endpointsOf(t *testing.T, p auth.OAuthProvider) [4]string {
 	_, _ = p.Resolve(ctx, &oauth2.Token{AccessToken: "access"}, "")
 	profile := seen
 	seen = nil
-	_, _ = p.Refresh(ctx, p.Config, "refresh")
+	if p.Refresh != nil {
+		_, _ = p.Refresh(ctx, p.Config, "refresh")
+	} else {
+		_, _ = p.Config.TokenSource(ctx, &oauth2.Token{RefreshToken: "refresh"}).Token()
+	}
 	if len(profile) == 0 || len(seen) == 0 {
 		t.Fatalf("no profile or refresh request: %v %v", profile, seen)
 	}

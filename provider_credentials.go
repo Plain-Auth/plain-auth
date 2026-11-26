@@ -205,7 +205,7 @@ func (a *Auth) validCredential(ctx context.Context, store ProviderCredentialStor
 		if p.Refresh != nil {
 			t, err = p.Refresh(ctx, p.Config, current.RefreshToken)
 		} else {
-			t, err = p.Config.TokenSource(ctx, &oauth2.Token{RefreshToken: current.RefreshToken}).Token()
+			t, err = p.Config.TokenSource(p.tokenContext(ctx), &oauth2.Token{RefreshToken: current.RefreshToken}).Token()
 		}
 		if err != nil || t == nil || t.AccessToken == "" {
 			return current, false, failure

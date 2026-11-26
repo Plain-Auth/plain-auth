@@ -320,7 +320,16 @@ func TestCatalogRefreshContracts(t *testing.T) {
 				return &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": {"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"access_token":"new","refresh_token":"new-refresh","expires_in":480,"token_type":"Bearer"}`))}, nil
 			})}
 			ctx := context.WithValue(context.Background(), oauth2.HTTPClient, client)
-			token, err := p.Refresh(ctx, p.Config, "rotate")
+			if custom := name == "notion" || name == "tiktok" || name == "wechat"; (p.Refresh != nil) != custom {
+				t.Fatal("only nonstandard refreshes keep their own exchange")
+			}
+			refresh := p.Refresh
+			if refresh == nil {
+				refresh = func(ctx context.Context, c oauth2.Config, token string) (*oauth2.Token, error) {
+					return c.TokenSource(ctx, &oauth2.Token{RefreshToken: token}).Token()
+				}
+			}
+			token, err := refresh(ctx, p.Config, "rotate")
 			if err != nil || token.AccessToken != "new" || token.RefreshToken != "new-refresh" || token.Expiry.IsZero() {
 				t.Fatalf("refresh %v %v", token, err)
 			}

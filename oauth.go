@@ -52,7 +52,11 @@ type OAuthProvider struct {
 	// linking. Browser code exchanges and the One Tap plugin verify independently.
 	DisableIDTokenSignIn bool
 	// Refresh overrides the standard OAuth 2.0 refresh request.
-	Refresh                func(context.Context, oauth2.Config, string) (*oauth2.Token, error)
+	Refresh func(context.Context, oauth2.Config, string) (*oauth2.Token, error)
+	// TokenEndpointAuth chooses how the code exchange and refresh
+	// authenticate the client. It cannot be combined with ExchangeCode or
+	// Refresh, which replace these requests.
+	TokenEndpointAuth      TokenEndpointAuth
 	DisableRefresh         bool
 	HTTPClient             *http.Client
 	AllowVerifiedEmailLink bool
@@ -255,6 +259,9 @@ func prepareOAuthProviders(in map[string]OAuthProvider, store Store, userFieldsO
 		}
 		if !providerName.MatchString(id) || id == "credential" || p.Config.ClientID == "" || p.Resolve == nil {
 			return nil, fmt.Errorf("incomplete OAuth provider %q", id)
+		}
+		if err := prepareTokenEndpointAuth(id, &p); err != nil {
+			return nil, err
 		}
 		endpoints := []string{p.Config.Endpoint.AuthURL, p.Config.Endpoint.TokenURL}
 		if p.EndSessionEndpoint != "" {
