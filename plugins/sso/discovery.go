@@ -72,7 +72,17 @@ func hydrate(ctx context.Context, trusted func(string) bool, client *http.Client
 	if cfg.TokenEndpointAuthentication != "" && cfg.TokenEndpointAuthentication != "client_secret_basic" && cfg.TokenEndpointAuthentication != "client_secret_post" && cfg.TokenEndpointAuthentication != privateKeyJWT {
 		return apiError(400, "Unsupported OpenID Connect client authentication method")
 	}
-	supplied := []string{cfg.DiscoveryEndpoint, cfg.AuthorizationEndpoint, cfg.TokenEndpoint, cfg.JWKSEndpoint, cfg.UserInfoEndpoint}
+	// The supplied endpoints are checked first, in another runtime's order,
+	// so a private one answers discovery_private_host. A discovery URL
+	// derived from the issuer is not supplied: it is checked only when it is
+	// fetched.
+	for _, raw := range []string{cfg.AuthorizationEndpoint, cfg.TokenEndpoint, cfg.UserInfoEndpoint, cfg.JWKSEndpoint, cfg.DiscoveryEndpoint} {
+		if raw != "" {
+			if err := checkEndpoint(trusted, raw); err != nil {
+				return err
+			}
+		}
+	}
 	if cfg.DiscoveryEndpoint == "" {
 		cfg.DiscoveryEndpoint = strings.TrimRight(cfg.Issuer, "/") + "/.well-known/openid-configuration"
 	}
@@ -80,19 +90,9 @@ func hydrate(ctx context.Context, trusted func(string) bool, client *http.Client
 		return err
 	}
 	// Discovery takes a customer-supplied URL. Only contact an independently
-	// trusted origin. Never forward it to a redirect target. The trust check
-	// comes before the private-host check of the supplied endpoints, as in
-	// another runtime, and a discovery URL derived from the issuer is checked
-	// only when it is fetched.
+	// trusted origin. Never forward it to a redirect target.
 	if !skip && !trusted(cfg.DiscoveryEndpoint) {
 		return discoveryError(400, "discovery_untrusted_origin", "The discovery endpoint origin is not trusted")
-	}
-	for _, raw := range supplied {
-		if raw != "" {
-			if err := checkEndpoint(trusted, raw); err != nil {
-				return err
-			}
-		}
 	}
 	if !skip {
 		doc, err := fetchDiscovery(ctx, client, cfg.DiscoveryEndpoint)
@@ -192,7 +192,17 @@ func (o Options) withRuntimeDiscovery(ctx context.Context, host *auth.Auth, p Br
 	if cfg.TokenEndpointAuthentication == "" {
 		cfg.TokenEndpointAuthentication = "client_secret_basic"
 	}
-	if err := hydrate(ctx, requestTrust(ctx, host), o.HTTPClient, &cfg, false); err != nil {
+	// Another runtime fetches the document before it checks the stored
+	// endpoints, so an untrusted discovery origin is named first.
+	trust := requestTrust(ctx, host)
+	discovery := cfg.DiscoveryEndpoint
+	if discovery == "" {
+		discovery = strings.TrimRight(cfg.Issuer, "/") + "/.well-known/openid-configuration"
+	}
+	if !trust(discovery) {
+		return p, discoveryError(400, "discovery_untrusted_origin", "The discovery endpoint origin is not trusted")
+	}
+	if err := hydrate(ctx, trust, o.HTTPClient, &cfg, false); err != nil {
 		return p, err
 	}
 	p.OIDC = &cfg

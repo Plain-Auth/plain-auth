@@ -173,6 +173,13 @@ func TestEnterpriseOIDCRequestTrustedEndpoints(t *testing.T) {
 					t.Fatal("registration discovery reached an issuer the request did not trust", g, w.Code, w.Body.String())
 				}
 			}
+			// A supplied private endpoint is named before the discovery trust check.
+			for field, value := range map[string]string{"discoveryEndpoint": idp.URL + "/.well-known/openid-configuration", "tokenEndpoint": "http://169.254.169.254/token"} {
+				body := map[string]any{"providerId": "supplied", "issuer": "https://idp.example.org", "domain": "supplied.example", "oidcConfig": map[string]any{"clientId": "enterprise-client", "clientSecret": "oidc-secret", field: value}}
+				if w := h.register(owner, body); w.Code != 400 || refusal(w) != "discovery_private_host" {
+					t.Fatal("a supplied private endpoint was not refused as private", field, w.Code, w.Body.String())
+				}
+			}
 			grant = map[string]string{"sso/register": idp.URL}
 			if w := h.register(owner, discovered); w.Code != 200 {
 				t.Fatal("registration discovery refused an origin the request trusted", w.Code, w.Body.String())

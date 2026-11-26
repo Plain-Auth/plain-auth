@@ -42518,9 +42518,14 @@
       "marker": "t.Fatal(\"the static check trusted a per-request origin\")"
     },
     {
-      "label": "Check an issuer-derived discovery URL only when it is fetched, answer discovery_untrusted_origin before the private-host check, and redirect an untrusted callback fetch with discovery_failed",
+      "label": "Check an issuer-derived discovery URL of a skipDiscovery registration only when it is fetched",
       "test": "adapters/sqlstore/sso_request_origins_test.go",
       "marker": "t.Fatal(\"a skipDiscovery registration with public endpoints was refused for its issuer\""
+    },
+    {
+      "label": "Refuse a supplied private discovery or token endpoint with discovery_private_host before the discovery trust check, and name an untrusted issuer-derived discovery URL with discovery_untrusted_origin, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_request_origins_test.go",
+      "marker": "t.Fatal(\"a supplied private endpoint was not refused as private\""
     }
   ],
   "docs/content/docs/plugins/sso/oidc.mdx#L108": [
