@@ -374,14 +374,14 @@
       - [x] With RevokeSessionsOnPasswordReset set, the previous browser session is rejected after a reset, while a new sign-in with the new password succeeds ([test](../../conformance/goapi/account_test.go#L92))
     - [x] `resetPasswordTokenExpiresIn` ([test](../../conformance/goapi/account_test.go#L142))
       - [x] With PasswordResetTokenTTL set to one nanosecond, the issued reset link is rejected with INVALID_TOKEN ([test](../../conformance/goapi/account_test.go#L142))
-    - [x] `onExistingUserSignUp` ([test](../../conformance/core.test.mjs#L1532))
-      - [x] Deliver the stored owner to the host while preserving private responses across both modes and ordinary 422 behavior in the released client ([test](../../conformance/core.test.mjs#L1532))
+    - [x] `onExistingUserSignUp` ([test](../../conformance/core.test.mjs#L1537))
+      - [x] Deliver the stored owner to the host while preserving private responses across both modes and ordinary 422 behavior in the released client ([test](../../conformance/core.test.mjs#L1537))
       - [x] Run the callback after storage releases the account, isolate errors and panics, and preserve owned request metadata ([test](../../adapters/sqlstore/existing_signup_test.go#L83))
       - [x] Use one committed owner for concurrent registrations across separate instances and storage connections ([test](../../adapters/sqlstore/existing_signup_test.go#L197))
     - [x] `customSyntheticUser` ([test](../../conformance/synthetic-user.mjs#L5))
       - [x] On both runtimes the hook sets the values of a duplicate sign-up's user fields but cannot add fields a real sign-up lacks ([test](../../conformance/synthetic-user.mjs#L5))
-    - [x] `password` ([test](../../conformance/core.test.mjs#L1466))
-      - [x] Open and replace host-encoded credentials from either runtime in the same account database ([test](../../conformance/core.test.mjs#L1466))
+    - [x] `password` ([test](../../conformance/core.test.mjs#L1471))
+      - [x] Open and replace host-encoded credentials from either runtime in the same account database ([test](../../conformance/core.test.mjs#L1471))
   - [ ] `socialProviders`
     - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
       - [x] For every catalog provider, the configured client ID reaches the token exchange through real /sign-in/social and /callback requests ([test](../../providers/catalog_test.go#L79))
@@ -579,9 +579,9 @@
       - [x] BackgroundTasks takes a runner such as a sync.WaitGroup's Go method; without one the work finishes before the response ([test](../../conformance/goapi/background_tasks_test.go#L55))
       - [x] BackgroundTasks takes a runner such as a sync.WaitGroup's Go method and runs handed-off work after the response with a detached context; without one the work finishes before the response ([test](../../conformance/goapi/background_tasks_test.go#L55))
   - [ ] `logger`
-    - [x] Report a verification-mail delivery failure to the selected logger while preserving the new account and session ([test](../../conformance/core.test.mjs#L1377))
-    - [x] `disabled` ([test](../../conformance/core.test.mjs#L1393))
-      - [x] Silence one instance without suppressing error records from another ([test](../../conformance/core.test.mjs#L1393))
+    - [x] Report a verification-mail delivery failure to the selected logger while preserving the new account and session ([test](../../conformance/core.test.mjs#L1382))
+    - [x] `disabled` ([test](../../conformance/core.test.mjs#L1398))
+      - [x] Silence one instance without suppressing error records from another ([test](../../conformance/core.test.mjs#L1398))
     - [x] `disableColors` ([test](../../conformance/goapi/logger_test.go#L58))
       - [x] Plain Auth adds no terminal colors: the host's slog handler, or slog.Default without Options.Logger, formats each record and receives the exact message text ([test](../../conformance/goapi/logger_test.go#L58))
     - [x] `level` ([test](../../conformance/goapi/logger_test.go#L29))
@@ -610,8 +610,8 @@
   - [ ] `onAPIError`
     - [x] Report the original error and already-resolved user before writing the localized HTTP response ([test](../../conformance/goapi/error_reporting_test.go#L88))
     - `throw` — *not applicable: JavaScript handler option; Go methods return errors*
-    - [x] `onError` ([test](../../conformance/core.test.mjs#L1399))
-      - [x] Wait for the host reporter and preserve the endpoint error when the reporter fails ([test](../../conformance/core.test.mjs#L1399))
+    - [x] `onError` ([test](../../conformance/core.test.mjs#L1404))
+      - [x] Wait for the host reporter and preserve the endpoint error when the reporter fails ([test](../../conformance/core.test.mjs#L1404))
       - [x] Contain reporter panics and keep callback errors and credentials out of client responses and logs ([test](../../conformance/goapi/error_reporting_test.go#L67))
     - [x] `errorURL` ([test](../../error_page_test.go#L10))
       - [x] With Options.ErrorRedirectURL set, the mounted /api/auth/error endpoint returns 302 to the configured URL with the error code added and its own query kept ([test](../../error_page_test.go#L10))
@@ -684,8 +684,8 @@
 ## Security
 
 - [ ] Security
-  - [x] Password Hashing ([test](../../conformance/core.test.mjs#L1466))
-    - [x] Open and replace host-encoded credentials from either runtime in the same account database ([test](../../conformance/core.test.mjs#L1466))
+  - [x] Password Hashing ([test](../../conformance/core.test.mjs#L1471))
+    - [x] Open and replace host-encoded credentials from either runtime in the same account database ([test](../../conformance/core.test.mjs#L1471))
   - [x] Secret Rotation ([test](../../adapters/sqlstore/oauth_encryption_test.go#L18))
     - [x] Stores provider credentials under key version 0 and still reads them after Secrets puts a new version first ([test](../../adapters/sqlstore/oauth_encryption_test.go#L18))
   - [ ] Session Management

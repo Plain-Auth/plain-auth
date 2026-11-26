@@ -146,7 +146,7 @@
     - [x] Select a provider by ID, organization slug, email or DNS suffix on a custom auth mount ([test](../../../adapters/sqlstore/sso_browser_test.go#L169))
     - [x] Select a proved directory ahead of overlapping pending registrations ([test](../../../adapters/sqlstore/sso_domain_test.go#L245))
     - [x] Start an SP-initiated Redirect request and complete first and repeat SAML sign-in with the same account ([test](../../../conformance/sso-saml.mjs#L126))
-    - [x] Issue first and returning SAML sessions with public signup and metadata disabled; retain the installed ACS and registration in OpenAPI ([test](../../../conformance/core.test.mjs#L1517))
+    - [x] Issue first and returning SAML sessions with public signup and metadata disabled; retain the installed ACS and registration in OpenAPI ([test](../../../conformance/core.test.mjs#L1522))
     - [x] Resume the original client authorization with the enterprise employee’s new session and redeem the code after consent ([test](../../../conformance/oauth-enterprise-authorization.mjs#L43))
     - [x] Validate the signed query at entry and use the application callback after a SAML assertion ([test](../../../adapters/sqlstore/sso_saml_test.go#L350))
     - [x] Run the enterprise flow's verification create hooks; a declined flow is never stored ([test](../../../adapters/sqlstore/sso_hooks_test.go#L241))
@@ -171,9 +171,9 @@
     - [x] Validate a signed issuer, audience, recipient, request and validity window on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_test.go#L599))
     - [x] Consume an assertion once across independent instances and maintain the live DNS boundary on automatic linking ([test](../../../adapters/sqlstore/sso_saml_test.go#L703))
     - [x] Invalidate requests that predate a certificate rotation and check the current XML trust anchors on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L103))
-    - [x] Complete first and returning sign-in with the published client using a directly signed, independently encrypted assertion on both runtimes ([test](../../../conformance/core.test.mjs#L1569))
+    - [x] Complete first and returning sign-in with the published client using a directly signed, independently encrypted assertion on both runtimes ([test](../../../conformance/core.test.mjs#L1574))
     - [x] Enforce the encrypted assertion profile, issuer, browser, DNS binding and durable replay checks on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_test.go#L64))
-    - [x] Sign in from a reviewed IdP portal with a directly signed or encrypted assertion, select a trusted landing page and reject replay through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L1564))
+    - [x] Sign in from a reviewed IdP portal with a directly signed or encrypted assertion, select a trusted landing page and reject replay through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L1569))
     - [x] Require an approved immutable registration and its browser Origin, apply session and signup policy, and claim one portal assertion across SQL replicas in all three databases ([test](../../../adapters/sqlstore/sso_saml_portal_test.go#L24))
     - [x] Exclude a new registration that reuses the approved provider name after deletion ([test](../../../adapters/sqlstore/sso_saml_test.go#L760))
     - [x] Reject a signed portal assertion when the provider catalog changes after host approval and before the final SQL transaction ([test](../../../adapters/sqlstore/sso_saml_test.go#L473))
@@ -183,10 +183,10 @@
     - [x] The logout binding's verification create hooks follow the sign-in's session hooks once ([test](../../../adapters/sqlstore/sso_saml_hooks_test.go#L105))
   - [ ] `GET / POST /sso/saml2/sp/slo/:providerId`
     - [x] Accept a signed HTTP-Redirect acknowledgement once across replicas and preserve a newer login during the round trip ([test](../../../adapters/sqlstore/sso_saml_logout_test.go#L224))
-    - [x] Complete the strict Go Redirect return with an independent IdP and capture the pinned reference’s signed-response rejection ([test](../../../conformance/core.test.mjs#L1633))
+    - [x] Complete the strict Go Redirect return with an independent IdP and capture the pinned reference’s signed-response rejection ([test](../../../conformance/core.test.mjs#L1638))
     - [x] Accept a signed directory LogoutRequest once across replicas, revoke sessions for the exact qualified NameID and SessionIndex, and preserve another immutable registration on three SQL engines ([test](../../../adapters/sqlstore/sso_saml_idp_logout_test.go#L231))
     - [x] Expire a request waiting on a directory lock and keep a renewed SAML session bound past its original TTL ([test](../../../adapters/sqlstore/sso_saml_idp_logout_test.go#L170))
-    - [x] Return an independently verified signed Redirect acknowledgement to the IdP; the strict pinned runtime rejects the same signed request ([test](../../../conformance/core.test.mjs#L1651))
+    - [x] Return an independently verified signed Redirect acknowledgement to the IdP; the strict pinned runtime rejects the same signed request ([test](../../../conformance/core.test.mjs#L1656))
     - [x] Spend the logout request with its verification delete hooks after the response's signature is checked; a declined spend answers 400 and keeps it ([test](../../../adapters/sqlstore/sso_saml_hooks_test.go#L158))
     - [x] An IdP LogoutRequest runs the verification delete hooks of every binding it ends, in one pass ([test](../../../adapters/sqlstore/sso_saml_hooks_test.go#L273))
   - [ ] `POST /sso/saml2/logout/:providerId`
@@ -510,7 +510,7 @@
       - [x] Never send a stored client secret with a private_key_jwt assertion ([test](../../../adapters/sqlstore/sso_private_key_test.go#L171))
     - [x] SAML 2.0 SP-initiated and IdP-initiated sign-in ([test](../../../conformance/sso-saml.mjs#L126))
       - [x] Complete an SP-initiated SAML sign-in twice into the same account through the released client on both runtimes ([test](../../../conformance/sso-saml.mjs#L126))
-      - [x] Sign in from a reviewed IdP portal with a signed assertion and reject its replay on both runtimes ([test](../../../conformance/core.test.mjs#L1564))
+      - [x] Sign in from a reviewed IdP portal with a signed assertion and reject its replay on both runtimes ([test](../../../conformance/core.test.mjs#L1569))
     - [ ] SAML response validation
       - [x] Reject assertions with a wrong issuer, audience, recipient, request, expiry or start time on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_test.go#L599))
       - [x] Let only one of two concurrent logins carrying the same assertion ID succeed ([test](../../../adapters/sqlstore/sso_saml_test.go#L703))
@@ -824,9 +824,9 @@
       - [x] Refuse an unknown digest method ([test](../../../plugins/sso/saml_test.go#L387))
       - [x] Accept a response signed with a SHA-384 digest ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L242))
     - [ ] Key encryption
-      - [x] Sign in on both runtimes with an assertion whose key is wrapped with RSA-OAEP using SHA-256 ([test](../../../conformance/core.test.mjs#L1569))
+      - [x] Sign in on both runtimes with an assertion whose key is wrapped with RSA-OAEP using SHA-256 ([test](../../../conformance/core.test.mjs#L1574))
     - [ ] Data encryption
-      - [x] Sign in on both runtimes with an assertion encrypted with AES-256-GCM ([test](../../../conformance/core.test.mjs#L1569))
+      - [x] Sign in on both runtimes with an assertion encrypted with AES-256-GCM ([test](../../../conformance/core.test.mjs#L1574))
     - [ ] `"warn"`
       - [x] Refuse a deprecated algorithm rather than warn: an RSA-SHA1 response fails with saml_deprecated_algorithm ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L239))
     - [ ] `"reject"`
@@ -886,7 +886,7 @@
     - [ ] Encrypted assertions
       - [x] Publish an encryption certificate in SP metadata only for a provider that sets isAssertionEncrypted ([test](../../../adapters/sqlstore/sso_saml_test.go#L225))
       - [x] Refuse to register an encrypted provider when the host has no decryption key ([test](../../../adapters/sqlstore/sso_saml_test.go#L176))
-      - [x] Sign in with an independently encrypted signed assertion through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L1569))
+      - [x] Sign in with an independently encrypted signed assertion through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L1574))
   - [ ] Signing certificates and rotation
     - [x] Accept responses signed by either certificate while IdP metadata lists both ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L110))
     - [x] Rotate a directory's signing certificate through the released client and keep the existing user on both runtimes ([test](../../../conformance/sso-saml.mjs#L361))
@@ -912,7 +912,7 @@
     - [x] Reject a signed assertion with another audience or another bearer recipient ([test](../../../adapters/sqlstore/sso_saml_test.go#L599))
   - [ ] IdP-initiated SSO
     - [x] Redirect with error=unsolicited_response for an IdP-initiated response when no directory policy allows it ([test](../../../adapters/sqlstore/sso_saml_portal_test.go#L69))
-    - [x] Sign in from an IdP-initiated response through the released client and land on the configured page on both runtimes ([test](../../../conformance/core.test.mjs#L1564))
+    - [x] Sign in from an IdP-initiated response through the released client and land on the configured page on both runtimes ([test](../../../conformance/core.test.mjs#L1569))
   - [x] Service provider metadata ([test](../../../adapters/sqlstore/sso_saml_test.go#L185))
     - [x] Serve a provider's SP metadata as application/xml to a request without a session ([test](../../../adapters/sqlstore/sso_saml_test.go#L185))
     - [x] Read public XML metadata with the configured entity ID and mounted HTTP-POST ACS on both runtimes ([test](../../../conformance/sso-saml.mjs#L222))

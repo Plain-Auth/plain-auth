@@ -239,3 +239,41 @@ export async function groupProjectionContract(t, goFixture) {
   assert.equal(table().length,0);
   assert.deepEqual((await js("GET",path,200)).roles,[{value:"admin"}]);
 }
+
+export async function enterpriseProfileContract(t, goFixture) {
+  const enterprise = "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User";
+  const go = await goFixture(t, ["scim"]);
+  const a = client(await reference(t)), b = client(go);
+  const unlocated = document => { const copy = structuredClone(document); delete copy.meta?.location; return copy; };
+  // Both runtimes describe the User and Enterprise User schemas alike.
+  for (const id of [userSchema, enterprise]) {
+    assert.deepEqual(unlocated(await b("GET","Schemas/"+id,200,undefined,false)), unlocated(await a("GET","Schemas/"+id,200,undefined,false)), "the "+id+" schema differs between runtimes");
+  }
+  assert.deepEqual(unlocated(await b("GET","ResourceTypes/User",200,undefined,false)), unlocated(await a("GET","ResourceTypes/User",200,undefined,false)), "the User resource type differs between runtimes");
+  assert.deepEqual((await b("GET","Schemas",200,undefined,false)).Resources.map(s => s.id), (await a("GET","Schemas",200,undefined,false)).Resources.map(s => s.id));
+
+  // Each runtime reads and patches an Enterprise User with multi-valued
+  // attributes that the other wrote to the same SQLite file.
+  const shared = client(await reference(t, go.databasePath));
+  const create = { schemas: [userSchema, enterprise], userName: "enterprise-01", externalId: "ent-one",
+    phoneNumbers: [{value:"+1 555 0100",type:"work",primary:true},{value:"+1 555 0101",type:"mobile"}],
+    addresses: [{type:"home",streetAddress:"1 Main St",locality:"Bath",country:"GB"}],
+    entitlements: [{value:"reports",display:"Reports",type:"license"}],
+    emails: [{value:"ent@example.test",type:"work"}],
+    [enterprise]: {employeeNumber:"701984",department:"Tour Operations",manager:{value:"m-1",displayName:"John Smith"}} };
+  const created = await shared("POST","Users",201,create);
+  const path = "Users/"+created.id;
+  assert.deepEqual(unlocated(await b("GET",path,200)), unlocated(await shared("GET",path,200)), "Go read another runtime's Enterprise User differently");
+  const patch = (...Operations) => ({schemas:[patchSchema],Operations});
+  await b("PATCH",path,200,patch({op:"replace",path:enterprise+":department",value:"Engineering"},{op:"replace",path:'phoneNumbers[type eq "work"].value',value:"+1 555 0199"}));
+  const afterGo = await shared("GET",path,200);
+  assert.equal(afterGo[enterprise].department,"Engineering");
+  assert.equal(afterGo.phoneNumbers[0].value,"+1 555 0199");
+  await shared("PATCH",path,200,patch({op:"replace",path:"manager",value:"m-9"},{op:"add",path:"entitlements",value:[{value:"billing"}]}));
+  const afterReference = await b("GET",path,200);
+  assert.deepEqual(afterReference[enterprise].manager,{value:"m-9"});
+  assert.deepEqual(afterReference.entitlements.map(e => e.value),["reports","billing"]);
+  assert.deepEqual(unlocated(afterReference), unlocated(await shared("GET",path,200)), "the runtimes read a patched Enterprise User differently");
+  const fromGo = await b("POST","Users",201,{...create,userName:"enterprise-02",externalId:"ent-two",emails:[{value:"two@example.test",type:"work"}]});
+  assert.deepEqual(unlocated(await shared("GET","Users/"+fromGo.id,200)), unlocated(await b("GET","Users/"+fromGo.id,200)), "another runtime read Go's Enterprise User differently");
+}

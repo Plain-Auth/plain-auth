@@ -1005,6 +1005,11 @@ test("the official phone client verifies, links and recovers accounts on both ru
   await comparePhone(t, { reference, goFixture, instrument });
 });
 
+test("SCIM Enterprise and multi-valued User attributes share canonical rows and PATCH behavior across runtimes", async t => {
+  const { enterpriseProfileContract } = await import("./scim-contract.mjs");
+  await enterpriseProfileContract(t, goFixture);
+});
+
 test("SCIM Group membership changes share the same SQL edges and HTTP behavior across implementations", async t => {
   const { groupContract } = await import("./scim-contract.mjs");
   await groupContract(t, goFixture);

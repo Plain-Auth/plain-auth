@@ -9687,6 +9687,11 @@
       "label": "List the core and Enterprise User schemas without a Group store",
       "test": "plugins/scim/http_test.go",
       "marker": "t.Fatal(\"discovery without Groups did not list the core and Enterprise User schemas\", schemas)"
+    },
+    {
+      "label": "List the same schema IDs and serve the same User and Enterprise User schema documents on both runtimes",
+      "test": "conformance/scim-contract.mjs",
+      "marker": "assert.deepEqual(unlocated(await b(\"GET\",\"Schemas/\"+id,200,undefined,false)), unlocated(await a(\"GET\",\"Schemas/\"+id,200,undefined,false)), \"the \"+id+\" schema differs between runtimes\");"
     }
   ],
   "plugin/scim/GET /scim/v2/Schemas/:schemaId": [
@@ -45496,6 +45501,11 @@
       "label": "Drop the multi-valued attributes a PUT omits",
       "test": "adapters/sqlstore/scim_attributes_test.go",
       "marker": "t.Fatal(\"PUT kept addresses it omitted\", got)"
+    },
+    {
+      "label": "Patch phone numbers and entitlements through each runtime and read the result the same way on shared SQLite",
+      "test": "conformance/scim-contract.mjs",
+      "marker": "assert.deepEqual(unlocated(afterReference), unlocated(await shared(\"GET\",path,200)), \"the runtimes read a patched Enterprise User differently\");"
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L381/`phoneNumbers`, `addresses`, `roles`, `entitlements`, their subattributes and type paths": [
@@ -45549,6 +45559,12 @@
       "label": "Undeclare the extension when a pathless value clears its last field",
       "test": "adapters/sqlstore/scim_attributes_test.go",
       "marker": "t.Fatal(\"clearing every Enterprise field kept its schema declaration\", got[\"schemas\"])"
+    },
+    {
+      "label": "Read, patch and write Enterprise Users with phone numbers, addresses and entitlements in a SQLite file shared with the other runtime, and serve the same Enterprise schema",
+      "test": "conformance/scim-contract.mjs",
+      "marker": "export async function enterpriseProfileContract(",
+      "complete": true
     }
   ],
   "plugin-symbol/scim/SCIMCanonicalManager": [
@@ -45569,6 +45585,12 @@
       "label": "Select Enterprise fields through the manager alias and URN-qualified paths",
       "test": "adapters/sqlstore/scim_attributes_test.go",
       "marker": "t.Fatal(\"an Enterprise or manager selection returned the wrong fields\", got)"
+    },
+    {
+      "label": "Read another runtime's Enterprise User with the same body, and have it read Go's, on shared SQLite",
+      "test": "conformance/scim-contract.mjs",
+      "marker": "assert.deepEqual(unlocated(await b(\"GET\",path,200)), unlocated(await shared(\"GET\",path,200)), \"Go read another runtime's Enterprise User differently\");",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L315/`GET /scim/v2/Schemas`": [
@@ -45577,6 +45599,11 @@
       "test": "adapters/sqlstore/scim_attributes_test.go",
       "marker": "t.Fatal(\"the User resource type did not declare the Enterprise extension\", got)",
       "complete": true
+    },
+    {
+      "label": "Serve the same User resource type, with its Enterprise extension, on both runtimes",
+      "test": "conformance/scim-contract.mjs",
+      "marker": "assert.deepEqual(unlocated(await b(\"GET\",\"ResourceTypes/User\",200,undefined,false)), unlocated(await a(\"GET\",\"ResourceTypes/User\",200,undefined,false)), \"the User resource type differs between runtimes\");"
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L382/`enterpriseUrn` and its writable subattributes": [

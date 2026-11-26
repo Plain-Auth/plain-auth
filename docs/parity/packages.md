@@ -11,11 +11,11 @@ Each row tracks the behavior exposed by a published entry point. The Go implemen
     - [x] Issue a user-owned key and return its secret to the official client ([test](../../conformance/core.test.mjs#L887))
     - [x] Issue a key whose reference identifies the caller’s organization ([test](../../conformance/core.test.mjs#L959))
     - [x] Refuse every invalid create body with its error-table status, code and message, organization keys included, on three SQL engines ([test](../../adapters/sqlstore/apikey_errors_test.go#L68))
-    - [x] Refuse a signed-out create with 401 UNAUTHORIZED_SESSION on both runtimes ([test](../../conformance/core.test.mjs#L1219))
+    - [x] Refuse a signed-out create with 401 UNAUTHORIZED_SESSION on both runtimes ([test](../../conformance/core.test.mjs#L1224))
   - [ ] Client integration (`./client`)
     - [x] Create, retrieve, update, list and revoke user-owned keys with the official client ([test](../../conformance/core.test.mjs#L887))
     - [x] Manage organization keys alongside separately authenticated automation clients ([test](../../conformance/core.test.mjs#L938))
-    - [x] Answer the released client's expired-key purge with 404 on both runtimes, because that call is for server code only ([test](../../conformance/core.test.mjs#L1223))
+    - [x] Answer the released client's expired-key purge with 404 on both runtimes, because that call is for server code only ([test](../../conformance/core.test.mjs#L1228))
   - [ ] Configuration and result types (`./types`)
 
 ## Authentication server and framework bindings
@@ -284,7 +284,7 @@ Each row tracks the behavior exposed by a published entry point. The Go implemen
     - [x] Provision and synchronize directory Users over authenticated SCIM HTTP using compatible SQL records ([test](../../conformance/scim-contract.mjs#L45))
     - [x] Exchange canonical Group and membership records with the reference runtime ([test](../../conformance/scim-contract.mjs#L92))
     - [x] Issue, rotate, authenticate and revoke managed directory credentials from either runtime on shared SQLite ([test](../../conformance/scim-managed.mjs#L13))
-    - [x] Retire managed directories across runtimes and retain their canonical status and audit records ([test](../../conformance/core.test.mjs#L1058))
+    - [x] Retire managed directories across runtimes and retain their canonical status and audit records ([test](../../conformance/core.test.mjs#L1063))
 
 ## Single sign-on
 

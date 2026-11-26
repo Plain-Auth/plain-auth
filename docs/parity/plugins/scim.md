@@ -84,10 +84,11 @@
     - [x] Answer 401 when the verifier's result is expired, names an unknown directory, both names and supplies one, or has an invalid credential ID or scopes ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L151))
   - [ ] `SCIMEmail`
     - [x] Make the work address the primary email of a created User whose emails carry types ([test](../../../adapters/sqlstore/scim_test.go#L137))
-  - [ ] `SCIMEnterpriseUser`
+  - [x] `SCIMEnterpriseUser` ([test](../../../conformance/scim-contract.mjs#L243))
     - [x] Create, read and replace an Enterprise User, return the extension under its URN and store it under the canonical enterprise key, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L795))
     - [x] Order and check the User schema list, read case-insensitive Enterprise keys, unwrap one-element scalars, count limits in code points, refuse an undeclared object and drop an all-null one ([test](../../../plugins/scim/enterprise_test.go#L9))
     - [x] Undeclare the extension when a pathless value clears its last field ([test](../../../adapters/sqlstore/scim_attributes_test.go#L927))
+    - [x] Read, patch and write Enterprise Users with phone numbers, addresses and entitlements in a SQLite file shared with the other runtime, and serve the same Enterprise schema ([test](../../../conformance/scim-contract.mjs#L243))
   - [ ] `SCIMGroupAuthorizationSource`
   - [ ] `SCIMIdentity`
     - [x] Resolve incoming SCIM Users to existing accounts before the directory transaction, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_identity_test.go#L20))
@@ -153,7 +154,7 @@
     - [x] Expose the static-bearer kind and credential ID of a code-defined token through request context ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L168))
   - [ ] `SCIMTransactionContext`
   - [ ] `decommissionSCIMConnection (server API only)`
-    - [x] Persist a terminal binding before first use and read its completion timestamp from either implementation ([test](../../../conformance/core.test.mjs#L1058))
+    - [x] Persist a terminal binding before first use and read its completion timestamp from either implementation ([test](../../../conformance/core.test.mjs#L1063))
   - [x] `GET /scim/v2/ServiceProviderConfig` ([test](../../../plugins/scim/http_test.go#L172))
     - [x] Discover filter, patch and pagination capabilities without a directory credential ([test](../../../conformance/scim-contract.mjs#L45))
     - [x] Publish bearer authentication only, PATCH and filters with 100 results, report bulk, sorting, ETags and password changes as unsupported, and locate the document at the public directory URL ([test](../../../plugins/scim/http_test.go#L172))
@@ -162,6 +163,7 @@
     - [x] Discover the core Group schema ([test](../../../conformance/scim-contract.mjs#L92))
     - [x] List the core User, Enterprise User and Group schemas in that order, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L812))
     - [x] List the core and Enterprise User schemas without a Group store ([test](../../../plugins/scim/http_test.go#L214))
+    - [x] List the same schema IDs and serve the same User and Enterprise User schema documents on both runtimes ([test](../../../conformance/scim-contract.mjs#L250))
   - [x] `GET /scim/v2/Schemas/:schemaId` ([test](../../../adapters/sqlstore/scim_attributes_test.go#L820))
     - [x] Read the registered core User schema from a custom mount ([test](../../../adapters/sqlstore/scim_test.go#L33))
     - [x] Retrieve the core Group schema on the public directory mount ([test](../../../conformance/scim-contract.mjs#L92))
@@ -221,7 +223,7 @@
   - [ ] `listSCIMManagedConnectionEvents (server API only)`
     - [x] Read the other implementation’s ordered audit events and total with pagination ([test](../../../conformance/scim-managed.mjs#L13))
   - [ ] `decommissionSCIMManagedConnection (server API only)`
-    - [x] Retire a provisioned directory from either implementation, invalidate its credentials and revoke the last source’s sessions ([test](../../../conformance/core.test.mjs#L1058))
+    - [x] Retire a provisioned directory from either implementation, invalidate its credentials and revoke the last source’s sessions ([test](../../../conformance/core.test.mjs#L1063))
     - [x] Resume failed and expired leases across instances, retain independently sourced sessions and record one completion ([test](../../../adapters/sqlstore/scim_decommission_test.go#L15))
   - [ ] `SCIMManagedConnection`
   - [ ] `SCIMManagedConnectionEvent`
@@ -426,9 +428,11 @@
       - [x] `phoneNumbers`, `addresses`, `roles`, `entitlements` ([test](../../../adapters/sqlstore/scim_attributes_test.go#L616))
         - [x] Create, return, patch around and replace Users with phone numbers, addresses and entitlements, and list them in the User schema after timezone and around roles, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L616))
         - [x] Drop the multi-valued attributes a PUT omits ([test](../../../adapters/sqlstore/scim_attributes_test.go#L650))
-      - [ ] `urn:ietf:params:scim:schemas:extension:enterprise:2.0:User`
+        - [x] Patch phone numbers and entitlements through each runtime and read the result the same way on shared SQLite ([test](../../../conformance/scim-contract.mjs#L276))
+      - [x] `urn:ietf:params:scim:schemas:extension:enterprise:2.0:User` ([test](../../../conformance/scim-contract.mjs#L266))
         - [x] Return the Enterprise extension on creation and reads, refuse it without its schema URI and drop it on a PUT that omits it, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L787))
         - [x] Select Enterprise fields through the manager alias and URN-qualified paths ([test](../../../adapters/sqlstore/scim_attributes_test.go#L798))
+        - [x] Read another runtime's Enterprise User with the same body, and have it read Go's, on shared SQLite ([test](../../../conformance/scim-contract.mjs#L266))
   - [ ] Groups
     - [x] Refuse a Group name differing only in case, a reused externalId, a member from another connection and a nested Group ([test](../../../adapters/sqlstore/scim_groups_test.go#L108))
     - [x] Refuse adding a member to a Group that already has 1,000 direct members ([test](../../../adapters/sqlstore/scim_groups_test.go#L235))
@@ -450,6 +454,7 @@
       - [x] Report filter support with a 100-result maximum and PATCH support from the public configuration on both runtimes ([test](../../../conformance/scim-contract.mjs#L53))
     - [x] `GET /scim/v2/Schemas` ([test](../../../adapters/sqlstore/scim_attributes_test.go#L824))
       - [x] List the User, Enterprise User and Group schemas and declare the optional Enterprise extension on the User resource type, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L824))
+      - [x] Serve the same User resource type, with its Enterprise extension, on both runtimes ([test](../../../conformance/scim-contract.mjs#L252))
     - [ ] `GET /scim/v2/Schemas/:schemaId`
       - [x] Return the same public User schema roles descriptor from both runtimes ([test](../../../conformance/scim-roles.mjs#L13))
     - [ ] `GET /scim/v2/ResourceTypes`
