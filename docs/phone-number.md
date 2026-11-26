@@ -25,7 +25,7 @@ func configurePhone(send func(context.Context, phonenumber.Message) error) (plai
 }
 ```
 
-Add the returned plugin to `plainauth.Options.Plugins`. Supply a sender that accepts a context, delivers the code over SMS and returns delivery failures. `/phone-number/send-otp` reports a failure, or with [`BackgroundTasks`](authentication.md#run-work-after-the-response) sends after the response and only logs it. A sign-in that resends a code and a reset request log a failure and answer as if the code was sent. Direct Go calls return it. `Message.Purpose` distinguishes telephone verification from password recovery. Applications choose their canonical number format. The plugin uses the submitted number as its identifier and accepts up to 255 UTF-8 characters. The example accepts a restricted international format.
+Add the returned plugin to `plainauth.Options.Plugins`. Supply a sender that accepts a context, delivers the code over SMS and returns delivery failures. `/phone-number/send-otp` reports a failure, or with [`BackgroundTasks`](authentication.md#run-work-after-the-response) sends after the response and only logs it. A sign-in that resends a code and a reset request log a failure and answer as if the code was sent. Direct Go calls return it. `Message.Purpose` distinguishes telephone verification from password recovery. Applications choose their canonical number format. The plugin uses the submitted number as its identifier and accepts up to 255 UTF-8 characters. The example accepts a restricted international format. `Validate` runs on every phone route, `ConsumePhoneNumberOTP` and administrative phone changes, not only on sending a code and password sign-in. A refused number answers 400 `INVALID_PHONE_NUMBER`, including on `request-password-reset`, which otherwise always answers `{"status":true}`.
 
 ## Verification and account access
 
@@ -33,11 +33,11 @@ All routes below accept JSON and are relative to the auth mount, normally `/api/
 
 | Operation | Inputs and behavior |
 | --- | --- |
-| `POST /phone-number/send-otp` | Send `phoneNumber`. A successful delivery returns `{"message":"code sent"}`. |
+| `POST /phone-number/send-otp` | Send `phoneNumber`. A successful delivery returns `{"message":"code sent"}`. Without `SendOTP` the route answers 501 `SEND_OTP_NOT_IMPLEMENTED`. |
 | `POST /phone-number/verify` | Send `phoneNumber` and `code`. The response contains `status`, `user` and `token`. Use `disableSession: true` to receive a null token. An enrolled account signing in can receive a two-factor challenge. |
 | `POST /phone-number/verify` with `updatePhoneNumber: true` | A direct owner session can attach a verified, available number. The response returns the same session token. A link request without a direct login still counts an incorrect code and spends a correct one. |
 | `POST /update-user` | Send `{"phoneNumber":null}` to remove the number and clear its verification flag. Setting a number requires verification. |
-| `POST /sign-in/phone-number` | Send `phoneNumber`, `password`, and optionally `rememberMe`. Successful sign-in issues a session or starts the account's second-factor challenge. |
+| `POST /sign-in/phone-number` | Send `phoneNumber`, `password`, and optionally `rememberMe`. Successful sign-in issues a session or starts the account's second-factor challenge. With `rememberMe: false` the cookie lasts for the browser session and the session for at most a day. |
 | `POST /phone-number/request-password-reset` | Send `phoneNumber`. Returns `{"status":true}` for registered and unknown numbers. With `RequireVerification`, only a verified owner receives the code. |
 | `POST /phone-number/reset-password` | Send `phoneNumber`, `otp` and `newPassword`. A valid reset creates or replaces the password. Enable `RevokeSessionsOnPasswordReset` to revoke the owner's existing sessions. |
 
@@ -71,7 +71,7 @@ On `POST /admin/create-user`, supply both the number and an explicit true flag f
 
 ## Proof storage and delivery
 
-Codes default to six decimal digits and expire after five minutes. `OTPLength` and `ExpiresIn` configure these values. `AllowedAttempts` takes an optional integer pointer. By default, three incorrect entries each return `INVALID_OTP`. The fourth attempt consumes the proof and returns `TOO_MANY_ATTEMPTS`, even if the code matches. An explicit zero blocks the first verification attempt. A new send replaces the prior verification code. Password-reset codes have a separate lifetime and attempt counter. All processes using the supported SQL adapters serialize changes to a given proof. A reset issued to one owner cannot change a different owner's password after reassignment.
+Codes default to six decimal digits and expire after five minutes. `OTPLength` and `ExpiresIn` (a `time.Duration`) configure these values for verification and password-reset codes. [Route option tests](../adapters/sqlstore/phone_options_test.go) `AllowedAttempts` takes an optional integer pointer. By default, three incorrect entries each return `INVALID_OTP`. The fourth attempt consumes the proof and returns `TOO_MANY_ATTEMPTS`, even if the code matches. An explicit zero blocks the first verification attempt. A new send replaces the prior verification code. Password-reset codes have a separate lifetime and attempt counter. All processes using the supported SQL adapters serialize changes to a given proof. A reset issued to one owner cannot change a different owner's password after reassignment.
 
 The SQL adapters store the proof in `verification.value` as the original digits followed by a colon and the failed-attempt count. The number appears in the verification identifier. A companion, expiring record binds the issuance to the current owner. Restrict database, replica and backup access and apply encryption at rest. Keep phone numbers, codes, session tokens and provider message bodies out of request logs and traces. Run verification over HTTPS and configure rate limits for your deployment. [Rate limiting](authentication.md#set-limits-for-an-application)
 

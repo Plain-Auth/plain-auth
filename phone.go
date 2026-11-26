@@ -170,6 +170,11 @@ func (a *Auth) phoneStore() (PhoneNumberStore, error) {
 	}
 	return store, nil
 }
+
+// checkPhone runs on every phone route, Go method and admin change, not only
+// on sending a code and password sign-in. Deviation for safety: a number the
+// application refuses is never verified, reset or attached, and the
+// 255-character UTF-8 bound applies even without Validate.
 func (a *Auth) checkPhone(ctx context.Context, number string) error {
 	ok := utf8.ValidString(number) && utf8.RuneCountInString(number) <= 255
 	if ok && a.phoneNumber.Validate != nil {

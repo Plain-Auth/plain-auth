@@ -501,6 +501,9 @@ func (a *Auth) newSession(id string, meta RequestMeta) (StoredSession, string) {
 func (a *Auth) sessionDraft(id string, meta RequestMeta) StoredSession {
 	now := a.now().UTC().Truncate(time.Millisecond)
 	ttl := a.opts.SessionTTL
+	// A browser-session login (rememberMe false) lasts one day. Deviation for
+	// safety: it is capped at SessionTTL, so it never outlives a persistent
+	// login when a shorter lifetime is configured.
 	if meta.RememberMe != nil && !*meta.RememberMe {
 		ttl = min(ttl, 24*time.Hour)
 	}

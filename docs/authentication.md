@@ -5,7 +5,7 @@ Enable `EmailAndPassword` and mount the auth handler. Paths below are relative t
 | Method and path | Use |
 | --- | --- |
 | `POST /sign-up/email` | Send `name`, `email`, `password`, and an optional `image` |
-| `POST /sign-in/email` | Send `email` and `password`. Set `rememberMe` to false for a browser-session cookie |
+| `POST /sign-in/email` | Send `email` and `password`. Set `rememberMe` to false for a browser-session cookie and a session of one day, or `SessionTTL` when that is shorter |
 | `GET /get-session` | Read the current user and session. A signed-out request returns JSON `null` |
 | `GET /list-sessions` | List the current user's active sessions with a recently authenticated session |
 | `POST /revoke-session` | Send `{"token":"<session token>"}` to revoke one of the user's sessions |
