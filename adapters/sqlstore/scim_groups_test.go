@@ -301,12 +301,16 @@ func TestSCIMGroupPatchRouteForms(t *testing.T) {
 				t.Fatal("PATCH accepted a legacy marker object", body)
 			}
 			if got := call("GET", "Groups/"+id, nil, 200, "GET failed"); got["displayName"] != "Engineering" {
-				t.Fatal("PATCH accepted a legacy marker object", got["displayName"])
+				t.Fatal("a refused legacy marker PATCH changed the Group", got["displayName"])
 			}
-			for _, path := range []string{"Schemas", "ResourceTypes", "Schemas/" + scim.GroupSchema} {
-				if w := scimRequest(h, "GET", path, "", nil); strings.Contains(w.Body.String(), "ADSCIM") {
-					t.Fatal("discovery advertised the legacy Entra marker", path)
-				}
+			if w := scimRequest(h, "GET", "Schemas", "", nil); strings.Contains(w.Body.String(), "ADSCIM") {
+				t.Fatal("the schema listing advertised the legacy Entra marker")
+			}
+			if w := scimRequest(h, "GET", "ResourceTypes", "", nil); strings.Contains(w.Body.String(), "ADSCIM") {
+				t.Fatal("the resource types advertised the legacy Entra marker")
+			}
+			if w := scimRequest(h, "GET", "Schemas/"+scim.GroupSchema, "", nil); strings.Contains(w.Body.String(), "ADSCIM") {
+				t.Fatal("the Group schema advertised the legacy Entra marker")
 			}
 
 			group := func() map[string]any { t.Helper(); return call("GET", "Groups/"+id, nil, 200, "GET failed") }
@@ -314,9 +318,12 @@ func TestSCIMGroupPatchRouteForms(t *testing.T) {
 			if group()["displayName"] != "Platform" {
 				t.Fatal("a schema-prefixed Group path was not applied")
 			}
-			call("PATCH", "Groups/"+id, patch(map[string]any{"op": "Replace", "value": map[string]any{"displayName": "Ops", "externalId": "ops-1", "schemas": nil, "meta": nil}}), 200, "a pathless Group value was not applied")
-			if g := group(); g["displayName"] != "Ops" || g["externalId"] != "ops-1" {
-				t.Fatal("a pathless Group value was not applied", g)
+			call("PATCH", "Groups/"+id, patch(map[string]any{"op": "Replace", "value": map[string]any{"displayName": "Ops", "externalId": "ops-1", "schemas": nil, "meta": nil}}), 200, "a pathless Group value was refused")
+			if g := group(); g["displayName"] != "Ops" {
+				t.Fatal("a pathless Group displayName was not applied", g)
+			}
+			if g := group(); g["externalId"] != "ops-1" {
+				t.Fatal("a pathless Group externalId was not applied", g)
 			}
 			call("PATCH", "Groups/"+id, patch(map[string]any{"op": "remove", "path": scim.GroupSchema + `:members[value eq "` + member + `"]`}), 200, "a schema-prefixed member selector did not remove the member")
 			if members, _ := group()["members"].([]any); len(members) != 0 {
@@ -327,8 +334,11 @@ func TestSCIMGroupPatchRouteForms(t *testing.T) {
 			if members, _ := group()["members"].([]any); len(members) != 0 {
 				t.Fatal("a null Group members value did not clear the membership", members)
 			}
-			if body := call("PATCH", "Groups/"+id, patch(map[string]any{"op": "replace", "path": "displayName", "value": nil}), 400, "a null Group displayName was accepted"); body["scimType"] != "mutability" {
-				t.Fatal("a null Group displayName was accepted", body)
+			if body := call("PATCH", "Groups/"+id, patch(map[string]any{"op": "replace", "path": "displayName", "value": nil}), 400, "a null Group displayName PATCH was accepted"); body["scimType"] != "mutability" {
+				t.Fatal("a null Group displayName PATCH was accepted", body)
+			}
+			if body := call("PATCH", "Groups/"+id, patch(map[string]any{"op": "replace", "value": map[string]any{"displayName": "A", "DisplayName": "B"}}), 400, "a Group PATCH value naming displayName twice was not invalidSyntax"); body["scimType"] != "invalidSyntax" {
+				t.Fatal("a Group PATCH value naming displayName twice was not invalidSyntax", body)
 			}
 
 			call("PATCH", "Groups/"+id, patch(map[string]any{"op": "add", "path": "externalId", "value": "grp-2"}), 200, "PATCH did not add a Group externalId")

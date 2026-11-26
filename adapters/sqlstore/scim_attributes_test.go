@@ -269,7 +269,7 @@ func TestSCIMUserScalarPatchOverHTTP(t *testing.T) {
 func TestSCIMUserPatchOperationForms(t *testing.T) {
 	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
 		t.Run(dialect, func(t *testing.T) {
-			_, call := attributeDirectory(t, dialect)
+			store, call := attributeDirectory(t, dialect)
 			created := call("POST", "Users", map[string]any{"schemas": []string{scim.UserSchema}, "userName": "ops@example.test", "displayName": "No Op"}, 201, "the User was refused")
 			id := created["id"].(string)
 			patch := func(status int, failure string, ops ...any) map[string]any {
@@ -308,8 +308,19 @@ func TestSCIMUserPatchOperationForms(t *testing.T) {
 			for i := range many {
 				many[i] = map[string]any{"op": "replace", "path": "title", "value": "Lead"}
 			}
-			if body := patch(400, "a PATCH with 101 operations was accepted", many...); body["scimType"] != "invalidSyntax" {
-				t.Fatal("a PATCH with 101 operations was accepted", body)
+			patch(200, "a PATCH with 101 operations was refused", many...)
+			revision := func() int {
+				t.Helper()
+				var n int
+				if err := store.db.QueryRowContext(t.Context(), store.bind(`SELECT j."revision" FROM "scimSubject" j JOIN "scimUser" u ON u."userId"=j."userId" WHERE u."id"=?`), id).Scan(&n); err != nil {
+					t.Fatal(err)
+				}
+				return n
+			}
+			unchangedRevision := revision()
+			time.Sleep(5 * time.Millisecond)
+			if got := patch(200, "an empty pathless PATCH value was refused", map[string]any{"op": "replace", "value": map[string]any{}}); modified(got) != stamped || revision() != unchangedRevision {
+				t.Fatal("an empty pathless PATCH value rewrote the User", stamped, modified(got))
 			}
 			if body := patch(400, "an unknown PATCH op was accepted", map[string]any{"op": "move", "path": "title", "value": "X"}); body["scimType"] != "invalidSyntax" {
 				t.Fatal("an unknown PATCH op was accepted", body)

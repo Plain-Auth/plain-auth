@@ -14,11 +14,11 @@ func patchOperations(input any) ([]any, error) {
 	if !ok || len(schemas) != 1 || schemas[0] != PatchSchema {
 		return nil, invalid("invalidSyntax", "The PatchOp schema is required")
 	}
-	// An empty Operations array is a valid no-op. Go bounds a request at 100
-	// operations; another runtime accepts longer lists.
+	// An empty Operations array is a valid no-op; the request body limit
+	// bounds a long one.
 	ops, ok := m["Operations"].([]any)
-	if !ok || len(ops) > 100 {
-		return nil, invalid("invalidSyntax", "Expected up to 100 operations")
+	if !ok {
+		return nil, invalid("invalidSyntax", "Operations must be an array")
 	}
 	return ops, nil
 }
@@ -53,8 +53,9 @@ func patchProfile(r Record, ops []any) (Profile, error) {
 			return Profile{}, invalid("noTarget", "A pathless remove has no target")
 		}
 		if path == "" {
+			// An empty map is a no-op.
 			fields, ok := v["value"].(map[string]any)
-			if !ok || len(fields) == 0 {
+			if !ok {
 				return Profile{}, invalid("invalidValue", "Expected an attribute map")
 			}
 			if _, err = object(fields, userFields); err != nil {

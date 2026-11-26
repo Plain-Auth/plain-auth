@@ -24,10 +24,11 @@ func TestSCIMManagedCatalogOptionBounds(t *testing.T) {
 	if c, err := build(ManagedOptions{MaxActiveCredentials: 100}); err != nil || c.limit != 100 {
 		t.Fatal("a managed credential cap of 100 was refused", err)
 	}
-	for _, limit := range []int{101, -1} {
-		if _, err := build(ManagedOptions{MaxActiveCredentials: limit}); err == nil || !strings.Contains(err.Error(), "1 through 100") {
-			t.Fatal("a managed credential cap outside 1 through 100 was accepted", limit, err)
-		}
+	if _, err := build(ManagedOptions{MaxActiveCredentials: 101}); err == nil || !strings.Contains(err.Error(), "1 through 100") {
+		t.Fatal("a managed credential cap of 101 was accepted", err)
+	}
+	if _, err := build(ManagedOptions{MaxActiveCredentials: -1}); err == nil || !strings.Contains(err.Error(), "1 through 100") {
+		t.Fatal("a negative managed credential cap was accepted", err)
 	}
 	if c, err := build(ManagedOptions{}); err != nil || c.interval != 5*time.Minute {
 		t.Fatal("the last-used write interval does not default to five minutes", err)

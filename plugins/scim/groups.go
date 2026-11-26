@@ -279,6 +279,9 @@ func applyGroupPatch(current Group, ops []any) (GroupChange, error) {
 		if !ok {
 			return GroupChange{}, invalid("invalidValue", "Expected a pathless Group attribute map")
 		}
+		if _, e = object(values, groupFields); e != nil {
+			return GroupChange{}, e
+		}
 		for k, v := range values {
 			switch strings.ToLower(k) {
 			case "id":

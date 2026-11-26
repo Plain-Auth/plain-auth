@@ -196,10 +196,23 @@ func TestSCIMDiscoveryDocumentsAndRefusedRoutes(t *testing.T) {
 	if !reflect.DeepEqual(cfg["bulk"], map[string]any{"supported": false, "maxOperations": 0.0, "maxPayloadSize": 0.0}) {
 		t.Fatal("service provider config advertised bulk operations", cfg["bulk"])
 	}
-	for _, key := range []string{"sort", "etag", "changePassword"} {
-		if !reflect.DeepEqual(cfg[key], map[string]any{"supported": false}) {
-			t.Fatal("service provider config advertised sorting, ETags or password changes", key, cfg[key])
-		}
+	if !reflect.DeepEqual(cfg["sort"], map[string]any{"supported": false}) {
+		t.Fatal("service provider config advertised sorting", cfg["sort"])
+	}
+	if !reflect.DeepEqual(cfg["etag"], map[string]any{"supported": false}) {
+		t.Fatal("service provider config advertised ETags", cfg["etag"])
+	}
+	if !reflect.DeepEqual(cfg["changePassword"], map[string]any{"supported": false}) {
+		t.Fatal("service provider config advertised password changes", cfg["changePassword"])
+	}
+	if !reflect.DeepEqual(cfg["patch"], map[string]any{"supported": true}) {
+		t.Fatal("service provider config did not advertise PATCH", cfg["patch"])
+	}
+	if !reflect.DeepEqual(cfg["filter"], map[string]any{"supported": true, "maxResults": 100.0}) {
+		t.Fatal("service provider config did not advertise filters with 100 results", cfg["filter"])
+	}
+	if !reflect.DeepEqual(cfg["schemas"], []any{"urn:ietf:params:scim:schemas:core:2.0:ServiceProviderConfig"}) {
+		t.Fatal("service provider config did not declare its schema", cfg["schemas"])
 	}
 	if !reflect.DeepEqual(cfg["meta"], map[string]any{"resourceType": "ServiceProviderConfig", "location": "https://directory.example.test/identity/scim/v2/ServiceProviderConfig"}) {
 		t.Fatal("service provider config meta is not the public directory location", cfg["meta"])
@@ -214,10 +227,14 @@ func TestSCIMDiscoveryDocumentsAndRefusedRoutes(t *testing.T) {
 	if w, body := call("GET", "ResourceTypes/Unknown", ""); !refusedWith(w, body, 404) {
 		t.Fatal("an unknown resource type did not return a SCIM 404", w.Code, w.Body.String())
 	}
-	for _, route := range [][2]string{{"GET", "Bulk"}, {"POST", "Bulk"}, {"GET", "Me"}} {
-		if w, body := call(route[0], route[1], "Bearer one"); !refusedWith(w, body, 404) {
-			t.Fatal("a Bulk or Me request was not refused with 404", route, w.Code, w.Body.String())
-		}
+	if w, body := call("GET", "Bulk", "Bearer one"); !refusedWith(w, body, 404) {
+		t.Fatal("a Bulk read was not refused with 404", w.Code, w.Body.String())
+	}
+	if w, body := call("POST", "Bulk", "Bearer one"); !refusedWith(w, body, 404) {
+		t.Fatal("a Bulk request was not refused with 404", w.Code, w.Body.String())
+	}
+	if w, body := call("GET", "Me", "Bearer one"); !refusedWith(w, body, 404) {
+		t.Fatal("a Me request was not refused with 404", w.Code, w.Body.String())
 	}
 	if w, _ := call("POST", "Users/.search", "Bearer one"); w.Code != 405 || w.Header().Get("Allow") != "GET, PUT, PATCH, DELETE" {
 		t.Fatal("POST-based User search was not refused with 405", w.Code, w.Header().Get("Allow"))
@@ -251,6 +268,9 @@ func TestSCIMCaseDuplicateAttributesAreInvalidSyntax(t *testing.T) {
 	ops := []any{map[string]any{"op": "replace", "value": map[string]any{"displayName": "One", "DisplayName": "Two"}}}
 	if _, err := patchProfile(current, ops); !syntax(err) {
 		t.Fatal("a case-duplicate pathless PATCH value was not invalidSyntax", err)
+	}
+	if _, err := applyGroupPatch(Group{ID: "g"}, []any{map[string]any{"op": "replace", "value": map[string]any{"displayName": "A", "DisplayName": "B"}}}); !syntax(err) {
+		t.Fatal("a Group PATCH value naming displayName twice was not invalidSyntax", err)
 	}
 	if _, err := parseGroup(map[string]any{"schemas": []any{GroupSchema}, "displayName": "One", "DISPLAYNAME": "Two"}, false); !syntax(err) {
 		t.Fatal("a case-duplicate Group attribute was not invalidSyntax", err)

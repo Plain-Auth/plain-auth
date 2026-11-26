@@ -9660,7 +9660,7 @@
       "marker": "export async function directoryContract("
     },
     {
-      "label": "Publish bearer authentication only, report bulk, sorting, ETags and password changes as unsupported, and locate the document at the public directory URL",
+      "label": "Publish bearer authentication only, PATCH and filters with 100 results, report bulk, sorting, ETags and password changes as unsupported, and locate the document at the public directory URL",
       "test": "plugins/scim/http_test.go",
       "marker": "func TestSCIMDiscoveryDocumentsAndRefusedRoutes(",
       "complete": true
@@ -45133,7 +45133,7 @@
     {
       "label": "Refuse Bulk and /Me with 404 and POST search with 405, and advertise no sorting or ETags",
       "test": "plugins/scim/http_test.go",
-      "marker": "t.Fatal(\"a Bulk or Me request was not refused with 404\", route, w.Code, w.Body.String())",
+      "marker": "t.Fatal(\"a Bulk request was not refused with 404\", w.Code, w.Body.String())",
       "complete": true
     }
   ],
@@ -45241,11 +45241,16 @@
       "label": "Report two spellings of one attribute, even with a null value, as invalidSyntax in a User, a role, a pathless PATCH value and a Group",
       "test": "plugins/scim/http_test.go",
       "marker": "func TestSCIMCaseDuplicateAttributesAreInvalidSyntax("
+    },
+    {
+      "label": "Refuse a Group PATCH value naming displayName twice as invalidSyntax over HTTP",
+      "test": "adapters/sqlstore/scim_groups_test.go",
+      "marker": "t.Fatal(\"a Group PATCH value naming displayName twice was not invalidSyntax\", body)"
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L351": [
     {
-      "label": "Accept an empty Operations array, keep lastModified for an unchanged PATCH, take case-insensitive and omitted ops, and refuse 101 operations or an unknown op, on SQLite, PostgreSQL and MySQL",
+      "label": "Accept an empty Operations array, an empty pathless value and 101 operations, keep lastModified and the revision for an unchanged PATCH, take case-insensitive and omitted ops, and refuse an unknown op, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/scim_attributes_test.go",
       "marker": "func TestSCIMUserPatchOperationForms(",
       "complete": true

@@ -144,8 +144,11 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				// the stored resource and its lastModified.
 				var unchanged Record
 				rec, err = h.store.SCIMUpdate(ctx, d, id, func(current Record) (Profile, error) {
+					// Compare with a snapshot taken before patching, so an
+					// in-place edit of a nested value cannot hide a change.
+					before, encodeErr := json.Marshal(current.Profile)
 					p, err := patchProfile(current, ops)
-					if err == nil && sameProfile(p, current.Profile) {
+					if after, e := json.Marshal(p); err == nil && encodeErr == nil && e == nil && string(after) == string(before) {
 						unchanged = current
 						return p, errUnchangedPatch
 					}
@@ -289,11 +292,3 @@ func writeError(w http.ResponseWriter, err error) {
 }
 
 var errUnchangedPatch = errors.New("scim: unchanged patch")
-
-// sameProfile compares two profiles as their JSON forms, so number and
-// slice types read back from storage compare equal.
-func sameProfile(a, b Profile) bool {
-	x, errX := json.Marshal(a)
-	y, errY := json.Marshal(b)
-	return errX == nil && errY == nil && string(x) == string(y)
-}

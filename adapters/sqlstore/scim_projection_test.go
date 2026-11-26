@@ -405,12 +405,13 @@ func TestSCIMProjectionReplaySummary(t *testing.T) {
 			defer store.Close()
 			calls := 0
 			policy := scim.Projection{PolicyID: "replay-v1", ReconcileUser: func(context.Context, scim.ProjectionTx, scim.ProjectedUser) error { calls++; return nil }}
-			var se *scim.Error
-			if _, e := store.ReconcileSCIMProjection(ctx, "Tenant"); !errors.As(e, &se) || se.Status != 409 || calls != 0 {
-				t.Fatal("replaying a domain without a configured policy did not answer 409", e)
-			}
 			empty, e := store.EnableSCIMProjection(ctx, "Empty", policy)
 			must(e)
+			var se *scim.Error
+			calls = 0
+			if _, e := empty.ReconcileSCIMProjection(ctx, "Tenant"); !errors.As(e, &se) || se.Status != 409 || calls != 0 {
+				t.Fatal("replaying a domain without a configured policy did not answer 409", e)
+			}
 			if replay, e := empty.ReconcileSCIMProjection(ctx, "Empty"); e != nil || replay != (scim.ProjectionReplay{ProvisioningDomainID: "Empty"}) {
 				t.Fatal("an empty domain replay reported users or batches", replay, e)
 			}
