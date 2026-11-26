@@ -251,9 +251,28 @@ func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tok
 			return u, false, authn.ErrOAuthAccountAlreadyLinked
 		}
 	}
+	// A resolver's chosen user takes the identity without email matching or
+	// the sign-up and trust rules.
+	if options.SelectUserID != "" {
+		if options.LinkUserID != "" {
+			return u, false, errors.New("sqlstore: LinkUserID and SelectUserID are exclusive")
+		}
+		if existing && u.ID != options.SelectUserID {
+			return u, false, authn.ErrOAuthAccountAlreadyLinked
+		}
+		if !existing {
+			err = tx.QueryRowContext(ctx, s.bind(`SELECT `+userColumns+` FROM "user" u WHERE u."id"=?`+suffix), options.SelectUserID).Scan(userFields(&u)...)
+			if errors.Is(err, sql.ErrNoRows) {
+				return u, false, authn.ErrNotFound
+			}
+			if err != nil {
+				return u, false, err
+			}
+		}
+	}
 	created := false
 	emailLink := false
-	if !existing && options.LinkUserID == "" {
+	if !existing && options.LinkUserID == "" && options.SelectUserID == "" {
 		err = tx.QueryRowContext(ctx, s.bind(`SELECT `+userColumns+` FROM "user" u WHERE u."email"=?`+suffix), candidate.Email).Scan(userFields(&u)...)
 		switch {
 		case errors.Is(err, sql.ErrNoRows):
@@ -363,7 +382,12 @@ func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tok
 			}
 		}
 	}
-	if !created && fields != nil && fields.Update != nil {
+	if options.SelectUserID != "" && options.UpdateSelectedProfile {
+		if u, err = s.syncOAuthProfile(ctx, tx, u, candidate, authn.UserFieldValues{}, session.CreatedAt); err != nil {
+			return u, false, err
+		}
+	}
+	if !created && fields != nil && fields.Update != nil && options.SelectUserID == "" {
 		values, err := fields.Update()
 		if err != nil {
 			return u, false, err
@@ -373,7 +397,7 @@ func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tok
 			return u, false, err
 		}
 	}
-	if options.RequireEmailVerification && options.LinkUserID == "" && !u.EmailVerified {
+	if options.RequireEmailVerification && options.LinkUserID == "" && options.SelectUserID == "" && !u.EmailVerified {
 		if !candidate.EmailVerified || strings.ToLower(u.Email) != candidate.Email {
 			if err := authn.LoginPlanFrom(ctx).Commit(); err != nil {
 				return authn.User{}, false, err

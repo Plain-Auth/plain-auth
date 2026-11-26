@@ -44628,5 +44628,12 @@
       "test": "adapters/sqlstore/sso_update_test.go",
       "marker": "t.Fatal(\"the native client could not rotate the client secret\", err)"
     }
+  ],
+  "plugin-symbol/sso/SSOUserResolution": [
+    {
+      "label": "Link an enterprise identity to a selected user without email matching or sign-up rules, keep or copy the profile, and refuse an identity another user owns or a missing user, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_selected_user_test.go",
+      "marker": "func TestEnterpriseSelectedUserLogin("
+    }
   ]
 }

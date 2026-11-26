@@ -207,6 +207,15 @@ type OAuthLoginOptions struct {
 	IDTokenValidUntil            time.Time
 	// IDTokenHash binds single-use grants independently of randomized storage encryption.
 	IDTokenHash [32]byte
+	// SelectUserID signs the identity in to this existing user, as an SSO
+	// resolver chose, instead of matching by email or creating a user. The
+	// store refuses with ErrNotFound when the user is gone and with
+	// ErrOAuthAccountAlreadyLinked when another user owns the identity.
+	SelectUserID string
+	// UpdateSelectedProfile copies the provider's name, image and email to
+	// the selected user; a changed email takes the provider's verification.
+	// Without it the selected user's profile is kept.
+	UpdateSelectedProfile bool
 	// ProfileFields carries an enterprise sign-in's prepared user fields to
 	// its store: Create for a new user and, when set, Update for a returning
 	// owner whose profile the provider overrides.

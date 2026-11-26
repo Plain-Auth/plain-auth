@@ -391,6 +391,7 @@
   - [ ] `SSOProviderUserProfile`
   - [ ] `SSOSAMLUserResolutionInput`
   - [ ] `SSOUserResolution`
+    - [x] Link an enterprise identity to a selected user without email matching or sign-up rules, keep or copy the profile, and refuse an identity another user owns or a missing user, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_selected_user_test.go#L17))
   - [ ] `SSOUserResolutionContext`
   - [ ] `SSOUserResolutionInput`
   - [x] `OIDCMapping` ([test](../../../adapters/sqlstore/sso_claim_mapping_test.go#L14))

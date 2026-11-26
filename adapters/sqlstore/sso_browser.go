@@ -182,6 +182,12 @@ func (s *Store) findBrowserProvider(ctx context.Context, sel sso.Selector, requi
 	return found, nil
 }
 
+var _ sso.UserResolutionStore = (*Store)(nil)
+
+// ResolvesSSOUsers reports that enterprise sign-in honours a resolver's
+// selected user.
+func (*Store) ResolvesSSOUsers() {}
+
 func (s *Store) CompleteEnterpriseLogin(ctx context.Context, ref string, provision bool, id, subject string, tokens auth.OAuthTokens, user auth.User, session auth.StoredSession, opts auth.OAuthLoginOptions) (auth.User, bool, error) {
 	return s.completeEnterpriseLogin(ctx, ref, provision, id, subject, tokens, user, session, opts, false, nil)
 }
