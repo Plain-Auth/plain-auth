@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -41,6 +43,10 @@ func TestSCIMProtocolAndCredentialConfiguration(t *testing.T) {
 		"a padded provisioning domain":       {Store: failureStore{}, Connections: []Connection{{Directory: Directory{ID: "a", ProvisioningDomainID: " padded"}, Credentials: []Credential{{ID: "one", Token: "t"}}}}},
 		"two credentials with one ID":        {Store: failureStore{}, Connections: []Connection{{Directory: Directory{ID: "a"}, Credentials: []Credential{{ID: "one", Token: "t1"}, {ID: "one", Token: "t2"}}}}},
 		"a padded credential ID":             {Store: failureStore{}, Connections: []Connection{{Directory: Directory{ID: "a"}, Credentials: []Credential{{ID: " one", Token: "t"}}}}},
+		"an empty credential ID":             {Store: failureStore{}, Connections: []Connection{{Directory: Directory{ID: "a"}, Credentials: []Credential{{ID: "", Token: "t"}}}}},
+		"a padded connection ID":             {Store: failureStore{}, Connections: []Connection{conn(" a", "x")}},
+		"an over-long connection ID":         {Store: failureStore{}, Connections: []Connection{conn(strings.Repeat("a", 256), "x")}},
+		"an over-long provisioning domain":   {Store: failureStore{}, Connections: []Connection{{Directory: Directory{ID: "a", ProvisioningDomainID: strings.Repeat("d", 256)}, Credentials: []Credential{{ID: "one", Token: "t"}}}}},
 	} {
 		if _, err := New(host, o); err == nil {
 			t.Fatal("scim.New accepted a configuration with", name)
@@ -232,6 +238,10 @@ func TestSCIMDiscoveryDocumentsAndRefusedRoutes(t *testing.T) {
 	}
 	if !reflect.DeepEqual(cfg["authenticationSchemes"], []any{map[string]any{"name": "OAuth Bearer Token", "description": "Authentication using a bearer token in the Authorization header.", "specUri": "https://www.rfc-editor.org/info/rfc6750", "type": "oauthbearertoken", "primary": true}}) {
 		t.Fatal("service provider config lost its bearer authentication scheme", cfg["authenticationSchemes"])
+	}
+	keys := slices.Sorted(maps.Keys(cfg))
+	if !slices.Equal(keys, []string{"authenticationSchemes", "bulk", "changePassword", "etag", "filter", "meta", "patch", "schemas", "sort"}) {
+		t.Fatal("service provider config has other members than another runtime's", keys)
 	}
 	if !reflect.DeepEqual(cfg["bulk"], map[string]any{"supported": false, "maxOperations": 0.0, "maxPayloadSize": 0.0}) {
 		t.Fatal("service provider config advertised bulk operations", cfg["bulk"])

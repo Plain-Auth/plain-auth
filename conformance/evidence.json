@@ -9737,6 +9737,11 @@
       "label": "List the Group resource type on both runtimes",
       "test": "conformance/scim-contract.mjs",
       "marker": "assert.ok(page.Resources.some(resource=>resource.id===name));"
+    },
+    {
+      "label": "Give each resource type its own location, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_users_contract_test.go",
+      "marker": "t.Fatal(\"a resource type has the wrong location\""
     }
   ],
   "plugin/scim/GET /scim/v2/ResourceTypes/:resourceTypeId": [
@@ -9816,6 +9821,12 @@
       "label": "Select only the requested role subattributes when listing User resources",
       "test": "adapters/sqlstore/scim_roles_test.go",
       "marker": "nested role selection:"
+    },
+    {
+      "label": "List Users in creation order and filter by id, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_users_contract_test.go",
+      "marker": "t.Fatal(\"the User list is not in creation order\"",
+      "complete": true
     }
   ],
   "plugin/scim/PUT /scim/v2/Users/:userId": [
@@ -43720,7 +43731,8 @@
     {
       "label": "Refuse a configuration without connections, verifier or catalog, a connection without credentials, duplicate or padded credential IDs at startup",
       "test": "plugins/scim/http_test.go",
-      "marker": "t.Fatal(\"scim.New accepted a configuration with\", name)"
+      "marker": "t.Fatal(\"scim.New accepted a configuration with\", name)",
+      "complete": true
     }
   ],
   "plugin-symbol/scim/SCIMProjection": [
@@ -43810,6 +43822,12 @@
       "label": "Authenticate managed credentials when no code-defined connection is configured",
       "test": "adapters/sqlstore/scim_managed_test.go",
       "marker": "scim.Options{Store: st, Managed:"
+    },
+    {
+      "label": "Refuse a handler with no connection, verifier or catalog",
+      "test": "plugins/scim/http_test.go",
+      "marker": "t.Fatal(\"scim.New accepted a configuration with\", name)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L26/`credentials`": [
@@ -43817,6 +43835,12 @@
       "label": "Accept a connection with no static credentials when a bearer verifier is configured",
       "test": "adapters/sqlstore/scim_dynamic_test.go",
       "marker": "{Directory: scim.Directory{ID: \"declared\", ProvisioningDomainID: \"assigned\"}}"
+    },
+    {
+      "label": "Refuse a connection without credentials when no verifier is set",
+      "test": "plugins/scim/http_test.go",
+      "marker": "t.Fatal(\"scim.New accepted a configuration with\", name)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L27/`provisioningDomainId`": [
@@ -43824,6 +43848,11 @@
       "label": "Keep the first provisioning domain and reject a changed one with 409",
       "test": "adapters/sqlstore/scim_test.go",
       "marker": "call(build(second, \"moved\"), \"GET\", \"Users\", \"writer\", nil, 409)"
+    },
+    {
+      "label": "Refuse a padded or over-long provisioning domain",
+      "test": "plugins/scim/http_test.go",
+      "marker": "t.Fatal(\"scim.New accepted a configuration with\", name)"
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L36/`id`": [
@@ -43831,6 +43860,12 @@
       "label": "Expose a static credential's ID in the directory principal the store receives",
       "test": "adapters/sqlstore/scim_dynamic_test.go",
       "marker": "if p.Kind != \"static-bearer\" || p.CredentialID != \"key\" {"
+    },
+    {
+      "label": "Refuse two credentials with one ID and an empty credential ID",
+      "test": "plugins/scim/http_test.go",
+      "marker": "t.Fatal(\"scim.New accepted a configuration with\", name)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L37/`token`": [
@@ -43854,6 +43889,12 @@
       "label": "Answer 401 for a static credential whose expiry time has passed",
       "test": "adapters/sqlstore/scim_test.go",
       "marker": "call(a, \"GET\", \"Users\", \"expired\", nil, 401)"
+    },
+    {
+      "label": "Accept a credential before its expiry, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_users_contract_test.go",
+      "marker": "call(\"GET\", \"Users\", \"retiring\", nil, 200, \"\")",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L43": [
@@ -43940,6 +43981,12 @@
       "label": "Refuse User listing to a write-only credential while a read-only credential lists and reads Users",
       "test": "adapters/sqlstore/scim_test.go",
       "marker": "call(a, \"GET\", \"Users\", \"write-only\", nil, 403)"
+    },
+    {
+      "label": "Refuse a User read to a users-write-only token, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_users_contract_test.go",
+      "marker": "call(\"GET\", path, \"write-only\", nil, 403, \"\")",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L178/`scim.users.write`": [
@@ -43947,6 +43994,12 @@
       "label": "Refuse User creation to a read-only credential with 403",
       "test": "adapters/sqlstore/scim_test.go",
       "marker": "call(a, \"POST\", \"Users\", \"reader\", nil, 403)"
+    },
+    {
+      "label": "Refuse PUT, PATCH and DELETE to a users-read-only token and accept a users-write-only PATCH, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_users_contract_test.go",
+      "marker": "call(\"DELETE\", path, \"reader\", nil, 403, \"\")",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L179/`scim.groups.read`": [
@@ -44086,6 +44139,12 @@
       "label": "Keep the supplied userName casing in responses while a lowercase userName filter matches it, on both runtimes",
       "test": "conformance/scim-contract.mjs",
       "marker": "assert.deepEqual(page.Resources,[{id:user.id,schemas:[userSchema],userName:\"Directory-01\"}]);"
+    },
+    {
+      "label": "Keep userName unique without case within a connection and allow it on another connection, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_users_contract_test.go",
+      "marker": "call(\"POST\", \"Users\", \"writer\", user(\"writer\", \"OPERATOR\", \"ID02\", \"upper@example.test\"), 409, \"uniqueness\")",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L249/`externalId`": [
@@ -44093,6 +44152,12 @@
       "label": "Reprovision the inactive User when its externalId is posted again, on both runtimes",
       "test": "conformance/scim-contract.mjs",
       "marker": "assert.equal((await call(\"POST\",\"Users\",201,create)).id,user.id);"
+    },
+    {
+      "label": "Keep externalId unique with case within a connection and allow it on another connection, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_users_contract_test.go",
+      "marker": "call(\"POST\", \"Users\", \"writer\", user(\"writer\", \"another\", \"ID01\", \"another@example.test\"), 409, \"uniqueness\")",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L250/`active`": [
@@ -44260,6 +44325,12 @@
       "label": "Find a User by lowercase userName and an uppercase work email value on both runtimes",
       "test": "conformance/scim-contract.mjs",
       "marker": "userName eq \"directory-01\" and emails[type eq \"work\"].value eq \"PERSON@example.test\""
+    },
+    {
+      "label": "Return exactly one User for an id filter, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_users_contract_test.go",
+      "marker": "t.Fatal(\"an id filter did not return that User\"",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L327/Group": [
@@ -45872,6 +45943,12 @@
       "label": "Refuse Bulk and /Me with 404 and POST search with 405, and advertise no sorting or ETags",
       "test": "plugins/scim/http_test.go",
       "marker": "t.Fatal(\"a Bulk request was not refused with 404\", w.Code, w.Body.String())"
+    },
+    {
+      "label": "Publish exactly another runtime's ServiceProviderConfig members, with bulk, sort, ETags and password changes unsupported",
+      "test": "plugins/scim/http_test.go",
+      "marker": "t.Fatal(\"service provider config has other members than another runtime's\"",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L525/A built-in OAuth token endpoint, Basic authentication, or mutual TLS": [
@@ -46458,7 +46535,8 @@
     {
       "label": "Refuse invalid connection and credential configurations at startup",
       "test": "plugins/scim/http_test.go",
-      "marker": "t.Fatal(\"scim.New accepted a configuration with\", name)"
+      "marker": "t.Fatal(\"scim.New accepted a configuration with\", name)",
+      "complete": true
     }
   ],
   "plugin-symbol/scim/SCIMRoleMappingInput": [
@@ -46636,6 +46714,22 @@
       "label": "Grant no authorization for a Group membership by itself, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/scim_groups_contract_test.go",
       "marker": "t.Fatal(\"a Group membership granted an authorization\"",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L25/`id`": [
+    {
+      "label": "Refuse a padded or over-long connection ID",
+      "test": "plugins/scim/http_test.go",
+      "marker": "t.Fatal(\"scim.New accepted a configuration with\", name)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/groups-and-roles.mdx#L118": [
+    {
+      "label": "Accept a credential before its expiry beside the current one, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_users_contract_test.go",
+      "marker": "call(\"GET\", \"Users\", \"retiring\", nil, 200, \"\")",
       "complete": true
     }
   ]
