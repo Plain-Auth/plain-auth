@@ -210,6 +210,15 @@ func publicError(err error) bool {
 // outcome. path is the route template and actual the request's mount-relative
 // path, which supplies the template's parameters.
 func (a *Auth) callEndpoint(w http.ResponseWriter, r *http.Request, path, actual string, body wireBody, endpoint func(*http.Request, wireBody) (any, error)) (any, error) {
+	if a.admin != nil && a.admin.BannedUserMessageFunc != nil {
+		inner := endpoint
+		endpoint = func(r *http.Request, b wireBody) (any, error) {
+			out, err := inner(r, b)
+			// The store call has returned. Build a banned account's message
+			// here so after hooks, OnAPIError and the response all see it.
+			return out, a.bannedUserMessage(r.Context(), err)
+		}
+	}
 	if len(a.beforeHooks) == 0 && len(a.afterHooks) == 0 && !a.dbHooks.set() && a.opts.ValidateUserInfo == nil {
 		return endpoint(r, body)
 	}

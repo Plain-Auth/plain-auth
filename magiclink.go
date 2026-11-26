@@ -310,6 +310,7 @@ func (o MagicLinkOptions) verify(c EndpointContext) (any, error) {
 	if errors.Is(err, errPlannedSessionSkipped) {
 		return redirectQuery(errorURL, "error", "failed_to_create_session"), nil
 	}
+	err = a.bannedUserMessage(r.Context(), err)
 	var refused *APIError
 	if errors.As(err, &refused) && refused.Code != "" {
 		// A user or session hook's refusal, or ValidateUserInfo's, returns

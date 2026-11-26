@@ -95,12 +95,28 @@ func (s *Store) defaultAdminRole() string {
 	}
 	return "user"
 }
-func (s *Store) banError() error {
+func (s *Store) banError(user string) error {
 	message := s.adminDenial
 	if message == "" {
 		message = adminDeniedMessage
 	}
-	return &authn.APIError{Status: 403, Code: "BANNED_USER", Message: message}
+	return &authn.BannedUserError{APIError: &authn.APIError{Status: 403, Code: "BANNED_USER", Message: message}, UserID: user}
+}
+
+// AdminUser reads an account with its role and ban fields; a missing role
+// reads as the configured default role.
+func (s *Store) AdminUser(ctx context.Context, id string) (authn.User, error) {
+	var u authn.User
+	fields, finish := s.adminUserScanner(&u)
+	err := s.db.QueryRowContext(ctx, s.bind(`SELECT `+userColumns+`,`+adminUserColumns+` FROM "user" u WHERE u."id"=?`), id).Scan(fields...)
+	if errors.Is(err, sql.ErrNoRows) || err == nil && u.ID != id {
+		return authn.User{}, authn.ErrNotFound
+	}
+	if err != nil {
+		return authn.User{}, err
+	}
+	finish()
+	return u, nil
 }
 func (s *Store) adminSessionGate(ctx context.Context, tx *sql.Tx, user string, now time.Time) error {
 	var banned sql.NullBool
@@ -115,7 +131,7 @@ func (s *Store) adminSessionGate(ctx context.Context, tx *sql.Tx, user string, n
 	}
 	if banned.Bool {
 		if expires == nil || expires.After(now) {
-			return s.banError()
+			return s.banError(user)
 		}
 		if _, err = s.execUserUpdate(ctx, tx, user, s.bind(`UPDATE "user" SET "banned"=?,"banReason"=NULL,"banExpires"=NULL WHERE "id"=?`), false, user); err != nil {
 			return err

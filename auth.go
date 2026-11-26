@@ -323,6 +323,9 @@ func New(opts Options) (*Auth, error) {
 			if err != nil {
 				return nil, err
 			}
+			if _, ok := a.adminStore.(AdminUserReader); p.admin.BannedUserMessageFunc != nil && !ok {
+				return nil, errors.New("authn: BannedUserMessageFunc requires an AdminUserReader store")
+			}
 			a.admin = p.admin
 			a.opts.Store = a.adminStore
 			opts.Store = a.adminStore
@@ -825,7 +828,7 @@ func (a *Auth) completeCredentialSignIn(ctx context.Context, user User, hash str
 	}
 	if a.admin != nil && user.AdminUserFields != nil && user.Banned {
 		if user.BanExpires == nil || user.BanExpires.After(a.now()) {
-			return AuthResult{}, &APIError{403, "BANNED_USER", a.admin.BannedUserMessage}
+			return AuthResult{}, &BannedUserError{APIError: &APIError{403, "BANNED_USER", a.admin.BannedUserMessage}, UserID: user.ID}
 		}
 		user.Banned = false
 		user.BanReason = nil

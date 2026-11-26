@@ -44,6 +44,15 @@ type AdminOptions struct {
 	// BannedUserMessage is the BANNED_USER message a banned account
 	// receives.
 	BannedUserMessage string
+	// BannedUserMessageFunc, when set, builds the BANNED_USER message from
+	// the banned account, with its role, ban fields and public additional
+	// fields, for example to quote BanReason. It runs after the store call
+	// that refused the session has returned, never inside a store
+	// transaction; its result is what endpoint after hooks, OnAPIError and
+	// the HTTP error response see, and the error_description of a magic-link
+	// error redirect. An empty result or a panic keeps BannedUserMessage, as
+	// do native Go calls. The store must implement AdminUserReader.
+	BannedUserMessageFunc func(ctx context.Context, user User) string
 	// DefaultBanDuration sets the expiry of a ban that gives no duration.
 	// Zero keeps the ban until an administrator lifts it.
 	DefaultBanDuration time.Duration
@@ -93,6 +102,86 @@ type AdminStore interface {
 }
 
 var adminDefaults = AdminPermissions{"user": {"create", "list", "set-role", "ban", "impersonate", "delete", "set-password", "set-email", "set-phone", "get", "update"}, "session": {"list", "revoke", "delete"}}
+
+// BannedUserError refuses a session to a banned account. It unwraps to the
+// BANNED_USER APIError, and UserID names the account so the message can be
+// built once the store call has returned.
+type BannedUserError struct {
+	*APIError
+	UserID string `json:"-"`
+}
+
+func (e *BannedUserError) Unwrap() error { return e.APIError }
+
+// AdminUserReader reads one account with its role and ban fields, outside
+// any session or transaction. ErrNotFound reports an unknown ID.
+type AdminUserReader interface {
+	AdminUser(ctx context.Context, userID string) (User, error)
+}
+
+// adminUser reads an account with its admin and public additional fields.
+func (a *Auth) adminUser(ctx context.Context, id string) (User, error) {
+	reader, ok := a.adminStore.(AdminUserReader)
+	if !ok {
+		return User{}, errors.New("admin: store does not support reading users by ID")
+	}
+	u, err := reader.AdminUser(ctx, id)
+	if err != nil {
+		return User{}, err
+	}
+	return u, a.readUserExtras(ctx, &u)
+}
+
+// bannedUserMessage builds a banned account's message with
+// BannedUserMessageFunc. It runs after the store call returned, never inside
+// a store transaction.
+func (a *Auth) bannedUserMessage(ctx context.Context, err error) (out error) {
+	var banned *BannedUserError
+	if a.admin == nil || a.admin.BannedUserMessageFunc == nil || !errors.As(err, &banned) {
+		return err
+	}
+	u, readErr := a.adminUser(ctx, banned.UserID)
+	if readErr != nil {
+		return err
+	}
+	defer func() {
+		if recover() != nil {
+			a.Logger().ErrorContext(ctx, "Banned user message callback panicked")
+			out = err
+		}
+	}()
+	msg := a.admin.BannedUserMessageFunc(ctx, u)
+	if msg == "" {
+		return err
+	}
+	return &BannedUserError{APIError: &APIError{Status: banned.Status, Code: banned.Code, Message: msg}, UserID: banned.UserID}
+}
+
+// AdminUserHasPermission reports whether the stored account userID holds
+// every permission, for trusted server code without a session. It reads the
+// account's current role and honours AdminUserIDs. POST /admin/has-permission
+// checks the caller's own session and ignores userId and role, as another
+// runtime does over HTTP; do not expose this method directly as an HTTP
+// handler. The store must implement AdminUserReader.
+func (a *Auth) AdminUserHasPermission(ctx context.Context, userID string, permissions AdminPermissions) (bool, error) {
+	if a.adminStore == nil {
+		return false, adminError(404, "NOT_FOUND", "Not found")
+	}
+	if len(permissions) == 0 {
+		return false, validationError("Permission set is required")
+	}
+	if userID == "" {
+		return false, validationError("User ID is required")
+	}
+	u, err := a.adminUser(ctx, userID)
+	if errors.Is(err, ErrNotFound) {
+		return false, &APIError{400, "USER_NOT_FOUND", "User not found"}
+	}
+	if err != nil {
+		return false, err
+	}
+	return a.admin.HasPermission(u.ID, u.Role, permissions), nil
+}
 
 // DefaultAdminRoles returns an independent copy of the built-in "admin" and
 // "user" roles that AdminOptions uses when Roles is nil. The admin role

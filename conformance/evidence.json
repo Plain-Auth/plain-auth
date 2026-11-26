@@ -6667,6 +6667,12 @@
       "label": "Use the configured denial message after successful password verification",
       "test": "adapters/sqlstore/admin_test.go",
       "marker": "expected configured ban message"
+    },
+    {
+      "label": "Build the banned message from the stored account for the HTTP answer, endpoint after hooks and a magic-link redirect, keep the configured message for an empty or failing builder and for native calls, on three SQL engines",
+      "test": "adapters/sqlstore/admin_banned_message_test.go",
+      "marker": "func TestBannedUserMessageFuncAcrossEngines(",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/admin.mdx#L840": [
@@ -6674,6 +6680,11 @@
       "label": "Use the configured denial message after successful password verification",
       "test": "adapters/sqlstore/admin_test.go",
       "marker": "expected configured ban message"
+    },
+    {
+      "label": "Answer a banned account with the configured message, or with one built from the account by BannedUserMessageFunc",
+      "test": "adapters/sqlstore/admin_banned_message_test.go",
+      "marker": "the banned message was not built from the account"
     }
   ],
   "plugin-symbol/admin/AdminOptions/impersonationSessionDuration": [
@@ -39556,6 +39567,12 @@
       "label": "Check two resources that both carry actions in one request, and fail when one of them names an action the role lacks",
       "test": "adapters/sqlstore/admin_policy_test.go",
       "marker": "a check with an undefined action on one resource passed"
+    },
+    {
+      "label": "Check a stored user's grants by id from server code without a session, reading the account's current role",
+      "test": "adapters/sqlstore/admin_banned_message_test.go",
+      "marker": "the server check used a stale role",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/admin.mdx#L607/Parameter `permission` (optional)": [
@@ -39571,6 +39588,14 @@
       "label": "Expire a ban that gives no duration after the configured default duration",
       "test": "adapters/sqlstore/admin_policy_test.go",
       "marker": "t.Fatal(\"a ban without a duration did not use the configured default\", d)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L598/Parameter `userId` (optional)": [
+    {
+      "label": "Check a stored account's permissions by user ID from server code, honouring AdminUserIDs and refusing an unknown or empty ID",
+      "test": "adapters/sqlstore/admin_banned_message_test.go",
+      "marker": "func TestAdminUserHasPermissionAcrossEngines(",
       "complete": true
     }
   ]

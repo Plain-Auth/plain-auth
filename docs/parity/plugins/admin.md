@@ -124,8 +124,9 @@
     - [x] `adminUserIds` ([test](../../../adapters/sqlstore/admin_test.go#L253))
       - [x] Grant an explicitly configured identity administrative authority ([test](../../../adapters/sqlstore/admin_test.go#L83))
       - [x] A configured administrator ID with no stored role impersonates another administrator over HTTP ([test](../../../adapters/sqlstore/admin_test.go#L253))
-    - [ ] `bannedUserMessage`
+    - [x] `bannedUserMessage` ([test](../../../adapters/sqlstore/admin_banned_message_test.go#L22))
       - [x] Use the configured denial message after successful password verification ([test](../../../adapters/sqlstore/admin_test.go#L181))
+      - [x] Build the banned message from the stored account for the HTTP answer, endpoint after hooks and a magic-link redirect, keep the configured message for an empty or failing builder and for native calls, on three SQL engines ([test](../../../adapters/sqlstore/admin_banned_message_test.go#L22))
     - [x] `allowImpersonatingAdmins` ([test](../../../adapters/sqlstore/admin_policy_test.go#L288))
       - [x] Let an operator impersonate a protected holder only when AllowImpersonatingAdmins is set ([test](../../../adapters/sqlstore/admin_policy_test.go#L288))
   - `InferAdminRolesFromOption` — *not applicable: JavaScript only*
@@ -322,11 +323,13 @@
         - [x] Pass custom profile and phone roles to the plugin and enforce the phone grant on administrative updates ([test](../../../adapters/sqlstore/phone_admin_test.go#L38))
     - [ ] Access Control Usage
       - [x] Evaluate the authenticated caller’s grants and keep separate roles independent ([test](../../../adapters/sqlstore/admin_test.go#L137))
-      - [ ] Has Permission
+      - [x] Has Permission ([test](../../../adapters/sqlstore/admin_banned_message_test.go#L155))
         - [x] Check two resources that both carry actions in one request, and fail when one of them names an action the role lacks ([test](../../../adapters/sqlstore/admin_policy_test.go#L324))
+        - [x] Check a stored user's grants by id from server code without a session, reading the account's current role ([test](../../../adapters/sqlstore/admin_banned_message_test.go#L155))
       - [ ] `POST /admin/has-permission`
         - [x] Report success true for an administrator's user list check through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L758))
-        - [ ] Parameter `userId` (optional)
+        - [x] Parameter `userId` (optional) ([test](../../../adapters/sqlstore/admin_banned_message_test.go#L119))
+          - [x] Check a stored account's permissions by user ID from server code, honouring AdminUserIDs and refusing an unknown or empty ID ([test](../../../adapters/sqlstore/admin_banned_message_test.go#L119))
         - [x] Parameter `role` (optional) ([test](../../../plugins/admin/admin_test.go#L14))
           - [x] Evaluate a role passed directly, with no user id, against the default grants ([test](../../../plugins/admin/admin_test.go#L14))
         - [x] Parameter `permission` (optional) ([test](../../../adapters/sqlstore/admin_policy_test.go#L316))
@@ -378,3 +381,4 @@
       - [x] Expire a ban that gives no duration after the configured default duration ([test](../../../adapters/sqlstore/admin_policy_test.go#L249))
     - [ ] bannedUserMessage
       - [x] Use the configured denial message after successful password verification ([test](../../../adapters/sqlstore/admin_test.go#L181))
+      - [x] Answer a banned account with the configured message, or with one built from the account by BannedUserMessageFunc ([test](../../../adapters/sqlstore/admin_banned_message_test.go#L87))
