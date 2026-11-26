@@ -169,7 +169,7 @@ func TestEnterpriseOIDCRequestTrustedEndpoints(t *testing.T) {
 			discovered := map[string]any{"providerId": "acme", "issuer": idp.URL, "domain": "acme.example", "oidcConfig": map[string]any{"clientId": "enterprise-client", "clientSecret": "oidc-secret"}}
 			for _, g := range []map[string]string{nil, {"sso/register": "http://127.0.0.1:*"}, {"sign-in/sso": idp.URL}} {
 				grant = g
-				if w := h.register(owner, discovered); w.Code != 400 || refusal(w) != "discovery_private_host" || idp.discoveries.Load() != 0 {
+				if w := h.register(owner, discovered); w.Code != 400 || refusal(w) != "discovery_untrusted_origin" || idp.discoveries.Load() != 0 {
 					t.Fatal("registration discovery reached an issuer the request did not trust", g, w.Code, w.Body.String())
 				}
 			}
@@ -193,10 +193,17 @@ func TestEnterpriseOIDCRequestTrustedEndpoints(t *testing.T) {
 				t.Fatal("a skipDiscovery registration was refused", w.Code, w.Body.String())
 			}
 			grant = nil
-			for _, id := range []string{"acme", "lazy"} {
-				if w := h.call("POST", "sign-in/sso", "", map[string]any{"providerId": id, "callbackURL": "/home"}); w.Code != 400 || refusal(w) != "discovery_private_host" {
+			for id, code := range map[string]string{"acme": "discovery_private_host", "lazy": "discovery_untrusted_origin"} {
+				if w := h.call("POST", "sign-in/sso", "", map[string]any{"providerId": id, "callbackURL": "/home"}); w.Code != 400 || refusal(w) != code {
 					t.Fatal("a sign-in used endpoints the request did not trust", id, w.Code, w.Body.String())
 				}
+			}
+			// A discovery URL derived from the issuer is checked only when
+			// it is fetched.
+			public := map[string]any{"providerId": "public", "issuer": idp.URL, "domain": "public.example", "oidcConfig": map[string]any{"clientId": "enterprise-client", "clientSecret": "oidc-secret", "skipDiscovery": true,
+				"authorizationEndpoint": "https://idp.example.org/authorize", "tokenEndpoint": "https://idp.example.org/token", "jwksEndpoint": "https://idp.example.org/keys"}}
+			if w := h.register(owner, public); w.Code != 200 {
+				t.Fatal("a skipDiscovery registration with public endpoints was refused for its issuer", w.Code, w.Body.String())
 			}
 			grant = map[string]string{"sign-in/sso": idp.URL}
 			if w := h.call("POST", "sign-in/sso", "", map[string]any{"providerId": "lazy", "callbackURL": "/home"}); w.Code != 200 {
@@ -211,7 +218,8 @@ func TestEnterpriseOIDCRequestTrustedEndpoints(t *testing.T) {
 			}
 			tokens := idp.tokens.Load()
 			done := h.finish(pending)
-			if location, _ := url.Parse(done.Header().Get("Location")); location == nil || location.Path != "/retry" || idp.tokens.Load() != tokens || strings.Contains(strings.Join(done.Header().Values("Set-Cookie"), "\n"), "session_token=") {
+			if location, _ := url.Parse(done.Header().Get("Location")); location == nil || location.Path != "/retry" || location.Query().Get("error") != "discovery_failed" || location.Query().Get("error_description") == "" ||
+				idp.tokens.Load() != tokens || strings.Contains(strings.Join(done.Header().Values("Set-Cookie"), "\n"), "session_token=") {
 				t.Fatal("a callback reached a token endpoint its request did not trust", done.Code, done.Header().Get("Location"))
 			}
 			grant = map[string]string{"sign-in/sso": idp.URL, "sso/callback": idp.URL}

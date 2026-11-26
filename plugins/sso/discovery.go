@@ -33,6 +33,9 @@ func endpointURL(raw string) (*url.URL, error) {
 
 // checkEndpoint refuses a private or malformed endpoint unless trusted names
 // its exact origin.
+// checkEndpoint classifies the literal host only. A name that resolves to a
+// non-public address is refused when the server connects to it, not here,
+// where another runtime resolves it first.
 func checkEndpoint(trusted func(string) bool, raw string) error {
 	u, err := endpointURL(raw)
 	if err != nil {
@@ -69,10 +72,22 @@ func hydrate(ctx context.Context, trusted func(string) bool, client *http.Client
 	if cfg.TokenEndpointAuthentication != "" && cfg.TokenEndpointAuthentication != "client_secret_basic" && cfg.TokenEndpointAuthentication != "client_secret_post" && cfg.TokenEndpointAuthentication != privateKeyJWT {
 		return apiError(400, "Unsupported OpenID Connect client authentication method")
 	}
+	supplied := []string{cfg.DiscoveryEndpoint, cfg.AuthorizationEndpoint, cfg.TokenEndpoint, cfg.JWKSEndpoint, cfg.UserInfoEndpoint}
 	if cfg.DiscoveryEndpoint == "" {
 		cfg.DiscoveryEndpoint = strings.TrimRight(cfg.Issuer, "/") + "/.well-known/openid-configuration"
 	}
-	for _, raw := range []string{cfg.DiscoveryEndpoint, cfg.AuthorizationEndpoint, cfg.TokenEndpoint, cfg.JWKSEndpoint, cfg.UserInfoEndpoint} {
+	if _, err := endpointURL(cfg.DiscoveryEndpoint); err != nil {
+		return err
+	}
+	// Discovery takes a customer-supplied URL. Only contact an independently
+	// trusted origin. Never forward it to a redirect target. The trust check
+	// comes before the private-host check of the supplied endpoints, as in
+	// another runtime, and a discovery URL derived from the issuer is checked
+	// only when it is fetched.
+	if !skip && !trusted(cfg.DiscoveryEndpoint) {
+		return discoveryError(400, "discovery_untrusted_origin", "The discovery endpoint origin is not trusted")
+	}
+	for _, raw := range supplied {
 		if raw != "" {
 			if err := checkEndpoint(trusted, raw); err != nil {
 				return err
@@ -80,11 +95,6 @@ func hydrate(ctx context.Context, trusted func(string) bool, client *http.Client
 		}
 	}
 	if !skip {
-		// Discovery takes a customer-supplied URL. Only contact an independently
-		// trusted origin. Never forward it to a redirect target.
-		if !trusted(cfg.DiscoveryEndpoint) {
-			return discoveryError(400, "discovery_untrusted_origin", "The discovery endpoint origin is not trusted")
-		}
 		doc, err := fetchDiscovery(ctx, client, cfg.DiscoveryEndpoint)
 		if err != nil {
 			return err

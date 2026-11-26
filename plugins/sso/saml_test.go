@@ -106,6 +106,14 @@ func TestSAMLLogoutConfiguration(t *testing.T) {
 			t.Fatal("invalid logout request lifetime", ttl)
 		}
 	}
+	for _, ttl := range []time.Duration{-time.Second, time.Millisecond, 1500 * time.Millisecond} {
+		if _, e := New(Options{SAML: &SAMLOptions{RequestTTL: ttl}}); e == nil {
+			t.Fatal("invalid SAML request lifetime", ttl)
+		}
+	}
+	if _, e := New(Options{SAML: &SAMLOptions{RequestTTL: 2 * time.Minute}}); e != nil {
+		t.Fatal("a whole-second SAML request lifetime was refused", e)
+	}
 	for _, list := range [][]SAMLService{
 		{{Binding: saml.HTTPRedirectBinding, Location: "http://idp.example/logout"}},
 		{{Binding: saml.HTTPRedirectBinding, Location: "https://idp.example/logout?binding=x"}},

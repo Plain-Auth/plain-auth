@@ -319,6 +319,15 @@ func (o Options) finish(c auth.EndpointContext) (any, error) {
 		}
 		return enterpriseFailure(c, flow, "discovery_failed", "unexpected_discovery_error")
 	}
+	// The endpoints the server fetches are checked with the callback
+	// request's trusted origins, as another runtime checks them after
+	// runtime discovery, so a refusal is a discovery failure.
+	for _, v := range []string{p.OIDC.TokenEndpoint, p.OIDC.UserInfoEndpoint, p.OIDC.JWKSEndpoint} {
+		var ae *auth.APIError
+		if err := checkEndpoint(requestTrust(c.Request.Context(), c.Auth), v); v != "" && errors.As(err, &ae) {
+			return enterpriseFailure(c, flow, "discovery_failed", callbackDiscoveryMessage(ae))
+		}
+	}
 	cfg, err := o.oauthConfig(c, p)
 	if err != nil || cfg.RedirectURL != flow.RedirectURI {
 		return fail("invalid_provider")

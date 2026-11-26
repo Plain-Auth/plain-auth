@@ -29,6 +29,10 @@ type SAMLOptions struct {
 	EnableIDPInitiatedLogout bool
 	// LogoutRequestTTL defaults to five minutes.
 	LogoutRequestTTL time.Duration
+	// RequestTTL is how long a SAML sign-in's state and AuthnRequest stay
+	// valid, a positive whole number of seconds. Zero selects five minutes,
+	// the default of another runtime's requestTTL.
+	RequestTTL time.Duration
 	// AllowIDPInitiated is a host-owned directory policy. Nil disables unsolicited sign-in.
 	AllowIDPInitiated SAMLDirectoryPolicy
 	// IDPInitiatedCallbackURL is the public landing page when a directory provides none.
@@ -68,9 +72,19 @@ func (o SAMLOptions) clockSkew() time.Duration {
 	return min(skew, saml.MaxClockSkew)
 }
 
+func (o SAMLOptions) requestTTL() time.Duration {
+	if o.RequestTTL == 0 {
+		return 5 * time.Minute
+	}
+	return o.RequestTTL
+}
+
 func (o SAMLOptions) validate() error {
 	if o.LogoutRequestTTL < 0 || o.LogoutRequestTTL != 0 && (o.LogoutRequestTTL < time.Second || o.LogoutRequestTTL%time.Second != 0) {
 		return errors.New("sso: SAML logout lifetime must be a positive whole number of seconds")
+	}
+	if o.RequestTTL < 0 || o.RequestTTL != 0 && (o.RequestTTL < time.Second || o.RequestTTL%time.Second != 0) {
+		return errors.New("sso: SAML request lifetime must be a positive whole number of seconds")
 	}
 	if o.EnableIDPInitiatedLogout && !o.EnableSingleLogout {
 		return errors.New("sso: IdP-initiated logout requires single logout")
@@ -317,16 +331,33 @@ func (o Options) samlSP(c auth.EndpointContext, p Provider) (*saml.ServiceProvid
 	// Each restriction must name this SP or the configured audience, and a
 	// configured audience must appear in one of them. The descriptions are
 	// the ones another runtime sends from its two checks.
+	// Audience values are trimmed and empty ones dropped first, so an
+	// AudienceRestriction without values counts as missing, as in another
+	// runtime.
 	sp.ValidateAudienceRestriction = func(a *saml.Assertion) error {
-		if a.Conditions == nil || len(a.Conditions.AudienceRestrictions) == 0 {
+		var groups [][]string
+		values := 0
+		if a.Conditions != nil {
+			for _, group := range a.Conditions.AudienceRestrictions {
+				var audiences []string
+				for _, v := range group.AllAudiences() {
+					if value := strings.TrimSpace(v.Value); value != "" {
+						audiences = append(audiences, value)
+					}
+				}
+				groups = append(groups, audiences)
+				values += len(audiences)
+			}
+		}
+		if values == 0 {
 			return errAudienceMissing
 		}
 		found := cfg.Audience == ""
-		for _, group := range a.Conditions.AudienceRestrictions {
+		for _, audiences := range groups {
 			matched := false
-			for _, v := range group.AllAudiences() {
-				configured := cfg.Audience != "" && v.Value == cfg.Audience
-				matched = matched || v.Value == spEntity || configured
+			for _, v := range audiences {
+				configured := cfg.Audience != "" && v == cfg.Audience
+				matched = matched || v == spEntity || configured
 				found = found || configured
 			}
 			if !matched {
@@ -404,7 +435,7 @@ func (o Options) samlStart(c auth.EndpointContext, p BrowserProvider, proof, sig
 	if proof {
 		ref += ".dns"
 	}
-	flow, err := c.BeginEnterprisePostFlow(p.ProviderID, ref, sp.AcsURL.String(), signup)
+	flow, err := c.BeginEnterprisePostFlow(p.ProviderID, ref, sp.AcsURL.String(), signup, o.SAML.requestTTL())
 	if err != nil {
 		return nil, err
 	}

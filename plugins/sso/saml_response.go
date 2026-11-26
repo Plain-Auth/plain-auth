@@ -462,6 +462,10 @@ func (o Options) samlFinish(c auth.EndpointContext) (any, error) {
 	if err != nil {
 		return fail("invalid_saml_response")
 	}
+	// Request correlation cannot be switched off: the AuthnRequest ID is this
+	// browser's sign-in state, so disabling it, as another runtime's
+	// enableInResponseToValidation does, would accept unsolicited responses
+	// outside AllowIDPInitiated and its Origin checks.
 	requestID := "_" + flow.Nonce
 	requestIDs := []string{requestID}
 	if unsolicited {

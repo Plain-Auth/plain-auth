@@ -41,6 +41,9 @@ func logoutSignatureAllowed(algorithm string) bool {
 	return algorithm == prefix+"256" || algorithm == prefix+"384" || algorithm == prefix+"512"
 }
 
+// receiveIDPLogout accepts only a signed logout request. IdP logout
+// messages must be signed; another runtime accepts unsigned ones unless
+// wantLogoutRequestSigned is set, which lets any page end a user's sessions.
 func (o Options) receiveIDPLogout(c auth.EndpointContext, q url.Values, store SAMLLogoutStore) (any, error) {
 	for key, values := range q {
 		switch key {

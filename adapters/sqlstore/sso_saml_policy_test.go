@@ -586,6 +586,19 @@ func TestEnterpriseSAMLResponsePolicy(t *testing.T) {
 				if location, session := run("plain", restrict()); !refused(location, session, "SAML assertion is missing an AudienceRestriction") {
 					t.Fatal("an assertion without an AudienceRestriction was not reported as missing one", location)
 				}
+				// Audiences are trimmed, and a restriction holding only empty
+				// ones counts as missing.
+				for _, empty := range []string{"", "   "} {
+					if location, session := run("plain", restrict([]string{empty})); !refused(location, session, "SAML assertion is missing an AudienceRestriction") {
+						t.Fatal("an AudienceRestriction without values was not reported as missing", location)
+					}
+				}
+				if location, session := run("plain", restrict([]string{sp("plain")}, []string{""})); !refused(location, session, "SAML assertion audience does not match this Service Provider") {
+					t.Fatal("an empty restriction beside a matching one was accepted", location)
+				}
+				if location, session := run("plain", restrict([]string{" " + sp("plain") + " "})); !signedIn(location, session) {
+					t.Fatal("a padded SP audience was refused", location)
+				}
 			})
 			t.Run("timestamps", func(t *testing.T) {
 				p := newSAMLPolicy(t, dialect)

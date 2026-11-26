@@ -192,6 +192,41 @@ func TestEnterpriseSAMLDefaults(t *testing.T) {
 				t.Fatal("the new user's name did not join the first and last names", name, err)
 			}
 
+			// The SAML state lasts the five-minute request lifetime, and a
+			// response after it answers 400 without a session.
+			req, state = start()
+			var expires time.Time
+			must(store.db.QueryRowContext(ctx, store.bind(`SELECT "expiresAt" FROM "verification" WHERE "identifier" LIKE 'oauth-state:%' ORDER BY "expiresAt" DESC LIMIT 1`)).Scan(&expires))
+			if left := time.Until(expires); !strings.HasSuffix(state.Name, "saml_state") || state.MaxAge != 300 || left < 4*time.Minute || left > 5*time.Minute+5*time.Second {
+				t.Fatal("the SAML state did not last five minutes", state.Name, state.MaxAge, left)
+			}
+			_, err = store.db.ExecContext(ctx, store.bind(`UPDATE "verification" SET "expiresAt"=? WHERE "identifier" LIKE 'oauth-state:%'`), store.date(time.Now().Add(-time.Minute)))
+			must(err)
+			if done := post(req, state, assertion(req, "late", nil, attr("email", "late@acme.example"))); done.Code != 400 || sessionCookie(done) || stored("late@acme.example") {
+				t.Fatal("a SAML response after the request lifetime signed in", done.Code, done.Header().Get("Location"))
+			}
+			// RequestTTL sets the SAML lifetime; an OIDC attempt keeps ten minutes.
+			short, err := sso.New(sso.Options{SAML: &sso.SAMLOptions{RequestTTL: 2 * time.Minute}})
+			must(err)
+			shortHost, err := auth.New(auth.Options{BaseURL: "https://service.test", BasePath: "/identity", RateLimit: new(bool), Store: store, Secret: strings.Repeat("k", 32), Plugins: []auth.Plugin{short}})
+			must(err)
+			for _, c := range []struct {
+				h        *auth.Auth
+				provider string
+				age      int
+			}{{shortHost, "acme", 120}, {host, "oidc-one", 600}} {
+				req := httptest.NewRequest("POST", "https://service.test/identity/sign-in/sso", strings.NewReader(`{"providerId":"`+c.provider+`","callbackURL":"/home"}`))
+				req.Header.Set("Content-Type", "application/json")
+				req.Header.Set("Origin", "https://service.test")
+				w := httptest.NewRecorder()
+				c.h.ServeHTTP(w, req)
+				cookies := w.Result().Cookies()
+				must(store.db.QueryRowContext(ctx, store.bind(`SELECT "expiresAt" FROM "verification" WHERE "identifier" LIKE 'oauth-state:%' ORDER BY "expiresAt" DESC LIMIT 1`)).Scan(&expires))
+				if left := time.Until(expires); w.Code != 200 || len(cookies) == 0 || cookies[0].MaxAge != c.age || left < time.Duration(c.age-60)*time.Second || left > time.Duration(c.age+5)*time.Second {
+					t.Fatal("a sign-in state did not last its lifetime", c.provider, w.Code, cookies, left)
+				}
+			}
+
 			req, state = start()
 			done = post(req, state, assertion(req, "grace", func(a *saml.Assertion) { a.Conditions.AudienceRestrictions[0].Audience.Value = idpEntity }, attr("email", "grace@acme.example")))
 			if !strings.Contains(done.Header().Get("Location"), "error=invalid_saml_response") || sessionCookie(done) || stored("grace@acme.example") {

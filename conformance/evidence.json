@@ -41835,6 +41835,11 @@
       "test": "adapters/sqlstore/sso_saml_policy_test.go",
       "marker": "t.Fatal(\"an assertion naming only the SP was accepted under a configured audience\", location)",
       "complete": true
+    },
+    {
+      "label": "Count a restriction holding only empty or blank audiences as missing, refuse an empty one beside a match, and trim audience values, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "t.Fatal(\"an AudienceRestriction without values was not reported as missing\""
     }
   ],
   "plugin-symbol/sso/SAMLConfig/idpInitiatedCallbackUrl": [
@@ -41980,6 +41985,11 @@
       "label": "Default the inline IdP metadata limit to 100 KiB and reject a negative limit or one above 1 MiB",
       "test": "plugins/sso/saml_test.go",
       "marker": "func TestInlineSAMLMetadataSizeOption("
+    },
+    {
+      "label": "Keep the SAML sign-in state for RequestTTL, five minutes by default, while an OIDC attempt keeps ten, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_defaults_test.go",
+      "marker": "t.Fatal(\"a sign-in state did not last its lifetime\""
     }
   ],
   "plugin-symbol/sso/SSOProvider": [
@@ -42459,6 +42469,11 @@
       "label": "Trust only exact per-request origins for server-side requests and keep the static check unchanged",
       "test": "request_origins_test.go",
       "marker": "t.Fatal(\"the static check trusted a per-request origin\")"
+    },
+    {
+      "label": "Check an issuer-derived discovery URL only when it is fetched, answer discovery_untrusted_origin before the private-host check, and redirect an untrusted callback fetch with discovery_failed",
+      "test": "adapters/sqlstore/sso_request_origins_test.go",
+      "marker": "t.Fatal(\"a skipDiscovery registration with public endpoints was refused for its issuer\""
     }
   ],
   "docs/content/docs/plugins/sso/oidc.mdx#L108": [
@@ -42936,6 +42951,12 @@
       "label": "Redirect with error=unsolicited_response for an IdP-initiated response when no directory policy allows it",
       "test": "adapters/sqlstore/sso_saml_portal_test.go",
       "marker": "for _, h := range []http.Handler{disabled, node} {"
+    },
+    {
+      "label": "Refuse a SAML response after the five-minute request lifetime with 400 and no session; request correlation cannot be turned off, a documented deviation, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_defaults_test.go",
+      "marker": "t.Fatal(\"a SAML response after the request lifetime signed in\"",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/sso/saml-security.mdx#L17/Replay": [

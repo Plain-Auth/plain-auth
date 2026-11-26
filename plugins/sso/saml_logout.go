@@ -224,6 +224,9 @@ func (o Options) startLogout(c auth.EndpointContext, _ Store, actor Actor) (any,
 	return c.SAMLLogoutStarted(actor.SessionToken, destination.String(), cookie, ttl), nil
 }
 
+// finishLogout accepts only a signed logout response. IdP logout messages
+// must be signed; another runtime accepts unsigned ones unless
+// wantLogoutResponseSigned is set, which lets any page end a user's sessions.
 func (o Options) finishLogout(c auth.EndpointContext) (any, error) {
 	if !o.SAML.EnableSingleLogout {
 		return nil, errLogoutDisabled

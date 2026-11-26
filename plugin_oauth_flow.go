@@ -31,13 +31,14 @@ func withEnterpriseIssuerLogin(r *http.Request, a *Auth, query string, resume OA
 // only a random browser binding in the cookie; OAuthStateCookie seals the
 // whole flow into the cookie instead.
 func (c EndpointContext) BeginEnterpriseFlow(provider, reference, redirectURI string, signup bool) (OAuthFlow, error) {
-	return c.beginEnterpriseFlow(provider, reference, redirectURI, signup, false)
+	return c.beginEnterpriseFlow(provider, reference, redirectURI, signup, false, 0)
 }
 
 // BeginEnterprisePostFlow binds a cross-site form return to an independent
-// Secure, SameSite=None cookie. The ordinary session cookie may be absent on POST.
-func (c EndpointContext) BeginEnterprisePostFlow(provider, reference, redirectURI string, signup bool) (OAuthFlow, error) {
-	return c.beginEnterpriseFlow(provider, reference, redirectURI, signup, true)
+// Secure, SameSite=None cookie. The ordinary session cookie may be absent on
+// POST. The flow lasts lifetime, or ten minutes when lifetime is zero.
+func (c EndpointContext) BeginEnterprisePostFlow(provider, reference, redirectURI string, signup bool, lifetime time.Duration) (OAuthFlow, error) {
+	return c.beginEnterpriseFlow(provider, reference, redirectURI, signup, true, lifetime)
 }
 func (a *Auth) enterpriseStateCookie(form bool, value string, age int) *http.Cookie {
 	if !form {
@@ -48,14 +49,17 @@ func (a *Auth) enterpriseStateCookie(form bool, value string, age int) *http.Coo
 	cookie.Secure = true
 	return cookie
 }
-func (c EndpointContext) beginEnterpriseFlow(provider, reference, redirectURI string, signup, form bool) (OAuthFlow, error) {
+func (c EndpointContext) beginEnterpriseFlow(provider, reference, redirectURI string, signup, form bool, lifetime time.Duration) (OAuthFlow, error) {
 	a := c.Auth
+	if lifetime <= 0 {
+		lifetime = 10 * time.Minute
+	}
 	if _, ok := c.Store().(OAuthFlowStore); !ok && a.opts.OAuthStateStrategy != OAuthStateCookie {
 		return OAuthFlow{}, errors.New("enterprise sign-in requires an OAuth flow store")
 	}
 	now := a.now().UTC()
 	browser := randomID()
-	f := OAuthFlow{State: randomID(), Provider: provider, ProviderReference: reference, RedirectURI: redirectURI, Verifier: oauth2.GenerateVerifier(), Nonce: randomID(), RequestSignUp: signup, ExpiresAt: now.Add(10 * time.Minute)}
+	f := OAuthFlow{State: randomID(), Provider: provider, ProviderReference: reference, RedirectURI: redirectURI, Verifier: oauth2.GenerateVerifier(), Nonce: randomID(), RequestSignUp: signup, ExpiresAt: now.Add(lifetime)}
 	// Only the OIDC authorization-code flow carries an issuer request across
 	// the provider redirect. The dispatcher has verified this query at entry.
 	if login, ok := c.Request.Context().Value(enterpriseIssuerLoginKey{a}).(enterpriseIssuerLogin); !form && ok {
@@ -103,7 +107,7 @@ func (c EndpointContext) beginEnterpriseFlow(provider, reference, redirectURI st
 	if form {
 		name = "saml_state"
 	}
-	if err := a.keepOAuthFlow(c.Request.Context(), c.ResponseHeader, name, a.enterpriseStateCookie(form, "", 600), browser, f, now); err != nil {
+	if err := a.keepOAuthFlow(c.Request.Context(), c.ResponseHeader, name, a.enterpriseStateCookie(form, "", int(lifetime/time.Second)), browser, f, now); err != nil {
 		return OAuthFlow{}, err
 	}
 	return f, nil
