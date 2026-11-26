@@ -122,10 +122,15 @@ func samlAssertionCount(raw []byte) int {
 	return -1
 }
 
-// The cleartext HTTP-POST profile has one directly signed assertion.
+// errAssertionUnsigned refuses an assertion without its own signature where
+// the directory requires one.
+var errAssertionUnsigned = errors.New("SAML assertion signature is required")
+
+// The cleartext HTTP-POST profile has one assertion, signed directly or,
+// when the directory does not require that, through its signed Response.
 // This pass bounds the XML and checks the envelope;
 // all identity data below comes from the library's authenticated assertion.
-func assertionEnvelope(raw []byte, acs, requestID string) (string, error) {
+func assertionEnvelope(raw []byte, acs, requestID string, requireAssertionSig bool) (string, error) {
 	const protocol = "urn:oasis:names:tc:SAML:2.0:protocol"
 	const assertion = "urn:oasis:names:tc:SAML:2.0:assertion"
 	const ds = "http://www.w3.org/2000/09/xmldsig#"
@@ -146,7 +151,7 @@ func assertionEnvelope(raw []byte, acs, requestID string) (string, error) {
 	d := xml.NewDecoder(bytes.NewReader(raw))
 	var stack []xml.Name
 	var id string
-	roots, signatures, elements := 0, 0, 0
+	roots, signatures, responseSignatures, elements := 0, 0, 0, 0
 	for {
 		tok, err := d.Token()
 		if err == io.EOF {
@@ -194,6 +199,8 @@ func assertionEnvelope(raw []byte, acs, requestID string) (string, error) {
 				}
 			case len(stack) == 2 && stack[1] == (xml.Name{Space: assertion, Local: "Assertion"}) && t.Name == (xml.Name{Space: ds, Local: "Signature"}):
 				signatures++
+			case len(stack) == 1 && t.Name == (xml.Name{Space: ds, Local: "Signature"}):
+				responseSignatures++
 			}
 			stack = append(stack, t.Name)
 		case xml.EndElement:
@@ -204,10 +211,27 @@ func assertionEnvelope(raw []byte, acs, requestID string) (string, error) {
 			}
 		}
 	}
-	if id == "" || signatures != 1 {
+	if id == "" {
 		return "", errSAMLResponse
 	}
-	return id, nil
+	return id, signaturePolicy(signatures, responseSignatures, requireAssertionSig)
+}
+
+// signaturePolicy accepts one assertion signature, or none inside a Response
+// with one direct signature when the directory does not require the
+// assertion's own. The library verifies the Response signature and reads the
+// assertion from the signed element, so response-only signing cannot be
+// wrapped.
+func signaturePolicy(assertion, response int, requireAssertionSig bool) error {
+	switch {
+	case assertion > 1 || response > 1:
+		return errSAMLResponse
+	case assertion == 0 && requireAssertionSig:
+		return errAssertionUnsigned
+	case assertion == 0 && response != 1:
+		return errSAMLResponse
+	}
+	return nil
 }
 func samlProfile(a *saml.Assertion, m SAMLMapping, trust bool) (auth.OAuthProfile, error) {
 	if a.Subject == nil || a.Subject.NameID == nil {
@@ -492,15 +516,17 @@ func (o Options) samlFinish(c auth.EndpointContext) (any, error) {
 	case n > 1:
 		return enterpriseFailure(c, flow, "saml_multiple_assertions", fmt.Sprintf("SAML response contains %d assertions, expected exactly 1", n))
 	}
-	id, err := assertionDocumentID(raw, sp, requestID, o.SAML.Algorithms)
+	id, err := assertionDocumentID(raw, sp, requestID, o.SAML.Algorithms, p.SAML.assertionSignatureRequired())
 	if errors.Is(err, errUnknownRequest) {
 		return enterpriseFailure(c, flow, "invalid_saml_response", "Unknown or expired request ID")
 	}
 	if errors.Is(err, errUnrequested) {
 		return enterpriseFailure(c, flow, "unsolicited_response", notAllowed)
 	}
-	if errors.Is(err, errCBCUnsigned) {
-		return enterpriseFailure(c, flow, "invalid_saml_response", errCBCUnsigned.Error())
+	for _, described := range []error{errCBCUnsigned, errAssertionUnsigned} {
+		if errors.Is(err, described) {
+			return enterpriseFailure(c, flow, "invalid_saml_response", described.Error())
+		}
 	}
 	var policy *auth.APIError
 	if errors.As(err, &policy) && strings.HasPrefix(policy.Code, "SAML_") {

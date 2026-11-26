@@ -215,6 +215,11 @@ func TestEnterpriseSAMLDocumentation(t *testing.T) {
 		if registered != enabled {
 			t.Fatal("wrong registration options", enabled)
 		}
+		if enabled {
+			if signed := node(schema, "properties", "samlConfig", "properties", "wantAssertionsSigned"); signed["type"] != "boolean" || signed["const"] != nil {
+				t.Fatal("wantAssertionsSigned is not described as a boolean", signed)
+			}
+		}
 		const startLogout = "/sso/saml2/logout/{providerId}"
 		const finishLogout = "/sso/saml2/sp/slo/{providerId}"
 		// The logout routes are mounted with SAML and answer

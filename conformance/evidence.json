@@ -41888,6 +41888,17 @@
       "label": "Refuse an encrypted response whose assertion is unsigned, a plaintext assertion and one encrypted for another recipient",
       "test": "adapters/sqlstore/sso_saml_test.go",
       "marker": "for _, mode := range []string{\"plaintext\", \"different recipient certificate\", \"only the response is signed\"} {"
+    },
+    {
+      "label": "Accept a response-only signature with wantAssertionsSigned false, plain or encrypted, require the assertion's own signature when the field is omitted (a documented deviation) with 'SAML assertion signature is required', and advertise the policy in SP metadata, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "t.Fatal(\"a response-only signature was refused with wantAssertionsSigned false\"",
+      "complete": true
+    },
+    {
+      "label": "Advertise WantAssertionsSigned true or false in the SP metadata",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "t.Fatal(\"the SP metadata did not advertise the assertion signature policy\""
     }
   ],
   "plugin-symbol/sso/SAMLConfig/authnRequestsSigned": [
@@ -42911,6 +42922,12 @@
       "label": "Reject an encrypted assertion whose only signature is on the response",
       "test": "adapters/sqlstore/sso_saml_test.go",
       "marker": "t.Fatal(\"unexpected session or redirect for\", mode, status)"
+    },
+    {
+      "label": "Require the assertion's own signature unless wantAssertionsSigned is false, and refuse a response signed nowhere, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "t.Fatal(\"a response-only signature passed for a directory requiring the assertion's own\"",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/sso/saml-security.mdx#L13/Algorithms": [
@@ -43216,6 +43233,12 @@
       "label": "Redirect with error=invalid_saml_response when an encrypted assertion lacks its own signature",
       "test": "adapters/sqlstore/sso_saml_test.go",
       "marker": "t.Fatal(\"unexpected session or redirect for\", mode, status)"
+    },
+    {
+      "label": "Redirect with invalid_saml_response and 'SAML assertion signature is required' when a required assertion signature is missing, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "t.Fatal(\"a response-only signature passed for a directory requiring the assertion's own\"",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/sso/saml.mdx#L104": [

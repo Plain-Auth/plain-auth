@@ -453,6 +453,85 @@ func TestEnterpriseSAMLResponsePolicy(t *testing.T) {
 					t.Fatal("an RSA-SHA512 response around an encrypted assertion escaped the allow-list", location)
 				}
 			})
+			t.Run("assertion signatures", func(t *testing.T) {
+				p := newSAMLPolicy(t, dialect)
+				optional := func(c *sso.SAMLConfig) { c.WantAssertionsSigned = new(bool) }
+				p.directory("strict", nil)
+				p.directory("optional", optional)
+				p.directory("sealed-strict", func(c *sso.SAMLConfig) { c.IDPMetadata.IsAssertionEncrypted = true })
+				p.directory("sealed-optional", func(c *sso.SAMLConfig) { optional(c); c.IDPMetadata.IsAssertionEncrypted = true })
+				h := p.host(sso.SAMLOptions{Encryption: p.recipient}, nil)
+				// The IdP signs only the Response: the assertion loses its
+				// signature, and is encrypted again for sealed directories.
+				p.respond = func(req *saml.IdpAuthnRequest) {
+					req.Assertion.Signature = nil
+					el := req.Assertion.Element()
+					if req.AssertionEl.Tag == "EncryptedAssertion" {
+						doc := etree.NewDocument()
+						doc.SetRoot(el)
+						raw, err := doc.WriteToBytes()
+						if err != nil {
+							t.Fatal(err)
+						}
+						cipher := xmlenc.OAEP_SHA256()
+						cipher.BlockCipher = xmlenc.AES256GCM
+						data, err := cipher.Encrypt(p.recipient.Certificate, raw, nil)
+						if err != nil {
+							t.Fatal(err)
+						}
+						el = etree.NewElement("saml:EncryptedAssertion")
+						el.AddChild(data)
+					}
+					req.AssertionEl = el
+				}
+				defer func() { p.respond = nil }()
+				run := func(id string, form func(url.Values)) (*url.URL, bool) {
+					t.Helper()
+					req, state := p.start(h, id)
+					return samlOutcome(t, p.finish(h, id, req, state, nil, nil, form))
+				}
+				unsignedResponse := func(form url.Values) {
+					raw, err := base64.StdEncoding.DecodeString(form.Get("SAMLResponse"))
+					doc := etree.NewDocument()
+					if err != nil || doc.ReadFromBytes(raw) != nil {
+						t.Fatal("unreadable SAML response", err)
+					}
+					for _, c := range doc.Root().ChildElements() {
+						if c.Tag == "Signature" {
+							doc.Root().RemoveChild(c)
+						}
+					}
+					out, err := doc.WriteToBytes()
+					if err != nil {
+						t.Fatal(err)
+					}
+					form.Set("SAMLResponse", base64.StdEncoding.EncodeToString(out))
+				}
+				signedIn := func(location *url.URL, session bool) bool {
+					return location.String() == "https://service.test/home" && session
+				}
+				required := func(location *url.URL, session bool) bool {
+					return location.Path == "/retry" && location.Query().Get("error") == "invalid_saml_response" && location.Query().Get("error_description") == "SAML assertion signature is required" && !session
+				}
+				for _, id := range []string{"strict", "sealed-strict"} {
+					if location, session := run(id, nil); !required(location, session) {
+						t.Fatal("a response-only signature passed for a directory requiring the assertion's own", id, location)
+					}
+				}
+				for _, id := range []string{"optional", "sealed-optional"} {
+					if location, session := run(id, nil); !signedIn(location, session) {
+						t.Fatal("a response-only signature was refused with wantAssertionsSigned false", id, location)
+					}
+				}
+				if location, session := run("optional", unsignedResponse); location.Query().Get("error") != "invalid_saml_response" || session {
+					t.Fatal("a response signed nowhere was accepted", location)
+				}
+				for id, want := range map[string]string{"strict": `WantAssertionsSigned="true"`, "optional": `WantAssertionsSigned="false"`} {
+					if w := p.call(h, "GET", "sso/saml2/sp/metadata?providerId="+id, nil); w.Code != 200 || !strings.Contains(w.Body.String(), want) {
+						t.Fatal("the SP metadata did not advertise the assertion signature policy", id, w.Body.String())
+					}
+				}
+			})
 			t.Run("registration algorithms", func(t *testing.T) {
 				p := newSAMLPolicy(t, dialect)
 				def := p.host(sso.SAMLOptions{}, nil)

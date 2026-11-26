@@ -240,7 +240,7 @@ func DecodeSAMLConfig(raw []byte) (*SAMLConfig, error) {
 	if d.Decode(&c) != nil || d.Decode(&struct{}{}) != io.EOF {
 		return nil, ErrInvalidSAML
 	}
-	if !validSAMLLanding(c.IDPInitiatedCallbackURL) || strings.Contains(c.CallbackURL, "#") || c.EntryPoint == "" || (c.IDPMetadata.EntityID == "" && c.IDPMetadata.Metadata == "") || c.WantAssertionsSigned != nil && !*c.WantAssertionsSigned {
+	if !validSAMLLanding(c.IDPInitiatedCallbackURL) || strings.Contains(c.CallbackURL, "#") || c.EntryPoint == "" || (c.IDPMetadata.EntityID == "" && c.IDPMetadata.Metadata == "") {
 		return nil, ErrInvalidSAML
 	}
 	if _, err := logoutLocation(c.IDPMetadata.SingleLogoutService); err != nil {
@@ -255,6 +255,15 @@ func DecodeSAMLConfig(raw []byte) (*SAMLConfig, error) {
 	}
 	return &c, nil
 }
+
+// assertionSignatureRequired reports whether the assertion needs its own
+// signature. An omitted wantAssertionsSigned requires it, where another
+// runtime defaults to false: directories stored before false was accepted
+// keep their policy.
+func (c SAMLConfig) assertionSignatureRequired() bool {
+	return c.WantAssertionsSigned == nil || *c.WantAssertionsSigned
+}
+
 func samlACS(c auth.EndpointContext, id string) (string, error) {
 	return c.CallbackURL(strings.TrimRight(c.Auth.BasePath(), "/") + "/sso/saml2/sp/acs/" + id)
 }
@@ -417,8 +426,10 @@ func (o Options) samlMetadata(c auth.EndpointContext) (any, error) {
 		}
 	}
 	meta := sp.Metadata()
+	wantAssertionsSigned := p.SAML.assertionSignatureRequired()
 	for i := range meta.SPSSODescriptors {
 		desc := &meta.SPSSODescriptors[i]
+		desc.WantAssertionsSigned = &wantAssertionsSigned
 		if logout {
 			desc.AuthnRequestsSigned = &signAuthentication
 		} else {

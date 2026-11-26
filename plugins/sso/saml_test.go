@@ -18,7 +18,16 @@ import (
 
 func TestSAMLConfigurationModes(t *testing.T) {
 	const supported = `{"entryPoint":"https://idp.example/sso","idpMetadata":{"entityID":"urn:example:idp"}`
-	for _, suffix := range []string{`,"wantAssertionsSigned":false}`, `,"spMetadata":{"metadata":"<xml/>"}}`, `,"privateKey":"unused"}`, `,"spMetadata":{"encPrivateKey":"unused"}}`, `,"spMetadata":{"encPrivateKeyPass":"unused"}}`, `,"idpInitiatedCallbackUrl":"not a landing URL"}`, `}{ }`} {
+	for _, signed := range []string{"true", "false"} {
+		v, err := DecodeSAMLConfig([]byte(supported + `,"wantAssertionsSigned":` + signed + `}`))
+		if err != nil || v.assertionSignatureRequired() != (signed == "true") {
+			t.Fatal("wantAssertionsSigned was refused or ignored", signed, err)
+		}
+	}
+	if v, err := DecodeSAMLConfig([]byte(supported + `}`)); err != nil || !v.assertionSignatureRequired() {
+		t.Fatal("an omitted wantAssertionsSigned did not require the assertion's signature", err)
+	}
+	for _, suffix := range []string{`,"spMetadata":{"metadata":"<xml/>"}}`, `,"privateKey":"unused"}`, `,"spMetadata":{"encPrivateKey":"unused"}}`, `,"spMetadata":{"encPrivateKeyPass":"unused"}}`, `,"idpInitiatedCallbackUrl":"not a landing URL"}`, `}{ }`} {
 		if _, err := DecodeSAMLConfig([]byte(supported + suffix)); err == nil {
 			t.Errorf("unexpected supported mode %s", suffix)
 		}
@@ -245,17 +254,31 @@ func TestSAMLAssertionEnvelopeCount(t *testing.T) {
 	response := func(children ...string) []byte {
 		return []byte(`<samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" xmlns:ds="http://www.w3.org/2000/09/xmldsig#" Destination="` + acs + `" InResponseTo="` + request + `">` + strings.Join(children, "") + `</samlp:Response>`)
 	}
-	if id, err := assertionEnvelope(response(assertion("_one", "")), acs, request); err != nil || id != "_one" {
+	if id, err := assertionEnvelope(response(assertion("_one", "")), acs, request, true); err != nil || id != "_one" {
 		t.Fatal("a response with one signed assertion failed the envelope check", id, err)
 	}
-	if _, err := assertionEnvelope(response(assertion("_first", ""), assertion("_second", "")), acs, request); err == nil {
+	if _, err := assertionEnvelope(response(assertion("_first", ""), assertion("_second", "")), acs, request, true); err == nil {
 		t.Fatal("a response with two assertions passed the envelope check")
 	}
-	if _, err := assertionEnvelope(response(assertion("_outer", `<saml:Advice>`+assertion("_inner", "")+`</saml:Advice>`)), acs, request); err == nil {
+	if _, err := assertionEnvelope(response(assertion("_outer", `<saml:Advice>`+assertion("_inner", "")+`</saml:Advice>`)), acs, request, true); err == nil {
 		t.Fatal("an assertion nested in another assertion passed the envelope check")
 	}
-	if _, err := assertionEnvelope(response(), acs, request); err == nil {
+	if _, err := assertionEnvelope(response(), acs, request, true); err == nil {
 		t.Fatal("a response without an assertion passed the envelope check")
+	}
+	// Response-only signing passes only when the directory allows it, and
+	// never with two Response signatures or none at all.
+	unsigned := `<saml:Assertion ID="_bare"></saml:Assertion>`
+	if _, err := assertionEnvelope(response(`<ds:Signature/>`, unsigned), acs, request, true); !errors.Is(err, errAssertionUnsigned) {
+		t.Fatal("a response-only signature passed while the assertion signature was required", err)
+	}
+	if id, err := assertionEnvelope(response(`<ds:Signature/>`, unsigned), acs, request, false); err != nil || id != "_bare" {
+		t.Fatal("a response-only signature failed while the assertion signature was optional", id, err)
+	}
+	for _, raw := range [][]byte{response(unsigned), response(`<ds:Signature/>`, `<ds:Signature/>`, unsigned)} {
+		if _, err := assertionEnvelope(raw, acs, request, false); !errors.Is(err, errSAMLResponse) {
+			t.Fatal("an unsigned or doubly signed response passed the envelope check", err)
+		}
 	}
 	for raw, want := range map[string]int{
 		string(response()): 0, string(response(assertion("_one", ""))): 1, string(response(enc)): 1,

@@ -148,6 +148,17 @@ func assertionShape(root *etree.Element) (assertions, encrypted, data, keys, enc
 	return
 }
 
+// directSignatures counts e's Signature children in any namespace.
+func directSignatures(e *etree.Element) int {
+	n := 0
+	for _, child := range e.ChildElements() {
+		if child.Tag == "Signature" {
+			n++
+		}
+	}
+	return n
+}
+
 func inlineCipherValue(parent *etree.Element) bool {
 	cd := uniqueChild(parent, encryptionNS, "CipherData")
 	value := uniqueChild(cd, encryptionNS, "CipherValue")
@@ -160,7 +171,7 @@ func inlineCipherValue(parent *etree.Element) bool {
 // Another runtime decrypts it unsigned.
 var errCBCUnsigned = errors.New("SAML response must be signed when the assertion is encrypted with AES-CBC")
 
-func encryptedAssertionID(raw []byte, acs, requestID string, key *rsa.PrivateKey, roots []*x509.Certificate, algorithms SAMLAlgorithms) (string, error) {
+func encryptedAssertionID(raw []byte, acs, requestID string, key *rsa.PrivateKey, roots []*x509.Certificate, algorithms SAMLAlgorithms, requireAssertionSig bool) (string, error) {
 	response, err := boundedSAMLTree(raw)
 	if err != nil || !namedElement(response, samlProtocolNS, "Response") || uniqueAttribute(response, "Destination") != acs {
 		return "", errSAMLResponse
@@ -192,17 +203,25 @@ func encryptedAssertionID(raw []byte, acs, requestID string, key *rsa.PrivateKey
 			return "", errSAMLResponse
 		}
 	}
-	// The library accepts a signed outer response without an assertion signature.
-	// Inspect the decrypted shape here to require a directly signed assertion in
-	// both cases. ParseXMLResponse then verifies the original signatures, decrypts
-	// the original document and validates its subject and conditions.
+	// The library accepts a signed outer response without an assertion
+	// signature. Inspect the decrypted shape here to require a directly signed
+	// assertion unless the directory accepts response-only signing.
+	// ParseXMLResponse then verifies the original signatures, decrypts the
+	// original document and validates its subject and conditions.
 	plaintext, err := xmlenc.Decrypt(key, ciphertext)
 	if err != nil {
 		return "", errSAMLResponse
 	}
 	assertion, err := boundedSAMLTree(plaintext)
-	if err != nil || !namedElement(assertion, samlAssertionNS, "Assertion") || uniqueChild(assertion, signatureNS, "Signature") == nil {
+	if err != nil || !namedElement(assertion, samlAssertionNS, "Assertion") {
 		return "", errSAMLResponse
+	}
+	signed := directSignatures(assertion)
+	if signed == 1 && uniqueChild(assertion, signatureNS, "Signature") == nil {
+		return "", errSAMLResponse
+	}
+	if err := signaturePolicy(signed, directSignatures(response), requireAssertionSig); err != nil {
+		return "", err
 	}
 	a, enc, data, keys, other := assertionShape(assertion)
 	id := uniqueAttribute(assertion, "ID")
@@ -331,11 +350,11 @@ func idpSigningCertificates(sp *saml.ServiceProvider) []*x509.Certificate {
 
 // assertionDocumentID checks the response envelope and the algorithms of
 // its signatures, and returns the one assertion's ID.
-func assertionDocumentID(raw []byte, sp *saml.ServiceProvider, requestID string, algorithms SAMLAlgorithms) (string, error) {
+func assertionDocumentID(raw []byte, sp *saml.ServiceProvider, requestID string, algorithms SAMLAlgorithms, requireAssertionSig bool) (string, error) {
 	if sp.EncryptionKey != nil {
-		return encryptedAssertionID(raw, sp.AcsURL.String(), requestID, sp.EncryptionKey, idpSigningCertificates(sp), algorithms)
+		return encryptedAssertionID(raw, sp.AcsURL.String(), requestID, sp.EncryptionKey, idpSigningCertificates(sp), algorithms, requireAssertionSig)
 	}
-	id, err := assertionEnvelope(raw, sp.AcsURL.String(), requestID)
+	id, err := assertionEnvelope(raw, sp.AcsURL.String(), requestID, requireAssertionSig)
 	if err != nil {
 		return "", err
 	}
