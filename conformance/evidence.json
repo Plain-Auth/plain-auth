@@ -43906,5 +43906,22 @@
       "marker": "registration answered a failing discovery endpoint without discovery_unexpected_error",
       "complete": true
     }
+  ],
+  "plugin-symbol/sso/OIDCConfig/mapping": [
+    {
+      "label": "Read the email, name and image claims named by oidcConfig.mapping instead of the defaults",
+      "test": "plugins/sso/identity_test.go",
+      "marker": "mapping.email did not select the mapped email claim"
+    },
+    {
+      "label": "Read email, name and picture when no mapping is set",
+      "test": "plugins/sso/identity_test.go",
+      "marker": "the default email, name and picture claims were not used without a mapping"
+    },
+    {
+      "label": "Take the first nonempty address from a mapped email list",
+      "test": "plugins/sso/identity_test.go",
+      "marker": "a mapped email list did not yield its first nonempty address"
+    }
   ]
 }

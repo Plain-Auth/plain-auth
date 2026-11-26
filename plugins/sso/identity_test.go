@@ -11,6 +11,7 @@ import (
 	auth "github.com/Plain-Org/plain-auth"
 	"github.com/Plain-Org/plain-auth/adapters/memory"
 	"github.com/Plain-Org/plain-auth/internal/publicnet"
+	"golang.org/x/oauth2"
 )
 
 func TestEnterpriseIdentityTransport(t *testing.T) {
@@ -69,5 +70,52 @@ func TestEnterpriseIdentityTransport(t *testing.T) {
 	}
 	if host.ExplicitlyTrustedOrigin("https://unlisted.company.test") {
 		t.Fatal("browser wildcard granted confidential transport")
+	}
+}
+
+// The email, name and image claims follow oidcConfig.mapping, default to
+// email, name and picture, and a mapped email list yields its first
+// nonempty address. The raw claims are kept.
+func TestEnterpriseIdentityClaimMapping(t *testing.T) {
+	var claims, bearer string
+	client := &http.Client{Transport: transportFunc(func(r *http.Request) (*http.Response, error) {
+		bearer = r.Header.Get("Authorization")
+		return &http.Response{Request: r, StatusCode: 200, Body: io.NopCloser(strings.NewReader(claims)), Header: http.Header{}}, nil
+	})}
+	resolve := func(mapping map[string]any) auth.OAuthProfile {
+		t.Helper()
+		p := BrowserProvider{Provider: Provider{ProviderID: "acme", Issuer: "https://login.company.test", OIDC: &Config{UserInfoEndpoint: "https://login.company.test/userinfo", Mapping: mapping}}}
+		profile, err := resolveIdentity(t.Context(), client, p, &oauth2.Token{AccessToken: "access-token"}, "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		return profile
+	}
+	claims = `{"sub":"employee","email":"default@acme.example","name":"Default Name","picture":"https://img.acme.example/default.png","mail":"mapped@acme.example","display_name":"Mapped Name","avatar":"https://img.acme.example/mapped.png"}`
+	mapped := resolve(map[string]any{"email": "mail", "name": "display_name", "image": "avatar"})
+	if bearer != "Bearer access-token" {
+		t.Fatal("UserInfo was requested without the access token", bearer)
+	}
+	if mapped.Subject != "employee" {
+		t.Fatal("a mapped profile lost the UserInfo subject", mapped.Subject)
+	}
+	if mapped.Email != "mapped@acme.example" {
+		t.Fatal("mapping.email did not select the mapped email claim", mapped.Email)
+	}
+	if mapped.Name != "Mapped Name" {
+		t.Fatal("mapping.name did not select the mapped name claim", mapped.Name)
+	}
+	if mapped.Image == nil || *mapped.Image != "https://img.acme.example/mapped.png" {
+		t.Fatal("mapping.image did not select the mapped image claim", mapped.Image)
+	}
+	if data, ok := mapped.Data.(map[string]any); !ok || data["mail"] != "mapped@acme.example" || data["email"] != "default@acme.example" {
+		t.Fatal("a mapped profile did not keep every raw claim", mapped.Data)
+	}
+	if plain := resolve(nil); plain.Email != "default@acme.example" || plain.Name != "Default Name" || plain.Image == nil || *plain.Image != "https://img.acme.example/default.png" {
+		t.Fatal("the default email, name and picture claims were not used without a mapping", plain)
+	}
+	claims = `{"sub":"employee","emails":[7,"","first@acme.example","second@acme.example"]}`
+	if listed := resolve(map[string]any{"email": "emails"}); listed.Email != "first@acme.example" {
+		t.Fatal("a mapped email list did not yield its first nonempty address", listed.Email)
 	}
 }

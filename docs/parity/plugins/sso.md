@@ -137,7 +137,7 @@
   - [ ] `/sso/callback/:providerId`
     - [x] Redeem a browser-bound code with PKCE and either secret authentication method, then issue a session for the stable provider subject ([test](../../../adapters/sqlstore/sso_browser_test.go#L124))
     - [x] Reject changed provider configuration before exchange and inside the account, membership and session transaction ([test](../../../adapters/sqlstore/sso_browser_test.go#L321))
-    - [x] Use validated public addresses for tenant-controlled endpoints and reject redirects and oversized responses ([test](../../../plugins/sso/identity_test.go#L16))
+    - [x] Use validated public addresses for tenant-controlled endpoints and reject redirects and oversized responses ([test](../../../plugins/sso/identity_test.go#L17))
     - [x] Reject a shared public subject from another authority on both enterprise and static OAuth nodes ([test](../../../adapters/sqlstore/sso_browser_test.go#L349))
     - [x] Deny the session and roll back identity creation when the DNS proof is withdrawn during token exchange ([test](../../../adapters/sqlstore/sso_domain_test.go#L329))
     - [x] Link a verified local mailbox within the proved subdomain to the authenticated identity ([test](../../../adapters/sqlstore/sso_domain_test.go#L305))
@@ -237,6 +237,9 @@
       - [x] Reject an enterprise ID token signed by a key outside the provider JWKS, among other invalid ID tokens ([test](../../../adapters/sqlstore/sso_browser_test.go#L293))
       - [x] Fill the JWKS endpoint from discovery when it is omitted ([test](../../../plugins/sso/discovery_test.go#L61))
     - [ ] `mapping`
+      - [x] Read the email, name and image claims named by oidcConfig.mapping instead of the defaults ([test](../../../plugins/sso/identity_test.go#L103))
+      - [x] Read email, name and picture when no mapping is set ([test](../../../plugins/sso/identity_test.go#L115))
+      - [x] Take the first nonempty address from a mapped email list ([test](../../../plugins/sso/identity_test.go#L119))
     - [ ] `allowIdpInitiated`
   - [ ] `SAMLConfig`
     - [x] Register a SAML directory with entry point, IdP entity ID, signing certificate, SP entity ID, signed requests and landing pages, and sign in on three SQL engines ([test](../../../adapters/sqlstore/sso_saml_test.go#L159))
@@ -488,10 +491,10 @@
     - [x] Fill the JWKS location and client authentication method from discovery at registration on both runtimes ([test](../../../conformance/sso-providers.mjs#L75))
     - [ ] Trusted origins
       - [x] Refuse discovery from an origin trusted only for browser redirects without contacting it ([test](../../../plugins/sso/discovery_test.go#L52))
-      - [x] Keep a wildcard browser origin from granting server-side transport to an unlisted host ([test](../../../plugins/sso/identity_test.go#L71))
+      - [x] Keep a wildcard browser origin from granting server-side transport to an unlisted host ([test](../../../plugins/sso/identity_test.go#L72))
     - [ ] Discovery errors
       - [x] Reject registration when the discovery URL redirects, without requesting the redirect target ([test](../../../adapters/sqlstore/sso_test.go#L247))
-      - [x] Refuse a redirecting identity provider response on the enterprise HTTP client without following it ([test](../../../plugins/sso/identity_test.go#L65))
+      - [x] Refuse a redirecting identity provider response on the enterprise HTTP client without following it ([test](../../../plugins/sso/identity_test.go#L66))
       - [x] `issuer_mismatch` ([test](../../../plugins/sso/discovery_test.go#L167))
         - [x] Reject a discovery document whose issuer differs from the configured issuer with 400 issuer_mismatch ([test](../../../plugins/sso/discovery_test.go#L66))
         - [x] Return 400 issuer_mismatch for a discovered issuer that differs only by a trailing slash ([test](../../../plugins/sso/discovery_test.go#L167))
