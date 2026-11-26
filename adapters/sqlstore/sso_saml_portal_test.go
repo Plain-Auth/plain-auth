@@ -74,7 +74,11 @@ func checkSAMLPortal(t *testing.T, idp *saml.IdentityProvider, spEntity, acs, or
 		}
 	}
 	reviewed.Store(&directory)
-	rejected(send(existingOnly, proof, origin, "", "document"), "signup_disabled")
+	refused := send(existingOnly, proof, origin, "", "document")
+	rejected(refused, "signup_disabled")
+	if u, _ := url.Parse(refused.location); u.Scheme+"://"+u.Host+u.Path != home+"/company-portal" {
+		t.Fatal("a refused portal sign-in did not return to the directory's landing page", refused.location)
+	}
 	for _, orig := range []string{"", "null", "https://other.example.test", "https://identity.example.test:9999"} {
 		rejected(send(node, proof, orig, "", "document"), "invalid_origin")
 	}

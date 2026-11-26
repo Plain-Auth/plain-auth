@@ -11737,7 +11737,7 @@
     {
       "label": "Refuse an IdP-initiated SAML sign-in for a new user with signup_disabled when implicit sign-up is off",
       "test": "adapters/sqlstore/sso_saml_portal_test.go",
-      "marker": "rejected(send(existingOnly, proof, origin, \"\", \"document\"), \"signup_disabled\")"
+      "marker": "rejected(refused, \"signup_disabled\")"
     },
     {
       "label": "Let an existing SAML user return through the portal when implicit sign-up is off",
@@ -42109,6 +42109,12 @@
       "label": "Use a trusted absolute URL as the portal landing page",
       "test": "plugins/sso/saml_unsolicited_test.go",
       "marker": "{[]string{\"https://app.example.test\" + path}, \"https://app.example.test\" + path},"
+    },
+    {
+      "label": "Land an approved portal sign-in on the directory's relative landing page and return a refused one there with error=signup_disabled, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_portal_test.go",
+      "marker": "t.Fatal(\"a refused portal sign-in did not return to the directory's landing page\", refused.location)",
+      "complete": true
     }
   ],
   "plugin-symbol/sso/SAMLConfig/idpMetadata": [

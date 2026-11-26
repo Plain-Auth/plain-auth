@@ -364,10 +364,11 @@
       - [x] Count a restriction holding only empty or blank audiences as missing, refuse an empty one beside a match, and trim audience values, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L766))
     - [ ] `callbackUrl`
       - [x] Land a portal sign-in on the directory's callbackUrl when no IdP-initiated landing page is configured ([test](../../../adapters/sqlstore/sso_saml_mapping_test.go#L104))
-    - [ ] `idpInitiatedCallbackUrl`
-      - [x] Send an approved IdP-initiated sign-in to the directory's idpInitiatedCallbackUrl rather than the host-wide fallback ([test](../../../adapters/sqlstore/sso_saml_portal_test.go#L119))
+    - [x] `idpInitiatedCallbackUrl` ([test](../../../adapters/sqlstore/sso_saml_portal_test.go#L80))
+      - [x] Send an approved IdP-initiated sign-in to the directory's idpInitiatedCallbackUrl rather than the host-wide fallback ([test](../../../adapters/sqlstore/sso_saml_portal_test.go#L123))
       - [x] Land a portal sign-in on the directory's relative idpInitiatedCallbackUrl, and on the host-wide landing page when the directory names an untrusted absolute URL, on both runtimes ([test](../../../conformance/sso-saml.mjs#L248))
       - [x] Use a trusted absolute URL as the portal landing page ([test](../../../plugins/sso/saml_unsolicited_test.go#L29))
+      - [x] Land an approved portal sign-in on the directory's relative landing page and return a refused one there with error=signup_disabled, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_portal_test.go#L80))
     - [ ] `idpMetadata`
       - [x] Take the IdP entity ID from a registration that supplies only IdP metadata XML ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L62))
       - [x] Return the submitted IdP metadata XML in the registration on both runtimes ([test](../../../conformance/sso-saml.mjs#L205))
@@ -438,8 +439,8 @@
       - [x] Store overrideUserInfo over the request's false and refresh the profile on sign-in ([test](../../../adapters/sqlstore/sso_profile_override_test.go#L103))
     - [ ] `disableImplicitSignUp`
       - [x] Require an explicit signup request for new enterprise users and enforce host-wide signup controls ([test](../../../adapters/sqlstore/sso_browser_test.go#L345))
-      - [x] Refuse an IdP-initiated SAML sign-in for a new user with signup_disabled when implicit sign-up is off ([test](../../../adapters/sqlstore/sso_saml_portal_test.go#L77))
-      - [x] Let an existing SAML user return through the portal when implicit sign-up is off ([test](../../../adapters/sqlstore/sso_saml_portal_test.go#L123))
+      - [x] Refuse an IdP-initiated SAML sign-in for a new user with signup_disabled when implicit sign-up is off ([test](../../../adapters/sqlstore/sso_saml_portal_test.go#L78))
+      - [x] Let an existing SAML user return through the portal when implicit sign-up is off ([test](../../../adapters/sqlstore/sso_saml_portal_test.go#L127))
       - [x] Refuse a SAML sign-up under DisableImplicitSignUp even with requestSignUp ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L434))
     - [ ] `modelName`
     - [ ] `fields`
@@ -898,10 +899,10 @@
     - [x] Refuse a SAML response after the five-minute request lifetime with 400 and no session; request correlation cannot be turned off, a documented deviation, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L362))
   - [x] Replay ([test](../../../adapters/sqlstore/sso_saml_test.go#L733))
     - [x] Let only one of two concurrent SAML sign-ins that reuse one assertion ID succeed ([test](../../../adapters/sqlstore/sso_saml_test.go#L733))
-    - [x] Reject the second of two concurrent IdP-initiated posts of one assertion ([test](../../../adapters/sqlstore/sso_saml_portal_test.go#L122))
+    - [x] Reject the second of two concurrent IdP-initiated posts of one assertion ([test](../../../adapters/sqlstore/sso_saml_portal_test.go#L126))
   - [ ] InResponseTo validation
     - [x] Redirect with error=invalid_saml_response for a correlated response posted without its RelayState ([test](../../../adapters/sqlstore/sso_saml_test.go#L493))
-    - [x] Reject an unsolicited response whose assertion cites a request ID ([test](../../../adapters/sqlstore/sso_saml_portal_test.go#L92))
+    - [x] Reject an unsolicited response whose assertion cites a request ID ([test](../../../adapters/sqlstore/sso_saml_portal_test.go#L96))
     - [ ] `invalid_saml_response`
       - [x] Redirect with error=invalid_saml_response when the assertion's bearer confirmation answers another request ID ([test](../../../adapters/sqlstore/sso_saml_test.go#L601))
       - [x] Redirect with error=invalid_saml_response for a correlated response posted without its RelayState ([test](../../../adapters/sqlstore/sso_saml_test.go#L493))
@@ -919,7 +920,7 @@
     - [x] Let only one of two concurrent SAML sign-ins that reuse one assertion ID succeed ([test](../../../adapters/sqlstore/sso_saml_test.go#L733))
     - [x] Redirect a repeated IdP-initiated assertion with error=replay_detected on both runtimes ([test](../../../conformance/sso-saml.mjs#L253))
     - [x] `replay_detected` ([test](../../../adapters/sqlstore/sso_saml_test.go#L733))
-      - [x] Reject the second of two concurrent IdP-initiated posts of one assertion with error=replay_detected ([test](../../../adapters/sqlstore/sso_saml_portal_test.go#L122))
+      - [x] Reject the second of two concurrent IdP-initiated posts of one assertion with error=replay_detected ([test](../../../adapters/sqlstore/sso_saml_portal_test.go#L126))
       - [x] Redirect a repeated IdP-initiated assertion with error=replay_detected on both runtimes ([test](../../../conformance/sso-saml.mjs#L253))
       - [x] Redirect an SP-initiated assertion replay across browsers with replay_detected and SAML assertion has already been used ([test](../../../adapters/sqlstore/sso_saml_test.go#L733))
   - [ ] Timestamp validation
@@ -1035,7 +1036,7 @@
     - [x] `extraFields` ([test](../../../adapters/sqlstore/sso_saml_mapping_test.go#L114))
       - [x] Register a directory with mapping.extraFields and save the mapped department on the new user, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_mapping_test.go#L114))
   - [ ] ACS and callback URLs
-    - [x] Land an IdP-initiated sign-in on the provider's idpInitiatedCallbackUrl ([test](../../../adapters/sqlstore/sso_saml_portal_test.go#L119))
+    - [x] Land an IdP-initiated sign-in on the provider's idpInitiatedCallbackUrl ([test](../../../adapters/sqlstore/sso_saml_portal_test.go#L123))
     - [x] Fall back to the plugin's IdP-initiated landing page when the provider's is not a trusted origin, on both runtimes ([test](../../../conformance/sso-saml.mjs#L248))
     - [x] Reject a signed assertion with another audience or another bearer recipient ([test](../../../adapters/sqlstore/sso_saml_test.go#L591))
   - [ ] IdP-initiated SSO
