@@ -214,8 +214,8 @@
   - [ ] `SCIM_MANAGED_CREATION_REQUEST_ID_CONFLICT`
     - [x] Reject the duplicate creation request without exposing the previously issued bearer ([test](../../../adapters/sqlstore/scim_managed_test.go#L31))
   - [ ] `reconcileSCIMProjection (server API only)`
-    - [x] Replay a domain from either instance after the application's role catalog changes ([test](../../../adapters/sqlstore/scim_projection_test.go#L282))
-    - [x] Replay one domain without removing a role projected in another domain ([test](../../../adapters/sqlstore/scim_projection_test.go#L367))
+    - [x] Replay a domain from either instance after the application's role catalog changes ([test](../../../adapters/sqlstore/scim_projection_test.go#L283))
+    - [x] Replay one domain without removing a role projected in another domain ([test](../../../adapters/sqlstore/scim_projection_test.go#L370))
   - `SCIM_REQUIRES_NATIVE_TRANSACTIONS` — *not applicable: JavaScript adapter capability; the only Go SCIM store runs every directory change in a native database/sql transaction, so there is no non-transactional adapter to refuse*
   - [ ] `POST /scim/v2/Users`
     - [x] Create, reject conflicts, reprovision inactive Users and restore an external identity after deletion ([test](../../../conformance/scim-contract.mjs#L45))
@@ -262,8 +262,8 @@
     - [ ] `sources`
     - [ ] `grants`
   - [ ] Reconcile mapping changes
-    - [x] Replay the domain from either instance after the application's role catalog changes ([test](../../../adapters/sqlstore/scim_projection_test.go#L282))
-    - [x] Withdraw every projected role by disabling the policy and keep them when the reconciler fails ([test](../../../adapters/sqlstore/scim_projection_test.go#L286))
+    - [x] Replay the domain from either instance after the application's role catalog changes ([test](../../../adapters/sqlstore/scim_projection_test.go#L283))
+    - [x] Withdraw every projected role by disabling the policy and keep them when the reconciler fails ([test](../../../adapters/sqlstore/scim_projection_test.go#L288))
   - [ ] Rotate a credential
   - [ ] Decommission a connection
 
@@ -360,7 +360,7 @@
       - [x] Create a Group whose schema list carries the classic Entra marker when the compatibility option is on ([test](../../../adapters/sqlstore/scim_groups_test.go#L96))
   - [ ] Users
     - [x] Drop a deleted User from the member list of its Group ([test](../../../adapters/sqlstore/scim_groups_test.go#L164))
-    - [x] Withdraw the projected role grants of a deleted User ([test](../../../adapters/sqlstore/scim_projection_test.go#L331))
+    - [x] Withdraw the projected role grants of a deleted User ([test](../../../adapters/sqlstore/scim_projection_test.go#L333))
     - [x] Revoke the account's sessions when its directory User is deleted ([test](../../../adapters/sqlstore/scim_test.go#L227))
     - [x] Attach a User recreated with the same externalId after deletion to the original account ([test](../../../adapters/sqlstore/scim_test.go#L237))
     - [ ] `POST /scim/v2/Users`
@@ -476,12 +476,13 @@
       - [x] Check returned roles against the application catalog and replay changes to its contents ([test](../../../adapters/sqlstore/scim_projection_test.go#L78))
       - [x] Withdraw a mapped role on replay after the application catalog stops confirming it ([test](../../../adapters/sqlstore/scim_projection_test.go#L278))
     - [ ] `projection.reconcileUser`
-      - [x] Atomically reconcile per-domain subject grants across independent connections and preserve manual roles ([test](../../../adapters/sqlstore/scim_projection_test.go#L354))
+      - [x] Atomically reconcile per-domain subject grants across independent connections and preserve manual roles ([test](../../../adapters/sqlstore/scim_projection_test.go#L356))
       - [x] Keep the MySQL domain lock until transaction completion and discard ambiguous physical sessions ([test](../../../adapters/sqlstore/scim_projection_mysql_test.go#L11))
       - [x] Roll back a Group replacement and the application's own writes when reconciliation fails ([test](../../../adapters/sqlstore/scim_projection_test.go#L243))
   - [ ] Trusted server APIs
-    - [ ] `reconcileSCIMProjection`
-      - [x] Replay a trusted policy for its complete domain on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_projection_test.go#L282))
+    - [x] `reconcileSCIMProjection` ([test](../../../adapters/sqlstore/scim_projection_test.go#L391))
+      - [x] Replay a trusted policy for its complete domain on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_projection_test.go#L283))
+      - [x] Report the domain, reconciled users and committed batches of a replay, and answer 409 without a policy, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_projection_test.go#L391))
     - [ ] `decommissionSCIMConnection`
       - [x] Refuse retiring a static connection under a different provisioning domain, then retire it before first use so its token answers 401 ([test](../../../adapters/sqlstore/scim_decommission_test.go#L73))
       - [x] Report a never-used directory retired by one runtime as complete with no batches from the other ([test](../../../conformance/scim-managed.mjs#L146))

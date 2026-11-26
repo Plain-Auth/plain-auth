@@ -50,3 +50,13 @@ type Projection struct {
 	Exists        func(context.Context, ProjectionTx, RoleLookup) (bool, error)
 	ReconcileUser func(context.Context, ProjectionTx, ProjectedUser) error
 }
+
+// ProjectionReplay summarizes one explicit projection replay. Batches counts
+// committed transactions: the SQL store replays a domain in one
+// transaction, so it reports one batch, or none for a domain without linked
+// users.
+type ProjectionReplay struct {
+	ProvisioningDomainID string `json:"provisioningDomainId"`
+	ReconciledUsers      int    `json:"reconciledUsers"`
+	Batches              int    `json:"batches"`
+}

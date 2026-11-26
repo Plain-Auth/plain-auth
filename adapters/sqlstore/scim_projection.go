@@ -32,28 +32,30 @@ func (t scimProjectionTx) QueryRowContext(c context.Context, q string, args ...a
 	return t.tx.QueryRowContext(c, q, args...)
 }
 
-func (s *Store) projectSCIMDomain(ctx context.Context, tx *sql.Tx, domain string, withdraw bool) error {
+// projectSCIMDomain projects every subject of domain and returns how many
+// it reconciled.
+func (s *Store) projectSCIMDomain(ctx context.Context, tx *sql.Tx, domain string, withdraw bool) (int, error) {
 	// Include imported ledger entries for sources that were removed outside
 	// this process. Unsupported provenance must fail the entire transition.
 	q := `SELECT "userId" FROM "scimUser" WHERE ` + s.scimExact(`"provisioningDomainId"`) + `=? UNION SELECT "userId" FROM "scimProjectionGrant" WHERE ` + s.scimExact(`"provisioningDomainId"`) + `=? ORDER BY "userId"`
 	rows, err := tx.QueryContext(ctx, s.bind(q), domain, domain)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	ids, err := scanStrings(rows)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	slices.Sort(ids)
 	for _, id := range ids {
 		if err = s.lockAccount(ctx, tx, id); err != nil {
-			return err
+			return 0, err
 		}
 		if err = s.projectSCIMUser(ctx, tx, domain, id, withdraw); err != nil {
-			return err
+			return 0, err
 		}
 	}
-	return nil
+	return len(ids), nil
 }
 
 func (s *Store) projectSCIMMembers(ctx context.Context, tx *sql.Tx, d scim.Directory, ids []string) error {

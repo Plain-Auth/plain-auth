@@ -12140,7 +12140,13 @@
     {
       "label": "Replay a trusted policy for its complete domain on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/scim_projection_test.go",
-      "marker": "must(second.ReconcileSCIMProjection(ctx, domain))"
+      "marker": "_, e = second.ReconcileSCIMProjection(ctx, domain)"
+    },
+    {
+      "label": "Report the domain, reconciled users and committed batches of a replay, and answer 409 without a policy, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_projection_test.go",
+      "marker": "func TestSCIMProjectionReplaySummary(",
+      "complete": true
     }
   ],
   "docs/content/docs/concepts/session-management.mdx#L255": [
@@ -43140,7 +43146,7 @@
     {
       "label": "Replay a domain from either instance after the application's role catalog changes",
       "test": "adapters/sqlstore/scim_projection_test.go",
-      "marker": "must(second.ReconcileSCIMProjection(ctx, domain))"
+      "marker": "_, e = second.ReconcileSCIMProjection(ctx, domain)"
     },
     {
       "label": "Replay one domain without removing a role projected in another domain",
@@ -43181,7 +43187,7 @@
     {
       "label": "Replay the domain from either instance after the application's role catalog changes",
       "test": "adapters/sqlstore/scim_projection_test.go",
-      "marker": "must(second.ReconcileSCIMProjection(ctx, domain))"
+      "marker": "_, e = second.ReconcileSCIMProjection(ctx, domain)"
     },
     {
       "label": "Withdraw every projected role by disabling the policy and keep them when the reconciler fails",

@@ -276,10 +276,12 @@ func TestSCIMGroupApplicationProjection(t *testing.T) {
 			expect(0, 1)
 			// A server-side catalog change is explicitly replayed.
 			exec(`DELETE FROM "hostRole" WHERE "role"='editor'`)
-			must(first.ReconcileSCIMProjection(ctx, domain))
+			_, e = first.ReconcileSCIMProjection(ctx, domain)
+			must(e)
 			expect(0, 0)
 			exec(`INSERT INTO "hostRole" ("role") VALUES ('editor')`)
-			must(second.ReconcileSCIMProjection(ctx, domain))
+			_, e = second.ReconcileSCIMProjection(ctx, domain)
+			must(e)
 			expect(0, 1)
 			fail.Store(3)
 			if e = first.DisableSCIMProjection(ctx, domain); e == nil {
@@ -362,7 +364,8 @@ func TestSCIMGroupApplicationProjection(t *testing.T) {
 			// The core owner deletion must withdraw both tenant projections.
 			both, e := first.EnableSCIMProjection(ctx, "workforce", policy)
 			must(e)
-			must(first.ReconcileSCIMProjection(ctx, domain))
+			_, e = first.ReconcileSCIMProjection(ctx, domain)
+			must(e)
 			if count(`SELECT COUNT(*) FROM "hostAssignment" WHERE `+base.scimExact(`"domain"`)+`=? AND "owner"=?`, "workforce", owner) != 1 {
 				t.Fatal("tenant replay removed another domain's role")
 			}
@@ -379,6 +382,57 @@ func TestSCIMGroupApplicationProjection(t *testing.T) {
 				t.Fatal("case-distinct tenant retained a source grant")
 			}
 
+		})
+	}
+}
+
+// An explicit replay reports its domain, its reconciled users and its one
+// committed batch.
+func TestSCIMProjectionReplaySummary(t *testing.T) {
+	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
+		t.Run(dialect, func(t *testing.T) {
+			ctx := t.Context()
+			must := func(e error) {
+				t.Helper()
+				if e != nil {
+					t.Fatal(e)
+				}
+			}
+			ddl, e := schema.Generate(dialect, []string{"scim"})
+			must(e)
+			store, e := OpenWithSchema(ctx, dialect, organizationTestDSN(t, dialect), ddl)
+			must(e)
+			defer store.Close()
+			calls := 0
+			policy := scim.Projection{PolicyID: "replay-v1", ReconcileUser: func(context.Context, scim.ProjectionTx, scim.ProjectedUser) error { calls++; return nil }}
+			var se *scim.Error
+			if _, e := store.ReconcileSCIMProjection(ctx, "Tenant"); !errors.As(e, &se) || se.Status != 409 || calls != 0 {
+				t.Fatal("replaying a domain without a configured policy did not answer 409", e)
+			}
+			empty, e := store.EnableSCIMProjection(ctx, "Empty", policy)
+			must(e)
+			if replay, e := empty.ReconcileSCIMProjection(ctx, "Empty"); e != nil || replay != (scim.ProjectionReplay{ProvisioningDomainID: "Empty"}) {
+				t.Fatal("an empty domain replay reported users or batches", replay, e)
+			}
+			configured, e := empty.EnableSCIMProjection(ctx, "Tenant", policy)
+			must(e)
+			host, e := auth.New(auth.Options{BaseURL: "https://directory.example.test", BasePath: "/identity/custom", Secret: strings.Repeat("a", 32), Store: configured})
+			must(e)
+			h, e := scim.New(host, scim.Options{Store: configured, Connections: []scim.Connection{{Directory: scim.Directory{ID: "ACME", ProvisioningDomainID: "Tenant"}, Credentials: []scim.Credential{{ID: "owned", Token: "writer"}}}}})
+			must(e)
+			for _, name := range []string{"one@example.test", "two@example.test"} {
+				if w := scimRequest(h, "POST", "Users", "writer", map[string]any{"schemas": []string{scim.UserSchema}, "userName": name}); w.Code != 201 {
+					t.Fatal("provisioning failed", w.Code, w.Body.String())
+				}
+			}
+			calls = 0
+			replay, e := configured.ReconcileSCIMProjection(ctx, "Tenant")
+			if e != nil || replay != (scim.ProjectionReplay{ProvisioningDomainID: "Tenant", ReconciledUsers: 2, Batches: 1}) {
+				t.Fatal("a domain replay did not report its two users in one batch", replay, e)
+			}
+			if calls != 2 {
+				t.Fatal("the replay did not reconcile each user once", calls)
+			}
 		})
 	}
 }

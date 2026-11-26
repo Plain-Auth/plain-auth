@@ -75,7 +75,7 @@ func (s *Store) EnableSCIMProjection(ctx context.Context, domain string, policy 
 		}
 		_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "plainauthSCIMProjectionPolicy" ("domainKey","domain","policyId") VALUES (?,?,?)`), scimKey("scim-policy", domain), domain, policy.PolicyID)
 		if err == nil {
-			err = configured.projectSCIMDomain(ctx, tx, domain, false)
+			_, err = configured.projectSCIMDomain(ctx, tx, domain, false)
 		}
 	case id != policy.PolicyID:
 		err = errProjectionPolicy
@@ -90,38 +90,49 @@ func (s *Store) EnableSCIMProjection(ctx context.Context, domain string, policy 
 }
 
 // ReconcileSCIMProjection rebuilds every subject from current, persisted
-// directory facts. Call after changing trusted role mappings or role catalogs.
-func (s *Store) ReconcileSCIMProjection(ctx context.Context, domain string) error {
-	return s.changeSCIMProjection(ctx, domain, false)
+// directory facts and summarizes the replay. Call after changing trusted
+// role mappings or role catalogs.
+func (s *Store) ReconcileSCIMProjection(ctx context.Context, domain string) (scim.ProjectionReplay, error) {
+	n, err := s.changeSCIMProjection(ctx, domain, false)
+	if err != nil {
+		return scim.ProjectionReplay{}, err
+	}
+	replay := scim.ProjectionReplay{ProvisioningDomainID: domain, ReconciledUsers: n}
+	if n > 0 {
+		replay.Batches = 1
+	}
+	return replay, nil
 }
 
 // DisableSCIMProjection withdraws all domain grants through the current host
 // reconciler before allowing unconfigured Go writers to resume.
 func (s *Store) DisableSCIMProjection(ctx context.Context, domain string) error {
-	return s.changeSCIMProjection(ctx, domain, true)
+	_, err := s.changeSCIMProjection(ctx, domain, true)
+	return err
 }
 
-func (s *Store) changeSCIMProjection(ctx context.Context, domain string, disable bool) error {
+func (s *Store) changeSCIMProjection(ctx context.Context, domain string, disable bool) (int, error) {
 	if _, ok := s.scimPolicies[domain]; !ok {
-		return errProjectionPolicy
+		return 0, errProjectionPolicy
 	}
 	tx, finish, err := s.beginSCIMTransaction(ctx, domain, true)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	defer finish.rollback()
 	if err = s.requireSCIMPolicy(ctx, tx, domain); err != nil {
-		return err
+		return 0, err
 	}
-	if err = s.projectSCIMDomain(ctx, tx, domain, disable); err != nil {
-		return err
+	n, err := s.projectSCIMDomain(ctx, tx, domain, disable)
+	if err != nil {
+		return 0, err
 	}
 	if disable {
 		if _, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "plainauthSCIMProjectionPolicy" WHERE "domainKey"=?`), scimKey("scim-policy", domain)); err != nil {
-			return err
+			return 0, err
 		}
 	}
-	return finish.commit()
+	return n, finish.commit()
 }
 
 // Upgraded plain and configured writers always acquire the same logical lock,
