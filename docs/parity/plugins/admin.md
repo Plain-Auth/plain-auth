@@ -5,11 +5,16 @@
 ## Interfaces
 
 - [ ] Admin endpoints, types and options
-  - [ ] `defaultStatements`
-  - [ ] `defaultAc`
-  - [ ] `adminAc`
-  - [ ] `userAc`
-  - [ ] `defaultRoles`
+  - [x] `defaultStatements` ([test](../../../plugins/admin/admin_test.go#L40))
+    - [x] Expose the built-in user and session actions, impersonate-admins included, through the default role control and refuse statements outside them ([test](../../../plugins/admin/admin_test.go#L40))
+  - [x] `defaultAc` ([test](../../../plugins/admin/admin_test.go#L58))
+    - [x] Build roles from the default role control and refuse a grant outside its vocabulary ([test](../../../plugins/admin/admin_test.go#L58))
+  - [x] `adminAc` ([test](../../../plugins/admin/admin_test.go#L72))
+    - [x] Expose the built-in admin grants, every built-in action except impersonate-admins, and extend a copy with impersonate-admins ([test](../../../plugins/admin/admin_test.go#L72))
+  - [x] `userAc` ([test](../../../plugins/admin/admin_test.go#L78))
+    - [x] Expose the empty built-in user role and deny it every built-in action ([test](../../../plugins/admin/admin_test.go#L78))
+  - [x] `defaultRoles` ([test](../../../plugins/admin/admin_test.go#L100))
+    - [x] Return an independent copy of the built-in admin and user roles for a custom role map to extend ([test](../../../plugins/admin/admin_test.go#L100))
   - [ ] `admin`
     - [x] Install admin.New with custom roles, a configured administrator ID, ban and impersonation options, and drive all fifteen administrative routes over HTTP on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/admin_test.go#L21))
   - `AdminClientOptions` — *not applicable: JavaScript only*
@@ -80,9 +85,9 @@
     - [x] Return the acting administrator's ID as impersonatedBy on the delegated session through the released client, on either server ([test](../../../conformance/core.test.mjs#L780))
   - [ ] `AdminOptions`
     - [ ] `defaultRole`
-      - [x] Evaluate permissions for a configured default role ([test](../../../plugins/admin/admin_test.go#L20))
+      - [x] Evaluate permissions for a configured default role ([test](../../../plugins/admin/admin_test.go#L22))
     - [ ] `adminRoles`
-      - [x] Validate administrative role names against the configured role registry ([test](../../../plugins/admin/admin_test.go#L28))
+      - [x] Validate administrative role names against the configured role registry ([test](../../../plugins/admin/admin_test.go#L30))
     - [ ] `defaultBanReason`
       - [x] Apply the configured reason when suspending a user ([test](../../../adapters/sqlstore/admin_test.go#L170))
     - [ ] `defaultBanExpiresIn`
@@ -91,7 +96,7 @@
     - [ ] `schema`
     - `ac` — *not applicable: TypeScript type inference*
     - [x] `roles` ([test](../../../adapters/sqlstore/admin_user_fields_test.go#L126))
-      - [x] Define custom roles and evaluate each role’s entire grant ([test](../../../plugins/admin/admin_test.go#L23))
+      - [x] Define custom roles and evaluate each role’s entire grant ([test](../../../plugins/admin/admin_test.go#L25))
       - [x] A custom role that grants only user create provisions an ordinary account over HTTP ([test](../../../adapters/sqlstore/admin_user_fields_test.go#L126))
     - [x] `adminUserIds` ([test](../../../adapters/sqlstore/admin_test.go#L253))
       - [x] Grant an explicitly configured identity administrative authority ([test](../../../adapters/sqlstore/admin_test.go#L83))
@@ -260,7 +265,7 @@
           - [x] Remove the account named by userId ([test](../../../adapters/sqlstore/admin_test.go#L306))
   - [ ] Access Control
     - [ ] Roles
-      - [x] Give ordinary accounts no administrative grants ([test](../../../plugins/admin/admin_test.go#L16))
+      - [x] Give ordinary accounts no administrative grants ([test](../../../plugins/admin/admin_test.go#L18))
       - [x] Store an account's two roles as one comma-separated value that a role filter matches ([test](../../../adapters/sqlstore/admin_test.go#L161))
       - [x] `admin` ([test](../../../conformance/core.test.mjs#L752))
         - [x] Let an account given the default admin role run every administrative route on both runtimes ([test](../../../conformance/core.test.mjs#L752))
@@ -268,18 +273,18 @@
         - [x] Refuse get-user on both runtimes to an account holding the built-in user role ([test](../../../conformance/core.test.mjs#L762))
         - [x] Refuse get-user to an ordinary signed-up account whose configured user role has no grants, and report no user list grant for it ([test](../../../adapters/sqlstore/admin_test.go#L100))
     - [ ] Permissions
-      - [x] Evaluate grants for user and session actions ([test](../../../plugins/admin/admin_test.go#L13))
+      - [x] Evaluate grants for user and session actions ([test](../../../plugins/admin/admin_test.go#L15))
       - [ ] user
         - [x] Refuse an email verification change to a role that holds update but not set-email ([test](../../../adapters/sqlstore/admin_test.go#L147))
       - [ ] session
         - [x] Let a role holding session list list sessions and refuse it revocation without session revoke ([test](../../../adapters/sqlstore/admin_test.go#L125))
     - [ ] Custom Permissions
-      - [x] Define custom roles and evaluate each role’s entire grant ([test](../../../plugins/admin/admin_test.go#L23))
+      - [x] Define custom roles and evaluate each role’s entire grant ([test](../../../plugins/admin/admin_test.go#L25))
       - [x] Configure custom operator and reader roles and enforce their grants on the administrative routes ([test](../../../adapters/sqlstore/admin_test.go#L50))
       - [x] Create Access Control ([test](../../../plugins/access/access_test.go#L45))
         - [x] Create an access controller from a resource and action vocabulary and refuse roles outside it ([test](../../../plugins/access/access_test.go#L45))
       - [ ] Create Roles
-        - [x] Define reader and manager roles with their own grants and evaluate each one separately ([test](../../../plugins/admin/admin_test.go#L18))
+        - [x] Define reader and manager roles with their own grants and evaluate each one separately ([test](../../../plugins/admin/admin_test.go#L20))
       - [ ] Pass Roles to the Plugin
         - [x] Pass custom profile and phone roles to the plugin and enforce the phone grant on administrative updates ([test](../../../adapters/sqlstore/phone_admin_test.go#L38))
     - [ ] Access Control Usage
@@ -288,14 +293,14 @@
       - [ ] `POST /admin/has-permission`
         - [x] Report success true for an administrator's user list check through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L758))
         - [ ] Parameter `userId` (optional)
-        - [x] Parameter `role` (optional) ([test](../../../plugins/admin/admin_test.go#L12))
-          - [x] Evaluate a role passed directly, with no user id, against the default grants ([test](../../../plugins/admin/admin_test.go#L12))
+        - [x] Parameter `role` (optional) ([test](../../../plugins/admin/admin_test.go#L14))
+          - [x] Evaluate a role passed directly, with no user id, against the default grants ([test](../../../plugins/admin/admin_test.go#L14))
         - [ ] Parameter `permission` (optional)
         - [ ] Parameter `permissions` (optional)
           - [x] Refuse a check for two user actions that the caller holds only through two separate roles ([test](../../../adapters/sqlstore/admin_test.go#L134))
           - [x] Report success true for a permissions object naming the user list action, through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L758))
       - [ ] Check Role Permission
-        - [x] Evaluate the default admin role's grants locally, with no request or user ([test](../../../plugins/admin/admin_test.go#L12))
+        - [x] Evaluate the default admin role's grants locally, with no request or user ([test](../../../plugins/admin/admin_test.go#L14))
   - [ ] Schema
     - [x] Generate the canonical columns on SQLite, PostgreSQL and MySQL, including combined plugin selections ([test](../../../conformance/schema.test.mjs#L106))
     - [x] Migrate a populated SQLite database to each plugin profile, admin included, and match a fresh schema from the other runtime ([test](../../../conformance/schema.test.mjs#L129))
@@ -318,9 +323,9 @@
       - [x] Keep the incorrect-password response independent of ban status ([test](../../../adapters/sqlstore/admin_test.go#L184))
   - [ ] Options
     - [ ] Default Role
-      - [x] Evaluate permissions for a configured default role ([test](../../../plugins/admin/admin_test.go#L20))
+      - [x] Evaluate permissions for a configured default role ([test](../../../plugins/admin/admin_test.go#L22))
     - [ ] Admin Roles
-      - [x] Validate administrative role names against the configured role registry ([test](../../../plugins/admin/admin_test.go#L28))
+      - [x] Validate administrative role names against the configured role registry ([test](../../../plugins/admin/admin_test.go#L30))
     - [x] Admin userIds ([test](../../../adapters/sqlstore/admin_test.go#L250))
       - [x] Grant an explicitly configured identity administrative authority ([test](../../../adapters/sqlstore/admin_test.go#L83))
       - [x] Let a configured administrator id whose account holds only the ordinary user role create users, revoke sessions, ban, remove and impersonate another administrator ([test](../../../adapters/sqlstore/admin_test.go#L250))

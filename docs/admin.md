@@ -66,6 +66,20 @@ p, err := admin.New(admin.Options{
 })
 ```
 
+`admin.DefaultRoles()` returns a fresh copy of the built-in `admin` and `user` roles. The admin role grants every built-in action except `user:impersonate-admins`, and the user role grants none. A non-nil `Roles` map replaces the built-in roles, so start from this copy to keep or extend them. `admin.DefaultRoleControl()` holds the built-in vocabulary: the user actions `create`, `list`, `set-role`, `ban`, `impersonate`, `impersonate-admins`, `delete`, `set-password`, `set-email`, `set-phone`, `get` and `update`, and the session actions `list`, `revoke` and `delete`. Its `NewRole` refuses a grant outside the vocabulary. The plugin accepts any resource, so your own handlers can check custom ones.
+
+```go
+roles := admin.DefaultRoles()
+roles["admin"]["user"] = append(roles["admin"]["user"], "impersonate-admins")
+roles["support"] = admin.Permissions{"user": {"get", "list"}, "session": {"list"}}
+if _, err := admin.DefaultRoleControl().NewRole(access.Statements(roles["support"])); err != nil {
+    return err
+}
+p, err := admin.New(admin.Options{Roles: roles})
+```
+
+[Default role tests](../plugins/admin/admin_test.go)
+
 Creating a user with an explicit role requires both `user:create` and `user:set-role`. Updating an email or its verification status requires `user:set-email`. Ban-related fields require `user:ban`. Password changes use a dedicated endpoint. Profile updates accept the standard name, image, email, verification, role and ban fields. Roles assigned through the API must exist in the configured role map. To use role checks in your own handlers, see [Role permissions](access.md).
 
 ## Create users with application profile fields

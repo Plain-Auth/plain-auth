@@ -69,6 +69,22 @@ type AdminStore interface {
 
 var adminDefaults = AdminPermissions{"user": {"create", "list", "set-role", "ban", "impersonate", "delete", "set-password", "set-email", "set-phone", "get", "update"}, "session": {"list", "revoke", "delete"}}
 
+// DefaultAdminRoles returns an independent copy of the built-in "admin" and
+// "user" roles that AdminOptions uses when Roles is nil. The admin role
+// grants every built-in action except user:impersonate-admins, and the user
+// role grants none.
+func DefaultAdminRoles() map[string]AdminPermissions {
+	return map[string]AdminPermissions{"admin": cloneAdminPermissions(adminDefaults), "user": {"user": {}, "session": {}}}
+}
+
+func cloneAdminPermissions(p AdminPermissions) AdminPermissions {
+	out := make(AdminPermissions, len(p))
+	for k, v := range p {
+		out[k] = slices.Clone(v)
+	}
+	return out
+}
+
 func NewAdmin(options AdminOptions) (Plugin, error) {
 	if options.DefaultRole == "" {
 		options.DefaultRole = "user"
@@ -86,17 +102,14 @@ func NewAdmin(options AdminOptions) (Plugin, error) {
 		options.ImpersonationSessionDuration = time.Hour
 	}
 	if options.Roles == nil {
-		options.Roles = map[string]AdminPermissions{"admin": adminDefaults, "user": {}}
+		options.Roles = DefaultAdminRoles()
 	}
 	roles := make(map[string]AdminPermissions, len(options.Roles))
 	for role, rules := range options.Roles {
 		if role == "" || strings.Contains(role, ",") {
 			return Plugin{}, errors.New("authn: invalid administrative role name")
 		}
-		roles[role] = make(AdminPermissions, len(rules))
-		for k, v := range rules {
-			roles[role][k] = slices.Clone(v)
-		}
+		roles[role] = cloneAdminPermissions(rules)
 	}
 	options.Roles = roles
 	if options.AdminRoles == nil {
@@ -134,7 +147,7 @@ func (o AdminOptions) HasPermission(id, role string, want AdminPermissions) bool
 	}
 	roles := o.Roles
 	if roles == nil {
-		roles = map[string]AdminPermissions{"admin": adminDefaults, "user": {}}
+		roles = DefaultAdminRoles()
 	}
 	for _, name := range strings.Split(role, ",") {
 		if access.Statements(roles[name]).AllowsAll(access.Statements(want)) {

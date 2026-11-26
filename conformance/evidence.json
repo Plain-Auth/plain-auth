@@ -39280,5 +39280,45 @@
       "marker": "default user code used a character outside the alphabet",
       "complete": true
     }
+  ],
+  "plugin-symbol/admin/defaultStatements": [
+    {
+      "label": "Expose the built-in user and session actions, impersonate-admins included, through the default role control and refuse statements outside them",
+      "test": "plugins/admin/admin_test.go",
+      "marker": "// The default control holds the built-in administrative vocabulary.",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/admin/defaultAc": [
+    {
+      "label": "Build roles from the default role control and refuse a grant outside its vocabulary",
+      "test": "plugins/admin/admin_test.go",
+      "marker": "t.Fatal(\"default control built a role outside its vocabulary\", outside)",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/admin/adminAc": [
+    {
+      "label": "Expose the built-in admin grants, every built-in action except impersonate-admins, and extend a copy with impersonate-admins",
+      "test": "plugins/admin/admin_test.go",
+      "marker": "t.Fatal(\"unexpected default admin grants\", adminGrants)",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/admin/userAc": [
+    {
+      "label": "Expose the empty built-in user role and deny it every built-in action",
+      "test": "plugins/admin/admin_test.go",
+      "marker": "t.Fatal(\"the built-in user role granted an action\", resource, action)",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/admin/defaultRoles": [
+    {
+      "label": "Return an independent copy of the built-in admin and user roles for a custom role map to extend",
+      "test": "plugins/admin/admin_test.go",
+      "marker": "t.Fatal(\"changing a copy of the defaults changed the built-in grants\")",
+      "complete": true
+    }
   ]
 }
