@@ -11805,6 +11805,11 @@
       "label": "Answer DOMAIN_VERIFIED after the domain is proved, through the released client on both runtimes",
       "test": "conformance/sso-domains.mjs",
       "marker": "assert.equal((await api.sso.requestDomainVerification({providerId})).error.code,\"DOMAIN_VERIFIED\");"
+    },
+    {
+      "label": "Answer 404 for an unknown provider",
+      "test": "adapters/sqlstore/sso_domain_test.go",
+      "marker": "_, e = one.RequestSSODomainVerification(ctx, \"absent\")"
     }
   ],
   "plugin/sso/POST /sso/verify-domain": [
@@ -11837,6 +11842,11 @@
       "label": "Answer 404 NO_PENDING_VERIFICATION once the challenge has expired",
       "test": "adapters/sqlstore/sso_domain_test.go",
       "marker": "status(one.VerifySSODomain(ctx, \"corp\"), 404, \"NO_PENDING_VERIFICATION\")"
+    },
+    {
+      "label": "Answer 404 for an unknown provider and refuse a foreign caller with 403 before any DNS lookup",
+      "test": "adapters/sqlstore/sso_domain_test.go",
+      "marker": "t.Fatal(\"a foreign domain verification queried DNS\")"
     }
   ],
   "plugin-symbol/sso/SSOOptions/domainVerification": [

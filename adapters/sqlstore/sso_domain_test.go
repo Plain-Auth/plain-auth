@@ -195,6 +195,16 @@ func TestEnterpriseDomainVerification(t *testing.T) {
 			must(e)
 			_, e = foreign.RequestSSODomainVerification(ctx, "corp")
 			status(e, 403, "")
+			// An unknown provider is 404 on both routes, and a foreign verify is
+			// refused before any DNS lookup.
+			_, e = one.RequestSSODomainVerification(ctx, "absent")
+			status(e, 404, "")
+			status(one.VerifySSODomain(ctx, "absent"), 404, "")
+			lookups := dns.queries.Load()
+			status(foreign.VerifySSODomain(ctx, "corp"), 403, "")
+			if dns.queries.Load() != lookups {
+				t.Fatal("a foreign domain verification queried DNS")
+			}
 			start := client.SSOSignInRequest{Domain: "team.proof.example", CallbackURL: "/home"}
 			for _, h := range []*auth.Auth{first, plain} {
 				_, e = sdk(h).SignInSSO(ctx, start)

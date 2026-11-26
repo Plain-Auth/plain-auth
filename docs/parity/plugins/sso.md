@@ -99,16 +99,18 @@
   - `RequiredDiscoveryField` — *not applicable: TypeScript type. It is the string-literal union derived from REQUIRED_DISCOVERY_FIELDS for type checking; the required fields themselves are tracked under REQUIRED_DISCOVERY_FIELDS.*
   - [ ] `POST /sso/request-domain-verification`
     - [x] Read a seven-day registration challenge with the released client and return HTTP 201 for a repeated request ([test](../../../conformance/sso-domains.mjs#L86))
-    - [x] Replace an expired challenge once across two database instances ([test](../../../adapters/sqlstore/sso_domain_test.go#L221))
+    - [x] Replace an expired challenge once across two database instances ([test](../../../adapters/sqlstore/sso_domain_test.go#L231))
     - [x] Return a live token without hooks and run a new token's verification create hooks; a declined reissue changes nothing ([test](../../../adapters/sqlstore/sso_hooks_test.go#L439))
     - [x] Answer DOMAIN_VERIFIED after the domain is proved, through the released client on both runtimes ([test](../../../conformance/sso-domains.mjs#L94))
+    - [x] Answer 404 for an unknown provider ([test](../../../adapters/sqlstore/sso_domain_test.go#L200))
   - [ ] `POST /sso/verify-domain`
     - [x] Require each domain to publish the token and accept split TXT character strings and labeled values ([test](../../../conformance/sso-domains.mjs#L92))
-    - [x] Recheck the manager’s tenant role after DNS answers and before committing the proof ([test](../../../adapters/sqlstore/sso_domain_test.go#L407))
-    - [x] Bind DNS verification to the nonsecret identity source and require fresh proof when it changes ([test](../../../adapters/sqlstore/sso_domain_test.go#L463))
-    - [x] Reject dotted, overlong and oversized verification names before the resolver is called ([test](../../../adapters/sqlstore/sso_domain_test.go#L429))
+    - [x] Recheck the manager’s tenant role after DNS answers and before committing the proof ([test](../../../adapters/sqlstore/sso_domain_test.go#L417))
+    - [x] Bind DNS verification to the nonsecret identity source and require fresh proof when it changes ([test](../../../adapters/sqlstore/sso_domain_test.go#L473))
+    - [x] Reject dotted, overlong and oversized verification names before the resolver is called ([test](../../../adapters/sqlstore/sso_domain_test.go#L439))
     - [x] Verify and delete a provider without verification hooks ([test](../../../adapters/sqlstore/sso_hooks_test.go#L404))
-    - [x] Answer 404 NO_PENDING_VERIFICATION once the challenge has expired ([test](../../../adapters/sqlstore/sso_domain_test.go#L211))
+    - [x] Answer 404 NO_PENDING_VERIFICATION once the challenge has expired ([test](../../../adapters/sqlstore/sso_domain_test.go#L221))
+    - [x] Answer 404 for an unknown provider and refuse a foreign caller with 403 before any DNS lookup ([test](../../../adapters/sqlstore/sso_domain_test.go#L206))
   - [ ] `deriveSAMLIdentityProviderEntityID`
     - [x] Take the IdP entity ID from a registration that supplies only IdP metadata XML ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L62))
     - [x] Reject a signed assertion whose issuer differs from the manually configured IdP entity ID ([test](../../../adapters/sqlstore/sso_saml_test.go#L603))
@@ -152,7 +154,7 @@
   - [ ] `POST /sign-in/sso`
     - [x] Start an authorization with a persisted OIDC provider through the released client and retain the same account across implementations ([test](../../../conformance/sso-browser.mjs#L43))
     - [x] Select a provider by ID, organization slug, email or DNS suffix on a custom auth mount ([test](../../../adapters/sqlstore/sso_browser_test.go#L169))
-    - [x] Select a proved directory ahead of overlapping pending registrations ([test](../../../adapters/sqlstore/sso_domain_test.go#L264))
+    - [x] Select a proved directory ahead of overlapping pending registrations ([test](../../../adapters/sqlstore/sso_domain_test.go#L274))
     - [x] Start an SP-initiated Redirect request and complete first and repeat SAML sign-in with the same account ([test](../../../conformance/sso-saml.mjs#L126))
     - [x] Issue first and returning SAML sessions with public signup and metadata disabled; retain the installed ACS and registration in OpenAPI ([test](../../../conformance/core.test.mjs#L1522))
     - [x] Resume the original client authorization with the enterprise employee’s new session and redeem the code after consent ([test](../../../conformance/oauth-enterprise-authorization.mjs#L43))
@@ -165,9 +167,9 @@
     - [x] Reject changed provider configuration before exchange and inside the account, membership and session transaction ([test](../../../adapters/sqlstore/sso_browser_test.go#L366))
     - [x] Use validated public addresses for tenant-controlled endpoints and reject redirects and oversized responses ([test](../../../plugins/sso/identity_test.go#L17))
     - [x] Reject a shared public subject from another authority on both enterprise and static OAuth nodes ([test](../../../adapters/sqlstore/sso_browser_test.go#L394))
-    - [x] Deny the session and roll back identity creation when the DNS proof is withdrawn during token exchange ([test](../../../adapters/sqlstore/sso_domain_test.go#L348))
-    - [x] Link a verified local mailbox within the proved subdomain to the authenticated identity ([test](../../../adapters/sqlstore/sso_domain_test.go#L324))
-    - [x] Reject two distinct mailboxes that compare equal under an accent-insensitive MySQL collation ([test](../../../adapters/sqlstore/sso_domain_test.go#L358))
+    - [x] Deny the session and roll back identity creation when the DNS proof is withdrawn during token exchange ([test](../../../adapters/sqlstore/sso_domain_test.go#L358))
+    - [x] Link a verified local mailbox within the proved subdomain to the authenticated identity ([test](../../../adapters/sqlstore/sso_domain_test.go#L334))
+    - [x] Reject two distinct mailboxes that compare equal under an accent-insensitive MySQL collation ([test](../../../adapters/sqlstore/sso_domain_test.go#L368))
     - [x] Resume the original client authorization with the enterprise employee’s new session and redeem the code after consent ([test](../../../conformance/oauth-enterprise-authorization.mjs#L43))
     - [x] Check the issuer signature and browser binding on a second node before the token exchange ([test](../../../adapters/sqlstore/sso_browser_test.go#L546))
     - [x] ValidateUserInfo checks an enterprise OIDC sign-up and a returning sign-in with the SSO provider ID and raw claims, and a refusal returns to the error callback with error and error_description ([test](../../../adapters/sqlstore/sso_user_validation_test.go#L25))
@@ -403,7 +405,7 @@
       - [x] Store a new SAML user as unverified by default on both runtimes ([test](../../../conformance/sso-saml.mjs#L293))
     - [x] `domainVerification` ([test](../../../conformance/sso-domains.mjs#L78))
       - [x] Migrate a populated enterprise provider to the DNS profile and compare 24 profile selections on all three SQL dialects ([test](../../../conformance/schema.test.mjs#L252))
-      - [x] Bind DNS verification to the nonsecret identity source and require fresh proof when it changes ([test](../../../adapters/sqlstore/sso_domain_test.go#L463))
+      - [x] Bind DNS verification to the nonsecret identity source and require fresh proof when it changes ([test](../../../adapters/sqlstore/sso_domain_test.go#L473))
       - [x] Domain tokens run the verification create hooks ([test](../../../adapters/sqlstore/sso_hooks_test.go#L304))
       - [x] Publish and verify the TXT record under a configured tenant-proof token prefix on both runtimes ([test](../../../conformance/sso-domains.mjs#L78))
       - [x] Default the TXT record name to the plain-auth-token prefix and reject a prefix that spans more than one DNS label ([test](../../../plugins/sso/domain_test.go#L13))
@@ -428,7 +430,7 @@
     - [x] Pass the update action, locked record, configuration reference and an authentication boundary change to the guard when IdP metadata is replaced ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L160))
   - [ ] `SSOProviderReference`
     - [x] Redirect a callback with invalid_state before the token exchange when the provider's configuration changed after sign-in started ([test](../../../adapters/sqlstore/sso_browser_test.go#L352))
-    - [x] Stop accepting a captured provider reference after the provider's identity source changes ([test](../../../adapters/sqlstore/sso_domain_test.go#L470))
+    - [x] Stop accepting a captured provider reference after the provider's identity source changes ([test](../../../adapters/sqlstore/sso_domain_test.go#L480))
   - [ ] `SSOProviderUserProfile`
     - [x] Normalize the OIDC provider profile's email, verification and name for the resolver ([test](../../../adapters/sqlstore/sso_resolve_user_test.go#L146))
   - [x] `SSOSAMLUserResolutionInput` ([test](../../../adapters/sqlstore/sso_saml_resolve_user_test.go#L17))
@@ -472,28 +474,28 @@
 - [ ] Verify SSO domains
   - [ ] Enable domain verification
     - [x] Migrate a populated enterprise provider to the DNS profile and compare 24 profile selections on all three SQL dialects ([test](../../../conformance/schema.test.mjs#L252))
-    - [x] Answer HTTP 401 to sign-in through a new unverified provider on a node with DNS verification and on one without the option ([test](../../../adapters/sqlstore/sso_domain_test.go#L198))
-    - [x] Link a verified local user to a new enterprise identity only under a proved domain or subdomain ([test](../../../adapters/sqlstore/sso_domain_test.go#L324))
+    - [x] Answer HTTP 401 to sign-in through a new unverified provider on a node with DNS verification and on one without the option ([test](../../../adapters/sqlstore/sso_domain_test.go#L208))
+    - [x] Link a verified local user to a new enterprise identity only under a proved domain or subdomain ([test](../../../adapters/sqlstore/sso_domain_test.go#L334))
   - [ ] Verify your domain
     - [x] Get the verification token ([test](../../../conformance/sso-domains.mjs#L84))
       - [x] Read a seven-day registration challenge with the released client and return HTTP 201 for a repeated request ([test](../../../conformance/sso-domains.mjs#L86))
       - [x] Read a 24-character token from the registration response and receive the same token from request-domain-verification on both runtimes ([test](../../../conformance/sso-domains.mjs#L84))
-      - [x] Issue one new token after the earlier one expires, shared by two concurrent requests ([test](../../../adapters/sqlstore/sso_domain_test.go#L221))
+      - [x] Issue one new token after the earlier one expires, shared by two concurrent requests ([test](../../../adapters/sqlstore/sso_domain_test.go#L231))
     - [x] Publish a TXT record ([test](../../../conformance/sso-domains.mjs#L88))
       - [x] Require each domain to publish the token and accept split TXT character strings and labeled values ([test](../../../conformance/sso-domains.mjs#L92))
       - [x] Require the token at the prefixed record on every listed domain and accept split character strings and the labeled value on both runtimes ([test](../../../conformance/sso-domains.mjs#L88))
-      - [x] Reject a record label longer than 63 characters with IDENTIFIER_TOO_LONG before any DNS lookup ([test](../../../adapters/sqlstore/sso_domain_test.go#L412))
+      - [x] Reject a record label longer than 63 characters with IDENTIFIER_TOO_LONG before any DNS lookup ([test](../../../adapters/sqlstore/sso_domain_test.go#L422))
       - [x] Verify a provider whose token is published at the default _plain-auth-token-{providerId} name on both of its domains on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_domain_test.go#L179))
     - [ ] Submit verification
-      - [x] Recheck the manager’s tenant role after DNS answers and before committing the proof ([test](../../../adapters/sqlstore/sso_domain_test.go#L407))
+      - [x] Recheck the manager’s tenant role after DNS answers and before committing the proof ([test](../../../adapters/sqlstore/sso_domain_test.go#L417))
       - [x] Return HTTP 204 with an empty body from verify-domain once both domains publish the token, on both runtimes ([test](../../../conformance/sso-domains.mjs#L92))
       - [ ] `POST /sso/verify-domain`
         - [x] Mark the provider verified only after both domains publish the token, then sign in with an email under its domain on both runtimes ([test](../../../conformance/sso-domains.mjs#L96))
-        - [x] Answer 409 SSO_PROVIDER_CHANGED when the provider's domains change while the DNS lookup is pending ([test](../../../adapters/sqlstore/sso_domain_test.go#L384))
+        - [x] Answer 409 SSO_PROVIDER_CHANGED when the provider's domains change while the DNS lookup is pending ([test](../../../adapters/sqlstore/sso_domain_test.go#L394))
         - [x] Parameter `providerId` ([test](../../../conformance/sso-domains.mjs#L93))
           - [x] Mark the provider named by providerId verified through the released client on both runtimes ([test](../../../conformance/sso-domains.mjs#L93))
   - [ ] Request a verification token
-    - [x] Replace an expired challenge once across two database instances ([test](../../../adapters/sqlstore/sso_domain_test.go#L221))
+    - [x] Replace an expired challenge once across two database instances ([test](../../../adapters/sqlstore/sso_domain_test.go#L231))
     - [x] Return the live token from a second database instance instead of issuing another ([test](../../../adapters/sqlstore/sso_domain_test.go#L189))
     - [x] Store a token that expires seven days after it is created ([test](../../../adapters/sqlstore/sso_domain_test.go#L184))
     - [x] `POST /sso/request-domain-verification` ([test](../../../conformance/sso-domains.mjs#L86))
@@ -503,20 +505,20 @@
         - [x] Return the token of the provider named by providerId ([test](../../../conformance/sso-domains.mjs#L85))
   - [ ] Errors
     - [x] Answer 403 to a signed-in user who does not manage the provider and 401 without a session when a token is requested ([test](../../../adapters/sqlstore/sso_domain_test.go#L197))
-    - [x] `DOMAIN_VERIFIED` ([test](../../../adapters/sqlstore/sso_domain_test.go#L234))
-      - [x] Answer 409 DOMAIN_VERIFIED to a second verification and to a token request once the provider is verified ([test](../../../adapters/sqlstore/sso_domain_test.go#L234))
+    - [x] `DOMAIN_VERIFIED` ([test](../../../adapters/sqlstore/sso_domain_test.go#L244))
+      - [x] Answer 409 DOMAIN_VERIFIED to a second verification and to a token request once the provider is verified ([test](../../../adapters/sqlstore/sso_domain_test.go#L244))
       - [x] Answer DOMAIN_VERIFIED to a token request for a verified provider on both runtimes ([test](../../../conformance/sso-domains.mjs#L94))
-    - [x] `NO_PENDING_VERIFICATION` ([test](../../../adapters/sqlstore/sso_domain_test.go#L211))
-      - [x] Answer 404 NO_PENDING_VERIFICATION to verification after the token expires ([test](../../../adapters/sqlstore/sso_domain_test.go#L211))
-    - [x] `IDENTIFIER_TOO_LONG` ([test](../../../adapters/sqlstore/sso_domain_test.go#L412))
-      - [x] Answer 400 IDENTIFIER_TOO_LONG to registration, token request and verification when the record label exceeds 63 characters ([test](../../../adapters/sqlstore/sso_domain_test.go#L412))
+    - [x] `NO_PENDING_VERIFICATION` ([test](../../../adapters/sqlstore/sso_domain_test.go#L221))
+      - [x] Answer 404 NO_PENDING_VERIFICATION to verification after the token expires ([test](../../../adapters/sqlstore/sso_domain_test.go#L221))
+    - [x] `IDENTIFIER_TOO_LONG` ([test](../../../adapters/sqlstore/sso_domain_test.go#L422))
+      - [x] Answer 400 IDENTIFIER_TOO_LONG to registration, token request and verification when the record label exceeds 63 characters ([test](../../../adapters/sqlstore/sso_domain_test.go#L422))
     - [x] `INVALID_DOMAIN` ([test](../../../plugins/sso/domain_test.go#L33))
       - [x] Fail the DNS target check with INVALID_DOMAIN when a domain entry is a URL ([test](../../../plugins/sso/domain_test.go#L33))
-      - [x] Answer 400 INVALID_DOMAIN to registration, token request and verification when a domain makes the record name longer than 253 characters ([test](../../../adapters/sqlstore/sso_domain_test.go#L414))
-    - [x] `DOMAIN_VERIFICATION_FAILED` ([test](../../../adapters/sqlstore/sso_domain_test.go#L207))
-      - [x] Answer 502 DOMAIN_VERIFICATION_FAILED while a listed domain lacks the token or publishes a wrong labeled value ([test](../../../adapters/sqlstore/sso_domain_test.go#L207))
+      - [x] Answer 400 INVALID_DOMAIN to registration, token request and verification when a domain makes the record name longer than 253 characters ([test](../../../adapters/sqlstore/sso_domain_test.go#L424))
+    - [x] `DOMAIN_VERIFICATION_FAILED` ([test](../../../adapters/sqlstore/sso_domain_test.go#L217))
+      - [x] Answer 502 DOMAIN_VERIFICATION_FAILED while a listed domain lacks the token or publishes a wrong labeled value ([test](../../../adapters/sqlstore/sso_domain_test.go#L217))
     - [ ] `SSO_PROVIDER_CHANGED`
-      - [x] Answer 409 SSO_PROVIDER_CHANGED when the provider's domains change during the DNS lookup ([test](../../../adapters/sqlstore/sso_domain_test.go#L384))
+      - [x] Answer 409 SSO_PROVIDER_CHANGED when the provider's domains change during the DNS lookup ([test](../../../adapters/sqlstore/sso_domain_test.go#L394))
 
 ## Single Sign-On (SSO)
 
@@ -678,7 +680,7 @@
 
 - [ ] SSO users and organizations
   - [ ] How SSO users are matched
-    - [x] Link a new enterprise identity to a verified local user only under a proved domain or subdomain with implicit linking on, and redirect with account_not_linked otherwise ([test](../../../adapters/sqlstore/sso_domain_test.go#L324))
+    - [x] Link a new enterprise identity to a verified local user only under a proved domain or subdomain with implicit linking on, and redirect with account_not_linked otherwise ([test](../../../adapters/sqlstore/sso_domain_test.go#L334))
     - [ ] Block new users
       - [x] Redirect with signup_disabled for a new OIDC user when implicit sign-up is off, and create the user when requestSignUp is true ([test](../../../adapters/sqlstore/sso_browser_test.go#L345))
       - [x] Refuse a SAML sign-up under DisableImplicitSignUp even with requestSignUp, with signup_disabled ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L243))
