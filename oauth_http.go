@@ -732,9 +732,20 @@ func (a *Auth) completeProfileWith(ctx context.Context, r *http.Request, method,
 	}
 	var user User
 	var created bool
-	write := func(ctx context.Context) (err error) {
-		user, created, err = complete(ctx, id, p.Subject, tokens, candidate, session, options)
-		return err
+	// The sign-in's store may ask about verification records it writes with
+	// the session, such as a SAML logout binding. A dry run rolls back, so it
+	// asks nothing; the approved run, or the only run, asks, so those
+	// records' before hooks follow the user's and session's.
+	records := a.newVerificationGate()
+	write := func(ctx context.Context) error {
+		sign := func(ctx context.Context) (err error) {
+			user, created, err = complete(ctx, id, p.Subject, tokens, candidate, session, options)
+			return err
+		}
+		if plan := LoginPlanFrom(ctx); plan != nil && !plan.approved {
+			return (*VerificationGate)(nil).run(ctx, sign)
+		}
+		return records.run(ctx, sign)
 	}
 	gate := &signInGate{method: method, provider: id, profile: profileMap(p.Data), candidate: candidate, fields: profileMap(a.writableProfileFields(p))}
 	var err error
@@ -770,6 +781,13 @@ func (a *Auth) completeProfileWith(ctx context.Context, r *http.Request, method,
 	}
 	if err == nil && options.LinkUserID == "" {
 		err = a.afterDecidedSignIn(ctx, user, created, session.Token)
+		// The sign-in's own records run their after hooks after the user's
+		// and session's; a failure removes the undelivered session.
+		if err == nil {
+			if hookErr := records.after(ctx); hookErr != nil {
+				err = a.discardUnpublishedSession(ctx, session.Token, hookErr)
+			}
+		}
 	}
 	if errors.Is(err, ErrOAuthProfileConflict) {
 		return AuthResult{}, false, &APIError{409, "OAUTH_PROFILE_CONFLICT", "Provider profile conflicts with an existing profile"}

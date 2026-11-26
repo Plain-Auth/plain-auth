@@ -193,7 +193,12 @@ func (o Options) startLogout(c auth.EndpointContext, _ Store, actor Actor) (any,
 	}
 	cookie := req.ID + "." + rand.Text()
 	pending := SAMLLogoutRequest{ID: req.ID, State: state, BrowserHash: logoutBrowserHash(cookie), ProviderID: p.ProviderID, Reference: p.Reference, CallbackURL: callback, ExpiresAt: now.Add(ttl)}
-	if err := store.StartSAMLLogout(c.Request.Context(), actor, identity, pending, proof, now); err != nil {
+	// The store asks the request's gate before it stores the request and
+	// removes the binding, so their verification hooks run outside its
+	// transaction.
+	if err := c.GateVerifications(func(ctx context.Context) error {
+		return store.StartSAMLLogout(ctx, actor, identity, pending, proof, time.Now().UTC())
+	}); err != nil {
 		return nil, err
 	}
 	return c.SAMLLogoutStarted(actor.SessionToken, destination.String(), cookie, ttl), nil
@@ -233,8 +238,18 @@ func (o Options) finishLogout(c auth.EndpointContext) (any, error) {
 	if err != nil || response.Issuer == nil || response.Issuer.Value != p.SAML.IdentityProviderEntityID() {
 		return nil, ErrSAMLLogoutResponse
 	}
-	target, err := store.ConsumeSAMLLogout(c.Request.Context(), SAMLLogoutRequest{ID: requestID, State: state, BrowserHash: logoutBrowserHash(cookie), ProviderID: p.ProviderID, Reference: p.Reference}, time.Now().UTC())
+	proof := SAMLLogoutRequest{ID: requestID, State: state, BrowserHash: logoutBrowserHash(cookie), ProviderID: p.ProviderID, Reference: p.Reference}
+	var target string
+	spent := false
+	err = c.GateVerifications(func(ctx context.Context) (err error) {
+		target, err = store.ConsumeSAMLLogout(ctx, proof, time.Now().UTC())
+		spent = err == nil
+		return err
+	})
 	if err != nil {
+		if spent {
+			c.SAMLLogoutCompleted() // the request was spent; its cookie redeems nothing
+		}
 		return nil, err
 	}
 	if _, err := c.CallbackURL(target); err != nil {

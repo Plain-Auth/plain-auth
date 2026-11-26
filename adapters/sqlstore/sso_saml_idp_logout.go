@@ -47,33 +47,38 @@ func (s *Store) samlReceiptField(path string) string {
 	}
 }
 
-func (s *Store) matchingSAMLReceipts(ctx context.Context, tx *sql.Tx, req sso.SAMLIDPLogout, now time.Time) ([]samlSessionRecord, error) {
-
-	q := `SELECT "id","value" FROM "verification" WHERE "identifier"=? AND "expiresAt">? AND ` + s.samlReceiptField("Reference") + `=? AND ` + s.samlReceiptField("Identity.NameID.Value") + `=? AND ` + s.samlReceiptField("Identity.SessionIndex") + `=? ORDER BY "id"`
+// matchingSAMLReceipts returns the logout bindings req names, and their
+// expiries by session ID, kept apart so that a renewal between two reads
+// does not change the compared records.
+func (s *Store) matchingSAMLReceipts(ctx context.Context, tx *sql.Tx, req sso.SAMLIDPLogout, now time.Time) ([]samlSessionRecord, map[string]time.Time, error) {
+	q := `SELECT "id","value","expiresAt" FROM "verification" WHERE "identifier"=? AND "expiresAt">? AND ` + s.samlReceiptField("Reference") + `=? AND ` + s.samlReceiptField("Identity.NameID.Value") + `=? AND ` + s.samlReceiptField("Identity.SessionIndex") + `=? ORDER BY "id"`
 	rows, err := tx.QueryContext(ctx, s.bind(q), samlSessionKind, s.date(now), req.Reference, req.Identity.NameID.Value, req.Identity.SessionIndex)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer rows.Close()
 	var records []samlSessionRecord
+	expiries := map[string]time.Time{}
 	for rows.Next() {
 		var raw, id string
-		if err := rows.Scan(&id, &raw); err != nil {
-			return nil, err
+		var expires time.Time
+		if err := rows.Scan(&id, &raw, &expires); err != nil {
+			return nil, nil, err
 		}
 		var rec samlSessionRecord
 		if err := json.Unmarshal([]byte(raw), &rec); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if rec.Reference != req.Reference || rec.ProviderID != req.ProviderID || rec.Identity != req.Identity {
 			continue
 		}
 		if rec.SessionID == "" || rec.UserID == "" || rec.TokenDigest == "" || id != originDigest("sls-", rec.SessionID) {
-			return nil, sso.ErrSAMLLogoutRequest
+			return nil, nil, sso.ErrSAMLLogoutRequest
 		}
 		records = append(records, rec)
+		expiries[rec.SessionID] = expires.UTC()
 	}
-	return records, rows.Err()
+	return records, expiries, rows.Err()
 }
 
 func (s *Store) revokeIDPLogout(ctx context.Context, req sso.SAMLIDPLogout, browserToken string, requireProof bool, now, started time.Time) (bool, error) {
@@ -82,7 +87,7 @@ func (s *Store) revokeIDPLogout(ctx context.Context, req sso.SAMLIDPLogout, brow
 		return false, err
 	}
 	defer tx.Rollback()
-	records, err := s.matchingSAMLReceipts(ctx, tx, req, now)
+	records, _, err := s.matchingSAMLReceipts(ctx, tx, req, now)
 	if err != nil {
 		return false, err
 	}
@@ -128,7 +133,7 @@ func (s *Store) revokeIDPLogout(ctx context.Context, req sso.SAMLIDPLogout, brow
 			return false, sso.ErrDomainUnverified
 		}
 	}
-	records, err = s.matchingSAMLReceipts(ctx, tx, req, now)
+	records, expiries, err := s.matchingSAMLReceipts(ctx, tx, req, now)
 	if err != nil {
 		return false, err
 	}
@@ -138,13 +143,24 @@ func (s *Store) revokeIDPLogout(ctx context.Context, req sso.SAMLIDPLogout, brow
 	} else if err != nil {
 		return false, err
 	}
-	cleared := false
+	gate := auth.VerificationGateFrom(ctx)
+	drop := make(map[string]bool, len(records))
+	var asked error
 	for _, rec := range records {
-		previous, ok := locked[rec.SessionID]
-		if !ok || previous.record != rec {
+		if previous, ok := locked[rec.SessionID]; !ok || previous.record != rec {
 			return false, errSAMLSessionSetChanged
 		}
-		token := previous.token
+		// Every binding is asked about before any stop, so their hooks run
+		// in one pass.
+		ok, err := gate.Delete(sso.LogoutSessionRecord(originDigest("sls-", rec.SessionID), rec.UserID, expiries[rec.SessionID]))
+		asked, drop[rec.SessionID] = errors.Join(asked, err), ok
+	}
+	if asked != nil {
+		return false, asked
+	}
+	cleared := false
+	for _, rec := range records {
+		token := locked[rec.SessionID].token
 		if token != "" {
 			param, _ := s.deviceTokenParameters([]string{token})
 			n, err := s.deleteSessionsTx(ctx, tx, sessionWhere+` AND "token"=`+param, rec.SessionID, rec.UserID, token)
@@ -152,6 +168,9 @@ func (s *Store) revokeIDPLogout(ctx context.Context, req sso.SAMLIDPLogout, brow
 				return false, err
 			}
 			cleared = cleared || n == 1 && token == browserToken
+		}
+		if !drop[rec.SessionID] {
+			continue // a declined binding stays, unusable, until it expires
 		}
 		if _, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "id"=? AND "identifier"=?`), originDigest("sls-", rec.SessionID), samlSessionKind); err != nil {
 			return false, err

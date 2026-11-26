@@ -416,16 +416,19 @@ func New(o Options) (auth.Plugin, error) {
 		}
 		plugin.Endpoints = append(plugin.Endpoints, endpoint("/sso/update-provider", "POST", o.updateSAMLMetadata), auth.Endpoint{Method: "GET", Path: "/sso/saml2/sp/metadata", Handler: o.samlMetadata}, acs)
 	}
-	plugin.ValidateVerificationStore = func(s auth.Store, _ auth.VerificationHookSet) error {
-		if o.SAML != nil && o.SAML.EnableSingleLogout {
-			return errors.New("auth: verification hooks do not run yet for SAML single logout")
-		}
-		// A domain token is written inside the store's transactions, which must
-		// ask the request's gate. A store without DomainStore gets
-		// ValidateStore's error instead.
+	plugin.ValidateVerificationStore = func(s auth.Store, hooks auth.VerificationHookSet) error {
+		// A logout binding or request and a domain token are written inside the
+		// store's transactions, which must ask the request's gate. A store
+		// without the base interface gets ValidateStore's error instead.
+		_, slo := s.(SAMLLogoutStore)
 		_, dns := s.(DomainStore)
-		if _, ok := s.(VerificationGater); o.DomainVerification != nil && dns && !ok {
-			return errors.New("auth: verification hooks with SSO domain verification require a store implementing GatesSSOVerifications")
+		logout := o.SAML != nil && o.SAML.EnableSingleLogout && slo
+		domain := o.DomainVerification != nil && dns
+		if o.SAML != nil && o.SAML.EnableSingleLogout && hooks.UpdateBefore {
+			return errors.New("auth: verification update before hooks cannot run with SAML single logout, whose session renewal extends a logout binding inside the store; use the update after hooks")
+		}
+		if _, ok := s.(VerificationGater); (logout || domain) && !ok {
+			return errors.New("auth: verification hooks with SAML single logout or SSO domain verification require a store implementing GatesSSOVerifications")
 		}
 		return nil
 	}

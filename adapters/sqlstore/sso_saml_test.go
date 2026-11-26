@@ -385,6 +385,13 @@ func runEnterpriseSAMLBrowser(t *testing.T, encrypted, logout bool) {
 					}
 				}
 				if !encrypted {
+					t.Run("verification hooks around SAML logout", func(t *testing.T) {
+						testSAMLLogoutHooks(t, first, second, idp, api, newBrowser, sdk, login, func(hooks auth.DatabaseHooks) (http.Handler, http.Handler, func()) {
+							savedNode, savedPeer := node, peer
+							node, peer = host(first, keys, portalPolicy, false, hooks), host(second, keys, portalPolicy, false, hooks)
+							return node, peer, func() { node, peer = savedNode, savedPeer }
+						})
+					})
 					t.Run("a binding expires with its stored session", func(t *testing.T) {
 						var hooks auth.DatabaseHooks
 						hooks.Session.Create.Before = func(_ context.Context, s *auth.SessionRecord, _ *auth.HookContext) error {

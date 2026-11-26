@@ -7,6 +7,7 @@ import (
 	"time"
 
 	authn "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/plugins/sso"
 )
 
 var _ authn.SessionRefreshStore = (*Store)(nil)
@@ -41,8 +42,20 @@ func (s *Store) RefreshSession(ctx context.Context, token string, previousExpiry
 	}
 	// Carry the original external SAML identity through a sliding renewal on any replica.
 	q = `UPDATE "verification" SET "expiresAt"=? WHERE "id"=? AND "identifier"=? AND ` + s.samlReceiptField("SessionID") + `=? AND ` + s.samlReceiptField("UserID") + `=? AND ` + s.samlReceiptField("TokenDigest") + `=?`
-	if _, err = tx.ExecContext(ctx, s.bind(q), s.date(nextExpiry), originDigest("sls-", sessionID), samlSessionKind, sessionID, userID, originDigest("slt-", token)); err != nil {
+	result, err = tx.ExecContext(ctx, s.bind(q), s.date(nextExpiry), originDigest("sls-", sessionID), samlSessionKind, sessionID, userID, originDigest("slt-", token))
+	if err != nil {
 		return false, err
+	}
+	// Report an extended binding for its update after hooks. The Auth gives
+	// a renewal a gate only without update before hooks, so this never stops.
+	if gate := authn.VerificationGateFrom(ctx); gate != nil {
+		if n, err := result.RowsAffected(); err != nil {
+			return false, err
+		} else if n == 1 {
+			if _, err := gate.Update(sso.LogoutSessionRecord(originDigest("sls-", sessionID), userID, nextExpiry)); err != nil {
+				return false, err
+			}
+		}
 	}
 	if err = tx.Commit(); err != nil {
 		return false, err

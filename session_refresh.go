@@ -135,8 +135,19 @@ func (a *Auth) sessionHTTP(headers http.Header, r *http.Request) (body any, resp
 		}
 		next = edited.ExpiresAt
 	}
-	won, err := store.RefreshSession(ctx, token, row.ExpiresAt, now, next)
-	if err != nil {
+	// A renewal extends the session's SAML logout binding in the same
+	// transaction; the binding's update after hooks run once it commits,
+	// before the session's. New refuses update before hooks with single
+	// logout, and the gate is given only without them, so it never stops.
+	var records *VerificationGate
+	if v := a.dbHooks.verification.update; len(v.before) == 0 && len(v.after) > 0 && a.HasPlugin("sso") {
+		records = a.newVerificationGate()
+	}
+	var won bool
+	if err := records.run(ctx, func(ctx context.Context) (err error) {
+		won, err = store.RefreshSession(ctx, token, row.ExpiresAt, now, next)
+		return err
+	}); err != nil {
 		return nil, err
 	}
 	if !won {
@@ -163,6 +174,9 @@ func (a *Auth) sessionHTTP(headers http.Header, r *http.Request) (body any, resp
 	result.Session.UpdatedAt = now
 	refreshed := result.Session
 	refreshed.Token = token
+	if err := records.after(ctx); err != nil {
+		return nil, err
+	}
 	if err := a.afterSessionUpdate(ctx, refreshed, nil); err != nil {
 		return nil, err
 	}

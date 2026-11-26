@@ -92,7 +92,13 @@ func (o Options) receiveIDPLogout(c auth.EndpointContext, q url.Values, store SA
 		return nil, ErrSAMLLogoutRequest
 	}
 	token := c.SAMLLogoutBrowserToken()
-	revoked, err := store.(SAMLIDPLogoutStore).RevokeSAMLIDPSessions(c.Request.Context(), proof, token, required, now)
+	// The store asks the request's gate before it removes each binding, so
+	// their verification hooks run outside its transaction.
+	var revoked bool
+	err = c.GateVerifications(func(ctx context.Context) (err error) {
+		revoked, err = store.(SAMLIDPLogoutStore).RevokeSAMLIDPSessions(ctx, proof, token, required, time.Now().UTC())
+		return err
+	})
 	if err != nil {
 		return nil, err
 	}

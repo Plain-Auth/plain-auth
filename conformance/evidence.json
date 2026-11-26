@@ -9662,6 +9662,11 @@
       "label": "A declined RelayState answers 400 INVALID_OAUTH_STATE and keeps the flow for a retry",
       "test": "adapters/sqlstore/sso_saml_test.go",
       "marker": "// A declined RelayState answers 400 and keeps the flow."
+    },
+    {
+      "label": "The logout binding's verification create hooks follow the sign-in's session hooks once",
+      "test": "adapters/sqlstore/sso_saml_hooks_test.go",
+      "marker": "// The binding's hooks follow the user and session hooks once."
     }
   ],
   "docs/content/docs/plugins/polar.mdx#L17/Checkout Integration": [
@@ -10388,6 +10393,11 @@
       "label": "A SAML logout binding carries the expiry a session create hook gave its session",
       "test": "adapters/sqlstore/sso_saml_test.go",
       "marker": "// A binding expires with the session a create hook extended."
+    },
+    {
+      "label": "Run the logout request's create and the binding's delete verification hooks in one pass; a declined request signs out but its LogoutResponse answers 400",
+      "test": "adapters/sqlstore/sso_saml_hooks_test.go",
+      "marker": "// A declined logout request signs out, and its response answers 400."
     }
   ],
   "plugin/sso/GET / POST /sso/saml2/sp/slo/:providerId": [
@@ -10415,6 +10425,16 @@
       "label": "Return an independently verified signed Redirect acknowledgement to the IdP; the strict pinned runtime rejects the same signed request",
       "test": "conformance/core.test.mjs",
       "marker": "test(\"enterprise SAML accepts signed directory logout"
+    },
+    {
+      "label": "Spend the logout request with its verification delete hooks after the response's signature is checked; a declined spend answers 400 and keeps it",
+      "test": "adapters/sqlstore/sso_saml_hooks_test.go",
+      "marker": "// A declined logout response keeps the request and its cookie."
+    },
+    {
+      "label": "An IdP LogoutRequest runs the verification delete hooks of every binding it ends, in one pass",
+      "test": "adapters/sqlstore/sso_saml_hooks_test.go",
+      "marker": "// An IdP logout runs every binding's delete hooks in one pass."
     }
   ],
   "docs/content/docs/plugins/test-utils.mdx#L77": [
@@ -19232,6 +19252,11 @@
       "label": "Run verification hooks around SSO domain tokens on SQLite, PostgreSQL and MySQL: a declined token registers the provider as pending with a token that cannot be verified, a declined reissue changes nothing, and returning, verifying or deleting runs none",
       "test": "adapters/sqlstore/sso_hooks_test.go",
       "marker": "func TestVerificationHooksAroundSSODomains(t *testing.T) {"
+    },
+    {
+      "label": "Run verification hooks around SAML logout bindings and requests on SQLite, PostgreSQL and MySQL: the binding's create hooks follow the sign-in's session hooks once, a declined binding signs in without single logout, renewal runs its update after hooks, logout runs the request's create and the binding's delete hooks in one pass, and a declined logout response keeps the request",
+      "test": "adapters/sqlstore/sso_saml_hooks_test.go",
+      "marker": "// SAML single logout's records run the verification hooks on SQLite,"
     }
   ],
   "docs/content/docs/concepts/database.mdx#L881": [
@@ -19414,6 +19439,11 @@
       "label": "Store one SSO domain token and run its create after hook once among concurrent requests, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/sso_hooks_test.go",
       "marker": "// Concurrent domain token requests store one token and run its after hooks once."
+    },
+    {
+      "label": "Run one verification delete after hook among concurrent SAML LogoutResponses for one request, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_hooks_test.go",
+      "marker": "// Concurrent LogoutResponses for one request run one delete after hook."
     }
   ],
   "docs/content/docs/concepts/database.mdx#L891/Example Usage": [
@@ -19477,7 +19507,7 @@
       "marker": "// Run account hooks around the credential a sign-up stores, password"
     },
     {
-      "label": "Configure verification hooks for password reset and account deletion links, browser OAuth flows, magic links, one-time tokens, email and phone codes, two-factor challenges, delivered codes and remembered browsers, passkey challenges, wallet nonces, enterprise sign-in state, SSO domain tokens and OAuth authorization codes, and refuse the plugins, hooks and stores that would bypass them",
+      "label": "Configure verification hooks for password reset and account deletion links, browser OAuth flows, magic links, one-time tokens, email and phone codes, two-factor challenges, delivered codes and remembered browsers, passkey challenges, wallet nonces, enterprise sign-in state, SAML logout bindings and requests, SSO domain tokens and OAuth authorization codes, and refuse the plugins, hooks and stores that would bypass them",
       "test": "conformance/goapi/database_verification_hooks_test.go",
       "marker": "func TestDatabaseVerificationHooksRefuseBypassingFeatures(t *testing.T) {"
     }

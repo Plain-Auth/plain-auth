@@ -26,6 +26,10 @@ import (
 // existing user, PlanSession just before inserting the session and Commit
 // just before committing, returning their errors. The methods do nothing on a nil plan, so a store
 // can call them with LoginPlanFrom(ctx) unconditionally.
+//
+// A sign-in's store may also ask the request's VerificationGate about records
+// it writes with the session, such as a SAML logout binding. The Auth gives
+// the dry run no gate, so only the approved run, or the only run, asks.
 type LoginPlan struct {
 	approved                               bool
 	user                                   *User

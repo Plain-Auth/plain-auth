@@ -251,11 +251,11 @@ func TestDatabaseVerificationHooks(t *testing.T) {
 	same(drain(), "delete-before:delete-account", "delete-after:delete-account", "session-delete-before", "user-delete-before", "session-delete-after")
 }
 
-// New refuses verification hooks that an enabled feature would bypass: SAML
-// single logout, whose records do not run them yet, two-factor on a store
-// that cannot report the rows its calls lock, SSO domain tokens and
-// authorization codes on a store whose methods do not ask the request's
-// verification gate, update before hooks with email and
+// New refuses verification hooks that an enabled feature would bypass:
+// two-factor on a store that cannot report the rows its calls lock, SAML
+// single logout, SSO domain tokens and authorization codes on a store whose
+// methods do not ask the request's verification gate, update before hooks
+// with SAML single logout, whose renewal extends a binding inside the store, update before hooks with email and
 // phone codes and two-factor, which count a wrong guess as they judge it, and
 // delete hooks on a store that cannot read a deletion link, an OAuth flow, a
 // magic link, a one-time token, an email code, a passkey challenge or a
@@ -406,14 +406,29 @@ func TestDatabaseVerificationHooksRefuseBypassingFeatures(t *testing.T) {
 	if _, err := authn.New(withSSO); err != nil && strings.Contains(err.Error(), "GatesSSOVerifications") {
 		t.Fatal("SSO without domain verification was refused for its tokens:", err)
 	}
-	// Single logout's records do not run them yet, and session delete hooks
-	// stay refused with SSO, which ends sessions inside its store.
+	// Single logout runs them on a store that asks the gate, with only after
+	// hooks on a renewal, which extends a binding inside the store. Session
+	// delete hooks stay refused with SSO, which ends sessions inside its store.
 	signer, certificate := samlSigner(t)
 	withSSO.Store = directory
 	withSSO.Plugins = []authn.Plugin{enterprise(sso.Options{SAML: &sso.SAMLOptions{EnableSingleLogout: true, RequestSigner: signer, RequestCertificate: certificate}})}
-	if _, err := authn.New(withSSO); err == nil || !strings.Contains(err.Error(), "SAML single logout") {
-		t.Fatal("verification hooks were accepted with SAML single logout:", err)
+	if _, err := authn.New(withSSO); err != nil {
+		t.Fatal("verification hooks were refused with SAML single logout on SQLite:", err)
 	}
+	type logoutStore = sso.SAMLLogoutStore
+	withSSO.Store = struct {
+		authn.Store
+		logoutStore
+	}{directory, directory}
+	if _, err := authn.New(withSSO); err == nil || !strings.Contains(err.Error(), "GatesSSOVerifications") {
+		t.Fatal("verification hooks were accepted with SAML single logout on a store that does not ask the gate:", err)
+	}
+	withSSO.Store = directory
+	withSSO.DatabaseHooks.Verification.Update.Before = func(context.Context, *authn.VerificationRecord, *authn.HookContext) error { return nil }
+	if _, err := authn.New(withSSO); err == nil || !strings.Contains(err.Error(), "update before hooks") || !strings.Contains(err.Error(), "SAML single logout") {
+		t.Fatal("verification update before hooks were accepted with SAML single logout:", err)
+	}
+	withSSO.DatabaseHooks.Verification.Update = observe
 	withSSO.Plugins = []authn.Plugin{enterprise(sso.Options{})}
 	withSSO.DatabaseHooks.Session.Delete = authn.OperationHooks[authn.SessionRecord]{After: func(context.Context, authn.SessionRecord, *authn.HookContext) error { return nil }}
 	if _, err := authn.New(withSSO); err == nil || !strings.Contains(err.Error(), "sso") {
