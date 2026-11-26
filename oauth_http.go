@@ -497,6 +497,9 @@ func (a *Auth) exchangeProviderCode(ctx context.Context, p OAuthProvider, flow O
 	var err error
 	var token *oauth2.Token
 	if p.ExchangeCode == nil {
+		for k, v := range p.TokenParams {
+			params = append(params, oauth2.SetAuthURLParam(k, v[0]))
+		}
 		token, err = p.Config.Exchange(p.tokenContext(ctx), q.Get("code"), params...)
 	} else {
 		token, err = p.ExchangeCode(ctx, p.Config, q.Get("code"), flow.Verifier, q)

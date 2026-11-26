@@ -21,12 +21,14 @@ import (
 
 // tokenRecord is one request a provider's token endpoint received.
 type tokenRecord struct {
+	path   string
 	form   url.Values
 	header http.Header
 }
 
-// tokenProvider serves /authorize, which approves with code "c", and /token,
-// which records each request and returns a refreshable token.
+// tokenProvider serves /authorize, which approves with code "c", /token,
+// which returns a refreshable token, and /userinfo; it records each token and
+// user-info request.
 func tokenProvider(t *testing.T) (*httptest.Server, func() []tokenRecord) {
 	t.Helper()
 	var mu sync.Mutex
@@ -37,10 +39,10 @@ func tokenProvider(t *testing.T) (*httptest.Server, func() []tokenRecord) {
 			target, _ := url.Parse(r.URL.Query().Get("redirect_uri"))
 			target.RawQuery = url.Values{"code": {"c"}, "state": {r.URL.Query().Get("state")}}.Encode()
 			http.Redirect(w, r, target.String(), http.StatusFound)
-		case "/token":
+		case "/token", "/userinfo":
 			_ = r.ParseForm()
 			mu.Lock()
-			seen = append(seen, tokenRecord{form: r.PostForm, header: r.Header.Clone()})
+			seen = append(seen, tokenRecord{path: r.URL.Path, form: r.PostForm, header: r.Header.Clone()})
 			mu.Unlock()
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write([]byte(`{"access_token":"access","refresh_token":"refresh","token_type":"Bearer","expires_in":3600}`))
@@ -63,6 +65,7 @@ type tokenAuthNode struct {
 	base    string
 	browser *http.Client
 	logs    *bytes.Buffer
+	node    *auth.Auth
 }
 
 func newTokenAuthNode(t *testing.T, provider auth.OAuthProvider) (*tokenAuthNode, error) {
@@ -85,7 +88,7 @@ func newTokenAuthNode(t *testing.T, provider auth.OAuthProvider) (*tokenAuthNode
 	app.Start()
 	t.Cleanup(app.Close)
 	jar, _ := cookiejar.New(nil)
-	return &tokenAuthNode{base: base, browser: &http.Client{Jar: jar, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}, logs: logs}, nil
+	return &tokenAuthNode{base: base, browser: &http.Client{Jar: jar, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}, logs: logs, node: node}, nil
 }
 
 func (n *tokenAuthNode) post(t *testing.T, path, body string) *http.Response {

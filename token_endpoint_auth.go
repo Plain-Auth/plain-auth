@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"slices"
 
+	"github.com/Plain-Org/plain-auth/internal/httporigin"
 	"golang.org/x/oauth2"
 )
 
@@ -105,15 +106,24 @@ func prepareTokenEndpointAuth(id string, p *OAuthProvider) error {
 	return nil
 }
 
-// tokenContext returns ctx carrying the provider's HTTP client, wrapped to
-// add a client assertion or a custom authentication to token requests.
+// tokenContext returns ctx carrying the provider's HTTP client for token
+// endpoint requests: TokenHeaders go to the token endpoint's origin, and the
+// private_key_jwt and custom methods authenticate each request.
 func (p OAuthProvider) tokenContext(ctx context.Context) context.Context {
-	if m := p.TokenEndpointAuth.Method; m != TokenAuthPrivateKeyJWT && m != TokenAuthCustom {
+	origin := ""
+	if u, err := url.Parse(p.Config.Endpoint.TokenURL); err == nil {
+		origin = httporigin.Canonical(u)
+	}
+	c := httporigin.WithHeaders(p.HTTPClient, origin, p.TokenHeaders)
+	if m := p.TokenEndpointAuth.Method; m == TokenAuthPrivateKeyJWT || m == TokenAuthCustom {
+		authenticated := *c
+		authenticated.Transport = tokenAuthTransport{base: c.Transport, auth: p.TokenEndpointAuth, clientID: p.Config.ClientID, tokenURL: p.Config.Endpoint.TokenURL}
+		c = &authenticated
+	}
+	if c == p.HTTPClient {
 		return ctx
 	}
-	c := *p.HTTPClient
-	c.Transport = tokenAuthTransport{base: c.Transport, auth: p.TokenEndpointAuth, clientID: p.Config.ClientID, tokenURL: p.Config.Endpoint.TokenURL}
-	return context.WithValue(ctx, oauth2.HTTPClient, &c)
+	return context.WithValue(ctx, oauth2.HTTPClient, c)
 }
 
 var grantFields = []string{"grant_type", "code", "redirect_uri", "code_verifier", "refresh_token"}

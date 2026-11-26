@@ -30510,5 +30510,69 @@
       "marker": "func TestOAuthProviderName(t *testing.T) {",
       "complete": true
     }
+  ],
+  "plugin-symbol/generic-oauth/GenericOAuthConfig/tokenUrlParams": [
+    {
+      "label": "TokenParams add one-valued form fields such as audience and resource to the code exchange only; New refuses the grant and client authentication fields, two values, and ExchangeCode, which replaces the request (deviation: the protocol fields are refused instead of kept)",
+      "test": "conformance/goapi/oauth_token_requests_test.go",
+      "marker": "func TestOAuthTokenParamsAndHeaders(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/generic-oauth.mdx#L314/tokenUrlParams": [
+    {
+      "label": "TokenParams add one-valued form fields such as audience and resource to the code exchange only; New refuses the grant and client authentication fields, two values, and ExchangeCode, which replaces the request (deviation: the protocol fields are refused instead of kept)",
+      "test": "conformance/goapi/oauth_token_requests_test.go",
+      "marker": "func TestOAuthTokenParamsAndHeaders(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/generic-oauth.mdx#L33/Provider requires extra token parameters": [
+    {
+      "label": "A provider that needs extra token parameters gets them through TokenParams on the code exchange and RefreshParams on each refresh",
+      "test": "conformance/goapi/oauth_token_requests_test.go",
+      "marker": "func TestOAuthTokenParamsAndHeaders(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/generic-oauth/GenericOAuthConfig/authorizationHeaders": [
+    {
+      "label": "TokenHeaders reach the code exchange and the refresh at the token endpoint's origin, not profile requests, and never replace a header the request sets such as Basic authentication (deviation: the library's own headers win); New refuses invalid headers and ExchangeCode or Refresh",
+      "test": "conformance/goapi/oauth_token_requests_test.go",
+      "marker": "func TestOAuthTokenParamsAndHeaders(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/generic-oauth.mdx#L397/authorizationHeaders": [
+    {
+      "label": "TokenHeaders reach the code exchange and the refresh at the token endpoint's origin, not profile requests, and never replace a header the request sets such as Basic authentication (deviation: the library's own headers win); New refuses invalid headers and ExchangeCode or Refresh",
+      "test": "conformance/goapi/oauth_token_requests_test.go",
+      "marker": "func TestOAuthTokenParamsAndHeaders(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/generic-oauth.mdx#L34/Provider requires custom HTTP headers": [
+    {
+      "label": "Token endpoint headers through TokenHeaders; discovery headers are still missing",
+      "test": "conformance/goapi/oauth_token_requests_test.go",
+      "marker": "func TestOAuthTokenParamsAndHeaders(t *testing.T) {",
+      "complete": false
+    }
+  ],
+  "plugin-symbol/generic-oauth/GenericOAuthConfig/refreshTokenParams": [
+    {
+      "label": "RefreshParams adds fields to each refresh from the triggering request's headers and the owner, runs before the account is locked so it can read the store, nil adds nothing, a server call gets nil headers, an error or a protocol field fails the refresh without calling the provider (deviation: refused instead of ignored), and New refuses it with Refresh",
+      "test": "conformance/goapi/oauth_token_requests_test.go",
+      "marker": "func TestOAuthRefreshParams(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/generic-oauth.mdx#L316/refreshTokenParams": [
+    {
+      "label": "RefreshParams adds fields to each refresh from the triggering request's headers and the owner, runs before the account is locked so it can read the store, nil adds nothing, a server call gets nil headers, an error or a protocol field fails the refresh without calling the provider (deviation: refused instead of ignored), and New refuses it with Refresh",
+      "test": "conformance/goapi/oauth_token_requests_test.go",
+      "marker": "func TestOAuthRefreshParams(t *testing.T) {",
+      "complete": true
+    }
   ]
 }

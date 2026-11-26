@@ -48,6 +48,20 @@ The provider returns the browser to `{BaseURL}{BasePath}/callback/{id}`. To regi
 
 A provider can also set `AccessType`, sent as `access_type` (its `AuthorizationParams` and a call's `additionalParams` override it), `DefaultAccessTokenLifetime`, the access token lifetime assumed when a token response has no `expires_in`, on the code exchange and refresh alike, and `Name`, a display label that defaults to its `SocialProviders` key and that `Auth.OAuthProviderName` returns. [Provider option tests](../conformance/goapi/oauth_provider_options_test.go)
 
+Some providers need more on their token requests. `TokenParams` adds form fields, such as `audience` or `resource` with one value each, to the code exchange. `TokenHeaders` adds headers, such as a staging token, to the code exchange and every refresh, and only for the token endpoint's origin; they never replace a header the request already has, such as the Basic client authentication, and profile requests do not get them. `RefreshParams` returns extra fields for each refresh request:
+
+```go
+work.RefreshParams = func(ctx context.Context, r plainauth.OAuthRefreshRequest) (url.Values, error) {
+	org := r.Header.Get("X-Active-Org") // nil Header for a trusted server call
+	if !memberOf(ctx, r.UserID, org) {   // header values come from the caller
+		return nil, errors.New("not a member")
+	}
+	return url.Values{"audience": {"https://api.example.org/" + org}}, nil
+}
+```
+
+It receives a copy of the triggering request's headers, the owner's user ID and the local account ID, and runs before the account is locked, so it may read the store. An error, or a field the refresh or client authentication sets, fails the refresh without calling the provider. `New` refuses those fields in `TokenParams` (`grant_type`, `code`, `redirect_uri`, `code_verifier`, `refresh_token`, `client_id`, `client_secret`, `client_assertion` and `client_assertion_type`), invalid headers, and settings that a provider's own `ExchangeCode` or `Refresh` would ignore: `TokenParams` or `TokenHeaders` with `ExchangeCode`, and `TokenHeaders` or `RefreshParams` with `Refresh`. [Token request tests](../conformance/goapi/oauth_token_requests_test.go)
+
 For an OpenID Connect provider, use discovery at startup. Supply the issuer from trusted application configuration. Discovery must give a matching issuer and HTTPS signing keys, authorization and token endpoints, or `OpenIDConnect` returns an error and fetches no keys; the application decides whether to retry. [Discovery tests](../providers/oidc_test.go)
 
 ```go

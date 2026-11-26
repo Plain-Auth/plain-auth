@@ -6,10 +6,13 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"net/url"
+	"slices"
 	"strings"
 	"time"
 
 	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/clientcredentials"
 )
 
 // AccountSelection identifies a local linked-account record. UserID is only
@@ -169,7 +172,7 @@ func (a *Auth) selectedCredential(ctx context.Context, h http.Header, s AccountS
 	return store, row, p, nil
 }
 
-func (a *Auth) validCredential(ctx context.Context, store ProviderCredentialStore, row ProviderAccountCredential, p OAuthProvider, force bool) (ProviderAccountCredential, error) {
+func (a *Auth) validCredential(ctx context.Context, h http.Header, store ProviderCredentialStore, row ProviderAccountCredential, p OAuthProvider, force bool) (ProviderAccountCredential, error) {
 	due := func(r ProviderAccountCredential) bool {
 		return !r.ExpiresAt.IsZero() && r.ExpiresAt.Sub(a.now()) < 5*time.Second
 	}
@@ -179,8 +182,27 @@ func (a *Auth) validCredential(ctx context.Context, store ProviderCredentialStor
 	if !force && (!due(row) || p.DisableRefresh || row.RefreshToken == "") {
 		return row, nil
 	}
+	failure := &APIError{400, "FAILED_TO_GET_ACCESS_TOKEN", "Failed to get a valid access token"}
+	if force {
+		failure = &APIError{400, "FAILED_TO_REFRESH_ACCESS_TOKEN", "Failed to refresh access token"}
+	}
 	ctx, cancel := context.WithTimeout(context.WithValue(ctx, oauth2.HTTPClient, p.HTTPClient), 15*time.Second)
 	defer cancel()
+	// RefreshParams is host code, so it runs before the account row is locked.
+	var extra url.Values
+	if p.RefreshParams != nil && row.RefreshToken != "" {
+		var err error
+		extra, err = p.RefreshParams(ctx, OAuthRefreshRequest{Header: h.Clone(), UserID: row.UserID, AccountID: row.ID})
+		if err != nil {
+			a.Logger().ErrorContext(ctx, "auth: RefreshParams failed", "provider", row.ProviderID)
+			return row, failure
+		}
+		// The protocol fields stay the library's: naming one fails the refresh.
+		if slices.ContainsFunc(tokenFields, extra.Has) {
+			a.Logger().ErrorContext(ctx, "auth: RefreshParams named a token request field", "provider", row.ProviderID)
+			return row, failure
+		}
+	}
 	refreshed := false
 	updated, err := store.UpdateProviderCredential(ctx, row.UserID, row.ID, func(current ProviderAccountCredential) (ProviderAccountCredential, bool, error) {
 		refreshed = false
@@ -193,10 +215,6 @@ func (a *Auth) validCredential(ctx context.Context, store ProviderCredentialStor
 		if current.RefreshToken == "" {
 			return current, false, &APIError{400, "REFRESH_TOKEN_NOT_FOUND", "Refresh token not found"}
 		}
-		failure := &APIError{400, "FAILED_TO_GET_ACCESS_TOKEN", "Failed to get a valid access token"}
-		if force {
-			failure = &APIError{400, "FAILED_TO_REFRESH_ACCESS_TOKEN", "Failed to refresh access token"}
-		}
 		if !current.RefreshExpiresAt.IsZero() && !current.RefreshExpiresAt.After(a.now()) {
 			return current, false, failure
 		}
@@ -205,7 +223,7 @@ func (a *Auth) validCredential(ctx context.Context, store ProviderCredentialStor
 		if p.Refresh != nil {
 			t, err = p.Refresh(ctx, p.Config, current.RefreshToken)
 		} else {
-			t, err = p.Config.TokenSource(p.tokenContext(ctx), &oauth2.Token{RefreshToken: current.RefreshToken}).Token()
+			t, err = standardRefresh(p.tokenContext(ctx), p.Config, current.RefreshToken, extra)
 		}
 		if err != nil || t == nil || t.AccessToken == "" {
 			return current, false, failure
@@ -228,6 +246,24 @@ func (a *Auth) validCredential(ctx context.Context, store ProviderCredentialStor
 		a.renewRefreshedAccountCookie(ctx, updated)
 	}
 	return updated, err
+}
+
+// standardRefresh sends an OAuth 2.0 refresh-token request with any extra
+// form fields.
+func standardRefresh(ctx context.Context, c oauth2.Config, refreshToken string, extra url.Values) (*oauth2.Token, error) {
+	if len(extra) == 0 {
+		return c.TokenSource(ctx, &oauth2.Token{RefreshToken: refreshToken}).Token()
+	}
+	// oauth2.Config cannot add refresh fields. The client-credentials request
+	// can, and it lets grant_type be replaced, which turns it into a refresh.
+	params := make(url.Values, len(extra)+2)
+	for k, v := range extra {
+		params[k] = slices.Clone(v)
+	}
+	params.Set("grant_type", "refresh_token")
+	params.Set("refresh_token", refreshToken)
+	cc := clientcredentials.Config{ClientID: c.ClientID, ClientSecret: c.ClientSecret, TokenURL: c.Endpoint.TokenURL, AuthStyle: c.Endpoint.AuthStyle, EndpointParams: params}
+	return cc.Token(ctx)
 }
 
 func refreshLifetime(t *oauth2.Token) time.Duration {
@@ -277,7 +313,7 @@ func (a *Auth) GetAccessToken(ctx context.Context, h http.Header, s AccountSelec
 	if err != nil {
 		return out, err
 	}
-	row, err = a.validCredential(ctx, store, row, p, false)
+	row, err = a.validCredential(ctx, h, store, row, p, false)
 	if err != nil {
 		return out, err
 	}
@@ -290,7 +326,7 @@ func (a *Auth) RefreshToken(ctx context.Context, h http.Header, s AccountSelecti
 	if err != nil {
 		return out, err
 	}
-	row, err = a.validCredential(ctx, store, row, p, true)
+	row, err = a.validCredential(ctx, h, store, row, p, true)
 	if err != nil {
 		return out, err
 	}
@@ -303,7 +339,7 @@ func (a *Auth) AccountInfo(ctx context.Context, h http.Header, s AccountSelectio
 	if err != nil {
 		return out, err
 	}
-	row, err = a.validCredential(ctx, store, row, p, false)
+	row, err = a.validCredential(ctx, h, store, row, p, false)
 	if err != nil {
 		return out, err
 	}

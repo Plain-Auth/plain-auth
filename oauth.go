@@ -11,6 +11,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/Plain-Org/plain-auth/internal/httporigin"
 	"golang.org/x/oauth2"
 )
 
@@ -62,6 +63,20 @@ type OAuthProvider struct {
 	// DefaultAccessTokenLifetime is the access token lifetime assumed when a
 	// token response has no expires_in; zero assumes none.
 	DefaultAccessTokenLifetime time.Duration
+	// TokenParams are extra form fields for the standard code exchange, such
+	// as audience or resource, with one value each. New refuses the grant
+	// and client authentication fields, and ExchangeCode, which replaces
+	// that request.
+	TokenParams url.Values
+	// TokenHeaders are added to the code exchange and refresh requests sent
+	// to the token endpoint, and never replace a header the request already
+	// has. New refuses them together with ExchangeCode or Refresh.
+	TokenHeaders http.Header
+	// RefreshParams returns extra form fields for one refresh-token request;
+	// nil adds none. It runs before the account is locked. Header values come
+	// from the caller, so check anything derived from them against the
+	// owner's entitlements. New refuses it together with Refresh.
+	RefreshParams func(context.Context, OAuthRefreshRequest) (url.Values, error)
 	// TokenEndpointAuth chooses how the code exchange and refresh
 	// authenticate the client. It cannot be combined with ExchangeCode or
 	// Refresh, which replace these requests.
@@ -85,6 +100,20 @@ type OAuthProvider struct {
 	OmitNonce           bool
 	FormPostName        bool
 }
+
+// OAuthRefreshRequest describes the request that triggered a provider token
+// refresh.
+type OAuthRefreshRequest struct {
+	// Header is a copy of the triggering request's headers, or nil for a
+	// trusted server call.
+	Header http.Header
+	// UserID owns the account and AccountID is its local record ID.
+	UserID, AccountID string
+}
+
+// tokenFields are set by the code exchange, the refresh or the client
+// authentication, so TokenParams and RefreshParams cannot name them.
+var tokenFields = []string{"grant_type", "code", "redirect_uri", "code_verifier", "refresh_token", "client_id", "client_secret", "client_assertion", "client_assertion_type"}
 
 // OAuthFlow is the temporary state of a browser authorization. Binding ties a
 // request to the initiating browser, provider and existing session.
@@ -278,6 +307,9 @@ func prepareOAuthProviders(in map[string]OAuthProvider, store Store, userFieldsO
 		if p.DefaultAccessTokenLifetime < 0 {
 			return nil, fmt.Errorf("auth: OAuth provider %q: DefaultAccessTokenLifetime is negative", id)
 		}
+		if err := prepareTokenRequests(id, &p); err != nil {
+			return nil, err
+		}
 		endpoints := []string{p.Config.Endpoint.AuthURL, p.Config.Endpoint.TokenURL}
 		if p.EndSessionEndpoint != "" {
 			endpoints = append(endpoints, p.EndSessionEndpoint)
@@ -322,6 +354,41 @@ func prepareOAuthProviders(in map[string]OAuthProvider, store Store, userFieldsO
 
 func (a *Auth) oauthCookie(name, value string, maxAge int) *http.Cookie {
 	return a.browserCookie(name, value, maxAge)
+}
+
+// prepareTokenRequests checks and copies the extra token request fields and
+// headers. Each one must take effect, so a request replaced by ExchangeCode
+// or Refresh refuses them, and the protocol fields stay the library's.
+func prepareTokenRequests(id string, p *OAuthProvider) error {
+	refuse := func(why string) error { return fmt.Errorf("auth: OAuth provider %q: %s", id, why) }
+	if p.TokenParams != nil && p.ExchangeCode != nil {
+		return refuse("TokenParams cannot be combined with ExchangeCode")
+	}
+	if p.TokenHeaders != nil && (p.ExchangeCode != nil || p.Refresh != nil) {
+		return refuse("TokenHeaders cannot be combined with ExchangeCode or Refresh")
+	}
+	if p.RefreshParams != nil && p.Refresh != nil {
+		return refuse("RefreshParams cannot be combined with Refresh")
+	}
+	params := make(url.Values, len(p.TokenParams))
+	for k, v := range p.TokenParams {
+		if slices.Contains(tokenFields, k) {
+			return refuse("TokenParams cannot set " + k)
+		}
+		if len(v) != 1 {
+			return refuse("TokenParams " + k + " needs exactly one value")
+		}
+		params[k] = slices.Clone(v)
+	}
+	if p.TokenParams != nil {
+		p.TokenParams = params
+	}
+	headers, err := httporigin.Headers(p.TokenHeaders)
+	if err != nil {
+		return refuse("TokenHeaders: " + err.Error())
+	}
+	p.TokenHeaders = headers
+	return nil
 }
 
 // accessTokenExpiry returns the token's expiry, or now plus the provider's
