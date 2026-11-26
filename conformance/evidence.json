@@ -44505,6 +44505,11 @@
       "label": "Default the SAML clock skew to three minutes, the most the SAML library allows process-wide",
       "test": "plugins/sso/saml_test.go",
       "marker": "unset SAML clock skew is not three minutes"
+    },
+    {
+      "label": "Default the SAML clock skew to three minutes, the most the SAML library allows, where another runtime defaults to five",
+      "test": "plugins/sso/saml_test.go",
+      "marker": "t.Fatal(\"the SAML clock skew does not default to three minutes\")"
     }
   ],
   "plugin-symbol/sso/TimestampValidationOptions": [
@@ -44534,6 +44539,11 @@
       "label": "Narrow the bearer confirmation deadline with the clock skew before the user is provisioned",
       "test": "adapters/sqlstore/sso_saml_policy_test.go",
       "marker": "a one-minute clock skew accepted a bearer confirmation expired two minutes ago"
+    },
+    {
+      "label": "Refuse a clock skew below zero or above three minutes, accept values within, and default to three minutes",
+      "test": "plugins/sso/saml_test.go",
+      "marker": "func TestSAMLClockSkewBounds("
     }
   ],
   "plugin-symbol/sso/TimestampValidationOptions/requireTimestamps": [

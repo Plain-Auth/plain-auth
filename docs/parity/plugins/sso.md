@@ -8,6 +8,7 @@
   - `ssoClient` — *not applicable: JavaScript only. ssoClient is the browser SDK plugin: $InferServerPlugin typing for the domainVerification and additional-field options, plus GET path methods for /sso/providers and /sso/get-provider. A Go server only serves those routes, and the Go caller is client/sso.go.*
   - [ ] `DEFAULT_CLOCK_SKEW_MS`
     - [x] Default the SAML clock skew to three minutes, the most the SAML library allows process-wide ([test](../../../plugins/sso/saml_test.go#L285))
+    - [x] Default the SAML clock skew to three minutes, the most the SAML library allows, where another runtime defaults to five ([test](../../../plugins/sso/saml_test.go#L544))
   - [x] `DEFAULT_MAX_SAML_METADATA_SIZE` ([test](../../../plugins/sso/saml_test.go#L61))
     - [x] Resolve an unset SAML metadata size limit to 100 KiB, and refuse a negative limit or one above 1 MiB when building the plugin ([test](../../../plugins/sso/saml_test.go#L61))
     - [x] Refuse an inline IdP metadata update padded past 100 KiB on a host with the default limit ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L81))
@@ -251,6 +252,7 @@
       - [x] Refuse an assertion valid only in two minutes under a one-minute skew ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L428))
       - [x] Refuse a negative clock skew or one above three minutes, and keep a narrower one ([test](../../../plugins/sso/saml_test.go#L291))
       - [x] Narrow the bearer confirmation deadline with the clock skew before the user is provisioned ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L444))
+      - [x] Refuse a clock skew below zero or above three minutes, accept values within, and default to three minutes ([test](../../../plugins/sso/saml_test.go#L532))
     - [x] `requireTimestamps` ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L454))
       - [x] Refuse an assertion without timestamp conditions under RequireTimestamps, and accept one that has NotBefore, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L454))
       - [x] Accept an assertion that has NotBefore without NotOnOrAfter under RequireTimestamps ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L457))

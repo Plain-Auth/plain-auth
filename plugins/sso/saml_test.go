@@ -527,3 +527,20 @@ func TestSAMLConfigAlgorithms(t *testing.T) {
 		t.Fatal("a SHA-1 digestAlgorithm was not refused as deprecated", code, message)
 	}
 }
+
+// The clock skew is bounded by the SAML library's process-wide tolerance.
+func TestSAMLClockSkewBounds(t *testing.T) {
+	for _, skew := range []time.Duration{-time.Second, 3*time.Minute + time.Second} {
+		if _, err := New(Options{SAML: &SAMLOptions{ClockSkew: skew}}); err == nil {
+			t.Fatal("a SAML clock skew outside zero to three minutes was accepted", skew)
+		}
+	}
+	for _, skew := range []time.Duration{0, time.Minute, 3 * time.Minute} {
+		if _, err := New(Options{SAML: &SAMLOptions{ClockSkew: skew}}); err != nil {
+			t.Fatal("a SAML clock skew within zero to three minutes was refused", skew, err)
+		}
+	}
+	if (SAMLOptions{}).clockSkew() != 3*time.Minute {
+		t.Fatal("the SAML clock skew does not default to three minutes")
+	}
+}
