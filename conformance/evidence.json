@@ -46968,6 +46968,11 @@
       "label": "Grant no authorization for a Group membership by itself, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/scim_groups_contract_test.go",
       "marker": "t.Fatal(\"a Group membership granted an authorization\""
+    },
+    {
+      "label": "Grant nothing for Users with roles and Groups until a projection is enabled, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_projection_test.go",
+      "marker": "t.Fatal(\"Users and Groups granted access without a projection\")"
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L25/`id`": [
@@ -47087,6 +47092,14 @@
       "label": "Retire through the catalog and leave a handler without the option without a catalog, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/scim_managed_contract_test.go",
       "marker": "t.Fatal(\"a handler without the managed option has a catalog\")",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/scim/SCIMOptions/projection": [
+    {
+      "label": "Grant nothing for Users with roles and Groups until a projection is enabled, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_projection_test.go",
+      "marker": "t.Fatal(\"Users and Groups granted access without a projection\")",
       "complete": true
     }
   ]

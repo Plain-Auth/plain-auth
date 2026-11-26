@@ -177,6 +177,10 @@ func TestSCIMGroupApplicationProjection(t *testing.T) {
 			a := call(plain, "POST", "Groups", "north", group("north team", "directory-readers", n), 201)["id"].(string)
 			b := call(plain, "POST", "Groups", "south", group("south team", "directory-readers", s), 201)["id"].(string)
 			call(plain, "POST", "Groups", "other", group("other team", "directory-editors", other), 201)
+			// Without a projection, Users with roles and Groups grant nothing.
+			if count(`SELECT COUNT(*) FROM "scimProjectionGrant"`) != 0 || count(`SELECT COUNT(*) FROM "hostAssignment" WHERE "source"='scim'`) != 0 {
+				t.Fatal("Users and Groups granted access without a projection")
+			}
 			exec(`INSERT INTO "hostAssignment" ("grantKey","owner","domain","role","source") VALUES ('manual',?,?,'editor','manual')`, owner, domain)
 			expect := func(read, edit int) {
 				t.Helper()
