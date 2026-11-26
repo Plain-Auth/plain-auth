@@ -340,7 +340,7 @@ func TestEnterpriseOIDCBrowser(t *testing.T) {
 			}
 			for _, settings := range []struct{ disable, implicit bool }{{true, false}, {false, true}} {
 				a := host(other, false, settings.disable, settings.implicit)
-				target(finish(a, start(a, "acme", "disabled@example.test", "disabled", "client_secret_basic", "", withID)), "/retry?error=signup_disabled")
+				target(finish(a, start(a, "acme", "disabled@example.test", "disabled", "client_secret_basic", "", withID)), "/retry?error=signup+disabled")
 			}
 			implicit := host(other, false, false, true)
 			target(finish(implicit, start(implicit, "acme", "explicit@example.test", "explicit", "client_secret_basic", "", map[string]any{"providerId": "acme", "requestSignUp": true})), "/welcome")

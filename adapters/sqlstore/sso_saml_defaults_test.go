@@ -100,9 +100,10 @@ func TestEnterpriseSAMLDefaults(t *testing.T) {
 			}
 			idp := &saml.IdentityProvider{Key: idpKey, Certificate: idpCert, MetadataURL: *mustTestURL(t, idpEntity), SSOURL: *mustTestURL(t, entry),
 				ServiceProviderProvider: samlTestMetadata{spIssuer: &metadata}, SignatureMethod: dsig.RSASHA256SignatureMethod}
+			signUp := false
 			start := func() (*saml.IdpAuthnRequest, *http.Cookie) {
 				t.Helper()
-				w := call("POST", "sign-in/sso", "", map[string]any{"providerId": "acme", "providerType": "saml", "callbackURL": "/home", "errorCallbackURL": "/retry"})
+				w := call("POST", "sign-in/sso", "", map[string]any{"providerId": "acme", "providerType": "saml", "callbackURL": "/home", "errorCallbackURL": "/retry", "requestSignUp": signUp})
 				var started struct{ URL string }
 				must(json.Unmarshal(w.Body.Bytes(), &started))
 				r, err := http.NewRequest("GET", started.URL, nil)
@@ -196,6 +197,19 @@ func TestEnterpriseSAMLDefaults(t *testing.T) {
 			}
 			if stored("first@acme.example") || stored("intruder@acme.example") {
 				t.Fatal("a refused two-assertion response stored a user")
+			}
+
+			// requestSignUp applies to OIDC only, so DisableImplicitSignUp
+			// refuses a SAML sign-up that asks for one.
+			strict, err := sso.New(sso.Options{SAML: &sso.SAMLOptions{}, DisableImplicitSignUp: true})
+			must(err)
+			host, err = auth.New(auth.Options{BaseURL: "https://service.test", BasePath: "/identity", RateLimit: new(bool), Store: store, Secret: strings.Repeat("k", 32), EmailAndPassword: true, Plugins: []auth.Plugin{strict}})
+			must(err)
+			signUp = true
+			req, state = start()
+			done = post(req, state, assertion(req, "newcomer", nil, attr("email", "newcomer@acme.example")))
+			if location := done.Header().Get("Location"); !strings.Contains(location, "error=signup_disabled") || stored("newcomer@acme.example") {
+				t.Fatal("requestSignUp let a SAML sign-up past DisableImplicitSignUp", location)
 			}
 		})
 	}

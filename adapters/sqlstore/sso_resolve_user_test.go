@@ -245,7 +245,7 @@ func TestEnterpriseOIDCResolveUser(t *testing.T) {
 			set(func(sso.UserResolutionInput) (sso.UserResolution, error) {
 				return sso.UserResolution{Action: sso.ResolveContinue}, nil
 			})
-			if got := signIn("acme", "fresh", "fresh@acme.example", ""); !strings.Contains(got, "error=signup_disabled") {
+			if got := signIn("acme", "fresh", "fresh@acme.example", ""); !strings.Contains(got, "error=signup+disabled") {
 				t.Fatal("a continued sign-in skipped the built-in sign-up rule", got)
 			}
 			mu.Lock()

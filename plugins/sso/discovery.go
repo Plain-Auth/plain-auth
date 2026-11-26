@@ -87,11 +87,18 @@ func hydrate(ctx context.Context, host *auth.Auth, client *http.Client, cfg *Con
 		if err != nil {
 			return err
 		}
-		if doc.Issuer == "" || doc.Authorization == "" || doc.Token == "" || doc.Keys == "" {
-			return discoveryError(400, "discovery_incomplete", "The discovery document is missing required fields")
+		// The messages are the ones another runtime sends.
+		var missing []string
+		for _, f := range []struct{ name, value string }{{"issuer", doc.Issuer}, {"authorization_endpoint", doc.Authorization}, {"token_endpoint", doc.Token}, {"jwks_uri", doc.Keys}} {
+			if f.value == "" {
+				missing = append(missing, f.name)
+			}
+		}
+		if len(missing) > 0 {
+			return discoveryError(400, "discovery_incomplete", "OIDC discovery document is missing required fields: Discovery document is missing required fields: "+strings.Join(missing, ", "))
 		}
 		if doc.Issuer != cfg.Issuer {
-			return discoveryError(400, "issuer_mismatch", "The discovered issuer does not match the configured issuer")
+			return discoveryError(400, "issuer_mismatch", fmt.Sprintf("OIDC issuer mismatch: Discovered issuer %q does not match configured issuer %q", doc.Issuer, cfg.Issuer))
 		}
 		base, _ := endpointURL(cfg.Issuer)
 		// The revocation, end-session and introspection endpoints are checked
@@ -210,7 +217,9 @@ func fetchDiscovery(ctx context.Context, client *http.Client, endpoint string) (
 	if res.StatusCode == 404 {
 		return doc, discoveryError(400, "discovery_not_found", "Discovery document not found")
 	}
-	if res.StatusCode != 200 {
+	// Any 2xx answer carries the document, as in another runtime; an empty
+	// one is invalid JSON.
+	if res.StatusCode < 200 || res.StatusCode >= 300 {
 		return doc, discoveryError(502, "discovery_unexpected_error", "Discovery document could not be retrieved")
 	}
 	const bound = 1 << 20

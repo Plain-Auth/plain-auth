@@ -121,6 +121,10 @@ func TestDiscoveryErrorCodes(t *testing.T) {
 			status = 408
 		case "/tenant/empty":
 			body = ""
+		case "/tenant/created":
+			status = 201
+		case "/tenant/no-content":
+			status, body = 204, ""
 		case "/tenant/partial":
 			body = strings.Replace(doc, `,"jwks_uri":"/keys"`, "", 1)
 		case "/tenant/slash":
@@ -165,6 +169,19 @@ func TestDiscoveryErrorCodes(t *testing.T) {
 	}
 	if status, code := reply(fetch("/partial")); status != 400 || code != "discovery_incomplete" {
 		t.Fatal("a discovery document without jwks_uri did not answer 400 discovery_incomplete", status, code)
+	}
+	// Any 2xx carries the document, and the messages name what is wrong.
+	if err := fetch("/created"); err != nil {
+		t.Fatal("a 201 discovery document was refused", err)
+	}
+	if status, code := reply(fetch("/no-content")); status != 400 || code != "discovery_invalid_json" {
+		t.Fatal("an empty 204 discovery answer did not answer 400 discovery_invalid_json", status, code)
+	}
+	if err := fetch("/partial"); err.Error() != "OIDC discovery document is missing required fields: Discovery document is missing required fields: jwks_uri" {
+		t.Fatal("an incomplete discovery document did not name its missing fields", err)
+	}
+	if err := fetch("/slash"); err.Error() != `OIDC issuer mismatch: Discovered issuer "https://login.example.test/tenant/" does not match configured issuer "https://login.example.test/tenant"` {
+		t.Fatal("an issuer mismatch did not name both issuers", err)
 	}
 	if status, code := reply(fetch("/slash")); status != 400 || code != "issuer_mismatch" {
 		t.Fatal("an issuer differing by a trailing slash did not answer 400 issuer_mismatch", status, code)

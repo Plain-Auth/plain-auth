@@ -494,9 +494,11 @@ func (o Options) samlFinish(c auth.EndpointContext) (any, error) {
 		}
 		return store.CompleteSAMLLogin(ctx, p.Reference, !o.DisableOrganizationProvisioning, proof, provider, subject, receipt, u, session, opts)
 	}
+	// requestSignUp applies to OIDC only, as in another runtime, so
+	// DisableImplicitSignUp refuses every SAML sign-up.
 	// SAML relays the trusted callback URL for both new and returning users.
 	flow.NewUserCallbackURL = ""
-	result, err := c.CompleteEnterpriseFlowWith(flow, "sso-saml", profile, auth.OAuthTokens{}, auth.EnterpriseCompletion{DisableSignUp: o.DisableImplicitSignUp && !flow.RequestSignUp, OverrideUserInfo: resolved.updates(),
+	result, err := c.CompleteEnterpriseFlowWith(flow, "sso-saml", profile, auth.OAuthTokens{}, auth.EnterpriseCompletion{DisableSignUp: o.DisableImplicitSignUp, OverrideUserInfo: resolved.updates(),
 		Committed: o.provisioned(p.Provider, profile, nil)}, complete)
 	if out, e, ok := provisioningFailure(c, err); ok {
 		return out, e

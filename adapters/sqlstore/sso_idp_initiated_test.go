@@ -124,7 +124,7 @@ func TestEnterpriseOIDCIdPInitiated(t *testing.T) {
 			}
 			// The restarted flow cannot request sign-up.
 			strict := newSSOHost(t, store, idp, sso.Options{DisableImplicitSignUp: true, AllowIDPInitiatedOIDC: approve})
-			if w := restart(strict, "sso/callback/acme?code=idp-code", "https://service.test/identity/sso/callback/acme", "nobody@acme.example", "nobody"); !strings.Contains(w.Header().Get("Location"), "error=signup_disabled") {
+			if w := restart(strict, "sso/callback/acme?code=idp-code", "https://service.test/identity/sso/callback/acme", "nobody@acme.example", "nobody"); !strings.Contains(w.Header().Get("Location"), "error=signup+disabled") {
 				t.Fatal("a restarted sign-in signed up a user under DisableImplicitSignUp", w.Code, w.Header().Get("Location"))
 			}
 			if _, err := store.FindAccountUser(ctx, "nobody@acme.example"); err == nil {

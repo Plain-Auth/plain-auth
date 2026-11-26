@@ -11278,6 +11278,11 @@
       "label": "Reject a JSON null discovery document with discovery_invalid_json",
       "test": "plugins/sso/discovery_test.go",
       "marker": "{\"null\", \"discovery_invalid_json\"}"
+    },
+    {
+      "label": "Accept any 2xx discovery document and answer an empty 204 with discovery_invalid_json",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "t.Fatal(\"a 201 discovery document was refused\", err)"
     }
   ],
   "published/sso/.": [
@@ -41370,6 +41375,11 @@
       "label": "Reject a discovery document whose issuer differs from the configured issuer with issuer_mismatch",
       "test": "plugins/sso/discovery_test.go",
       "marker": "{strings.Replace(raw, \"https://login.example.test/tenant\", \"https://other.example.test/tenant\", 1), \"issuer_mismatch\"},"
+    },
+    {
+      "label": "Name the missing required fields and both issuers in the discovery errors",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "t.Fatal(\"an incomplete discovery document did not name its missing fields\", err)"
     }
   ],
   "plugin-symbol/sso/validateDiscoveryUrl": [
@@ -42181,6 +42191,11 @@
       "label": "Create a new user when requestSignUp is true although implicit sign-up is disabled",
       "test": "adapters/sqlstore/sso_browser_test.go",
       "marker": "map[string]any{\"providerId\": \"acme\", \"requestSignUp\": true}"
+    },
+    {
+      "label": "Ignore requestSignUp for SAML, so DisableImplicitSignUp refuses the sign-up",
+      "test": "adapters/sqlstore/sso_saml_defaults_test.go",
+      "marker": "t.Fatal(\"requestSignUp let a SAML sign-up past DisableImplicitSignUp\", location)"
     }
   ],
   "docs/content/docs/plugins/sso/index.mdx#L269/Parameter `providerType` (optional)": [
@@ -42439,6 +42454,16 @@
       "label": "Redirect with signup_disabled for a new OIDC user when implicit sign-up is off, and create the user when requestSignUp is true",
       "test": "adapters/sqlstore/sso_browser_test.go",
       "marker": "implicit := host(other, false, false, true)"
+    },
+    {
+      "label": "Refuse a SAML sign-up under DisableImplicitSignUp even with requestSignUp, with signup_disabled",
+      "test": "adapters/sqlstore/sso_saml_defaults_test.go",
+      "marker": "t.Fatal(\"requestSignUp let a SAML sign-up past DisableImplicitSignUp\", location)"
+    },
+    {
+      "label": "Redirect a refused OIDC sign-up with error=signup disabled",
+      "test": "adapters/sqlstore/sso_browser_test.go",
+      "marker": "\"/retry?error=signup+disabled\""
     }
   ],
   "docs/content/docs/plugins/sso/provisioning.mdx#L162": [

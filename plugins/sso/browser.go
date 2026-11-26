@@ -400,7 +400,9 @@ func (o Options) finish(c auth.EndpointContext) (any, error) {
 	var ae *auth.APIError
 	if errors.As(err, &ae) {
 		if ae.Code == "SIGN_UP_DISABLED" {
-			return fail("signup_disabled")
+			// The OIDC code has a space, as another runtime sends it; SAML
+			// and social sign-ins use signup_disabled.
+			return fail("signup disabled")
 		}
 		return fail("access_denied")
 	}
