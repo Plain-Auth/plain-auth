@@ -287,3 +287,116 @@ func TestOrganizationFixtureConfiguration(t *testing.T) {
 		t.Fatal("duplicate organization plugin accepted")
 	}
 }
+
+// The three login helpers select a supplied organization and team that an
+// independent instance reads back over HTTP, and a selection the user cannot
+// make, a team without an organization or teams, or an organization on a
+// server from New fails without leaving a session.
+func TestFixtureSessionSelectsOrganization(t *testing.T) {
+	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
+		t.Run(dialect, func(t *testing.T) {
+			ctx := t.Context()
+			dsn := organizationTestDSN(t, dialect)
+			ddl, err := schema.Generate(dialect, []string{"organization-teams"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			store, err := OpenWithSchema(ctx, dialect, dsn, ddl)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer store.Close()
+			peerStore, err := Open(ctx, dialect, dsn)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer peerStore.Close()
+			must := func(err error) {
+				t.Helper()
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			opts := auth.Options{Secret: strings.Repeat("o", 40), BaseURL: "https://fixture.example.test", Store: store}
+			server, err := authtest.NewWithOrganizations(opts, org.Options{Teams: &org.TeamOptions{}})
+			must(err)
+			noTeams, err := authtest.NewWithOrganizations(opts, org.Options{})
+			must(err)
+			plain, err := authtest.New(opts)
+			must(err)
+			opts.Store = peerStore
+			peer, err := authtest.NewWithOrganizations(opts, org.Options{Teams: &org.TeamOptions{}})
+			must(err)
+			selected, err := server.SaveOrganization(ctx, authtest.NewOrganization("Selected"))
+			must(err)
+			other, err := server.SaveOrganization(ctx, authtest.NewOrganization("Other"))
+			must(err)
+			now := time.Now().UTC()
+			for _, team := range []string{"team-selected", "team-other"} {
+				if _, err := store.db.ExecContext(ctx, store.bind(`INSERT INTO "team" ("id","name","memberCount","organizationId","createdAt") VALUES (?,?,0,?,?)`), team, team, selected.ID, store.date(now)); err != nil {
+					t.Fatal(err)
+				}
+			}
+			user, err := server.SaveUser(ctx, authtest.NewUser())
+			must(err)
+			_, err = server.AddMember(ctx, org.AddMemberRequest{UserID: user.ID, OrganizationID: selected.ID, TeamID: "team-selected"})
+			must(err)
+			options := authtest.LoginOptions{UserID: user.ID, Fields: map[string]any{"activeOrganizationId": selected.ID, "activeTeamId": "team-selected"}}
+			login, err := server.LoginWithOptions(ctx, options)
+			if err != nil || login.Session.ActiveOrganizationID == nil || *login.Session.ActiveOrganizationID != selected.ID || login.Session.ActiveTeamID == nil || *login.Session.ActiveTeamID != "team-selected" {
+				t.Fatal("login did not select the organization and team", err)
+			}
+			headers, err := server.GetAuthHeadersWithOptions(ctx, options)
+			must(err)
+			cookies, err := server.GetCookiesWithOptions(ctx, options, "")
+			must(err)
+			cookieHeader := http.Header{}
+			for _, c := range cookies {
+				cookieHeader.Add("Cookie", c.Name+"="+c.Value)
+			}
+			for _, h := range []http.Header{login.Headers, headers, cookieHeader} {
+				r := httptest.NewRequest("GET", "https://fixture.example.test/api/auth/get-session", nil)
+				r.Header = h.Clone()
+				w := httptest.NewRecorder()
+				peer.Auth.ServeHTTP(w, r)
+				var read struct {
+					Session struct{ ActiveOrganizationID, ActiveTeamID string }
+				}
+				if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &read) != nil || read.Session.ActiveOrganizationID != selected.ID || read.Session.ActiveTeamID != "team-selected" {
+					t.Fatal("peer did not read the fixture selection", w.Code, w.Body)
+				}
+			}
+			before, err := store.ListSessions(ctx, user.ID)
+			must(err)
+			for name, tc := range map[string]struct {
+				server *authtest.Server
+				fields map[string]any
+				want   error
+			}{
+				"another organization": {server, map[string]any{"activeOrganizationId": other.ID}, org.ErrNotMember},
+				"another team":         {server, map[string]any{"activeOrganizationId": selected.ID, "activeTeamId": "team-other"}, org.ErrTeamSelect},
+				"a team alone":         {server, map[string]any{"activeTeamId": "team-selected"}, nil},
+				"no teams":             {noTeams, map[string]any{"activeOrganizationId": selected.ID, "activeTeamId": "team-selected"}, nil},
+				"no organizations":     {plain, map[string]any{"activeOrganizationId": selected.ID}, authtest.ErrOrganizationSetup},
+				"not a string":         {server, map[string]any{"activeOrganizationId": 7}, nil},
+			} {
+				_, err := tc.server.LoginWithOptions(ctx, authtest.LoginOptions{UserID: user.ID, Fields: tc.fields})
+				if err == nil || tc.want != nil && !errors.Is(err, tc.want) {
+					t.Fatal(name, "logged in or failed otherwise:", err)
+				}
+			}
+			after, err := store.ListSessions(ctx, user.ID)
+			must(err)
+			if len(after) != len(before) {
+				t.Fatal("refused selection left a session", len(before), len(after))
+			}
+			unselected, err := server.LoginWithOptions(ctx, authtest.LoginOptions{UserID: user.ID, Fields: map[string]any{"activeOrganizationId": nil}})
+			if err != nil || unselected.Session.ActiveOrganizationID != nil {
+				t.Fatal("a nil selection selected an organization", err)
+			}
+			must(server.DeleteUser(ctx, user.ID))
+			must(server.DeleteOrganization(ctx, selected.ID))
+			must(server.DeleteOrganization(ctx, other.ID))
+		})
+	}
+}

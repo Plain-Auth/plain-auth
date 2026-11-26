@@ -3,6 +3,7 @@ package authtest
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -19,6 +20,7 @@ type Server struct {
 	origin               string
 	organizations        *organization.Service
 	organizationFixtures OrganizationStore
+	teams                organization.TeamStore
 }
 
 // New creates an auth instance from the same options used by the application.
@@ -80,6 +82,10 @@ type LoginResult struct {
 
 // LoginOptions selects an existing fixture user and values for configured session fields.
 // Fields can supply required or server-only values before the row is inserted.
+// On a server from NewWithOrganizations, Fields can also hold the organization
+// plugin's activeOrganizationId and, with teams, activeTeamId. The new session
+// then selects that organization and team, which the user must already belong
+// to.
 type LoginOptions struct {
 	UserID string
 	Fields map[string]any
@@ -101,21 +107,55 @@ func (s *Server) LoginWithOptions(ctx context.Context, opts LoginOptions) (*Logi
 		return nil, err
 	}
 	call := auth.EndpointContext{Auth: s.Auth, Request: req, ResponseHeader: make(http.Header)}
-	var issued string
+	var issued, group, team string
 	fields := make(map[string]any, len(opts.Fields))
 	for name, value := range opts.Fields {
 		switch name {
 		case "id", "userId", "token", "expiresAt", "createdAt", "updatedAt", "ipAddress", "userAgent":
 			// Session issuance owns these fields even when the fixture includes them.
+		case "activeOrganizationId", "activeTeamId":
+			if value == nil {
+				continue
+			}
+			id, ok := value.(string)
+			if !ok || id == "" {
+				return nil, fmt.Errorf("authtest: %s must be an ID string", name)
+			}
+			if name == "activeTeamId" {
+				team = id
+			} else {
+				group = id
+			}
 		default:
 			fields[name] = value
 		}
+	}
+	switch {
+	case (group != "" || team != "") && s.organizations == nil:
+		return nil, ErrOrganizationSetup
+	case team != "" && group == "":
+		return nil, errors.New("authtest: activeTeamId requires activeOrganizationId")
+	case team != "" && s.teams == nil:
+		return nil, errors.New("authtest: activeTeamId requires organization teams")
 	}
 	session, err := call.IssueSessionWithFields(opts.UserID, fields, func(ctx context.Context, row auth.StoredSession) (auth.User, error) {
 		if err := s.store.CreateSession(ctx, row); err != nil {
 			return auth.User{}, err
 		}
 		issued = row.Token
+		// The selection is stored right after the insert through the
+		// organization store, as set-active does, so session create hooks see
+		// the session without it.
+		if group != "" {
+			if err := s.organizations.Store().SetActiveOrganization(ctx, row.ID, row.UserID, &group); err != nil {
+				return auth.User{}, err
+			}
+		}
+		if team != "" {
+			if _, err := s.teams.SetActiveTeam(ctx, organization.TeamActor{UserID: row.UserID, SessionID: row.ID}, &team); err != nil {
+				return auth.User{}, err
+			}
+		}
 		_, user, err := s.store.Session(ctx, row.Token)
 		return user, err
 	})

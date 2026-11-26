@@ -17,7 +17,8 @@ type OrganizationStore interface {
 }
 
 // ErrOrganizationSetup is returned by SaveOrganization, AddMember and
-// DeleteOrganization on a server built without NewWithOrganizations. The
+// DeleteOrganization, and by a login whose Fields select an organization or
+// team, on a server built without NewWithOrganizations. The
 // helpers exist on every Server, since a Go type cannot drop methods.
 var ErrOrganizationSetup = errors.New("authtest: organization fixtures require NewWithOrganizations")
 
@@ -53,6 +54,9 @@ func NewWithOrganizations(opts auth.Options, org organization.Options) (*Server,
 		return nil, err
 	}
 	server.organizations, server.organizationFixtures = service, fixtures
+	if org.Teams != nil {
+		server.teams, _ = service.Store().(organization.TeamStore)
+	}
 	return server, nil
 }
 
