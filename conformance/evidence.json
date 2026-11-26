@@ -11745,6 +11745,11 @@
       "label": "Give the update guard the linked-account count and whether the identity changes",
       "test": "adapters/sqlstore/sso_update_test.go",
       "marker": "t.Fatal(\"the guard did not see the linked accounts and the identity change\", m)"
+    },
+    {
+      "label": "Stop an update with a refusing guard as SSO_PROVIDER_MUTATION_REJECTED without exposing its reason or writing",
+      "test": "adapters/sqlstore/sso_delete_test.go",
+      "marker": "t.Fatal(\"a refusing update guard did not stop the update as a conflict\", err)"
     }
   ],
   "plugin-symbol/custom-session/customSessionClient": [
@@ -41963,6 +41968,11 @@
       "label": "Pass the update action, locked record, configuration reference and an authentication boundary change to the guard when IdP metadata is replaced",
       "test": "adapters/sqlstore/sso_saml_metadata_test.go",
       "marker": "observed = m.Action == \"update\""
+    },
+    {
+      "label": "Hand the update guard its action, record and provider IDs, reference, organization and boundary flag",
+      "test": "adapters/sqlstore/sso_delete_test.go",
+      "marker": "t.Fatal(\"the update guard did not receive the provider and the change it reviews\", last)"
     }
   ],
   "plugin-symbol/sso/SSOProviderReference": [

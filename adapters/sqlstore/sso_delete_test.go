@@ -329,6 +329,23 @@ func TestEnterpriseProviderGuardOutsideTransaction(t *testing.T) {
 			if _, err := store.UpdateSSOProvider(ctx, actor, "updating", ids["updating"], scopes, updateGuard); err != nil || len(updates) != 2 || updates[0].Reference == updates[1].Reference || updateRead != nil {
 				t.Fatal("an update guard did not run outside the transaction and review the changed provider again", err, len(updates), updateRead)
 			}
+			last := updates[len(updates)-1]
+			if last.Action != "update" || last.ID != ids["updating"] || last.ProviderID != "updating" || last.Reference == "" || last.OrganizationID != nil || last.AuthenticationBoundaryChanged {
+				t.Fatal("the update guard did not receive the provider and the change it reviews", last)
+			}
+			// A refusing guard stops the update without exposing its reason.
+			refuse := func(context.Context, sso.ProviderMutation) error { return errors.New("private policy detail") }
+			_, err = store.UpdateSSOProvider(ctx, actor, "updating", ids["updating"], func(current sso.Provider) (sso.Provider, bool, error) {
+				cfg := *current.OIDC
+				cfg.Scopes = []string{"openid"}
+				current.OIDC = &cfg
+				return current, false, nil
+			}, refuse)
+			var stored string
+			must(store.db.QueryRowContext(ctx, store.bind(`SELECT "oidcConfig" FROM "ssoProvider" WHERE "providerId"=?`), "updating").Scan(&stored))
+			if !errors.Is(err, sso.ErrMutationRejected) || strings.Contains(err.Error(), "private policy detail") || !strings.Contains(stored, `"email"`) {
+				t.Fatal("a refusing update guard did not stop the update as a conflict", err)
+			}
 			flapping := func(_ context.Context, m sso.ProviderMutation) error { change(m.ID); return nil }
 			err = store.DeleteSSOProvider(ctx, actor, "flappy", ids["flappy"], flapping)
 			must(store.db.QueryRowContext(ctx, store.bind(`SELECT COUNT(*) FROM "ssoProvider" WHERE "providerId"=?`), "flappy").Scan(&n))

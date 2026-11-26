@@ -376,6 +376,7 @@
       - [x] Review a general provider update with its linked-account count and identity change, and store nothing when the guard refuses ([test](../../../adapters/sqlstore/sso_update_test.go#L109))
       - [x] Run the metadata guard outside the store's transaction ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L168))
       - [x] Give the update guard the linked-account count and whether the identity changes ([test](../../../adapters/sqlstore/sso_update_test.go#L170))
+      - [x] Stop an update with a refusing guard as SSO_PROVIDER_MUTATION_REJECTED without exposing its reason or writing ([test](../../../adapters/sqlstore/sso_delete_test.go#L347))
     - [x] `provisionUser` ([test](../../../adapters/sqlstore/sso_provision_user_test.go#L19))
       - [x] Run ProvisionUser after a new enterprise user's sign-in commits, with the stored user, mapped profile, OIDC tokens and provider, and on failure answer 500, keep the user and remove the session, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_provision_user_test.go#L19))
       - [x] Run ProvisionUser for a SAML sign-in without OIDC tokens ([test](../../../adapters/sqlstore/sso_saml_resolve_user_test.go#L107))
@@ -428,6 +429,7 @@
   - [ ] `SSOProviderMutationGuardInput`
     - [x] Pass the delete action, record ID, provider ID, organization, linked-account count and configuration reference of the locked provider to the guard ([test](../../../adapters/sqlstore/sso_delete_test.go#L137))
     - [x] Pass the update action, locked record, configuration reference and an authentication boundary change to the guard when IdP metadata is replaced ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L160))
+    - [x] Hand the update guard its action, record and provider IDs, reference, organization and boundary flag ([test](../../../adapters/sqlstore/sso_delete_test.go#L334))
   - [ ] `SSOProviderReference`
     - [x] Redirect a callback with invalid_state before the token exchange when the provider's configuration changed after sign-in started ([test](../../../adapters/sqlstore/sso_browser_test.go#L352))
     - [x] Stop accepting a captured provider reference after the provider's identity source changes ([test](../../../adapters/sqlstore/sso_domain_test.go#L480))
