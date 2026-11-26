@@ -2,12 +2,12 @@
 
 ## Verification progress
 
-**2,717 of 6,419 inventory entries are fully verified (42.3%).**
+**2,726 of 6,419 inventory entries are fully verified (42.5%).**
 
 | Inventory status | Entries |
 | --- | ---: |
-| Fully verified | 2,717 |
-| Partially verified | 1,555 |
+| Fully verified | 2,726 |
+| Partially verified | 1,546 |
 | No linked test evidence | 2,147 |
 | Not applicable to a Go server | 606 |
 
@@ -122,7 +122,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Phone number](plugins/phone-number.md) | 148 | 30 | 0 |
 | [SCIM provisioning](plugins/scim.md) | 631 | 70 | 6 |
 | [Sign in with Ethereum](plugins/siwe.md) | 122 | 7 | 0 |
-| [Single sign-on](plugins/sso.md) | 883 | 133 | 10 |
+| [Single sign-on](plugins/sso.md) | 892 | 124 | 10 |
 | [Stripe](plugins/stripe.md) | 206 | 175 | 0 |
 | [Test utils](plugins/test-utils.md) | 86 | 10 | 1 |
 | [Username](plugins/username.md) | 126 | 23 | 2 |
