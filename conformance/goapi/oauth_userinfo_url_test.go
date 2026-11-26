@@ -73,7 +73,8 @@ func unsignedIDToken(claims string) string {
 
 // A provider with UserInfoURL and no Resolve reads the profile from that
 // endpoint with the access token, a numeric id becoming the subject, or
-// from an ID token in the token response that names a subject and an email.
+// from an ID token in the token response that names a subject and an email,
+// whose id claim, when it has one, names the account.
 // A profile without an id, an error status or no email fails the sign-in,
 // and New refuses an insecure endpoint, a missing profile source, and
 // UserInfoURL alongside Resolve.
@@ -133,6 +134,28 @@ func TestOAuthUserInfoURL(t *testing.T) {
 		if session.User.Email != "token@example.org" {
 			t.Fatal("the ID token's user is", session.User.Email)
 		}
+	}
+
+	idp = newUserInfoProvider(t)
+	idp.token = `{"access_token":"access","token_type":"Bearer","id_token":"` + unsignedIDToken(`{"sub":"s-1","id":"42","email":"named@example.org"}`) + `"}`
+	if n, err = newTokenAuthNode(t, idp.provider()); err != nil {
+		t.Fatal(err)
+	}
+	if to := n.signIn(t); to != "/done" {
+		t.Fatal("the ID token with an id claim landed at", to)
+	}
+	res, err = n.browser.Get(n.base + "/api/auth/account-info?accountId=" + n.accountID(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var named struct {
+		Account struct{ AccountID string }
+		Data    map[string]any
+	}
+	_ = json.NewDecoder(res.Body).Decode(&named)
+	res.Body.Close()
+	if named.Account.AccountID != "42" || named.Data["id"] != "42" {
+		t.Fatalf("an id claim gave account %q and data id %v", named.Account.AccountID, named.Data["id"])
 	}
 
 	for _, tc := range []struct {

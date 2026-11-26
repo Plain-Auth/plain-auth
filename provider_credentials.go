@@ -187,9 +187,11 @@ func (a *Auth) validCredential(ctx context.Context, h http.Header, store Provide
 	}
 	ctx, cancel := context.WithTimeout(context.WithValue(ctx, oauth2.HTTPClient, p.HTTPClient), 15*time.Second)
 	defer cancel()
-	// RefreshParams is host code, so it runs before the account row is locked.
+	// RefreshParams is host code, so it runs before the account row is
+	// locked, even when this read saw no refresh token: one may be stored
+	// before the lock is taken.
 	var extra url.Values
-	if p.RefreshParams != nil && row.RefreshToken != "" {
+	if p.RefreshParams != nil {
 		var err error
 		extra, err = p.RefreshParams(ctx, OAuthRefreshRequest{Header: h.Clone(), UserID: row.UserID, AccountID: row.ID})
 		if err != nil {
@@ -197,7 +199,7 @@ func (a *Auth) validCredential(ctx context.Context, h http.Header, store Provide
 			return row, failure
 		}
 		// The protocol fields stay the library's: naming one fails the refresh.
-		if slices.ContainsFunc(tokenFields, extra.Has) {
+		if slices.ContainsFunc(refreshFields, extra.Has) {
 			a.Logger().ErrorContext(ctx, "auth: RefreshParams named a token request field", "provider", row.ProviderID)
 			return row, failure
 		}

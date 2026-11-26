@@ -21,14 +21,19 @@ var errUserInfo = errors.New("auth: the provider's user info could not be read")
 
 // userInfoResolver reads a hand-configured provider's profile. An ID token
 // from the token response that names a subject and an email is used as it
-// is: it came straight from the token endpoint over TLS, which OpenID
+// is, its id claim, when it has one, naming the account: it came straight from the token endpoint over TLS, which OpenID
 // Connect allows without checking its signature. Otherwise the profile comes
 // from endpoint, called with the access token, and its subject is its id.
 func userInfoResolver(endpoint string) func(context.Context, *oauth2.Token, string) (OAuthProfile, error) {
 	return func(ctx context.Context, t *oauth2.Token, _ string) (OAuthProfile, error) {
 		raw, _ := t.Extra("id_token").(string)
 		if claims := unverifiedClaims(raw); jsonText(claims["sub"]) != "" && jsonText(claims["email"]) != "" {
-			return mappedProfile(claims, jsonText(claims["sub"])), nil
+			// An id claim names the account, as on the profile endpoint.
+			subject := jsonText(claims["sub"])
+			if _, named := claims["id"]; named {
+				subject = jsonText(claims["id"])
+			}
+			return mappedProfile(claims, subject), nil
 		}
 		if t.AccessToken == "" {
 			return OAuthProfile{}, errUserInfo

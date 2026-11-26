@@ -121,8 +121,9 @@ func TestOAuthTokenParamsAndHeaders(t *testing.T) {
 // RefreshParams adds fields to the refresh request, computed from the
 // triggering request and the account's owner, before the account is locked:
 // it can read the session through the store's only connection. nil adds
-// nothing, a failure or a protocol field fails the refresh without calling
-// the provider, and a trusted server call passes no headers.
+// nothing, a redirect_uri is sent, a failure or a field the refresh or
+// client authentication sets fails the refresh without calling the
+// provider, and a trusted server call passes no headers.
 func TestOAuthRefreshParams(t *testing.T) {
 	srv, received := tokenProvider(t)
 	var mu sync.Mutex
@@ -189,12 +190,24 @@ func TestOAuthRefreshParams(t *testing.T) {
 	if got := received(); len(got) != 1 || len(got[0].form) != 2 {
 		t.Fatal("nil added fields:", got)
 	}
+	result = func(auth.OAuthRefreshRequest) (url.Values, error) {
+		return url.Values{"redirect_uri": {"https://app.example/callback"}}, nil
+	}
+	if res := refreshWith("org-1"); res.StatusCode != 200 {
+		t.Fatal("a refresh with redirect_uri answered", res.StatusCode)
+	}
+	if got := received(); len(got) != 1 || got[0].form.Get("redirect_uri") != "https://app.example/callback" {
+		t.Fatal("redirect_uri did not reach the provider:", got)
+	}
 	for name, fails := range map[string]func(auth.OAuthRefreshRequest) (url.Values, error){
 		"an error":      func(auth.OAuthRefreshRequest) (url.Values, error) { return nil, errors.New("no entitlement") },
 		"grant_type":    func(auth.OAuthRefreshRequest) (url.Values, error) { return url.Values{"grant_type": {"password"}}, nil },
 		"refresh_token": func(auth.OAuthRefreshRequest) (url.Values, error) { return url.Values{"refresh_token": {"other"}}, nil },
 		"client_id":     func(auth.OAuthRefreshRequest) (url.Values, error) { return url.Values{"client_id": {"other"}}, nil },
 		"client_secret": func(auth.OAuthRefreshRequest) (url.Values, error) { return url.Values{"client_secret": {"other"}}, nil },
+		"client_assertion": func(auth.OAuthRefreshRequest) (url.Values, error) {
+			return url.Values{"client_assertion": {"other"}}, nil
+		},
 	} {
 		result = fails
 		res := refreshWith("org-1")

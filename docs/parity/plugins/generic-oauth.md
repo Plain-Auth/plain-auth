@@ -383,8 +383,8 @@
   - [ ] `GenericOAuthConfig`
     - [ ] `providerId`
       - [x] Build the authorization and code-exchange callback from the provider's registered key under the auth mount ([test](../../../providers/profile_presets_test.go#L125))
-    - [x] `name` ([test](../../../conformance/goapi/oauth_provider_options_test.go#L161))
-      - [x] A provider's Name defaults to its SocialProviders key and OAuthProviderName returns it ([test](../../../conformance/goapi/oauth_provider_options_test.go#L161))
+    - [x] `name` ([test](../../../conformance/goapi/oauth_provider_options_test.go#L163))
+      - [x] A provider's Name defaults to its SocialProviders key and OAuthProviderName returns it ([test](../../../conformance/goapi/oauth_provider_options_test.go#L163))
     - [ ] `accountSubject`
       - [x] Store the subject each profile preset reads from its id or sub field as the linked account ID ([test](../../../providers/profile_presets_test.go#L154))
     - [ ] `discoveryUrl`
@@ -398,8 +398,8 @@
     - [x] `tokenUrl` ([test](../../../conformance/goapi/oauth_test.go#L54))
       - [x] Exchange the code at the configured token endpoint with the authorized redirect URI and the matching PKCE verifier ([test](../../../conformance/goapi/oauth_test.go#L54))
       - [x] Exchange the code at the token endpoint read from discovery with the configured client credentials ([test](../../../providers/enterprise_oidc_test.go#L48))
-    - [x] `userInfoUrl` ([test](../../../conformance/goapi/oauth_userinfo_url_test.go#L80))
-      - [x] UserInfoURL reads a hand-configured provider's profile from that endpoint with the access token, or from a token-endpoint ID token naming a subject and an email; a numeric id becomes the subject, the whole profile is the account data, a profile without an id, an error status or no email fails the sign-in, and New refuses an insecure endpoint or one alongside Resolve ([test](../../../conformance/goapi/oauth_userinfo_url_test.go#L80))
+    - [x] `userInfoUrl` ([test](../../../conformance/goapi/oauth_userinfo_url_test.go#L81))
+      - [x] UserInfoURL reads a hand-configured provider's profile from that endpoint with the access token, or from a token-endpoint ID token naming a subject and an email, whose id claim names the account when it has one; a numeric id becomes the subject, the whole profile is the account data, a profile without an id, an error status or no email fails the sign-in, and New refuses an insecure endpoint or one alongside Resolve ([test](../../../conformance/goapi/oauth_userinfo_url_test.go#L81))
     - [x] `endSessionEndpoint` ([test](../../../conformance/goapi/oauth_logout_test.go#L17))
       - [x] Send the signed-out user to the configured end-session endpoint, keeping its query and adding the ID token hint, state and client ID ([test](../../../conformance/goapi/oauth_logout_test.go#L17))
       - [x] Take the provider logout URL from an enterprise preset's discovery document ([test](../../../providers/enterprise_oidc_test.go#L70))
@@ -444,8 +444,8 @@
       - [x] Replace the default response_type with the Apple preset's configured code id_token and add response_mode=form_post ([test](../../../providers/apple_microsoft_test.go#L102))
     - [x] `tokenUrlParams` ([test](../../../conformance/goapi/oauth_token_requests_test.go#L53))
       - [x] TokenParams add one-valued form fields such as audience and resource to the code exchange only; New refuses the grant and client authentication fields, two values, and ExchangeCode, which replaces the request (deviation: the protocol fields are refused instead of kept) ([test](../../../conformance/goapi/oauth_token_requests_test.go#L53))
-    - [x] `refreshTokenParams` ([test](../../../conformance/goapi/oauth_token_requests_test.go#L126))
-      - [x] RefreshParams adds fields to each refresh from the triggering request's headers and the owner, runs before the account is locked so it can read the store, nil adds nothing, a server call gets nil headers, an error or a protocol field fails the refresh without calling the provider (deviation: refused instead of ignored), and New refuses it with Refresh ([test](../../../conformance/goapi/oauth_token_requests_test.go#L126))
+    - [x] `refreshTokenParams` ([test](../../../conformance/goapi/oauth_token_requests_test.go#L127))
+      - [x] RefreshParams adds fields to each refresh from the triggering request's headers and the owner, runs before the account is locked so it can read the store, nil adds nothing, a redirect_uri is sent, a server call gets nil headers, an error or a field the refresh or client authentication sets fails the refresh without calling the provider (deviation: refused instead of overwritten), and New refuses it with Refresh ([test](../../../conformance/goapi/oauth_token_requests_test.go#L127))
     - [ ] `disableImplicitSignUp`
       - [x] Refuse a first-time account without requestSignUp, create it with requestSignUp and sign a returning user in, for browser and ID-token sign-in ([test](../../../conformance/goapi/oauth_signup_test.go#L117))
     - [ ] `disableSignUp`
@@ -486,7 +486,7 @@
       - [ ] Provider requires extra authorization parameters
         - [x] Add a configured authorization parameter (prompt) to every sign-in and link authorization URL ([test](../../../conformance/goapi/provider_contract_test.go#L67))
       - [x] Provider requires extra token parameters ([test](../../../conformance/goapi/oauth_token_requests_test.go#L53))
-        - [x] A provider that needs extra token parameters gets them through TokenParams on the code exchange and RefreshParams on each refresh ([test](../../../conformance/goapi/oauth_token_requests_test.go#L53))
+        - [x] A provider that needs extra token parameters gets them on the code exchange through TokenParams ([test](../../../conformance/goapi/oauth_token_requests_test.go#L53))
       - [x] Provider requires custom HTTP headers ([test](../../../providers/oidc_test.go#L165))
         - [x] Token endpoint headers through TokenHeaders; discovery headers are still missing ([test](../../../conformance/goapi/oauth_token_requests_test.go#L53))
         - [x] A provider that needs custom headers gets them on discovery and same-origin signing keys through DiscoveryHeaders, and on token requests through TokenHeaders ([test](../../../providers/oidc_test.go#L165))
@@ -533,8 +533,8 @@
         - [x] Send a hand-configured provider's sign-in to its configured authorization endpoint with state, nonce and an S256 challenge ([test](../../../conformance/goapi/oauth_test.go#L30))
       - [ ] tokenUrl
         - [x] Exchange the code at a hand-configured provider's token endpoint with the matching redirect URI and PKCE verifier ([test](../../../conformance/goapi/oauth_test.go#L54))
-      - [x] userInfoUrl ([test](../../../conformance/goapi/oauth_userinfo_url_test.go#L80))
-        - [x] UserInfoURL reads a hand-configured provider's profile from that endpoint with the access token, or from a token-endpoint ID token naming a subject and an email; a numeric id becomes the subject, the whole profile is the account data, a profile without an id, an error status or no email fails the sign-in, and New refuses an insecure endpoint or one alongside Resolve ([test](../../../conformance/goapi/oauth_userinfo_url_test.go#L80))
+      - [x] userInfoUrl ([test](../../../conformance/goapi/oauth_userinfo_url_test.go#L81))
+        - [x] UserInfoURL reads a hand-configured provider's profile from that endpoint with the access token, or from a token-endpoint ID token naming a subject and an email, whose id claim names the account when it has one; a numeric id becomes the subject, the whole profile is the account data, a profile without an id, an error status or no email fails the sign-in, and New refuses an insecure endpoint or one alongside Resolve ([test](../../../conformance/goapi/oauth_userinfo_url_test.go#L81))
       - [ ] endSessionEndpoint
         - [x] Send provider sign-out to a configured end-session endpoint, keeping its own query parameters ([test](../../../conformance/goapi/oauth_logout_test.go#L70))
         - [x] Read the end-session endpoint from the issuer's discovery document ([test](../../../providers/enterprise_oidc_test.go#L71))
@@ -579,8 +579,8 @@
         - [x] Replace the default response_type with the Apple preset's configured code id_token and add response_mode=form_post ([test](../../../providers/apple_microsoft_test.go#L102))
       - [x] tokenUrlParams ([test](../../../conformance/goapi/oauth_token_requests_test.go#L53))
         - [x] TokenParams add one-valued form fields such as audience and resource to the code exchange only; New refuses the grant and client authentication fields, two values, and ExchangeCode, which replaces the request (deviation: the protocol fields are refused instead of kept) ([test](../../../conformance/goapi/oauth_token_requests_test.go#L53))
-      - [x] refreshTokenParams ([test](../../../conformance/goapi/oauth_token_requests_test.go#L126))
-        - [x] RefreshParams adds fields to each refresh from the triggering request's headers and the owner, runs before the account is locked so it can read the store, nil adds nothing, a server call gets nil headers, an error or a protocol field fails the refresh without calling the provider (deviation: refused instead of ignored), and New refuses it with Refresh ([test](../../../conformance/goapi/oauth_token_requests_test.go#L126))
+      - [x] refreshTokenParams ([test](../../../conformance/goapi/oauth_token_requests_test.go#L127))
+        - [x] RefreshParams adds fields to each refresh from the triggering request's headers and the owner, runs before the account is locked so it can read the store, nil adds nothing, a redirect_uri is sent, a server call gets nil headers, an error or a field the refresh or client authentication sets fails the refresh without calling the provider (deviation: refused instead of overwritten), and New refuses it with Refresh ([test](../../../conformance/goapi/oauth_token_requests_test.go#L127))
       - [ ] disableImplicitSignUp
         - [x] Refuse a first-time account without requestSignUp, create it with requestSignUp and sign a returning user in, for browser and ID-token sign-in ([test](../../../conformance/goapi/oauth_signup_test.go#L117))
       - [ ] disableSignUp

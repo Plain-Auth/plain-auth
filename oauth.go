@@ -132,9 +132,13 @@ type OAuthRefreshRequest struct {
 	UserID, AccountID string
 }
 
-// tokenFields are set by the code exchange, the refresh or the client
-// authentication, so TokenParams and RefreshParams cannot name them.
-var tokenFields = []string{"grant_type", "code", "redirect_uri", "code_verifier", "refresh_token", "client_id", "client_secret", "client_assertion", "client_assertion_type"}
+// tokenFields are set by the code exchange or the client authentication,
+// and refreshFields by the refresh or the client authentication, so
+// TokenParams and RefreshParams cannot name them.
+var (
+	tokenFields   = []string{"grant_type", "code", "redirect_uri", "code_verifier", "refresh_token", "client_id", "client_secret", "client_assertion", "client_assertion_type"}
+	refreshFields = []string{"grant_type", "refresh_token", "client_id", "client_secret", "client_assertion", "client_assertion_type"}
+)
 
 // OAuthFlow is the temporary state of a browser authorization. Binding ties a
 // request to the initiating browser, provider and existing session.

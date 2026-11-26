@@ -59,7 +59,8 @@ type TokenEndpointAuth struct {
 	ClientAssertion ClientAssertionFunc
 	// CustomizeRequest is required with TokenAuthCustom and refused
 	// otherwise. It sets the client ID and credentials in form or header;
-	// form holds only the grant fields, which it must not change.
+	// form holds the grant fields and any TokenParams or RefreshParams
+	// fields, which it must not change.
 	CustomizeRequest func(ctx context.Context, r TokenRequest, form url.Values, header http.Header) error
 }
 

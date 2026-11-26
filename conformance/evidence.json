@@ -30552,7 +30552,7 @@
   ],
   "docs/content/docs/plugins/generic-oauth.mdx#L33/Provider requires extra token parameters": [
     {
-      "label": "A provider that needs extra token parameters gets them through TokenParams on the code exchange and RefreshParams on each refresh",
+      "label": "A provider that needs extra token parameters gets them on the code exchange through TokenParams",
       "test": "conformance/goapi/oauth_token_requests_test.go",
       "marker": "func TestOAuthTokenParamsAndHeaders(t *testing.T) {",
       "complete": true
@@ -30590,7 +30590,7 @@
   ],
   "plugin-symbol/generic-oauth/GenericOAuthConfig/refreshTokenParams": [
     {
-      "label": "RefreshParams adds fields to each refresh from the triggering request's headers and the owner, runs before the account is locked so it can read the store, nil adds nothing, a server call gets nil headers, an error or a protocol field fails the refresh without calling the provider (deviation: refused instead of ignored), and New refuses it with Refresh",
+      "label": "RefreshParams adds fields to each refresh from the triggering request's headers and the owner, runs before the account is locked so it can read the store, nil adds nothing, a redirect_uri is sent, a server call gets nil headers, an error or a field the refresh or client authentication sets fails the refresh without calling the provider (deviation: refused instead of overwritten), and New refuses it with Refresh",
       "test": "conformance/goapi/oauth_token_requests_test.go",
       "marker": "func TestOAuthRefreshParams(t *testing.T) {",
       "complete": true
@@ -30598,7 +30598,7 @@
   ],
   "docs/content/docs/plugins/generic-oauth.mdx#L316/refreshTokenParams": [
     {
-      "label": "RefreshParams adds fields to each refresh from the triggering request's headers and the owner, runs before the account is locked so it can read the store, nil adds nothing, a server call gets nil headers, an error or a protocol field fails the refresh without calling the provider (deviation: refused instead of ignored), and New refuses it with Refresh",
+      "label": "RefreshParams adds fields to each refresh from the triggering request's headers and the owner, runs before the account is locked so it can read the store, nil adds nothing, a redirect_uri is sent, a server call gets nil headers, an error or a field the refresh or client authentication sets fails the refresh without calling the provider (deviation: refused instead of overwritten), and New refuses it with Refresh",
       "test": "conformance/goapi/oauth_token_requests_test.go",
       "marker": "func TestOAuthRefreshParams(t *testing.T) {",
       "complete": true
@@ -30606,7 +30606,7 @@
   ],
   "plugin-symbol/generic-oauth/GenericOAuthConfig/userInfoUrl": [
     {
-      "label": "UserInfoURL reads a hand-configured provider's profile from that endpoint with the access token, or from a token-endpoint ID token naming a subject and an email; a numeric id becomes the subject, the whole profile is the account data, a profile without an id, an error status or no email fails the sign-in, and New refuses an insecure endpoint or one alongside Resolve",
+      "label": "UserInfoURL reads a hand-configured provider's profile from that endpoint with the access token, or from a token-endpoint ID token naming a subject and an email, whose id claim names the account when it has one; a numeric id becomes the subject, the whole profile is the account data, a profile without an id, an error status or no email fails the sign-in, and New refuses an insecure endpoint or one alongside Resolve",
       "test": "conformance/goapi/oauth_userinfo_url_test.go",
       "marker": "func TestOAuthUserInfoURL(t *testing.T) {",
       "complete": true
@@ -30614,7 +30614,7 @@
   ],
   "docs/content/docs/plugins/generic-oauth.mdx#L262/userInfoUrl": [
     {
-      "label": "UserInfoURL reads a hand-configured provider's profile from that endpoint with the access token, or from a token-endpoint ID token naming a subject and an email; a numeric id becomes the subject, the whole profile is the account data, a profile without an id, an error status or no email fails the sign-in, and New refuses an insecure endpoint or one alongside Resolve",
+      "label": "UserInfoURL reads a hand-configured provider's profile from that endpoint with the access token, or from a token-endpoint ID token naming a subject and an email, whose id claim names the account when it has one; a numeric id becomes the subject, the whole profile is the account data, a profile without an id, an error status or no email fails the sign-in, and New refuses an insecure endpoint or one alongside Resolve",
       "test": "conformance/goapi/oauth_userinfo_url_test.go",
       "marker": "func TestOAuthUserInfoURL(t *testing.T) {",
       "complete": true

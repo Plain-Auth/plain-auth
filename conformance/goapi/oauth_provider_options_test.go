@@ -124,13 +124,6 @@ func TestOAuthDefaultAccessTokenLifetime(t *testing.T) {
 	if got := n.accessTokenExpiry(t); !within(got, before, time.Now(), time.Hour) {
 		t.Fatal("the exchanged token's expiry is", got)
 	}
-	before = time.Now()
-	if status := n.refresh(t); status != 200 {
-		t.Fatal("the refresh answered", status)
-	}
-	if got := n.accessTokenExpiry(t); !within(got, before, time.Now(), time.Hour) {
-		t.Fatal("the refreshed token's expiry is", got)
-	}
 	expiresIn = "120"
 	n, err = newTokenAuthNode(t, p)
 	if err != nil {
@@ -141,7 +134,16 @@ func TestOAuthDefaultAccessTokenLifetime(t *testing.T) {
 	if got := n.accessTokenExpiry(t); !within(got, before, time.Now(), 2*time.Minute) {
 		t.Fatal("the provider's expires_in did not win:", got)
 	}
+	// The refresh answers without expires_in, so its expiry is the default
+	// and not the two minutes the sign-in stored.
 	expiresIn = ""
+	before = time.Now()
+	if status := n.refresh(t); status != 200 {
+		t.Fatal("the refresh answered", status)
+	}
+	if got := n.accessTokenExpiry(t); !within(got, before, time.Now(), time.Hour) {
+		t.Fatal("the refreshed token's expiry is", got)
+	}
 	p.DefaultAccessTokenLifetime = 0
 	n, err = newTokenAuthNode(t, p)
 	if err != nil {
