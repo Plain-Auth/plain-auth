@@ -852,6 +852,41 @@
         "`ExactRoleStatements`"
       ],
       "reason": "not applicable: TypeScript type"
+    },
+    {
+      "page": "plugins/passkey.md",
+      "section": "Passkey",
+      "labels": [
+        "Extensions",
+        "Conditional UI"
+      ],
+      "reason": "not applicable: browser WebAuthn client behaviour"
+    },
+    {
+      "page": "plugins/passkey.md",
+      "section": "Passkey",
+      "labels": [
+        "Expo Integration"
+      ],
+      "reason": "not applicable: JavaScript only"
+    },
+    {
+      "page": "plugins/passkey.md",
+      "section": "Interfaces",
+      "labels": [
+        "`getPasskeyActions`"
+      ],
+      "reason": "not applicable: JavaScript only"
+    },
+    {
+      "page": "plugins/passkey.md",
+      "section": "Passkey",
+      "within": "Browser client action `signIn.passkey`",
+      "labels": [
+        "Parameter `autoFill` (optional)",
+        "Parameter `returnWebAuthnResponse` (optional)"
+      ],
+      "reason": "not applicable: browser WebAuthn client behaviour"
     }
   ],
   "backlog": [

@@ -8,20 +8,26 @@
   - [ ] `emailOTPClient`
     - [x] Use the pinned browser client with hashed proofs in either runtime, including two-address confirmation ([test](../../../conformance/core.test.mjs#L501))
   - [ ] `EMAIL_OTP_ERROR_CODES`
+    - [x] Answer wrong sign-in codes with 400 INVALID_OTP, a code past its attempts with 403 TOO_MANY_ATTEMPTS and an expired code with 400 OTP_EXPIRED over HTTP ([test](../../../conformance/goapi/database_verification_code_hooks_test.go#L242))
   - [ ] `emailOTP`
     - [x] Run the typed Go SDK through sign-in, verification, recovery, address changes and cookie-jar authentication ([test](../../../client/emailotp_test.go#L16))
+    - [x] Build the plugin with hashed, encrypted and plain storage, a custom generator, reuse resends, closed registration, sign-up delivery, the verification override, code length and rate limits, and use its routes ([test](../../../adapters/sqlstore/emailotp_test.go#L24))
   - [ ] `createVerificationOTP (server API only)`
     - [x] Generate a fresh proof directly from Go without invoking the mail sender ([test](../../../adapters/sqlstore/emailotp_management_test.go#L91))
+    - [x] Create a six-digit code from Go when the custom generator returns no code ([test](../../../adapters/sqlstore/emailotp_management_test.go#L83))
   - [x] `getVerificationOTP (server API only)` ([test](../../../adapters/sqlstore/emailotp_management_test.go#L245))
     - [x] Read recoverable proofs inside Go, reject hashed records and return nil after expiry ([test](../../../adapters/sqlstore/emailotp_management_test.go#L238))
     - [x] Keep the trusted read operation inaccessible over HTTP ([test](../../../adapters/sqlstore/emailotp_management_test.go#L245))
   - [ ] `POST /email-otp/send-verification-otp`
     - [x] Deliver a purpose-bound sign-in code privately to the normalized mailbox ([test](../../../adapters/sqlstore/emailotp_test.go#L112))
+    - [x] Answer success without mailing when an unknown address asks for an email-verification code ([test](../../../adapters/sqlstore/emailotp_test.go#L101))
   - [ ] `POST /email-otp/check-verification-otp`
     - [x] Preserve a successful proof for the final action and count failed comparisons across instances ([test](../../../adapters/sqlstore/emailotp_test.go#L244))
+    - [x] Refuse a valid code for an address without an account with USER_NOT_FOUND and keep the code ([test](../../../conformance/goapi/database_verification_code_hooks_test.go#L318))
   - [ ] `POST /email-otp/verify-email`
     - [x] Verify an address while preserving its registered password ([test](../../../adapters/sqlstore/emailotp_test.go#L339))
     - [x] Issue a session atomically when auto-sign-in is enabled ([test](../../../adapters/sqlstore/emailotp_management_test.go#L207))
+    - [x] Answer an HTTP verification with a null token and no session cookie when automatic sign-in is off ([test](../../../adapters/sqlstore/emailotp_test.go#L248))
   - [ ] `POST /sign-in/email-otp`
     - [x] Create one verified account and one session when eight sign-ins race across two pools ([test](../../../adapters/sqlstore/emailotp_test.go#L155))
     - [x] Consume a memory-backed sign-in proof once across handlers and revoke unproven access ([test](../../../adapters/memory/emailotp_test.go#L79))
@@ -29,21 +35,34 @@
     - [x] Spend invalid registration claims and authenticate returning owners without changing stored fields across four adapters ([test](../../../adapters/sqlstore/emailotp_user_fields_test.go#L29))
     - [x] Roll back a new profile when required session storage fails, then redeem the original proof once after correcting the configuration ([test](../../../adapters/sqlstore/emailotp_user_fields_test.go#L191))
     - [x] ValidateUserInfo refuses a new email-code user with a 403 and stores nothing ([test](../../../conformance/goapi/user_validation_test.go#L267))
+    - [x] Sign in an unverified password account with a mailed code, mark it verified and remove its password ([test](../../../adapters/sqlstore/emailotp_test.go#L316))
   - [ ] `POST /email-otp/request-password-reset`
     - [x] Deliver recovery mail to an existing owner and accept the stored proof in a second runtime ([test](../../../conformance/core.test.mjs#L521))
+    - [x] Mail a forget-password code to a registered address from the request route ([test](../../../adapters/sqlstore/emailotp_test.go#L271))
+    - [x] Answer success without mailing when an unknown address requests recovery ([test](../../../adapters/sqlstore/emailotp_test.go#L101))
   - [x] `POST /forget-password/email-otp` ([test](../../../adapters/sqlstore/emailotp_test.go#L173))
     - [x] Give unknown mailboxes a successful private response on the recovery alias ([test](../../../adapters/sqlstore/emailotp_test.go#L101))
     - [x] Deliver a recovery code through the alias for a registered mailbox ([test](../../../adapters/sqlstore/emailotp_test.go#L173))
   - [ ] `POST /email-otp/reset-password`
     - [x] Enforce the password policy, consume one proof and revoke sessions when configured ([test](../../../adapters/sqlstore/emailotp_test.go#L286))
     - [x] Promote the original mailbox only after the callback succeeds on both runtimes ([test](../../../conformance/password-reset-hook.mjs#L74))
+    - [x] Keep the code usable after the password policy refuses a short or declined password ([test](../../../adapters/sqlstore/emailotp_test.go#L275))
+    - [x] Count a wrong reset code as an attempt without hashing the new password ([test](../../../conformance/goapi/database_verification_code_hooks_test.go#L339))
   - [ ] `POST /email-otp/request-email-change`
     - [x] Require one current mailbox proof for a new destination across concurrent requests ([test](../../../adapters/sqlstore/emailotp_management_test.go#L151))
+    - [x] Refuse an address change without a session, without the required current-address code, or to the same address ([test](../../../adapters/sqlstore/emailotp_management_test.go#L116))
   - [ ] `POST /email-otp/change-email`
     - [x] Reject stale sessions and preserve the account when verifying its new address ([test](../../../adapters/sqlstore/emailotp_management_test.go#L191))
+    - [x] Refuse a change to an address registered after the code was sent with Email already in use and spend the code ([test](../../../conformance/goapi/database_verification_code_hooks_test.go#L565))
   - [ ] `EmailOTPOptions`
-    - [ ] `sendVerificationOTP`
+    - [x] Configure storage, generation, resend, lifetime, registration, sign-up delivery, verification override, length and rate-limit settings and observe each one, along with the default attempt budget ([test](../../../adapters/sqlstore/emailotp_test.go#L24))
+    - [x] Configure address changes with and without current-address confirmation, automatic sign-in after verification and custom hash or cipher transforms ([test](../../../adapters/sqlstore/emailotp_management_test.go#L24))
+    - [x] `sendVerificationOTP` ([test](../../../adapters/sqlstore/emailotp_test.go#L112))
       - [x] Deliver the intended mailbox, code and purpose through the callback and propagate request delivery errors ([test](../../../adapters/sqlstore/emailotp_management_test.go#L77))
+      - [x] Pass the lowercased address, raw code and sign-in purpose to the sender without returning the code ([test](../../../adapters/sqlstore/emailotp_test.go#L112))
+      - [x] Pass the forget-password purpose to the sender for a registered address ([test](../../../adapters/sqlstore/emailotp_test.go#L173))
+      - [x] Pass a six-digit email-verification code for a new password account to the sender ([test](../../../adapters/sqlstore/emailotp_test.go#L329))
+      - [x] Pass the change-email purpose and the new address to the sender ([test](../../../adapters/sqlstore/emailotp_management_test.go#L151))
     - [x] `otpLength` ([test](../../../adapters/sqlstore/emailotp_test.go#L348))
       - [x] Generate six digits by default and eight when configured ([test](../../../adapters/sqlstore/emailotp_test.go#L348))
     - [x] `expiresIn` ([test](../../../adapters/sqlstore/emailotp_test.go#L233))
@@ -53,98 +72,229 @@
       - [x] Fall back to secure six-digit generation when a custom generator returns no code ([test](../../../adapters/sqlstore/emailotp_management_test.go#L83))
     - [ ] `sendVerificationOnSignUp`
       - [x] Deliver verification codes during credential registration and enforce the configured gate ([test](../../../adapters/sqlstore/emailotp_test.go#L329))
+      - [x] Store an email-verification code when an account signs up with the option on, and mail nothing when its create hook declines or fails, without failing sign-up ([test](../../../conformance/goapi/database_verification_code_hooks_test.go#L502))
     - [x] `disableSignUp` ([test](../../../adapters/sqlstore/emailotp_test.go#L164))
       - [x] Skip delivery to an unknown sign-in mailbox when registration is disabled ([test](../../../adapters/sqlstore/emailotp_test.go#L108))
       - [x] Allow an existing owner to sign in and reject a previously issued registration proof after policy changes ([test](../../../adapters/sqlstore/emailotp_test.go#L164))
     - [x] `allowedAttempts` ([test](../../../adapters/sqlstore/emailotp_test.go#L218))
       - [x] Serialize competing guesses so the configured budget is exhausted once ([test](../../../adapters/sqlstore/emailotp_test.go#L218))
       - [x] Run verification update after hooks for each counted wrong guess, and remove a code that ran out with its delete hooks ([test](../../../conformance/goapi/database_verification_code_hooks_test.go#L218))
-    - [ ] `storeOTP`
+    - [x] `storeOTP` ([test](../../../adapters/sqlstore/emailotp_test.go#L116))
       - [x] Verify plain, hashed and encrypted proofs and honor application-provided transformations ([test](../../../adapters/sqlstore/emailotp_management_test.go#L232))
+      - [x] Store a hashed code as its SHA-256 digest with a zero attempt count while mailing the raw code ([test](../../../adapters/sqlstore/emailotp_test.go#L116))
+      - [x] Store an encrypted code without the raw value and keep its attempt count across a reuse resend ([test](../../../adapters/sqlstore/emailotp_test.go#L241))
     - [ ] `resendStrategy`
       - [x] Reuse recoverable proofs without resetting attempts, and rotate hashed proofs ([test](../../../adapters/sqlstore/emailotp_test.go#L241))
       - [x] With verification hooks, a reuse resend stores the code again under a new ID with its attempts, running the create hooks ([test](../../../conformance/goapi/database_verification_code_hooks_test.go#L479))
+      - [x] Mail a new code on resend when reuse is configured with hashed storage, and refuse the earlier code ([test](../../../adapters/sqlstore/emailotp_test.go#L262))
     - [ ] `changeEmail`
       - [x] Verify both mailboxes and keep the existing user and session after the change ([test](../../../client/emailotp_test.go#L93))
+      - [x] Without current-address confirmation, request changes without a code and refuse a pending code once the account has moved to another address ([test](../../../adapters/sqlstore/emailotp_management_test.go#L181))
+      - [x] With current-address confirmation, refuse a change request that omits the current-address code ([test](../../../adapters/sqlstore/emailotp_management_test.go#L116))
     - [ ] `overrideDefaultEmailVerification`
       - [x] Route default email verification to the configured code sender ([test](../../../adapters/sqlstore/emailotp_test.go#L348))
+      - [x] Route a send-verification-email request to the code sender, logging its failed delivery under the email code rule while answering 200 ([test](../../../conformance/goapi/background_tasks_test.go#L527))
     - [x] `rateLimit` ([test](../../../adapters/sqlstore/emailotp_test.go#L357))
       - [x] Apply the default and host-specified peer request budgets ([test](../../../adapters/sqlstore/emailotp_test.go#L357))
   - [ ] `RequiredEmailOTPOptions`
-    - [ ] `sendVerificationOTP`
-    - [ ] `otpLength`
+    - [x] `sendVerificationOTP` ([test](../../../adapters/sqlstore/emailotp_test.go#L112))
+      - [x] Pass the lowercased address, raw code and sign-in purpose to the sender without returning the code ([test](../../../adapters/sqlstore/emailotp_test.go#L112))
+      - [x] Pass the forget-password purpose to the sender for a registered address ([test](../../../adapters/sqlstore/emailotp_test.go#L173))
+      - [x] Pass a six-digit email-verification code for a new password account to the sender ([test](../../../adapters/sqlstore/emailotp_test.go#L329))
+      - [x] Pass the change-email purpose and the new address to the sender ([test](../../../adapters/sqlstore/emailotp_management_test.go#L151))
+      - [x] Return the sender's delivery error from a Go send call ([test](../../../adapters/sqlstore/emailotp_management_test.go#L77))
+    - [x] `otpLength` ([test](../../../adapters/sqlstore/emailotp_test.go#L329))
+      - [x] Mail a six-digit code when no length is configured ([test](../../../adapters/sqlstore/emailotp_test.go#L329))
+      - [x] Mail an eight-digit code when the length is set to eight ([test](../../../adapters/sqlstore/emailotp_test.go#L348))
     - [ ] `expiresIn`
+      - [x] Store an eleven-minute expiry when the lifetime is set to eleven minutes ([test](../../../adapters/sqlstore/emailotp_test.go#L233))
     - [ ] `generateOTP`
+      - [x] Create a six-digit code when the custom generator returns no code ([test](../../../adapters/sqlstore/emailotp_management_test.go#L83))
+      - [x] Mail the code returned by the configured generator ([test](../../../adapters/sqlstore/emailotp_test.go#L112))
     - [ ] `sendVerificationOnSignUp`
-    - [ ] `disableSignUp`
+      - [x] Mail an email-verification code when a password account signs up with the option on, and verify it before password sign-in ([test](../../../adapters/sqlstore/emailotp_test.go#L329))
+      - [x] Store an email-verification code when an account signs up with the option on, and mail nothing when its create hook declines or fails, without failing sign-up ([test](../../../conformance/goapi/database_verification_code_hooks_test.go#L502))
+    - [x] `disableSignUp` ([test](../../../adapters/sqlstore/emailotp_test.go#L108))
+      - [x] Mail nothing when registration is closed and an unknown address asks for a sign-in code ([test](../../../adapters/sqlstore/emailotp_test.go#L108))
+      - [x] With registration closed, sign in an existing owner and refuse a code for an unknown address with INVALID_OTP ([test](../../../adapters/sqlstore/emailotp_test.go#L164))
     - [ ] `allowedAttempts`
-    - [ ] `storeOTP`
+      - [x] Refuse the correct code with TOO_MANY_ATTEMPTS after the default three wrong checks ([test](../../../adapters/sqlstore/emailotp_test.go#L181))
+      - [x] Exhaust the attempt budget exactly once under twelve concurrent wrong guesses across two instances ([test](../../../adapters/sqlstore/emailotp_test.go#L218))
+    - [x] `storeOTP` ([test](../../../adapters/sqlstore/emailotp_test.go#L116))
+      - [x] Store a hashed code as its SHA-256 digest with a zero attempt count while mailing the raw code ([test](../../../adapters/sqlstore/emailotp_test.go#L116))
+      - [x] Store an encrypted code without the raw value and keep its attempt count across a reuse resend ([test](../../../adapters/sqlstore/emailotp_test.go#L241))
+      - [x] Read back a default-stored code from Go, refuse to read a custom-hashed one and reuse a custom-encrypted one ([test](../../../adapters/sqlstore/emailotp_management_test.go#L232))
     - [ ] `resendStrategy`
+      - [x] Resend the same encrypted code without resetting its attempt count when reuse is configured ([test](../../../adapters/sqlstore/emailotp_test.go#L241))
+      - [x] Mail a new code on resend when reuse is configured with hashed storage, and refuse the earlier code ([test](../../../adapters/sqlstore/emailotp_test.go#L262))
+      - [x] With verification hooks, a reuse resend stores the code again under a new ID with its attempts, running the create hooks ([test](../../../conformance/goapi/database_verification_code_hooks_test.go#L479))
     - [ ] `changeEmail`
+      - [x] Confirm the current and new addresses and keep the existing user and session after the change ([test](../../../client/emailotp_test.go#L93))
+      - [x] Without current-address confirmation, request changes without a code and refuse a pending code once the account has moved to another address ([test](../../../adapters/sqlstore/emailotp_management_test.go#L181))
     - [ ] `overrideDefaultEmailVerification`
+      - [x] Mail an eight-digit code to a new account's address at sign-up when verification is required and the override is on ([test](../../../adapters/sqlstore/emailotp_test.go#L348))
+      - [x] Route a send-verification-email request to the code sender, logging its failed delivery under the email code rule while answering 200 ([test](../../../conformance/goapi/background_tasks_test.go#L527))
     - [ ] `rateLimit`
+      - [x] Answer the fourth recovery request in a minute with 429 under the default budget ([test](../../../adapters/sqlstore/emailotp_test.go#L366))
+      - [x] Answer the second send request with 429 when the budget is set to one ([test](../../../adapters/sqlstore/emailotp_test.go#L357))
 
 ## Email OTP
 
 - [ ] Email OTP
+  - [x] Sign in, verify an address and reset a password with codes mailed to the address ([test](../../../adapters/sqlstore/emailotp_test.go#L24))
   - [ ] Usage
-    - [ ] Send an OTP
-      - [ ] `POST /email-otp/send-verification-otp`
-        - [ ] Parameter `email`
-        - [ ] Parameter `type`
+    - [x] Send an OTP ([test](../../../adapters/sqlstore/emailotp_test.go#L112))
+      - [x] Mail a sign-in code to the lowercased address from the send route without returning the code in the response ([test](../../../adapters/sqlstore/emailotp_test.go#L112))
+      - [x] `POST /email-otp/send-verification-otp` ([test](../../../adapters/sqlstore/emailotp_test.go#L112))
+        - [x] Mail a sign-in code with its purpose from the send route to the lowercased address ([test](../../../adapters/sqlstore/emailotp_test.go#L112))
+        - [x] Mail an email-verification code from the send route to a registered address ([test](../../../conformance/goapi/database_verification_code_hooks_test.go#L294))
+        - [x] Send a forget-password code through the Go API and reset the password with the delivered code ([test](../../../adapters/sqlstore/password_reset_hook_test.go#L114))
+        - [x] Parameter `email` ([test](../../../adapters/sqlstore/emailotp_test.go#L112))
+          - [x] Mail the code to the requested address, lowercased ([test](../../../adapters/sqlstore/emailotp_test.go#L112))
+        - [x] Parameter `type` ([test](../../../adapters/sqlstore/emailotp_test.go#L112))
+          - [x] Mail a sign-in code with its purpose from the send route ([test](../../../adapters/sqlstore/emailotp_test.go#L112))
+          - [x] Mail an email-verification code from the send route to a registered address ([test](../../../conformance/goapi/database_verification_code_hooks_test.go#L294))
+          - [x] Send a forget-password code through the Go API and reset the password with the delivered code ([test](../../../adapters/sqlstore/password_reset_hook_test.go#L114))
     - [ ] Check an OTP (optional)
-      - [ ] `POST /email-otp/check-verification-otp`
-        - [ ] Parameter `email`
-        - [ ] Parameter `type`
-        - [ ] Parameter `otp`
+      - [x] Keep a checked email-verification code usable for the verification that follows ([test](../../../adapters/sqlstore/emailotp_test.go#L244))
+      - [x] Check a forget-password code over HTTP and reset the password with it afterwards ([test](../../../adapters/sqlstore/emailotp_test.go#L278))
+      - [x] Count three wrong checks against a sign-in code so the correct code is then refused with TOO_MANY_ATTEMPTS ([test](../../../adapters/sqlstore/emailotp_test.go#L181))
+      - [x] `POST /email-otp/check-verification-otp` ([test](../../../adapters/sqlstore/emailotp_test.go#L119))
+        - [x] Refuse a sign-in code checked under the email-verification purpose ([test](../../../adapters/sqlstore/emailotp_test.go#L119))
+        - [x] Accept a mailed email-verification code on the check route without spending it ([test](../../../conformance/goapi/database_verification_code_hooks_test.go#L300))
+        - [x] Accept a forget-password code on the check route and reset the password with it afterwards ([test](../../../adapters/sqlstore/emailotp_test.go#L278))
+        - [x] Parameter `email` ([test](../../../conformance/goapi/database_verification_code_hooks_test.go#L300))
+          - [x] Accept the code mailed to the given address on the check route ([test](../../../conformance/goapi/database_verification_code_hooks_test.go#L300))
+        - [x] Parameter `type` ([test](../../../adapters/sqlstore/emailotp_test.go#L119))
+          - [x] Refuse a sign-in code checked under the email-verification purpose ([test](../../../adapters/sqlstore/emailotp_test.go#L119))
+          - [x] Accept a forget-password code on the check route and reset the password with it afterwards ([test](../../../adapters/sqlstore/emailotp_test.go#L278))
+          - [x] Keep a checked email-verification code usable for the verification that follows ([test](../../../adapters/sqlstore/emailotp_test.go#L244))
+          - [x] Count three wrong checks against a sign-in code so the correct code is then refused with TOO_MANY_ATTEMPTS ([test](../../../adapters/sqlstore/emailotp_test.go#L181))
+        - [x] Parameter `otp` ([test](../../../conformance/goapi/database_verification_code_hooks_test.go#L302))
+          - [x] Refuse a wrong code on the check route with INVALID_OTP and count the attempt ([test](../../../conformance/goapi/database_verification_code_hooks_test.go#L302))
+          - [x] Accept a mailed email-verification code on the check route without spending it ([test](../../../conformance/goapi/database_verification_code_hooks_test.go#L300))
     - [ ] Sign In with OTP
-      - [ ] `POST /email-otp/send-verification-otp`
-        - [ ] Parameter `email`
-        - [ ] Parameter `type`
+      - [x] Sign in an unverified password account with a mailed code, mark it verified and remove its password ([test](../../../adapters/sqlstore/emailotp_test.go#L316))
+      - [x] Revoke the existing session of an unverified account that a sign-in code proves ([test](../../../adapters/sqlstore/emailotp_test.go#L319))
+      - [x] Register an unknown address on first code sign-in with one verified account and one session across eight racing requests ([test](../../../adapters/sqlstore/emailotp_test.go#L155))
+      - [x] With registration closed, sign in an existing owner and refuse a code for an unknown address ([test](../../../adapters/sqlstore/emailotp_test.go#L164))
+      - [x] Spend invalid registration claims and authenticate returning owners without changing stored fields across four adapters ([test](../../../adapters/sqlstore/emailotp_user_fields_test.go#L29))
+      - [x] Set a new password by email code reset after a sign-in code removed the unproven password ([test](../../../adapters/memory/emailotp_test.go#L98))
+      - [x] `POST /email-otp/send-verification-otp` ([test](../../../adapters/sqlstore/emailotp_test.go#L112))
+        - [x] Mail a sign-in code with its purpose from the send route to the lowercased address ([test](../../../adapters/sqlstore/emailotp_test.go#L112))
+        - [x] Parameter `email` ([test](../../../adapters/sqlstore/emailotp_test.go#L112))
+          - [x] Mail the sign-in code to the requested address, lowercased ([test](../../../adapters/sqlstore/emailotp_test.go#L112))
+        - [x] Parameter `type` ([test](../../../adapters/sqlstore/emailotp_test.go#L112))
+          - [x] Mail the code with the sign-in purpose ([test](../../../adapters/sqlstore/emailotp_test.go#L112))
       - [ ] `POST /sign-in/email-otp`
-        - [ ] Parameter `otp`
-        - [ ] Parameter `name` (optional)
+        - [x] Create a verified user with the sent name and image and one session when eight sign-ins race with one code ([test](../../../adapters/sqlstore/emailotp_test.go#L155))
+        - [x] Keep the stored name when a returning owner signs in with a different name ([test](../../../adapters/sqlstore/emailotp_user_fields_test.go#L130))
+        - [x] Parameter `otp` ([test](../../../adapters/sqlstore/emailotp_test.go#L155))
+          - [x] Accept a mailed sign-in code once among eight concurrent sign-ins and refuse the rest with INVALID_OTP ([test](../../../adapters/sqlstore/emailotp_test.go#L155))
+        - [x] Parameter `name` (optional) ([test](../../../adapters/sqlstore/emailotp_user_fields_test.go#L130))
+          - [x] Keep the stored name when a returning owner signs in with a different name ([test](../../../adapters/sqlstore/emailotp_user_fields_test.go#L130))
+          - [x] Create a verified user with the sent name and image and one session when eight sign-ins race with one code ([test](../../../adapters/sqlstore/emailotp_test.go#L155))
         - [ ] Parameter `image` (optional)
-    - [ ] Verify Email with OTP
-      - [ ] `POST /email-otp/send-verification-otp`
-        - [ ] Parameter `email`
-        - [ ] Parameter `type`
-      - [ ] `POST /email-otp/verify-email`
-        - [ ] Parameter `otp`
+          - [x] Create a verified user with the sent name and image and one session when eight sign-ins race with one code ([test](../../../adapters/sqlstore/emailotp_test.go#L155))
+    - [x] Verify Email with OTP ([test](../../../conformance/goapi/database_verification_code_hooks_test.go#L305))
+      - [x] Mark a password account's address verified when its mailed email-verification code is submitted ([test](../../../conformance/goapi/database_verification_code_hooks_test.go#L305))
+      - [x] Verify a newly registered address with the code mailed at sign-up, then allow password sign-in ([test](../../../adapters/sqlstore/emailotp_test.go#L336))
+      - [x] `POST /email-otp/send-verification-otp` ([test](../../../conformance/goapi/database_verification_code_hooks_test.go#L294))
+        - [x] Mail an email-verification code from the send route to a registered address ([test](../../../conformance/goapi/database_verification_code_hooks_test.go#L294))
+        - [x] Parameter `email` ([test](../../../conformance/goapi/database_verification_code_hooks_test.go#L294))
+          - [x] Mail an email-verification code from the send route to the given registered address ([test](../../../conformance/goapi/database_verification_code_hooks_test.go#L294))
+        - [x] Parameter `type` ([test](../../../conformance/goapi/database_verification_code_hooks_test.go#L294))
+          - [x] Mail a code under the email-verification purpose from the send route ([test](../../../conformance/goapi/database_verification_code_hooks_test.go#L294))
+      - [x] `POST /email-otp/verify-email` ([test](../../../conformance/goapi/database_verification_code_hooks_test.go#L305))
+        - [x] Answer the verify route with the user marked verified for a mailed code ([test](../../../conformance/goapi/database_verification_code_hooks_test.go#L305))
+        - [x] Answer an HTTP verification with a null token and no session cookie when automatic sign-in is off ([test](../../../adapters/sqlstore/emailotp_test.go#L248))
+        - [x] Parameter `otp` ([test](../../../conformance/goapi/database_verification_code_hooks_test.go#L305))
+          - [x] Mark the address verified when the mailed code is submitted ([test](../../../conformance/goapi/database_verification_code_hooks_test.go#L305))
+          - [x] Refuse a verification code that was already spent with INVALID_OTP ([test](../../../adapters/sqlstore/emailotp_test.go#L250))
     - [ ] Reset Password with OTP
-      - [ ] `POST /email-otp/request-password-reset`
-        - [ ] Parameter `email`
-      - [ ] `POST /email-otp/check-verification-otp`
-        - [ ] Parameter `type`
-        - [ ] Parameter `otp`
-      - [ ] `POST /email-otp/reset-password`
-        - [ ] Parameter `password`
+      - [x] Keep the code usable after the password policy refuses the new password, then reset with it ([test](../../../adapters/sqlstore/emailotp_test.go#L275))
+      - [x] Count a wrong reset code as an attempt without hashing the new password ([test](../../../conformance/goapi/database_verification_code_hooks_test.go#L339))
+      - [x] Mail a forget-password code through the older recovery route ([test](../../../adapters/sqlstore/emailotp_test.go#L173))
+      - [x] `POST /email-otp/request-password-reset` ([test](../../../adapters/sqlstore/emailotp_test.go#L271))
+        - [x] Mail a forget-password code to a registered address from the request route ([test](../../../adapters/sqlstore/emailotp_test.go#L271))
+        - [x] Parameter `email` ([test](../../../adapters/sqlstore/emailotp_test.go#L271))
+          - [x] Mail a forget-password code to the requested registered address ([test](../../../adapters/sqlstore/emailotp_test.go#L271))
+      - [x] `POST /email-otp/check-verification-otp` ([test](../../../adapters/sqlstore/emailotp_test.go#L278))
+        - [x] Accept a forget-password code on the check route and reset the password with it afterwards ([test](../../../adapters/sqlstore/emailotp_test.go#L278))
+        - [x] Parameter `type` ([test](../../../adapters/sqlstore/emailotp_test.go#L278))
+          - [x] Check a code under the forget-password purpose over HTTP ([test](../../../adapters/sqlstore/emailotp_test.go#L278))
+        - [x] Parameter `otp` ([test](../../../adapters/sqlstore/emailotp_test.go#L278))
+          - [x] Accept the mailed forget-password code on the check route ([test](../../../adapters/sqlstore/emailotp_test.go#L278))
+      - [x] `POST /email-otp/reset-password` ([test](../../../adapters/sqlstore/emailotp_test.go#L290))
+        - [x] Reset the password over HTTP with a mailed code and sign in with the new password ([test](../../../adapters/sqlstore/emailotp_test.go#L290))
+        - [x] Parameter `password` ([test](../../../adapters/sqlstore/emailotp_test.go#L290))
+          - [x] Sign in with the new password after resetting it over HTTP with a recovery code ([test](../../../adapters/sqlstore/emailotp_test.go#L290))
     - [ ] Change Email with OTP
-      - [ ] Usage
-        - [ ] `POST /email-otp/request-email-change`
-          - [ ] Parameter `newEmail`
-          - [ ] Parameter `otp` (optional)
-        - [ ] `POST /email-otp/change-email`
-          - [ ] Parameter `otp`
+      - [x] Move the signed-in account to the new address with the code sent there, keeping its user ID, marking the address verified and releasing the old one ([test](../../../adapters/sqlstore/emailotp_management_test.go#L165))
+      - [x] Usage ([test](../../../adapters/sqlstore/emailotp_management_test.go#L158))
+        - [x] Send a change-email code to the new address for the signed-in account and accept it to complete the change ([test](../../../adapters/sqlstore/emailotp_management_test.go#L158))
+        - [x] `POST /email-otp/request-email-change` ([test](../../../adapters/sqlstore/emailotp_management_test.go#L113))
+          - [x] Refuse an address change request with no session, and send the change code only to the new address of the signed-in account ([test](../../../adapters/sqlstore/emailotp_management_test.go#L113))
+          - [x] Parameter `newEmail` ([test](../../../client/emailotp_test.go#L85))
+            - [x] Deliver the change-email code to the newEmail address the Go SDK sent over HTTP ([test](../../../client/emailotp_test.go#L85))
+          - [x] Parameter `otp` (optional) ([test](../../../adapters/sqlstore/emailotp_management_test.go#L116))
+            - [x] Refuse a change request without the current-address code when that check is on, and accept one without it when the check is off ([test](../../../adapters/sqlstore/emailotp_management_test.go#L116))
+        - [x] `POST /email-otp/change-email` ([test](../../../adapters/sqlstore/emailotp_management_test.go#L155))
+          - [x] Refuse a change code from another signed-in account or after the requesting session is revoked, and accept it from the requester ([test](../../../adapters/sqlstore/emailotp_management_test.go#L155))
+          - [x] Parameter `otp` ([test](../../../client/emailotp_test.go#L88))
+            - [x] Complete the change over HTTP with the code delivered to the new address, through the Go SDK ([test](../../../client/emailotp_test.go#L88))
       - [ ] Confirming with Current Email
+        - [x] Send an email-verification code to the current address, present it with the change request, and deliver the change code to the new address through the Go SDK ([test](../../../client/emailotp_test.go#L86))
+        - [x] Refuse a wrong current-address code with INVALID_OTP, count it and mail no change code ([test](../../../conformance/goapi/database_verification_code_hooks_test.go#L605))
         - [ ] `POST /email-otp/send-verification-otp`
-          - [ ] Parameter `email`
+          - [x] Mail the change code once a fresh email-verification code for the current address, sent over the send route, is presented ([test](../../../conformance/goapi/database_verification_code_hooks_test.go#L622))
+          - [x] Parameter `email` ([test](../../../adapters/sqlstore/emailotp_test.go#L111))
+            - [x] Deliver the code to the lowercased form of the email given in the send request ([test](../../../adapters/sqlstore/emailotp_test.go#L111))
           - [ ] Parameter `type`
+            - [x] Accept a code sent with type email-verification to the current address as the proof for a change request ([test](../../../client/emailotp_test.go#L82))
     - [ ] Override Default Email Verification
+      - [x] Route /send-verification-email through the email code sender when the default verification is overridden ([test](../../../conformance/goapi/background_tasks_test.go#L527))
+      - [x] Mail an email code to a new account on sign-up in place of the verification link when the default is overridden ([test](../../../adapters/sqlstore/emailotp_test.go#L348))
   - [ ] Options
-    - [ ] `sendVerificationOTP`
-    - [ ] `email`
-    - [ ] `otp`
-    - [ ] `type`
-    - [ ] `otpLength`
+    - [x] `sendVerificationOTP` ([test](../../../adapters/sqlstore/emailotp_test.go#L111))
+      - [x] Call the sender once per send request with the mailbox, code and sign-in type, without returning the code in the response ([test](../../../adapters/sqlstore/emailotp_test.go#L111))
+    - [x] `email` ([test](../../../adapters/sqlstore/emailotp_test.go#L328))
+      - [x] Pass the address of the account that signed up to the sender ([test](../../../adapters/sqlstore/emailotp_test.go#L328))
+    - [x] `otp` ([test](../../../client/emailotp_test.go#L53))
+      - [x] Sign in through the Go SDK with the code the sender received ([test](../../../client/emailotp_test.go#L53))
+    - [x] `type` ([test](../../../adapters/sqlstore/emailotp_test.go#L111))
+      - [x] Pass the sign-in type to the sender for a sign-in send request ([test](../../../adapters/sqlstore/emailotp_test.go#L111))
+      - [x] Pass the email-verification type to the sender for a sign-up verification code ([test](../../../adapters/sqlstore/emailotp_test.go#L328))
+      - [x] Pass the forget-password type to the sender for a password reset request ([test](../../../adapters/sqlstore/emailotp_test.go#L271))
+    - [x] `otpLength` ([test](../../../adapters/sqlstore/emailotp_test.go#L347))
+      - [x] Deliver an eight-digit code when the length is set to 8 ([test](../../../adapters/sqlstore/emailotp_test.go#L347))
+      - [x] Deliver a six-digit code when no length is set ([test](../../../adapters/sqlstore/emailotp_test.go#L328))
     - [ ] `expiresIn`
+      - [x] Store an expiry eleven minutes after creation when the lifetime is set to eleven minutes ([test](../../../adapters/sqlstore/emailotp_test.go#L232))
+      - [x] Refuse a code past its stored expiry with OTP_EXPIRED ([test](../../../adapters/sqlstore/emailotp_test.go#L189))
     - [ ] `sendVerificationOnSignUp`
-    - [ ] `disableSignUp`
-    - [ ] `generateOTP`
+      - [x] Send a verification code on sign-up when enabled and verify the new account with it ([test](../../../adapters/sqlstore/emailotp_test.go#L336))
+    - [x] `disableSignUp` ([test](../../../adapters/sqlstore/emailotp_test.go#L107))
+      - [x] Send no sign-in code to an unknown mailbox when sign-up is disabled ([test](../../../adapters/sqlstore/emailotp_test.go#L107))
+      - [x] Refuse sign-in with INVALID_OTP and spend the code for an unknown mailbox when sign-up is disabled ([test](../../../conformance/goapi/database_verification_code_hooks_test.go#L455))
+      - [x] Sign an existing account in with its code while sign-up is disabled ([test](../../../adapters/sqlstore/emailotp_test.go#L164))
+      - [x] Create the account for an unknown mailbox from its sign-in code when sign-up is not disabled ([test](../../../adapters/sqlstore/emailotp_test.go#L155))
+    - [x] `generateOTP` ([test](../../../adapters/sqlstore/emailotp_test.go#L111))
+      - [x] Deliver the code the configured generator returned ([test](../../../adapters/sqlstore/emailotp_test.go#L111))
+      - [x] Deliver a six-digit code when no generator is configured ([test](../../../adapters/sqlstore/emailotp_test.go#L328))
     - [ ] `allowedAttempts`
+      - [x] Refuse the right code with TOO_MANY_ATTEMPTS after three wrong guesses by default, then treat it as invalid ([test](../../../adapters/sqlstore/emailotp_test.go#L181))
+      - [x] Refuse sign-in with 403 TOO_MANY_ATTEMPTS after three wrong guesses at the code ([test](../../../conformance/goapi/database_verification_code_hooks_test.go#L229))
     - [ ] `resendStrategy`
+      - [x] Resend the same encrypted code with its attempt count kept when reuse is configured ([test](../../../adapters/sqlstore/emailotp_test.go#L240))
     - [ ] `"rotate"`
     - [ ] `"reuse"`
+      - [x] Mail the same plain code again on a reuse resend ([test](../../../conformance/goapi/database_verification_code_hooks_test.go#L486))
+      - [x] Send a new code on resend when codes are hashed, even with reuse configured ([test](../../../adapters/sqlstore/emailotp_test.go#L261))
     - [ ] `storeOTP`
+      - [x] Store a hashed code as its SHA-256 digest while mailing the raw code ([test](../../../adapters/sqlstore/emailotp_test.go#L115))
+      - [x] Keep an encrypted code out of the stored value ([test](../../../adapters/sqlstore/emailotp_test.go#L240))
     - [ ] Custom encryptor
+      - [x] Read back and resend the same code while application encrypt and decrypt functions are configured ([test](../../../adapters/sqlstore/emailotp_management_test.go#L231))
     - [ ] Custom hasher
+      - [x] Refuse to read back a code while an application hash function is configured, and accept the code for verification ([test](../../../adapters/sqlstore/emailotp_management_test.go#L203))

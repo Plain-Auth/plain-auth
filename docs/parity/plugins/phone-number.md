@@ -5,15 +5,20 @@
 ## Interfaces
 
 - [ ] Phone number endpoints, types and options
-  - [ ] `phoneNumberClient`
+  - [x] `phoneNumberClient` ([test](../../../conformance/phone-user-fields.mjs#L54))
     - [x] Run signup, verification, recovery, password sign-in and owner linking on both HTTP servers ([test](../../../conformance/phone-contract.mjs#L7))
     - [x] Read and manage the phone profile through the released administrative client ([test](../../../conformance/phone-admin-contract.mjs#L30))
+    - [x] Send codes through one runtime's released phone client and verify them through the other's on a shared database ([test](../../../conformance/phone-user-fields.mjs#L54))
   - [ ] `PHONE_NUMBER_ERROR_CODES`
+    - [x] Answer with the same phone error codes on both servers for a wrong code, a spent code, a wrong password, a held number and a direct number change ([test](../../../conformance/phone-contract.mjs#L58))
   - [ ] `phoneNumber`
+    - [x] Build the plugin with phonenumber.New and run send, verify, reset, password sign-in, linking and profile guards over HTTP ([test](../../../adapters/sqlstore/phone_accounts_test.go#L19))
   - [ ] `consumePhoneNumberOTP (server API only)`
     - [x] Spend a code exactly once across competing processes and keep the operation off HTTP ([test](../../../adapters/sqlstore/phone_test.go#L150))
+    - [x] Consume a phone code from Go with only the code's delete hooks running, creating no user or session ([test](../../../conformance/goapi/database_verification_code_hooks_test.go#L917))
   - [ ] `POST /sign-in/phone-number`
     - [x] Return a session after a valid password and challenge an enrolled account ([test](../../../adapters/sqlstore/phone_accounts_test.go#L300))
+    - [x] Refuse a wrong password for a registered number with 401 INVALID_PHONE_NUMBER_OR_PASSWORD ([test](../../../adapters/sqlstore/phone_accounts_test.go#L106))
   - [ ] `POST /phone-number/send-otp`
     - [x] Deliver a fresh code through the Go SDK and persist its attempt counter ([test](../../../adapters/sqlstore/phone_test.go#L90))
   - [ ] `POST /phone-number/verify`
@@ -21,95 +26,155 @@
     - [x] Count an incorrect anonymous link attempt, spend a correct proof and keep the caller signed out on both servers ([test](../../../conformance/phone-contract.mjs#L31))
     - [x] Exchange phone proofs between both runtimes, accept declared new-user inputs, then preserve the profile on returning verification and phone replacement ([test](../../../conformance/phone-user-fields.mjs#L87))
     - [x] ValidateUserInfo sees the new phone user with the verified number and can refuse it with a 403 ([test](../../../conformance/goapi/user_validation_test.go#L162))
-  - [ ] `POST /phone-number/request-password-reset`
+    - [x] Sign up exactly once when six verify requests race for one code across two handlers ([test](../../../adapters/sqlstore/phone_code_hooks_test.go#L232))
+  - [x] `POST /phone-number/request-password-reset` ([test](../../../conformance/phone-contract.mjs#L45))
     - [x] Hide unknown and unverified users from reset callers and suppress ineligible SMS ([test](../../../adapters/sqlstore/phone_accounts_test.go#L284))
+    - [x] Answer status true to a reset request for a verified number on both servers and deliver a six-digit code to it ([test](../../../conformance/phone-contract.mjs#L45))
   - [ ] `POST /phone-number/reset-password`
     - [x] Reset the verified owner’s credential once and reject a proof after ownership changes ([test](../../../adapters/sqlstore/phone_accounts_test.go#L152))
     - [x] Deliver the verified phone profile to the callback after password recovery ([test](../../../adapters/sqlstore/password_reset_hook_test.go#L66))
-  - [ ] `UserWithPhoneNumber`
+    - [x] Refuse a wrong reset code, accept the delivered code once and refuse its replay with OTP_NOT_FOUND ([test](../../../adapters/sqlstore/phone_accounts_test.go#L100))
+  - [x] `UserWithPhoneNumber` ([test](../../../conformance/phone-contract.mjs#L41))
     - [x] Return the verified phone number and clear the verification flag on disassociation ([test](../../../conformance/phone-contract.mjs#L62))
+    - [x] Return phoneNumber and phoneNumberVerified on the user after verification on both servers ([test](../../../conformance/phone-contract.mjs#L41))
   - [ ] `PhoneNumberOptions`
     - [ ] `otpLength`
-    - [ ] `sendOTP`
+      - [x] Deliver six-digit codes on both servers when no length is set ([test](../../../conformance/phone-contract.mjs#L19))
+    - [x] `sendOTP` ([test](../../../conformance/goapi/background_tasks_test.go#L391))
       - [x] Deliver verification SMS via an injected callback ([test](../../../adapters/sqlstore/phone_test.go#L85))
+      - [x] Fail /phone-number/send-otp with 500 when the SMS sender fails without a background runner, and queue the send when one is set ([test](../../../conformance/goapi/background_tasks_test.go#L391))
     - [ ] `verifyOTP`
       - [x] Bind a custom verifier’s decision to its original issuance ([test](../../../adapters/sqlstore/phone_accounts_test.go#L207))
       - [x] Ask the provider only after a guess's verification before hooks, and count a rejected guess even when the client has gone ([test](../../../conformance/goapi/database_verification_code_hooks_test.go#L965))
+      - [x] Sign a new number up through /phone-number/verify when the custom verifier accepts the code ([test](../../../conformance/goapi/database_verification_code_hooks_test.go#L976))
     - [ ] `sendPasswordResetOTP`
       - [x] Deliver reset messages only for eligible accounts ([test](../../../adapters/sqlstore/phone_accounts_test.go#L95))
+      - [x] Answer 200 over HTTP when delivering a reset code to a verified number fails, and log the failure without the number ([test](../../../adapters/sqlstore/phone_delivery_test.go#L71))
     - [ ] `expiresIn`
       - [x] Expire a proof then remove its storage row ([test](../../../adapters/sqlstore/phone_test.go#L144))
     - [ ] `phoneNumberValidator`
       - [x] Reject a number before invoking the delivery adapter ([test](../../../adapters/sqlstore/phone_test.go#L73))
     - [ ] `requireVerification`
       - [x] Gate imported unverified phone credentials and request a verification proof ([test](../../../adapters/sqlstore/phone_accounts_test.go#L289))
-    - [ ] `callbackOnVerification`
+      - [x] Answer 401 PHONE_NUMBER_NOT_VERIFIED over HTTP to an unverified number's password sign-in and call the code sender once ([test](../../../adapters/sqlstore/phone_delivery_test.go#L61))
+    - [x] `callbackOnVerification` ([test](../../../adapters/sqlstore/phone_accounts_test.go#L31))
       - [x] Run the callback on confirmed signup, existing-account verification and owner linking ([test](../../../adapters/sqlstore/phone_accounts_test.go#L156))
-    - [ ] `signUpOnVerification`
+      - [x] Pass the verified number and a user holding that number to the verification callback ([test](../../../adapters/sqlstore/phone_accounts_test.go#L31))
+    - [x] `signUpOnVerification` ([test](../../../conformance/phone-user-fields.mjs#L72))
       - [x] Generate the first account’s unique email and name from its verified phone ([test](../../../adapters/sqlstore/phone_accounts_test.go#L77))
       - [x] Compare resolver-supplied identity, phone-number display name, required attributes, static defaults and public versus hidden fields across both runtimes ([test](../../../conformance/phone-user-fields.mjs#L73))
+      - [x] Create the new phone user with the address the temporary-email function returns, on both servers ([test](../../../conformance/phone-user-fields.mjs#L72))
     - [ ] `schema`
-    - [ ] `allowedAttempts`
+    - [x] `allowedAttempts` ([test](../../../adapters/sqlstore/phone_test.go#L96))
       - [x] Honor a configured zero-attempt budget and default wrong-code limits ([test](../../../adapters/sqlstore/phone_accounts_test.go#L219))
       - [x] Run verification update after hooks for each counted wrong phone guess, and remove an exhausted code with its delete hooks ([test](../../../conformance/goapi/database_verification_code_hooks_test.go#L790))
+      - [x] Refuse the right code with 403 TOO_MANY_ATTEMPTS after three wrong guesses across two handlers, then answer OTP_NOT_FOUND ([test](../../../adapters/sqlstore/phone_test.go#L96))
 
 ## Phone Number
 
 - [ ] Phone Number
   - [ ] Usage
-    - [ ] Send OTP for Verification
+    - [x] Send OTP for Verification ([test](../../../adapters/sqlstore/phone_test.go#L81))
       - [x] Request a six-digit code with the released browser client ([test](../../../conformance/phone-contract.mjs#L25))
-      - [ ] `POST /phone-number/send-otp`
-        - [ ] Parameter `phoneNumber`
-    - [ ] Verify Phone Number
+      - [x] Request a verification code for a number through the Go SDK ([test](../../../adapters/sqlstore/phone_test.go#L81))
+      - [x] `POST /phone-number/send-otp` ([test](../../../conformance/goapi/database_verification_code_hooks_test.go#L741))
+        - [x] Answer a JSON phoneNumber send request with 200 and code sent ([test](../../../conformance/goapi/database_verification_code_hooks_test.go#L741))
+        - [x] Parameter `phoneNumber` ([test](../../../adapters/sqlstore/phone_test.go#L84))
+          - [x] Deliver a six-digit verification code to the phoneNumber the Go SDK sent ([test](../../../adapters/sqlstore/phone_test.go#L84))
+    - [x] Verify Phone Number ([test](../../../adapters/sqlstore/phone_accounts_test.go#L91))
       - [x] Verify without a session, then reject replay ([test](../../../conformance/phone-contract.mjs#L39))
-      - [ ] `POST /phone-number/verify`
-        - [ ] Parameter `phoneNumber`
-        - [ ] Parameter `code`
-        - [ ] Parameter `disableSession` (optional)
-        - [ ] Parameter `updatePhoneNumber` (optional)
+      - [x] Verify a returning number with its new code and receive a session for the same account ([test](../../../adapters/sqlstore/phone_accounts_test.go#L91))
+      - [x] `POST /phone-number/verify` ([test](../../../adapters/sqlstore/phone_code_hooks_test.go#L202))
+        - [x] Answer status true to a JSON verify request with the number and its delivered code ([test](../../../adapters/sqlstore/phone_code_hooks_test.go#L202))
+        - [x] Parameter `phoneNumber` ([test](../../../adapters/sqlstore/phone_accounts_test.go#L76))
+          - [x] Mark the number given in the verify request as the user's verified phone number ([test](../../../adapters/sqlstore/phone_accounts_test.go#L76))
+        - [x] Parameter `code` ([test](../../../adapters/sqlstore/phone_code_hooks_test.go#L195))
+          - [x] Refuse a wrong code with INVALID_OTP and count the guess before the right code verifies ([test](../../../adapters/sqlstore/phone_code_hooks_test.go#L195))
+        - [x] Parameter `disableSession` (optional) ([test](../../../adapters/sqlstore/phone_accounts_test.go#L76))
+          - [x] Return status true with a null token when disableSession is set, then issue a session when it is omitted ([test](../../../adapters/sqlstore/phone_accounts_test.go#L76))
+        - [x] Parameter `updatePhoneNumber` (optional) ([test](../../../adapters/sqlstore/phone_accounts_test.go#L66))
+          - [x] Refuse updatePhoneNumber without a session with 401 USER_NOT_FOUND, and attach the number to the signed-in account when one is present ([test](../../../adapters/sqlstore/phone_accounts_test.go#L66))
     - [ ] Consume an OTP on the Server
       - [x] Expose single-use verification to server applications without account actions ([test](../../../adapters/sqlstore/phone_test.go#L126))
+      - [x] Consume a phone code through the Go API with only the code's delete hooks running and no user or session created ([test](../../../conformance/goapi/database_verification_code_hooks_test.go#L914))
     - [ ] Allow Sign-Up with Phone Number
       - [x] Create a first-use account with configured email and name ([test](../../../adapters/sqlstore/phone_accounts_test.go#L77))
+      - [x] Create a first-use phone account with the configured temporary email and name, and store extra profile fields sent with the code ([test](../../../adapters/sqlstore/phone_registration_fields_test.go#L100))
+      - [x] Refuse a first-use phone verification that omits a required user field with MISSING_FIELD ([test](../../../adapters/sqlstore/phone_registration_fields_test.go#L78))
+      - [x] Name a first-use phone account after its number when no name function is set ([test](../../../adapters/sqlstore/phone_registration_fields_test.go#L209))
     - [ ] Sign In with Phone Number
       - [x] Sign in using the canonical account credential ([test](../../../conformance/phone-contract.mjs#L53))
+      - [x] Sign in with a phone number and the password set by phone reset, after a wrong password is refused ([test](../../../adapters/sqlstore/phone_accounts_test.go#L112))
       - [ ] `POST /sign-in/phone-number`
-        - [ ] Parameter `phoneNumber`
-        - [ ] Parameter `password`
+        - [x] Answer a phone-number password sign-in with only a token and the user, on both servers ([test](../../../conformance/phone-contract.mjs#L52))
+        - [x] Parameter `phoneNumber` ([test](../../../adapters/sqlstore/phone_accounts_test.go#L153))
+          - [x] Sign in by phone number into the account that holds the number after it moved to another user ([test](../../../adapters/sqlstore/phone_accounts_test.go#L153))
+        - [x] Parameter `password` ([test](../../../adapters/sqlstore/phone_accounts_test.go#L106))
+          - [x] Refuse a phone sign-in with a wrong password as INVALID_PHONE_NUMBER_OR_PASSWORD, then accept the right one ([test](../../../adapters/sqlstore/phone_accounts_test.go#L106))
         - [ ] Parameter `rememberMe` (optional)
-    - [ ] Update Phone Number
+    - [x] Update Phone Number ([test](../../../adapters/sqlstore/phone_registration_fields_test.go#L138))
       - [x] Keep the same authenticated session while linking a verified number ([test](../../../adapters/sqlstore/phone_accounts_test.go#L150))
+      - [x] Replace a signed-in user's number with a newly verified one through updatePhoneNumber, keeping the session token ([test](../../../adapters/sqlstore/phone_registration_fields_test.go#L138))
     - [ ] Remove Phone Number
       - [x] Clear both the number and verified flag on the owner profile ([test](../../../adapters/sqlstore/phone_accounts_test.go#L142))
       - [x] Clear an administratively assigned number and its flag together, even when a conflicting true flag is submitted ([test](../../../conformance/phone-admin-contract.mjs#L35))
-    - [ ] Disable Session Creation
+      - [x] Refuse a profile update that sets a non-null phone number ([test](../../../adapters/sqlstore/phone_accounts_test.go#L122))
+      - [x] Refuse an email sign-up that carries a phone number ([test](../../../adapters/sqlstore/phone_accounts_test.go#L159))
+      - [x] Let another account verify and claim a number its previous owner released, on both servers ([test](../../../conformance/phone-contract.mjs#L67))
+    - [x] Disable Session Creation ([test](../../../adapters/sqlstore/phone_accounts_test.go#L91))
       - [x] Verify without granting a session ([test](../../../adapters/sqlstore/phone_accounts_test.go#L82))
+      - [x] Issue a session when a phone code is verified without disableSession ([test](../../../adapters/sqlstore/phone_accounts_test.go#L91))
     - [ ] Request Password Reset
       - [x] Reset a credential, revoke sessions and deny reuse ([test](../../../adapters/sqlstore/phone_accounts_test.go#L104))
-      - [ ] `POST /phone-number/request-password-reset`
-        - [ ] Parameter `phoneNumber`
-      - [ ] `POST /phone-number/reset-password`
-        - [ ] Parameter `otp`
-        - [ ] Parameter `newPassword`
+      - [x] Count a wrong phone reset code as an attempt and refuse it before hashing the new password ([test](../../../conformance/goapi/database_verification_code_hooks_test.go#L894))
+      - [x] Refuse a phone reset whose new password the breach screen rejects, then accept the same code with another password, on both servers ([test](../../../conformance/password-screening.mjs#L95))
+      - [x] `POST /phone-number/request-password-reset` ([test](../../../conformance/phone-contract.mjs#L45))
+        - [x] Answer a phone reset request with status true and text a six-digit reset code to the number, on both servers ([test](../../../conformance/phone-contract.mjs#L45))
+        - [x] Parameter `phoneNumber` ([test](../../../adapters/sqlstore/phone_accounts_test.go#L55))
+          - [x] Send no reset code to a number that no account holds ([test](../../../adapters/sqlstore/phone_accounts_test.go#L55))
+          - [x] Text the reset code to the number the account holds, on both servers ([test](../../../conformance/phone-contract.mjs#L45))
+      - [x] `POST /phone-number/reset-password` ([test](../../../adapters/sqlstore/phone_accounts_test.go#L99))
+        - [x] Reset the password with the phone reset code over HTTP, then refuse the spent code as OTP_NOT_FOUND ([test](../../../adapters/sqlstore/phone_accounts_test.go#L99))
+        - [x] Parameter `otp` ([test](../../../adapters/sqlstore/phone_accounts_test.go#L98))
+          - [x] Refuse a wrong phone reset code with INVALID_OTP ([test](../../../adapters/sqlstore/phone_accounts_test.go#L98))
+          - [x] Reset the password with the right phone reset code ([test](../../../adapters/sqlstore/phone_accounts_test.go#L99))
+        - [x] Parameter `newPassword` ([test](../../../conformance/phone-contract.mjs#L50))
+          - [x] Sign in with the new password set through phone reset, on both servers ([test](../../../conformance/phone-contract.mjs#L50))
   - [ ] Options
     - [ ] `otpLength`
-    - [ ] `sendOTP`
+      - [x] Text six-digit codes by default on both servers ([test](../../../conformance/phone-contract.mjs#L19))
+    - [x] `sendOTP` ([test](../../../adapters/sqlstore/phone_test.go#L85))
+      - [x] Pass the number and a six-digit verification code to SendOTP ([test](../../../adapters/sqlstore/phone_test.go#L85))
     - [ ] `expiresIn`
     - [ ] `callbackOnVerification`
+      - [x] Call OnVerification with the verified number and its user once per successful verification ([test](../../../adapters/sqlstore/phone_accounts_test.go#L156))
     - [ ] `sendPasswordResetOTP`
-    - [ ] `phoneNumberValidator`
+      - [x] Deliver a phone reset code with the password-reset purpose through a sender set for both verification and reset ([test](../../../adapters/sqlstore/phone_accounts_test.go#L95))
+    - [x] `phoneNumberValidator` ([test](../../../adapters/sqlstore/phone_test.go#L73))
+      - [x] Refuse a number the validator rejects with INVALID_PHONE_NUMBER and text it nothing ([test](../../../adapters/sqlstore/phone_test.go#L73))
     - [ ] `verifyOTP`
       - [x] Reject a stale external verdict after another instance resends the code ([test](../../../adapters/sqlstore/phone_accounts_test.go#L207))
-    - [ ] `signUpOnVerification`
-      - [ ] `getTempEmail`
-      - [ ] `getTempName`
+      - [x] Sign up through /phone-number/verify when the custom verifier accepts the code, after a code it rejected was counted ([test](../../../conformance/goapi/database_verification_code_hooks_test.go#L976))
+    - [x] `signUpOnVerification` ([test](../../../conformance/goapi/database_decided_hooks_test.go#L293))
+      - [x] Create the user with the temporary email and name on a number's first verification, and only a session on the next ([test](../../../conformance/goapi/database_decided_hooks_test.go#L293))
+      - [x] `getTempEmail` ([test](../../../conformance/phone-contract.mjs#L42))
+        - [x] Give a first-use phone account the email the temporary-email function returns, on both servers ([test](../../../conformance/phone-contract.mjs#L42))
+      - [x] `getTempName` ([test](../../../adapters/sqlstore/phone_registration_fields_test.go#L209))
+        - [x] Use the configured name function for a first-use phone account, and the number itself when none is set ([test](../../../adapters/sqlstore/phone_registration_fields_test.go#L209))
     - [ ] `requireVerification`
+      - [x] Refuse an unverified number's password sign-in with PHONE_NUMBER_NOT_VERIFIED and text it a verification code ([test](../../../adapters/sqlstore/phone_accounts_test.go#L289))
+      - [x] Send no password reset code to an unverified number ([test](../../../adapters/sqlstore/phone_accounts_test.go#L284))
   - [ ] Schema
     - [ ] User Table
       - [x] Upgrade populated user tables, allow missing numbers, and enforce one owner per telephone number on three SQL engines ([test](../../../adapters/sqlstore/phone_schema_test.go#L10))
       - [x] Preserve a verified phone across migration replay and store an explicit false flag on reassignment ([test](../../../adapters/sqlstore/phone_schema_test.go#L57))
-      - [ ] `phoneNumberUserTableFields.phoneNumber`
+      - [x] Emit the same DDL as the other runtime for plugin combinations that include the phone-number user columns, on three dialects ([test](../../../conformance/schema.test.mjs#L106))
+      - [x] Add the phone-number user columns to a populated SQLite database and match the other runtime's live migration ([test](../../../conformance/schema.test.mjs#L129))
+      - [x] `phoneNumberUserTableFields.phoneNumber` ([test](../../../adapters/sqlstore/phone_schema_test.go#L46))
+        - [x] Allow users without a phone number and refuse a second user with the same number at the database, on three SQL engines ([test](../../../adapters/sqlstore/phone_schema_test.go#L46))
       - [ ] `phoneNumberUserTableFields.phoneNumberVerified`
-    - [ ] OTP Verification Attempts
+        - [x] Store and read back an explicit false verification flag on three SQL engines ([test](../../../adapters/sqlstore/phone_schema_test.go#L66))
+    - [x] OTP Verification Attempts ([test](../../../conformance/goapi/database_verification_code_hooks_test.go#L798))
       - [x] Spend one shared attempt budget and permit only a single concurrent success ([test](../../../adapters/sqlstore/phone_test.go#L126))
+      - [x] After three wrong guesses over HTTP, answer the right phone code with 403 TOO_MANY_ATTEMPTS and then find no code ([test](../../../conformance/goapi/database_verification_code_hooks_test.go#L798))
+      - [x] Refuse every phone code with 403 TOO_MANY_ATTEMPTS when AllowedAttempts is set to zero ([test](../../../adapters/sqlstore/phone_accounts_test.go#L219))

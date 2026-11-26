@@ -2769,6 +2769,11 @@
       "label": "Run the challenge's verification create hooks for a signed-out caller, naming no owner",
       "test": "adapters/sqlstore/passkey_hooks_test.go",
       "marker": "// A signed-out sign-in's challenge names no owner."
+    },
+    {
+      "label": "Return a challenge of at least 22 characters in sign-in options requested through the published client, on both servers",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.ok(login.data.challenge.length >= 22);"
     }
   ],
   "plugin/passkey/POST /passkey/verify-registration": [
@@ -2801,6 +2806,16 @@
       "label": "Run the challenge's verification delete hooks before the session hooks of a registration that signs in",
       "test": "adapters/sqlstore/passkey_hooks_test.go",
       "marker": "// The challenge's hooks run before the session's."
+    },
+    {
+      "label": "Refuse to finish a registration under a different account's session than the one that began it",
+      "test": "adapters/sqlstore/passkey_test.go",
+      "marker": "request(second, \"verify-registration\", resp, 401, cs[0], foreign)"
+    },
+    {
+      "label": "Refuse to register a credential the account has already enrolled",
+      "test": "adapters/sqlstore/passkey_test.go",
+      "marker": "request(second, \"verify-registration\", resp, 400, cs[0], session)"
     }
   ],
   "plugin/passkey/POST /passkey/verify-authentication": [
@@ -2818,6 +2833,16 @@
       "label": "Spend the challenge with its verification delete hooks before the assertion is verified and before the session hooks",
       "test": "adapters/sqlstore/passkey_hooks_test.go",
       "marker": "// A sign-in spends its challenge before the session hooks run."
+    },
+    {
+      "label": "Refuse an assertion whose signature counter did not advance",
+      "test": "adapters/sqlstore/passkey_test.go",
+      "marker": "login(1, origin, 401)"
+    },
+    {
+      "label": "Refuse an assertion whose challenge has expired",
+      "test": "adapters/sqlstore/passkey_test.go",
+      "marker": "optsAuth[\"challenge\"]"
     }
   ],
   "plugin/passkey/GET /passkey/list-user-passkeys": [
@@ -2825,6 +2850,11 @@
       "label": "List only credentials owned by the authenticated account",
       "test": "adapters/sqlstore/passkey_test.go",
       "marker": "foreign passkeys listed"
+    },
+    {
+      "label": "List the signed-in owner's passkey with its stored signature counter",
+      "test": "adapters/sqlstore/passkey_test.go",
+      "marker": "t.Fatal(\"counter not persisted\")"
     }
   ],
   "plugin/passkey/POST /passkey/update-passkey": [
@@ -2832,6 +2862,11 @@
       "label": "Rename an owned credential and refuse changes from another account",
       "test": "adapters/sqlstore/passkey_test.go",
       "marker": "request(first, \"update-passkey\", mutation, 401, foreign)"
+    },
+    {
+      "label": "Return the renamed passkey under passkey in the update response",
+      "test": "adapters/sqlstore/passkey_test.go",
+      "marker": "t.Fatal(\"rename failed\")"
     }
   ],
   "plugin/passkey/POST /passkey/delete-passkey": [
@@ -2839,6 +2874,11 @@
       "label": "Remove an owned key and reject subsequent assertions",
       "test": "adapters/sqlstore/passkey_test.go",
       "marker": "request(second, \"delete-passkey\", mutation, 200, session)"
+    },
+    {
+      "label": "Refuse to delete another account's passkey",
+      "test": "adapters/sqlstore/passkey_test.go",
+      "marker": "request(first, \"delete-passkey\", mutation, 401, foreign)"
     }
   ],
   "docs/content/docs/plugins/passkey.mdx#L134": [
@@ -2851,6 +2891,11 @@
       "label": "Use the public addPasskey action with application context, createSession and the real WebAuthn result",
       "test": "conformance/passkey-first-browser.mjs",
       "marker": "assert.equal(enrolled.webauthn.response.id,credentialID)"
+    },
+    {
+      "label": "Refuse registration options without a session, then enroll a credential for the signed-in account",
+      "test": "adapters/sqlstore/passkey_test.go",
+      "marker": "request(first, \"generate-register-options\", nil, 401)"
     }
   ],
   "docs/content/docs/plugins/passkey.mdx#L174": [
@@ -2863,6 +2908,11 @@
       "label": "Sign in using the passkey the browser enrolled before login",
       "test": "conformance/passkey-first-browser.mjs",
       "marker": "assert.equal((await client.getSession()).data.user.id,user.id)"
+    },
+    {
+      "label": "Sign in with a software authenticator's assertion and get a session that another instance accepts",
+      "test": "adapters/sqlstore/passkey_test.go",
+      "marker": "assertion session missing on second instance"
     }
   ],
   "docs/content/docs/plugins/passkey.mdx#L237": [
@@ -2870,6 +2920,11 @@
       "label": "Keep another user’s keys out of the results",
       "test": "adapters/sqlstore/passkey_test.go",
       "marker": "foreign passkeys listed"
+    },
+    {
+      "label": "List the signed-in owner's passkey with its stored counter, while another account lists none",
+      "test": "adapters/sqlstore/passkey_test.go",
+      "marker": "owned, _ := request(first, \"list-user-passkeys\", nil, 200, session)"
     }
   ],
   "docs/content/docs/plugins/passkey.mdx#L295": [
@@ -2877,6 +2932,12 @@
       "label": "Delete a credential through an owner-authorized request",
       "test": "adapters/sqlstore/passkey_test.go",
       "marker": "request(second, \"delete-passkey\", mutation, 200, session)"
+    },
+    {
+      "label": "Refuse another account's request to delete a passkey by ID, then delete it for its owner",
+      "test": "adapters/sqlstore/passkey_test.go",
+      "marker": "request(first, \"delete-passkey\", mutation, 401, foreign)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/passkey.mdx#L310": [
@@ -2884,6 +2945,11 @@
       "label": "Persist the new name on the current account’s credential",
       "test": "adapters/sqlstore/passkey_test.go",
       "marker": "rename failed"
+    },
+    {
+      "label": "Refuse another account's rename, and rename the owner's passkey, returning the new name",
+      "test": "adapters/sqlstore/passkey_test.go",
+      "marker": "request(first, \"update-passkey\", mutation, 401, foreign)"
     }
   ],
   "docs/content/docs/plugins/passkey.mdx#L381": [
@@ -2898,6 +2964,11 @@
       "label": "Require explicitly configured secure origins within the relying-party ID",
       "test": "plugins/passkey/passkey_test.go",
       "marker": "func TestRelyingPartyConfiguration("
+    },
+    {
+      "label": "Refuse a signed assertion whose client data names an origin outside the configured list",
+      "test": "adapters/sqlstore/passkey_test.go",
+      "marker": "login(2, \"https://untrusted.example.test\", 401)"
     }
   ],
   "provider/facebook": [
@@ -3556,6 +3627,27 @@
       "label": "Verify the four supported challenge-provider protocols against pinned local fixtures",
       "test": "conformance/captcha.test.mjs",
       "marker": "test(\"CAPTCHA verification protocols"
+    },
+    {
+      "label": "Verify tokens with the four token providers, covering the missing header and secret, score, action, hostname and URL-override cases, and match the responses recorded from the other runtime",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "func TestProviderContracts(",
+      "complete": true
+    },
+    {
+      "label": "Guard the default sign-up, sign-in and password-reset paths by exact match and configured single- and double-star wildcard paths under the mount, normalizing repeated and trailing slashes",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "func TestPathsAndNativeMethods("
+    },
+    {
+      "label": "Allow or refuse a request from the host's BotID verdict and custom policy without exposing callback errors",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "func TestBotID("
+    },
+    {
+      "label": "Send the client IP only when tracking is on, and fail closed on malformed, redirected or oversized provider replies",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "func TestPeerPrivacyAndServiceErrors("
     }
   ],
   "docs/content/docs/plugins/captcha.mdx#L80": [
@@ -3570,6 +3662,16 @@
       "label": "Evaluate a host-supplied BotID verdict and a custom policy",
       "test": "plugins/captcha/captcha_test.go",
       "marker": "func TestBotID("
+    },
+    {
+      "label": "Run the BotID check without a secret key or challenge header on a mount-relative configured path",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "o := captcha.Options{Provider: captcha.VercelBotID"
+    },
+    {
+      "label": "Allow a human verdict on a protected route without a challenge header",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "{\"human\", captcha.BotIDVerdict{}, false, false, 200},"
     }
   ],
   "docs/content/docs/plugins/captcha.mdx#L132": [
@@ -3582,6 +3684,27 @@
       "label": "Enforce configured peer privacy and reject provider errors",
       "test": "plugins/captcha/captcha_test.go",
       "marker": "func TestPeerPrivacyAndServiceErrors("
+    },
+    {
+      "label": "Reject a missing header with 400, a provider rejection with 403 and a provider outage with 500, and let accepted tokens through",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "if sent != (f.Sent != nil) || w.Code != f.Expected.Status {",
+      "complete": true
+    },
+    {
+      "label": "Deny a bot verdict from the host BotID check",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "{\"bot\", captcha.BotIDVerdict{IsBot: true}, false, false, 403},"
+    },
+    {
+      "label": "Let a human BotID verdict through to the route",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "{\"human\", captcha.BotIDVerdict{}, false, false, 200},"
+    },
+    {
+      "label": "Deny the request when the custom validation policy rejects the verdict",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "{\"custom deny human\", captcha.BotIDVerdict{}, false, true, 403},"
     }
   ],
   "plugin-symbol/captcha/GoogleRecaptchaOptions/minScore": [
@@ -3589,6 +3712,12 @@
       "label": "Exercise the configured minScore in the provider transport contract",
       "test": "plugins/captcha/captcha_test.go",
       "marker": "func TestProviderContracts("
+    },
+    {
+      "label": "Reject a v3 score below the default 0.5 or below a configured 0.9 minimum, and accept a score equal to 0.5",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "MinScore: f.MinScore",
+      "complete": true
     }
   ],
   "plugin-symbol/captcha/GoogleRecaptchaOptions/expectedAction": [
@@ -3596,6 +3725,12 @@
       "label": "Exercise the configured expectedAction in the provider transport contract",
       "test": "plugins/captcha/captcha_test.go",
       "marker": "func TestProviderContracts("
+    },
+    {
+      "label": "Reject a Google reCAPTCHA reply whose action differs from the configured one, and accept a matching action",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "ExpectedAction: \"login\"",
+      "complete": true
     }
   ],
   "plugin-symbol/captcha/GoogleRecaptchaOptions/allowedHostnames": [
@@ -3603,6 +3738,12 @@
       "label": "Exercise the configured allowedHostnames in the provider transport contract",
       "test": "plugins/captcha/captcha_test.go",
       "marker": "func TestProviderContracts("
+    },
+    {
+      "label": "Reject a Google reCAPTCHA reply for a hostname outside the configured list, and accept a listed hostname",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "AllowedHostnames: []string{\"app.example.org\"}",
+      "complete": true
     }
   ],
   "plugin-symbol/captcha/CloudflareTurnstileOptions/expectedAction": [
@@ -3610,6 +3751,11 @@
       "label": "Exercise the configured expectedAction in the provider transport contract",
       "test": "plugins/captcha/captcha_test.go",
       "marker": "func TestProviderContracts("
+    },
+    {
+      "label": "Reject a Cloudflare Turnstile reply that lacks the configured action, and accept a matching action",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "ExpectedAction: \"login\""
     }
   ],
   "plugin-symbol/captcha/CloudflareTurnstileOptions/allowedHostnames": [
@@ -3617,6 +3763,11 @@
       "label": "Exercise the configured allowedHostnames in the provider transport contract",
       "test": "plugins/captcha/captcha_test.go",
       "marker": "func TestProviderContracts("
+    },
+    {
+      "label": "Reject a Cloudflare Turnstile reply that omits the hostname when a hostname list is configured, and accept a listed hostname",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "AllowedHostnames: []string{\"app.example.org\"}"
     }
   ],
   "plugin-symbol/captcha/HCaptchaOptions/siteKey": [
@@ -3624,6 +3775,12 @@
       "label": "Exercise the configured siteKey in the provider transport contract",
       "test": "plugins/captcha/captcha_test.go",
       "marker": "func TestProviderContracts("
+    },
+    {
+      "label": "Forward the configured site key to hCaptcha as the sitekey field",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "SiteKey: \"site-key\"",
+      "complete": true
     }
   ],
   "plugin-symbol/captcha/CaptchaFoxOptions/siteKey": [
@@ -3631,6 +3788,12 @@
       "label": "Exercise the configured siteKey in the provider transport contract",
       "test": "plugins/captcha/captcha_test.go",
       "marker": "func TestProviderContracts("
+    },
+    {
+      "label": "Forward the configured site key to CaptchaFox as the sitekey field",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "SiteKey: \"site-key\"",
+      "complete": true
     }
   ],
   "plugin-symbol/captcha/BaseCaptchaOptions/secretKey": [
@@ -3638,6 +3801,17 @@
       "label": "Exercise the configured secretKey in the provider transport contract",
       "test": "plugins/captcha/captcha_test.go",
       "marker": "func TestProviderContracts("
+    },
+    {
+      "label": "Send the configured secret key in each of the four token providers' verification requests",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "t.Fatalf(\"verification fields %#v, want %#v\", fields, f.Sent.Fields)",
+      "complete": true
+    },
+    {
+      "label": "Answer 500 UNKNOWN_ERROR without calling the provider when the secret key is empty",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "o.SecretKey = \"\""
     }
   ],
   "plugin-symbol/captcha/BaseCaptchaOptions/siteVerifyURLOverride": [
@@ -3645,6 +3819,12 @@
       "label": "Exercise the configured siteVerifyURLOverride in the provider transport contract",
       "test": "plugins/captcha/captcha_test.go",
       "marker": "func TestProviderContracts("
+    },
+    {
+      "label": "Send the verification request to a configured override address instead of the provider default",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "SiteVerifyURLOverride: f.Override",
+      "complete": true
     }
   ],
   "plugin-symbol/captcha/BaseCaptchaOptions/endpoints": [
@@ -3652,6 +3832,21 @@
       "label": "Apply configured paths, wildcard matching and mount normalization",
       "test": "plugins/captcha/captcha_test.go",
       "marker": "func TestPathsAndNativeMethods("
+    },
+    {
+      "label": "Call the provider for a request to a configured exact path under the auth mount",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "w := request(h, \"GET\", \"/mount/ok\", tok)"
+    },
+    {
+      "label": "Protect a nested route matched by a double-star pattern",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "{\"/mount/sign-in/level/nested\", []string{\"/sign-in/**\"}, 400},"
+    },
+    {
+      "label": "Leave unlisted routes, deeper paths and routes outside the mount unprotected",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "{\"/mount/sign-in/email-otp\", nil, 404}"
     }
   ],
   "plugin-symbol/captcha/VercelBotIdOptions/checkBotId": [
@@ -3659,6 +3854,22 @@
       "label": "Evaluate the host’s BotID callback and acceptance policy",
       "test": "plugins/captcha/captcha_test.go",
       "marker": "func TestBotID("
+    },
+    {
+      "label": "Call the host BotID check with a request that carries a deadline",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "if _, ok := r.Context().Deadline(); !ok {",
+      "complete": true
+    },
+    {
+      "label": "Answer 500 without exposing the diagnostic when the BotID check fails",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "{\"provider failure\", captcha.BotIDVerdict{}, true, false, 500},"
+    },
+    {
+      "label": "Answer 500 when a pending BotID check outlives the caller's context",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "func TestBotIDReturnsWhenCallerCancels("
     }
   ],
   "plugin-symbol/captcha/VercelBotIdOptions/validateRequest": [
@@ -3666,6 +3877,22 @@
       "label": "Evaluate the host’s BotID callback and acceptance policy",
       "test": "plugins/captcha/captcha_test.go",
       "marker": "func TestBotID("
+    },
+    {
+      "label": "Let a custom policy allow a trusted verified bot",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "{\"allow verified bot\", captcha.BotIDVerdict{IsBot: true, IsVerifiedBot: true, VerifiedBotName: \"indexer\"}, false, true, 200},",
+      "complete": true
+    },
+    {
+      "label": "Deny a human verdict when the custom policy rejects it",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "{\"custom deny human\", captcha.BotIDVerdict{}, false, true, 403},"
+    },
+    {
+      "label": "Deny a bot verdict under the default policy when no custom policy is set",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "{\"bot\", captcha.BotIDVerdict{IsBot: true}, false, false, 403},"
     }
   ],
   "plugin/device-authorization/POST /device/code": [
@@ -3995,6 +4222,11 @@
       "label": "Deliver a purpose-bound sign-in code privately to the normalized mailbox",
       "test": "adapters/sqlstore/emailotp_test.go",
       "marker": "sign-in delivery disclosed data or sent the wrong message"
+    },
+    {
+      "label": "Answer success without mailing when an unknown address asks for an email-verification code",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "private unknown mailbox request"
     }
   ],
   "plugin/email-otp/POST /email-otp/check-verification-otp": [
@@ -4002,6 +4234,11 @@
       "label": "Preserve a successful proof for the final action and count failed comparisons across instances",
       "test": "adapters/sqlstore/emailotp_test.go",
       "marker": "successful preflight did not preserve proof"
+    },
+    {
+      "label": "Refuse a valid code for an address without an account with USER_NOT_FOUND and keep the code",
+      "test": "conformance/goapi/database_verification_code_hooks_test.go",
+      "marker": "check(\"ghost@example.test\", ghost, 400, \"USER_NOT_FOUND\")"
     }
   ],
   "plugin/email-otp/POST /email-otp/verify-email": [
@@ -4014,6 +4251,11 @@
       "label": "Issue a session atomically when auto-sign-in is enabled",
       "test": "adapters/sqlstore/emailotp_management_test.go",
       "marker": "verification did not issue the configured session"
+    },
+    {
+      "label": "Answer an HTTP verification with a null token and no session cookie when automatic sign-in is off",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "verification issued unexpected session"
     }
   ],
   "plugin/email-otp/POST /sign-in/email-otp": [
@@ -4046,6 +4288,11 @@
       "test": "conformance/goapi/user_validation_test.go",
       "marker": "func TestValidateUserInfoDecidedSignIns(t *testing.T) {",
       "label": "ValidateUserInfo refuses a new email-code user with a 403 and stores nothing"
+    },
+    {
+      "label": "Sign in an unverified password account with a mailed code, mark it verified and remove its password",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "unproven credential remained after sign-in"
     }
   ],
   "plugin/email-otp/POST /email-otp/request-password-reset": [
@@ -4053,6 +4300,16 @@
       "label": "Deliver recovery mail to an existing owner and accept the stored proof in a second runtime",
       "test": "conformance/core.test.mjs",
       "marker": "assert.equal(delivered.Type, \"forget-password\");"
+    },
+    {
+      "label": "Mail a forget-password code to a registered address from the request route",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "reset did not reach mailbox"
+    },
+    {
+      "label": "Answer success without mailing when an unknown address requests recovery",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "private unknown mailbox request"
     }
   ],
   "plugin/email-otp/POST /forget-password/email-otp": [
@@ -4078,6 +4335,16 @@
       "label": "Promote the original mailbox only after the callback succeeds on both runtimes",
       "test": "conformance/password-reset-hook.mjs",
       "marker": "assert.equal(Boolean(stored.emailVerified)"
+    },
+    {
+      "label": "Keep the code usable after the password policy refuses a short or declined password",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "\"declined-credential\"), \"DECLINED\")"
+    },
+    {
+      "label": "Count a wrong reset code as an attempt without hashing the new password",
+      "test": "conformance/goapi/database_verification_code_hooks_test.go",
+      "marker": "reset(\"ada@example.test\", \"nope\", 400, \"INVALID_OTP\")"
     }
   ],
   "plugin/email-otp/POST /email-otp/request-email-change": [
@@ -4085,6 +4352,11 @@
       "label": "Require one current mailbox proof for a new destination across concurrent requests",
       "test": "adapters/sqlstore/emailotp_management_test.go",
       "marker": "one current proof authorized"
+    },
+    {
+      "label": "Refuse an address change without a session, without the required current-address code, or to the same address",
+      "test": "adapters/sqlstore/emailotp_management_test.go",
+      "marker": "missing current email proof succeeded"
     }
   ],
   "plugin/email-otp/POST /email-otp/change-email": [
@@ -4092,6 +4364,11 @@
       "label": "Reject stale sessions and preserve the account when verifying its new address",
       "test": "adapters/sqlstore/emailotp_management_test.go",
       "marker": "revoked session changed email"
+    },
+    {
+      "label": "Refuse a change to an address registered after the code was sent with Email already in use and spend the code",
+      "test": "conformance/goapi/database_verification_code_hooks_test.go",
+      "marker": "\"Email already in use\")"
     }
   ],
   "plugin/email-otp/ createVerificationOTP (server API only)": [
@@ -4099,6 +4376,11 @@
       "label": "Generate a fresh proof directly from Go without invoking the mail sender",
       "test": "adapters/sqlstore/emailotp_management_test.go",
       "marker": "trusted creation unexpectedly sent email"
+    },
+    {
+      "label": "Create a six-digit code from Go when the custom generator returns no code",
+      "test": "adapters/sqlstore/emailotp_management_test.go",
+      "marker": "custom generator fallback did not generate six decimal digits"
     }
   ],
   "plugin/email-otp/ getVerificationOTP (server API only)": [
@@ -4126,6 +4408,11 @@
       "label": "Run the typed Go SDK through sign-in, verification, recovery, address changes and cookie-jar authentication",
       "test": "client/emailotp_test.go",
       "marker": "func TestNativeEmailOTPClient("
+    },
+    {
+      "label": "Build the plugin with hashed, encrypted and plain storage, a custom generator, reuse resends, closed registration, sign-up delivery, the verification override, code length and rate limits, and use its routes",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "func TestEmailOTPDeliveryAndProof("
     }
   ],
   "plugin-symbol/email-otp/EmailOTPOptions/sendVerificationOTP": [
@@ -4133,6 +4420,27 @@
       "label": "Deliver the intended mailbox, code and purpose through the callback and propagate request delivery errors",
       "test": "adapters/sqlstore/emailotp_management_test.go",
       "marker": "sender failure was hidden"
+    },
+    {
+      "label": "Pass the lowercased address, raw code and sign-in purpose to the sender without returning the code",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "sign-in delivery disclosed data or sent the wrong message",
+      "complete": true
+    },
+    {
+      "label": "Pass the forget-password purpose to the sender for a registered address",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "recovery alias failed to deliver to the current owner"
+    },
+    {
+      "label": "Pass a six-digit email-verification code for a new password account to the sender",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "gated registration or default six-digit mail failed"
+    },
+    {
+      "label": "Pass the change-email purpose and the new address to the sender",
+      "test": "adapters/sqlstore/emailotp_management_test.go",
+      "marker": "one current proof authorized"
     }
   ],
   "plugin-symbol/email-otp/EmailOTPOptions/otpLength": [
@@ -4169,6 +4477,11 @@
       "label": "Deliver verification codes during credential registration and enforce the configured gate",
       "test": "adapters/sqlstore/emailotp_test.go",
       "marker": "gated registration or default six-digit mail failed"
+    },
+    {
+      "label": "Store an email-verification code when an account signs up with the option on, and mail nothing when its create hook declines or fails, without failing sign-up",
+      "test": "conformance/goapi/database_verification_code_hooks_test.go",
+      "marker": "signUp := newCodeHost(t, memory.New(), events, authn.EmailOTPOptions{SendVerificationOnSignUp: true}, nil)"
     }
   ],
   "plugin-symbol/email-otp/EmailOTPOptions/disableSignUp": [
@@ -4202,6 +4515,17 @@
       "label": "Verify plain, hashed and encrypted proofs and honor application-provided transformations",
       "test": "adapters/sqlstore/emailotp_management_test.go",
       "marker": "custom recoverable resend failed"
+    },
+    {
+      "label": "Store a hashed code as its SHA-256 digest with a zero attempt count while mailing the raw code",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "hashed canonical proof mismatch",
+      "complete": true
+    },
+    {
+      "label": "Store an encrypted code without the raw value and keep its attempt count across a reuse resend",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "encrypted resend lost proof or retry count"
     }
   ],
   "plugin-symbol/email-otp/EmailOTPOptions/resendStrategy": [
@@ -4214,6 +4538,11 @@
       "label": "With verification hooks, a reuse resend stores the code again under a new ID with its attempts, running the create hooks",
       "test": "conformance/goapi/database_verification_code_hooks_test.go",
       "marker": "// A reuse resend stores the code again under a new ID, keeping its attempts."
+    },
+    {
+      "label": "Mail a new code on resend when reuse is configured with hashed storage, and refuse the earlier code",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "hashed resend failed to rotate"
     }
   ],
   "plugin-symbol/email-otp/EmailOTPOptions/changeEmail": [
@@ -4221,6 +4550,16 @@
       "label": "Verify both mailboxes and keep the existing user and session after the change",
       "test": "client/emailotp_test.go",
       "marker": "changed mailbox login did not retain its session"
+    },
+    {
+      "label": "Without current-address confirmation, request changes without a code and refuse a pending code once the account has moved to another address",
+      "test": "adapters/sqlstore/emailotp_management_test.go",
+      "marker": "proof survived a change of source mailbox"
+    },
+    {
+      "label": "With current-address confirmation, refuse a change request that omits the current-address code",
+      "test": "adapters/sqlstore/emailotp_management_test.go",
+      "marker": "missing current email proof succeeded"
     }
   ],
   "plugin-symbol/email-otp/EmailOTPOptions/overrideDefaultEmailVerification": [
@@ -4228,6 +4567,11 @@
       "label": "Route default email verification to the configured code sender",
       "test": "adapters/sqlstore/emailotp_test.go",
       "marker": "default verification override did not deliver configured code length"
+    },
+    {
+      "label": "Route a send-verification-email request to the code sender, logging its failed delivery under the email code rule while answering 200",
+      "test": "conformance/goapi/background_tasks_test.go",
+      "marker": "an overridden verification email answered"
     }
   ],
   "plugin-symbol/email-otp/EmailOTPOptions/rateLimit": [
@@ -7518,6 +7862,16 @@
       "label": "Preserve a verified phone across migration replay and store an explicit false flag on reassignment",
       "test": "adapters/sqlstore/phone_schema_test.go",
       "marker": "replayed migration lost a verified number"
+    },
+    {
+      "label": "Emit the same DDL as the other runtime for plugin combinations that include the phone-number user columns, on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"the CLI emits the pinned plugin schema"
+    },
+    {
+      "label": "Add the phone-number user columns to a populated SQLite database and match the other runtime's live migration",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"adding plugin profiles to a populated SQLite database"
     }
   ],
   "plugin/open-api/GET /open-api/generate-schema": [
@@ -8299,6 +8653,11 @@
       "label": "Return a session after a valid password and challenge an enrolled account",
       "test": "adapters/sqlstore/phone_accounts_test.go",
       "marker": "phone password sign-in bypassed MFA"
+    },
+    {
+      "label": "Refuse a wrong password for a registered number with 401 INVALID_PHONE_NUMBER_OR_PASSWORD",
+      "test": "adapters/sqlstore/phone_accounts_test.go",
+      "marker": "PhoneSignInRequest{PhoneNumber: number, Password: \"wrong-password\"}"
     }
   ],
   "plugin/phone-number/POST /phone-number/send-otp": [
@@ -8328,6 +8687,11 @@
       "label": "ValidateUserInfo sees the new phone user with the verified number and can refuse it with a 403",
       "test": "conformance/goapi/user_validation_test.go",
       "marker": "func TestValidateUserInfoOtherCreators(t *testing.T) {"
+    },
+    {
+      "label": "Sign up exactly once when six verify requests race for one code across two handlers",
+      "test": "adapters/sqlstore/phone_code_hooks_test.go",
+      "marker": "t.Fatal(\"six concurrent verifications signed up\", signedUp, \"times with\", spends, \"spends\")"
     }
   ],
   "plugin/phone-number/POST /phone-number/request-password-reset": [
@@ -8335,6 +8699,12 @@
       "label": "Hide unknown and unverified users from reset callers and suppress ineligible SMS",
       "test": "adapters/sqlstore/phone_accounts_test.go",
       "marker": "unverified reset leaked a delivery"
+    },
+    {
+      "label": "Answer status true to a reset request for a verified number on both servers and deliver a six-digit code to it",
+      "test": "conformance/phone-contract.mjs",
+      "marker": "requestPasswordReset({phoneNumber:number})).data,{status:true}",
+      "complete": true
     }
   ],
   "plugin/phone-number/POST /phone-number/reset-password": [
@@ -8347,6 +8717,11 @@
       "label": "Deliver the verified phone profile to the callback after password recovery",
       "test": "adapters/sqlstore/password_reset_hook_test.go",
       "marker": "missing bound verified phone profile"
+    },
+    {
+      "label": "Refuse a wrong reset code, accept the delivered code once and refuse its replay with OTP_NOT_FOUND",
+      "test": "adapters/sqlstore/phone_accounts_test.go",
+      "marker": "phoneError(t, browser.ResetPhonePassword(ctx, number, code, \"correct-phrase-129\"), 400, \"OTP_NOT_FOUND\")"
     }
   ],
   "plugin/phone-number/ consumePhoneNumberOTP (server API only)": [
@@ -8354,6 +8729,11 @@
       "label": "Spend a code exactly once across competing processes and keep the operation off HTTP",
       "test": "adapters/sqlstore/phone_test.go",
       "marker": "native consume exposed over HTTP"
+    },
+    {
+      "label": "Consume a phone code from Go with only the code's delete hooks running, creating no user or session",
+      "test": "conformance/goapi/database_verification_code_hooks_test.go",
+      "marker": "if err := h.auth.ConsumePhoneNumberOTP(ctx, \"+15550000008\", code); err != nil {"
     }
   ],
   "plugin-symbol/phone-number/phoneNumberClient": [
@@ -8366,6 +8746,12 @@
       "label": "Read and manage the phone profile through the released administrative client",
       "test": "conformance/phone-admin-contract.mjs",
       "marker": "view(ok(await actor.admin.getUser({query:{id:target.id}}))),[n,true]"
+    },
+    {
+      "label": "Send codes through one runtime's released phone client and verify them through the other's on a shared database",
+      "test": "conformance/phone-user-fields.mjs",
+      "marker": "const verify = (number, code, input) => verifier.phoneNumber.verify({ phoneNumber: number, code, ...input });",
+      "complete": true
     }
   ],
   "plugin-symbol/phone-number/UserWithPhoneNumber": [
@@ -8373,6 +8759,12 @@
       "label": "Return the verified phone number and clear the verification flag on disassociation",
       "test": "conformance/phone-contract.mjs",
       "marker": "assert.equal(cleared.phoneNumberVerified,false)"
+    },
+    {
+      "label": "Return phoneNumber and phoneNumberVerified on the user after verification on both servers",
+      "test": "conformance/phone-contract.mjs",
+      "marker": "quiet.data.user.phoneNumberVerified",
+      "complete": true
     }
   ],
   "plugin-symbol/phone-number/PhoneNumberOptions/sendOTP": [
@@ -8380,6 +8772,12 @@
       "label": "Deliver verification SMS via an injected callback",
       "test": "adapters/sqlstore/phone_test.go",
       "marker": "invalid SMS delivery"
+    },
+    {
+      "label": "Fail /phone-number/send-otp with 500 when the SMS sender fails without a background runner, and queue the send when one is set",
+      "test": "conformance/goapi/background_tasks_test.go",
+      "marker": "t.Fatal(\"/send-otp with a runner answered\", status, body)",
+      "complete": true
     }
   ],
   "plugin-symbol/phone-number/PhoneNumberOptions/verifyOTP": [
@@ -8392,6 +8790,11 @@
       "label": "Ask the provider only after a guess's verification before hooks, and count a rejected guess even when the client has gone",
       "test": "conformance/goapi/database_verification_code_hooks_test.go",
       "marker": "// A wrong guess the Auth judged is counted even when the client has gone."
+    },
+    {
+      "label": "Sign a new number up through /phone-number/verify when the custom verifier accepts the code",
+      "test": "conformance/goapi/database_verification_code_hooks_test.go",
+      "marker": "// The provider's acceptance signs up."
     }
   ],
   "plugin-symbol/phone-number/PhoneNumberOptions/sendPasswordResetOTP": [
@@ -8399,6 +8802,11 @@
       "label": "Deliver reset messages only for eligible accounts",
       "test": "adapters/sqlstore/phone_accounts_test.go",
       "marker": "recovery did not use its own delivery channel"
+    },
+    {
+      "label": "Answer 200 over HTTP when delivering a reset code to a verified number fails, and log the failure without the number",
+      "test": "adapters/sqlstore/phone_delivery_test.go",
+      "marker": "t.Fatal(\"a phone reset request answered\", status, body, sends)"
     }
   ],
   "plugin-symbol/phone-number/PhoneNumberOptions/phoneNumberValidator": [
@@ -8413,6 +8821,11 @@
       "label": "Gate imported unverified phone credentials and request a verification proof",
       "test": "adapters/sqlstore/phone_accounts_test.go",
       "marker": "unverified sign-in failed to request proof"
+    },
+    {
+      "label": "Answer 401 PHONE_NUMBER_NOT_VERIFIED over HTTP to an unverified number's password sign-in and call the code sender once",
+      "test": "adapters/sqlstore/phone_delivery_test.go",
+      "marker": "t.Fatal(\"an unverified phone sign-in answered\", status, body, sends)"
     }
   ],
   "plugin-symbol/phone-number/PhoneNumberOptions/callbackOnVerification": [
@@ -8420,6 +8833,12 @@
       "label": "Run the callback on confirmed signup, existing-account verification and owner linking",
       "test": "adapters/sqlstore/phone_accounts_test.go",
       "marker": "callback called %d times"
+    },
+    {
+      "label": "Pass the verified number and a user holding that number to the verification callback",
+      "test": "adapters/sqlstore/phone_accounts_test.go",
+      "marker": "t.Error(\"callback user mismatch\")",
+      "complete": true
     }
   ],
   "plugin-symbol/phone-number/PhoneNumberOptions/signUpOnVerification": [
@@ -8432,6 +8851,12 @@
       "label": "Compare resolver-supplied identity, phone-number display name, required attributes, static defaults and public versus hidden fields across both runtimes",
       "test": "conformance/phone-user-fields.mjs",
       "marker": "assert.equal(user.name, defaults ? phone :"
+    },
+    {
+      "label": "Create the new phone user with the address the temporary-email function returns, on both servers",
+      "test": "conformance/phone-user-fields.mjs",
+      "marker": "assert.equal(user.email, phone + \"@phone.test\");",
+      "complete": true
     }
   ],
   "plugin-symbol/phone-number/PhoneNumberOptions/expiresIn": [
@@ -8451,6 +8876,12 @@
       "label": "Run verification update after hooks for each counted wrong phone guess, and remove an exhausted code with its delete hooks",
       "test": "conformance/goapi/database_verification_code_hooks_test.go",
       "marker": "// Each counted wrong phone guess runs the update after hooks."
+    },
+    {
+      "label": "Refuse the right code with 403 TOO_MANY_ATTEMPTS after three wrong guesses across two handlers, then answer OTP_NOT_FOUND",
+      "test": "adapters/sqlstore/phone_test.go",
+      "marker": "phoneError(t, a.ConsumePhoneNumberOTP(ctx, number, sms.Code), 403, \"TOO_MANY_ATTEMPTS\")",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/phone-number.mdx#L71": [
@@ -8458,6 +8889,12 @@
       "label": "Request a six-digit code with the released browser client",
       "test": "conformance/phone-contract.mjs",
       "marker": "{message:\"code sent\"}"
+    },
+    {
+      "label": "Request a verification code for a number through the Go SDK",
+      "test": "adapters/sqlstore/phone_test.go",
+      "marker": "if err = sdk.SendPhoneNumberOTP(ctx, number); err != nil {",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/phone-number.mdx#L86": [
@@ -8465,6 +8902,12 @@
       "label": "Verify without a session, then reject replay",
       "test": "conformance/phone-contract.mjs",
       "marker": "assert.equal(quiet.data.token,null)"
+    },
+    {
+      "label": "Verify a returning number with its new code and receive a session for the same account",
+      "test": "adapters/sqlstore/phone_accounts_test.go",
+      "marker": "t.Fatal(\"returning verification session missing\")",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/phone-number.mdx#L114": [
@@ -8472,6 +8915,11 @@
       "label": "Expose single-use verification to server applications without account actions",
       "test": "adapters/sqlstore/phone_test.go",
       "marker": "phone OTP was consumed %d times"
+    },
+    {
+      "label": "Consume a phone code through the Go API with only the code's delete hooks running and no user or session created",
+      "test": "conformance/goapi/database_verification_code_hooks_test.go",
+      "marker": "// A direct Go call's hooks see no endpoint."
     }
   ],
   "docs/content/docs/plugins/phone-number.mdx#L141": [
@@ -8479,6 +8927,21 @@
       "label": "Create a first-use account with configured email and name",
       "test": "adapters/sqlstore/phone_accounts_test.go",
       "marker": "unexpected phone signup fields"
+    },
+    {
+      "label": "Create a first-use phone account with the configured temporary email and name, and store extra profile fields sent with the code",
+      "test": "adapters/sqlstore/phone_registration_fields_test.go",
+      "marker": "t.Fatal(\"incorrect phone registration\")"
+    },
+    {
+      "label": "Refuse a first-use phone verification that omits a required user field with MISSING_FIELD",
+      "test": "adapters/sqlstore/phone_registration_fields_test.go",
+      "marker": "checkUserFieldError(t, err, \"MISSING_FIELD\")"
+    },
+    {
+      "label": "Name a first-use phone account after its number when no name function is set",
+      "test": "adapters/sqlstore/phone_registration_fields_test.go",
+      "marker": "t.Fatal(\"default phone display name\")"
     }
   ],
   "docs/content/docs/plugins/phone-number.mdx#L183": [
@@ -8486,6 +8949,11 @@
       "label": "Sign in using the canonical account credential",
       "test": "conformance/phone-contract.mjs",
       "marker": "assert.equal(login.data.user.id,quiet.data.user.id)"
+    },
+    {
+      "label": "Sign in with a phone number and the password set by phone reset, after a wrong password is refused",
+      "test": "adapters/sqlstore/phone_accounts_test.go",
+      "marker": "t.Fatal(\"phone login did not bind the reset credential\")"
     }
   ],
   "docs/content/docs/plugins/phone-number.mdx#L210": [
@@ -8493,6 +8961,12 @@
       "label": "Keep the same authenticated session while linking a verified number",
       "test": "adapters/sqlstore/phone_accounts_test.go",
       "marker": "link did not preserve the owner's session"
+    },
+    {
+      "label": "Replace a signed-in user's number with a newly verified one through updatePhoneNumber, keeping the session token",
+      "test": "adapters/sqlstore/phone_registration_fields_test.go",
+      "marker": "t.Fatal(\"returning verification or phone replacement re-ran registration\")",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/phone-number.mdx#L234": [
@@ -8505,6 +8979,21 @@
       "label": "Clear an administratively assigned number and its flag together, even when a conflicting true flag is submitted",
       "test": "conformance/phone-admin-contract.mjs",
       "marker": "view(ok(await patch({phoneNumber:null,phoneNumberVerified:true}))),[null,false]"
+    },
+    {
+      "label": "Refuse a profile update that sets a non-null phone number",
+      "test": "adapters/sqlstore/phone_accounts_test.go",
+      "marker": "phoneError(t, err, 400, \"PHONE_NUMBER_CANNOT_BE_UPDATED\")"
+    },
+    {
+      "label": "Refuse an email sign-up that carries a phone number",
+      "test": "adapters/sqlstore/phone_accounts_test.go",
+      "marker": "phoneError(t, err, 400, \"PHONE_NUMBER_CANNOT_BE_SET\")"
+    },
+    {
+      "label": "Let another account verify and claim a number its previous owner released, on both servers",
+      "test": "conformance/phone-contract.mjs",
+      "marker": "assert.equal(linked.data.user.phoneNumberVerified,true);"
     }
   ],
   "docs/content/docs/plugins/phone-number.mdx#L248": [
@@ -8512,6 +9001,12 @@
       "label": "Verify without granting a session",
       "test": "adapters/sqlstore/phone_accounts_test.go",
       "marker": "disableSession issued a session"
+    },
+    {
+      "label": "Issue a session when a phone code is verified without disableSession",
+      "test": "adapters/sqlstore/phone_accounts_test.go",
+      "marker": "t.Fatal(\"returning verification session missing\")",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/phone-number.mdx#L262": [
@@ -8519,6 +9014,16 @@
       "label": "Reset a credential, revoke sessions and deny reuse",
       "test": "adapters/sqlstore/phone_accounts_test.go",
       "marker": "reset failed to revoke original session"
+    },
+    {
+      "label": "Count a wrong phone reset code as an attempt and refuse it before hashing the new password",
+      "test": "conformance/goapi/database_verification_code_hooks_test.go",
+      "marker": "\"delete-before:phone-number-reset\", \"update-after:phone-number-reset\")"
+    },
+    {
+      "label": "Refuse a phone reset whose new password the breach screen rejects, then accept the same code with another password, on both servers",
+      "test": "conformance/password-screening.mjs",
+      "marker": "owner.phoneNumber.resetPassword({ phoneNumber: number, otp: phoneProof, newPassword: password })"
     }
   ],
   "docs/content/docs/plugins/phone-number.mdx#L346": [
@@ -8526,6 +9031,11 @@
       "label": "Reject a stale external verdict after another instance resends the code",
       "test": "adapters/sqlstore/phone_accounts_test.go",
       "marker": "stale provider verdict spent the new issuance"
+    },
+    {
+      "label": "Sign up through /phone-number/verify when the custom verifier accepts the code, after a code it rejected was counted",
+      "test": "conformance/goapi/database_verification_code_hooks_test.go",
+      "marker": "// The provider's acceptance signs up."
     }
   ],
   "docs/content/docs/plugins/phone-number.mdx#L418": [
@@ -8533,6 +9043,17 @@
       "label": "Spend one shared attempt budget and permit only a single concurrent success",
       "test": "adapters/sqlstore/phone_test.go",
       "marker": "phone OTP was consumed %d times"
+    },
+    {
+      "label": "After three wrong guesses over HTTP, answer the right phone code with 403 TOO_MANY_ATTEMPTS and then find no code",
+      "test": "conformance/goapi/database_verification_code_hooks_test.go",
+      "marker": "h.call(\"/phone-number/verify\", phoneBody(\"+15550000001\", code), \"\", 403, \"TOO_MANY_ATTEMPTS\")",
+      "complete": true
+    },
+    {
+      "label": "Refuse every phone code with 403 TOO_MANY_ATTEMPTS when AllowedAttempts is set to zero",
+      "test": "adapters/sqlstore/phone_accounts_test.go",
+      "marker": "phoneError(t, disabled.ConsumePhoneNumberOTP(ctx, n, \"any\"), 403, \"TOO_MANY_ATTEMPTS\")"
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L337": [
@@ -8754,6 +9275,11 @@
       "label": "Use the published client to register a discoverable credential and authenticate in a local Chrome virtual authenticator on both servers",
       "test": "conformance/passkey-first-browser.mjs",
       "marker": "const signed=await client.signIn.passkey()"
+    },
+    {
+      "label": "Fetch registration options through the published client from both servers after an email sign-up",
+      "test": "conformance/core.test.mjs",
+      "marker": "const creation = await client.passkey.generateRegisterOptions();"
     }
   ],
   "plugin-symbol/passkey/PasskeyRegistrationOptions/requireSession": [
@@ -8761,6 +9287,11 @@
       "label": "Opt into first-use registration and keep existing-session enrollment bound to the original live session",
       "test": "adapters/sqlstore/passkey_first_test.go",
       "marker": "phoneError(t, err, 401, \"SESSION_REQUIRED\")"
+    },
+    {
+      "label": "Refuse registration options to a caller without a session under the default registration settings",
+      "test": "adapters/sqlstore/passkey_test.go",
+      "marker": "request(first, \"generate-register-options\", nil, 401)"
     }
   ],
   "plugin-symbol/passkey/PasskeyRegistrationOptions/resolveUser": [
@@ -8775,6 +9306,16 @@
       "label": "Run the application decision only after verified WebAuthn attestation",
       "test": "adapters/sqlstore/passkey_first_test.go",
       "marker": "unverified response reached account provisioning"
+    },
+    {
+      "label": "Keep the client-supplied passkey name instead of the name the post-verification callback returns",
+      "test": "adapters/sqlstore/passkey_first_test.go",
+      "marker": "t.Fatal(\"credential-only registration issued a session or replaced a client label\")"
+    },
+    {
+      "label": "Attribute a passkey to the existing account the callback names when it explicitly allows that account",
+      "test": "adapters/sqlstore/passkey_first_test.go",
+      "marker": "t.Fatal(\"explicit existing-account enrollment returned the wrong owner\")"
     }
   ],
   "docs/content/docs/plugins/passkey.mdx#L108": [
@@ -8782,6 +9323,11 @@
       "label": "Complete the two-request registration and session-creation ceremony in the public client on both servers",
       "test": "conformance/passkey-first-browser.mjs",
       "marker": "assert.equal(session.userId,user.id)"
+    },
+    {
+      "label": "Start a registration without a session using a context that ResolveUser checks, create the account in AfterVerification, return and set a session when createSession is true, and refuse a signed-in ceremony finished after sign-out, on three SQL backends",
+      "test": "adapters/sqlstore/passkey_first_test.go",
+      "marker": "func TestPasskeyFirstRegistrationAcrossEngines("
     }
   ],
   "plugin-symbol/scim/SCIMManagedConnectionOptions/credentialHashSecret": [
@@ -32476,6 +33022,1781 @@
       "label": "Translate every bundled error code in each of the 22 locales through the plugin hook",
       "test": "plugins/i18n/i18n_test.go",
       "marker": "func TestBundledMessages(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/captcha/GoogleRecaptchaOptions": [
+    {
+      "label": "Verify Google reCAPTCHA tokens with the default and configured score, action and hostname checks against recorded replies",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "func TestProviderContracts("
+    }
+  ],
+  "plugin-symbol/captcha/GoogleRecaptchaOptions/provider": [
+    {
+      "label": "Post the form-encoded secret, token and client address to the Google reCAPTCHA address, and map pass, reject and outage replies to 200, 403 and 500",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "if req.URL.String() != f.Sent.URL",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/captcha/GoogleRecaptchaOptions/secretKey": [
+    {
+      "label": "Send the configured secret key in the Google reCAPTCHA verification body",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "t.Fatalf(\"verification fields %#v, want %#v\", fields, f.Sent.Fields)",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/captcha/GoogleRecaptchaOptions/endpoints": [
+    {
+      "label": "Answer 400 on default and pattern-matched routes and 404 on unmatched routes when Google reCAPTCHA is configured",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "Provider: captcha.GoogleRecaptcha, SecretKey: \"key\", Endpoints: tc.patterns"
+    },
+    {
+      "label": "Call Google reCAPTCHA for a request to the configured exact path",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "w := request(h, \"GET\", \"/mount/ok\", tok)"
+    }
+  ],
+  "plugin-symbol/captcha/CloudflareTurnstileOptions": [
+    {
+      "label": "Verify Cloudflare Turnstile tokens as JSON with action and hostname checks against recorded replies",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "func TestProviderContracts("
+    }
+  ],
+  "plugin-symbol/captcha/CloudflareTurnstileOptions/provider": [
+    {
+      "label": "Post a JSON secret, token and client address to the Cloudflare Turnstile address, and map pass, reject and outage replies to 200, 403 and 500",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "if f.Sent.Type == \"application/json\" {",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/captcha/CloudflareTurnstileOptions/secretKey": [
+    {
+      "label": "Send the configured secret key in the Cloudflare Turnstile JSON verification body",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "t.Fatalf(\"verification fields %#v, want %#v\", fields, f.Sent.Fields)",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/captcha/CloudflareTurnstileOptions/endpoints": [
+    {
+      "label": "Call Cloudflare Turnstile for a request to the configured exact path under the auth mount",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "w := request(h, \"GET\", \"/mount/ok\", tok)"
+    }
+  ],
+  "plugin-symbol/captcha/HCaptchaOptions": [
+    {
+      "label": "Verify hCaptcha tokens with the configured site key against recorded replies",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "func TestProviderContracts("
+    }
+  ],
+  "plugin-symbol/captcha/HCaptchaOptions/provider": [
+    {
+      "label": "Post the form-encoded secret, token, site key and client address to the hCaptcha address, and map pass, reject and outage replies to 200, 403 and 500",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "if req.URL.String() != f.Sent.URL",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/captcha/HCaptchaOptions/secretKey": [
+    {
+      "label": "Send the configured secret key in the hCaptcha verification body",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "t.Fatalf(\"verification fields %#v, want %#v\", fields, f.Sent.Fields)",
+      "complete": true
+    },
+    {
+      "label": "Answer 500 UNKNOWN_ERROR without calling hCaptcha when the secret key is empty",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "o.SecretKey = \"\""
+    }
+  ],
+  "plugin-symbol/captcha/HCaptchaOptions/endpoints": [
+    {
+      "label": "Call hCaptcha for a request to the configured exact path under the auth mount",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "w := request(h, \"GET\", \"/mount/ok\", tok)"
+    }
+  ],
+  "plugin-symbol/captcha/CaptchaFoxOptions": [
+    {
+      "label": "Verify CaptchaFox tokens with the site key and an override address against recorded replies",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "func TestProviderContracts("
+    }
+  ],
+  "plugin-symbol/captcha/CaptchaFoxOptions/provider": [
+    {
+      "label": "Post the form-encoded secret, token, site key and remoteIp to the CaptchaFox address, and map pass, reject and outage replies to 200, 403 and 500",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "if req.URL.String() != f.Sent.URL",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/captcha/CaptchaFoxOptions/secretKey": [
+    {
+      "label": "Send the configured secret key in the CaptchaFox verification body",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "t.Fatalf(\"verification fields %#v, want %#v\", fields, f.Sent.Fields)",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/captcha/CaptchaFoxOptions/endpoints": [
+    {
+      "label": "Call CaptchaFox for a request to the configured exact path under the auth mount",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "w := request(h, \"GET\", \"/mount/ok\", tok)"
+    }
+  ],
+  "plugin-symbol/captcha/CaptchaFoxOptions/siteVerifyURLOverride": [
+    {
+      "label": "Send the CaptchaFox verification request to the configured override address",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "SiteVerifyURLOverride: f.Override",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/captcha/BotIdVerification": [
+    {
+      "label": "Pass the verified-bot flag and verified-bot name through to the custom policy",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "{\"allow verified bot\", captcha.BotIDVerdict{IsBot: true, IsVerifiedBot: true, VerifiedBotName: \"indexer\"}, false, true, 200},"
+    },
+    {
+      "label": "Deny a verdict marked as a bot under the default policy",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "{\"bot\", captcha.BotIDVerdict{IsBot: true}, false, false, 403},"
+    }
+  ],
+  "plugin-symbol/captcha/ValidateRequestContext": [
+    {
+      "label": "Give the custom validation callback both the incoming request and the BotID verdict",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "return v.IsVerifiedBot && v.VerifiedBotName == \"indexer\" && r.URL.Path == \"/mount/ok\", nil",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/captcha/VercelBotIdOptions": [
+    {
+      "label": "Protect a configured route with the host BotID check and an optional custom policy",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "func TestBotID("
+    }
+  ],
+  "plugin-symbol/captcha/VercelBotIdOptions/provider": [
+    {
+      "label": "Run the BotID check without a secret key or challenge header, and allow a human verdict",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "o := captcha.Options{Provider: captcha.VercelBotID",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/captcha/VercelBotIdOptions/endpoints": [
+    {
+      "label": "Run the BotID check on a request to the configured mount-relative path",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "o := captcha.Options{Provider: captcha.VercelBotID"
+    }
+  ],
+  "plugin-symbol/captcha/CaptchaOptions": [
+    {
+      "label": "Verify tokens for the four token providers against recorded replies",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "func TestProviderContracts("
+    },
+    {
+      "label": "Protect a configured route with the host BotID check and an optional custom policy",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "func TestBotID("
+    }
+  ],
+  "plugin-symbol/captcha/CaptchaOptions/provider": [
+    {
+      "label": "Select each token provider's verification address, method and body encoding",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "if req.URL.String() != f.Sent.URL",
+      "complete": true
+    },
+    {
+      "label": "Run the BotID check instead of token verification when BotID is selected",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "o := captcha.Options{Provider: captcha.VercelBotID"
+    }
+  ],
+  "plugin-symbol/captcha/CaptchaOptions/minScore": [
+    {
+      "label": "Reject a v3 score below the default 0.5 or below a configured 0.9 minimum, and accept a score equal to 0.5",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "MinScore: f.MinScore",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/captcha/CaptchaOptions/expectedAction": [
+    {
+      "label": "Reject a Google reCAPTCHA reply with a different action and a Cloudflare Turnstile reply with no action, and accept a matching action",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "ExpectedAction: \"login\"",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/captcha/CaptchaOptions/allowedHostnames": [
+    {
+      "label": "Reject a Google reCAPTCHA reply for an unlisted hostname and a Cloudflare Turnstile reply with no hostname",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "AllowedHostnames: []string{\"app.example.org\"}",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/captcha/CaptchaOptions/secretKey": [
+    {
+      "label": "Send the configured secret key in each token provider's verification request",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "t.Fatalf(\"verification fields %#v, want %#v\", fields, f.Sent.Fields)",
+      "complete": true
+    },
+    {
+      "label": "Answer 500 UNKNOWN_ERROR without calling the provider when the secret key is empty",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "o.SecretKey = \"\""
+    }
+  ],
+  "plugin-symbol/captcha/CaptchaOptions/endpoints": [
+    {
+      "label": "Call the provider for a request to a configured exact path under the auth mount",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "w := request(h, \"GET\", \"/mount/ok\", tok)"
+    },
+    {
+      "label": "Protect a nested route matched by a double-star pattern",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "{\"/mount/sign-in/level/nested\", []string{\"/sign-in/**\"}, 400},"
+    },
+    {
+      "label": "Leave unlisted routes, deeper paths and routes outside the mount unprotected",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "{\"/mount/sign-in/email-otp\", nil, 404}"
+    }
+  ],
+  "plugin-symbol/captcha/CaptchaOptions/siteVerifyURLOverride": [
+    {
+      "label": "Send the verification request to a configured override address instead of the provider default",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "SiteVerifyURLOverride: f.Override",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/captcha/CaptchaOptions/siteKey": [
+    {
+      "label": "Forward the configured site key to hCaptcha and CaptchaFox, and leave it out for Google reCAPTCHA and Cloudflare Turnstile",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "SiteKey: \"site-key\"",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/captcha/CaptchaOptions/checkBotId": [
+    {
+      "label": "Call the host BotID check with a request that carries a deadline",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "if _, ok := r.Context().Deadline(); !ok {",
+      "complete": true
+    },
+    {
+      "label": "Answer 500 without exposing the diagnostic when the BotID check fails",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "{\"provider failure\", captcha.BotIDVerdict{}, true, false, 500},"
+    }
+  ],
+  "plugin-symbol/captcha/CaptchaOptions/validateRequest": [
+    {
+      "label": "Let a custom policy allow a trusted verified bot",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "{\"allow verified bot\", captcha.BotIDVerdict{IsBot: true, IsVerifiedBot: true, VerifiedBotName: \"indexer\"}, false, true, 200},",
+      "complete": true
+    },
+    {
+      "label": "Deny a human verdict when the custom policy rejects it",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "{\"custom deny human\", captcha.BotIDVerdict{}, false, true, 403},"
+    },
+    {
+      "label": "Deny a bot verdict under the default policy when no custom policy is set",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "{\"bot\", captcha.BotIDVerdict{IsBot: true}, false, false, 403},"
+    }
+  ],
+  "docs/content/docs/plugins/captcha.mdx": [
+    {
+      "label": "Verify x-captcha-response tokens for the four token providers, using the client address taken from trusted proxy headers",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "func TestProviderContracts("
+    },
+    {
+      "label": "Protect a route with the host BotID check",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "func TestBotID("
+    }
+  ],
+  "docs/content/docs/plugins/captcha.mdx#L158/`provider` (required)": [
+    {
+      "label": "Select each token provider's verification address, method and body encoding",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "if req.URL.String() != f.Sent.URL"
+    },
+    {
+      "label": "Run the BotID check when BotID is selected",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "o := captcha.Options{Provider: captcha.VercelBotID"
+    }
+  ],
+  "docs/content/docs/plugins/captcha.mdx#L159/`secretKey` (required for all providers except `vercel-botid`)": [
+    {
+      "label": "Send the configured secret key in each token provider's verification request",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "t.Fatalf(\"verification fields %#v, want %#v\", fields, f.Sent.Fields)",
+      "complete": true
+    },
+    {
+      "label": "Answer 500 UNKNOWN_ERROR without calling the provider when a token provider has no secret key",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "o.SecretKey = \"\""
+    },
+    {
+      "label": "Run the BotID check with no secret key configured",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "o := captcha.Options{Provider: captcha.VercelBotID"
+    }
+  ],
+  "docs/content/docs/plugins/captcha.mdx#L160/`endpoints`": [
+    {
+      "label": "Call the provider for a request to a configured exact path under the auth mount",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "w := request(h, \"GET\", \"/mount/ok\", tok)"
+    },
+    {
+      "label": "Protect a nested route matched by a double-star pattern",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "{\"/mount/sign-in/level/nested\", []string{\"/sign-in/**\"}, 400},"
+    },
+    {
+      "label": "Leave unlisted routes, deeper paths and routes outside the mount unprotected",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "{\"/mount/sign-in/email-otp\", nil, 404}"
+    }
+  ],
+  "docs/content/docs/plugins/captcha.mdx#L161/`minScore`": [
+    {
+      "label": "Reject a v3 score below the default 0.5 or below a configured 0.9 minimum, accept a score equal to 0.5, and accept a reply without a score",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "MinScore: f.MinScore",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/captcha.mdx#L162/`siteKey`": [
+    {
+      "label": "Forward the configured site key to hCaptcha and CaptchaFox, and leave it out for Google reCAPTCHA and Cloudflare Turnstile",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "SiteKey: \"site-key\"",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/captcha.mdx#L163/`siteVerifyURLOverride`": [
+    {
+      "label": "Send the verification request to a configured override address instead of the provider default",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "SiteVerifyURLOverride: f.Override",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/captcha.mdx#L164/`checkBotId`": [
+    {
+      "label": "Call the host BotID check with a request that carries a deadline",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "if _, ok := r.Context().Deadline(); !ok {"
+    },
+    {
+      "label": "Answer 500 without exposing the diagnostic when the BotID check fails",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "{\"provider failure\", captcha.BotIDVerdict{}, true, false, 500},"
+    }
+  ],
+  "docs/content/docs/plugins/captcha.mdx#L165/`validateRequest`": [
+    {
+      "label": "Let a custom policy allow a trusted verified bot",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "{\"allow verified bot\", captcha.BotIDVerdict{IsBot: true, IsVerifiedBot: true, VerifiedBotName: \"indexer\"}, false, true, 200},",
+      "complete": true
+    },
+    {
+      "label": "Deny a human verdict when the custom policy rejects it",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "{\"custom deny human\", captcha.BotIDVerdict{}, false, true, 403},"
+    },
+    {
+      "label": "Deny a bot verdict when no custom policy is set",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "{\"bot\", captcha.BotIDVerdict{IsBot: true}, false, false, 403},"
+    },
+    {
+      "label": "Allow a human verdict when no custom policy is set",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "{\"human\", captcha.BotIDVerdict{}, false, false, 200},"
+    }
+  ],
+  "docs/content/docs/plugins/passkey.mdx#L138/`POST /passkey/add-passkey`": [
+    {
+      "label": "Enroll through the published client's addPasskey action on both servers with a Chrome virtual authenticator",
+      "test": "conformance/passkey-first-browser.mjs",
+      "marker": "client.passkey.addPasskey({context:\"local-enrollment\""
+    }
+  ],
+  "docs/content/docs/plugins/passkey.mdx#L144/Parameter `name` (optional)": [
+    {
+      "label": "Use the requested name as the WebAuthn account name in the registration options",
+      "test": "adapters/sqlstore/passkey_first_test.go",
+      "marker": "creation.User.Name != \"User label\""
+    },
+    {
+      "label": "Keep the client-supplied passkey name instead of the label the server callback returns",
+      "test": "adapters/sqlstore/passkey_first_test.go",
+      "marker": "*quiet.Name != \"Client label\""
+    }
+  ],
+  "docs/content/docs/plugins/passkey.mdx#L156/Parameter `returnWebAuthnResponse` (optional)": [
+    {
+      "label": "Return the browser's WebAuthn response from addPasskey with returnWebAuthnResponse, with an ID that matches the credential the server stored, on both servers",
+      "test": "conformance/passkey-first-browser.mjs",
+      "marker": "assert.equal(enrolled.webauthn.response.id,credentialID)"
+    }
+  ],
+  "docs/content/docs/plugins/passkey.mdx#L160/Parameter `context` (optional)": [
+    {
+      "label": "Forward the registration context from the options request to ResolveUser and AfterVerification, and check the account decisions that depend on it",
+      "test": "adapters/sqlstore/passkey_first_test.go",
+      "marker": "client.PasskeyRegistrationRequest{Context: &intent, Name: \"User label\"}",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/passkey.mdx#L165/Parameter `createSession` (optional)": [
+    {
+      "label": "Return the new session and user, with a cookie that authenticates, when createSession is true, and return neither when it is false",
+      "test": "adapters/sqlstore/passkey_first_test.go",
+      "marker": "passkey-first registration did not atomically return its resolved account, credential and session",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/passkey.mdx#L178/`POST /sign-in/passkey`": [
+    {
+      "label": "Sign in with the published client's signIn.passkey action on both servers through a Chrome virtual authenticator",
+      "test": "conformance/passkey-first-browser.mjs",
+      "marker": "assert.equal(signed.error,null,JSON.stringify(signed.error));"
+    }
+  ],
+  "docs/content/docs/plugins/passkey.mdx#L241/`GET /passkey/list-user-passkeys`": [
+    {
+      "label": "List no passkeys through the published client for a newly signed-up account on both servers",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.deepEqual((await client.passkey.listUserPasskeys()).data, []);"
+    },
+    {
+      "label": "Keep another account's passkeys out of the signed-in caller's list",
+      "test": "adapters/sqlstore/passkey_test.go",
+      "marker": "foreign passkeys listed"
+    }
+  ],
+  "docs/content/docs/plugins/passkey.mdx#L299/`POST /passkey/delete-passkey`": [
+    {
+      "label": "Delete the owner's passkey through another instance, after which the same credential can be registered again",
+      "test": "adapters/sqlstore/passkey_test.go",
+      "marker": "request(second, \"delete-passkey\", mutation, 200, session)"
+    }
+  ],
+  "docs/content/docs/plugins/passkey.mdx#L305/Parameter `id`": [
+    {
+      "label": "Delete and rename a passkey by the stored record ID that registration returned",
+      "test": "adapters/sqlstore/passkey_test.go",
+      "marker": "mutation := map[string]any{\"id\": row[\"id\"], \"name\": \"Renamed\"}",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/passkey.mdx#L312/`POST /passkey/update-passkey`": [
+    {
+      "label": "Return the renamed passkey to its signed-in owner",
+      "test": "adapters/sqlstore/passkey_test.go",
+      "marker": "updated, _ := request(first, \"update-passkey\", mutation, 200, session)"
+    }
+  ],
+  "docs/content/docs/plugins/passkey.mdx#L318/Parameter `id`": [
+    {
+      "label": "Rename and delete a passkey by the stored record ID that registration returned",
+      "test": "adapters/sqlstore/passkey_test.go",
+      "marker": "mutation := map[string]any{\"id\": row[\"id\"], \"name\": \"Renamed\"}",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/passkey.mdx#L322/Parameter `name`": [
+    {
+      "label": "Return the passkey with the requested new name",
+      "test": "adapters/sqlstore/passkey_test.go",
+      "marker": "if updated[\"passkey\"].(map[string]any)[\"name\"] != \"Renamed\" {"
+    }
+  ],
+  "docs/content/docs/plugins/passkey.mdx#L377": [
+    {
+      "label": "Register and sign in against both servers through a Chrome virtual authenticator, with no physical device",
+      "test": "conformance/passkey-first-browser.mjs",
+      "marker": "WebAuthn.addVirtualAuthenticator",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/passkey.mdx#L389/`passkeyTableFields.id`": [
+    {
+      "label": "Generate the passkey id primary-key column with the same SQL as the other runtime's migration on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"the CLI emits the pinned plugin schema",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/passkey.mdx#L395/`passkeyTableFields.name`": [
+    {
+      "label": "Generate the nullable passkey name column with the same SQL as the other runtime's migration on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"the CLI emits the pinned plugin schema",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/passkey.mdx#L401/`passkeyTableFields.publicKey`": [
+    {
+      "label": "Generate the required passkey publicKey column with the same SQL as the other runtime's migration on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"the CLI emits the pinned plugin schema",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/passkey.mdx#L406/`passkeyTableFields.userId`": [
+    {
+      "label": "Generate the required passkey userId column, its foreign key to user.id and its index with the same SQL as the other runtime's migration on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"the CLI emits the pinned plugin schema",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/passkey.mdx#L413/`passkeyTableFields.credentialID`": [
+    {
+      "label": "Generate the required passkey credentialID column and its index with the same SQL as the other runtime's migration on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"the CLI emits the pinned plugin schema",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/passkey.mdx#L418/`passkeyTableFields.counter`": [
+    {
+      "label": "Generate the required integer passkey counter column with the same SQL as the other runtime's migration on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"the CLI emits the pinned plugin schema",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/passkey.mdx#L423/`passkeyTableFields.deviceType`": [
+    {
+      "label": "Generate the required passkey deviceType column with the same SQL as the other runtime's migration on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"the CLI emits the pinned plugin schema",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/passkey.mdx#L428/`passkeyTableFields.backedUp`": [
+    {
+      "label": "Generate the required boolean passkey backedUp column with the same SQL as the other runtime's migration on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"the CLI emits the pinned plugin schema",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/passkey.mdx#L433/`passkeyTableFields.transports`": [
+    {
+      "label": "Generate the nullable passkey transports column with the same SQL as the other runtime's migration on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"the CLI emits the pinned plugin schema",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/passkey.mdx#L439/`passkeyTableFields.createdAt`": [
+    {
+      "label": "Generate the nullable date passkey createdAt column with the same SQL as the other runtime's migration on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"the CLI emits the pinned plugin schema",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/passkey.mdx#L445/`passkeyTableFields.aaguid`": [
+    {
+      "label": "Generate the nullable passkey aaguid column with the same SQL as the other runtime's migration on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"the CLI emits the pinned plugin schema",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/passkey.mdx#L457/rpID": [
+    {
+      "label": "Return the configured relying-party ID in the sign-in options from both servers",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(login.data.rpId, config.rpID);"
+    }
+  ],
+  "docs/content/docs/plugins/passkey.mdx#L461/rpName": [
+    {
+      "label": "Return the configured relying-party ID and name in the registration options from both servers",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.deepEqual(creation.data.rp, { id: config.rpID, name: config.rpName });",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/passkey.mdx#L463/origin": [
+    {
+      "label": "Refuse an assertion whose client data reports an origin outside the configured list",
+      "test": "adapters/sqlstore/passkey_test.go",
+      "marker": "login(2, \"https://untrusted.example.test\", 401)"
+    },
+    {
+      "label": "Refuse wildcard, foreign, insecure, path-bearing and credential-bearing origins when the plugin is built",
+      "test": "plugins/passkey/passkey_test.go",
+      "marker": "func TestRelyingPartyConfiguration("
+    }
+  ],
+  "docs/content/docs/plugins/passkey.mdx#L509/`userVerification`": [
+    {
+      "label": "Ask for required user verification in the sign-in options when it is configured, on both servers",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(login.data.userVerification, \"required\");"
+    }
+  ],
+  "plugin-symbol/captcha/Provider": [
+    {
+      "label": "Accept the four token provider names recorded in the other runtime's fixture as Provider values, and verify with each",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "func TestProviderContracts("
+    }
+  ],
+  "plugin-symbol/email-otp/EMAIL_OTP_ERROR_CODES": [
+    {
+      "label": "Answer wrong sign-in codes with 400 INVALID_OTP, a code past its attempts with 403 TOO_MANY_ATTEMPTS and an expired code with 400 OTP_EXPIRED over HTTP",
+      "test": "conformance/goapi/database_verification_code_hooks_test.go",
+      "marker": "h.call(\"/sign-in/email-otp\", signInBody(\"stale@example.test\", \"stale-code\"), \"\", 400, \"OTP_EXPIRED\")"
+    }
+  ],
+  "plugin-symbol/email-otp/EmailOTPOptions": [
+    {
+      "label": "Configure storage, generation, resend, lifetime, registration, sign-up delivery, verification override, length and rate-limit settings and observe each one, along with the default attempt budget",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "func TestEmailOTPDeliveryAndProof("
+    },
+    {
+      "label": "Configure address changes with and without current-address confirmation, automatic sign-in after verification and custom hash or cipher transforms",
+      "test": "adapters/sqlstore/emailotp_management_test.go",
+      "marker": "func TestEmailOTPAddressChangeAndTrustedOperations("
+    }
+  ],
+  "plugin-symbol/email-otp/RequiredEmailOTPOptions/sendVerificationOTP": [
+    {
+      "label": "Pass the lowercased address, raw code and sign-in purpose to the sender without returning the code",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "sign-in delivery disclosed data or sent the wrong message",
+      "complete": true
+    },
+    {
+      "label": "Pass the forget-password purpose to the sender for a registered address",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "recovery alias failed to deliver to the current owner"
+    },
+    {
+      "label": "Pass a six-digit email-verification code for a new password account to the sender",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "gated registration or default six-digit mail failed"
+    },
+    {
+      "label": "Pass the change-email purpose and the new address to the sender",
+      "test": "adapters/sqlstore/emailotp_management_test.go",
+      "marker": "one current proof authorized"
+    },
+    {
+      "label": "Return the sender's delivery error from a Go send call",
+      "test": "adapters/sqlstore/emailotp_management_test.go",
+      "marker": "sender failure was hidden"
+    }
+  ],
+  "plugin-symbol/email-otp/RequiredEmailOTPOptions/otpLength": [
+    {
+      "label": "Mail a six-digit code when no length is configured",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "gated registration or default six-digit mail failed",
+      "complete": true
+    },
+    {
+      "label": "Mail an eight-digit code when the length is set to eight",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "default verification override did not deliver configured code length"
+    }
+  ],
+  "plugin-symbol/email-otp/RequiredEmailOTPOptions/expiresIn": [
+    {
+      "label": "Store an eleven-minute expiry when the lifetime is set to eleven minutes",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "configured OTP lifetime was not persisted"
+    }
+  ],
+  "plugin-symbol/email-otp/RequiredEmailOTPOptions/generateOTP": [
+    {
+      "label": "Create a six-digit code when the custom generator returns no code",
+      "test": "adapters/sqlstore/emailotp_management_test.go",
+      "marker": "custom generator fallback did not generate six decimal digits"
+    },
+    {
+      "label": "Mail the code returned by the configured generator",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "sign-in delivery disclosed data or sent the wrong message"
+    }
+  ],
+  "plugin-symbol/email-otp/RequiredEmailOTPOptions/sendVerificationOnSignUp": [
+    {
+      "label": "Mail an email-verification code when a password account signs up with the option on, and verify it before password sign-in",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "gated registration or default six-digit mail failed"
+    },
+    {
+      "label": "Store an email-verification code when an account signs up with the option on, and mail nothing when its create hook declines or fails, without failing sign-up",
+      "test": "conformance/goapi/database_verification_code_hooks_test.go",
+      "marker": "signUp := newCodeHost(t, memory.New(), events, authn.EmailOTPOptions{SendVerificationOnSignUp: true}, nil)"
+    }
+  ],
+  "plugin-symbol/email-otp/RequiredEmailOTPOptions/disableSignUp": [
+    {
+      "label": "Mail nothing when registration is closed and an unknown address asks for a sign-in code",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "disabled registration delivered a code",
+      "complete": true
+    },
+    {
+      "label": "With registration closed, sign in an existing owner and refuse a code for an unknown address with INVALID_OTP",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "registration policy blocked an existing account"
+    }
+  ],
+  "plugin-symbol/email-otp/RequiredEmailOTPOptions/allowedAttempts": [
+    {
+      "label": "Refuse the correct code with TOO_MANY_ATTEMPTS after the default three wrong checks",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "want(first.CheckEmailOTP(ctx, email, delivery.OTP, emailotp.SignIn), \"TOO_MANY_ATTEMPTS\")"
+    },
+    {
+      "label": "Exhaust the attempt budget exactly once under twelve concurrent wrong guesses across two instances",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "retry budget exhausted %d times"
+    }
+  ],
+  "plugin-symbol/email-otp/RequiredEmailOTPOptions/storeOTP": [
+    {
+      "label": "Store a hashed code as its SHA-256 digest with a zero attempt count while mailing the raw code",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "hashed canonical proof mismatch",
+      "complete": true
+    },
+    {
+      "label": "Store an encrypted code without the raw value and keep its attempt count across a reuse resend",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "encrypted resend lost proof or retry count"
+    },
+    {
+      "label": "Read back a default-stored code from Go, refuse to read a custom-hashed one and reuse a custom-encrypted one",
+      "test": "adapters/sqlstore/emailotp_management_test.go",
+      "marker": "custom recoverable resend failed"
+    }
+  ],
+  "plugin-symbol/email-otp/RequiredEmailOTPOptions/resendStrategy": [
+    {
+      "label": "Resend the same encrypted code without resetting its attempt count when reuse is configured",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "encrypted resend lost proof or retry count"
+    },
+    {
+      "label": "Mail a new code on resend when reuse is configured with hashed storage, and refuse the earlier code",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "hashed resend failed to rotate"
+    },
+    {
+      "label": "With verification hooks, a reuse resend stores the code again under a new ID with its attempts, running the create hooks",
+      "test": "conformance/goapi/database_verification_code_hooks_test.go",
+      "marker": "// A reuse resend stores the code again under a new ID, keeping its attempts."
+    }
+  ],
+  "plugin-symbol/email-otp/RequiredEmailOTPOptions/changeEmail": [
+    {
+      "label": "Confirm the current and new addresses and keep the existing user and session after the change",
+      "test": "client/emailotp_test.go",
+      "marker": "changed mailbox login did not retain its session"
+    },
+    {
+      "label": "Without current-address confirmation, request changes without a code and refuse a pending code once the account has moved to another address",
+      "test": "adapters/sqlstore/emailotp_management_test.go",
+      "marker": "proof survived a change of source mailbox"
+    }
+  ],
+  "plugin-symbol/email-otp/RequiredEmailOTPOptions/overrideDefaultEmailVerification": [
+    {
+      "label": "Mail an eight-digit code to a new account's address at sign-up when verification is required and the override is on",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "default verification override did not deliver configured code length"
+    },
+    {
+      "label": "Route a send-verification-email request to the code sender, logging its failed delivery under the email code rule while answering 200",
+      "test": "conformance/goapi/background_tasks_test.go",
+      "marker": "an overridden verification email answered"
+    }
+  ],
+  "plugin-symbol/email-otp/RequiredEmailOTPOptions/rateLimit": [
+    {
+      "label": "Answer the fourth recovery request in a minute with 429 under the default budget",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "default endpoint rate limit was not applied"
+    },
+    {
+      "label": "Answer the second send request with 429 when the budget is set to one",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "custom email OTP rate limit was ignored"
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx": [
+    {
+      "label": "Sign in, verify an address and reset a password with codes mailed to the address",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "func TestEmailOTPDeliveryAndProof(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L58": [
+    {
+      "label": "Mail a sign-in code to the lowercased address from the send route without returning the code in the response",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "sign-in delivery disclosed data or sent the wrong message",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L62/`POST /email-otp/send-verification-otp`": [
+    {
+      "label": "Mail a sign-in code with its purpose from the send route to the lowercased address",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "sign-in delivery disclosed data or sent the wrong message",
+      "complete": true
+    },
+    {
+      "label": "Mail an email-verification code from the send route to a registered address",
+      "test": "conformance/goapi/database_verification_code_hooks_test.go",
+      "marker": "code = h.send(\"ada@example.test\", \"email-verification\")"
+    },
+    {
+      "label": "Send a forget-password code through the Go API and reset the password with the delivered code",
+      "test": "adapters/sqlstore/password_reset_hook_test.go",
+      "marker": "must(a.SendEmailOTP(ctx, email, auth.OTPResetPassword))"
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L68/Parameter `email`": [
+    {
+      "label": "Mail the code to the requested address, lowercased",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "sign-in delivery disclosed data or sent the wrong message",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L72/Parameter `type`": [
+    {
+      "label": "Mail a sign-in code with its purpose from the send route",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "sign-in delivery disclosed data or sent the wrong message",
+      "complete": true
+    },
+    {
+      "label": "Mail an email-verification code from the send route to a registered address",
+      "test": "conformance/goapi/database_verification_code_hooks_test.go",
+      "marker": "code = h.send(\"ada@example.test\", \"email-verification\")"
+    },
+    {
+      "label": "Send a forget-password code through the Go API and reset the password with the delivered code",
+      "test": "adapters/sqlstore/password_reset_hook_test.go",
+      "marker": "must(a.SendEmailOTP(ctx, email, auth.OTPResetPassword))"
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L77": [
+    {
+      "label": "Keep a checked email-verification code usable for the verification that follows",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "successful preflight did not preserve proof"
+    },
+    {
+      "label": "Check a forget-password code over HTTP and reset the password with it afterwards",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "valid OTP preflight failed"
+    },
+    {
+      "label": "Count three wrong checks against a sign-in code so the correct code is then refused with TOO_MANY_ATTEMPTS",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "want(first.CheckEmailOTP(ctx, email, delivery.OTP, emailotp.SignIn), \"TOO_MANY_ATTEMPTS\")"
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L81/`POST /email-otp/check-verification-otp`": [
+    {
+      "label": "Refuse a sign-in code checked under the email-verification purpose",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "first.CheckEmailOTP(ctx, email, delivery.OTP, emailotp.VerifyEmail)",
+      "complete": true
+    },
+    {
+      "label": "Accept a mailed email-verification code on the check route without spending it",
+      "test": "conformance/goapi/database_verification_code_hooks_test.go",
+      "marker": "check(\"ada@example.test\", code, 200,"
+    },
+    {
+      "label": "Accept a forget-password code on the check route and reset the password with it afterwards",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "valid OTP preflight failed"
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L87/Parameter `email`": [
+    {
+      "label": "Accept the code mailed to the given address on the check route",
+      "test": "conformance/goapi/database_verification_code_hooks_test.go",
+      "marker": "check(\"ada@example.test\", code, 200,",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L91/Parameter `type`": [
+    {
+      "label": "Refuse a sign-in code checked under the email-verification purpose",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "first.CheckEmailOTP(ctx, email, delivery.OTP, emailotp.VerifyEmail)",
+      "complete": true
+    },
+    {
+      "label": "Accept a forget-password code on the check route and reset the password with it afterwards",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "valid OTP preflight failed"
+    },
+    {
+      "label": "Keep a checked email-verification code usable for the verification that follows",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "successful preflight did not preserve proof"
+    },
+    {
+      "label": "Count three wrong checks against a sign-in code so the correct code is then refused with TOO_MANY_ATTEMPTS",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "want(first.CheckEmailOTP(ctx, email, delivery.OTP, emailotp.SignIn), \"TOO_MANY_ATTEMPTS\")"
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L95/Parameter `otp`": [
+    {
+      "label": "Refuse a wrong code on the check route with INVALID_OTP and count the attempt",
+      "test": "conformance/goapi/database_verification_code_hooks_test.go",
+      "marker": "check(\"ada@example.test\", \"nope\", 400, \"INVALID_OTP\")",
+      "complete": true
+    },
+    {
+      "label": "Accept a mailed email-verification code on the check route without spending it",
+      "test": "conformance/goapi/database_verification_code_hooks_test.go",
+      "marker": "check(\"ada@example.test\", code, 200,"
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L100": [
+    {
+      "label": "Sign in an unverified password account with a mailed code, mark it verified and remove its password",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "unproven credential remained after sign-in",
+      "complete": true
+    },
+    {
+      "label": "Revoke the existing session of an unverified account that a sign-in code proves",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "unproven session remained after sign-in"
+    },
+    {
+      "label": "Register an unknown address on first code sign-in with one verified account and one session across eight racing requests",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "competing proofs produced"
+    },
+    {
+      "label": "With registration closed, sign in an existing owner and refuse a code for an unknown address",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "registration policy blocked an existing account"
+    },
+    {
+      "label": "Spend invalid registration claims and authenticate returning owners without changing stored fields across four adapters",
+      "test": "adapters/sqlstore/emailotp_user_fields_test.go",
+      "marker": "func TestEmailOTPRegistrationUserFields("
+    },
+    {
+      "label": "Set a new password by email code reset after a sign-in code removed the unproven password",
+      "test": "adapters/memory/emailotp_test.go",
+      "marker": "reset failed to establish a credential"
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L104/`POST /email-otp/send-verification-otp`": [
+    {
+      "label": "Mail a sign-in code with its purpose from the send route to the lowercased address",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "sign-in delivery disclosed data or sent the wrong message",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L110/Parameter `email`": [
+    {
+      "label": "Mail the sign-in code to the requested address, lowercased",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "sign-in delivery disclosed data or sent the wrong message",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L114/Parameter `type`": [
+    {
+      "label": "Mail the code with the sign-in purpose",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "sign-in delivery disclosed data or sent the wrong message",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L121/`POST /sign-in/email-otp`": [
+    {
+      "label": "Create a verified user with the sent name and image and one session when eight sign-ins race with one code",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "competing proofs produced"
+    },
+    {
+      "label": "Keep the stored name when a returning owner signs in with a different name",
+      "test": "adapters/sqlstore/emailotp_user_fields_test.go",
+      "marker": "login.User.Name != \"Registration\""
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L131/Parameter `otp`": [
+    {
+      "label": "Accept a mailed sign-in code once among eight concurrent sign-ins and refuse the rest with INVALID_OTP",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "competing proofs produced",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L135/Parameter `name` (optional)": [
+    {
+      "label": "Keep the stored name when a returning owner signs in with a different name",
+      "test": "adapters/sqlstore/emailotp_user_fields_test.go",
+      "marker": "login.User.Name != \"Registration\"",
+      "complete": true
+    },
+    {
+      "label": "Create a verified user with the sent name and image and one session when eight sign-ins race with one code",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "competing proofs produced"
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L139/Parameter `image` (optional)": [
+    {
+      "label": "Create a verified user with the sent name and image and one session when eight sign-ins race with one code",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "competing proofs produced"
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L152": [
+    {
+      "label": "Mark a password account's address verified when its mailed email-verification code is submitted",
+      "test": "conformance/goapi/database_verification_code_hooks_test.go",
+      "marker": "h.call(\"/email-otp/verify-email\", signInBody(\"ada@example.test\", code), \"\", 200,",
+      "complete": true
+    },
+    {
+      "label": "Verify a newly registered address with the code mailed at sign-up, then allow password sign-in",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "gated verification"
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L156/`POST /email-otp/send-verification-otp`": [
+    {
+      "label": "Mail an email-verification code from the send route to a registered address",
+      "test": "conformance/goapi/database_verification_code_hooks_test.go",
+      "marker": "code = h.send(\"ada@example.test\", \"email-verification\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L162/Parameter `email`": [
+    {
+      "label": "Mail an email-verification code from the send route to the given registered address",
+      "test": "conformance/goapi/database_verification_code_hooks_test.go",
+      "marker": "code = h.send(\"ada@example.test\", \"email-verification\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L166/Parameter `type`": [
+    {
+      "label": "Mail a code under the email-verification purpose from the send route",
+      "test": "conformance/goapi/database_verification_code_hooks_test.go",
+      "marker": "code = h.send(\"ada@example.test\", \"email-verification\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L173/`POST /email-otp/verify-email`": [
+    {
+      "label": "Answer the verify route with the user marked verified for a mailed code",
+      "test": "conformance/goapi/database_verification_code_hooks_test.go",
+      "marker": "h.call(\"/email-otp/verify-email\", signInBody(\"ada@example.test\", code), \"\", 200,",
+      "complete": true
+    },
+    {
+      "label": "Answer an HTTP verification with a null token and no session cookie when automatic sign-in is off",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "verification issued unexpected session"
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L183/Parameter `otp`": [
+    {
+      "label": "Mark the address verified when the mailed code is submitted",
+      "test": "conformance/goapi/database_verification_code_hooks_test.go",
+      "marker": "h.call(\"/email-otp/verify-email\", signInBody(\"ada@example.test\", code), \"\", 200,",
+      "complete": true
+    },
+    {
+      "label": "Refuse a verification code that was already spent with INVALID_OTP",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "reuser.VerifyEmailOTP(ctx, email, firstCode)"
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L188": [
+    {
+      "label": "Keep the code usable after the password policy refuses the new password, then reset with it",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "\"declined-credential\"), \"DECLINED\")"
+    },
+    {
+      "label": "Count a wrong reset code as an attempt without hashing the new password",
+      "test": "conformance/goapi/database_verification_code_hooks_test.go",
+      "marker": "reset(\"ada@example.test\", \"nope\", 400, \"INVALID_OTP\")"
+    },
+    {
+      "label": "Mail a forget-password code through the older recovery route",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "recovery alias failed to deliver to the current owner"
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L192/`POST /email-otp/request-password-reset`": [
+    {
+      "label": "Mail a forget-password code to a registered address from the request route",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "reset did not reach mailbox",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L198/Parameter `email`": [
+    {
+      "label": "Mail a forget-password code to the requested registered address",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "reset did not reach mailbox",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L209/`POST /email-otp/check-verification-otp`": [
+    {
+      "label": "Accept a forget-password code on the check route and reset the password with it afterwards",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "valid OTP preflight failed",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L219/Parameter `type`": [
+    {
+      "label": "Check a code under the forget-password purpose over HTTP",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "valid OTP preflight failed",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L223/Parameter `otp`": [
+    {
+      "label": "Accept the mailed forget-password code on the check route",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "valid OTP preflight failed",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L230/`POST /email-otp/reset-password`": [
+    {
+      "label": "Reset the password over HTTP with a mailed code and sign in with the new password",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "reset credential failed",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/phone-number.mdx#L191/`POST /sign-in/phone-number`": [
+    {
+      "label": "Answer a phone-number password sign-in with only a token and the user, on both servers",
+      "test": "conformance/phone-contract.mjs",
+      "marker": "assert.deepEqual(Object.keys(login.data).sort(),[\"token\",\"user\"]);"
+    }
+  ],
+  "docs/content/docs/plugins/phone-number.mdx#L197/Parameter `phoneNumber`": [
+    {
+      "label": "Sign in by phone number into the account that holds the number after it moved to another user",
+      "test": "adapters/sqlstore/phone_accounts_test.go",
+      "marker": "client.PhoneSignInRequest{PhoneNumber: number, Password: \"the-other-password\"}",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/phone-number.mdx#L201/Parameter `password`": [
+    {
+      "label": "Refuse a phone sign-in with a wrong password as INVALID_PHONE_NUMBER_OR_PASSWORD, then accept the right one",
+      "test": "adapters/sqlstore/phone_accounts_test.go",
+      "marker": "client.PhoneSignInRequest{PhoneNumber: number, Password: \"wrong-password\"}",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/phone-number.mdx#L266/`POST /phone-number/request-password-reset`": [
+    {
+      "label": "Answer a phone reset request with status true and text a six-digit reset code to the number, on both servers",
+      "test": "conformance/phone-contract.mjs",
+      "marker": "requestPasswordReset({phoneNumber:number})).data,{status:true}",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/phone-number.mdx#L272/Parameter `phoneNumber`": [
+    {
+      "label": "Send no reset code to a number that no account holds",
+      "test": "adapters/sqlstore/phone_accounts_test.go",
+      "marker": "t.Fatal(\"reset SMS sent to an unknown number\")",
+      "complete": true
+    },
+    {
+      "label": "Text the reset code to the number the account holds, on both servers",
+      "test": "conformance/phone-contract.mjs",
+      "marker": "requestPasswordReset({phoneNumber:number})).data,{status:true}"
+    }
+  ],
+  "docs/content/docs/plugins/phone-number.mdx#L279/`POST /phone-number/reset-password`": [
+    {
+      "label": "Reset the password with the phone reset code over HTTP, then refuse the spent code as OTP_NOT_FOUND",
+      "test": "adapters/sqlstore/phone_accounts_test.go",
+      "marker": "must(browser.ResetPhonePassword(ctx, number, code, \"correct-phrase-129\"))",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/phone-number.mdx#L285/Parameter `otp`": [
+    {
+      "label": "Refuse a wrong phone reset code with INVALID_OTP",
+      "test": "adapters/sqlstore/phone_accounts_test.go",
+      "marker": "phoneError(t, browser.ResetPhonePassword(ctx, number, \"wrong\", \"correct-phrase-129\"), 400, \"INVALID_OTP\")",
+      "complete": true
+    },
+    {
+      "label": "Reset the password with the right phone reset code",
+      "test": "adapters/sqlstore/phone_accounts_test.go",
+      "marker": "must(browser.ResetPhonePassword(ctx, number, code, \"correct-phrase-129\"))"
+    }
+  ],
+  "docs/content/docs/plugins/phone-number.mdx#L293/Parameter `newPassword`": [
+    {
+      "label": "Sign in with the new password set through phone reset, on both servers",
+      "test": "conformance/phone-contract.mjs",
+      "marker": "const login = await browser.signIn.phoneNumber({phoneNumber:number,password,rememberMe:false});",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/phone-number.mdx#L304": [
+    {
+      "label": "Text six-digit codes by default on both servers",
+      "test": "conformance/phone-contract.mjs",
+      "marker": "assert.match(m.code ?? m.Code, /^[0-9]{6}$/);"
+    }
+  ],
+  "docs/content/docs/plugins/phone-number.mdx#L308": [
+    {
+      "label": "Pass the number and a six-digit verification code to SendOTP",
+      "test": "adapters/sqlstore/phone_test.go",
+      "marker": "t.Fatal(\"invalid SMS delivery\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/phone-number.mdx#L316": [
+    {
+      "label": "Call OnVerification with the verified number and its user once per successful verification",
+      "test": "adapters/sqlstore/phone_accounts_test.go",
+      "marker": "t.Fatalf(\"callback called %d times\", verified.Load())"
+    }
+  ],
+  "docs/content/docs/plugins/phone-number.mdx#L338": [
+    {
+      "label": "Deliver a phone reset code with the password-reset purpose through a sender set for both verification and reset",
+      "test": "adapters/sqlstore/phone_accounts_test.go",
+      "marker": "t.Fatal(\"recovery did not use its own delivery channel\")"
+    }
+  ],
+  "docs/content/docs/plugins/phone-number.mdx#L342": [
+    {
+      "label": "Refuse a number the validator rejects with INVALID_PHONE_NUMBER and text it nothing",
+      "test": "adapters/sqlstore/phone_test.go",
+      "marker": "t.Fatal(\"invalid number was delivered\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/phone-number.mdx#L380": [
+    {
+      "label": "Create the user with the temporary email and name on a number's first verification, and only a session on the next",
+      "test": "conformance/goapi/database_decided_hooks_test.go",
+      "marker": "t.Fatal(\"unexpected phone hooks\", got)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/phone-number.mdx#L384/`getTempEmail`": [
+    {
+      "label": "Give a first-use phone account the email the temporary-email function returns, on both servers",
+      "test": "conformance/phone-contract.mjs",
+      "marker": "assert.equal(quiet.data.user.email,number+\"@phone.test\");",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/phone-number.mdx#L385/`getTempName`": [
+    {
+      "label": "Use the configured name function for a first-use phone account, and the number itself when none is set",
+      "test": "adapters/sqlstore/phone_registration_fields_test.go",
+      "marker": "t.Fatal(\"default phone display name\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/phone-number.mdx#L387": [
+    {
+      "label": "Refuse an unverified number's password sign-in with PHONE_NUMBER_NOT_VERIFIED and text it a verification code",
+      "test": "adapters/sqlstore/phone_accounts_test.go",
+      "marker": "t.Fatal(\"unverified sign-in failed to request proof\")"
+    },
+    {
+      "label": "Send no password reset code to an unverified number",
+      "test": "adapters/sqlstore/phone_accounts_test.go",
+      "marker": "t.Fatal(\"unverified reset leaked a delivery\")"
+    }
+  ],
+  "docs/content/docs/plugins/phone-number.mdx#L401/`phoneNumberUserTableFields.phoneNumber`": [
+    {
+      "label": "Allow users without a phone number and refuse a second user with the same number at the database, on three SQL engines",
+      "test": "adapters/sqlstore/phone_schema_test.go",
+      "marker": "t.Fatal(\"database accepted a second owner for the same phone number\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/phone-number.mdx#L408/`phoneNumberUserTableFields.phoneNumberVerified`": [
+    {
+      "label": "Store and read back an explicit false verification flag on three SQL engines",
+      "test": "adapters/sqlstore/phone_schema_test.go",
+      "marker": "t.Fatal(\"stored false verification value was lost\", err)"
+    }
+  ],
+  "plugin-symbol/passkey/passkey": [
+    {
+      "label": "Register, sign in, list, rename and delete passkeys through the plugin's endpoints on three SQL engines",
+      "test": "adapters/sqlstore/passkey_test.go",
+      "marker": "func TestPasskeySoftwareAuthenticator("
+    }
+  ],
+  "plugin-symbol/passkey/Passkey": [
+    {
+      "label": "Return a registered passkey with its own record ID, the base64url credential ID and the owner's user ID",
+      "test": "adapters/sqlstore/passkey_test.go",
+      "marker": "t.Fatal(\"stored credential identity mismatch\")"
+    }
+  ],
+  "plugin-symbol/passkey/PasskeyOptions/rpID": [
+    {
+      "label": "Return the configured relying-party ID in sign-in options, on both servers",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(login.data.rpId, config.rpID);"
+    }
+  ],
+  "plugin-symbol/passkey/PasskeyOptions/rpName": [
+    {
+      "label": "Return the configured relying-party name and ID in registration options, on both servers",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.deepEqual(creation.data.rp, { id: config.rpID, name: config.rpName });"
+    }
+  ],
+  "plugin-symbol/passkey/PasskeyOptions/authenticatorSelection": [
+    {
+      "label": "Require user verification in sign-in options when configured, on both servers",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(login.data.userVerification, \"required\");"
+    }
+  ],
+  "plugin-symbol/passkey/PasskeyOptions/registration": [
+    {
+      "label": "Enroll passkeys without a session through the registration resolver and post-verification decision, on three SQL engines",
+      "test": "adapters/sqlstore/passkey_first_test.go",
+      "marker": "func TestPasskeyFirstRegistrationAcrossEngines("
+    }
+  ],
+  "plugin-symbol/passkey/PasskeyRegistrationUser": [
+    {
+      "label": "Pass the resolved user's ID and display name to the post-verification callback",
+      "test": "adapters/sqlstore/passkey_first_test.go",
+      "marker": "proof.User.DisplayName != \"New owner\""
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L244/Parameter `password`": [
+    {
+      "label": "Sign in with the new password after resetting it over HTTP with a recovery code",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "t.Fatal(\"reset credential failed\", err)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L251": [
+    {
+      "label": "Move the signed-in account to the new address with the code sent there, keeping its user ID, marking the address verified and releasing the old one",
+      "test": "adapters/sqlstore/emailotp_management_test.go",
+      "marker": "t.Fatal(\"old address still belongs to the account\", err)"
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L272": [
+    {
+      "label": "Send a change-email code to the new address for the signed-in account and accept it to complete the change",
+      "test": "adapters/sqlstore/emailotp_management_test.go",
+      "marker": "t.Fatal(\"destination confirmation failed\", err)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L276/`POST /email-otp/request-email-change`": [
+    {
+      "label": "Refuse an address change request with no session, and send the change code only to the new address of the signed-in account",
+      "test": "adapters/sqlstore/emailotp_management_test.go",
+      "marker": "t.Fatal(\"anonymous address change succeeded\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L282/Parameter `newEmail`": [
+    {
+      "label": "Deliver the change-email code to the newEmail address the Go SDK sent over HTTP",
+      "test": "client/emailotp_test.go",
+      "marker": "if delivery.Type != emailotp.ChangeEmail || delivery.Email != updated {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L286/Parameter `otp` (optional)": [
+    {
+      "label": "Refuse a change request without the current-address code when that check is on, and accept one without it when the check is off",
+      "test": "adapters/sqlstore/emailotp_management_test.go",
+      "marker": "t.Fatal(\"missing current email proof succeeded\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L293/`POST /email-otp/change-email`": [
+    {
+      "label": "Refuse a change code from another signed-in account or after the requesting session is revoked, and accept it from the requester",
+      "test": "adapters/sqlstore/emailotp_management_test.go",
+      "marker": "t.Fatal(\"another account consumed the change code\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L303/Parameter `otp`": [
+    {
+      "label": "Complete the change over HTTP with the code delivered to the new address, through the Go SDK",
+      "test": "client/emailotp_test.go",
+      "marker": "if err = c.ChangeEmailOTP(ctx, updated, delivery.OTP); err != nil {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L308": [
+    {
+      "label": "Send an email-verification code to the current address, present it with the change request, and deliver the change code to the new address through the Go SDK",
+      "test": "client/emailotp_test.go",
+      "marker": "t.Fatal(\"current mailbox verification failed to deliver to new address\")",
+      "complete": true
+    },
+    {
+      "label": "Refuse a wrong current-address code with INVALID_OTP, count it and mail no change code",
+      "test": "conformance/goapi/database_verification_code_hooks_test.go",
+      "marker": "t.Fatal(\"a wrong current code mailed a change code\")"
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L330/`POST /email-otp/send-verification-otp`": [
+    {
+      "label": "Mail the change code once a fresh email-verification code for the current address, sent over the send route, is presented",
+      "test": "conformance/goapi/database_verification_code_hooks_test.go",
+      "marker": "t.Fatal(\"the change code was not mailed\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L336/Parameter `email`": [
+    {
+      "label": "Deliver the code to the lowercased form of the email given in the send request",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "delivery.Email != email || delivery.Type != emailotp.SignIn",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L340/Parameter `type`": [
+    {
+      "label": "Accept a code sent with type email-verification to the current address as the proof for a change request",
+      "test": "client/emailotp_test.go",
+      "marker": "if err = c.RequestEmailChangeOTP(ctx, updated, delivery.OTP); err != nil {"
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L347": [
+    {
+      "label": "Route /send-verification-email through the email code sender when the default verification is overridden",
+      "test": "conformance/goapi/background_tasks_test.go",
+      "marker": "t.Fatalf(\"an overridden verification email answered %d %s; logs %s\", status, body, logs.String())"
+    },
+    {
+      "label": "Mail an email code to a new account on sign-up in place of the verification link when the default is overridden",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "t.Fatal(\"default verification override did not deliver configured code length\", err)"
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L369/`sendVerificationOTP`": [
+    {
+      "label": "Call the sender once per send request with the mailbox, code and sign-in type, without returning the code in the response",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "w.Code != 200 || calls != 1",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L371/`email`": [
+    {
+      "label": "Pass the address of the account that signed up to the sender",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "delivery.Email != other",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L372/`otp`": [
+    {
+      "label": "Sign in through the Go SDK with the code the sender received",
+      "test": "client/emailotp_test.go",
+      "marker": "t.Fatal(\"OTP login\", err)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L373/`type`": [
+    {
+      "label": "Pass the sign-in type to the sender for a sign-in send request",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "delivery.Type != emailotp.SignIn ||",
+      "complete": true
+    },
+    {
+      "label": "Pass the email-verification type to the sender for a sign-up verification code",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "registered.Token != \"\" || delivery.Type != emailotp.VerifyEmail"
+    },
+    {
+      "label": "Pass the forget-password type to the sender for a password reset request",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "t.Fatal(\"reset did not reach mailbox\")"
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L379/`otpLength`": [
+    {
+      "label": "Deliver an eight-digit code when the length is set to 8",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "len(delivery.OTP) != 8",
+      "complete": true
+    },
+    {
+      "label": "Deliver a six-digit code when no length is set",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "|| len(delivery.OTP) != 6 {"
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L381/`expiresIn`": [
+    {
+      "label": "Store an expiry eleven minutes after creation when the lifetime is set to eleven minutes",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "expires.Sub(created) != 11*time.Minute"
+    },
+    {
+      "label": "Refuse a code past its stored expiry with OTP_EXPIRED",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "want(first.CheckEmailOTP(ctx, email, delivery.OTP, emailotp.SignIn), \"OTP_EXPIRED\")"
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L397/`sendVerificationOnSignUp`": [
+    {
+      "label": "Send a verification code on sign-up when enabled and verify the new account with it",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "t.Fatal(\"gated verification\", err)"
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L399/`disableSignUp`": [
+    {
+      "label": "Send no sign-in code to an unknown mailbox when sign-up is disabled",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "closed.SendEmailOTP(ctx, email, emailotp.SignIn); err != nil || calls != 0",
+      "complete": true
+    },
+    {
+      "label": "Refuse sign-in with INVALID_OTP and spend the code for an unknown mailbox when sign-up is disabled",
+      "test": "conformance/goapi/database_verification_code_hooks_test.go",
+      "marker": "closed.call(\"/sign-in/email-otp\", signInBody(\"closed@example.test\", code), \"\", 400, \"INVALID_OTP\")"
+    },
+    {
+      "label": "Sign an existing account in with its code while sign-up is disabled",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "t.Fatal(\"registration policy blocked an existing account\", err)"
+    },
+    {
+      "label": "Create the account for an unknown mailbox from its sign-in code when sign-up is not disabled",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "t.Fatalf(\"competing proofs produced %d sessions, owner=%+v\", winners, owner.User)"
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L401/`generateOTP`": [
+    {
+      "label": "Deliver the code the configured generator returned",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "delivery.OTP != \"000001\"",
+      "complete": true
+    },
+    {
+      "label": "Deliver a six-digit code when no generator is configured",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "len(delivery.OTP) != 6"
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L403/`allowedAttempts`": [
+    {
+      "label": "Refuse the right code with TOO_MANY_ATTEMPTS after three wrong guesses by default, then treat it as invalid",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "want(first.CheckEmailOTP(ctx, email, delivery.OTP, emailotp.SignIn), \"TOO_MANY_ATTEMPTS\")"
+    },
+    {
+      "label": "Refuse sign-in with 403 TOO_MANY_ATTEMPTS after three wrong guesses at the code",
+      "test": "conformance/goapi/database_verification_code_hooks_test.go",
+      "marker": "h.call(\"/sign-in/email-otp\", signInBody(\"count@example.test\", code), \"\", 403, \"TOO_MANY_ATTEMPTS\")"
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L421/`resendStrategy`": [
+    {
+      "label": "Resend the same encrypted code with its attempt count kept when reuse is configured",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "delivery.OTP != firstCode || strings.Contains(state, firstCode)"
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L423/`\"reuse\"`": [
+    {
+      "label": "Mail the same plain code again on a reuse resend",
+      "test": "conformance/goapi/database_verification_code_hooks_test.go",
+      "marker": "if again := reuse.send(\"reuse@example.test\", \"sign-in\"); again != code {"
+    },
+    {
+      "label": "Send a new code on resend when codes are hashed, even with reuse configured",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "if prior == delivery.OTP {"
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L441/`storeOTP`": [
+    {
+      "label": "Store a hashed code as its SHA-256 digest while mailing the raw code",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "base64.RawURLEncoding.EncodeToString(sum[:])+\":0\""
+    },
+    {
+      "label": "Keep an encrypted code out of the stored value",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "strings.Contains(state, firstCode)"
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L449/Custom encryptor": [
+    {
+      "label": "Read back and resend the same code while application encrypt and decrypt functions are configured",
+      "test": "adapters/sqlstore/emailotp_management_test.go",
+      "marker": "*read != firstCode || sent[len(sent)-1].OTP != firstCode"
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L464/Custom hasher": [
+    {
+      "label": "Refuse to read back a code while an application hash function is configured, and accept the code for verification",
+      "test": "adapters/sqlstore/emailotp_management_test.go",
+      "marker": "t.Fatal(\"server recovered a custom-hashed code\")"
+    }
+  ],
+  "plugin-symbol/phone-number/PHONE_NUMBER_ERROR_CODES": [
+    {
+      "label": "Answer with the same phone error codes on both servers for a wrong code, a spent code, a wrong password, a held number and a direct number change",
+      "test": "conformance/phone-contract.mjs",
+      "marker": "\"PHONE_NUMBER_CANNOT_BE_UPDATED\");"
+    }
+  ],
+  "plugin-symbol/phone-number/phoneNumber": [
+    {
+      "label": "Build the plugin with phonenumber.New and run send, verify, reset, password sign-in, linking and profile guards over HTTP",
+      "test": "adapters/sqlstore/phone_accounts_test.go",
+      "marker": "func TestPhoneAccounts(t *testing.T) {"
+    }
+  ],
+  "plugin-symbol/phone-number/PhoneNumberOptions/otpLength": [
+    {
+      "label": "Deliver six-digit codes on both servers when no length is set",
+      "test": "conformance/phone-contract.mjs",
+      "marker": "assert.match(m.code ?? m.Code, /^[0-9]{6}$/);"
+    }
+  ],
+  "docs/content/docs/plugins/phone-number.mdx#L75/`POST /phone-number/send-otp`": [
+    {
+      "label": "Answer a JSON phoneNumber send request with 200 and code sent",
+      "test": "conformance/goapi/database_verification_code_hooks_test.go",
+      "marker": "\"\", 200, \"code sent\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/phone-number.mdx#L81/Parameter `phoneNumber`": [
+    {
+      "label": "Deliver a six-digit verification code to the phoneNumber the Go SDK sent",
+      "test": "adapters/sqlstore/phone_test.go",
+      "marker": "sms.PhoneNumber != number",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/phone-number.mdx#L90/`POST /phone-number/verify`": [
+    {
+      "label": "Answer status true to a JSON verify request with the number and its delivered code",
+      "test": "adapters/sqlstore/phone_code_hooks_test.go",
+      "marker": "verify(\"+15552000001\", code, \"\", \"\", 200,",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/phone-number.mdx#L96/Parameter `phoneNumber`": [
+    {
+      "label": "Mark the number given in the verify request as the user's verified phone number",
+      "test": "adapters/sqlstore/phone_accounts_test.go",
+      "marker": "*result.User.PhoneNumber != number",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/phone-number.mdx#L100/Parameter `code`": [
+    {
+      "label": "Refuse a wrong code with INVALID_OTP and count the guess before the right code verifies",
+      "test": "adapters/sqlstore/phone_code_hooks_test.go",
+      "marker": "verify(\"+15552000001\", \"nope\", \"\", \"\", 400, \"INVALID_OTP\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/phone-number.mdx#L104/Parameter `disableSession` (optional)": [
+    {
+      "label": "Return status true with a null token when disableSession is set, then issue a session when it is omitted",
+      "test": "adapters/sqlstore/phone_accounts_test.go",
+      "marker": "!result.Status || result.Token != nil",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/phone-number.mdx#L109/Parameter `updatePhoneNumber` (optional)": [
+    {
+      "label": "Refuse updatePhoneNumber without a session with 401 USER_NOT_FOUND, and attach the number to the signed-in account when one is present",
+      "test": "adapters/sqlstore/phone_accounts_test.go",
+      "marker": "phoneError(t, err, 401, \"USER_NOT_FOUND\")",
       "complete": true
     }
   ]

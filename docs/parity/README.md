@@ -2,16 +2,16 @@
 
 ## Verification progress
 
-**1,823 of 6,464 inventory entries are fully verified (28.2%).**
+**1,954 of 6,455 inventory entries are fully verified (30.3%).**
 
 | Inventory status | Entries |
 | --- | ---: |
-| Fully verified | 1,823 |
-| Partially verified | 1,354 |
-| No linked test evidence | 3,287 |
-| Not applicable to a Go server | 561 |
+| Fully verified | 1,954 |
+| Partially verified | 1,401 |
+| No linked test evidence | 3,100 |
+| Not applicable to a Go server | 570 |
 
-The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 5,111 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
+The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 5,477 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
 
 Entries that exist only for JavaScript clients, frameworks or runtimes are listed as not applicable, with the reason, and are left out of the totals. Backlog entries stay open on the roadmap but are not scheduled.
 
@@ -75,7 +75,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 
 | Checklist | Checked | Open | Not applicable |
 | --- | ---: | ---: | ---: |
-| [Published package interfaces](packages.md) | 106 | 116 | 43 |
+| [Published package interfaces](packages.md) | 107 | 116 | 43 |
 | [Native Go client, routers and databases](go.md) | 51 | 3 | 0 |
 | [Core API, sign-in providers and CLI](runtime.md) | 559 | 104 | 32 |
 | [Database adapters](adapters.md) | 82 | 49 | 163 |
@@ -96,12 +96,12 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Anonymous](plugins/anonymous.md) | 67 | 12 | 0 |
 | [API keys](plugins/api-key.md) | 114 | 210 | 0 |
 | [Bearer](plugins/bearer.md) | 30 | 0 | 0 |
-| [Captcha](plugins/captcha.md) | 17 | 65 | 0 |
+| [Captcha](plugins/captcha.md) | 146 | 29 | 0 |
 | [Client ID metadata documents](plugins/cimd.md) | 0 | 48 | 0 |
 | [Custom session](plugins/custom-session.md) | 21 | 3 | 0 |
 | [Device authorization](plugins/device-authorization.md) | 22 | 99 | 0 |
 | [Electron](plugins/electron.md) | 0 | 12 | 40 |
-| [Email otp](plugins/email-otp.md) | 46 | 95 | 0 |
+| [Email otp](plugins/email-otp.md) | 242 | 49 | 0 |
 | [Expo](plugins/expo.md) | 0 | 5 | 14 |
 | [Generic OAuth](plugins/generic-oauth.md) | 452 | 151 | 0 |
 | [Have I Been Pwned](plugins/have-i-been-pwned.md) | 46 | 0 | 0 |
@@ -118,8 +118,8 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [One time token](plugins/one-time-token.md) | 76 | 0 | 0 |
 | [OpenAPI](plugins/open-api.md) | 44 | 8 | 5 |
 | [Organization](plugins/organization.md) | 1044 | 73 | 41 |
-| [Passkey](plugins/passkey.md) | 32 | 94 | 0 |
-| [Phone number](plugins/phone-number.md) | 39 | 67 | 0 |
+| [Passkey](plugins/passkey.md) | 106 | 68 | 9 |
+| [Phone number](plugins/phone-number.md) | 136 | 35 | 0 |
 | [SCIM provisioning](plugins/scim.md) | 67 | 257 | 0 |
 | [Sign in with Ethereum](plugins/siwe.md) | 122 | 7 | 0 |
 | [Single sign-on](plugins/sso.md) | 107 | 314 | 0 |
