@@ -50,6 +50,11 @@ func TestCommands(t *testing.T) {
 	if err := runCommand("generate", "--dialect", "invalid"); err == nil {
 		t.Fatal("accepted unsupported dialect")
 	}
+	for _, verb := range []string{"generate", "migrate", "check"} {
+		if err := runCommand(verb); err == nil {
+			t.Fatal(verb, "ran without --dialect")
+		}
+	}
 	t.Setenv("AUTH_DSN", "")
 	if err := runCommand("migrate", "--dialect", "sqlite"); err == nil {
 		t.Fatal("accepted missing DSN")

@@ -110,6 +110,9 @@ func (a *Auth) BootstrapAdmin(ctx context.Context, name, email, password string)
 			// The bootstrap stores no additional user fields.
 			err = errDatabaseHookEdit
 		}
+		if err == nil && (u.AdminUserFields == nil || u.Role != "admin") {
+			err = errDatabaseHookEdit
+		}
 		if err != nil {
 			return User{}, err
 		}

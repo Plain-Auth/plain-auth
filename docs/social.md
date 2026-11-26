@@ -365,7 +365,7 @@ The values are browser input: check them before you act on them, and do not chan
 
 | Field | Meaning |
 | --- | --- |
-| `CallbackURL`, `NewUserURL`, `ErrorURL` | The destinations the start chose. During the callback, `ErrorURL` is where a failure returns: the error page when the start chose none |
+| `CallbackURL`, `NewUserURL`, `ErrorURL` | The destinations the start chose. During the callback of a redirect flow, `ErrorURL` is where a failure returns: the error page when the start chose none. A popup flow posts its failures to the opener instead |
 | `LinkUserID` | The user `/link-social` links the provider account to, or empty for a sign-in |
 | `RequestSignUp` | Whether the start asked to create an account |
 | `ExpiresAt` | When the flow expires, ten minutes after it started |
@@ -398,7 +398,7 @@ opts.Hooks.After = append(opts.Hooks.After, plainauth.EndpointHook{
 })
 ```
 
-Calls merge, and a later value for a key replaces an earlier one. The values are kept as JSON, so numbers come back as `float64`, and a value JSON cannot encode fails the start with a 500. The database strategy stores them as plain JSON in the flow's verification row, so keep secrets out; with `OAuthStateCookie` the whole flow, values included, must fit the sealed cookie. The browser can neither read nor set the values, and a `serverContext` it sends is ignored. An ID-token sign-in keeps none. Behind the OAuth proxy the preview keeps the values with its own flow, and production never receives them. [Flow state tests](../conformance/goapi/oauth_flow_state_test.go) · [OAuth proxy tests](../adapters/sqlstore/oauth_proxy_test.go)
+Calls merge, and a later value for a key replaces an earlier one. The values are kept as JSON, so numbers come back as `float64`, and a value JSON cannot encode fails the start: `/sign-in/social` and `/link-social` answer 500, and `/oauth-popup/start` shows the `popup_sign_in_failed` page and logs the cause. The database strategy stores them as plain JSON in the flow's verification row, so keep secrets out; with `OAuthStateCookie` the whole flow, values included, must fit the sealed cookie. The browser can neither read nor set the values, and a `serverContext` it sends is ignored. An ID-token sign-in keeps none. Behind the OAuth proxy the preview keeps the values with its own flow, and production never receives them. [Flow state tests](../conformance/goapi/oauth_flow_state_test.go) · [OAuth proxy tests](../adapters/sqlstore/oauth_proxy_test.go)
 
 `/link-social` checks its body first, then the caller's session, then the provider, so an anonymous request for an unknown provider answers 401 `UNAUTHORIZED`. A provider subject that is blank, or the placeholder `null` or `undefined`, cannot name an account: an ID-token sign-in or link answers 401 `FAILED_TO_GET_USER_INFO`, and a browser callback receives `unable_to_get_user_info`. [Link contract test](../conformance/goapi/provider_contract_test.go)
 

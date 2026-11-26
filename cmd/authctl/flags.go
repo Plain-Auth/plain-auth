@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -38,10 +39,10 @@ func yesFlag(fs *flag.FlagSet, usage string) *bool {
 }
 
 // writeSchema writes ddl to path, or to a timestamped .sql file inside path
-// when it is a directory, creating missing parent directories. It replaces an
-// existing file only when yes is set.
+// when it is a directory or ends in a separator, creating missing parent
+// directories. It replaces an existing file only when yes is set.
 func writeSchema(path, ddl string, yes bool, now time.Time, out io.Writer) error {
-	if info, err := os.Stat(path); err == nil && info.IsDir() {
+	if info, err := os.Stat(path); err == nil && info.IsDir() || strings.HasSuffix(path, "/") || strings.HasSuffix(path, string(os.PathSeparator)) {
 		path = filepath.Join(path, now.UTC().Format("2006-01-02T15-04-05.000Z")+".sql")
 	}
 	if _, err := os.Stat(path); err == nil && !yes {

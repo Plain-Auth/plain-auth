@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"runtime/debug"
 	"slices"
 	"strings"
 	"testing"
@@ -114,6 +115,14 @@ func TestGenerateOutputFile(t *testing.T) {
 	if got, _ := os.ReadFile(files[0]); string(got) != want {
 		t.Fatal("the timestamped file has the wrong schema")
 	}
+	// A path ending in a separator names a directory, created if missing.
+	fresh := filepath.Join(dir, "fresh") + string(os.PathSeparator)
+	if err := generate("--output", fresh); err != nil {
+		t.Fatal(err)
+	}
+	if files, _ := filepath.Glob(filepath.Join(fresh, "*.sql")); len(files) != 1 {
+		t.Fatal("a new directory output did not get one timestamped file:", files)
+	}
 	failed := filepath.Join(dir, "failed.sql")
 	if err := run(context.Background(), []string{"generate", "--dialect", "oracle", "--output", failed}, io.Discard, io.Discard); err == nil {
 		t.Fatal("an unsupported dialect was accepted")
@@ -161,6 +170,27 @@ func TestInfoCommand(t *testing.T) {
 	}
 	if err := run(context.Background(), []string{"info", "extra"}, io.Discard, io.Discard); err == nil {
 		t.Fatal("info accepted a positional argument")
+	}
+}
+
+// A replaced module keeps its own path in the report, with the replacement's
+// version, or development for a directory.
+func TestInfoReplacedModules(t *testing.T) {
+	r := collectInfo(&debug.BuildInfo{Main: debug.Module{Path: "example.com/host"}, Deps: []*debug.Module{
+		{Path: modulePath, Version: "v1.0.0", Replace: &debug.Module{Path: "example.com/fork", Version: "v1.0.1-fork"}},
+		{Path: "github.com/mattn/go-sqlite3", Version: "v1.14.0", Replace: &debug.Module{Path: "example.com/sqlite3", Version: "v1.14.99"}},
+		{Path: "github.com/jackc/pgx/v5", Version: "v5.0.0", Replace: &debug.Module{Path: "../pgx"}},
+		{Path: "github.com/go-sql-driver/mysql", Version: "v1.9.0"},
+	}})
+	got := map[string]string{}
+	for _, d := range r.Databases {
+		got[d.Driver] = d.Version
+	}
+	if r.Authctl.Version != "v1.0.1-fork" || got["github.com/mattn/go-sqlite3"] != "v1.14.99" || got["github.com/jackc/pgx/v5"] != "(devel)" || got["github.com/go-sql-driver/mysql"] != "v1.9.0" {
+		t.Fatalf("replaced modules were reported as %s and %v", r.Authctl.Version, got)
+	}
+	if collectInfo(nil).Authctl.Version != "development" {
+		t.Fatal("a build without build information did not report development")
 	}
 }
 

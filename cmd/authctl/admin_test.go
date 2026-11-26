@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -176,7 +177,7 @@ func TestCreateAdminOptionsAcrossEngines(t *testing.T) {
 				t.Fatal("a held role was granted again:", err)
 			}
 			out, err = create("--force", "--email", "second@example.test", "--name", "Support", "--role", "support, auditor", "--no-email-verified",
-				"--data", `{"image":"https://cdn.example/a.png","locale":"fr","accountClass":"staff","emailVerified":true,"role":"user","name":"x"}`)
+				"--data", `{"image":"https://cdn.example/a.png","locale":"fr","accountClass":"staff","emailVerified":true,"role":"user","name":"x","email":"other@example.test"}`)
 			if err != nil || !strings.HasSuffix(out, "\nRole: support,auditor\n") {
 				t.Fatal("the configured administrator was not created:", out, err)
 			}
@@ -184,11 +185,27 @@ func TestCreateAdminOptionsAcrossEngines(t *testing.T) {
 			if user.Name != "Support" || user.Role != "support,auditor" || user.EmailVerified || user.Image == nil || *user.Image != "https://cdn.example/a.png" || physical["preferred_locale"] != "fr" || physical["accountClass"] != "staff" {
 				t.Fatalf("the options were not applied: %+v %v", user, physical)
 			}
+			if _, err := store.FindAccountUser(ctx, "other@example.test"); err == nil {
+				t.Fatal("an email key in --data created an account")
+			}
 			if _, err := create("--yes", "--email", "second@example.test", "--role", "viewer"); err == nil || !strings.Contains(err.Error(), "already uses that email") {
 				t.Fatal("an existing email was accepted:", err)
 			}
 			if _, err := create("-y", "--email", "third@example.test", "--role", "auditor"); !errors.Is(err, authn.ErrAdminExists) || count() != 2 {
 				t.Fatal("a held role was granted again:", err)
+			}
+			for i, flag := range []string{"-y", "--yes"} {
+				email, role := fmt.Sprintf("yes%d@example.test", i), fmt.Sprintf("viewer%d", i)
+				if out, err := create(flag, "--email", email, "--role", role); err != nil || !strings.HasSuffix(out, "\nEmail: "+email+"\nRole: "+role+"\n") || count() != 3+i {
+					t.Fatal(flag, "did not create the administrator:", out, err)
+				}
+			}
+			// Roles compare exactly, also where the database folds case.
+			if _, err := create("--force", "--email", "case@example.test", "--role", "Admin"); err != nil {
+				t.Fatal("a role differing only in case was refused:", err)
+			}
+			if _, err := create("--force", "--email", "again@example.test", "--role", "admin"); !errors.Is(err, authn.ErrAdminExists) {
+				t.Fatal("a held role was granted again beside a case variant:", err)
 			}
 		})
 	}

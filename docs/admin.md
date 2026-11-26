@@ -46,7 +46,7 @@ Role: admin
 | `--force`, `-y`, `--yes` | Create the administrator even though the database already has users |
 | `-c DIR`, `--cwd DIR` | Run in another directory |
 
-The command refuses when an account already holds one of the requested roles, so concurrent attempts create at most one holder of each role, and `--role user` is refused once ordinary accounts exist. Grant further roles through the HTTP API, which requires an operator with `user:set-role`. The command runs outside your application, so no hooks, role map, `ValidateUserInfo` or custom password hasher apply; call `auth.BootstrapAdmin` on your configured instance for those. Applications that provision accounts directly can call `plainauth.BootstrapAdminAccount` with a trusted store and the same options. [Command tests](../cmd/authctl/admin_test.go)
+The command refuses when an account already holds one of the requested roles, so concurrent attempts create at most one holder of each role, and `--role user` is refused once ordinary accounts exist. Grant further roles through the HTTP API, which requires an operator with `user:set-role`. The command runs outside your application, so no hooks, `ValidateUserInfo` or custom password hasher apply; call `auth.BootstrapAdmin` on your configured instance for those. It grants only the `admin` role with an unverified email and takes no roles, image or field values. Neither path checks the roles against your role map. Applications that provision accounts directly can call `plainauth.BootstrapAdminAccount` with a trusted store and the same options. [Command tests](../cmd/authctl/admin_test.go)
 
 ## Permissions
 

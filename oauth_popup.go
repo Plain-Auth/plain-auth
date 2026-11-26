@@ -116,12 +116,14 @@ func startOAuthPopup(c EndpointContext, messageType string) (any, error) {
 		}
 	}
 	target, state, err := a.beginBrowserOAuth(c.ResponseHeader, r, p, body, flow, params)
-	if err != nil {
-		return failure("popup_sign_in_failed", "Failed to start the OAuth flow.")
+	var value string
+	if err == nil {
+		raw, _ := json.Marshal(opener)
+		value, err = a.sealRecord("oauth-popup:"+state, raw)
 	}
-	raw, _ := json.Marshal(opener)
-	value, err := a.sealRecord("oauth-popup:"+state, raw)
 	if err != nil {
+		// The page tells the opener only that the start failed; the cause is logged.
+		a.Logger().ErrorContext(r.Context(), "OAuth popup failed to start", "error", err)
 		return failure("popup_sign_in_failed", "Failed to start the OAuth flow.")
 	}
 	c.ResponseHeader.Add("Set-Cookie", a.oauthCookie(popupwire.MarkerCookie, value, 600).String())

@@ -19,8 +19,9 @@ type oauthStateKey struct{}
 // binding. Do not modify its maps.
 type OAuthState struct {
 	// CallbackURL, NewUserURL and ErrorURL are the destinations the start
-	// chose. During the callback, ErrorURL is where a failure returns: the
-	// error page when the start chose none.
+	// chose. During the callback of a redirect flow, ErrorURL is where a
+	// failure returns: the error page when the start chose none. A popup flow
+	// posts its failures to the opener instead.
 	CallbackURL, NewUserURL, ErrorURL string
 	// LinkUserID is the user /link-social links the provider account to, or
 	// "" for a sign-in.

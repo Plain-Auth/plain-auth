@@ -394,6 +394,10 @@ func (a *Auth) beforeUserCreate(ctx context.Context, user User, fields map[strin
 		return user, fields, nil
 	}
 	rec := UserRecord{User: user, Fields: cloneFields(fields)}
+	// The hook gets its own copies of the pointed-to fields, so an edit in
+	// place shows up as a difference below.
+	rec.User.PhoneNumberFields, rec.User.UsernameFields, rec.User.AdminUserFields = clonePtr(user.PhoneNumberFields), clonePtr(user.UsernameFields), clonePtr(user.AdminUserFields)
+	rec.User.LastLoginMethod, rec.User.IsAnonymous, rec.User.TwoFactorEnabled = clonePtr(user.LastLoginMethod), clonePtr(user.IsAnonymous), clonePtr(user.TwoFactorEnabled)
 	if err := runBefore(ctx, a, chain, &rec); err != nil {
 		return user, fields, err
 	}
@@ -409,6 +413,14 @@ func (a *Auth) beforeUserCreate(ctx context.Context, user User, fields map[strin
 		return user, fields, &APIError{400, "INVALID_EMAIL", "Invalid email"}
 	}
 	return edited, rec.Fields, nil
+}
+
+func clonePtr[T any](p *T) *T {
+	if p == nil {
+		return nil
+	}
+	c := *p
+	return &c
 }
 
 // serverInput returns the caller's additional field input without the

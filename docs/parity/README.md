@@ -2,12 +2,12 @@
 
 ## Verification progress
 
-**1,299 of 6,485 inventory entries are fully verified (20.0%).**
+**1,297 of 6,485 inventory entries are fully verified (20.0%).**
 
 | Inventory status | Entries |
 | --- | ---: |
-| Fully verified | 1,299 |
-| Partially verified | 1,047 |
+| Fully verified | 1,297 |
+| Partially verified | 1,049 |
 | No linked test evidence | 4,139 |
 | Not applicable to a Go server | 540 |
 
@@ -77,7 +77,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | --- | ---: | ---: | ---: |
 | [Published package interfaces](packages.md) | 104 | 116 | 43 |
 | [Native Go client, routers and databases](go.md) | 51 | 3 | 0 |
-| [Core API, sign-in providers and CLI](runtime.md) | 296 | 197 | 29 |
+| [Core API, sign-in providers and CLI](runtime.md) | 294 | 199 | 29 |
 | [Database adapters](adapters.md) | 73 | 53 | 163 |
 | [Authentication](authentication.md) | 128 | 366 | 0 |
 | [Core concepts](concepts.md) | 808 | 262 | 1 |

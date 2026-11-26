@@ -84,7 +84,9 @@ func (s *Store) CreateFirstAdminWithFields(ctx context.Context, user authn.User,
 	if identifier != lock {
 		return errors.New("sqlstore: bootstrap lock unavailable")
 	}
-	rows, err := tx.QueryContext(ctx, s.bind(`SELECT DISTINCT "role" FROM "user" WHERE "role" IS NOT NULL`))
+	// Every role is read: DISTINCT would fold "Admin" and "admin" together
+	// under a case-insensitive collation, and the comparison is exact.
+	rows, err := tx.QueryContext(ctx, s.bind(`SELECT "role" FROM "user" WHERE "role" IS NOT NULL`))
 	if err != nil {
 		return err
 	}

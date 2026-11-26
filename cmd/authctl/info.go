@@ -59,7 +59,8 @@ func printInfo(args []string, out, errOut io.Writer) error {
 	if fs.NArg() != 0 {
 		return errors.New("info takes no positional arguments")
 	}
-	r := collectInfo()
+	build, _ := debug.ReadBuildInfo()
+	r := collectInfo(build)
 	var report bytes.Buffer
 	if asJSON {
 		enc := json.NewEncoder(&report)
@@ -84,24 +85,31 @@ func printInfo(args []string, out, errOut io.Writer) error {
 	return nil
 }
 
-func collectInfo() infoReport {
+// collectInfo builds the report from build, which may be nil.
+func collectInfo(build *debug.BuildInfo) infoReport {
 	var r infoReport
 	r.Authctl.Version = "development"
 	r.Go.Version = runtime.Version()
 	r.System.Platform, r.System.Arch, r.System.CPUCount = runtime.GOOS, runtime.GOARCH, runtime.NumCPU()
 	r.SchemaProfiles = schema.Profiles()
 	versions := map[string]string{}
-	if build, ok := debug.ReadBuildInfo(); ok {
+	if build != nil {
 		// Built as a tool of a host module, the main module is the host's,
 		// so the version comes from the dependency entry.
 		if build.Main.Path == modulePath {
 			versions[modulePath] = build.Main.Version
 		}
+		// A replaced module keeps its own path, with the replacement's
+		// version: "(devel)" for a directory.
 		for _, d := range build.Deps {
+			v := d.Version
 			if d.Replace != nil {
-				d = d.Replace
+				v = d.Replace.Version
+				if v == "" {
+					v = "(devel)"
+				}
 			}
-			versions[d.Path] = d.Version
+			versions[d.Path] = v
 		}
 		if v := versions[modulePath]; v != "" && v != "(devel)" {
 			r.Authctl.Version = v

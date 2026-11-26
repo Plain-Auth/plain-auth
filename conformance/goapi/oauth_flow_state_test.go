@@ -200,7 +200,7 @@ func TestOAuthFlowState(t *testing.T) {
 			server := map[string]any{"tenant": "acme", "plan": "pro", "seats": float64(3)}
 
 			landing := signIn("/sign-in/social", `{"provider":"local","callbackURL":"/done","newUserCallbackURL":"/welcome","requestSignUp":true,"disableRedirect":true,`+
-				`"serverContext":{"tenant":"evil"},"additionalData":{"invitedBy":"user-123","serverContext":{"tenant":"evil"}}}`)
+				`"serverContext":{"role":"admin"},"additionalData":{"invitedBy":"user-123","serverContext":{"role":"admin"}}}`)
 			if landing != "/welcome" {
 				t.Fatal("the sign-up landed at", landing)
 			}
@@ -246,7 +246,7 @@ func TestOAuthFlowState(t *testing.T) {
 
 			// Without a hook, a serverContext the browser sends is ignored.
 			addContext.Store(false)
-			if landing := signIn("/sign-in/social", `{"provider":"local","callbackURL":"/done","disableRedirect":true,"serverContext":{"tenant":"evil"}}`); landing != "/done" {
+			if landing := signIn("/sign-in/social", `{"provider":"local","callbackURL":"/done","disableRedirect":true,"serverContext":{"role":"admin"},"additionalData":{"serverContext":{"role":"admin"}}}`); landing != "/done" {
 				t.Fatal("the sign-in landed at", landing)
 			}
 			for where, state := range views() {
