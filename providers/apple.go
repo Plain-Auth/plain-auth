@@ -68,7 +68,7 @@ func appleProvider(id, secret string, keys oidc.KeySet, client *http.Client, nat
 		nativeVerifier := oidc.NewVerifier(issuer, keys, &oidc.Config{SkipClientIDCheck: true, SupportedSigningAlgs: []string{"RS256"}})
 		audiences := slices.Clone(nativeAudiences)
 		p.VerifyIDToken = func(ctx context.Context, raw, nonce string) (authn.OAuthProfile, time.Time, error) {
-			return resolveSignedToken(ctx, nativeVerifier, rules, audiences, raw, nonce, "")
+			return resolveSignedToken(ctx, nativeVerifier, rules, audiences, raw, nonce, "", true)
 		}
 	}
 	p.Config.Scopes = []string{"email", "name"}

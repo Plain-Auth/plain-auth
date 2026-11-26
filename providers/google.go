@@ -81,7 +81,7 @@ func google(id, secret string, keys oidc.KeySet, client *http.Client, more ...st
 		// IDs; the code exchange still checks ClientID only.
 		direct := oidc.NewVerifier("https://accounts.google.com", keys, &oidc.Config{SkipClientIDCheck: true, SkipIssuerCheck: true, SupportedSigningAlgs: []string{"RS256"}})
 		p.VerifyIDToken = func(ctx context.Context, raw, nonce string) (authn.OAuthProfile, time.Time, error) {
-			return resolveSignedToken(ctx, direct, rules, ids, raw, nonce, "")
+			return resolveSignedToken(ctx, direct, rules, ids, raw, nonce, "", true)
 		}
 	}
 	return p
@@ -101,7 +101,10 @@ func clientIDs(id string, more []string) []string {
 
 type idTokenRules struct {
 	allowHashedNonce bool
-	profile          func(*oidc.IDToken) (authn.OAuthProfile, error)
+	// optionalCodeNonce skips the nonce check on the code exchange, for a
+	// provider whose authorization request sends none.
+	optionalCodeNonce bool
+	profile           func(*oidc.IDToken) (authn.OAuthProfile, error)
 	// issuers, when set, are the accepted issuers for a verifier that skips
 	// its own issuer check.
 	issuers []string
@@ -127,7 +130,7 @@ func standardProfile(token *oidc.IDToken) (authn.OAuthProfile, error) {
 	return authn.OAuthProfile{Subject: token.Subject, Name: c.Name, Email: c.Email, EmailVerified: verifiedFlag(c.Verified), Image: c.Picture}, nil
 }
 
-func resolveSignedToken(ctx context.Context, verifier *oidc.IDTokenVerifier, rules idTokenRules, audiences []string, raw, nonce, access string) (authn.OAuthProfile, time.Time, error) {
+func resolveSignedToken(ctx context.Context, verifier *oidc.IDTokenVerifier, rules idTokenRules, audiences []string, raw, nonce, access string, requireNonce bool) (authn.OAuthProfile, time.Time, error) {
 	var profile authn.OAuthProfile
 	token, err := verifier.Verify(ctx, raw)
 	if err != nil {
@@ -141,7 +144,7 @@ func resolveSignedToken(ctx context.Context, verifier *oidc.IDTokenVerifier, rul
 		sum := sha256.Sum256([]byte(nonce))
 		nonceOK = subtle.ConstantTimeCompare([]byte(token.Nonce), []byte(hex.EncodeToString(sum[:]))) == 1
 	}
-	if nonce == "" || !nonceOK {
+	if requireNonce && (nonce == "" || !nonceOK) {
 		return profile, time.Time{}, errors.New("OpenID Connect nonce mismatch")
 	}
 	now := time.Now()
@@ -183,11 +186,11 @@ func signedProvider(id, secret string, endpoint oauth2.Endpoint, verifier *oidc.
 		HTTPClient: client,
 		Resolve: func(ctx context.Context, t *oauth2.Token, nonce string) (authn.OAuthProfile, error) {
 			raw, _ := t.Extra("id_token").(string)
-			profile, _, err := resolveSignedToken(ctx, verifier, rules, audiences, raw, nonce, t.AccessToken)
+			profile, _, err := resolveSignedToken(ctx, verifier, rules, audiences, raw, nonce, t.AccessToken, !rules.optionalCodeNonce)
 			return profile, err
 		},
 		VerifyIDToken: func(ctx context.Context, raw, nonce string) (authn.OAuthProfile, time.Time, error) {
-			return resolveSignedToken(ctx, verifier, rules, audiences, raw, nonce, "")
+			return resolveSignedToken(ctx, verifier, rules, audiences, raw, nonce, "", true)
 		},
 	}
 }

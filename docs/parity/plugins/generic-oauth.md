@@ -37,7 +37,7 @@
       - [x] With profile override off, a returning sign-in through either server keeps the mapped user fields stored at registration ([test](../../../conformance/social-user-fields.mjs#L110))
   - [ ] `genericOAuth`
     - [x] A provider built from OAuthProvider with its own authorization, token and user-info endpoints signs in through /sign-in/social and the shared /callback route with PKCE and a nonce ([test](../../../conformance/goapi/oauth_test.go#L21))
-    - [x] OpenIDConnect discovers an issuer's endpoints and signing keys, and the resulting provider accepts a direct ID-token sign-in and an explicit link ([test](../../../providers/oidc_test.go#L22))
+    - [x] OpenIDConnect discovers an issuer's endpoints and signing keys, and the resulting provider accepts a direct ID-token sign-in and an explicit link ([test](../../../providers/oidc_test.go#L23))
   - [ ] `Auth0Options`
     - [ ] `domain`
       - [x] Build the Auth0 preset from a bare mixed-case tenant domain, discover its endpoints at that host and complete a verified sign-in ([test](../../../providers/enterprise_oidc_test.go#L23))
@@ -389,9 +389,9 @@
       - [x] Store the subject each profile preset reads from its id or sub field as the linked account ID ([test](../../../providers/profile_presets_test.go#L154))
     - [ ] `discoveryUrl`
       - [x] Read the authorization, token, key and end-session endpoints from issuer discovery, sign in with a verified ID token and reject another issuer's token ([test](../../../providers/enterprise_oidc_test.go#L23))
-      - [x] Accept a direct ID token verified against discovered keys once, and reject a reused token or a mismatched nonce ([test](../../../providers/oidc_test.go#L22))
-    - [x] `requireIdTokenVerification` ([test](../../../providers/oidc_test.go#L128))
-      - [x] OpenIDConnect refuses discovery without signing keys, with insecure keys, without or with another issuer, or without a token endpoint, and fetches no keys; there is no skip-and-retry mode, so ID tokens are always verified ([test](../../../providers/oidc_test.go#L128))
+      - [x] Accept a direct ID token verified against discovered keys once, and reject a reused token or a mismatched nonce ([test](../../../providers/oidc_test.go#L23))
+    - [x] `requireIdTokenVerification` ([test](../../../providers/oidc_test.go#L129))
+      - [x] OpenIDConnect refuses discovery without signing keys, with insecure keys, without or with another issuer, or without a token endpoint, and fetches no keys; there is no skip-and-retry mode, so ID tokens are always verified ([test](../../../providers/oidc_test.go#L129))
     - [x] `authorizationUrl` ([test](../../../conformance/goapi/oauth_test.go#L30))
       - [x] Send the browser to the configured authorization endpoint with an S256 code challenge and nonce ([test](../../../conformance/goapi/oauth_test.go#L30))
       - [x] Send the browser to the authorization endpoint read from enterprise issuer discovery ([test](../../../providers/enterprise_oidc_test.go#L94))
@@ -453,7 +453,8 @@
     - [ ] `authentication`
       - [x] Send client credentials in a Basic header or in the token form, as each catalog provider is configured ([test](../../../providers/catalog_test.go#L59))
       - [x] HTTP Basic client authentication without a secret is refused when the instance is built ([test](../../../conformance/goapi/oauth_token_auth_test.go#L238))
-    - [ ] `discoveryHeaders`
+    - [x] `discoveryHeaders` ([test](../../../providers/oidc_test.go#L165))
+      - [x] DiscoveryHeaders reach the discovery request and signing keys on the issuer's origin, not the token endpoint or keys on another origin; an invalid header fails before any request (deviation: discovery follows no redirects, even within the origin) ([test](../../../providers/oidc_test.go#L165))
     - [x] `authorizationHeaders` ([test](../../../conformance/goapi/oauth_token_requests_test.go#L53))
       - [x] TokenHeaders reach the code exchange and the refresh at the token endpoint's origin, not profile requests, and never replace a header the request sets such as Basic authentication (deviation: the library's own headers win); New refuses invalid headers and ExchangeCode or Refresh ([test](../../../conformance/goapi/oauth_token_requests_test.go#L53))
     - [x] `overrideUserInfo` ([test](../../../conformance/social-user-fields.mjs#L145))
@@ -461,7 +462,8 @@
     - [x] `requireEmailVerification` ([test](../../../conformance/social-user-fields.mjs#L200))
       - [x] Withhold sessions for unverified social accounts, honor mail delivery settings and accept confirmation by either server ([test](../../../conformance/social-user-fields.mjs#L200))
     - [ ] `allowIdpInitiated`
-    - [ ] `disableIdTokenNonceBinding`
+    - [x] `disableIdTokenNonceBinding` ([test](../../../providers/oidc_test.go#L165))
+      - [x] DisableNonceBinding sends no nonce on browser sign-in and accepts an ID token without one, while the default refuses it (deviation: a directly submitted ID token still needs its nonce) ([test](../../../providers/oidc_test.go#L165))
   - [ ] `GenericOAuthOptions`
     - [ ] `config`
       - [x] Register three hand-configured providers in one SocialProviders map and apply each one's own sign-up and ID-token settings ([test](../../../conformance/goapi/oauth_signup_test.go#L54))
@@ -484,8 +486,9 @@
         - [x] Add a configured authorization parameter (prompt) to every sign-in and link authorization URL ([test](../../../conformance/goapi/provider_contract_test.go#L67))
       - [x] Provider requires extra token parameters ([test](../../../conformance/goapi/oauth_token_requests_test.go#L53))
         - [x] A provider that needs extra token parameters gets them through TokenParams on the code exchange and RefreshParams on each refresh ([test](../../../conformance/goapi/oauth_token_requests_test.go#L53))
-      - [ ] Provider requires custom HTTP headers
+      - [x] Provider requires custom HTTP headers ([test](../../../providers/oidc_test.go#L165))
         - [x] Token endpoint headers through TokenHeaders; discovery headers are still missing ([test](../../../conformance/goapi/oauth_token_requests_test.go#L53))
+        - [x] A provider that needs custom headers gets them on discovery and same-origin signing keys through DiscoveryHeaders, and on token requests through TokenHeaders ([test](../../../providers/oidc_test.go#L165))
       - [ ] Provider does not support OIDC discovery
         - [x] Sign in through a provider configured with explicit authorization and token endpoints and its own profile function ([test](../../../conformance/goapi/oauth_test.go#L21))
       - [ ] Provider uses a non-standard immutable user identifier
@@ -497,7 +500,7 @@
       - [x] Start a hand-configured provider's sign-in, return to the callback URL with a session, and refuse an unbound or reused callback ([test](../../../conformance/goapi/oauth_test.go#L21))
       - [x] Keep the browser's additionalData with the flow and hand it to the callback's provider functions, validation and hooks, without reserved names ([test](../../../conformance/goapi/oauth_additional_data_test.go#L27))
     - [ ] Sign In with an ID Token
-      - [x] Sign in and link with a discovered provider's signed ID token, and refuse a reused token or a nonce mismatch ([test](../../../providers/oidc_test.go#L22))
+      - [x] Sign in and link with a discovered provider's signed ID token, and refuse a reused token or a nonce mismatch ([test](../../../providers/oidc_test.go#L23))
       - [x] Answer USER_EMAIL_NOT_FOUND for a verified ID token without an email and INVALID_TOKEN for a refused one, without a session ([test](../../../conformance/goapi/provider_contract_test.go#L70))
     - [ ] Link Account
       - [x] Link a provider through /link-social from a live session, and fail the link when that session was revoked or signed out ([test](../../../adapters/sqlstore/oauth_link_session_test.go#L22))
@@ -520,10 +523,11 @@
       - [ ] discoveryUrl
         - [x] Discover authorization, token and signing-key endpoints at startup and sign in with the discovered issuer, default scopes, nonce and PKCE ([test](../../../providers/enterprise_oidc_test.go#L95))
         - [x] Reject an ID token signed for another issuer by a discovered provider ([test](../../../providers/enterprise_oidc_test.go#L116))
-        - [x] Reject a discovered provider's ID token whose nonce does not match ([test](../../../providers/oidc_test.go#L121))
-      - [x] requireIdTokenVerification ([test](../../../providers/oidc_test.go#L128))
-        - [x] Discovery that cannot verify ID tokens is refused when the provider is built ([test](../../../providers/oidc_test.go#L128))
-      - [ ] disableIdTokenNonceBinding
+        - [x] Reject a discovered provider's ID token whose nonce does not match ([test](../../../providers/oidc_test.go#L122))
+      - [x] requireIdTokenVerification ([test](../../../providers/oidc_test.go#L129))
+        - [x] Discovery that cannot verify ID tokens is refused when the provider is built ([test](../../../providers/oidc_test.go#L129))
+      - [x] disableIdTokenNonceBinding ([test](../../../providers/oidc_test.go#L165))
+        - [x] DisableNonceBinding sends no nonce on browser sign-in and accepts an ID token without one, while the default refuses it (deviation: a directly submitted ID token still needs its nonce) ([test](../../../providers/oidc_test.go#L165))
       - [ ] authorizationUrl
         - [x] Send a hand-configured provider's sign-in to its configured authorization endpoint with state, nonce and an S256 challenge ([test](../../../conformance/goapi/oauth_test.go#L30))
       - [ ] tokenUrl
@@ -566,7 +570,7 @@
         - [x] Exchange WeChat codes with a GET request carrying appid and secret through the provider's own exchange function ([test](../../../providers/catalog_test.go#L66))
       - [ ] getUserInfo
         - [x] Sign in with the profile a hand-configured provider's own profile function reads from its user-info endpoint ([test](../../../conformance/goapi/oauth_test.go#L177))
-        - [x] Sign in and link with a discovered provider's signed ID token, and refuse a reused token or a nonce mismatch ([test](../../../providers/oidc_test.go#L22))
+        - [x] Sign in and link with a discovered provider's signed ID token, and refuse a reused token or a nonce mismatch ([test](../../../providers/oidc_test.go#L23))
       - [ ] mapProfileToUser
         - [x] Store provider-mapped additional user fields at social registration, ignore undeclared and server-owned values, and keep a returning user's fields ([test](../../../adapters/sqlstore/oauth_user_fields_test.go#L112))
       - [ ] authorizationUrlParams
@@ -583,7 +587,8 @@
       - [ ] authentication
         - [x] Send client credentials in a Basic header or in the token form, as each catalog provider is configured ([test](../../../providers/catalog_test.go#L59))
         - [x] HTTP Basic client authentication without a secret is refused when the instance is built ([test](../../../conformance/goapi/oauth_token_auth_test.go#L238))
-      - [ ] discoveryHeaders
+      - [x] discoveryHeaders ([test](../../../providers/oidc_test.go#L165))
+        - [x] DiscoveryHeaders reach the discovery request and signing keys on the issuer's origin, not the token endpoint or keys on another origin; an invalid header fails before any request (deviation: discovery follows no redirects, even within the origin) ([test](../../../providers/oidc_test.go#L165))
       - [x] authorizationHeaders ([test](../../../conformance/goapi/oauth_token_requests_test.go#L53))
         - [x] TokenHeaders reach the code exchange and the refresh at the token endpoint's origin, not profile requests, and never replace a header the request sets such as Basic authentication (deviation: the library's own headers win); New refuses invalid headers and ExchangeCode or Refresh ([test](../../../conformance/goapi/oauth_token_requests_test.go#L53))
       - [x] overrideUserInfo ([test](../../../conformance/social-user-fields.mjs#L145))

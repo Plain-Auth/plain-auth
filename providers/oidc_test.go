@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -153,5 +154,126 @@ func TestOpenIDConnectRefusesUnverifiableDiscovery(t *testing.T) {
 			t.Fatalf("%s: OpenIDConnect returned %v after %d key requests", tc.name, err, keys)
 		}
 		issuer.Close()
+	}
+}
+
+// DiscoveryHeaders reach the discovery request and signing keys on the
+// issuer's origin, never the token endpoint or keys elsewhere; discovery
+// follows no redirects, and an invalid header fails before any request. With
+// DisableNonceBinding a browser sign-in sends no nonce and accepts an ID
+// token without one, while a directly submitted token still needs its nonce.
+func TestOpenIDConnectWithOptions(t *testing.T) {
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	jwks := map[string]any{"keys": []any{map[string]string{"kty": "RSA", "use": "sig", "alg": "RS256", "kid": "test", "n": base64.RawURLEncoding.EncodeToString(key.N.Bytes()), "e": base64.RawURLEncoding.EncodeToString(big.NewInt(int64(key.E)).Bytes())}}}
+	var mu sync.Mutex
+	seen := map[string][]string{}
+	record := func(name string, r *http.Request) {
+		mu.Lock()
+		defer mu.Unlock()
+		seen[name] = append(seen[name], r.Header.Get("Epic-Client-ID"))
+	}
+	headersAt := func(name string) []string {
+		mu.Lock()
+		defer mu.Unlock()
+		out := seen[name]
+		delete(seen, name)
+		return out
+	}
+	otherKeys := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		record("other keys", r)
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(jwks)
+	}))
+	defer otherKeys.Close()
+	var issuer *httptest.Server
+	keysURI := ""
+	issuer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		record(r.URL.Path, r)
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/.well-known/openid-configuration":
+			jwksURI := issuer.URL + "/keys"
+			if keysURI != "" {
+				jwksURI = keysURI
+			}
+			_ = json.NewEncoder(w).Encode(map[string]any{"issuer": issuer.URL, "authorization_endpoint": issuer.URL + "/authorize", "token_endpoint": issuer.URL + "/token", "jwks_uri": jwksURI, "id_token_signing_alg_values_supported": []string{"RS256"}})
+		case "/moved/.well-known/openid-configuration":
+			http.Redirect(w, r, issuer.URL+"/final/.well-known/openid-configuration", http.StatusFound)
+		case "/final/.well-known/openid-configuration":
+			_ = json.NewEncoder(w).Encode(map[string]any{"issuer": issuer.URL + "/moved", "authorization_endpoint": issuer.URL + "/authorize", "token_endpoint": issuer.URL + "/token", "jwks_uri": issuer.URL + "/keys", "id_token_signing_alg_values_supported": []string{"RS256"}})
+		case "/keys":
+			_ = json.NewEncoder(w).Encode(jwks)
+		case "/token":
+			_ = json.NewEncoder(w).Encode(map[string]any{"access_token": "access", "token_type": "Bearer", "id_token": signedClaims(t, key, issuer.URL, "subject", "", map[string]any{"email": "person@example.org", "email_verified": true})})
+		}
+	}))
+	defer issuer.Close()
+	headers := http.Header{"epic-client-id": {"epic"}}
+	p, err := OpenIDConnectWithOptions(context.Background(), OpenIDConnectOptions{Issuer: issuer.URL, ClientID: "client", ClientSecret: "secret", DiscoveryHeaders: headers, DisableNonceBinding: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	f := runBrowserFlow(t, "work", p)
+	if to := f.callback.Header().Get("Location"); to != "/done" || f.authorize.Query().Has("nonce") {
+		t.Fatal("the sign-in without nonce binding landed at", to, "after authorizing with", f.authorize.Query())
+	}
+	if got := headersAt("/.well-known/openid-configuration"); len(got) != 1 || got[0] != "epic" {
+		t.Fatal("discovery sent", got)
+	}
+	if got := headersAt("/keys"); len(got) == 0 || got[0] != "epic" {
+		t.Fatal("the same-origin keys request sent", got)
+	}
+	if got := headersAt("/token"); len(got) != 1 || got[0] != "" {
+		t.Fatal("the token request sent", got)
+	}
+	direct := func(p auth.OAuthProvider, tokenNonce, nonce string) error {
+		_, _, err := p.VerifyIDToken(context.Background(), signedClaims(t, key, issuer.URL, "subject", tokenNonce, map[string]any{"email": "person@example.org", "email_verified": true}), nonce)
+		return err
+	}
+	if direct(p, "", "") == nil || direct(p, "n", "n") != nil {
+		t.Fatal("a directly submitted token does not need its nonce")
+	}
+
+	bound, err := OpenIDConnect(context.Background(), issuer.URL, "client", "secret")
+	if err != nil {
+		t.Fatal(err)
+	}
+	f = runBrowserFlow(t, "work", bound)
+	if to := f.callback.Header().Get("Location"); !strings.HasPrefix(to, "/oops?error=unable_to_get_user_info") || f.authorize.Query().Get("nonce") == "" {
+		t.Fatal("a token without the nonce was accepted:", to)
+	}
+	if got := headersAt("/.well-known/openid-configuration"); len(got) != 1 || got[0] != "" {
+		t.Fatal("discovery without headers sent", got)
+	}
+
+	keysURI = otherKeys.URL + "/keys"
+	elsewhere, err := OpenIDConnectWithOptions(context.Background(), OpenIDConnectOptions{Issuer: issuer.URL, ClientID: "client", DiscoveryHeaders: headers})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if direct(elsewhere, "n", "n") != nil {
+		t.Fatal("keys on another origin could not verify a token")
+	}
+	if got := headersAt("other keys"); len(got) == 0 || got[0] != "" {
+		t.Fatal("keys on another origin got", got)
+	}
+	keysURI = ""
+
+	if _, err := OpenIDConnectWithOptions(context.Background(), OpenIDConnectOptions{Issuer: issuer.URL + "/moved", ClientID: "client", DiscoveryHeaders: headers}); err == nil {
+		t.Fatal("discovery followed a redirect")
+	}
+	mu.Lock()
+	seen = map[string][]string{}
+	mu.Unlock()
+	if _, err := OpenIDConnectWithOptions(context.Background(), OpenIDConnectOptions{Issuer: issuer.URL, ClientID: "client", DiscoveryHeaders: http.Header{"Bad Name": {"x"}}}); err == nil {
+		t.Fatal("an invalid discovery header was accepted")
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if len(seen) != 0 {
+		t.Fatal("a refused configuration still made requests:", seen)
 	}
 }

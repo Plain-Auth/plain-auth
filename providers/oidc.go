@@ -9,6 +9,7 @@ import (
 	"time"
 
 	authn "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/internal/httporigin"
 	"github.com/coreos/go-oidc/v3/oidc"
 	"golang.org/x/oauth2"
 )
@@ -17,16 +18,41 @@ import (
 // signing keys. Register the result under a stable SocialProviders name.
 // Its ID tokens must contain a subject, an email address and a matching nonce.
 func OpenIDConnect(ctx context.Context, issuer, clientID, clientSecret string) (authn.OAuthProvider, error) {
+	return OpenIDConnectWithOptions(ctx, OpenIDConnectOptions{Issuer: issuer, ClientID: clientID, ClientSecret: clientSecret})
+}
+
+// OpenIDConnectOptions configures OpenIDConnectWithOptions.
+type OpenIDConnectOptions struct {
+	Issuer, ClientID, ClientSecret string
+	// DiscoveryHeaders are sent with the discovery request, and with signing
+	// key requests to the issuer's origin, such as Epic's Epic-Client-ID.
+	// Discovery follows no redirects.
+	DiscoveryHeaders http.Header
+	// DisableNonceBinding sends no nonce on browser sign-in and accepts an
+	// ID token without one, for a provider that does not echo it. That
+	// removes ID token replay protection from browser sign-in; a directly
+	// submitted ID token still needs its nonce.
+	DisableNonceBinding bool
+}
+
+// OpenIDConnectWithOptions is OpenIDConnect with discovery headers and
+// optional nonce binding.
+func OpenIDConnectWithOptions(ctx context.Context, o OpenIDConnectOptions) (authn.OAuthProvider, error) {
 	var zero authn.OAuthProvider
-	if !secureEndpoint(issuer) || clientID == "" {
+	issuerURL, err := url.Parse(o.Issuer)
+	if err != nil || !secureEndpoint(o.Issuer) || o.ClientID == "" {
 		return zero, errors.New("invalid OpenID Connect issuer or client ID")
+	}
+	headers, err := httporigin.Headers(o.DiscoveryHeaders)
+	if err != nil {
+		return zero, errors.New("OpenID Connect discovery headers: " + err.Error())
 	}
 	client, _ := ctx.Value(oauth2.HTTPClient).(*http.Client)
 	if client == nil {
 		client = &http.Client{Timeout: 15 * time.Second}
 	}
-	discoveryCtx := oidc.ClientContext(ctx, noRedirects(client))
-	discovered, err := oidc.NewProvider(discoveryCtx, issuer)
+	discovery := httporigin.WithHeaders(noRedirects(client), httporigin.Canonical(issuerURL), headers)
+	discovered, err := oidc.NewProvider(oidc.ClientContext(ctx, discovery), o.Issuer)
 	if err != nil {
 		return zero, err
 	}
@@ -41,8 +67,9 @@ func OpenIDConnect(ctx context.Context, issuer, clientID, clientSecret string) (
 	if !secureEndpoint(meta.Keys) || !secureEndpoint(endpoint.AuthURL) || !secureEndpoint(endpoint.TokenURL) {
 		return zero, errors.New("invalid endpoints in OpenID Connect discovery")
 	}
-	verifier := discovered.VerifierContext(oidc.ClientContext(context.Background(), noRedirects(client)), &oidc.Config{ClientID: clientID})
-	provider := oidcProvider(clientID, clientSecret, endpoint, verifier, client)
+	verifier := discovered.VerifierContext(oidc.ClientContext(context.Background(), discovery), &oidc.Config{ClientID: o.ClientID})
+	provider := signedProvider(o.ClientID, o.ClientSecret, endpoint, verifier, client, idTokenRules{profile: standardProfile, optionalCodeNonce: o.DisableNonceBinding})
+	provider.OmitNonce = o.DisableNonceBinding
 	if secureEndpoint(meta.Logout) {
 		provider.EndSessionEndpoint = meta.Logout
 	}

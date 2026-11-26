@@ -30553,6 +30553,12 @@
       "test": "conformance/goapi/oauth_token_requests_test.go",
       "marker": "func TestOAuthTokenParamsAndHeaders(t *testing.T) {",
       "complete": false
+    },
+    {
+      "label": "A provider that needs custom headers gets them on discovery and same-origin signing keys through DiscoveryHeaders, and on token requests through TokenHeaders",
+      "test": "providers/oidc_test.go",
+      "marker": "func TestOpenIDConnectWithOptions(t *testing.T) {",
+      "complete": true
     }
   ],
   "plugin-symbol/generic-oauth/GenericOAuthConfig/refreshTokenParams": [
@@ -30584,6 +30590,38 @@
       "label": "UserInfoURL reads a hand-configured provider's profile from that endpoint with the access token, or from a token-endpoint ID token naming a subject and an email; a numeric id becomes the subject, the whole profile is the account data, a profile without an id, an error status or no email fails the sign-in, and New refuses an insecure endpoint or one alongside Resolve",
       "test": "conformance/goapi/oauth_userinfo_url_test.go",
       "marker": "func TestOAuthUserInfoURL(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/generic-oauth/GenericOAuthConfig/discoveryHeaders": [
+    {
+      "label": "DiscoveryHeaders reach the discovery request and signing keys on the issuer's origin, not the token endpoint or keys on another origin; an invalid header fails before any request (deviation: discovery follows no redirects, even within the origin)",
+      "test": "providers/oidc_test.go",
+      "marker": "func TestOpenIDConnectWithOptions(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/generic-oauth.mdx#L392/discoveryHeaders": [
+    {
+      "label": "DiscoveryHeaders reach the discovery request and signing keys on the issuer's origin, not the token endpoint or keys on another origin; an invalid header fails before any request (deviation: discovery follows no redirects, even within the origin)",
+      "test": "providers/oidc_test.go",
+      "marker": "func TestOpenIDConnectWithOptions(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/generic-oauth/GenericOAuthConfig/disableIdTokenNonceBinding": [
+    {
+      "label": "DisableNonceBinding sends no nonce on browser sign-in and accepts an ID token without one, while the default refuses it (deviation: a directly submitted ID token still needs its nonce)",
+      "test": "providers/oidc_test.go",
+      "marker": "func TestOpenIDConnectWithOptions(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/generic-oauth.mdx#L256/disableIdTokenNonceBinding": [
+    {
+      "label": "DisableNonceBinding sends no nonce on browser sign-in and accepts an ID token without one, while the default refuses it (deviation: a directly submitted ID token still needs its nonce)",
+      "test": "providers/oidc_test.go",
+      "marker": "func TestOpenIDConnectWithOptions(t *testing.T) {",
       "complete": true
     }
   ]

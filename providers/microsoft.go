@@ -140,7 +140,7 @@ func microsoftProvider(id, secret, tenant string, o MicrosoftOptions, keys oidc.
 		// IDs; the code exchange still checks the client ID only.
 		direct := oidc.NewVerifier(base+"/v2.0", keys, &oidc.Config{SkipClientIDCheck: true, SupportedSigningAlgs: []string{"RS256"}, SkipIssuerCheck: multi})
 		p.VerifyIDToken = func(ctx context.Context, raw, nonce string) (authn.OAuthProfile, time.Time, error) {
-			return resolveSignedToken(ctx, direct, idTokenRules{profile: mapProfile}, ids, raw, nonce, "")
+			return resolveSignedToken(ctx, direct, idTokenRules{profile: mapProfile}, ids, raw, nonce, "", true)
 		}
 	}
 	graph := microsoftGraph(authority)

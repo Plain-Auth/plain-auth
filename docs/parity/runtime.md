@@ -53,7 +53,7 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
     - [x] Read configured user fields under their logical names and keep hidden storage values out of session views ([test](../../adapters/sqlstore/user_fields_test.go#L47))
     - [x] Renew the session in its sliding window, defer or disable renewal by option, query or browser-only login, and clear revoked or expired sessions ([test](../../session_refresh_test.go#L48))
   - [ ] `linkSocialAccount` (`POST /link-social`)
-    - [x] Explicitly link a verified OIDC identity to the signed-in user ([test](../../providers/oidc_test.go#L22))
+    - [x] Explicitly link a verified OIDC identity to the signed-in user ([test](../../providers/oidc_test.go#L23))
     - [x] Apply extra scopes, login hints and consent parameters per request, and reject reserved OAuth fields ([test](../../conformance/social-signup.mjs#L39))
     - [x] ValidateUserInfo refuses an explicit link with a 403 and leaves the identity unlinked ([test](../../conformance/goapi/user_validation_test.go#L338))
     - [x] /link-social checks the body, then the session (401 UNAUTHORIZED), then the provider (404 PROVIDER_NOT_FOUND); a browser link answers {url, redirect} with a Location unless disableRedirect is set; an ID-token link the provider refuses, without an email or with an empty subject answers INVALID_TOKEN, USER_EMAIL_NOT_FOUND or FAILED_TO_GET_USER_INFO and links nothing. Unlike the reference, the ID token's nonce is required ([test](../../conformance/goapi/provider_contract_test.go#L164))
