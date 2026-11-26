@@ -22,7 +22,7 @@ The packages above live under the module's `schema`, `adapters/sqlstore` and `pl
 
 An authenticated browser sends JSON to these endpoints. All paths are relative to the auth mount.
 
-1. POST `/two-factor/enable` with the current `password`. The response contains a `totpURI` for the authenticator and ten `backupCodes` by default. Offer the codes for private storage during setup.
+1. POST `/two-factor/enable` with the current `password`. The response is `{"method":"totp","totpURI":…,"backupCodes":[…]}`, with ten backup codes by default. For an account without a second factor, the factor stays off, so password sign-in is not challenged, until step 2 succeeds. Offer the codes for private storage during setup.
 2. POST `/two-factor/verify-totp` with the six-digit `code` as a string, preserving leading zeroes. On success the account becomes enrolled. The server replaces its sessions and sets a fresh cookie for the current browser.
 3. The next successful password check at `/sign-in/email` returns `{"twoFactorRedirect":true,"twoFactorMethods":["totp"]}`. The browser receives a signed challenge cookie. Submit the authenticator code to `/two-factor/verify-totp`, or submit one backup code to `/two-factor/verify-backup-code`. Success consumes the challenge and creates the authenticated session in one transaction.
 
@@ -64,7 +64,7 @@ plugin := twofactor.New(twofactor.Options{
 })
 ```
 
-1. An authenticated account enrolls with `POST /two-factor/enable` and `{"method":"otp","password":"…"}`. Enrolling replaces the current session.
+1. An authenticated account enrolls with `POST /two-factor/enable` and `{"method":"otp","password":"…"}`. Enrolling ends the account's sessions and starts a new one for the caller; another runtime ends only the current one. The answer is `{"method":"otp"}`. Without `OTP.Send` the route answers `OTP_NOT_CONFIGURED` after the password check and changes nothing.
 2. A subsequent password sign-in returns a challenge and the available methods. The client calls `POST /two-factor/send-otp` with an empty JSON object to deliver a new code for that challenge. Sending another code replaces the previous one. The body may carry a boolean `trustDevice`, which is checked and otherwise ignored; the browser is remembered only when the `/two-factor/verify-otp` request sends `trustDevice`.
 3. Submit the code to `POST /two-factor/verify-otp` as `{"code":"012345","trustDevice":false}`. The server consumes the proof and challenge as it creates the session. An active signed-in session may also request a code for itself.
 

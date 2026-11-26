@@ -3,6 +3,7 @@ package sqlstore
 import (
 	"context"
 	"crypto/rand"
+	"database/sql"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -132,10 +133,121 @@ func TestFactorManagementPasswords(t *testing.T) {
 		h.answer(strict, "two-factor/get-totp-uri", map[string]any{"password": owner.input.Password}, 200, "", owner.session)
 
 		// The plugin-wide switch also lets the passwordless account disable its factor without a password.
-		h.answer(wide, "two-factor/disable", none, 200, "", session)
+		disabled := h.request(wide, "two-factor/disable", none, 200, session)
+		if strings.TrimSpace(disabled.Body.String()) != `{"status":true}` {
+			t.Fatal("passwordless disable without a password did not answer status true", disabled.Body)
+		}
 		var left int
 		if err := h.store.db.QueryRowContext(t.Context(), h.store.bind(`SELECT count(*) FROM "twoFactor" WHERE "userId"=?`), id).Scan(&left); err != nil || left != 0 {
 			t.Fatal("passwordless disable kept the factor", left, err)
+		}
+		var flag sql.NullBool
+		if err := h.store.db.QueryRowContext(t.Context(), h.store.bind(`SELECT "twoFactorEnabled" FROM "user" WHERE "id"=?`), id).Scan(&flag); err != nil || flag.Bool {
+			t.Fatal("passwordless disable left the factor enabled", err)
+		}
+		replaced := h.cookie(disabled, "session_token")
+		if s, err := wide.GetSession(t.Context(), http.Header{"Cookie": {replaced.Name + "=" + replaced.Value}}); err != nil || s == nil || s.User.ID != id {
+			t.Fatal("passwordless disable did not give the caller a new session", err)
+		}
+		if s, err := wide.GetSession(t.Context(), http.Header{"Cookie": {session.Name + "=" + session.Value}}); err != nil || s != nil {
+			t.Fatal("passwordless disable kept the session that asked for it", err)
+		}
+	})
+}
+
+// Authenticator enrollment answers exactly its method, URI and backup codes
+// and leaves the factor off, so a password sign-in is not challenged until
+// the first code is verified.
+func TestAuthenticatorEnrollmentWaitsForVerification(t *testing.T) {
+	withFactorDatabases(t, twofactor.Options{}, func(h *factorHarness) {
+		t := h.t
+		ctx := t.Context()
+		const password = "private-fixture-credential"
+		email := strings.ToLower(rand.Text()) + "@example.test"
+		reg, err := h.first.SignUpEmail(ctx, auth.SignUpInput{Email: email, Password: password, Name: "Mailbox"}, auth.RequestMeta{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		owner := h.first.SessionCookie(reg.Token, true)
+		w := h.request(h.first, "two-factor/enable", map[string]string{"password": password}, 200, owner)
+		var keys map[string]json.RawMessage
+		var setup struct {
+			Method, TOTPURI string
+			BackupCodes     []string
+		}
+		if json.Unmarshal(w.Body.Bytes(), &keys) != nil || json.Unmarshal(w.Body.Bytes(), &setup) != nil || len(keys) != 3 || setup.Method != "totp" || !strings.HasPrefix(setup.TOTPURI, "otpauth://totp/") || len(setup.BackupCodes) != 10 {
+			t.Fatal("authenticator enrollment did not answer method totp with its URI and backup codes alone", w.Body)
+		}
+		login := func(a *auth.Auth) struct {
+			Token             string
+			TwoFactorRedirect bool
+			TwoFactorMethods  []string
+		} {
+			var got struct {
+				Token             string
+				TwoFactorRedirect bool
+				TwoFactorMethods  []string
+			}
+			_ = json.Unmarshal(h.request(a, "sign-in/email", map[string]string{"email": email, "password": password}, 200).Body.Bytes(), &got)
+			return got
+		}
+		if between := login(h.second); between.TwoFactorRedirect || between.Token == "" {
+			t.Fatal("a sign-in between enrollment and verification was challenged", between)
+		}
+		var on sql.NullBool
+		if err := h.store.db.QueryRowContext(ctx, h.store.bind(`SELECT "twoFactorEnabled" FROM "user" WHERE "id"=?`), reg.User.ID).Scan(&on); err != nil || on.Bool {
+			t.Fatal("enrollment turned the factor on before its code was verified", err)
+		}
+		uri, err := url.Parse(setup.TOTPURI)
+		if err != nil {
+			t.Fatal(err)
+		}
+		code, err := totp.GenerateCode(uri.Query().Get("secret"), time.Now())
+		if err != nil {
+			t.Fatal(err)
+		}
+		h.request(h.first, "two-factor/verify-totp", map[string]string{"code": code}, 200, owner)
+		if after := login(h.second); !after.TwoFactorRedirect || after.Token != "" || len(after.TwoFactorMethods) != 1 || after.TwoFactorMethods[0] != "totp" {
+			t.Fatal("the sign-in after verification was not challenged with totp", after)
+		}
+	})
+}
+
+// Delivered-code enrollment checks the password, then refuses without a
+// sender and changes nothing; with a sender it answers exactly its method and
+// challenges the next sign-in with otp.
+func TestDeliveredEnrollmentMethod(t *testing.T) {
+	withFactorDatabases(t, twofactor.Options{}, func(h *factorHarness) {
+		t := h.t
+		ctx := t.Context()
+		const password = "private-fixture-credential"
+		email := strings.ToLower(rand.Text()) + "@example.test"
+		reg, err := h.first.SignUpEmail(ctx, auth.SignUpInput{Email: email, Password: password, Name: "Mailbox"}, auth.RequestMeta{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		owner := h.first.SessionCookie(reg.Token, true)
+		h.answer(h.first, "two-factor/enable", map[string]string{"method": "otp", "password": "not-the-credential"}, 400, "INVALID_PASSWORD", owner)
+		if w := h.request(h.first, "two-factor/enable", map[string]string{"method": "otp", "password": password}, 400, owner); !strings.Contains(w.Body.String(), `"code":"OTP_NOT_CONFIGURED","message":"OTP is not available"`) {
+			t.Fatal("method otp without a sender was not refused with OTP_NOT_CONFIGURED", w.Body)
+		}
+		var on sql.NullBool
+		var rows int
+		if err := h.store.db.QueryRowContext(ctx, h.store.bind(`SELECT "twoFactorEnabled" FROM "user" WHERE "id"=?`), reg.User.ID).Scan(&on); err != nil || on.Bool {
+			t.Fatal("a refused delivered enrollment turned the factor on", err)
+		}
+		if err := h.store.db.QueryRowContext(ctx, h.store.bind(`SELECT count(*) FROM "twoFactor" WHERE "userId"=?`), reg.User.ID).Scan(&rows); err != nil || rows != 0 {
+			t.Fatal("a refused delivered enrollment stored a factor record", rows, err)
+		}
+		if s, err := h.second.GetSession(ctx, http.Header{"Cookie": {owner.Name + "=" + owner.Value}}); err != nil || s == nil {
+			t.Fatal("a refused delivered enrollment ended the session", err)
+		}
+		mailer := h.instance(twofactor.Options{OTP: twofactor.OTPOptions{Send: func(context.Context, twofactor.OTPMessage) error { return nil }}})
+		if w := h.request(mailer, "two-factor/enable", map[string]string{"method": "otp", "password": password}, 200, owner); strings.TrimSpace(w.Body.String()) != `{"method":"otp"}` {
+			t.Fatal("delivered enrollment did not answer exactly method otp", w.Body)
+		}
+		if login := h.request(mailer, "sign-in/email", map[string]string{"email": email, "password": password}, 200); !strings.Contains(login.Body.String(), `"twoFactorMethods":["otp"]`) {
+			t.Fatal("delivered enrollment did not challenge the next sign-in with otp", login.Body)
 		}
 	})
 }

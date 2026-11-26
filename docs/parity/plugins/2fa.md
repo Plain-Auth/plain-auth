@@ -37,17 +37,17 @@
     - [x] `amount` ([test](../../../adapters/sqlstore/twofactor_test.go#L216))
       - [x] Generate the configured four-code recovery set ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L196))
       - [x] Regenerate ten backup codes when no amount is configured ([test](../../../adapters/sqlstore/twofactor_test.go#L216))
-    - [x] `length` ([test](../../../adapters/sqlstore/twofactor_options_test.go#L181))
+    - [x] `length` ([test](../../../adapters/sqlstore/twofactor_options_test.go#L293))
       - [x] Generate twelve random characters per code and format the recovery codes ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L196))
-      - [x] Generate codes of five random characters, a hyphen and five more when no length is set, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/twofactor_options_test.go#L181))
+      - [x] Generate codes of five random characters, a hyphen and five more when no length is set, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/twofactor_options_test.go#L293))
     - [ ] `customBackupCodesGenerate`
       - [x] Use the supplied recovery-code generator for enrollment ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L276))
     - [ ] `storeBackupCodes`
       - [x] Read application-coded recovery material and round-trip a custom backup cipher ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L280))
       - [x] Store enrollment backup codes encrypted by default, so the stored column does not contain the first code ([test](../../../adapters/sqlstore/twofactor_test.go#L137))
       - [x] Store plain backup codes as the JSON list of the issued codes ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L210))
-    - [x] `allowPasswordless` ([test](../../../adapters/sqlstore/twofactor_options_test.go#L99))
-      - [x] Let a passwordless account replace its backup codes without a password when the backup-code switch is on, even with the plugin-wide switch off; answer VALIDATION_ERROR when it is off, even with the plugin-wide switch on; and still require the password of an account that has one ([test](../../../adapters/sqlstore/twofactor_options_test.go#L99))
+    - [x] `allowPasswordless` ([test](../../../adapters/sqlstore/twofactor_options_test.go#L100))
+      - [x] Let a passwordless account replace its backup codes without a password when the backup-code switch is on, even with the plugin-wide switch off; answer VALIDATION_ERROR when it is off, even with the plugin-wide switch on; and still require the password of an account that has one ([test](../../../adapters/sqlstore/twofactor_options_test.go#L100))
   - [x] `backupCode2fa` ([test](../../../adapters/sqlstore/twofactor_errors_test.go#L111))
     - [x] Refuse backup-code proofs and listing without codes with BACKUP_CODES_NOT_ENABLED, generation without an authenticator or with a wrong password, and answer wrong or unreadable codes with INVALID_BACKUP_CODE, on three SQL engines ([test](../../../adapters/sqlstore/twofactor_errors_test.go#L111))
     - [x] Refuse /two-factor/generate-backup-codes for an account without an authenticator with TWO_FACTOR_NOT_ENABLED ([test](../../../adapters/sqlstore/twofactor_errors_test.go#L110))
@@ -84,9 +84,9 @@
     - [x] `period` ([test](../../../twofactor_settings_test.go#L47))
       - [x] Persist the configured two-minute lifetime and reject an expired delivered proof ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L79))
       - [x] Return a delivered code that is active at once and expires three minutes after it is sent when no period is configured ([test](../../../twofactor_settings_test.go#L47))
-    - [x] `digits` ([test](../../../adapters/sqlstore/twofactor_options_test.go#L201))
+    - [x] `digits` ([test](../../../adapters/sqlstore/twofactor_options_test.go#L313))
       - [x] Deliver an eight-digit decimal code privately to the correct user ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L65))
-      - [x] Deliver a six-digit decimal code that completes the sign-in when no digit count is set, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/twofactor_options_test.go#L201))
+      - [x] Deliver a six-digit decimal code that completes the sign-in when no digit count is set, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/twofactor_options_test.go#L313))
     - [ ] `sendOTP`
       - [x] Call the sender outside the database lock once the code is stored, and keep the code valid when the sender fails ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L347))
     - [x] `allowedAttempts` ([test](../../../twofactor_settings_test.go#L98))
@@ -122,14 +122,14 @@
       - [x] Accept a six-digit, 30-second code from a standard generator under the default settings ([test](../../../adapters/sqlstore/twofactor_test.go#L131))
       - [x] Verify a code an external generator computed with the configured 45-second period and eight digits ([test](../../../adapters/sqlstore/twofactor_import_test.go#L84))
     - `backupCodes` — *not applicable: TypeScript type field*
-    - [x] `allowPasswordless` ([test](../../../adapters/sqlstore/twofactor_options_test.go#L99))
-      - [x] Return the provisioning URI to a passwordless account without a password when the authenticator switch is on, even with the plugin-wide switch off; answer VALIDATION_ERROR when it is off, even with the plugin-wide switch on; and still require the password of an account that has one ([test](../../../adapters/sqlstore/twofactor_options_test.go#L99))
-    - [x] `disable` ([test](../../../adapters/sqlstore/twofactor_options_test.go#L248))
+    - [x] `allowPasswordless` ([test](../../../adapters/sqlstore/twofactor_options_test.go#L100))
+      - [x] Return the provisioning URI to a passwordless account without a password when the authenticator switch is on, even with the plugin-wide switch off; answer VALIDATION_ERROR when it is off, even with the plugin-wide switch on; and still require the password of an account that has one ([test](../../../adapters/sqlstore/twofactor_options_test.go#L100))
+    - [x] `disable` ([test](../../../adapters/sqlstore/twofactor_options_test.go#L360))
       - [x] Reject trusted code generation on a host that disabled authenticator support ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L296))
-      - [x] With authenticators disabled, answer TOTP_NOT_CONFIGURED to authenticator enrollment, URI reads and sign-in codes, right or wrong, without counting them, leave totp out of twoFactorMethods and still accept a backup code ([test](../../../adapters/sqlstore/twofactor_options_test.go#L248))
+      - [x] With authenticators disabled, answer TOTP_NOT_CONFIGURED to authenticator enrollment, URI reads and sign-in codes, right or wrong, without counting them, leave totp out of twoFactorMethods and still accept a backup code ([test](../../../adapters/sqlstore/twofactor_options_test.go#L360))
   - [ ] `totp2fa`
-    - [x] With authenticators disabled, check the verify-totp body and then answer TOTP_NOT_CONFIGURED before reading a session, challenge, factor or lockout ([test](../../../adapters/sqlstore/twofactor_options_test.go#L363))
-    - [x] Accept enrollment and sign-in codes from the configured 45-second period before or after the current one, and refuse codes two periods away ([test](../../../adapters/sqlstore/twofactor_options_test.go#L325))
+    - [x] With authenticators disabled, check the verify-totp body and then answer TOTP_NOT_CONFIGURED before reading a session, challenge, factor or lockout ([test](../../../adapters/sqlstore/twofactor_options_test.go#L475))
+    - [x] Accept enrollment and sign-in codes from the configured 45-second period before or after the current one, and refuse codes two periods away ([test](../../../adapters/sqlstore/twofactor_options_test.go#L437))
     - [x] Answer verify-totp without an authenticator with TOTP_NOT_ENABLED ([test](../../../adapters/sqlstore/twofactor_errors_test.go#L109))
     - [x] Answer a sign-in code for an authenticator awaiting confirmation with TOTP_NOT_ENABLED ([test](../../../adapters/sqlstore/twofactor_errors_test.go#L151))
   - [ ] `TwoFactorOptions`
@@ -145,23 +145,23 @@
     - [x] `backupCodeOptions` ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L210))
       - [x] Read plain and custom-encoded backup codes under configurable generation options ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L280))
       - [x] Configure four twelve-character codes stored plain, find the stored column holding the JSON list of the issued codes, and use a custom generator and cipher ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L210))
-      - [x] Generate codes of five characters, a hyphen and five more under default options ([test](../../../adapters/sqlstore/twofactor_options_test.go#L181))
-      - [x] Let the backup-code switch override the plugin-wide passwordless switch for regeneration ([test](../../../adapters/sqlstore/twofactor_options_test.go#L99))
+      - [x] Generate codes of five characters, a hyphen and five more under default options ([test](../../../adapters/sqlstore/twofactor_options_test.go#L293))
+      - [x] Let the backup-code switch override the plugin-wide passwordless switch for regeneration ([test](../../../adapters/sqlstore/twofactor_options_test.go#L100))
       - [x] Store backup codes encrypted when no storage mode is set, so the stored column does not contain the first code ([test](../../../adapters/sqlstore/twofactor_test.go#L137))
       - [x] Return ten backup codes at enrollment when no amount is set ([test](../../../adapters/sqlstore/twofactor_test.go#L122))
     - [ ] `skipVerificationOnEnable`
       - [x] Enable a password-confirmed authenticator and rotate the current session immediately ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L180))
-    - [x] `allowPasswordless` ([test](../../../adapters/sqlstore/twofactor_options_test.go#L65))
+    - [x] `allowPasswordless` ([test](../../../adapters/sqlstore/twofactor_options_test.go#L66))
       - [x] Allow a passwordless account to enroll while preserving the password requirement on credential accounts ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L304))
-      - [x] Let a passwordless account enroll, read the provisioning URI, replace its backup codes and disable the factor without a password, while an account with a password that leaves it out or sends a wrong one gets INVALID_PASSWORD and a password that is not a string gets VALIDATION_ERROR, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/twofactor_options_test.go#L65))
+      - [x] Let a passwordless account enroll, read the provisioning URI, replace its backup codes and disable the factor without a password, while an account with a password that leaves it out or sends a wrong one gets INVALID_PASSWORD and a password that is not a string gets VALIDATION_ERROR, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/twofactor_options_test.go#L66))
     - [ ] `schema`
-    - [x] `twoFactorCookieMaxAge` ([test](../../../adapters/sqlstore/twofactor_options_test.go#L186))
+    - [x] `twoFactorCookieMaxAge` ([test](../../../adapters/sqlstore/twofactor_options_test.go#L298))
       - [x] Use the configured pending challenge duration for the browser cookie ([test](../../../adapters/sqlstore/twofactor_trust_test.go#L169))
-      - [x] Set a ten-minute challenge cookie on the sign-in response and store a challenge that expires ten minutes after it was created when no lifetime is set ([test](../../../adapters/sqlstore/twofactor_options_test.go#L186))
-    - [x] `trustDeviceMaxAge` ([test](../../../adapters/sqlstore/twofactor_options_test.go#L236))
+      - [x] Set a ten-minute challenge cookie on the sign-in response and store a challenge that expires ten minutes after it was created when no lifetime is set ([test](../../../adapters/sqlstore/twofactor_options_test.go#L298))
+    - [x] `trustDeviceMaxAge` ([test](../../../adapters/sqlstore/twofactor_options_test.go#L348))
       - [x] Set the configured browser cookie lifetime and require a fresh challenge when its grant expires ([test](../../../adapters/sqlstore/twofactor_trust_test.go#L229))
       - [x] Spend and replace a remembered browser through its verification hooks; a declined spend or replacement keeps the grant and asks for the second factor ([test](../../../adapters/sqlstore/twofactor_hooks_test.go#L278))
-      - [x] Set a thirty-day remembered-browser cookie and store a grant that expires thirty days after it was created when no lifetime is set, and renew the cookie for thirty days at the next trusted sign-in ([test](../../../adapters/sqlstore/twofactor_options_test.go#L236))
+      - [x] Set a thirty-day remembered-browser cookie and store a grant that expires thirty days after it was created when no lifetime is set, and renew the cookie for thirty days at the next trusted sign-in ([test](../../../adapters/sqlstore/twofactor_options_test.go#L348))
     - [ ] `accountLockout`
       - [x] Honor configured thresholds and duration and recover on successful proof after expiration ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L243))
   - [x] `UserWithTwoFactor` ([test](../../../conformance/core.test.mjs#L302))
@@ -189,8 +189,10 @@
     - [x] Skip the challenge on a password sign-in from a browser remembered by an earlier proof with trustDevice ([test](../../../adapters/sqlstore/twofactor_trust_test.go#L218))
   - [ ] Usage
     - [ ] Enabling 2FA
-      - [ ] `totp`
-      - [ ] `otp`
+      - [x] `totp` ([test](../../../adapters/sqlstore/twofactor_options_test.go#L161))
+        - [x] Answer authenticator enrollment with exactly method totp, a provisioning URI and ten backup codes, keep the factor off so a password sign-in before verification is not challenged, and challenge the sign-in after it with totp, on three SQL engines ([test](../../../adapters/sqlstore/twofactor_options_test.go#L161))
+      - [x] `otp` ([test](../../../adapters/sqlstore/twofactor_options_test.go#L219))
+        - [x] Check the password, then refuse method otp with OTP_NOT_CONFIGURED when no sender is configured and change nothing; with a sender, answer exactly method otp and challenge the next sign-in with otp ([test](../../../adapters/sqlstore/twofactor_options_test.go#L219))
       - [ ] `POST /two-factor/enable`
         - [x] Parameter `password` ([test](../../../adapters/sqlstore/twofactor_test.go#L110))
           - [x] Refuse enrollment with a wrong password ([test](../../../adapters/sqlstore/twofactor_test.go#L110))
@@ -210,7 +212,8 @@
         - [x] Finish that Go sign-in over HTTP with the challenge cookie TwoFactorChallengeCookie builds ([test](../../../adapters/sqlstore/twofactor_test.go#L208))
     - [ ] Disabling 2FA
       - [ ] `POST /two-factor/disable`
-        - [ ] Parameter `password` (optional)
+        - [x] Parameter `password` (optional) ([test](../../../adapters/sqlstore/twofactor_options_test.go#L138))
+          - [x] Under AllowPasswordless, disable the factor of an account without a password when none is sent, answering status true with the factor off and a new session in place of the old ([test](../../../adapters/sqlstore/twofactor_options_test.go#L138))
     - [ ] TOTP
       - [x] Accept a six-digit, 30-second code from a standard generator under the default settings ([test](../../../adapters/sqlstore/twofactor_test.go#L131))
       - [ ] Getting TOTP URI
@@ -219,20 +222,20 @@
         - [ ] `POST /two-factor/get-totp-uri`
           - [x] Return the enrollment's provisioning URI to the signed-in owner who supplies the account password ([test](../../../adapters/sqlstore/twofactor_test.go#L128))
           - [x] Return the imported seed in the provisioning URI through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L1163))
-          - [x] Parameter `password` (optional) ([test](../../../adapters/sqlstore/twofactor_options_test.go#L114))
-            - [x] Answer INVALID_PASSWORD to a URI read from an account with a password that leaves it out under a passwordless switch or sends a wrong one, return the URI to a passwordless account that sends none, and answer VALIDATION_ERROR to a password that is missing without a switch or is not a string ([test](../../../adapters/sqlstore/twofactor_options_test.go#L114))
+          - [x] Parameter `password` (optional) ([test](../../../adapters/sqlstore/twofactor_options_test.go#L115))
+            - [x] Answer INVALID_PASSWORD to a URI read from an account with a password that leaves it out under a passwordless switch or sends a wrong one, return the URI to a passwordless account that sends none, and answer VALIDATION_ERROR to a password that is missing without a switch or is not a string ([test](../../../adapters/sqlstore/twofactor_options_test.go#L115))
         - Example: Using React — *not applicable: JavaScript only*
       - [ ] Verifying TOTP
-        - [x] Accept a sign-in authenticator code from the period before or after the current one, and refuse with INVALID_CODE codes two periods away or from a period earlier than the last accepted one, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/twofactor_options_test.go#L298))
+        - [x] Accept a sign-in authenticator code from the period before or after the current one, and refuse with INVALID_CODE codes two periods away or from a period earlier than the last accepted one, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/twofactor_options_test.go#L410))
         - [ ] `POST /two-factor/verify-totp`
           - [x] Activate a pending authenticator when its signed-in owner submits a current code ([test](../../../adapters/sqlstore/twofactor_test.go#L139))
           - [x] Refuse a code that completed one sign-in challenge when it is sent again with a new challenge ([test](../../../adapters/sqlstore/twofactor_test.go#L211))
           - [x] Confirm enrollment with a generated code through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L301))
           - [x] Parameter `code` ([test](../../../adapters/sqlstore/twofactor_test.go#L252))
             - [x] Refuse an invalid authenticator code with 401 and accept a current one ([test](../../../adapters/sqlstore/twofactor_test.go#L252))
-          - [x] Parameter `trustDevice` (optional) ([test](../../../adapters/sqlstore/twofactor_options_test.go#L240))
+          - [x] Parameter `trustDevice` (optional) ([test](../../../adapters/sqlstore/twofactor_options_test.go#L352))
             - [x] Set the remembered-browser cookie for an authenticator code sent with trustDevice, and skip the challenge at the next sign-in from that browser ([test](../../../adapters/sqlstore/twofactor_hooks_test.go#L274))
-            - [x] Refuse a trustDevice that is not a boolean; for one that is, remember the browser for thirty days in the cookie and the store, drop its don't-remember marker, and skip the challenge at the next sign-in, which renews the cookie for thirty days ([test](../../../adapters/sqlstore/twofactor_options_test.go#L240))
+            - [x] Refuse a trustDevice that is not a boolean; for one that is, remember the browser for thirty days in the cookie and the store, drop its don't-remember marker, and skip the challenge at the next sign-in, which renews the cookie for thirty days ([test](../../../adapters/sqlstore/twofactor_options_test.go#L352))
       - [x] Importing Existing TOTP Secrets ([test](../../../adapters/sqlstore/twofactor_import_test.go#L18))
         - [x] Sign in through the released client using the same external Base32 seed enrolled through each server's trusted provisioning process ([test](../../../conformance/core.test.mjs#L1133))
         - [x] Read the normalized imported key with the configured eight-digit, 45-second authenticator settings on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/twofactor_import_test.go#L97))
@@ -247,8 +250,8 @@
         - [ ] `POST /two-factor/send-otp`
           - [x] Store the delivered code with an attempt counter and the configured expiry ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L79))
           - [x] Accept a delivered code on the sign-in challenge it was sent for and refuse it on another challenge ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L379))
-          - [x] Parameter `trustDevice` (optional) ([test](../../../adapters/sqlstore/twofactor_options_test.go#L215))
-            - [x] Answer VALIDATION_ERROR to a trustDevice that is not a boolean, before reading the challenge and without sending a code, and accept a boolean without remembering the browser at the send or at a later verification that leaves it out ([test](../../../adapters/sqlstore/twofactor_options_test.go#L215))
+          - [x] Parameter `trustDevice` (optional) ([test](../../../adapters/sqlstore/twofactor_options_test.go#L327))
+            - [x] Answer VALIDATION_ERROR to a trustDevice that is not a boolean, before reading the challenge and without sending a code, and accept a boolean without remembering the browser at the send or at a later verification that leaves it out ([test](../../../adapters/sqlstore/twofactor_options_test.go#L327))
       - [ ] Verifying OTP
         - [x] Complete a delivered-code challenge through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L744))
         - [ ] `POST /two-factor/verify-otp`
@@ -268,8 +271,8 @@
         - [ ] `POST /two-factor/generate-backup-codes`
           - [x] Regenerate backup codes for a signed-in owner who supplies the password, and refuse an old code afterwards ([test](../../../adapters/sqlstore/twofactor_test.go#L218))
           - [x] Return ten codes through the Go client, the first unlike the enrollment's first code ([test](../../../client/account_test.go#L109))
-          - [x] Parameter `password` (optional) ([test](../../../adapters/sqlstore/twofactor_options_test.go#L114))
-            - [x] Answer INVALID_PASSWORD to backup-code regeneration from an account with a password that leaves it out under a passwordless switch or sends a wrong one, replace a passwordless account's codes when it sends none, and answer VALIDATION_ERROR to a password that is missing without a switch or is not a string ([test](../../../adapters/sqlstore/twofactor_options_test.go#L114))
+          - [x] Parameter `password` (optional) ([test](../../../adapters/sqlstore/twofactor_options_test.go#L115))
+            - [x] Answer INVALID_PASSWORD to backup-code regeneration from an account with a password that leaves it out under a passwordless switch or sends a wrong one, replace a passwordless account's codes when it sends none, and answer VALIDATION_ERROR to a password that is missing without a switch or is not a string ([test](../../../adapters/sqlstore/twofactor_options_test.go#L115))
       - [ ] Using Backup Codes
         - [x] Accept a backup code for exactly one of two concurrent submissions of the same sign-in challenge to two servers, and refuse it at a later challenge ([test](../../../adapters/sqlstore/twofactor_test.go#L205))
         - [x] Refuse a used backup code through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L311))
@@ -336,7 +339,8 @@
         - [x] Enroll an account that has no credential password without one, and still require the password from an account that has one ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L304))
       - [x] Issuer ([test](../../../conformance/goapi/freshness_test.go#L94))
         - [x] Name the application, or the configured issuer, in the provisioning URI shown by authenticator apps ([test](../../../conformance/goapi/freshness_test.go#L94))
-      - [ ] TOTP options
+      - [x] TOTP options ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L193))
+        - [x] Configure eight digits and a 45-second period, find both in the provisioning URI, and verify an eight-digit code generated with them at sign-in ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L193))
       - [x] `twoFactorTotpOptionsType.digits` ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L193))
         - [x] Report digits=8 in the provisioning URI and accept an eight-digit code when configured ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L193))
         - [x] Accept six-digit codes from a standard generator with the default settings ([test](../../../adapters/sqlstore/twofactor_test.go#L139))
@@ -344,23 +348,29 @@
         - [x] Accept 45-second codes and report period=45 in the provisioning URI when configured ([test](../../../adapters/sqlstore/twofactor_import_test.go#L97))
         - [x] Accept 30-second codes from a standard generator with the default settings ([test](../../../adapters/sqlstore/twofactor_test.go#L139))
       - [ ] OTP options
+        - [x] Configure the sender, an eight-digit two-minute code and hashed storage; the sender gets the code and the stored digest expires two minutes after it was created ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L79))
       - [x] `twoFactorOtpOptionsType.sendOTP` ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L65))
         - [x] Call the configured sender with the challenged account and the generated code ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L65))
-      - [ ] `twoFactorOtpOptionsType.period`
+      - [x] `twoFactorOtpOptionsType.period` ([test](../../../twofactor_settings_test.go#L47))
         - [x] Store a delivered code that expires after the configured two minutes ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L79))
+        - [x] Return a delivered code that is active at once and expires three minutes after it is sent when no period is set ([test](../../../twofactor_settings_test.go#L47))
       - [ ] `twoFactorOtpOptionsType.storeOTP`
         - [x] Store a hashed delivered code as its SHA-256 digest with the attempt counter ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L79))
-      - [ ] Backup Code Options
+        - [x] Store plain, encrypted, hashed and custom-transformed delivered codes and verify each ([test](../../../twofactor_settings_test.go#L13))
+      - [x] Backup Code Options ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L166))
+        - [x] Configure four twelve-character codes stored plain, a host generator and a host cipher, and observe each at enrollment, in the stored column and through ViewBackupCodes ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L166))
       - [x] `twoFactorBackupCodeOptionsType.amount` ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L196))
         - [x] Issue the configured four backup codes at enrollment ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L196))
         - [x] Issue ten backup codes at enrollment by default ([test](../../../adapters/sqlstore/twofactor_test.go#L122))
-      - [ ] `twoFactorBackupCodeOptionsType.length`
+      - [x] `twoFactorBackupCodeOptionsType.length` ([test](../../../adapters/sqlstore/twofactor_options_test.go#L293))
         - [x] Issue twelve-character backup codes split by a hyphen after the fifth character when configured ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L196))
+        - [x] Issue codes of five random characters, a hyphen and five more when no length is set, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/twofactor_options_test.go#L293))
       - [x] `twoFactorBackupCodeOptionsType.customBackupCodesGenerate` ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L276))
         - [x] Issue the codes returned by a host-supplied generator at enrollment ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L276))
-      - [ ] `twoFactorBackupCodeOptionsType.storeBackupCodes`
+      - [x] `twoFactorBackupCodeOptionsType.storeBackupCodes` ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L210))
         - [x] Round-trip backup codes through a host-supplied encryptor and decryptor ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L280))
         - [x] Keep backup codes out of the stored record in readable form with the default setting ([test](../../../adapters/sqlstore/twofactor_test.go#L137))
+        - [x] Store backup codes as the JSON list of the issued codes in plain mode ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L210))
       - [ ] Account lockout
         - [x] Lock the account after ten wrong codes across two sign-in challenges and answer 429 to the next challenge ([test](../../../adapters/sqlstore/twofactor_test.go#L259))
         - [x] Answer 429 ACCOUNT_TEMPORARILY_LOCKED once the configured failure count is reached across servers ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L231))

@@ -37030,6 +37030,12 @@
       "label": "Store a delivered code that expires after the configured two minutes",
       "test": "adapters/sqlstore/twofactor_delivery_test.go",
       "marker": "stored delivered OTP or expiry differs from configuration"
+    },
+    {
+      "label": "Return a delivered code that is active at once and expires three minutes after it is sent when no period is set",
+      "test": "twofactor_settings_test.go",
+      "marker": "t.Fatal(\"delivery not staged with configured lifetime\")",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/2fa.mdx#L603/`twoFactorOtpOptionsType.storeOTP`": [
@@ -37037,6 +37043,11 @@
       "label": "Store a hashed delivered code as its SHA-256 digest with the attempt counter",
       "test": "adapters/sqlstore/twofactor_delivery_test.go",
       "marker": "stored delivered OTP or expiry differs from configuration"
+    },
+    {
+      "label": "Store plain, encrypted, hashed and custom-transformed delivered codes and verify each",
+      "test": "twofactor_settings_test.go",
+      "marker": "func TestDeliveredFactorStorageModes("
     }
   ],
   "docs/content/docs/plugins/2fa.mdx#L618/`twoFactorBackupCodeOptionsType.amount`": [
@@ -37057,6 +37068,12 @@
       "label": "Issue twelve-character backup codes split by a hyphen after the fifth character when configured",
       "test": "adapters/sqlstore/twofactor_delivery_test.go",
       "marker": "custom backup code amount or length was ignored"
+    },
+    {
+      "label": "Issue codes of five random characters, a hyphen and five more when no length is set, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/twofactor_options_test.go",
+      "marker": "default backup code %q is not five characters, a hyphen and five more",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/2fa.mdx#L628/`twoFactorBackupCodeOptionsType.customBackupCodesGenerate`": [
@@ -37077,6 +37094,12 @@
       "label": "Keep backup codes out of the stored record in readable form with the default setting",
       "test": "adapters/sqlstore/twofactor_test.go",
       "marker": "unprotected factor material"
+    },
+    {
+      "label": "Store backup codes as the JSON list of the issued codes in plain mode",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "plain backup codes were not stored as the JSON list of issued codes",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/2fa.mdx#L642/Account lockout": [
@@ -43708,6 +43731,53 @@
       "label": "Store a code before its sender runs, so it verifies while the sender runs, and keep a newer code when an older send fails late",
       "test": "adapters/sqlstore/twofactor_delivery_test.go",
       "marker": "a failing sender changed the send-otp answer"
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L91/`totp`": [
+    {
+      "label": "Answer authenticator enrollment with exactly method totp, a provisioning URI and ten backup codes, keep the factor off so a password sign-in before verification is not challenged, and challenge the sign-in after it with totp, on three SQL engines",
+      "test": "adapters/sqlstore/twofactor_options_test.go",
+      "marker": "func TestAuthenticatorEnrollmentWaitsForVerification(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L92/`otp`": [
+    {
+      "label": "Check the password, then refuse method otp with OTP_NOT_CONFIGURED when no sender is configured and change nothing; with a sender, answer exactly method otp and challenge the next sign-in with otp",
+      "test": "adapters/sqlstore/twofactor_options_test.go",
+      "marker": "func TestDeliveredEnrollmentMethod(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L239/Parameter `password` (optional)": [
+    {
+      "label": "Under AllowPasswordless, disable the factor of an account without a password when none is sent, answering status true with the factor off and a new session in place of the old",
+      "test": "adapters/sqlstore/twofactor_options_test.go",
+      "marker": "passwordless disable without a password did not answer status true",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L570/TOTP options": [
+    {
+      "label": "Configure eight digits and a 45-second period, find both in the provisioning URI, and verify an eight-digit code generated with them at sign-in",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "custom authenticator parameters were omitted",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L589/OTP options": [
+    {
+      "label": "Configure the sender, an eight-digit two-minute code and hashed storage; the sender gets the code and the stored digest expires two minutes after it was created",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "stored delivered OTP or expiry differs from configuration"
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L613/Backup Code Options": [
+    {
+      "label": "Configure four twelve-character codes stored plain, a host generator and a host cipher, and observe each at enrollment, in the stored column and through ViewBackupCodes",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "Backup:  twofactor.BackupOptions{Amount: 4, Length: 12, Store: \"plain\"},",
+      "complete": true
     }
   ]
 }
