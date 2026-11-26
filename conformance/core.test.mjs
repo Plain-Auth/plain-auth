@@ -1625,6 +1625,11 @@ test("session transfer storage modes and request-aware generation agree across b
   await compareTransferOptions(t, { reference, goFixture, instrument });
 });
 
+test("stored verification identifiers hash the purpose-prefixed identifier on both runtimes", async t => {
+  const { compareStoredIdentifiers } = await import("./verification-identifiers.mjs");
+  await compareStoredIdentifiers(t, { reference, goFixture, instrument });
+});
+
 test("the released organization client observes validated input, merged changes and committed profile updates", async t => {
   const { compareOrganizationProfileHooks } = await import("./organization-profile-hooks.mjs");
   await compareOrganizationProfileHooks(t, { reference, goFixture, instrument });

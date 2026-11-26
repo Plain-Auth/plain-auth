@@ -22164,6 +22164,23 @@
       "marker": "a store without VerificationCleanupStore accepted the option"
     }
   ],
+  "docs/content/docs/reference/options.mdx#L582/`storeIdentifier`": [
+    {
+      "label": "With StoreVerificationIdentifier plain, hashed, or a custom hash with prefix overrides, SQLite, PostgreSQL and MySQL store password reset, account deletion, magic and one-time links as their purpose prefix followed by the token or the hash of the whole identifier; each link redeems once over HTTP, its stored value is refused as a token, deleting the user removes its live hashed reset link, and a link issued under one setting is refused under another",
+      "test": "adapters/sqlstore/verification_identifier_test.go",
+      "marker": "func TestStoreVerificationIdentifier(t *testing.T) {"
+    },
+    {
+      "label": "New refuses Hashed with Hash, an override key that is empty, names an uncovered purpose such as auth-state: or sign-in-otp-, or reaches into the token, and two keys for one purpose; a custom store receives the stored form, with fixed SHA-256 vectors, while delivered links keep the token; a failing or unusable hash fails a reset request alike for registered and unknown addresses",
+      "test": "conformance/goapi/store_identifier_test.go",
+      "marker": "func TestStoreVerificationIdentifierOptions(t *testing.T) {"
+    },
+    {
+      "label": "On both runtimes, with storeIdentifier hashed, a custom hasher or a reset-password override, reset links, hashed magic links and hashed one-time tokens redeem once, a reset refuses its stored value as a token, and both store the same hash of the purpose-prefixed identifier, Go keeping the prefix in front",
+      "test": "conformance/verification-identifiers.mjs",
+      "marker": "export async function compareStoredIdentifiers(t, { reference, goFixture, instrument }) {"
+    }
+  ],
   "docs/content/docs/concepts/oauth.mdx#L250": [
     {
       "label": "additionalData on /sign-in/social and /link-social is kept with the browser flow, under the database and the cookie state strategy, and reaches the callback; a value that is not an object, exceeds 8 KiB or holds a number no float64 holds answers 400 VALIDATION_ERROR before a flow is stored",

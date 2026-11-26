@@ -109,17 +109,23 @@ func (a *Auth) DeleteUser(ctx context.Context, h http.Header, in DeleteUserInput
 	}
 	// A mailed token is spent first, so an expired one, or one opened by
 	// another account, runs no deletion hook.
-	deleteToken := in.Token
+	tokenKey := in.Token
+	if in.Token != "" {
+		if tokenKey, err = a.verificationKey(ctx, deleteAccountPrefix, in.Token); err != nil {
+			return false, err
+		}
+	}
+	deleteToken := tokenKey
 	if consumer, ok := s.(DeletionTokenStore); ok && in.Token != "" {
 		find := func() (VerificationRecord, error) {
 			finder, ok := s.(DeletionTokenFinder)
 			if !ok {
 				return VerificationRecord{}, ErrNotFound
 			}
-			t, err := finder.FindDeletionToken(ctx, session.User.ID, in.Token, now)
+			t, err := finder.FindDeletionToken(ctx, session.User.ID, tokenKey, now)
 			return tokenRecord("delete-account", t), err
 		}
-		refused, err := a.spendVerification(ctx, find, func() error { return consumer.ConsumeDeletionToken(ctx, session.User.ID, in.Token, now) })
+		refused, err := a.spendVerification(ctx, find, func() error { return consumer.ConsumeDeletionToken(ctx, session.User.ID, tokenKey, now) })
 		if err != nil {
 			return false, err
 		}
@@ -136,7 +142,12 @@ func (a *Auth) DeleteUser(ctx context.Context, h http.Header, in DeleteUserInput
 		if !a.trustedURL(ctx, callback, true) {
 			return false, &APIError{403, "INVALID_CALLBACK_URL", "Invalid callbackURL"}
 		}
-		t := PasswordResetToken{ID: randomID(), Token: randomID(), UserID: session.User.ID, CreatedAt: now, ExpiresAt: now.Add(a.opts.DeleteTokenTTL)}
+		token := randomID()
+		key, err := a.verificationKey(ctx, deleteAccountPrefix, token)
+		if err != nil {
+			return false, err
+		}
+		t := PasswordResetToken{ID: randomID(), Token: key, UserID: session.User.ID, CreatedAt: now, ExpiresAt: now.Add(a.opts.DeleteTokenTTL)}
 		base, err := a.publicURL(ctx)
 		if err != nil {
 			return false, err
@@ -146,9 +157,9 @@ func (a *Auth) DeleteUser(ctx context.Context, h http.Header, in DeleteUserInput
 		if err != nil || declined {
 			return false, err
 		}
-		query := url.Values{"callbackURL": {callback}, "token": {t.Token}}
+		query := url.Values{"callbackURL": {callback}, "token": {token}}
 		link := base + "/delete-user/callback?" + query.Encode()
-		return false, a.deliverMail(ctx, "Could not deliver account deletion email", MailLink{User: session.User, URL: link, Token: t.Token, Request: a.requestCopy(ctx)}, a.opts.SendDeleteAccountVerification)
+		return false, a.deliverMail(ctx, "Could not deliver account deletion email", MailLink{User: session.User, URL: link, Token: token, Request: a.requestCopy(ctx)}, a.opts.SendDeleteAccountVerification)
 	}
 	if in.Token == "" && hash == "" && !a.freshSession(session.Session) {
 		return false, &APIError{400, "SESSION_EXPIRED", "Session expired. Re-authenticate to perform this action."}

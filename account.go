@@ -21,7 +21,11 @@ type ProfileUpdate struct {
 	ClearImage, ClearUsername, ClearDisplayUsername bool
 }
 
-// PasswordResetToken records a reset link and its owner in verification storage.
+// PasswordResetToken records a reset or deletion link and its owner in
+// verification storage. Token is the link's token as stored: the token itself,
+// or its hash under Options.StoreVerificationIdentifier. The token arguments of
+// FindPasswordResetToken, FinishPasswordReset and the deletion token methods
+// are in the same form.
 type PasswordResetToken struct {
 	ID, Token, UserID, Email string
 	CreatedAt, ExpiresAt     time.Time
@@ -342,13 +346,22 @@ func (a *Auth) RequestPasswordReset(ctx context.Context, email, redirectTo strin
 	if errors.Is(err, ErrNotFound) {
 		// The same token lookup a reset link would make, so an unknown
 		// address does not answer faster than a registered one.
-		_, _ = s.FindPasswordResetToken(ctx, randomID(), now)
+		key, err := a.verificationKey(ctx, resetPasswordPrefix, randomID())
+		if err != nil {
+			return err
+		}
+		_, _ = s.FindPasswordResetToken(ctx, key, now)
 		return nil
 	}
 	if err != nil {
 		return err
 	}
-	t := PasswordResetToken{ID: randomID(), Token: randomID(), UserID: user.ID, Email: user.Email, CreatedAt: now, ExpiresAt: now.Add(a.opts.PasswordResetTokenTTL)}
+	token := randomID()
+	key, err := a.verificationKey(ctx, resetPasswordPrefix, token)
+	if err != nil {
+		return err
+	}
+	t := PasswordResetToken{ID: randomID(), Token: key, UserID: user.ID, Email: user.Email, CreatedAt: now, ExpiresAt: now.Add(a.opts.PasswordResetTokenTTL)}
 	base, err := a.publicURL(ctx)
 	if err != nil {
 		return err
@@ -358,8 +371,8 @@ func (a *Auth) RequestPasswordReset(ctx context.Context, email, redirectTo strin
 	if err != nil || declined {
 		return err
 	}
-	link := base + "/reset-password/" + t.Token + "?" + url.Values{"callbackURL": {redirectTo}}.Encode()
-	return a.deliverMail(ctx, "Could not deliver password reset email", MailLink{User: user, URL: link, Token: t.Token, Request: a.requestCopy(ctx)}, a.opts.SendResetPassword)
+	link := base + "/reset-password/" + token + "?" + url.Values{"callbackURL": {redirectTo}}.Encode()
+	return a.deliverMail(ctx, "Could not deliver password reset email", MailLink{User: user, URL: link, Token: token, Request: a.requestCopy(ctx)}, a.opts.SendResetPassword)
 }
 
 // ResetPassword consumes an unexpired recovery token atomically with the credential update.
@@ -378,7 +391,11 @@ func (a *Auth) resetPassword(ctx context.Context, token, newPassword string, req
 	if err != nil {
 		return err
 	}
-	row, err := s.FindPasswordResetToken(ctx, token, a.now().UTC())
+	key, err := a.verificationKey(ctx, resetPasswordPrefix, token)
+	if err != nil {
+		return err
+	}
+	row, err := s.FindPasswordResetToken(ctx, key, a.now().UTC())
 	if errors.Is(err, ErrNotFound) {
 		return &APIError{400, "INVALID_TOKEN", "Invalid token"}
 	}

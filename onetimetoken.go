@@ -27,7 +27,9 @@ type OneTimeTokenOptions struct {
 
 // OneTimeTokenStore keeps single-use session transfers. ConsumeOneTimeToken
 // spends the token also when it returns ErrTransferSessionMissing or
-// ErrTransferSessionExpired. Verification delete hooks rely on this.
+// ErrTransferSessionExpired. Verification delete hooks rely on this. key is
+// the token as stored, after OneTimeTokenOptions.HashTokens or HashToken and
+// then Options.StoreVerificationIdentifier.
 type OneTimeTokenStore interface {
 	SaveOneTimeToken(ctx context.Context, key string, source Session, now, expires time.Time) error
 	ConsumeOneTimeToken(ctx context.Context, key string, now time.Time) (SessionResult, error)
@@ -191,6 +193,9 @@ func (a *Auth) newOneTimeToken(ctx context.Context, opts *OneTimeTokenOptions, s
 	if err != nil {
 		return "", err
 	}
+	if key, err = a.verificationKey(ctx, oneTimeTokenPrefix, key); err != nil {
+		return "", err
+	}
 	now := a.now().UTC().Truncate(time.Millisecond)
 	expires := now.Add(opts.ExpiresIn)
 	// A token a create hook declines is still returned, as an unusable one:
@@ -214,6 +219,9 @@ func (a *Auth) VerifyOneTimeToken(ctx context.Context, token string) (*SessionRe
 	}
 	key, err := opts.storedKey(ctx, token)
 	if err != nil {
+		return nil, err
+	}
+	if key, err = a.verificationKey(ctx, oneTimeTokenPrefix, key); err != nil {
 		return nil, err
 	}
 	store := a.opts.Store.(OneTimeTokenStore)

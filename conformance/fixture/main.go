@@ -613,6 +613,9 @@ func main() {
 	if os.Getenv("CONFORMANCE_RESET_HOOK") == "1" {
 		resetHookFixture(&opts, os.Args[1])
 	}
+	if mode := os.Getenv("CONFORMANCE_STORE_IDENTIFIER"); mode != "" {
+		fixtureIdentifierStorage(&opts, mode)
+	}
 	if os.Getenv("CONFORMANCE_PASSWORD_CODEC") == "1" {
 		opts.PasswordHash = fixturePasswordHash
 		opts.PasswordVerify = fixturePasswordVerify

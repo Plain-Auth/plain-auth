@@ -325,7 +325,11 @@ func (a *Auth) handleAccountRequest(route string, w http.ResponseWriter, r *http
 		if !cb.IsAbs() {
 			dest = base.ResolveReference(cb).String()
 		}
-		_, err = s.FindPasswordResetToken(ctx, token, a.now().UTC())
+		key, err := a.verificationKey(ctx, resetPasswordPrefix, token)
+		if err != nil {
+			return nil, err
+		}
+		_, err = s.FindPasswordResetToken(ctx, key, a.now().UTC())
 		if errors.Is(err, ErrNotFound) {
 			return redirectQuery(dest, "error", "INVALID_TOKEN"), nil
 		}

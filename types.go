@@ -235,6 +235,23 @@ type Options struct {
 	// record. Prune the table yourself. Every Auth sharing a store must use
 	// the same setting.
 	DisableVerificationCleanup bool
+	// StoreVerificationIdentifier sets how the identifiers of password reset
+	// links, account deletion links, magic links and one-time tokens are
+	// stored. The zero value stores each token after its purpose prefix, such
+	// as "reset-password:", as it is. Hashing keeps the prefix and stores a
+	// hash of the whole identifier in place of the token, so the verification
+	// table holds nothing that redeems a link. Links issued before the setting
+	// changes can no longer be redeemed. Every Auth sharing a store must use
+	// the same settings. Email and phone codes, OAuth and SAML states and other
+	// verification records are not affected.
+	StoreVerificationIdentifier VerificationIdentifierStorage
+	// StoreVerificationIdentifierOverrides replaces StoreVerificationIdentifier
+	// for the purpose whose prefix a key starts, such as "reset-password" or
+	// "magic-link:"; an empty VerificationIdentifierStorage keeps that purpose
+	// plain. New refuses a key that is not the start of "reset-password:",
+	// "delete-account-", "magic-link:" or "one-time-token:", and two keys for
+	// one purpose.
+	StoreVerificationIdentifierOverrides map[string]VerificationIdentifierStorage
 	// FreshAge is how recent a session must be for sensitive account changes,
 	// such as deleting the user or unlinking an account. It defaults to one
 	// day; a negative value turns the check off.

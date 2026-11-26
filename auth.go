@@ -60,6 +60,7 @@ type Auth struct {
 	dbHooks               databaseHookChains
 	wellKnown             map[string]WellKnownDocument
 	opts                  Options
+	identifierStorage     map[string]VerificationIdentifierStorage
 	now                   func() time.Time
 	limiter               rateLimiter
 }
@@ -249,7 +250,11 @@ func New(opts Options) (*Auth, error) {
 	if err != nil {
 		return nil, err
 	}
-	a := &Auth{opts: opts, dynamic: dynamic, disabledPaths: disabledPaths, trustedOrigins: trustedOrigins, now: time.Now, passwordSlots: make(chan struct{}, min(runtime.GOMAXPROCS(0), 4)), plugins: plugins}
+	identifierStorage, err := prepareVerificationIdentifiers(opts)
+	if err != nil {
+		return nil, err
+	}
+	a := &Auth{opts: opts, identifierStorage: identifierStorage, dynamic: dynamic, disabledPaths: disabledPaths, trustedOrigins: trustedOrigins, now: time.Now, passwordSlots: make(chan struct{}, min(runtime.GOMAXPROCS(0), 4)), plugins: plugins}
 	a.beforeHooks, a.afterHooks = endpointHooks(opts)
 	if err := a.checkCookieOptions(); err != nil {
 		return nil, err

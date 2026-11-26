@@ -20,7 +20,7 @@ opts.SendVerificationEmail = func(ctx context.Context, link plainauth.MailLink) 
 opts.RevokeSessionsOnPasswordReset = true
 ```
 
-Both links expire after an hour by default. Set `PasswordResetTokenTTL` or `EmailVerificationTokenTTL` to change that duration. The built-in SQL adapters implement `AccountStore`, including transactionally consuming a reset token and committing the replacement credential.
+Both links expire after an hour by default. Set `PasswordResetTokenTTL` or `EmailVerificationTokenTTL` to change that duration. Set [`StoreVerificationIdentifier`](databases.md#verification-identifiers) to keep only a hash of a reset token in the database. The built-in SQL adapters implement `AccountStore`, including transactionally consuming a reset token and committing the replacement credential.
 
 ## HTTP operations
 
@@ -87,7 +87,7 @@ A change that lands, at once or when a signed-in browser opens the final link, r
 
 ## Deleting an account
 
-Enable `DeleteUserEnabled` to expose `POST /delete-user`. The default flow accepts a fresh session, or the correct current password in the `password` field. With `SendDeleteAccountVerification` configured, the service mails a confirmation link. The link expires after 24 hours by default, configurable through `DeleteTokenTTL`. The `GET /delete-user/callback` request must carry both the token and an active session belonging to that user. Deletion removes the user, accounts, sessions and outstanding core mail-link records.
+Enable `DeleteUserEnabled` to expose `POST /delete-user`. The default flow accepts a fresh session, or the correct current password in the `password` field. With `SendDeleteAccountVerification` configured, the service mails a confirmation link. The link expires after 24 hours by default, configurable through `DeleteTokenTTL`. The `GET /delete-user/callback` request must carry both the token and an active session belonging to that user. Deletion removes the user, accounts, sessions and outstanding core mail-link records. Set [`StoreVerificationIdentifier`](databases.md#verification-identifiers) to keep only a hash of a deletion token in the database.
 
 A deletion link is spent the first time anyone opens it. An expired link, or one opened by another signed-in account, answers 404 `INVALID_TOKEN` without running `BeforeDeleteUser` or any deletion hook, and the owner must request a new one. Opening it without a session answers 404 `FAILED_TO_GET_USER_INFO` and leaves it usable. The callback needs a `token`; an empty one is refused like an unknown one rather than treated as a deletion without a link. With `DeleteUserEnabled` off, every deletion route answers 404 `NOT_FOUND` to any caller. A custom store spends links first by implementing `DeletionTokenStore`; without it, the link is checked while deleting. [Deletion tests](../conformance/goapi/delete_user_test.go)
 

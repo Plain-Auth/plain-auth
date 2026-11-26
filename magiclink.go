@@ -33,7 +33,9 @@ type MagicLinkOptions struct {
 }
 
 // MagicLinkChallenge describes a mailbox proof under a purpose-specific key.
-// Key is the stored token representation, without its database namespace.
+// Key is the stored token representation, after MagicLinkOptions.HashTokens
+// or HashToken and then Options.StoreVerificationIdentifier, without its
+// database namespace.
 type MagicLinkChallenge struct {
 	Key, Email, Name     string
 	CreatedAt, ExpiresAt time.Time
@@ -160,6 +162,9 @@ func (o MagicLinkOptions) request(c EndpointContext) (any, error) {
 	if err != nil {
 		return nil, err
 	}
+	if key, err = a.verificationKey(ctx, magicLinkPrefix, key); err != nil {
+		return nil, err
+	}
 	q := url.Values{"token": {token}, "callbackURL": {"/"}}
 	for _, field := range []string{"callbackURL", "newUserCallbackURL", "errorCallbackURL"} {
 		if v, ok := c.Body[field].(string); ok && v != "" {
@@ -226,6 +231,9 @@ func (o MagicLinkOptions) verify(c EndpointContext) (any, error) {
 	session, _ := a.newSession("", RequestMeta{IPAddress: a.clientIP(r), UserAgent: r.UserAgent()})
 	key, err := o.storedKey(r.Context(), token)
 	if err != nil {
+		return nil, err
+	}
+	if key, err = a.verificationKey(r.Context(), magicLinkPrefix, key); err != nil {
 		return nil, err
 	}
 	// The link's delete before hooks run first, on a read that does not

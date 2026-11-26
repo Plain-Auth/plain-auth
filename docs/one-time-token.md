@@ -30,6 +30,8 @@ Both paths are relative to the auth mount. In the Go HTTP client, use `GenerateO
 | `HashTokens` | Stores the transfer key using SHA-256 and unpadded URL-safe Base64. The default stores the raw key. |
 | `HashToken`, `GenerateToken` | Supply a deterministic storage-key function or a cryptographically random token generator. Use the same deterministic storage-key mode on every server. |
 
+[`StoreVerificationIdentifier`](databases.md#verification-identifiers) then applies to the `one-time-token:` identifier built from the stored key.
+
 A verification response that sets cookies honors the receiving browser’s signed temporary-session preference. With cookie suppression, verification returns the transferred identity in JSON and the browser keeps its current login. A replacement `Set-Ott` belongs to the returned session, including when the recipient had another account signed in. Reads without cookie renewal, explicit token generation, sign-out and rejected requests omit this header.
 
 When you configure additional user or session fields, verification reads the public values belonging to the issuing account and session at redemption time. The Go client exposes them through `result.User.AdditionalField(name)` and `result.Session.AdditionalField(name)`. Hidden fields and physical column names stay out of the response. Cookie replacement and subsequent renewal keep the same owner. [Field transfer tests](../adapters/sqlstore/onetimetoken_fields_test.go)
