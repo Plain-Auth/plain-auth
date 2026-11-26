@@ -120,7 +120,9 @@ var (
 type BrowserAuthorizationStore interface {
 	LookupAuthorizationClient(context.Context, string) (BrowserClient, error)
 	// IssueBrowserCode must reject a changed client, inactive owner session,
-	// missing approval or a duplicate identifier without replacing an existing code.
+	// missing approval or a duplicate identifier without replacing an existing
+	// code. A store that implements AuthorizationCodeGater asks the request's
+	// gate before storing the code.
 	IssueBrowserCode(context.Context, BrowserCodeIssue) error
 }
 
@@ -345,10 +347,14 @@ func (opts Options) runBrowserAuthorization(c auth.EndpointContext, q url.Values
 		if err != nil {
 			return nil, err
 		}
+		// The store asks the request's gate before storing the code, so its
+		// verification hooks run outside the store's transaction.
 		if decision != nil {
-			err = decision.store.FinishBrowserConsent(ctx, issue, decision.request, true)
+			err = c.GateVerifications(func(ctx context.Context) error {
+				return decision.store.FinishBrowserConsent(ctx, issue, decision.request, true)
+			})
 		} else {
-			err = store.IssueBrowserCode(ctx, issue)
+			err = c.GateVerifications(func(ctx context.Context) error { return store.IssueBrowserCode(ctx, issue) })
 		}
 	}
 	switch {

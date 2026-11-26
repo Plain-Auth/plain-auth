@@ -1,10 +1,13 @@
 package oauthprovider
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"slices"
 	"testing"
+	"time"
 
 	auth "github.com/Plain-Org/plain-auth"
 )
@@ -73,4 +76,19 @@ func TestAuthorizationCodeGrantBoundaries(t *testing.T) {
 	in.proof = ""
 	client.RequirePKCE = nil
 	check(basic, "", 400, "invalid_request")
+}
+
+// An authorization code's verification record is named by the row ID the
+// SQL store gives the code, and expires to the millisecond in UTC.
+func TestAuthorizationCodeRecord(t *testing.T) {
+	sum := sha256.Sum256([]byte("oauth-code/stored-identifier"))
+	id := AuthorizationCodeRecordID("stored-identifier")
+	if id != hex.EncodeToString(sum[:16]) {
+		t.Fatal("the record ID is", id)
+	}
+	at := time.Date(2030, 1, 2, 4, 4, 5, 123456789, time.FixedZone("UTC+1", 3600))
+	rec := AuthorizationCodeRecord(id, "owner", at)
+	if rec.Identifier != "authorization-code" || rec.UserID != "owner" || rec.ID != id || rec.ExpiresAt != time.Date(2030, 1, 2, 3, 4, 5, 123000000, time.UTC) {
+		t.Fatal("the record is", rec)
+	}
 }

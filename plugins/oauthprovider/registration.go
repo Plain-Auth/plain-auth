@@ -244,6 +244,19 @@ func New(opts Options) (auth.Plugin, error) {
 		}
 		return nil
 	}
+	if slices.Contains(opts.GrantTypes, "authorization_code") {
+		p.ValidateVerificationStore = func(s auth.Store, _ auth.VerificationHookSet) error {
+			// Codes are stored and spent inside the store's transactions, which
+			// must ask the request's gate. A store with neither method gets
+			// ValidateStore's error instead.
+			_, issues := s.(BrowserAuthorizationStore)
+			_, redeems := s.(AuthorizationCodeStore)
+			if _, ok := s.(AuthorizationCodeGater); (issues || redeems) && !ok {
+				return errors.New("auth: verification hooks with the oauth-provider plugin's authorization codes require a store implementing GatesAuthorizationCodes")
+			}
+			return nil
+		}
+	}
 	p.Endpoints = append(p.Endpoints, auth.Endpoint{Method: http.MethodPost, Path: "/oauth2/register", SuccessStatus: 201, RateLimit: &limit, Handler: opts.register})
 	for _, action := range []string{"get-client", "get-clients", "public-client"} {
 		p.Endpoints = append(p.Endpoints, opts.clientEndpoint(action))

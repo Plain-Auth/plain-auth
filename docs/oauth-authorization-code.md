@@ -284,6 +284,8 @@ When onboarding is complete, approval returns a callback URL containing a single
 
 Plain Auth checks the registration, session and current consent again before storing the code. `Tokens.HashAuthorizationCode` controls its stored identifier during both issuance and redemption. [Three-database issuance tests](../adapters/sqlstore/oauth_browser_authorization_test.go)
 
+With [verification hooks](hooks.md#verification-hooks), a stored code runs their create hooks after these checks, and the exchange runs their delete hooks after its own. A declined code is still sent to the client but never stored, so its exchange answers `invalid_grant`. A custom store implements `oauthprovider.AuthorizationCodeGater` and asks the request's verification gate, as the SQL store does.
+
 ## Send the exchange
 
 A public client generates a random PKCE verifier for each authorization request and retains it until the callback. It sends the unpadded base64url SHA-256 digest as `code_challenge` with `code_challenge_method=S256`. After checking the callback’s state and issuer, the client sends the original verifier and code to the token endpoint. Use exactly the redirect URI sent at authorization. Omit it when the original authorization omitted it.
@@ -393,6 +395,8 @@ Serialize refresh requests that share a credential. Plain Auth commits the paren
 ## Retries and replay
 
 An incorrect verifier, client or redirect URI leaves the code usable by its original client. Plain Auth checks the current client registration, user and session before it saves the token. For offline access, it runs the application’s refresh-token callbacks outside database locks, then verifies the same code and current permissions again. Code consumption and both token inserts share one transaction. A failed insert leaves the code usable and publishes neither token.
+
+A declined exchange is answered as an invalid code and leaves the code usable by its client. An exchange whose verification delete after hook fails removes the tokens it stored.
 
 Each code permits one successful redemption. Reusing that code as its authenticated client returns `invalid_grant` and removes stored access and refresh tokens linked to it. This also applies when two requests race. Start a fresh authorization if an exchange succeeded but the client lost the response. Other codes for the same user and client keep their own tokens. [Three-database retry and race tests](../adapters/sqlstore/oauth_authorization_code_test.go) · [Cross-runtime exchange](../conformance/oauth-authorization-code.mjs)
 

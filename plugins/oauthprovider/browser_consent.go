@@ -27,6 +27,8 @@ type BrowserConsentStore interface {
 	SaveBrowserConsent(context.Context, BrowserConsentPrompt) error
 	// FinishBrowserConsent consumes a live bound prompt. An acceptance writes
 	// the consent and its code in the same transaction. A denial writes neither.
+	// A store that implements AuthorizationCodeGater asks the request's gate
+	// before storing the code.
 	FinishBrowserConsent(context.Context, BrowserCodeIssue, BrowserConsentPrompt, bool) error
 }
 

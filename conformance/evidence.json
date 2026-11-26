@@ -13573,6 +13573,16 @@
       "label": "Retry after callback failure and recheck the profile and metadata on three databases, including hidden fields and active-plugin isolation",
       "test": "adapters/sqlstore/oauth_id_token_test.go",
       "marker": "received admin data outside the installed schema"
+    },
+    {
+      "label": "An authorization code exchange its checks refuse runs no verification hooks",
+      "test": "adapters/sqlstore/oauth_code_hooks_test.go",
+      "marker": "// An exchange refused by its checks runs no hooks."
+    },
+    {
+      "label": "A failed verification delete after hook removes the tokens the exchange stored",
+      "test": "adapters/sqlstore/oauth_code_hooks_test.go",
+      "marker": "// A failed delete after hook removes the tokens the exchange stored."
     }
   ],
   "docs/content/docs/plugins/oauth-provider/reference.mdx#L321/`POST /oauth2/token`": [
@@ -14598,6 +14608,16 @@
       "label": "Reject malformed OpenID claims and unsatisfiable essential authentication context before authorizing a code",
       "test": "conformance/oauth-id-tokens.mjs",
       "marker": "assert.equal(rejected.searchParams.get(\"error\"), error);"
+    },
+    {
+      "label": "Run the code's verification create hooks after the client, session and consent checks; a declined code redirects with a code that redeems nothing",
+      "test": "adapters/sqlstore/oauth_code_hooks_test.go",
+      "marker": "// A declined code is sent but never stored."
+    },
+    {
+      "label": "A visit that opens the consent page runs no code hooks",
+      "test": "adapters/sqlstore/oauth_code_hooks_test.go",
+      "marker": "// A visit that needs consent runs no code hooks."
     }
   ],
   "docs/content/docs/plugins/oauth-provider/reference.mdx#L318/`GET / POST /oauth2/authorize`": [
@@ -14654,6 +14674,11 @@
       "label": "Expire a pending consent request before approval and accept a fresh prompt on another issuer process",
       "test": "adapters/sqlstore/oauth_browser_consent_test.go",
       "marker": "expired consent was accepted"
+    },
+    {
+      "label": "The code's verification record expires with the stored code",
+      "test": "adapters/sqlstore/oauth_code_hooks_test.go",
+      "marker": "func TestVerificationHooksAroundAuthorizationCodes(t *testing.T) {"
     }
   ],
   "docs/content/docs/plugins/oauth-provider/tokens.mdx#L128/`codeExpiresIn`": [
@@ -14707,6 +14732,11 @@
       "label": "Approve a subset of individually requested UserInfo claims and require consent before adding more",
       "test": "conformance/oauth-id-tokens.mjs",
       "marker": "assert.equal(more.searchParams.get(\"error\"),\"consent_required\");"
+    },
+    {
+      "label": "An accepted consent runs the code's verification create hooks; a declined code still records the consent and spends the prompt",
+      "test": "adapters/sqlstore/oauth_code_hooks_test.go",
+      "marker": "// A declined code at consent still records the consent."
     }
   ],
   "docs/content/docs/plugins/oauth-provider/reference.mdx#L319/`POST /oauth2/consent`": [
@@ -19137,6 +19167,11 @@
       "label": "Rerun a gated store call until its records' hooks have answered, at most four times, keeping each answer for the request and running hooks without the gate or a sign-in plan in their context",
       "test": "verification_gate_test.go",
       "marker": "func TestVerificationGate(t *testing.T) {"
+    },
+    {
+      "label": "Run verification hooks around OAuth authorization codes on SQLite, PostgreSQL and MySQL: the create hooks run after the client, session and consent checks, a declined code is sent but redeems nothing, the exchange's delete hooks run after its client, redirect URI, PKCE, user and session checks and once across an offline grant's two passes, and a failed delete after hook removes the tokens the exchange stored",
+      "test": "adapters/sqlstore/oauth_code_hooks_test.go",
+      "marker": "func TestVerificationHooksAroundAuthorizationCodes(t *testing.T) {"
     }
   ],
   "docs/content/docs/concepts/database.mdx#L881": [
@@ -19218,6 +19253,11 @@
       "label": "Decline a guess at a two-factor challenge or delivered code with ErrSkipWrite before it is compared: nothing is counted and the challenge stays usable",
       "test": "adapters/sqlstore/twofactor_hooks_test.go",
       "marker": "// A declined proof is refused before the code is compared or counted."
+    },
+    {
+      "label": "Decline an authorization code exchange with ErrSkipWrite after its PKCE, client, user and session checks: the exchange answers invalid_grant and the code stays usable",
+      "test": "adapters/sqlstore/oauth_code_hooks_test.go",
+      "marker": "// A declined exchange keeps the code."
     }
   ],
   "docs/content/docs/concepts/database.mdx#L886": [
@@ -19304,6 +19344,11 @@
       "label": "Run one delete and one create after hook among concurrent sign-ins sharing a remembered browser, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/twofactor_hooks_test.go",
       "marker": "// Sign-ins sharing a remembered browser spend it once."
+    },
+    {
+      "label": "Run one verification delete after hook among concurrent exchanges of an authorization code, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_code_hooks_test.go",
+      "marker": "// Concurrent exchanges of one authorization code run one delete after hook."
     }
   ],
   "docs/content/docs/concepts/database.mdx#L891/Example Usage": [
@@ -19367,7 +19412,7 @@
       "marker": "// Run account hooks around the credential a sign-up stores, password"
     },
     {
-      "label": "Configure verification hooks for password reset and account deletion links, browser OAuth flows, magic links, one-time tokens, email and phone codes, two-factor challenges, delivered codes and remembered browsers, passkey challenges and wallet nonces, and refuse the plugins, hooks and stores that would bypass them",
+      "label": "Configure verification hooks for password reset and account deletion links, browser OAuth flows, magic links, one-time tokens, email and phone codes, two-factor challenges, delivered codes and remembered browsers, passkey challenges, wallet nonces and OAuth authorization codes, and refuse the plugins, hooks and stores that would bypass them",
       "test": "conformance/goapi/database_verification_hooks_test.go",
       "marker": "func TestDatabaseVerificationHooksRefuseBypassingFeatures(t *testing.T) {"
     }

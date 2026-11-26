@@ -2,9 +2,7 @@ package sqlstore
 
 import (
 	"context"
-	"crypto/sha256"
 	"database/sql"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"reflect"
@@ -156,9 +154,22 @@ func (s *Store) finishBrowserCode(ctx context.Context, input op.BrowserCodeIssue
 	}
 	// A deterministic primary key serializes simultaneous inserts for the same
 	// digest even if two different clients issued them on separate nodes.
-	sum := sha256.Sum256([]byte("oauth-code/" + input.Identifier))
-	id := hex.EncodeToString(sum[:16])
+	id := op.AuthorizationCodeRecordID(input.Identifier)
+	gate := auth.VerificationGateFrom(ctx)
 	start := now.Truncate(time.Second)
+	if gate != nil {
+		start = gate.Now().Truncate(time.Second) // every run names the same record
+	}
+	keep, err := gate.Create(op.AuthorizationCodeRecord(id, input.UserID, start.Add(input.Lifetime)))
+	if err != nil {
+		return err
+	}
+	if !keep {
+		// A declined code is never stored. The rest of the decision stands: a
+		// consumed prompt and an accepted consent; the client is still sent
+		// the code, which redeems nothing.
+		return tx.Commit()
+	}
 	const insert = `INSERT INTO "verification" ("id","identifier","value","createdAt","updatedAt","expiresAt") VALUES (?,?,?,?,?,?)`
 	if _, err := tx.ExecContext(ctx, s.bind(insert), id, input.Identifier, string(value), s.date(start), s.date(start), s.date(start.Add(input.Lifetime))); err != nil {
 		return err

@@ -13,6 +13,7 @@ import (
 	authn "github.com/Plain-Org/plain-auth"
 	"github.com/Plain-Org/plain-auth/adapters/memory"
 	"github.com/Plain-Org/plain-auth/adapters/sqlstore"
+	"github.com/Plain-Org/plain-auth/plugins/oauthprovider"
 	"github.com/Plain-Org/plain-auth/plugins/passkey"
 	"github.com/Plain-Org/plain-auth/plugins/siwe"
 	"github.com/Plain-Org/plain-auth/schema"
@@ -244,9 +245,10 @@ func TestDatabaseVerificationHooks(t *testing.T) {
 	same(drain(), "delete-before:delete-account", "delete-after:delete-account", "session-delete-before", "user-delete-before", "session-delete-after")
 }
 
-// New refuses verification hooks that an enabled feature would bypass: the
-// plugins that keep codes in their own stores, two-factor on a store that
-// cannot report the rows its calls lock, update before hooks with email and
+// New refuses verification hooks that an enabled feature would bypass: SSO,
+// which keeps its records in its store, two-factor on a store that cannot
+// report the rows its calls lock, authorization codes on a store whose code
+// methods do not ask the request's verification gate, update before hooks with email and
 // phone codes and two-factor, which count a wrong guess as they judge it, and
 // delete hooks on a store that cannot read a deletion link, an OAuth flow, a
 // magic link, a one-time token, an email code, a passkey challenge or a
@@ -357,12 +359,54 @@ func TestDatabaseVerificationHooksRefuseBypassingFeatures(t *testing.T) {
 	if _, err := authn.New(factors); err == nil || !strings.Contains(err.Error(), "ReportsFactorRecords") {
 		t.Fatal("verification create hooks were accepted with two-factor without ReportsFactorRecords:", err)
 	}
-	// SSO and OAuth provider codes stay in their stores.
-	for _, id := range []string{"sso", "oauth-provider"} {
-		refused := base()
-		refused.Plugins = []authn.Plugin{{ID: id}}
-		if _, err := authn.New(refused); err == nil || !strings.Contains(err.Error(), id) {
-			t.Fatal("verification hooks were accepted with", id, err)
+	// SSO's records stay in its store.
+	refused := base()
+	refused.Plugins = []authn.Plugin{{ID: "sso"}}
+	if _, err := authn.New(refused); err == nil || !strings.Contains(err.Error(), "sso") {
+		t.Fatal("verification hooks were accepted with sso:", err)
+	}
+	// Authorization codes run them on a store whose code methods ask the
+	// request's gate; the memory store keeps no codes and gets the plugin's
+	// own refusal.
+	issuer := func(grants ...string) authn.Plugin {
+		t.Helper()
+		p, err := oauthprovider.New(oauthprovider.Options{GrantTypes: grants})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return p
+	}
+	issuing := base()
+	issuing.EmailAndPassword = false
+	issuing.Plugins = []authn.Plugin{issuer()}
+	if _, err := authn.New(issuing); err == nil || !strings.Contains(err.Error(), "ConsentStore") {
+		t.Fatal("verification hooks with the OAuth provider on the memory store answered", err)
+	}
+	clients, err := sqlstore.OpenWithOptions(t.Context(), "sqlite", ":memory:", []string{"oauth-provider"}, schema.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer clients.Close()
+	issuing.Store = clients
+	issuing.DatabaseHooks.Verification.Update = observe
+	issuing.DatabaseHooks.Verification.Delete = observe
+	if _, err := authn.New(issuing); err != nil {
+		t.Fatal("verification hooks were refused with the OAuth provider on SQLite:", err)
+	}
+	// A store whose code methods do not ask the gate is refused for codes,
+	// and not for the other grants or consent management alone.
+	type codeStore = oauthprovider.AuthorizationCodeStore
+	issuing.Store = struct {
+		authn.Store
+		codeStore
+	}{clients, clients}
+	if _, err := authn.New(issuing); err == nil || !strings.Contains(err.Error(), "GatesAuthorizationCodes") {
+		t.Fatal("verification hooks were accepted with authorization codes on a store that does not ask the gate:", err)
+	}
+	for _, p := range []authn.Plugin{issuer("client_credentials"), oauthprovider.ConsentManagement(oauthprovider.ConsentOptions{Scopes: []string{"openid"}})} {
+		issuing.Plugins = []authn.Plugin{p}
+		if _, err := authn.New(issuing); err != nil && strings.Contains(err.Error(), "GatesAuthorizationCodes") {
+			t.Fatal("a configuration without authorization codes was refused for them:", err)
 		}
 	}
 	// Passkey challenges run them, and delete hooks need a store that reads a

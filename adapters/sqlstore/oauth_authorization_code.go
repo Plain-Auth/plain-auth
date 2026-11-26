@@ -9,6 +9,7 @@ import (
 	"errors"
 	"time"
 
+	auth "github.com/Plain-Org/plain-auth"
 	op "github.com/Plain-Org/plain-auth/plugins/oauthprovider"
 )
 
@@ -119,6 +120,13 @@ func (s *Store) redeemCode(ctx context.Context, clientID, identifier string, che
 		if err != nil {
 			return err
 		}
+	}
+	// Asked in every pass, after every check that could refuse; a two-pass
+	// grant's second pass asks about the same row and gets the kept answer.
+	if ok, err := auth.VerificationGateFrom(ctx).Delete(op.AuthorizationCodeRecord(rowID, userID, expires)); err != nil {
+		return err
+	} else if !ok {
+		return op.ErrAuthorizationCodeInvalid // a declined spend keeps the code and revokes nothing
 	}
 	issue := op.DelegatedTokenIssue{SessionID: record.SessionID, Refresh: record.Refresh != nil, IDToken: record.IDToken}
 	if pending != nil && pending.prepared {

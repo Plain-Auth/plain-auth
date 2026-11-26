@@ -2,7 +2,9 @@ package oauthprovider
 
 import (
 	"context"
+	"crypto/sha256"
 	"crypto/subtle"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"net/url"
@@ -91,6 +93,59 @@ type AuthorizationCodeStore interface {
 type OfflineAuthorizationCodeStore interface {
 	AuthorizationCodeStore
 	RedeemAuthorizationCodeWithRefresh(ctx context.Context, clientID, identifier string, checkClient func(MachineClient) error, prepare func(AuthorizationCodeClient, json.RawMessage) (DelegatedAccessRecord, error), issueRefresh func(sessionID string) (string, error)) error
+}
+
+// AuthorizationCodeGater is a store whose code methods ask the request's
+// plainauth.VerificationGate about the codes they store and spend, so that the
+// codes' verification database hooks run outside the store's transactions. New
+// requires it for verification hooks with the authorization_code grant.
+// Following the gate's rules:
+//   - IssueBrowserCode, and FinishBrowserConsent with an acceptance, ask Create
+//     with AuthorizationCodeRecord(AuthorizationCodeRecordID(identifier),
+//     issue.UserID, start+Lifetime) once the client, session, prompt, consent
+//     and identifier checks pass, just before storing the code, which they
+//     date from start, the gate's Now truncated to the second. A declined code
+//     is not stored, and the call commits the rest: a consumed prompt and an
+//     accepted consent.
+//   - RedeemAuthorizationCode, RedeemAuthorizationCodeWithRefresh and
+//     RedeemOpenIDCode ask Delete with the stored row's ID, the code's user and
+//     the row's expiry once the client, the code's value, the user, the session
+//     and the expiry pass, in every pass, before deferring issuance or spending
+//     the code. A declined spend returns ErrAuthorizationCodeInvalid and spends
+//     and revokes nothing.
+type AuthorizationCodeGater interface{ GatesAuthorizationCodes() }
+
+// AuthorizationCodeRecordID is the ID of the row that stores a code under
+// identifier: the hex of the first 16 bytes of the SHA-256 of "oauth-code/"
+// and the identifier. The deterministic key serializes simultaneous issues of
+// one identifier. It cannot redeem the code, but keep it private.
+func AuthorizationCodeRecordID(identifier string) string {
+	sum := sha256.Sum256([]byte("oauth-code/" + identifier))
+	return hex.EncodeToString(sum[:16])
+}
+
+// AuthorizationCodeRecord is an authorization code as a verification record,
+// owned by the user who approved it. id is the stored row's ID. It never
+// carries the code's stored identifier, which a weak HashAuthorizationCode
+// could make redeemable, nor the authorization request's state, nonce, PKCE
+// challenge, login hint, claims or session.
+func AuthorizationCodeRecord(id, userID string, expiresAt time.Time) auth.VerificationRecord {
+	return auth.VerificationRecord{ID: id, Identifier: "authorization-code", UserID: userID, ExpiresAt: expiresAt.UTC().Truncate(time.Millisecond)}
+}
+
+// revokeCodeTokens removes the tokens an exchange of identifier stored but
+// never returned, by redeeming the spent code again: an AuthorizationCodeStore
+// answers a replay by removing the code's descendants.
+func revokeCodeTokens(c auth.EndpointContext, store AuthorizationCodeStore, clientID, identifier string) {
+	ctx := context.WithoutCancel(c.Request.Context())
+	err := store.RedeemAuthorizationCode(ctx, clientID, identifier,
+		func(MachineClient) error { return nil },
+		func(AuthorizationCodeClient, json.RawMessage) (DelegatedAccessRecord, error) {
+			return DelegatedAccessRecord{}, ErrAuthorizationCodeInvalid
+		})
+	if !errors.Is(err, ErrAuthorizationCodeInvalid) {
+		c.Auth.Logger().ErrorContext(ctx, "oauthprovider: could not remove the tokens of an exchange whose verification hook failed", "error", err)
+	}
 }
 
 type storedAuthorizationCode struct {
@@ -216,24 +271,41 @@ func (opts Options) redeemAuthorizationCode(c auth.EndpointContext, in tokenRequ
 		result.RefreshToken = wire
 		return digest, err
 	}
-	if supportsOpenID {
-		err = openidStore.RedeemOpenIDCode(ctx, in.id, identifier, checkClient, prepare, func(grant DelegatedTokenIssue) (string, error) {
-			if grant.IDToken.Subject != "" {
-				token, err := opts.Tokens.signIDToken(c, in.id, issued, grant.IDToken, now)
-				if err != nil {
-					return "", err
-				}
-				result.IDToken = token
+	issueOpenID := func(grant DelegatedTokenIssue) (string, error) {
+		if grant.IDToken.Subject != "" {
+			token, err := opts.Tokens.signIDToken(c, in.id, issued, grant.IDToken, now)
+			if err != nil {
+				return "", err
 			}
-			if grant.Refresh {
-				return issueRefresh(grant.SessionID)
-			}
-			return "", nil
-		})
-	} else if canIssueRefresh {
-		err = offlineStore.RedeemAuthorizationCodeWithRefresh(ctx, in.id, identifier, checkClient, prepare, issueRefresh)
-	} else {
-		err = store.RedeemAuthorizationCode(ctx, in.id, identifier, checkClient, prepare)
+			result.IDToken = token
+		}
+		if grant.Refresh {
+			return issueRefresh(grant.SessionID)
+		}
+		return "", nil
+	}
+	// The store asks the request's gate before spending the code, so its
+	// verification hooks run outside the store's transaction.
+	committed := false
+	err = c.GateVerifications(func(ctx context.Context) error {
+		now = time.Now().UTC().Truncate(time.Second) // a rerun follows slow hooks
+		var err error
+		switch {
+		case supportsOpenID:
+			err = openidStore.RedeemOpenIDCode(ctx, in.id, identifier, checkClient, prepare, issueOpenID)
+		case canIssueRefresh:
+			err = offlineStore.RedeemAuthorizationCodeWithRefresh(ctx, in.id, identifier, checkClient, prepare, issueRefresh)
+		default:
+			err = store.RedeemAuthorizationCode(ctx, in.id, identifier, checkClient, prepare)
+		}
+		committed = err == nil
+		return err
+	})
+	if err != nil && committed {
+		// A delete after hook failed once the exchange committed. Remove the
+		// tokens it stored, which were never returned, as an undelivered
+		// session is removed when its hook fails.
+		revokeCodeTokens(c, store, in.id, identifier)
 	}
 	switch {
 	case errors.Is(err, ErrAuthorizationCodeInvalid):

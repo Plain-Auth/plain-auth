@@ -52,6 +52,8 @@
     - [x] Return a silent interaction error, ignore a supplied clearance on a new request and sign only a completed session’s consent page ([test](../../../conformance/oauth-post-login.mjs#L87))
     - [x] Resume the original client authorization with the enterprise employee’s new session and redeem the code after consent ([test](../../../conformance/oauth-enterprise-authorization.mjs#L43))
     - [x] Reject malformed OpenID claims and unsatisfiable essential authentication context before authorizing a code ([test](../../../conformance/oauth-id-tokens.mjs#L104))
+    - [x] Run the code's verification create hooks after the client, session and consent checks; a declined code redirects with a code that redeems nothing ([test](../../../adapters/sqlstore/oauth_code_hooks_test.go#L315))
+    - [x] A visit that opens the consent page runs no code hooks ([test](../../../adapters/sqlstore/oauth_code_hooks_test.go#L256))
   - [ ] `GET /.well-known/oauth-authorization-server` (server API only)
     - [x] Discover endpoints and capabilities for the machine grant, then register a client, verify a signed token and revoke an opaque token ([test](../../../conformance/oauth-issuer-metadata.mjs#L95))
     - [x] Mount both issuer discovery paths through ServeMux, chi, Gorilla Mux, Gin, Echo and Fiber and read them with GET and HEAD ([test](../../../integrations/routers/routers_test.go#L169))
@@ -65,6 +67,7 @@
     - [x] Preserve narrowed approval when onboarding becomes required during consent and defer code issuance ([test](../../../conformance/oauth-signup-policy.mjs#L68))
     - [x] Require a consent form to record an approval and send an earlier selector form back through the remaining steps ([test](../../../conformance/oauth-post-login.mjs#L133))
     - [x] Approve a subset of individually requested UserInfo claims and require consent before adding more ([test](../../../conformance/oauth-id-tokens.mjs#L119))
+    - [x] An accepted consent runs the code's verification create hooks; a declined code still records the consent and spends the prompt ([test](../../../adapters/sqlstore/oauth_code_hooks_test.go#L287))
   - [ ] `POST /oauth2/continue`
     - [x] Use the signed signup page query and the new browser session to complete the account-creation step ([test](../../../conformance/oauth-browser-login.mjs#L82))
     - [x] Resume the signed chooser with the selected browser account and preserve forced consent without repeating selection ([test](../../../conformance/oauth-account-selection.mjs#L44))
@@ -87,6 +90,8 @@
     - [x] Retry a code or refresh token after a signing failure and recheck live session and client logout policy on three SQL databases ([test](../../../adapters/sqlstore/oauth_id_token_test.go#L23))
     - [x] Use the current user, registered client metadata and narrowed scopes without invoking the hook for an exchange that drops OpenID ([test](../../../conformance/oauth-id-tokens.mjs#L136))
     - [x] Retry after callback failure and recheck the profile and metadata on three databases, including hidden fields and active-plugin isolation ([test](../../../adapters/sqlstore/oauth_id_token_test.go#L182))
+    - [x] An authorization code exchange its checks refuse runs no verification hooks ([test](../../../adapters/sqlstore/oauth_code_hooks_test.go#L351))
+    - [x] A failed verification delete after hook removes the tokens the exchange stored ([test](../../../adapters/sqlstore/oauth_code_hooks_test.go#L429))
   - [ ] `POST /oauth2/introspect`
     - [x] Inspect a machine token issued independently, verify its exact claims, and report it inactive after revocation ([test](../../../conformance/oauth-introspection.mjs#L32))
     - [x] Read credentials, ownership and token state consistently across rotation, disablement, deletion and revocation on three SQL engines ([test](../../../adapters/sqlstore/oauth_introspection_test.go#L97))
@@ -293,6 +298,7 @@
     - [ ] `codeExpiresIn`
       - [x] Apply a custom lifetime and code digest and redeem the stored browser grant on a second server ([test](../../../adapters/sqlstore/oauth_browser_authorization_test.go#L151))
       - [x] Expire a pending consent request before approval and accept a fresh prompt on another issuer process ([test](../../../adapters/sqlstore/oauth_browser_consent_test.go#L138))
+      - [x] The code's verification record expires with the stored code ([test](../../../adapters/sqlstore/oauth_code_hooks_test.go#L31))
     - [ ] `scopeExpirations`
       - [x] Apply the machine token lifetime and shortest applicable scope lifetime to the response and persisted expiry ([test](../../../conformance/oauth-machine-tokens.mjs#L65))
       - [x] Apply the shortest lifetime from the original machine scopes and every requested API, including scopes dropped at issuance ([test](../../../conformance/oauth-resource-machine-tokens.mjs#L89))
@@ -468,8 +474,8 @@
   - [ ] `isSessionFreshForSignedQuery`
   - [ ] `removePromptFromQuery`
   - [ ] `removeMaxAgeFromQuery`
-  - [x] `isPKCERequired` ([test](../../../plugins/oauthprovider/authorization_code_test.go#L12))
-    - [x] Resolve public and confidential client PKCE requirements, including offline scopes, OIDC nonces and explicit registration policy ([test](../../../plugins/oauthprovider/authorization_code_test.go#L12))
+  - [x] `isPKCERequired` ([test](../../../plugins/oauthprovider/authorization_code_test.go#L15))
+    - [x] Resolve public and confidential client PKCE requirements, including offline scopes, OIDC nonces and explicit registration policy ([test](../../../plugins/oauthprovider/authorization_code_test.go#L15))
   - [ ] `isRedirectUriTransportAllowed`
   - [ ] `isInsecureRedirectUriAllowed`
   - [ ] `getAuthEndpointUrl`
@@ -575,7 +581,7 @@
     - [ ] Authorization requests
     - [ ] PKCE
       - [x] Exchange a browser-issued S256 code, verify the delegated access token with an independent issuer and isolate replay cleanup to that code ([test](../../../conformance/oauth-authorization-code.mjs#L5))
-      - [x] Resolve public and confidential client PKCE requirements, including offline scopes, OIDC nonces and explicit registration policy ([test](../../../plugins/oauthprovider/authorization_code_test.go#L12))
+      - [x] Resolve public and confidential client PKCE requirements, including offline scopes, OIDC nonces and explicit registration policy ([test](../../../plugins/oauthprovider/authorization_code_test.go#L15))
       - [x] Sign in and register a public client, then obtain a code by GET or form POST and redeem it at either issuer with S256 PKCE ([test](../../../conformance/oauth-browser-authorization.mjs#L5))
     - [ ] Redirect URIs
     - [ ] Client authentication
@@ -978,7 +984,7 @@
     - [x] Exchange refresh tokens through the Go OAuth client and verify atomic replacement, callback failures and concurrent reuse on all three engines ([test](../../../adapters/sqlstore/oauth_refresh_grant_test.go#L21))
   - [ ] PKCE
     - [x] Exchange a browser-issued S256 code, verify the delegated access token with an independent issuer and isolate replay cleanup to that code ([test](../../../conformance/oauth-authorization-code.mjs#L5))
-    - [x] Resolve public and confidential client PKCE requirements, including offline scopes, OIDC nonces and explicit registration policy ([test](../../../plugins/oauthprovider/authorization_code_test.go#L12))
+    - [x] Resolve public and confidential client PKCE requirements, including offline scopes, OIDC nonces and explicit registration policy ([test](../../../plugins/oauthprovider/authorization_code_test.go#L15))
     - [x] Sign in and register a public client, then obtain a code by GET or form POST and redeem it at either issuer with S256 PKCE ([test](../../../conformance/oauth-browser-authorization.mjs#L5))
   - [ ] DPoP
     - [x] Verify signed DPoP proofs, their token hashes, permitted algorithms, normalized targets, validity windows and sender thumbprints ([test](../../../plugins/oauthprovider/dpop_test.go#L58))
