@@ -127,3 +127,46 @@ func TestEnterpriseOIDCContract(t *testing.T) {
 		})
 	}
 }
+
+// With SharedCallback every OIDC provider returns to /sso/callback, the
+// per-provider callback still answers a stateless return with a state error,
+// and SAML directories keep their own ACS, as another runtime does with its
+// shared redirectURI.
+func TestEnterpriseOIDCSharedCallback(t *testing.T) {
+	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
+		t.Run(dialect, func(t *testing.T) {
+			ctx := t.Context()
+			must := func(err error) {
+				t.Helper()
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			ddl, err := schema.Generate(dialect, []string{"sso"})
+			must(err)
+			store, err := OpenWithSchema(ctx, dialect, organizationTestDSN(t, dialect), ddl)
+			must(err)
+			defer store.Close()
+			idp := newSSOIssuer(t)
+			h := newSSOHost(t, store, idp, sso.Options{SharedCallback: true, SAML: &sso.SAMLOptions{}})
+			owner := h.signUp("owner@service.test")
+			w := h.register(owner, map[string]any{"providerId": "staff", "issuer": idp.URL, "domain": "staff.example", "oidcConfig": map[string]any{"clientId": "enterprise-client", "clientSecret": "oidc-secret", "skipDiscovery": true,
+				"authorizationEndpoint": idp.URL + "/authorize", "tokenEndpoint": idp.URL + "/token", "jwksEndpoint": idp.URL + "/keys"}})
+			var registered struct{ RedirectURI string }
+			if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &registered) != nil || registered.RedirectURI != "https://service.test/identity/sso/callback" {
+				t.Fatal("a shared-callback registration did not return the shared redirect URI", w.Code, registered.RedirectURI)
+			}
+			if done := h.call("GET", "sso/callback/staff?code=stray", "", nil); done.Code != 302 || !strings.Contains(done.Header().Get("Location"), "error=state_not_found") {
+				t.Fatal("a stateless per-provider return did not answer with a state error", done.Code, done.Header().Get("Location"))
+			}
+			_, _, idpPEM := samlTestCertificate(t)
+			if w := h.register(owner, map[string]any{"providerId": "directory", "issuer": "https://identity.example.test/metadata", "domain": "directory.example", "samlConfig": map[string]any{
+				"entryPoint": "https://identity.example.test/sso", "cert": idpPEM, "idpMetadata": map[string]any{"entityID": "https://identity.example.test/metadata"}}}); w.Code != 200 {
+				t.Fatal("a SAML registration was refused", w.Code, w.Body.String())
+			}
+			if w := h.call("GET", "sso/saml2/sp/metadata?providerId=directory", "", nil); !strings.Contains(w.Body.String(), `Location="https://service.test/identity/sso/saml2/sp/acs/directory"`) {
+				t.Fatal("SharedCallback changed a SAML directory's ACS", w.Body.String())
+			}
+		})
+	}
+}

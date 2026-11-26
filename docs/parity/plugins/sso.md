@@ -462,6 +462,7 @@
       - [x] Default the TXT record name to the plain-auth-token prefix and reject a prefix that spans more than one DNS label ([test](../../../plugins/sso/domain_test.go#L13))
     - [ ] `redirectURI`
       - [x] Select the shared callback for all registered providers or the provider-specific URL under the auth mount ([test](../../../conformance/sso-browser.mjs#L62))
+      - [x] Return the shared redirect URI in the registration response with SharedCallback, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_oidc_contract_test.go#L157))
     - [x] `resolvePrivateKey` ([test](../../../adapters/sqlstore/sso_private_key_test.go#L23))
       - [x] Resolve the signing key before each code exchange with the provider's record, tenant, key ID and issuer, refuse private_key_jwt without a resolver, and fail the callback before any token request when no key is returned, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_private_key_test.go#L23))
       - [x] Take the resolved key's ID and algorithm, sign a JWK, default to RS256, pass the organization, and fail closed on a resolver error or an unsupported resolved algorithm ([test](../../../adapters/sqlstore/sso_private_key_test.go#L186))
@@ -742,6 +743,7 @@
   - [ ] Shared redirect URI
     - [x] Send the shared or provider-specific callback as redirect_uri and complete sign-in through it on both runtimes ([test](../../../conformance/sso-browser.mjs#L90))
     - [x] Reject a code delivered to another provider's callback path with state_mismatch ([test](../../../adapters/sqlstore/sso_browser_test.go#L286))
+    - [x] Return the shared redirect URI at registration, answer a stateless per-provider return with state_not_found and keep SAML directories' own ACS with SharedCallback, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_oidc_contract_test.go#L168))
   - [x] IdP-initiated sign-in ([test](../../../adapters/sqlstore/sso_idp_initiated_test.go#L89))
     - [x] Discard the IdP's code, restart at the authorization endpoint with a fresh state, nonce and PKCE challenge, and finish at the host root through the provider or shared callback ([test](../../../adapters/sqlstore/sso_idp_initiated_test.go#L89))
 
