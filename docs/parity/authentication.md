@@ -379,7 +379,8 @@
     - [ ] Sign In with Google With ID Token
       - [x] sign-in/social with idToken {token, nonce} for google signs the user in directly with a session cookie, using a replaced VerifyIDToken ([test](../../conformance/goapi/provider_contract_test.go#L93))
       - [x] The Google provider's Resolve accepts a code-exchange ID token signed by its key with issuer https://accounts.google.com, the client ID as audience and the flow nonce, and refuses a wrong issuer, audience or nonce ([test](../../providers/providers_test.go#L19))
-    - [ ] Cross-Platform Sign In (Web, iOS, Android)
+    - [x] Cross-Platform Sign In (Web, iOS, Android) ([test](../../providers/google_test.go#L86))
+      - [x] Web, iOS and Android client IDs are accepted for directly submitted ID tokens, including an Android token whose audience is the web ID and whose authorized party is the Android ID ([test](../../providers/google_test.go#L86))
     - [ ] Restrict Sign-In to Google Workspace
       - [x] With GoogleOptions.HostedDomain example.org, One Tap refuses ID tokens whose hd claim is elsewhere.org or missing (among other bad claims) ([test](../../adapters/sqlstore/onetap_test.go#L149))
       - [x] With HostedDomain *, One Tap accepts another Workspace domain and refuses a token without an hd claim ([test](../../adapters/sqlstore/onetap_test.go#L184))
@@ -390,9 +391,11 @@
     - [ ] Requesting Additional Google Scopes
       - [x] On both runtimes, sign-in/social and link-social with scopes [contacts] request the provider's default scope plus contacts ([test](../../conformance/social-signup.mjs#L54))
       - [x] Re-linking an identity the user owns merges the new grant's scopes into the stored account scope (profile,email plus write) ([test](../../adapters/sqlstore/oauth_account_update_test.go#L88))
-    - [ ] Disable incremental authorization
-    - [ ] Always get refresh token
+    - [x] Disable incremental authorization ([test](../../providers/google_test.go#L60))
+      - [x] Incremental authorization is on by default through include_granted_scopes=true and DisableIncludeGrantedScopes turns it off ([test](../../providers/google_test.go#L60))
+    - [x] Always get refresh token ([test](../../providers/google_test.go#L60))
       - [x] AuthorizationParams prompt=select_account consent on providers.Google appears on the sign-in authorization URL (access_type=offline is not asserted) ([test](../../conformance/goapi/provider_contract_test.go#L67))
+      - [x] AccessType offline with prompt select_account consent puts access_type=offline and the prompt on every authorization URL ([test](../../providers/google_test.go#L60))
     - [ ] Restricting to a Google Workspace domain
       - [x] On both runtimes, additionalParams on sign-in/social and link-social reach the authorization URL (prompt consent, ui_locales fr) ([test](../../conformance/social-signup.mjs#L57))
 

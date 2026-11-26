@@ -24895,6 +24895,12 @@
       "label": "Reject a Google ID token addressed to an audience other than the configured client ID",
       "test": "providers/providers_test.go",
       "marker": "{\"wrong audience\", \"https://accounts.google.com\", \"other\", \"state-nonce\", false},"
+    },
+    {
+      "label": "A directly submitted ID token may name ClientID or any AdditionalClientIDs entry as its audience, its authorized party must be one of them, and the code exchange accepts ClientID only",
+      "test": "providers/google_test.go",
+      "marker": "func TestGoogleAdditionalClientIDs(t *testing.T) {",
+      "complete": true
     }
   ],
   "provider-option/google/hd": [
@@ -25994,6 +26000,12 @@
       "label": "AuthorizationParams prompt=select_account consent on providers.Google appears on the sign-in authorization URL (access_type=offline is not asserted)",
       "test": "conformance/goapi/provider_contract_test.go",
       "marker": "if q := start(\"/sign-in/social\", \"\"); q.Get(\"scope\") != \"openid\" || q.Get(\"prompt\") != \"select_account consent\" {"
+    },
+    {
+      "label": "AccessType offline with prompt select_account consent puts access_type=offline and the prompt on every authorization URL",
+      "test": "providers/google_test.go",
+      "marker": "func TestGoogleAuthorizationOptions(t *testing.T) {",
+      "complete": true
     }
   ],
   "docs/content/docs/authentication/google.mdx#L257": [
@@ -29838,6 +29850,46 @@
       "label": "Run the exported storetest contract kit, with its AccountStore and SessionRefreshStore groups, against SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/storetest_test.go",
       "marker": "func TestStoreContract(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "provider-option/google/accessType": [
+    {
+      "label": "GoogleOptions.AccessType is sent as access_type on the authorization URL",
+      "test": "providers/google_test.go",
+      "marker": "func TestGoogleAuthorizationOptions(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "provider-option/google/display": [
+    {
+      "label": "GoogleOptions.Display is sent as display on the authorization URL",
+      "test": "providers/google_test.go",
+      "marker": "func TestGoogleAuthorizationOptions(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "provider-option/google/includeGrantedScopes": [
+    {
+      "label": "include_granted_scopes=true is sent by default, DisableIncludeGrantedScopes leaves it out, and a call's additionalParams override it",
+      "test": "providers/google_test.go",
+      "marker": "func TestGoogleAuthorizationOptions(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/authentication/google.mdx#L215": [
+    {
+      "label": "Incremental authorization is on by default through include_granted_scopes=true and DisableIncludeGrantedScopes turns it off",
+      "test": "providers/google_test.go",
+      "marker": "func TestGoogleAuthorizationOptions(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/authentication/google.mdx#L117": [
+    {
+      "label": "Web, iOS and Android client IDs are accepted for directly submitted ID tokens, including an Android token whose audience is the web ID and whose authorized party is the Android ID",
+      "test": "providers/google_test.go",
+      "marker": "func TestGoogleAdditionalClientIDs(t *testing.T) {",
       "complete": true
     }
   ]

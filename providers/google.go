@@ -27,9 +27,22 @@ func Google(clientID, clientSecret string) authn.OAuthProvider {
 
 type GoogleOptions struct {
 	ClientID, ClientSecret string
-	HostedDomain           string
-	DisableSignUp          bool
-	HTTPClient             *http.Client
+	// AdditionalClientIDs are the app's other Google client IDs, such as its
+	// iOS and Android ones. A directly submitted ID token or One Tap
+	// credential may name any of them, or ClientID, as its audience; the code
+	// exchange uses ClientID. Empty entries are ignored.
+	AdditionalClientIDs []string
+	HostedDomain        string
+	// AccessType is sent as access_type, for example "offline" for a refresh
+	// token.
+	AccessType string
+	// Display is sent as display: "page", "popup", "touch" or "wap".
+	Display string
+	// DisableIncludeGrantedScopes stops sending include_granted_scopes=true,
+	// which otherwise keeps scopes the user granted earlier.
+	DisableIncludeGrantedScopes bool
+	DisableSignUp               bool
+	HTTPClient                  *http.Client
 }
 
 // GoogleWithOptions configures audience, Workspace restriction, registration,
@@ -40,20 +53,46 @@ func GoogleWithOptions(o GoogleOptions) authn.OAuthProvider {
 		client = &http.Client{Timeout: 15 * time.Second}
 	}
 	keys := oidc.NewRemoteKeySet(oidc.ClientContext(context.Background(), noRedirects(client)), "https://www.googleapis.com/oauth2/v3/certs")
-	p := google(o.ClientID, o.ClientSecret, keys, client)
+	p := google(o.ClientID, o.ClientSecret, keys, client, o.AdditionalClientIDs...)
 	p.GoogleHostedDomain = o.HostedDomain
 	p.DisableSignUp = o.DisableSignUp
-	if o.HostedDomain != "" {
-		p.AuthorizationParams = url.Values{"hd": {o.HostedDomain}}
+	p.AuthorizationParams = url.Values{}
+	if !o.DisableIncludeGrantedScopes {
+		p.AuthorizationParams.Set("include_granted_scopes", "true")
+	}
+	for key, value := range map[string]string{"hd": o.HostedDomain, "access_type": o.AccessType, "display": o.Display} {
+		if value != "" {
+			p.AuthorizationParams.Set(key, value)
+		}
 	}
 	return p
 }
 
-func google(id, secret string, keys oidc.KeySet, client *http.Client) authn.OAuthProvider {
+func google(id, secret string, keys oidc.KeySet, client *http.Client, more ...string) authn.OAuthProvider {
 	verifier := oidc.NewVerifier("https://accounts.google.com", keys, &oidc.Config{ClientID: id, SupportedSigningAlgs: []string{"RS256"}})
 	p := oidcProvider(id, secret, endpoints.Google, verifier, client)
 	p.AllowVerifiedEmailLink = true
+	if ids := clientIDs(id, more); len(ids) > 1 {
+		// A directly submitted token may be issued to any of the app's client
+		// IDs; the code exchange still checks ClientID only.
+		direct := oidc.NewVerifier("https://accounts.google.com", keys, &oidc.Config{SkipClientIDCheck: true, SupportedSigningAlgs: []string{"RS256"}})
+		p.VerifyIDToken = func(ctx context.Context, raw, nonce string) (authn.OAuthProfile, time.Time, error) {
+			return resolveSignedToken(ctx, direct, idTokenRules{profile: standardProfile}, ids, raw, nonce, "")
+		}
+	}
 	return p
+}
+
+// clientIDs returns id and the nonempty additional IDs other than id. An
+// empty audience would weaken the authorized-party check.
+func clientIDs(id string, more []string) []string {
+	ids := []string{id}
+	for _, other := range more {
+		if other != "" && other != id {
+			ids = append(ids, other)
+		}
+	}
+	return ids
 }
 
 type idTokenRules struct {
@@ -111,8 +150,10 @@ func resolveSignedToken(ctx context.Context, verifier *oidc.IDTokenVerifier, rul
 	if !slices.ContainsFunc(token.Audience, func(aud string) bool { return slices.Contains(audiences, aud) }) {
 		return profile, time.Time{}, errors.New("unexpected OpenID Connect audience")
 	}
-	if (len(token.Audience) > 1 || claims.AuthorizedParty != "") &&
-		(!slices.Contains(audiences, claims.AuthorizedParty) || !slices.Contains(token.Audience, claims.AuthorizedParty)) {
+	// An authorized party, when present, must be one of the app's client
+	// IDs; a token for several audiences must also name one of them.
+	party, multi := claims.AuthorizedParty, len(token.Audience) > 1
+	if (multi || party != "") && !slices.Contains(audiences, party) || multi && !slices.Contains(token.Audience, party) {
 		return profile, time.Time{}, errors.New("unexpected authorized party")
 	}
 	profile, err = rules.profile(token)

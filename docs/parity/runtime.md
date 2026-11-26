@@ -385,14 +385,18 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
       - [x] The client ID given to providers.New reaches the token exchange through real /sign-in/social and callback requests ([test](../../providers/catalog_test.go#L79))
     - [ ] `issuer`
   - [ ] `google`
-    - [ ] `clientId`
+    - [x] `clientId` ([test](../../providers/google_test.go#L86))
       - [x] Reject a Google ID token addressed to an audience other than the configured client ID ([test](../../providers/providers_test.go#L31))
-    - [ ] `accessType`
-    - [ ] `display`
+      - [x] A directly submitted ID token may name ClientID or any AdditionalClientIDs entry as its audience, its authorized party must be one of them, and the code exchange accepts ClientID only ([test](../../providers/google_test.go#L86))
+    - [x] `accessType` ([test](../../providers/google_test.go#L60))
+      - [x] GoogleOptions.AccessType is sent as access_type on the authorization URL ([test](../../providers/google_test.go#L60))
+    - [x] `display` ([test](../../providers/google_test.go#L60))
+      - [x] GoogleOptions.Display is sent as display on the authorization URL ([test](../../providers/google_test.go#L60))
     - [ ] `hd`
       - [x] Reject One Tap Google ID tokens whose hd claim names another Workspace or is missing, and accept any Workspace with *, on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/onetap_test.go#L27))
       - [x] Refuse a proxied preview sign-in whose Google profile names a different hosted domain ([test](../../adapters/sqlstore/oauth_proxy_test.go#L316))
-    - [ ] `includeGrantedScopes`
+    - [x] `includeGrantedScopes` ([test](../../providers/google_test.go#L60))
+      - [x] include_granted_scopes=true is sent by default, DisableIncludeGrantedScopes leaves it out, and a call's additionalParams override it ([test](../../providers/google_test.go#L60))
   - [ ] `huggingface`
     - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
       - [x] Authenticate each catalog provider's browser code exchange with the configured client ID and secret ([test](../../providers/catalog_test.go#L79))
