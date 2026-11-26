@@ -24972,6 +24972,12 @@
       "label": "Accept organization tokens and refuse consumer tokens under organizations, do the reverse under consumers, refuse a common-tenant token whose tid differs from its issuer, and accept a single-tenant token from that tenant",
       "test": "providers/apple_microsoft_test.go",
       "marker": "func TestMicrosoftTenantAndMailboxClaims("
+    },
+    {
+      "label": "Without options Microsoft uses the common tenant endpoint, and a configured authority keeps the tenant segment in its endpoints",
+      "test": "providers/microsoft_test.go",
+      "marker": "func TestMicrosoftOptionValidation(t *testing.T) {",
+      "complete": true
     }
   ],
   "provider-option/naver/clientId": [
@@ -29890,6 +29896,77 @@
       "label": "Web, iOS and Android client IDs are accepted for directly submitted ID tokens, including an Android token whose audience is the web ID and whose authorized party is the Android ID",
       "test": "providers/google_test.go",
       "marker": "func TestGoogleAdditionalClientIDs(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "provider-option/microsoft/clientId": [
+    {
+      "label": "A directly submitted ID token may name the client ID or an AdditionalClientIDs entry as its audience; another audience is refused and the code exchange accepts the client ID only",
+      "test": "providers/microsoft_test.go",
+      "marker": "func TestMicrosoftBrowserSignIn(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "provider-option/microsoft/authority": [
+    {
+      "label": "Authority moves the authorize, token and key endpoints and the issuer check to an External ID origin; tokens from the default authority or another tenant are refused",
+      "test": "providers/microsoft_test.go",
+      "marker": "func TestMicrosoftBrowserSignIn(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/authentication/microsoft.mdx#L42/Authority URL": [
+    {
+      "label": "An External ID authority with a tenant GUID completes a browser sign-in against that authority's endpoints and keys",
+      "test": "providers/microsoft_test.go",
+      "marker": "func TestMicrosoftBrowserSignIn(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/authentication/microsoft.mdx#L120": [
+    {
+      "label": "A browser sign-in through providers.Microsoft completes the callback against the v2.0 authorize and token endpoints with PKCE and the client secret",
+      "test": "providers/microsoft_test.go",
+      "marker": "func TestMicrosoftBrowserSignIn(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/authentication/microsoft.mdx#L124/`provider`": [
+    {
+      "label": "Posting provider microsoft to /sign-in/social starts the Microsoft authorization with its scopes, client ID, PKCE and nonce",
+      "test": "providers/microsoft_test.go",
+      "marker": "func TestMicrosoftBrowserSignIn(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/authentication/microsoft.mdx#L11": [
+    {
+      "label": "A registered Microsoft app signs in through the browser with its client ID and secret",
+      "test": "providers/microsoft_test.go",
+      "marker": "func TestMicrosoftBrowserSignIn(t *testing.T) {"
+    }
+  ],
+  "provider-option/microsoft/profilePhotoSize": [
+    {
+      "label": "ProfilePhotoSize picks the Graph photo size, 48 by default, and an unsupported size is refused when the provider is built",
+      "test": "providers/microsoft_test.go",
+      "marker": "func TestMicrosoftProfilePhoto(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "provider-option/microsoft/disableProfilePhoto": [
+    {
+      "label": "DisableProfilePhoto makes no Graph request and keeps the token's picture; by default the photo is fetched and a missing or oversized photo leaves the image unset",
+      "test": "providers/microsoft_test.go",
+      "marker": "func TestMicrosoftProfilePhoto(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/authentication/microsoft.mdx#L96": [
+    {
+      "label": "The Graph photo is stored as a data URI only up to 1 MiB, and DisableProfilePhoto skips it",
+      "test": "providers/microsoft_test.go",
+      "marker": "func TestMicrosoftProfilePhoto(t *testing.T) {",
       "complete": true
     }
   ]

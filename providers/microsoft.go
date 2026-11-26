@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"regexp"
 	"slices"
 	"strings"
@@ -23,11 +24,26 @@ const microsoftConsumers = "9188040d-6c67-4c5b-b112-36a304b66dad"
 
 var tenantIDPattern = regexp.MustCompile(`(?i)^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$`)
 
+var microsoftPhotoSizes = []int{48, 64, 96, 120, 240, 360, 432, 504, 648}
+
 // MicrosoftOptions selects an Entra account class or concrete tenant GUID.
 // The default uses the common endpoint and fetches a 48-pixel profile photo.
 type MicrosoftOptions struct {
-	TenantID            string
+	TenantID string
+	// Authority is the sign-in origin; empty selects
+	// https://login.microsoftonline.com. For External ID use
+	// https://<tenant>.ciamlogin.com with the tenant GUID as TenantID.
+	Authority string
+	// AdditionalClientIDs are other client IDs a directly submitted ID token
+	// may name as its audience; the code exchange uses the client ID. Empty
+	// entries are ignored.
+	AdditionalClientIDs []string
+	// ProfilePhotoSize is the Graph photo size: 48 (the default), 64, 96,
+	// 120, 240, 360, 432, 504 or 648 pixels.
+	ProfilePhotoSize    int
 	DisableProfilePhoto bool
+	// HTTPClient fetches the signing keys, the token endpoint and the photo.
+	HTTPClient *http.Client
 }
 
 // Microsoft configures the Microsoft identity platform v2 endpoints.
@@ -39,13 +55,34 @@ func Microsoft(id, secret string, options MicrosoftOptions) (authn.OAuthProvider
 	if tenant != "common" && tenant != "consumers" && tenant != "organizations" && !tenantIDPattern.MatchString(tenant) {
 		return authn.OAuthProvider{}, errors.New("invalid Microsoft tenant ID")
 	}
-	client := &http.Client{Timeout: 15 * time.Second}
-	keys := oidc.NewRemoteKeySet(oidc.ClientContext(context.Background(), noRedirects(client)), microsoftAuthority+"/"+tenant+"/discovery/v2.0/keys")
-	return microsoftProvider(id, secret, tenant, options.DisableProfilePhoto, keys, client), nil
+	authority := strings.TrimRight(options.Authority, "/")
+	if authority == "" {
+		authority = microsoftAuthority
+	}
+	if u, err := url.Parse(authority); err != nil || !secureEndpoint(authority) || u.Scheme+"://"+u.Host != authority {
+		return authn.OAuthProvider{}, errors.New("invalid Microsoft authority")
+	}
+	options.Authority = authority
+	if options.ProfilePhotoSize != 0 && !slices.Contains(microsoftPhotoSizes, options.ProfilePhotoSize) {
+		return authn.OAuthProvider{}, errors.New("invalid Microsoft profile photo size")
+	}
+	if options.HTTPClient == nil {
+		options.HTTPClient = &http.Client{Timeout: 15 * time.Second}
+	}
+	keys := oidc.NewRemoteKeySet(oidc.ClientContext(context.Background(), noRedirects(options.HTTPClient)), authority+"/"+tenant+"/discovery/v2.0/keys")
+	return microsoftProvider(id, secret, tenant, options, keys), nil
 }
 
-func microsoftProvider(id, secret, tenant string, disablePhoto bool, keys oidc.KeySet, client *http.Client) authn.OAuthProvider {
-	base := microsoftAuthority + "/" + tenant
+func microsoftProvider(id, secret, tenant string, o MicrosoftOptions, keys oidc.KeySet) authn.OAuthProvider {
+	authority := o.Authority
+	if authority == "" {
+		authority = microsoftAuthority
+	}
+	size := o.ProfilePhotoSize
+	if size == 0 {
+		size = 48
+	}
+	base := authority + "/" + tenant
 	multi := tenant == "common" || tenant == "consumers" || tenant == "organizations"
 	verifier := oidc.NewVerifier(base+"/v2.0", keys, &oidc.Config{ClientID: id, SupportedSigningAlgs: []string{"RS256"}, SkipIssuerCheck: multi})
 	mapProfile := func(token *oidc.IDToken) (authn.OAuthProfile, error) {
@@ -59,7 +96,7 @@ func microsoftProvider(id, secret, tenant string, disablePhoto bool, keys oidc.K
 		if err := token.Claims(&c); err != nil {
 			return authn.OAuthProfile{}, err
 		}
-		if !tenantIDPattern.MatchString(c.TID) || token.Issuer != microsoftAuthority+"/"+c.TID+"/v2.0" || strings.TrimSpace(c.OID) == "" ||
+		if !tenantIDPattern.MatchString(c.TID) || token.Issuer != authority+"/"+c.TID+"/v2.0" || strings.TrimSpace(c.OID) == "" ||
 			(tenant == "consumers" && c.TID != microsoftConsumers) || (tenant == "organizations" && c.TID == microsoftConsumers) || (!multi && tenant != c.TID) {
 			return authn.OAuthProfile{}, errors.New("Microsoft identity is outside the configured tenant")
 		}
@@ -69,10 +106,18 @@ func microsoftProvider(id, secret, tenant string, disablePhoto bool, keys oidc.K
 		}
 		return authn.OAuthProfile{Subject: c.OID, Email: c.Email, Name: c.Name, EmailVerified: verified, Image: c.Picture}, nil
 	}
-	p := signedProvider(id, secret, oauth2.Endpoint{AuthURL: base + "/oauth2/v2.0/authorize", TokenURL: base + "/oauth2/v2.0/token", AuthStyle: oauth2.AuthStyleInParams}, verifier, client, idTokenRules{profile: mapProfile})
+	p := signedProvider(id, secret, oauth2.Endpoint{AuthURL: base + "/oauth2/v2.0/authorize", TokenURL: base + "/oauth2/v2.0/token", AuthStyle: oauth2.AuthStyleInParams}, verifier, o.HTTPClient, idTokenRules{profile: mapProfile})
 	p.Config.Scopes = []string{"openid", "profile", "email", "User.Read", "offline_access"}
 	p.AllowVerifiedEmailLink = true
-	if !disablePhoto {
+	if ids := clientIDs(id, o.AdditionalClientIDs); len(ids) > 1 {
+		// A directly submitted token may be issued to any of the app's client
+		// IDs; the code exchange still checks the client ID only.
+		direct := oidc.NewVerifier(base+"/v2.0", keys, &oidc.Config{SkipClientIDCheck: true, SupportedSigningAlgs: []string{"RS256"}, SkipIssuerCheck: multi})
+		p.VerifyIDToken = func(ctx context.Context, raw, nonce string) (authn.OAuthProfile, time.Time, error) {
+			return resolveSignedToken(ctx, direct, idTokenRules{profile: mapProfile}, ids, raw, nonce, "")
+		}
+	}
+	if !o.DisableProfilePhoto {
 		resolve := p.Resolve
 		p.Resolve = func(ctx context.Context, t *oauth2.Token, nonce string) (authn.OAuthProfile, error) {
 			profile, err := resolve(ctx, t, nonce)
@@ -80,12 +125,17 @@ func microsoftProvider(id, secret, tenant string, disablePhoto bool, keys oidc.K
 				return profile, err
 			}
 			if t.AccessToken != "" {
-				req, err := http.NewRequestWithContext(ctx, "GET", "https://graph.microsoft.com/v1.0/me/photos/48x48/$value", nil)
+				req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("https://graph.microsoft.com/v1.0/me/photos/%dx%d/$value", size, size), nil)
 				if err != nil {
 					return profile, err
 				}
 				req.Header.Set("Authorization", "Bearer "+t.AccessToken)
-				res, err := client.Do(req)
+				client, _ := ctx.Value(oauth2.HTTPClient).(*http.Client)
+				if client == nil {
+					client = o.HTTPClient
+				}
+				// The photo is fetched from Graph only, never from a redirect.
+				res, err := noRedirects(client).Do(req)
 				if err == nil {
 					defer res.Body.Close()
 					if res.StatusCode == 200 {

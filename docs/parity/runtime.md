@@ -417,13 +417,18 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
     - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
       - [x] Authenticate each catalog provider's browser code exchange with the configured client ID and secret ([test](../../providers/catalog_test.go#L79))
   - [ ] `microsoft`
-    - [ ] `clientId`
-    - [ ] `tenantId`
+    - [x] `clientId` ([test](../../providers/microsoft_test.go#L37))
+      - [x] A directly submitted ID token may name the client ID or an AdditionalClientIDs entry as its audience; another audience is refused and the code exchange accepts the client ID only ([test](../../providers/microsoft_test.go#L37))
+    - [x] `tenantId` ([test](../../providers/microsoft_test.go#L186))
       - [x] Accept organization tokens and refuse consumer tokens under organizations, do the reverse under consumers, refuse a common-tenant token whose tid differs from its issuer, and accept a single-tenant token from that tenant ([test](../../providers/apple_microsoft_test.go#L146))
-    - [ ] `authority`
+      - [x] Without options Microsoft uses the common tenant endpoint, and a configured authority keeps the tenant segment in its endpoints ([test](../../providers/microsoft_test.go#L186))
+    - [x] `authority` ([test](../../providers/microsoft_test.go#L37))
+      - [x] Authority moves the authorize, token and key endpoints and the issuer check to an External ID origin; tokens from the default authority or another tenant are refused ([test](../../providers/microsoft_test.go#L37))
     - [ ] `clientAssertion`
-    - [ ] `profilePhotoSize`
-    - [ ] `disableProfilePhoto`
+    - [x] `profilePhotoSize` ([test](../../providers/microsoft_test.go#L145))
+      - [x] ProfilePhotoSize picks the Graph photo size, 48 by default, and an unsupported size is refused when the provider is built ([test](../../providers/microsoft_test.go#L145))
+    - [x] `disableProfilePhoto` ([test](../../providers/microsoft_test.go#L145))
+      - [x] DisableProfilePhoto makes no Graph request and keeps the token's picture; by default the photo is fetched and a missing or oversized photo leaves the image unset ([test](../../providers/microsoft_test.go#L145))
   - [ ] `naver`
     - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
       - [x] Authenticate each catalog provider's browser code exchange with the configured client ID and secret ([test](../../providers/catalog_test.go#L79))

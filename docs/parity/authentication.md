@@ -514,16 +514,21 @@
 
 - [ ] Microsoft
   - [ ] Get your Microsoft credentials
+    - [x] A registered Microsoft app signs in through the browser with its client ID and secret ([test](../../providers/microsoft_test.go#L37))
   - [ ] Configure the provider
     - [x] The Microsoft provider's ID-token check refuses consumer-tenant tokens in organizations mode and organization-tenant tokens in consumers mode, refuses a token whose issuer names a different tenant than its tid, and accepts matching tokens in organizations, consumers, common and tenant-GUID modes ([test](../../providers/apple_microsoft_test.go#L166))
-    - [ ] Authority URL
+    - [x] Authority URL ([test](../../providers/microsoft_test.go#L37))
+      - [x] An External ID authority with a tenant GUID completes a browser sign-in against that authority's endpoints and keys ([test](../../providers/microsoft_test.go#L37))
     - [ ] Client assertions
   - [ ] Account identifiers
     - [x] A verified Microsoft ID token maps to the oid claim as the account subject, not the pairwise sub ([test](../../providers/apple_microsoft_test.go#L170))
     - [x] A single-tenant Entra provider uses the oid claim as the subject for both the code-flow and the native ID token ([test](../../providers/entra_test.go#L84))
-  - [ ] Large Profile Images ⚠️
+  - [x] Large Profile Images ⚠️ ([test](../../providers/microsoft_test.go#L145))
+    - [x] The Graph photo is stored as a data URI only up to 1 MiB, and DisableProfilePhoto skips it ([test](../../providers/microsoft_test.go#L145))
   - [ ] Sign In with Microsoft
-    - [ ] `provider`
+    - [x] A browser sign-in through providers.Microsoft completes the callback against the v2.0 authorize and token endpoints with PKCE and the client secret ([test](../../providers/microsoft_test.go#L37))
+    - [x] `provider` ([test](../../providers/microsoft_test.go#L37))
+      - [x] Posting provider microsoft to /sign-in/social starts the Microsoft authorization with its scopes, client ID, PKCE and nonce ([test](../../providers/microsoft_test.go#L37))
     - [ ] Preselecting an organizational domain
       - [x] On both runtimes, additionalParams on sign-in/social and link-social reach the authorization URL (prompt consent, ui_locales fr) ([test](../../conformance/social-signup.mjs#L57))
 

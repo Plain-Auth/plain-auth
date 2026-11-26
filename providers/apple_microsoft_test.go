@@ -158,7 +158,7 @@ func TestMicrosoftTenantAndMailboxClaims(t *testing.T) {
 		{"consumers", microsoftConsumers, microsoftConsumers, true, true}, {"consumers", org, org, false, false},
 		{"common", org, microsoftConsumers, false, false}, {org, org, org, true, true},
 	} {
-		p := microsoftProvider("client", "secret", tc.mode, true, keys, nil)
+		p := microsoftProvider("client", "secret", tc.mode, MicrosoftOptions{DisableProfilePhoto: true}, keys)
 		raw := signedClaims(t, key, microsoftAuthority+"/"+tc.issuer+"/v2.0", "pairwise-sub", "nonce", map[string]any{"oid": "object-id", "tid": tc.tid, "email": "person@example.org", "verified_primary_email": []string{"person@example.org"}})
 		actual, _, err := p.VerifyIDToken(context.Background(), raw, "nonce")
 		if !tc.allowed {
@@ -171,7 +171,7 @@ func TestMicrosoftTenantAndMailboxClaims(t *testing.T) {
 			t.Fatalf("%s: %#v %v", tc.mode, actual, err)
 		}
 	}
-	p := microsoftProvider("client", "secret", "common", true, keys, nil)
+	p := microsoftProvider("client", "secret", "common", MicrosoftOptions{DisableProfilePhoto: true}, keys)
 	raw := signedClaims(t, key, microsoftAuthority+"/"+org+"/v2.0", "sub", "nonce", map[string]any{"oid": "oid", "tid": org, "email": "person@example.org"})
 	claims, _, err := p.VerifyIDToken(context.Background(), raw, "nonce")
 	if err != nil || claims.EmailVerified {
