@@ -126,6 +126,8 @@ A trusted server can call `keys.Verify(ctx, secret, required)`. Check the return
 
 `Service.Create` and `Service.Update` take an owner ID selected by trusted server code. Use their `Policy` argument for permissions, remaining uses, refill interval and amount, or per-key rate limits. Browser requests cannot assign these fields. Without overrides, keys have 64 random ASCII letters, show their first six characters, have unlimited lifetime uses and allow ten requests per 24-hour inactivity window. A successful request moves the window’s start to the time of that request. An expiring key can use a configured default, or an explicit lifetime between one and 365 days by default.
 
+A key whose stored rate maximum or window is empty has no rate limit and keeps its last request time. A remaining count drops by one per use; at zero the next use answers `USAGE_EXCEEDED` and deletes a key without a refill, while a refillable key is kept and resets its count to the refill amount once the interval has passed since creation or the last refill. A key with a refill policy but no remaining count stays uncapped. [Usage budget tests](../adapters/sqlstore/apikey_budget_test.go)
+
 Verification locks the owner and key in one transaction. Permission, expiry, budget and rate checks complete before usage counters commit. Separate application instances share the same budget. `keys.DeleteExpired(ctx)` purges expired keys in the service’s configured namespace. `Options.ConfigID` selects that namespace, with `default` used when omitted.
 
 

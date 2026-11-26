@@ -7487,6 +7487,12 @@
       "label": "Consume the remaining budget concurrently without granting excess uses",
       "test": "adapters/sqlstore/apikey_test.go",
       "marker": "concurrent key quota granted"
+    },
+    {
+      "label": "Leave a key without a remaining count uncapped, lower a counted key to zero on its last use, then reject the next use with USAGE_EXCEEDED and delete the key when it has no refill",
+      "test": "adapters/sqlstore/apikey_budget_test.go",
+      "marker": "an exhausted key without a refill was kept",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/api-key/advanced.mdx#L644": [
@@ -7494,6 +7500,12 @@
       "label": "Refill a depleted key after its configured interval",
       "test": "adapters/sqlstore/apikey_test.go",
       "marker": "verify(refill.Secret, nil, false, \"USAGE_EXCEEDED\")"
+    },
+    {
+      "label": "Reset a key's remaining count to its refill amount once the interval has passed since creation or the last refill, record the refill time, keep an exhausted refillable key, leave a refill-only key uncapped, and refuse half a refill policy with its own code",
+      "test": "adapters/sqlstore/apikey_budget_test.go",
+      "marker": "a refill added to the remaining count instead of resetting it",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/api-key/advanced.mdx#L654": [
@@ -7501,6 +7513,12 @@
       "label": "Reject expired secrets and purge expired entries",
       "test": "adapters/sqlstore/apikey_test.go",
       "marker": "expired cleanup did not remove exactly one key"
+    },
+    {
+      "label": "Leave a key created without expiresIn unexpiring and expire one created with expiresIn exactly that long after its creation, after a database round trip",
+      "test": "adapters/sqlstore/apikey_budget_test.go",
+      "marker": "expiresIn did not set the expiry from the creation time",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/api-key/advanced.mdx#L716": [
@@ -39810,6 +39828,14 @@
       "label": "Answer the key validation, update, verification, session-read and ban errors with their status, code and message from the routes and Go calls, on three SQL engines",
       "test": "adapters/sqlstore/apikey_errors_test.go",
       "marker": "func TestAPIKeyErrorCodesAcrossEngines("
+    }
+  ],
+  "docs/content/docs/plugins/api-key/advanced.mdx#L625/Null Values": [
+    {
+      "label": "Accept a key past its one-request limit once its stored rate maximum or window is null, without counting or recording the request, on three databases",
+      "test": "adapters/sqlstore/apikey_budget_test.go",
+      "marker": "t.Fatal(\"a key with a null rate limit setting was limited or stamped\", column)",
+      "complete": true
     }
   ]
 }

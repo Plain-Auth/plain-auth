@@ -620,7 +620,12 @@ func (s *Service) Verify(ctx context.Context, secret string, required Permission
 			}
 			k.Remaining = ptr(remaining - 1)
 		}
-		if !s.opts.DisableRateLimit && k.RateLimitEnabled && k.RateLimitMax != nil && k.RateLimitTimeWindow != nil {
+		// A key without a maximum or a window has no rate limit and keeps its
+		// last request time. A limit turned off for the service or for the
+		// key still records the request.
+		unbounded := k.RateLimitMax == nil || k.RateLimitTimeWindow == nil
+		limited := !s.opts.DisableRateLimit && k.RateLimitEnabled
+		if limited && !unbounded {
 			if k.LastRequest == nil || now.Sub(*k.LastRequest).Milliseconds() > *k.RateLimitTimeWindow {
 				k.RequestCount = 1
 			} else if k.RequestCount >= *k.RateLimitMax {
@@ -631,7 +636,9 @@ func (s *Service) Verify(ctx context.Context, secret string, required Permission
 				k.RequestCount++
 			}
 		}
-		k.LastRequest = &now
+		if !limited || !unbounded {
+			k.LastRequest = &now
+		}
 		k.UpdatedAt = now
 		result.Valid = true
 		result.Key = k

@@ -229,15 +229,19 @@
       - [ ] Disabling Rate Limiting
       - [ ] Globally
       - [ ] Per Key
-      - [ ] Null Values
+      - [x] Null Values ([test](../../../adapters/sqlstore/apikey_budget_test.go#L60))
+        - [x] Accept a key past its one-request limit once its stored rate maximum or window is null, without counting or recording the request, on three databases ([test](../../../adapters/sqlstore/apikey_budget_test.go#L60))
   - [ ] Remaining, refill, and expiration
     - [ ] How does it work?
-      - [ ] Remaining:
+      - [x] Remaining: ([test](../../../adapters/sqlstore/apikey_budget_test.go#L94))
         - [x] Consume the remaining budget concurrently without granting excess uses ([test](../../../adapters/sqlstore/apikey_test.go#L178))
-      - [ ] refillInterval & refillAmount:
+        - [x] Leave a key without a remaining count uncapped, lower a counted key to zero on its last use, then reject the next use with USAGE_EXCEEDED and delete the key when it has no refill ([test](../../../adapters/sqlstore/apikey_budget_test.go#L94))
+      - [x] refillInterval & refillAmount: ([test](../../../adapters/sqlstore/apikey_budget_test.go#L136))
         - [x] Refill a depleted key after its configured interval ([test](../../../adapters/sqlstore/apikey_test.go#L196))
-      - [ ] Expiration:
+        - [x] Reset a key's remaining count to its refill amount once the interval has passed since creation or the last refill, record the refill time, keep an exhausted refillable key, leave a refill-only key uncapped, and refuse half a refill policy with its own code ([test](../../../adapters/sqlstore/apikey_budget_test.go#L136))
+      - [x] Expiration: ([test](../../../adapters/sqlstore/apikey_budget_test.go#L162))
         - [x] Reject expired secrets and purge expired entries ([test](../../../adapters/sqlstore/apikey_test.go#L266))
+        - [x] Leave a key created without expiresIn unexpiring and expire one created with expiresIn exactly that long after its creation, after a database round trip ([test](../../../adapters/sqlstore/apikey_budget_test.go#L162))
   - [x] Custom Key generation & verification ([test](../../../adapters/sqlstore/apikey_validator_test.go#L119))
     - [x] Backfill exact historical digests and reject reissuance after revocation, verification cleanup and restart ([test](../../../adapters/sqlstore/apikey_ledger_test.go#L16))
     - [x] Create personal and organization credentials with the effective prefix, current issuance authority and atomic digest collision checks ([test](../../../adapters/sqlstore/apikey_hooks_test.go#L102))
