@@ -11495,6 +11495,11 @@
       "label": "Store client_secret_post when discovery advertises only that method",
       "test": "adapters/sqlstore/sso_test.go",
       "marker": "read[\"oidcConfig\"].(map[string]any)[\"tokenEndpointAuthentication\"] != \"client_secret_post\""
+    },
+    {
+      "label": "Redeem codes with a private_key_jwt client assertion and no client secret",
+      "test": "adapters/sqlstore/sso_browser_test.go",
+      "marker": "if grant.style == \"private_key_jwt\" {"
     }
   ],
   "plugin-symbol/sso/OIDCConfig/userInfoEndpoint": [
@@ -41204,6 +41209,16 @@
       "label": "Select client_secret_post when the discovery document advertises only that method, on both runtimes",
       "test": "conformance/sso-providers.mjs",
       "marker": "assert.equal(record.oidcConfig.tokenEndpointAuthentication, \"client_secret_post\");"
+    },
+    {
+      "label": "Select private_key_jwt when the discovery document advertises only that method",
+      "test": "adapters/sqlstore/sso_private_key_test.go",
+      "marker": "if _, _, cfg := stored(\"discovered\"); cfg[\"tokenEndpointAuthentication\"] != \"private_key_jwt\" {"
+    },
+    {
+      "label": "Keep an unset method as client_secret_basic at runtime discovery though the IdP advertises only client_secret_post",
+      "test": "adapters/sqlstore/sso_runtime_discovery_test.go",
+      "marker": "t.Fatal(\"runtime discovery replaced the stored token endpoint authentication\", w.Code, w.Header().Get(\"Location\"))"
     }
   ],
   "plugin-symbol/sso/validateDiscoveryDocument": [
@@ -41442,6 +41457,11 @@
       "label": "Keep the client secret out of the provider read",
       "test": "conformance/sso-providers.mjs",
       "marker": "assert.ok(!JSON.stringify(fetched).includes(oidcConfig.clientSecret));"
+    },
+    {
+      "label": "Require a client secret for client_secret_basic and none for private_key_jwt",
+      "test": "adapters/sqlstore/sso_private_key_test.go",
+      "marker": "t.Fatal(\"client_secret_basic registered without a client secret\", w.Code, w.Body.String())"
     }
   ],
   "plugin-symbol/sso/OIDCConfig/authorizationEndpoint": [
@@ -44411,6 +44431,43 @@
       "label": "Sign in through a skipDiscovery registration without a token endpoint by discovering it at the start and the callback, without storing it, keeping the stored client authentication, and reporting discovery_failed at the callback, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/sso_runtime_discovery_test.go",
       "marker": "func TestEnterpriseOIDCRuntimeDiscovery(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/sso/OIDCConfig/privateKeyId": [
+    {
+      "label": "Store privateKeyId, pass it to the key resolver and send it as the client assertion's kid, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_private_key_test.go",
+      "marker": "t.Fatal(\"the client assertion did not carry the configured key ID\", got)",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/sso/OIDCConfig/privateKeyAlgorithm": [
+    {
+      "label": "Sign the client assertion with a configured PS256 and refuse HS256 at registration",
+      "test": "adapters/sqlstore/sso_private_key_test.go",
+      "marker": "t.Fatal(\"the client assertion was not signed with the configured algorithm\", w.Header().Get(\"Location\"), lastAssertion())",
+      "complete": true
+    },
+    {
+      "label": "Refuse an unsupported private key algorithm at registration",
+      "test": "adapters/sqlstore/sso_private_key_test.go",
+      "marker": "t.Fatal(\"an unsupported private key algorithm was registered\", w.Code, w.Body.String())"
+    }
+  ],
+  "plugin-symbol/sso/SSOOptions/resolvePrivateKey": [
+    {
+      "label": "Resolve the signing key before each code exchange with the provider's record, tenant, key ID and issuer, refuse private_key_jwt without a resolver, and fail the callback before any token request when no key is returned, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_private_key_test.go",
+      "marker": "func TestEnterpriseOIDCPrivateKeyJWT(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/sso/index.mdx#L19/`private_key_jwt` token endpoint authentication": [
+    {
+      "label": "Register a private_key_jwt provider without a client secret, select the method from discovery and redeem codes with a signed client assertion",
+      "test": "adapters/sqlstore/sso_private_key_test.go",
+      "marker": "t.Fatal(\"private_key_jwt sign-in did not complete\", w.Code, w.Header().Get(\"Location\"), w.Body.String())",
       "complete": true
     }
   ]

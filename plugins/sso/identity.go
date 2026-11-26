@@ -90,7 +90,7 @@ func resolveIdentity(ctx context.Context, client *http.Client, p BrowserProvider
 	sub := ""
 	if raw != "" {
 		cfg := p.OIDC
-		verifier := oidc.NewVerifier(p.Issuer, oidc.NewRemoteKeySet(oidc.ClientContext(ctx, client), cfg.JWKSEndpoint), &oidc.Config{ClientID: cfg.ClientID, SupportedSigningAlgs: []string{"RS256", "RS384", "RS512", "PS256", "PS384", "PS512", "ES256", "ES384", "ES512", "EdDSA"}})
+		verifier := oidc.NewVerifier(p.Issuer, oidc.NewRemoteKeySet(oidc.ClientContext(ctx, client), cfg.JWKSEndpoint), &oidc.Config{ClientID: cfg.ClientID, SupportedSigningAlgs: signingAlgorithms})
 		verified, e := verifier.Verify(ctx, raw)
 		if e != nil || verified.Issuer != p.Issuer || verified.Subject == "" || nonce == "" || verified.Nonce != nonce || verified.IssuedAt.IsZero() || verified.IssuedAt.After(time.Now().Add(1*time.Minute)) || !verified.Expiry.After(verified.IssuedAt) {
 			return out, invalidIdentity

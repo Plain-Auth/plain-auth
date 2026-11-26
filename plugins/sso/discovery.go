@@ -64,7 +64,7 @@ type discoveryDocument struct {
 }
 
 func hydrate(ctx context.Context, host *auth.Auth, client *http.Client, cfg *Config, skip bool) error {
-	if cfg.TokenEndpointAuthentication != "" && cfg.TokenEndpointAuthentication != "client_secret_basic" && cfg.TokenEndpointAuthentication != "client_secret_post" {
+	if cfg.TokenEndpointAuthentication != "" && cfg.TokenEndpointAuthentication != "client_secret_basic" && cfg.TokenEndpointAuthentication != "client_secret_post" && cfg.TokenEndpointAuthentication != privateKeyJWT {
 		return apiError(400, "Unsupported OpenID Connect client authentication method")
 	}
 	if cfg.DiscoveryEndpoint == "" {
@@ -138,8 +138,8 @@ func hydrate(ctx context.Context, host *auth.Auth, client *http.Client, cfg *Con
 				cfg.TokenEndpointAuthentication = "client_secret_basic"
 			case slices.Contains(doc.Methods, "client_secret_post"):
 				cfg.TokenEndpointAuthentication = "client_secret_post"
-			case slices.Contains(doc.Methods, "private_key_jwt"):
-				return apiError(400, "Unsupported OpenID Connect client authentication method")
+			case slices.Contains(doc.Methods, privateKeyJWT):
+				cfg.TokenEndpointAuthentication = privateKeyJWT
 			default:
 				cfg.TokenEndpointAuthentication = "client_secret_basic"
 			}

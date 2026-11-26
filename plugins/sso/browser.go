@@ -193,16 +193,25 @@ func (o Options) oauthConfig(c auth.EndpointContext, p BrowserProvider) (oauth2.
 			return cfg, e
 		}
 	}
-	if idp.ClientID == "" || idp.ClientSecret == "" || idp.Issuer != "" && idp.Issuer != p.Issuer {
+	if idp.ClientID == "" || idp.Issuer != "" && idp.Issuer != p.Issuer {
 		return cfg, apiError(400, "Invalid persisted OpenID Connect configuration")
 	}
-	style := oauth2.AuthStyleInHeader
+	style, secret := oauth2.AuthStyleInHeader, idp.ClientSecret
 	switch idp.TokenEndpointAuthentication {
 	case "", "client_secret_basic":
 	case "client_secret_post":
 		style = oauth2.AuthStyleInParams
+	case privateKeyJWT:
+		if o.ResolvePrivateKey == nil {
+			return cfg, apiError(400, "Unsupported OpenID Connect client authentication method")
+		}
+		// The exchange sends client_id with a signed assertion and never a secret.
+		style, secret = oauth2.AuthStyleInParams, ""
 	default:
 		return cfg, apiError(400, "Unsupported OpenID Connect client authentication method")
+	}
+	if secret == "" && idp.TokenEndpointAuthentication != privateKeyJWT {
+		return cfg, apiError(400, "Invalid persisted OpenID Connect configuration")
 	}
 	uri, err := callbackURI(c, p.ProviderID, o.SharedCallback)
 	if err != nil {
@@ -212,7 +221,7 @@ func (o Options) oauthConfig(c auth.EndpointContext, p BrowserProvider) (oauth2.
 	if scopes == nil {
 		scopes = []string{"openid", "email", "profile", "offline_access"}
 	}
-	return oauth2.Config{ClientID: idp.ClientID, ClientSecret: idp.ClientSecret, RedirectURL: uri, Scopes: scopes, Endpoint: oauth2.Endpoint{AuthURL: idp.AuthorizationEndpoint, TokenURL: idp.TokenEndpoint, AuthStyle: style}}, nil
+	return oauth2.Config{ClientID: idp.ClientID, ClientSecret: secret, RedirectURL: uri, Scopes: scopes, Endpoint: oauth2.Endpoint{AuthURL: idp.AuthorizationEndpoint, TokenURL: idp.TokenEndpoint, AuthStyle: style}}, nil
 }
 func (o Options) finish(c auth.EndpointContext) (any, error) {
 	store, ok := c.Store().(BrowserStore)
@@ -275,6 +284,13 @@ func (o Options) finish(c auth.EndpointContext) (any, error) {
 	var params []oauth2.AuthCodeOption
 	if p.OIDC.PKCE != nil && *p.OIDC.PKCE {
 		params = append(params, oauth2.VerifierOption(flow.Verifier))
+	}
+	if p.OIDC.TokenEndpointAuthentication == privateKeyJWT {
+		assertion, ok := o.clientAssertion(ctx, p)
+		if !ok {
+			return enterpriseFailure(c, flow, "invalid_provider", "no_private_key_available")
+		}
+		params = append(params, oauth2.SetAuthURLParam("client_assertion_type", "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"), oauth2.SetAuthURLParam("client_assertion", assertion))
 	}
 	token, err := cfg.Exchange(ctx, q.Get("code"), params...)
 	if err != nil {

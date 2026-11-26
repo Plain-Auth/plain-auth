@@ -3,6 +3,7 @@ package sqlstore
 import (
 	"bytes"
 	"context"
+	"crypto"
 	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/json"
@@ -42,6 +43,10 @@ type ssoIssuer struct {
 	discoveries   atomic.Int32
 	discoveryDown atomic.Bool
 	methods       []string
+	// assertionKey verifies private_key_jwt client assertions; each verified
+	// assertion's kid and alg are recorded in assertions.
+	assertionKey crypto.PublicKey
+	assertions   []string
 }
 
 func newSSOIssuer(t *testing.T) *ssoIssuer {
@@ -89,6 +94,20 @@ func (i *ssoIssuer) serve(w http.ResponseWriter, r *http.Request) {
 		if !basic {
 			uid = r.PostForm.Get("client_id")
 			secret = r.PostForm.Get("client_secret")
+		}
+		if grant.style == "private_key_jwt" {
+			secret = ""
+			if !basic && r.PostForm.Get("client_secret") == "" && r.PostForm.Get("client_assertion_type") == "urn:ietf:params:oauth:client-assertion-type:jwt-bearer" {
+				if signed, err := jwt.ParseSigned(r.PostForm.Get("client_assertion"), []jose.SignatureAlgorithm{jose.RS256, jose.PS256}); err == nil {
+					var claims jwt.Claims
+					i.mu.Lock()
+					if signed.Claims(i.assertionKey, &claims) == nil && claims.Issuer == uid && claims.Subject == uid && claims.Audience.Contains(i.URL+"/token") && claims.ID != "" {
+						secret = "oidc-secret"
+						i.assertions = append(i.assertions, signed.Headers[0].KeyID+" "+signed.Headers[0].Algorithm)
+					}
+					i.mu.Unlock()
+				}
+			}
 		}
 		if !ok || basic != (grant.style == "client_secret_basic") || uid != "enterprise-client" || secret != "oidc-secret" || r.PostForm.Get("redirect_uri") != grant.redirect || oauth2.S256ChallengeFromVerifier(r.PostForm.Get("code_verifier")) != grant.challenge {
 			http.Error(w, `{"error":"invalid_grant"}`, 400)

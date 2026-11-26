@@ -78,9 +78,9 @@ func describeSSORequest(op object, route plainauth.HTTPRoute, info plainauth.HTT
 		delete(properties, "issuer") // The top-level issuer controls discovery and identity validation.
 		properties["clientSecret"] = object{"type": "string", "minLength": 1, "writeOnly": true}
 		properties["skipDiscovery"] = object{"type": "boolean"}
-		properties["tokenEndpointAuthentication"] = object{"enum": []string{"client_secret_basic", "client_secret_post", ""}}
+		properties["tokenEndpointAuthentication"] = object{"enum": []string{"client_secret_basic", "client_secret_post", "private_key_jwt", ""}}
 		properties["clientId"] = object{"type": "string", "minLength": 1}
-		config["required"] = []string{"clientId", "clientSecret"}
+		config["required"] = []string{"clientId"}
 		registration := responseObject(object{"providerId": providerID, "domain": text, "issuer": object{"type": "string", "format": "uri"}, "organizationId": text, "overrideUserInfo": object{"type": "boolean"}, "oidcConfig": config}, "providerId", "domain", "issuer", "oidcConfig")
 		if info.SAMLStateCookie != "" {
 			registration["properties"].(object)["samlConfig"] = samlConfigSchema()

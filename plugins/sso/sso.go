@@ -38,6 +38,11 @@ type Options struct {
 	// registrations with 403 and a negative number counts as reached. It runs
 	// before the store's transaction; an error fails the registration.
 	ResolveProvidersLimit func(context.Context, auth.User) (int, error)
+	// ResolvePrivateKey supplies the signing key for a provider whose
+	// tokenEndpointAuthentication is private_key_jwt. It runs before each
+	// token request, outside any store transaction. Without it,
+	// registration refuses private_key_jwt.
+	ResolvePrivateKey func(context.Context, PrivateKeyRequest) (PrivateKey, error)
 	// HTTPClient supplies discovery transport and optional TLS settings.
 	HTTPClient *http.Client
 }
@@ -56,6 +61,12 @@ type Config struct {
 	Scopes                      []string       `json:"scopes,omitempty"`
 	Mapping                     map[string]any `json:"mapping,omitempty"`
 	OverrideUserInfo            bool           `json:"overrideUserInfo"`
+	// PrivateKeyID names the private_key_jwt key: ResolvePrivateKey
+	// receives it as KeyID and the assertion carries it as kid.
+	PrivateKeyID string `json:"privateKeyId,omitempty"`
+	// PrivateKeyAlgorithm signs the private_key_jwt assertion; it defaults
+	// to the resolved key's algorithm, then RS256.
+	PrivateKeyAlgorithm string `json:"privateKeyAlgorithm,omitempty"`
 }
 
 type Provider struct {
@@ -299,7 +310,7 @@ func New(o Options) (auth.Plugin, error) {
 				return nil, apiError(400, "Invalid OpenID Connect configuration")
 			}
 			var cfg Config
-			if err = json.Unmarshal(raw, &cfg); err != nil || cfg.ClientID == "" || cfg.ClientSecret == "" {
+			if err = json.Unmarshal(raw, &cfg); err != nil || cfg.ClientID == "" {
 				return nil, apiError(400, "OpenID Connect client credentials are required")
 			}
 			cfg.Issuer = issuer
@@ -323,6 +334,9 @@ func New(o Options) (auth.Plugin, error) {
 				}
 			}
 			if err = hydrate(ctx, c.Auth, o.HTTPClient, &cfg, skip); err != nil {
+				return nil, err
+			}
+			if err = o.checkClientAuth(&cfg); err != nil {
 				return nil, err
 			}
 			p.OIDC = &cfg
