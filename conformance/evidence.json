@@ -41985,6 +41985,11 @@
       "label": "Stop accepting a captured provider reference after the provider's identity source changes",
       "test": "adapters/sqlstore/sso_domain_test.go",
       "marker": "t.Fatal(\"stale identity source borrowed the replacement proof before exchange\")"
+    },
+    {
+      "label": "Keep the provider reference across a client secret rotation and change it with the scopes, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_update_test.go",
+      "marker": "t.Fatal(\"a client secret rotation changed the provider reference\")"
     }
   ],
   "plugin-symbol/sso/AuthnRequestRecord": [

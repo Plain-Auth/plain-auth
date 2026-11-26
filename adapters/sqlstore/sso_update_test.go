@@ -93,8 +93,22 @@ func TestEnterpriseProviderUpdate(t *testing.T) {
 				t.Fatal("the registered domain was not verified")
 			}
 
+			reference := func() string {
+				t.Helper()
+				p, err := store.FindBrowserProvider(ctx, sso.Selector{ProviderID: "acme"})
+				if err != nil {
+					t.Fatal(err)
+				}
+				return p.Reference
+			}
+			beforeSecret := reference()
 			if w := update(owner, map[string]any{"oidcConfig": map[string]any{"clientSecret": "second-secret"}}); w.Code != 200 {
 				t.Fatal("the client secret was not rotated", w.Code, w.Body.String())
+			}
+			// The reference leaves the client secret out, as another runtime's
+			// fingerprint does, so a rotation keeps sign-ins in flight.
+			if reference() != beforeSecret {
+				t.Fatal("a client secret rotation changed the provider reference")
 			}
 			if _, cfg := stored(); cfg.ClientSecret != "second-secret" {
 				t.Fatal("the client secret was not rotated", cfg.ClientSecret)
@@ -108,8 +122,12 @@ func TestEnterpriseProviderUpdate(t *testing.T) {
 			if last.Action != "update" || last.AuthenticationBoundaryChanged || last.LinkedAccounts != 0 || last.ProviderID != "acme" {
 				t.Fatal("the guard did not review the secret rotation", last)
 			}
+			beforeScopes := reference()
 			if w := update(owner, map[string]any{"oidcConfig": map[string]any{"scopes": []string{"openid", "email"}, "skipDiscovery": true}}); w.Code != 200 || !verified() {
 				t.Fatal("a scope update reset the domain proof", w.Code, w.Body.String())
+			}
+			if reference() == beforeScopes {
+				t.Fatal("a scope update kept the provider reference")
 			}
 			w = update(owner, map[string]any{"domain": "Acme.Example, sub.acme.example"})
 			var changed struct{ Domain string }
