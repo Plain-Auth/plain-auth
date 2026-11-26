@@ -39853,7 +39853,7 @@
   ],
   "plugin-symbol/api-key/API_KEY_ERROR_CODES": [
     {
-      "label": "Answer the key validation, update, verification, session-read and ban errors with their status, code and message from the routes and Go calls, on three SQL engines",
+      "label": "Answer the key validation, update, signed-out, missing-default-configuration, verification, session-read and ban errors with their status, code and message from the routes and Go calls, on three SQL engines",
       "test": "adapters/sqlstore/apikey_errors_test.go",
       "marker": "func TestAPIKeyErrorCodesAcrossEngines("
     }

@@ -84,6 +84,43 @@ func TestAPIKeyErrorCodesAcrossEngines(t *testing.T) {
 			wantError(member.Do(ctx, http.MethodPost, "/api-key/update", map[string]any{"keyId": key.ID, "name": ""}, nil), 400, "INVALID_NAME_LENGTH", "The name length is either too large or too small.")
 			_, err = member.GetAPIKey(ctx, "missing", "")
 			wantError(err, 404, "KEY_NOT_FOUND", "API Key not found")
+			_, err = member.GetAPIKey(ctx, key.ID, "bogus")
+			wantError(err, 404, "KEY_NOT_FOUND", "API Key not found")
+
+			anonymous, err := client.New(origin, &http.Client{Transport: guestTransport{host}})
+			must(err)
+			_, err = anonymous.GetAPIKey(ctx, key.ID, "")
+			wantError(err, 401, "UNAUTHORIZED", "Unauthorized")
+			_, err = anonymous.ListAPIKeys(ctx, "", ak.PageOptions{})
+			wantError(err, 401, "UNAUTHORIZED", "Unauthorized")
+			wantError(anonymous.DeleteAPIKey(ctx, key.ID, ""), 401, "UNAUTHORIZED", "Unauthorized")
+			_, err = anonymous.CreateAPIKey(ctx, client.CreateAPIKeyRequest{Name: "Signed out"})
+			wantError(err, 401, "UNAUTHORIZED_SESSION", "Unauthorized or invalid session")
+			renamed := "Signed out"
+			_, err = anonymous.UpdateAPIKey(ctx, client.UpdateAPIKeyRequest{KeyID: key.ID, Name: &renamed})
+			wantError(err, 401, "UNAUTHORIZED_SESSION", "Unauthorized or invalid session")
+
+			solo, err := plainauth.New(plainauth.Options{Store: store, BaseURL: origin, Secret: strings.Repeat("e", 32), EmailAndPassword: true, RateLimit: &off, Plugins: []plainauth.Plugin{fixed.Plugin()}})
+			must(err)
+			soloMember, err := client.New(origin, &http.Client{Transport: guestTransport{solo}})
+			must(err)
+			_, err = soloMember.SignInEmail(ctx, client.SignInRequest{Email: "owner@example.test", Password: "errors-password"})
+			must(err)
+			_, err = soloMember.CreateAPIKey(ctx, client.CreateAPIKeyRequest{Name: "No default"})
+			wantError(err, 400, "NO_DEFAULT_API_KEY_CONFIGURATION_FOUND", "No default api-key configuration found.")
+			soloKey, err := soloMember.CreateAPIKey(ctx, client.CreateAPIKeyRequest{ConfigID: "fixed", Name: "Solo"})
+			must(err)
+			_, err = soloMember.GetAPIKey(ctx, soloKey.ID, "")
+			wantError(err, 400, "NO_DEFAULT_API_KEY_CONFIGURATION_FOUND", "No default api-key configuration found.")
+			page, err := soloMember.ListAPIKeys(ctx, "", ak.PageOptions{})
+			must(err)
+			found := false
+			for _, k := range page.Keys {
+				found = found || k.ID == soloKey.ID
+			}
+			if !found {
+				t.Fatal("a list without configId needed a default configuration")
+			}
 
 			verifyError := func(secret string, required ak.Permissions, code, message string) {
 				t.Helper()

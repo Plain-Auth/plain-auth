@@ -12,6 +12,13 @@ var (
 	ErrPermission           = problem(403, "INSUFFICIENT_API_KEY_PERMISSIONS", "You do not have permission to perform this action on organization API keys.")
 	ErrOrgPlugin            = problem(500, "ORGANIZATION_PLUGIN_REQUIRED", "Organization plugin is required for organization-owned API keys. Please install and configure the organization plugin.")
 
+	// ErrNoDefaultConfiguration answers a request that names no configId
+	// when no configuration is the default one.
+	ErrNoDefaultConfiguration = problem(400, "NO_DEFAULT_API_KEY_CONFIGURATION_FOUND", "No default api-key configuration found.")
+	// errSignIn answers a signed-out read, list or delete, which need a
+	// session before anything else.
+	errSignIn = problem(401, "UNAUTHORIZED", "Unauthorized")
+
 	errMetadataType       = problem(400, "INVALID_METADATA_TYPE", "metadata must be an object or undefined")
 	errRefillAmount       = problem(400, "REFILL_AMOUNT_AND_INTERVAL_REQUIRED", "refillAmount is required when refillInterval is provided")
 	errRefillInterval     = problem(400, "REFILL_INTERVAL_AND_AMOUNT_REQUIRED", "refillInterval is required when refillAmount is provided")

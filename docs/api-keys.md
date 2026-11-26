@@ -100,6 +100,8 @@ Each error carries its status, code and message from the API key error table.
 | --- | ---: | --- |
 | `KEY_NOT_FOUND` | 404, or a verification result | No key has this ID or secret, or the key lacks a required permission |
 | `UNAUTHORIZED_SESSION` | 401 | Create or update without a session |
+| `UNAUTHORIZED` | 401 | Get, list or delete without a session |
+| `NO_DEFAULT_API_KEY_CONFIGURATION_FOUND` | 400 | A request names no `configId` and no configuration is `default`; a list without `configId` merges every configuration instead |
 | `USER_BANNED` | 401, or a verification result | The key's owner is banned |
 | `INVALID_PREFIX_LENGTH` | 400 | The prefix is shorter or longer than the configured bounds |
 | `VALIDATION_ERROR` | 400 | The prefix has characters other than letters, digits, `_` and `-`, or another field has the wrong type |
@@ -119,7 +121,7 @@ Each error carries its status, code and message from the API key error table.
 | `INVALID_REFERENCE_ID_FROM_API_KEY` | 401 | An organization key is sent as a session credential |
 | `ORGANIZATION_ID_REQUIRED`, `USER_NOT_MEMBER_OF_ORGANIZATION`, `INSUFFICIENT_API_KEY_PERMISSIONS`, `ORGANIZATION_PLUGIN_REQUIRED` | 400, 403, 403, 500 | See [Organization-owned keys](#organization-owned-keys) |
 
-`API_KEY_ALREADY_ISSUED` (409) is this library's own. When a request has several faults, the first one reported may differ from another runtime's; each fault alone gets the code listed here. [Error code tests](../adapters/sqlstore/apikey_errors_test.go)
+`API_KEY_ALREADY_ISSUED` (409) is this library's own. An unknown `configId` answers `KEY_NOT_FOUND`, where another runtime falls back to the default configuration, so a request never acts on a configuration it did not name. When a request has several faults, the first one reported may differ from another runtime's; each fault alone gets the code listed here. [Error code tests](../adapters/sqlstore/apikey_errors_test.go)
 
 ## Verify and set policies
 

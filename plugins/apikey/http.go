@@ -34,6 +34,9 @@ func (s *Service) handle(c plainauth.EndpointContext, action string) (any, error
 		return nil, err
 	}
 	if session == nil {
+		if action == "get" || action == "list" || action == "delete" {
+			return nil, errSignIn
+		}
 		return nil, ErrSession
 	}
 	if err = session.Session.RequireOwner(); err != nil {

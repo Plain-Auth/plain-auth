@@ -10,7 +10,7 @@
     - [x] Manage organization keys alongside separately authenticated automation clients ([test](../../../conformance/core.test.mjs#L938))
   - `ApiKeyClientPlugin` — *not applicable: TypeScript type*
   - [ ] `API_KEY_ERROR_CODES`
-    - [x] Answer the key validation, update, verification, session-read and ban errors with their status, code and message from the routes and Go calls, on three SQL engines ([test](../../../adapters/sqlstore/apikey_errors_test.go#L20))
+    - [x] Answer the key validation, update, signed-out, missing-default-configuration, verification, session-read and ban errors with their status, code and message from the routes and Go calls, on three SQL engines ([test](../../../adapters/sqlstore/apikey_errors_test.go#L20))
   - [ ] `apiKey`
   - [x] `defaultKeyHasher` ([test](../../../conformance/core.test.mjs#L912))
     - [x] Match the pinned digest and verify a Go key on shared SQLite ([test](../../../conformance/core.test.mjs#L912))

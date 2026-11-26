@@ -90,16 +90,20 @@ func NewPlugin(services ...*Service) (plainauth.Plugin, error) {
 					return nil, e
 				}
 			}
-			if id == "" && r.path == "list" && len(services) > 1 {
+			// A list without configId merges every configuration, so it
+			// needs no default one.
+			if id == "" && r.path == "list" {
 				return listConfigurations(c, services)
 			}
 			s := byID[id]
 			if id == "" {
-				s = byID["default"]
-				if len(services) == 1 {
-					s = services[0]
+				if s = byID["default"]; s == nil {
+					return nil, ErrNoDefaultConfiguration
 				}
 			}
+			// An unknown configId answers KEY_NOT_FOUND, where the other
+			// runtime falls back to the default configuration, so a request
+			// never acts on a configuration it did not name.
 			if s == nil {
 				return nil, ErrMissing
 			}
@@ -117,7 +121,7 @@ func listConfigurations(c plainauth.EndpointContext, services []*Service) (*Page
 		return nil, e
 	}
 	if session == nil {
-		return nil, ErrSession
+		return nil, errSignIn
 	}
 	if e = session.Session.RequireOwner(); e != nil {
 		return nil, e
