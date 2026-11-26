@@ -18,6 +18,7 @@ Each guide explains one capability and links to the tests that prove it. New to 
 | Task | Guide |
 | --- | --- |
 | Configure users, cookies, origins, and session management | [Authentication](authentication.md) |
+| Style the page that shows failed browser sign-ins | [Error page](authentication.md#style-the-error-page) |
 | Configure profile updates, password reset, and verification email | [Account management and recovery](account.md) |
 | Register a username and sign in with a password | [Username sign-in](username.md) |
 | Let users sign in through a single-use email link | [Magic links](magic-link.md) |

@@ -1356,6 +1356,11 @@ test("host error reporters finish before the response and preserve endpoint fail
   }
 });
 
+test("both runtimes render the same styled error page for each customization", async t => {
+  const { compareErrorPage } = await import("./error-page.mjs");
+  await compareErrorPage(t, { reference, goFixture });
+});
+
 test("the released popup client signs in and receives provider errors on both runtimes", async t => {
   const { comparePopup } = await import("./oauth-popup.mjs");
   await comparePopup(t, { reference, goFixture });

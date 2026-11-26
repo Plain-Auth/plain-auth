@@ -22,7 +22,7 @@ func resolveEnvironment(opts *Options) error {
 		enabled := mode == "production"
 		opts.RateLimit = &enabled
 	}
-	if opts.ErrorRedirectURL == "" && mode == "production" {
+	if opts.ErrorRedirectURL == "" && opts.ErrorPage == nil && mode == "production" {
 		opts.ErrorRedirectURL = "/"
 	}
 	if opts.Secret == "" {

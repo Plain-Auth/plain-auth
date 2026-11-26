@@ -124,7 +124,7 @@ func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if route == "/error" {
 		result, err := a.callEndpoint(w, r, route, actual, nil, func(r *http.Request, _ wireBody) (any, error) {
-			return a.errorPage(w.Header(), r), nil
+			return a.errorPage(w.Header(), r)
 		})
 		a.writeOutcome(w, r, 0, result, err)
 		return

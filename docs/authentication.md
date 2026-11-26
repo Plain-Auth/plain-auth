@@ -12,7 +12,7 @@ Enable `EmailAndPassword` and mount the auth handler. Paths below are relative t
 | `POST /revoke-other-sessions` | Revoke every other session for the user |
 | `POST /revoke-sessions` | Revoke all of the user's sessions |
 | `POST /sign-out` | Revoke the current session and expire its cookies |
-| `GET /error` | Display an escaped error description or redirect to the configured application error page |
+| `GET /error` | Display an escaped error code and description, styled with `Options.ErrorPage` when set, or redirect to `ErrorRedirectURL`. See [style the error page](#style-the-error-page) |
 | `GET /ok` | Check the auth mount |
 
 ## Disable an HTTP endpoint
@@ -26,6 +26,30 @@ auth, err := plainauth.New(opts)
 
 If the mount is `/identity`, a request to `/identity/sign-up/email` returns 404 before the handler reads credentials, charges a rate limit or runs a request hook. Query parameters and trailing slashes do not change the selection. Supply concrete paths for individual OAuth callbacks or SCIM resources. A collection entry such as `/scim/v2/Users` leaves individual resources separately addressable. Fixed disabled routes are omitted from the generated OpenAPI document. Native Go methods remain available to the host. [HTTP routing tests](../conformance/goapi/disabled_paths_test.go) · [SCIM tests](../plugins/scim/http_test.go)
 
+## Style the error page
+
+Failed browser flows send the user to `<mount>/error` with `error` and an optional `error_description`. By default that page is plain HTML. Set `Options.ErrorPage` to serve a styled card instead: an ERROR title, "Something went wrong", the code, the escaped description or a short default sentence, and a Go Home link to `/`, over a background grid, following the browser's light or dark preference. `&plainauth.ErrorPageOptions{}` uses the built-in theme.
+
+```go
+opts.ErrorPage = &plainauth.ErrorPageOptions{Primary: "#0070f3", TitleBorder: "#0070f3", FontFamily: "system-ui, sans-serif", DisableBackgroundGrid: true}
+```
+
+| Field | Styles (default light / dark) |
+| --- | --- |
+| `Background` | Page and grid fade (`white` / `oklch(0.15 0 0)`) |
+| `Foreground` | Headings, code and text (`oklch(0.271 0 0)` / `oklch(0.98 0 0)`) |
+| `Primary`, `PrimaryForeground` | Go Home button and its label (`black` and `white`, swapped when dark) |
+| `MutedForeground` | CODE label and description (`oklch(0.545 0 0)` / `oklch(0.65 0 0)`) |
+| `Border` | Card, divider, code box, button and grid lines (`oklch(0.89 0 0)` / `oklch(0.27 0 0)`) |
+| `Destructive` | Title border unless `TitleBorder` is set (`oklch(0.55 0.15 25.723)` / `oklch(0.65 0.15 25.723)`) |
+| `TitleBorder`, `TitleColor` | Border and color of the ERROR title (`Destructive` and `Foreground`) |
+| `GridColor`, `CardBackground` | Grid lines and card fill (`Border` and `Background`) |
+| `CornerBorder` | Card corner marks (`#404040` / `#a0a0a0`) |
+| `TextSm`, `Text2xl`, `Text6xl` | Code and description, the heading, and the ERROR title (`0.875rem`, `1.5rem`, `3rem`) |
+| `RadiusSm`, `Text4xl` | The `--radius` and `--text-4xl` custom properties, which no element uses |
+| `FontFamily`, `MonoFontFamily` | Page text and the error code (the system sans-serif stack and monospace) |
+
+`DisableTitleBorder` draws the title border transparent and keeps its width, `DisableCornerDecorations` removes the corner marks, and `DisableBackgroundGrid` removes the grid. A color replaces its light and dark default alike, and screens up to 640px and 480px use fixed smaller text sizes. Each value is one CSS value: `New` refuses control characters, a CSS comment, any of `; { } [ ] < > \` and unbalanced parentheses or quotes. The page's Content-Security-Policy allows only its own inline styles, so `url()` values and web fonts load nothing; name fonts installed on the viewer's device. With `AUTH_ENV=production` the styled page stays on, and browser flows send errors to `<mount>/error` instead of `/`. `ErrorRedirectURL` takes precedence over both pages. [Error page tests](../conformance/goapi/error_page_test.go) · [Cross-runtime comparison](../conformance/error-page.mjs)
 
 ## Configure the instance
 
@@ -49,6 +73,7 @@ If the mount is `/identity`, a request to `/identity/sign-up/email` returns 404 
 | `SkipTrailingSlashes` | Serves `/sign-in/email/` as `/sign-in/email` |
 | `BackgroundTasks` | Runs mail that need not finish before the response after it. See [run work after the response](#run-work-after-the-response) |
 | `DisableCSRFCheck` | Turns off the Origin, Referer and Fetch Metadata checks on state-changing requests. Leaves cookie-authenticated endpoints open to cross-site request forgery |
+| `ErrorPage` | Serves a styled `GET /error` page. See [style the error page](#style-the-error-page) |
 | `DisableOriginCheck` | Accepts any `callbackURL`, `redirectTo` and other redirect target instead of trusted origins and relative paths, which allows open redirects. Request origins are still checked, and URLs with control characters or backslashes, or with a scheme that can run code or read local data such as `javascript:`, `data:` or `file:`, are still refused |
 
 Create one auth instance per configuration and share it among handlers. Use the same secret on application replicas.

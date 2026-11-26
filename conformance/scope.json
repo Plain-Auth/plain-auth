@@ -399,6 +399,15 @@
         "`throw`"
       ],
       "reason": "not applicable: JavaScript handler option; Go methods return errors"
+    },
+    {
+      "page": "reference.md",
+      "section": "Options",
+      "labels": [
+        "`radiusMd`",
+        "`radiusLg`"
+      ],
+      "reason": "not applicable: the reference declares this size but its page never reads it"
     }
   ],
   "backlog": [

@@ -2,16 +2,16 @@
 
 ## Verification progress
 
-**1,162 of 6,638 inventory entries are fully verified (17.5%).**
+**1,188 of 6,636 inventory entries are fully verified (17.9%).**
 
 | Inventory status | Entries |
 | --- | ---: |
-| Fully verified | 1,162 |
+| Fully verified | 1,188 |
 | Partially verified | 1,031 |
-| No linked test evidence | 4,445 |
-| Not applicable to a Go server | 387 |
+| No linked test evidence | 4,417 |
+| Not applicable to a Go server | 389 |
 
-The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 3,536 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
+The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 3,568 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
 
 Entries that exist only for JavaScript clients, frameworks or runtimes are listed as not applicable, with the reason, and are left out of the totals. Backlog entries stay open on the roadmap but are not scheduled.
 
@@ -77,13 +77,13 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | --- | ---: | ---: | ---: |
 | [Published package interfaces](packages.md) | 94 | 116 | 43 |
 | [Native Go client, routers and databases](go.md) | 38 | 4 | 0 |
-| [Core API, sign-in providers and CLI](runtime.md) | 229 | 238 | 13 |
+| [Core API, sign-in providers and CLI](runtime.md) | 230 | 238 | 13 |
 | [Database adapters](adapters.md) | 32 | 193 | 31 |
 | [Authentication](authentication.md) | 128 | 366 | 0 |
 | [Core concepts](concepts.md) | 512 | 340 | 0 |
 | [Managed infrastructure](infrastructure.md) | 0 | 528 | 0 |
 | [Framework integrations](integrations.md) | 7 | 24 | 201 |
-| [Reference and configuration](reference.md) | 407 | 255 | 4 |
+| [Reference and configuration](reference.md) | 464 | 227 | 6 |
 
 ## Plugins and integrations
 

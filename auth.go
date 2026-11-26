@@ -69,6 +69,9 @@ func New(opts Options) (*Auth, error) {
 	if err := prepareSessionCookieCache(&opts); err != nil {
 		return nil, err
 	}
+	if err := prepareErrorPage(&opts); err != nil {
+		return nil, err
+	}
 	if err := resolveEnvironment(&opts); err != nil {
 		return nil, err
 	}

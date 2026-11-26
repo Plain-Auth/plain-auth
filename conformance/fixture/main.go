@@ -653,6 +653,14 @@ func main() {
 			return nil
 		}
 	}
+	if raw := os.Getenv("CONFORMANCE_ERROR_PAGE"); raw != "" {
+		decoder := json.NewDecoder(strings.NewReader(raw))
+		decoder.DisallowUnknownFields()
+		opts.ErrorPage = &authn.ErrorPageOptions{}
+		if err := decoder.Decode(opts.ErrorPage); err != nil {
+			log.Fatal(err)
+		}
+	}
 	discoveryConfig := os.Getenv("CONFORMANCE_RESOURCE_DISCOVERY")
 	if discoveryConfig != "" {
 		opts.BaseURL = "https://accounts.example.test/gateway/auth"

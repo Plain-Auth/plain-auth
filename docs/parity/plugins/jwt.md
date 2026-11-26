@@ -57,7 +57,7 @@
       - [ ] Example using jose with remote JWKS
       - [ ] Example with local JWKS
     - [ ] OAuth Provider Mode
-      - [x] Disable both the browser token endpoint and the session JWT response header while retaining ordinary sessions ([test](../../../conformance/core.test.mjs#L1369))
+      - [x] Disable both the browser token endpoint and the session JWT response header while retaining ordinary sessions ([test](../../../conformance/core.test.mjs#L1374))
     - [ ] Remote JWKS Url
     - [ ] Custom JWKS Path
       - [ ] Server Configuration:

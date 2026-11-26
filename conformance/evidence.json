@@ -1808,6 +1808,11 @@
       "test": "error_page_test.go",
       "marker": "func TestAuthErrorPageInput(t *testing.T) {",
       "complete": true
+    },
+    {
+      "label": "With Options.ErrorPage set, the page is the styled card with the escaped code and description and only a link to the site root",
+      "test": "conformance/goapi/error_page_test.go",
+      "marker": "func TestErrorPageOptIn(t *testing.T) {"
     }
   ],
   "provider/apple": [
@@ -22256,6 +22261,239 @@
       "label": "A verification create hook that declines a browser OAuth flow fails the sign-in start with 500 STATE_GENERATION_ERROR and sets no state cookie",
       "test": "adapters/sqlstore/verification_hooks_test.go",
       "marker": "t.Fatal(\"a declined OAuth state answered\", res.StatusCode, problem.Code)"
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L909/`customizeDefaultErrorPage`": [
+    {
+      "label": "An empty customization and two full ones render the same styled page on both runtimes, after removing the reference's links to its own site",
+      "test": "conformance/error-page.mjs",
+      "marker": "{}, // the defaults",
+      "complete": true
+    },
+    {
+      "label": "A nil Options.ErrorPage keeps the plain page, an empty one serves the styled page under a style-only Content-Security-Policy, AUTH_ENV=production keeps it at the mount's /error, and ErrorRedirectURL still redirects",
+      "test": "conformance/goapi/error_page_test.go",
+      "marker": "func TestErrorPageOptIn(t *testing.T) {"
+    },
+    {
+      "label": "New refuses a theme value that could leave its CSS declaration and names the field, a quoted value cannot leave its style attribute, and New keeps its own copy of the theme",
+      "test": "conformance/goapi/error_page_test.go",
+      "marker": "func TestErrorPageRefusesUnsafeValues(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L910/`colors`": [
+    {
+      "label": "All twelve colors set at once render the same page on both runtimes",
+      "test": "conformance/error-page.mjs",
+      "marker": "const colors = {",
+      "complete": true
+    },
+    {
+      "label": "Each color reaches every place the page styles with it, including its dark-scheme variable",
+      "test": "conformance/goapi/error_page_test.go",
+      "marker": "func TestErrorPageThemeValues(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L911/`background`": [
+    {
+      "label": "Background replaces the page background, the grid fade and --background in both color schemes, in the same places on both runtimes",
+      "test": "conformance/error-page.mjs",
+      "marker": "background: \"rgb(1 0 1)\",",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L912/`foreground`": [
+    {
+      "label": "Foreground replaces --foreground in both color schemes, the same on both runtimes",
+      "test": "conformance/error-page.mjs",
+      "marker": "foreground: \"rgb(1 0 2)\",",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L913/`primary`": [
+    {
+      "label": "Primary replaces the light and dark --primary behind Go Home, the same on both runtimes",
+      "test": "conformance/error-page.mjs",
+      "marker": "primary: \"rgb(1 0 3)\",",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L914/`primaryForeground`": [
+    {
+      "label": "PrimaryForeground replaces the light and dark --primary-foreground of the Go Home label, the same on both runtimes",
+      "test": "conformance/error-page.mjs",
+      "marker": "primaryForeground: \"rgb(1 0 4)\",",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L915/`mutedForeground`": [
+    {
+      "label": "MutedForeground replaces the light and dark --muted-foreground of the CODE label and description, the same on both runtimes",
+      "test": "conformance/error-page.mjs",
+      "marker": "mutedForeground: \"rgb(1 0 5)\",",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L916/`border`": [
+    {
+      "label": "Border replaces the light and dark --border of the card, divider, code box, button and default grid lines, the same on both runtimes",
+      "test": "conformance/error-page.mjs",
+      "marker": "border: \"rgb(1 0 6)\",",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L917/`destructive`": [
+    {
+      "label": "Destructive replaces the light and dark --destructive behind the default title border, the same on both runtimes",
+      "test": "conformance/error-page.mjs",
+      "marker": "destructive: \"rgb(1 0 7)\",",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L918/`titleBorder`": [
+    {
+      "label": "TitleBorder colors the border around the ERROR title, and DisableTitleBorder overrides it with transparent, the same on both runtimes",
+      "test": "conformance/error-page.mjs",
+      "marker": "titleBorder: \"rgb(1 0 8)\",",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L919/`titleColor`": [
+    {
+      "label": "TitleColor colors the ERROR title, the same on both runtimes",
+      "test": "conformance/error-page.mjs",
+      "marker": "titleColor: \"rgb(1 0 9)\",",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L920/`gridColor`": [
+    {
+      "label": "GridColor colors both background grid lines, the same on both runtimes",
+      "test": "conformance/error-page.mjs",
+      "marker": "gridColor: \"rgb(1 0 10)\",",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L921/`cardBackground`": [
+    {
+      "label": "CardBackground fills the card, the same on both runtimes",
+      "test": "conformance/error-page.mjs",
+      "marker": "cardBackground: \"rgb(1 0 11)\",",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L922/`cornerBorder`": [
+    {
+      "label": "CornerBorder replaces the light and dark --corner-border of the corner marks, the same on both runtimes",
+      "test": "conformance/error-page.mjs",
+      "marker": "cornerBorder: \"rgb(1 0 12)\",",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L924/`radiusSm`": [
+    {
+      "label": "RadiusSm sets the --radius variable, which no element uses, the same on both runtimes",
+      "test": "conformance/error-page.mjs",
+      "marker": "radiusSm: \"0.11rem\",",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L927/`textSm`": [
+    {
+      "label": "TextSm sets --text-sm for the code and description above 640px, the same on both runtimes",
+      "test": "conformance/error-page.mjs",
+      "marker": "textSm: \"0.14rem\",",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L928/`text2xl`": [
+    {
+      "label": "Text2xl sets --text-2xl for the Something went wrong heading above 640px, the same on both runtimes",
+      "test": "conformance/error-page.mjs",
+      "marker": "text2xl: \"0.15rem\",",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L929/`text4xl`": [
+    {
+      "label": "Text4xl sets the --text-4xl variable, which no element uses, the same on both runtimes",
+      "test": "conformance/error-page.mjs",
+      "marker": "text4xl: \"0.16rem\",",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L930/`text6xl`": [
+    {
+      "label": "Text6xl sets --text-6xl for the ERROR title above 640px, the same on both runtimes",
+      "test": "conformance/error-page.mjs",
+      "marker": "text6xl: \"0.17rem\",",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L932/`defaultFamily`": [
+    {
+      "label": "FontFamily sets the page font family, the same on both runtimes",
+      "test": "conformance/error-page.mjs",
+      "marker": "defaultFamily: \"'Fixture Sans', serif\",",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L933/`monoFamily`": [
+    {
+      "label": "MonoFontFamily sets --default-mono-font-family for the code, double-quoted names included, the same on both runtimes",
+      "test": "conformance/error-page.mjs",
+      "marker": "monoFamily: '\"Fixture Mono\", monospace',",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L934/`disableTitleBorder`": [
+    {
+      "label": "Makes the title border transparent while keeping its width, the same on both runtimes",
+      "test": "conformance/error-page.mjs",
+      "marker": "disableTitleBorder: true,",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L935/`disableCornerDecorations`": [
+    {
+      "label": "Removes the four corner marks, the same on both runtimes",
+      "test": "conformance/error-page.mjs",
+      "marker": "disableCornerDecorations: true,",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L936/`disableBackgroundGrid`": [
+    {
+      "label": "Removes the grid and its fading mask, the same on both runtimes",
+      "test": "conformance/error-page.mjs",
+      "marker": "disableBackgroundGrid: true,",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L923/`size`": [
+    {
+      "label": "The five sizes the page reads render the same page on both runtimes, and the reference page ignores the two radii it never reads",
+      "test": "conformance/error-page.mjs",
+      "marker": "const size = {",
+      "complete": true
+    },
+    {
+      "label": "Each size sets its CSS variable once",
+      "test": "conformance/goapi/error_page_test.go",
+      "marker": "func TestErrorPageThemeValues(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L931/`font`": [
+    {
+      "label": "Both font families together render the same page on both runtimes",
+      "test": "conformance/error-page.mjs",
+      "marker": "const font = {",
+      "complete": true
+    },
+    {
+      "label": "Each font family reaches the page or the code font with its quotes kept",
+      "test": "conformance/goapi/error_page_test.go",
+      "marker": "func TestErrorPageThemeValues(t *testing.T) {"
     }
   ]
 }

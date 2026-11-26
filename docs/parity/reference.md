@@ -374,14 +374,14 @@
       - [x] With RevokeSessionsOnPasswordReset set, the previous browser session is rejected after a reset, while a new sign-in with the new password succeeds ([test](../../conformance/goapi/account_test.go#L92))
     - [x] `resetPasswordTokenExpiresIn` ([test](../../conformance/goapi/account_test.go#L142))
       - [x] With PasswordResetTokenTTL set to one nanosecond, the issued reset link is rejected with INVALID_TOKEN ([test](../../conformance/goapi/account_test.go#L142))
-    - [x] `onExistingUserSignUp` ([test](../../conformance/core.test.mjs#L1457))
-      - [x] Deliver the stored owner to the host while preserving private responses across both modes and ordinary 422 behavior in the released client ([test](../../conformance/core.test.mjs#L1457))
+    - [x] `onExistingUserSignUp` ([test](../../conformance/core.test.mjs#L1462))
+      - [x] Deliver the stored owner to the host while preserving private responses across both modes and ordinary 422 behavior in the released client ([test](../../conformance/core.test.mjs#L1462))
       - [x] Run the callback after storage releases the account, isolate errors and panics, and preserve owned request metadata ([test](../../adapters/sqlstore/existing_signup_test.go#L83))
       - [x] Use one committed owner for concurrent registrations across separate instances and storage connections ([test](../../adapters/sqlstore/existing_signup_test.go#L197))
     - [x] `customSyntheticUser` ([test](../../conformance/synthetic-user.mjs#L5))
       - [x] On both runtimes the hook sets the values of a duplicate sign-up's user fields but cannot add fields a real sign-up lacks ([test](../../conformance/synthetic-user.mjs#L5))
-    - [x] `password` ([test](../../conformance/core.test.mjs#L1391))
-      - [x] Open and replace host-encoded credentials from either runtime in the same account database ([test](../../conformance/core.test.mjs#L1391))
+    - [x] `password` ([test](../../conformance/core.test.mjs#L1396))
+      - [x] Open and replace host-encoded credentials from either runtime in the same account database ([test](../../conformance/core.test.mjs#L1396))
   - [ ] `socialProviders`
     - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
       - [x] For every catalog provider, the configured client ID reaches the token exchange through real /sign-in/social and /callback requests ([test](../../providers/catalog_test.go#L79))
@@ -610,34 +610,65 @@
       - [x] Contain reporter panics and keep callback errors and credentials out of client responses and logs ([test](../../conformance/goapi/error_reporting_test.go#L67))
     - [x] `errorURL` ([test](../../error_page_test.go#L10))
       - [x] With Options.ErrorRedirectURL set, the mounted /api/auth/error endpoint returns 302 to the configured URL with the error code added and its own query kept ([test](../../error_page_test.go#L10))
-    - [ ] `customizeDefaultErrorPage`
-    - [ ] `colors`
-    - [ ] `background`
-    - [ ] `foreground`
-    - [ ] `primary`
-    - [ ] `primaryForeground`
-    - [ ] `mutedForeground`
-    - [ ] `border`
-    - [ ] `destructive`
-    - [ ] `titleBorder`
-    - [ ] `titleColor`
-    - [ ] `gridColor`
-    - [ ] `cardBackground`
-    - [ ] `cornerBorder`
-    - [ ] `size`
-    - [ ] `radiusSm`
-    - [ ] `radiusMd`
-    - [ ] `radiusLg`
-    - [ ] `textSm`
-    - [ ] `text2xl`
-    - [ ] `text4xl`
-    - [ ] `text6xl`
-    - [ ] `font`
-    - [ ] `defaultFamily`
-    - [ ] `monoFamily`
-    - [ ] `disableTitleBorder`
-    - [ ] `disableCornerDecorations`
-    - [ ] `disableBackgroundGrid`
+    - [x] `customizeDefaultErrorPage` ([test](../../conformance/error-page.mjs#L71))
+      - [x] An empty customization and two full ones render the same styled page on both runtimes, after removing the reference's links to its own site ([test](../../conformance/error-page.mjs#L71))
+      - [x] A nil Options.ErrorPage keeps the plain page, an empty one serves the styled page under a style-only Content-Security-Policy, AUTH_ENV=production keeps it at the mount's /error, and ErrorRedirectURL still redirects ([test](../../conformance/goapi/error_page_test.go#L29))
+      - [x] New refuses a theme value that could leave its CSS declaration and names the field, a quoted value cannot leave its style attribute, and New keeps its own copy of the theme ([test](../../conformance/goapi/error_page_test.go#L131))
+    - [x] `colors` ([test](../../conformance/error-page.mjs#L4))
+      - [x] All twelve colors set at once render the same page on both runtimes ([test](../../conformance/error-page.mjs#L4))
+      - [x] Each color reaches every place the page styles with it, including its dark-scheme variable ([test](../../conformance/goapi/error_page_test.go#L89))
+    - [x] `background` ([test](../../conformance/error-page.mjs#L5))
+      - [x] Background replaces the page background, the grid fade and --background in both color schemes, in the same places on both runtimes ([test](../../conformance/error-page.mjs#L5))
+    - [x] `foreground` ([test](../../conformance/error-page.mjs#L6))
+      - [x] Foreground replaces --foreground in both color schemes, the same on both runtimes ([test](../../conformance/error-page.mjs#L6))
+    - [x] `primary` ([test](../../conformance/error-page.mjs#L7))
+      - [x] Primary replaces the light and dark --primary behind Go Home, the same on both runtimes ([test](../../conformance/error-page.mjs#L7))
+    - [x] `primaryForeground` ([test](../../conformance/error-page.mjs#L8))
+      - [x] PrimaryForeground replaces the light and dark --primary-foreground of the Go Home label, the same on both runtimes ([test](../../conformance/error-page.mjs#L8))
+    - [x] `mutedForeground` ([test](../../conformance/error-page.mjs#L9))
+      - [x] MutedForeground replaces the light and dark --muted-foreground of the CODE label and description, the same on both runtimes ([test](../../conformance/error-page.mjs#L9))
+    - [x] `border` ([test](../../conformance/error-page.mjs#L10))
+      - [x] Border replaces the light and dark --border of the card, divider, code box, button and default grid lines, the same on both runtimes ([test](../../conformance/error-page.mjs#L10))
+    - [x] `destructive` ([test](../../conformance/error-page.mjs#L11))
+      - [x] Destructive replaces the light and dark --destructive behind the default title border, the same on both runtimes ([test](../../conformance/error-page.mjs#L11))
+    - [x] `titleBorder` ([test](../../conformance/error-page.mjs#L12))
+      - [x] TitleBorder colors the border around the ERROR title, and DisableTitleBorder overrides it with transparent, the same on both runtimes ([test](../../conformance/error-page.mjs#L12))
+    - [x] `titleColor` ([test](../../conformance/error-page.mjs#L13))
+      - [x] TitleColor colors the ERROR title, the same on both runtimes ([test](../../conformance/error-page.mjs#L13))
+    - [x] `gridColor` ([test](../../conformance/error-page.mjs#L14))
+      - [x] GridColor colors both background grid lines, the same on both runtimes ([test](../../conformance/error-page.mjs#L14))
+    - [x] `cardBackground` ([test](../../conformance/error-page.mjs#L15))
+      - [x] CardBackground fills the card, the same on both runtimes ([test](../../conformance/error-page.mjs#L15))
+    - [x] `cornerBorder` ([test](../../conformance/error-page.mjs#L16))
+      - [x] CornerBorder replaces the light and dark --corner-border of the corner marks, the same on both runtimes ([test](../../conformance/error-page.mjs#L16))
+    - [x] `size` ([test](../../conformance/error-page.mjs#L18))
+      - [x] The five sizes the page reads render the same page on both runtimes, and the reference page ignores the two radii it never reads ([test](../../conformance/error-page.mjs#L18))
+      - [x] Each size sets its CSS variable once ([test](../../conformance/goapi/error_page_test.go#L89))
+    - [x] `radiusSm` ([test](../../conformance/error-page.mjs#L19))
+      - [x] RadiusSm sets the --radius variable, which no element uses, the same on both runtimes ([test](../../conformance/error-page.mjs#L19))
+    - `radiusMd` — *not applicable: the reference declares this size but its page never reads it*
+    - `radiusLg` — *not applicable: the reference declares this size but its page never reads it*
+    - [x] `textSm` ([test](../../conformance/error-page.mjs#L22))
+      - [x] TextSm sets --text-sm for the code and description above 640px, the same on both runtimes ([test](../../conformance/error-page.mjs#L22))
+    - [x] `text2xl` ([test](../../conformance/error-page.mjs#L23))
+      - [x] Text2xl sets --text-2xl for the Something went wrong heading above 640px, the same on both runtimes ([test](../../conformance/error-page.mjs#L23))
+    - [x] `text4xl` ([test](../../conformance/error-page.mjs#L24))
+      - [x] Text4xl sets the --text-4xl variable, which no element uses, the same on both runtimes ([test](../../conformance/error-page.mjs#L24))
+    - [x] `text6xl` ([test](../../conformance/error-page.mjs#L25))
+      - [x] Text6xl sets --text-6xl for the ERROR title above 640px, the same on both runtimes ([test](../../conformance/error-page.mjs#L25))
+    - [x] `font` ([test](../../conformance/error-page.mjs#L27))
+      - [x] Both font families together render the same page on both runtimes ([test](../../conformance/error-page.mjs#L27))
+      - [x] Each font family reaches the page or the code font with its quotes kept ([test](../../conformance/goapi/error_page_test.go#L89))
+    - [x] `defaultFamily` ([test](../../conformance/error-page.mjs#L28))
+      - [x] FontFamily sets the page font family, the same on both runtimes ([test](../../conformance/error-page.mjs#L28))
+    - [x] `monoFamily` ([test](../../conformance/error-page.mjs#L29))
+      - [x] MonoFontFamily sets --default-mono-font-family for the code, double-quoted names included, the same on both runtimes ([test](../../conformance/error-page.mjs#L29))
+    - [x] `disableTitleBorder` ([test](../../conformance/error-page.mjs#L32))
+      - [x] Makes the title border transparent while keeping its width, the same on both runtimes ([test](../../conformance/error-page.mjs#L32))
+    - [x] `disableCornerDecorations` ([test](../../conformance/error-page.mjs#L33))
+      - [x] Removes the four corner marks, the same on both runtimes ([test](../../conformance/error-page.mjs#L33))
+    - [x] `disableBackgroundGrid` ([test](../../conformance/error-page.mjs#L34))
+      - [x] Removes the grid and its fading mask, the same on both runtimes ([test](../../conformance/error-page.mjs#L34))
   - [x] `hooks` ([test](../../conformance/goapi/endpoint_hooks_test.go#L22))
     - [x] Configure application before and after hooks for the mounted HTTP endpoints ([test](../../conformance/goapi/endpoint_hooks_test.go#L22))
   - [x] `disabledPaths` ([test](../../conformance/goapi/disabled_paths_test.go#L14))
@@ -648,8 +679,8 @@
 ## Security
 
 - [ ] Security
-  - [x] Password Hashing ([test](../../conformance/core.test.mjs#L1391))
-    - [x] Open and replace host-encoded credentials from either runtime in the same account database ([test](../../conformance/core.test.mjs#L1391))
+  - [x] Password Hashing ([test](../../conformance/core.test.mjs#L1396))
+    - [x] Open and replace host-encoded credentials from either runtime in the same account database ([test](../../conformance/core.test.mjs#L1396))
   - [x] Secret Rotation ([test](../../adapters/sqlstore/oauth_encryption_test.go#L18))
     - [x] Stores provider credentials under key version 0 and still reads them after Secrets puts a new version first ([test](../../adapters/sqlstore/oauth_encryption_test.go#L18))
   - [ ] Session Management

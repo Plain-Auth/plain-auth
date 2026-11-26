@@ -108,7 +108,15 @@ type Options struct {
 	CrossSubDomainCookies *CrossSubDomainCookiesOptions
 	// UseSecureCookies overrides the HTTPS-based default for session cookies.
 	UseSecureCookies *bool
+	// ErrorRedirectURL receives browser errors in place of the page at
+	// <mount>/error, with error and error_description added to its query.
+	// It takes precedence over ErrorPage.
 	ErrorRedirectURL string
+	// ErrorPage serves a styled page at <mount>/error in place of the plain
+	// one, also with AUTH_ENV=production, where the plain page redirects to
+	// "/". An empty value uses the built-in light and dark theme. New keeps
+	// its own copy.
+	ErrorPage *ErrorPageOptions
 	// Secret signs credentials. Secrets configures ordered keys for rotation.
 	Secret  string
 	Secrets []VersionedSecret

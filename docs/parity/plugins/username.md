@@ -89,7 +89,7 @@
       - [x] Serialize competing first assignments to an immutable username ([test](../../../adapters/sqlstore/username_test.go#L236))
     - [ ] Disable Is Username Available
       - [x] Remove the public endpoint while retaining the application lookup ([test](../../../adapters/sqlstore/username_test.go#L304))
-      - [x] Disable just the public availability endpoint through general HTTP path configuration ([test](../../../conformance/core.test.mjs#L1369))
+      - [x] Disable just the public availability endpoint through general HTTP path configuration ([test](../../../conformance/core.test.mjs#L1374))
   - [ ] Schema
     - [x] Keep existing accounts intact when adding nullable username fields ([test](../../../adapters/sqlstore/username_test.go#L61))
     - [ ] `usernameUserTableFields.username`

@@ -35,6 +35,7 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
   - [x] `error` (`GET /error`) ([test](../../error_page_test.go#L39))
     - [x] Escape the public error page and forward error codes to the configured redirect ([test](../../error_page_test.go#L10))
     - [x] The error page shows a malformed code as UNKNOWN and escapes the description, a configured ErrorRedirectURL receives the code and description, and production redirects to the site root ([test](../../error_page_test.go#L39))
+    - [x] With Options.ErrorPage set, the page is the styled card with the escaped code and description and only a link to the site root ([test](../../conformance/goapi/error_page_test.go#L29))
   - [x] `getAccessToken` (`POST /get-access-token`) ([test](../../adapters/sqlstore/provider_credentials_test.go#L189))
     - [x] Read the current account’s access token through the public HTTP API ([test](../../conformance/provider-credentials.mjs#L8))
     - [x] Scope credentials to the current account and handle revocation or provider errors on SQLite, MySQL and PostgreSQL ([test](../../adapters/sqlstore/provider_credentials_test.go#L21))
@@ -253,7 +254,7 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
     - [x] Map signed provider account fields across both servers, preserve credentials and explicitly reauthorize an existing link ([test](../../conformance/apple-native.mjs#L87))
     - [x] Map browser grants on first links and verified email linking, keep identity bindings and reject invalid updates atomically ([test](../../conformance/account-fields.mjs#L25))
     - [x] Keep provider credentials separate from native input, transform fields once and expose only owned public account fields on three SQL engines ([test](../../adapters/sqlstore/account_fields_test.go#L17))
-    - [x] Use creation defaults while completing the separately verified One Tap challenge ([test](../../conformance/core.test.mjs#L1756))
+    - [x] Use creation defaults while completing the separately verified One Tap challenge ([test](../../conformance/core.test.mjs#L1761))
     - [x] Complete proxy sign-in across two deployments without invoking provider account mapping on either host ([test](../../adapters/sqlstore/oauth_proxy_test.go#L61))
   - [ ] `disableImplicitSignUp`
   - [ ] `disableSignUp`
