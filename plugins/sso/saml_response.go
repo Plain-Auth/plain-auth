@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/xml"
 	"errors"
+	"fmt"
 	"io"
 	"mime"
 	"net/url"
@@ -56,6 +57,30 @@ func samlProvisioningDeadline(a *saml.Assertion, acs, requestID string, now time
 // The cleartext HTTP-POST profile has one directly signed assertion.
 // This pass bounds the XML and checks the envelope;
 // all identity data below comes from the library's authenticated assertion.
+// samlAssertionCount counts the Assertion and EncryptedAssertion elements
+// anywhere in a response, or reports -1 for a document that does not parse,
+// which the envelope checks then refuse.
+func samlAssertionCount(raw []byte) int {
+	d := xml.NewDecoder(bytes.NewReader(raw))
+	count := 0
+	for elements := 0; elements <= 5000; {
+		tok, err := d.Token()
+		if err == io.EOF {
+			return count
+		}
+		if err != nil {
+			return -1
+		}
+		if t, ok := tok.(xml.StartElement); ok {
+			elements++
+			if t.Name.Local == "Assertion" || t.Name.Local == "EncryptedAssertion" {
+				count++
+			}
+		}
+	}
+	return -1
+}
+
 func assertionEnvelope(raw []byte, acs, requestID string) (string, error) {
 	const protocol = "urn:oasis:names:tc:SAML:2.0:protocol"
 	const assertion = "urn:oasis:names:tc:SAML:2.0:assertion"
@@ -153,6 +178,9 @@ func samlProfile(a *saml.Assertion, m SAMLMapping, trust bool) (auth.OAuthProfil
 			configured = fallback
 		}
 		values := attrs[configured]
+		// Several values for an identity attribute refuse the response, so an
+		// ambiguous email cannot pick a mailbox; another runtime takes the
+		// first value.
 		if len(values) > 1 {
 			return "", errSAMLResponse
 		}
@@ -319,6 +347,14 @@ func (o Options) samlFinish(c auth.EndpointContext) (any, error) {
 		sp.AllowIDPInitiated = true
 		requestID = ""
 		requestIDs = nil
+	}
+	// A response carries exactly one assertion, plain or encrypted, named by
+	// the error codes another runtime uses.
+	switch n := samlAssertionCount(raw); {
+	case n == 0:
+		return enterpriseFailure(c, flow, "saml_no_assertion", "SAML response contains no assertions")
+	case n > 1:
+		return enterpriseFailure(c, flow, "saml_multiple_assertions", fmt.Sprintf("SAML response contains %d assertions, expected exactly 1", n))
 	}
 	id, err := assertionDocumentID(raw, sp, requestID)
 	if err != nil {

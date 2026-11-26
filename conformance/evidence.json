@@ -43923,5 +43923,43 @@
       "test": "plugins/sso/identity_test.go",
       "marker": "a mapped email list did not yield its first nonempty address"
     }
+  ],
+  "docs/content/docs/plugins/sso/saml-security.mdx#L11/One assertion": [
+    {
+      "label": "Pass the envelope check only with exactly one top-level signed assertion, refusing a second, a nested or a missing assertion",
+      "test": "plugins/sso/saml_test.go",
+      "marker": "a response with two assertions passed the envelope check"
+    },
+    {
+      "label": "Count plain and encrypted assertions anywhere in a response, so none or more than one is named by its error code",
+      "test": "plugins/sso/saml_test.go",
+      "marker": "the assertion count did not name a missing or second assertion"
+    }
+  ],
+  "docs/content/docs/plugins/sso/saml.mdx#L158/`firstName`": [
+    {
+      "label": "Join the givenName attribute, or the mapped firstName attribute, into the user's name",
+      "test": "plugins/sso/saml_test.go",
+      "marker": "mapped firstName and lastName attributes were not used",
+      "complete": true
+    },
+    {
+      "label": "Use a first name alone as the user's name",
+      "test": "plugins/sso/saml_test.go",
+      "marker": "a first name alone did not become the name"
+    }
+  ],
+  "docs/content/docs/plugins/sso/saml.mdx#L159/`lastName`": [
+    {
+      "label": "Join the surname attribute, or the mapped lastName attribute, after the first name",
+      "test": "plugins/sso/saml_test.go",
+      "marker": "givenName and surname were not joined into the name",
+      "complete": true
+    },
+    {
+      "label": "Use a last name alone as the user's name",
+      "test": "plugins/sso/saml_test.go",
+      "marker": "a last name alone did not become the name"
+    }
   ]
 }

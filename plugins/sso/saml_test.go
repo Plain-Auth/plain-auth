@@ -4,8 +4,10 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
+	auth "github.com/Plain-Org/plain-auth"
 	"github.com/crewjam/saml"
 	"math/big"
+	"strings"
 	"testing"
 	"time"
 )
@@ -160,5 +162,85 @@ func TestSAMLProfileRawAttributes(t *testing.T) {
 	raw, ok := profile.Data.(map[string]any)
 	if !ok || raw["email"] != "Employee@Example.test" || len(raw["groups"].([]string)) != 2 || profile.Email != "employee@example.test" {
 		t.Fatalf("the profile data was %#v", profile.Data)
+	}
+}
+
+// The SAML name joins givenName and surname (or the mapped names), falls back
+// to displayName and then the NameID, and several values for one name
+// attribute refuse the response.
+func TestSAMLProfileNameParts(t *testing.T) {
+	profile := func(m SAMLMapping, attrs ...saml.Attribute) (auth.OAuthProfile, error) {
+		return samlProfile(&saml.Assertion{Subject: &saml.Subject{NameID: &saml.NameID{Value: "employee@acme.example"}}, AttributeStatements: []saml.AttributeStatement{{Attributes: attrs}}}, m, false)
+	}
+	attr := func(name string, values ...string) saml.Attribute {
+		a := saml.Attribute{Name: name}
+		for _, v := range values {
+			a.Values = append(a.Values, saml.AttributeValue{Value: v})
+		}
+		return a
+	}
+	name := func(m SAMLMapping, attrs ...saml.Attribute) string {
+		t.Helper()
+		p, err := profile(m, attrs...)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return p.Name
+	}
+	if got := name(SAMLMapping{}, attr("givenName", "Ada"), attr("surname", "Lovelace")); got != "Ada Lovelace" {
+		t.Fatal("givenName and surname were not joined into the name", got)
+	}
+	if got := name(SAMLMapping{}, attr("givenName", "Ada")); got != "Ada" {
+		t.Fatal("a first name alone did not become the name", got)
+	}
+	if got := name(SAMLMapping{}, attr("surname", "Lovelace")); got != "Lovelace" {
+		t.Fatal("a last name alone did not become the name", got)
+	}
+	if got := name(SAMLMapping{FirstName: "first", LastName: "last"}, attr("first", "Grace"), attr("last", "Hopper"), attr("givenName", "Ada")); got != "Grace Hopper" {
+		t.Fatal("mapped firstName and lastName attributes were not used", got)
+	}
+	if got := name(SAMLMapping{}, attr("displayName", "Countess")); got != "Countess" {
+		t.Fatal("displayName was not used without name parts", got)
+	}
+	if got := name(SAMLMapping{}); got != "employee@acme.example" {
+		t.Fatal("the NameID was not used without any name attribute", got)
+	}
+	if _, err := profile(SAMLMapping{}, attr("givenName", "Ada", "Augusta")); err == nil {
+		t.Fatal("several values for a name attribute were accepted")
+	}
+}
+
+// A response passes only with exactly one top-level signed assertion; the
+// assertion count names a missing or second assertion, plain or encrypted.
+func TestSAMLAssertionEnvelopeCount(t *testing.T) {
+	const acs, request = "https://service.test/identity/sso/saml2/sp/acs/acme", "_request"
+	assertion := func(id, inner string) string {
+		return `<saml:Assertion ID="` + id + `"><ds:Signature/>` + inner + `</saml:Assertion>`
+	}
+	enc := `<saml:EncryptedAssertion><xenc:EncryptedData xmlns:xenc="http://www.w3.org/2001/04/xmlenc#"/></saml:EncryptedAssertion>`
+	response := func(children ...string) []byte {
+		return []byte(`<samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" xmlns:ds="http://www.w3.org/2000/09/xmldsig#" Destination="` + acs + `" InResponseTo="` + request + `">` + strings.Join(children, "") + `</samlp:Response>`)
+	}
+	if id, err := assertionEnvelope(response(assertion("_one", "")), acs, request); err != nil || id != "_one" {
+		t.Fatal("a response with one signed assertion failed the envelope check", id, err)
+	}
+	if _, err := assertionEnvelope(response(assertion("_first", ""), assertion("_second", "")), acs, request); err == nil {
+		t.Fatal("a response with two assertions passed the envelope check")
+	}
+	if _, err := assertionEnvelope(response(assertion("_outer", `<saml:Advice>`+assertion("_inner", "")+`</saml:Advice>`)), acs, request); err == nil {
+		t.Fatal("an assertion nested in another assertion passed the envelope check")
+	}
+	if _, err := assertionEnvelope(response(), acs, request); err == nil {
+		t.Fatal("a response without an assertion passed the envelope check")
+	}
+	for raw, want := range map[string]int{
+		string(response()): 0, string(response(assertion("_one", ""))): 1, string(response(enc)): 1,
+		string(response(assertion("_a", ""), assertion("_b", ""))): 2, string(response(enc, enc)): 2,
+		string(response(assertion("_plain", ""), enc)): 2, string(response(assertion("_outer", `<saml:Advice>`+assertion("_inner", "")+`</saml:Advice>`))): 2,
+		"<broken": -1,
+	} {
+		if got := samlAssertionCount([]byte(raw)); got != want {
+			t.Fatal("the assertion count did not name a missing or second assertion", want, got, raw)
+		}
 	}
 }
