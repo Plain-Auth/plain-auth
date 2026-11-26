@@ -10,7 +10,9 @@
   - [x] `DEFAULT_MAX_SAML_METADATA_SIZE` ([test](../../../plugins/sso/saml_test.go#L57))
     - [x] Resolve an unset SAML metadata size limit to 100 KiB, and refuse a negative limit or one above 1 MiB when building the plugin ([test](../../../plugins/sso/saml_test.go#L57))
     - [x] Refuse an inline IdP metadata update padded past 100 KiB on a host with the default limit ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L81))
-  - [ ] `DEFAULT_MAX_SAML_RESPONSE_SIZE`
+  - [x] `DEFAULT_MAX_SAML_RESPONSE_SIZE` ([test](../../../plugins/sso/saml_test.go#L258))
+    - [x] Default the SAMLResponse limit to 256 KiB, keep a configured one and refuse a negative size or one above 1 MiB ([test](../../../plugins/sso/saml_test.go#L258))
+    - [x] Refuse a SAMLResponse one byte over the default limit at the ACS ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L189))
   - [ ] `sso`
     - [x] Build enterprise hosts with sso.New and complete OIDC sign-in through per-provider and shared callbacks on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_browser_test.go#L145))
     - [x] Build SAML hosts with sso.New, including single logout, IdP-initiated policy, decryption keys and domain verification, and complete SAML sign-in on three SQL engines ([test](../../../adapters/sqlstore/sso_saml_test.go#L117))
@@ -633,7 +635,9 @@
 ## SAML response validation
 
 - [ ] SAML response validation
-  - [ ] Size limit
+  - [x] Size limit ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L195))
+    - [x] Redirect a SAMLResponse over the default or configured limit with saml_error before decoding it, and accept one under the limit, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L195))
+    - [x] Accept a SAMLResponse under the default limit ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L200))
   - [x] One assertion ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L173))
     - [x] Pass the envelope check only with exactly one top-level signed assertion, refusing a second, a nested or a missing assertion ([test](../../../plugins/sso/saml_test.go#L228))
     - [x] Count plain and encrypted assertions anywhere in a response, so none or more than one is named by its error code ([test](../../../plugins/sso/saml_test.go#L243))
@@ -694,7 +698,8 @@
   - [ ] Size limits
     - [x] Reject an IdP metadata update larger than the default 100 KiB limit ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L81))
     - [x] Refuse a negative or over-1 MiB MaxMetadataSize and default it to 100 KiB ([test](../../../plugins/sso/saml_test.go#L44))
-    - [ ] `saml_error`
+    - [x] `saml_error` ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L189))
+      - [x] Redirect an oversized SAMLResponse with error=saml_error and the size message ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L189))
 
 ## SAML providers
 

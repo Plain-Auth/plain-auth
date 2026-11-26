@@ -244,3 +244,20 @@ func TestSAMLAssertionEnvelopeCount(t *testing.T) {
 		}
 	}
 }
+
+// MaxResponseSize defaults to 256 KiB, keeps a configured value and refuses
+// a negative size or one above the 1 MiB form cap.
+func TestSAMLResponseSizeOption(t *testing.T) {
+	if _, err := New(Options{SAML: &SAMLOptions{MaxResponseSize: -1}}); err == nil {
+		t.Fatal("accepted a negative SAML response size")
+	}
+	if _, err := New(Options{SAML: &SAMLOptions{MaxResponseSize: (1 << 20) + 1}}); err == nil {
+		t.Fatal("accepted a SAML response size above the 1 MiB form cap")
+	}
+	if limit := (SAMLOptions{}).responseLimit(); limit != 256*1024 {
+		t.Fatal("unset SAML response size is not 256 KiB", limit)
+	}
+	if limit := (SAMLOptions{MaxResponseSize: 4096}).responseLimit(); limit != 4096 {
+		t.Fatal("configured SAML response size was not kept", limit)
+	}
+}

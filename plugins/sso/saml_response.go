@@ -306,9 +306,16 @@ func (o Options) samlFinish(c auth.EndpointContext) (any, error) {
 	}
 	if unsolicited {
 		flow.CallbackURL = samlLanding(c, flow.RedirectURI, p.SAML.IDPInitiatedCallbackURL, o.SAML.IDPInitiatedCallbackURL, p.SAML.CallbackURL)
-		if o.SAML.AllowIDPInitiated == nil {
-			return fail("unsolicited_response")
-		}
+	}
+	// An oversized response is refused before it is decoded or parsed. Like
+	// the other ACS failures it redirects to this sign-in's error callback;
+	// another runtime uses the directory's fallback landing page because it
+	// checks the size before reading RelayState.
+	if limit := o.SAML.responseLimit(); len(form.Get("SAMLResponse")) > limit {
+		return enterpriseFailure(c, flow, "saml_error", fmt.Sprintf("SAML response exceeds maximum allowed size (%d bytes)", limit))
+	}
+	if unsolicited && o.SAML.AllowIDPInitiated == nil {
+		return fail("unsolicited_response")
 	}
 	proof, err := o.domainGate(c, p)
 	if err != nil {

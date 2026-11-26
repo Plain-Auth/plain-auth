@@ -35,7 +35,10 @@ type SAMLOptions struct {
 	IDPInitiatedCallbackURL string
 	Encryption              *SAMLEncryption
 	// MaxMetadataSize limits inline IdP XML in bytes, defaulting to 100 KiB.
-	MaxMetadataSize    int
+	MaxMetadataSize int
+	// MaxResponseSize limits the base64 SAMLResponse form value in bytes,
+	// defaulting to 256 KiB. The ACS reads at most 1 MiB of form data.
+	MaxResponseSize    int
 	RequestSigner      crypto.Signer
 	RequestCertificate *x509.Certificate
 	TrustEmailVerified bool
@@ -59,6 +62,9 @@ func (o SAMLOptions) validate() error {
 	}
 	if o.MaxMetadataSize < 0 || o.MaxMetadataSize > maxSAMLMetadataBytes {
 		return errors.New("sso: SAML metadata size must be between 1 byte and 1 MiB when set")
+	}
+	if o.MaxResponseSize < 0 || o.MaxResponseSize > maxSAMLMetadataBytes {
+		return errors.New("sso: SAML response size must be between 1 byte and 1 MiB when set")
 	}
 	if o.RequestSigner == nil && o.RequestCertificate == nil {
 		return nil

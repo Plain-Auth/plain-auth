@@ -43985,5 +43985,39 @@
       "marker": "an assertion addressed to the default SP entity ID did not sign in",
       "complete": true
     }
+  ],
+  "plugin-symbol/sso/DEFAULT_MAX_SAML_RESPONSE_SIZE": [
+    {
+      "label": "Default the SAMLResponse limit to 256 KiB, keep a configured one and refuse a negative size or one above 1 MiB",
+      "test": "plugins/sso/saml_test.go",
+      "marker": "unset SAML response size is not 256 KiB",
+      "complete": true
+    },
+    {
+      "label": "Refuse a SAMLResponse one byte over the default limit at the ACS",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "an oversized SAMLResponse did not redirect with saml_error"
+    }
+  ],
+  "docs/content/docs/plugins/sso/saml-security.mdx#L10/Size limit": [
+    {
+      "label": "Redirect a SAMLResponse over the default or configured limit with saml_error before decoding it, and accept one under the limit, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "MaxResponseSize did not bound a signed response",
+      "complete": true
+    },
+    {
+      "label": "Accept a SAMLResponse under the default limit",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "a SAMLResponse under the default limit was refused"
+    }
+  ],
+  "docs/content/docs/plugins/sso/saml-security.mdx#L150/`saml_error`": [
+    {
+      "label": "Redirect an oversized SAMLResponse with error=saml_error and the size message",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "an oversized SAMLResponse did not redirect with saml_error",
+      "complete": true
+    }
   ]
 }

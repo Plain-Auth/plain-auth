@@ -18,6 +18,15 @@ import (
 
 const maxSAMLMetadataBytes = 1 << 20
 const defaultSAMLMetadataBytes = 100 * 1024
+const defaultSAMLResponseBytes = 256 * 1024
+
+// responseLimit is the largest SAMLResponse form value the ACS accepts.
+func (o SAMLOptions) responseLimit() int {
+	if o.MaxResponseSize != 0 {
+		return o.MaxResponseSize
+	}
+	return defaultSAMLResponseBytes
+}
 
 func (o SAMLOptions) metadataLimit() int {
 	if o.MaxMetadataSize != 0 {
