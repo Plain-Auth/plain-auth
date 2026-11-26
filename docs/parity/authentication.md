@@ -130,7 +130,8 @@
       - [x] `provider` ([test](../../providers/catalog_test.go#L147))
         - [x] In the discord subtest, the sign-in/social body names provider "discord" and starts that provider's flow ([test](../../providers/catalog_test.go#L147))
   - [ ] Options
-    - [ ] Bot Permissions (Optional)
+    - [x] Bot Permissions (Optional) ([test](../../providers/catalog_options_test.go#L103))
+      - [x] Discord bot permissions are added to the authorization URL only with the bot scope ([test](../../providers/catalog_options_test.go#L103))
 
 ## Dropbox
 
@@ -300,7 +301,8 @@
       - [ ] `scopes`
         - [x] In the facebook subtest, sign-in requests exactly the default email public_profile scopes ([test](../../providers/catalog_test.go#L162))
         - [x] Setting the Google preset's Config.Scopes to [openid] replaces its default scopes, and the sign-in and link authorization URLs send scope openid ([test](../../conformance/goapi/provider_contract_test.go#L67))
-      - [ ] `fields`
+      - [x] `fields` ([test](../../providers/catalog_options_test.go#L39))
+        - [x] Extra Graph profile fields are requested after the default ones ([test](../../providers/catalog_options_test.go#L39))
     - [ ] Sign In with Facebook With ID or Access Token
 
 ## Figma
@@ -340,8 +342,10 @@
         - [x] For gitlab, as for every catalog provider, the code exchange carries the client ID given to providers.New, with grant_type authorization_code and the callback's code ([test](../../providers/catalog_test.go#L80))
       - [x] `clientSecret` ([test](../../providers/catalog_test.go#L80))
         - [x] For gitlab, as for every catalog provider, the code exchange carries the client secret given to providers.New ([test](../../providers/catalog_test.go#L80))
-      - [ ] `issuer`
-    - [ ] Example with self-hosted GitLab
+      - [x] `issuer` ([test](../../providers/catalog_options_test.go#L39))
+        - [x] An issuer for a self-managed instance is used for every GitLab endpoint, and gitlab.com without one ([test](../../providers/catalog_options_test.go#L39))
+    - [x] Example with self-hosted GitLab ([test](../../providers/catalog_options_test.go#L39))
+      - [x] A self-hosted GitLab at https://gitlab.company.com gets its authorize, token, profile and refresh endpoints there ([test](../../providers/catalog_options_test.go#L39))
   - [x] Sign In with GitLab ([test](../../providers/catalog_test.go#L187))
     - [x] For gitlab and each other catalog provider, sign-in/social followed by the provider callback exchanges the code once, reads the profile once and answers 302 with a session ([test](../../providers/catalog_test.go#L187))
     - [x] `provider` ([test](../../providers/catalog_test.go#L162))
@@ -678,18 +682,21 @@
 ## PayPal
 
 - [ ] PayPal
-  - [ ] Get your PayPal Credentials
+  - [x] Get your PayPal Credentials ([test](../../providers/catalog_options_test.go#L39))
+    - [x] Sandbox and live PayPal apps each sign in against their own environment's endpoints ([test](../../providers/catalog_options_test.go#L39))
   - [ ] Configure the provider
     - [x] The paypal preset, like each catalog preset, sends the configured client ID and secret in its code exchange ([test](../../providers/catalog_test.go#L79))
     - [x] The paypal preset authenticates to its sandbox token endpoint with HTTP Basic. The test checks each catalog preset's client authentication style ([test](../../providers/catalog_test.go#L58))
     - [ ] Options
-      - [ ] `environment`
+      - [x] `environment` ([test](../../providers/catalog_options_test.go#L39))
+        - [x] The sandbox endpoints by default and the live ones with Live ([test](../../providers/catalog_options_test.go#L39))
       - [ ] `requestShippingAddress`
   - [ ] Sign In with PayPal
     - [x] `provider` ([test](../../providers/catalog_test.go#L162))
       - [x] POST /sign-in/social with each catalog provider's name, paypal included, redirects to that provider's own authorization endpoint ([test](../../providers/catalog_test.go#L162))
   - [ ] Additional Options:
-    - [ ] `environment`
+    - [x] `environment` ([test](../../providers/catalog_options_test.go#L39))
+      - [x] The sandbox is the default environment and Live selects the live endpoints ([test](../../providers/catalog_options_test.go#L39))
     - [ ] `requestShippingAddress`
     - [ ] `scope`
       - [x] Each catalog preset's authorization URL asks for exactly its own scope list. PayPal's list is empty, so no scope is requested by default ([test](../../providers/catalog_test.go#L162))
@@ -828,11 +835,14 @@
         - [x] The Salesforce code exchange carries the client ID and secret passed to New, with grant_type authorization_code and the callback code ([test](../../providers/catalog_test.go#L79))
       - [x] `clientSecret` ([test](../../providers/catalog_test.go#L79))
         - [x] The Salesforce code exchange carries the client ID and secret passed to New, with grant_type authorization_code and the callback code ([test](../../providers/catalog_test.go#L79))
-      - [ ] `environment`
-      - [ ] `loginUrl`
+      - [x] `environment` ([test](../../providers/catalog_options_test.go#L39))
+        - [x] Production by default and the sandbox login host with Sandbox ([test](../../providers/catalog_options_test.go#L39))
+      - [x] `loginUrl` ([test](../../providers/catalog_options_test.go#L39))
+        - [x] A My Domain host is used for the authorize, token and user info endpoints ([test](../../providers/catalog_options_test.go#L39))
       - [x] `redirectURI` ([test](../../conformance/goapi/oauth_redirect_uri_test.go#L96))
         - [x] A provider's own absolute Config.RedirectURL replaces the callback route as redirect_uri in both the authorization request and the code exchange, and non-absolute values are refused ([test](../../conformance/goapi/oauth_redirect_uri_test.go#L96))
-    - [ ] Advanced Configuration
+    - [x] Advanced Configuration ([test](../../providers/catalog_options_test.go#L39))
+      - [x] A sandbox with a My Domain login host uses the My Domain endpoints ([test](../../providers/catalog_options_test.go#L39))
   - [x] Environment Variables ([test](../../env_test.go#L30))
     - [x] With BaseURL unset, AUTH_URL supplies the base URL and base path, and explicit options take precedence over it ([test](../../env_test.go#L30))
     - [x] With a 127.0.0.1 BaseURL, the provider's redirect lands on BaseURL/api/auth/callback/<id> and that callback completes the sign-in ([test](../../conformance/goapi/oauth_test.go#L142))

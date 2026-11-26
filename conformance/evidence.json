@@ -24847,6 +24847,12 @@
       "label": "The Discord preset's authorization URL carries its default prompt=none",
       "test": "providers/catalog_test.go",
       "marker": "t.Fatalf(\"param %s\", k)"
+    },
+    {
+      "label": "Setting prompt on the preset's AuthorizationParams replaces its default prompt on the authorization URL",
+      "test": "providers/catalog_options_test.go",
+      "marker": "func TestCatalogPresetParams(t *testing.T) {",
+      "complete": true
     }
   ],
   "provider-option/dropbox/clientId": [
@@ -25024,6 +25030,12 @@
       "label": "Send sign-in to each catalog provider's recorded endpoints, which for PayPal are the sandbox authorization, token and userinfo endpoints",
       "test": "providers/catalog_test.go",
       "marker": "if target.String() != settings.Authorization"
+    },
+    {
+      "label": "PayPal uses the sandbox by default and the live web and API hosts with Live, for authorize, token, user info and refresh",
+      "test": "providers/catalog_options_test.go",
+      "marker": "func TestCatalogPresetEndpoints(t *testing.T) {",
+      "complete": true
     }
   ],
   "provider-option/railway/clientId": [
@@ -25070,6 +25082,12 @@
       "label": "Send sign-in to each catalog provider's recorded endpoints, which for Salesforce are the production login.salesforce.com authorization, token and userinfo endpoints",
       "test": "providers/catalog_test.go",
       "marker": "if target.String() != settings.Authorization"
+    },
+    {
+      "label": "Salesforce uses login.salesforce.com by default and test.salesforce.com with Sandbox for every endpoint, including refresh",
+      "test": "providers/catalog_options_test.go",
+      "marker": "func TestCatalogPresetEndpoints(t *testing.T) {",
+      "complete": true
     }
   ],
   "provider-option/salesforce/redirectURI": [
@@ -29967,6 +29985,142 @@
       "label": "The Graph photo is stored as a data URI only up to 1 MiB, and DisableProfilePhoto skips it",
       "test": "providers/microsoft_test.go",
       "marker": "func TestMicrosoftProfilePhoto(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "provider-option/gitlab/issuer": [
+    {
+      "label": "GitLabOptions.Issuer moves the authorize, token, profile and refresh endpoints to a self-managed instance, with or without a path; an insecure or query-bearing issuer is refused",
+      "test": "providers/catalog_options_test.go",
+      "marker": "func TestCatalogPresetEndpoints(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/authentication/gitlab.mdx#L39/`issuer`": [
+    {
+      "label": "An issuer for a self-managed instance is used for every GitLab endpoint, and gitlab.com without one",
+      "test": "providers/catalog_options_test.go",
+      "marker": "func TestCatalogPresetEndpoints(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/authentication/gitlab.mdx#L47": [
+    {
+      "label": "A self-hosted GitLab at https://gitlab.company.com gets its authorize, token, profile and refresh endpoints there",
+      "test": "providers/catalog_options_test.go",
+      "marker": "func TestCatalogPresetEndpoints(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "provider-option/salesforce/loginUrl": [
+    {
+      "label": "A My Domain LoginURL replaces the login host for every endpoint and wins over Sandbox; a value that is not a bare host is refused",
+      "test": "providers/catalog_options_test.go",
+      "marker": "func TestCatalogPresetEndpoints(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/authentication/salesforce.mdx#L63/`environment`": [
+    {
+      "label": "Production by default and the sandbox login host with Sandbox",
+      "test": "providers/catalog_options_test.go",
+      "marker": "func TestCatalogPresetEndpoints(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/authentication/salesforce.mdx#L64/`loginUrl`": [
+    {
+      "label": "A My Domain host is used for the authorize, token and user info endpoints",
+      "test": "providers/catalog_options_test.go",
+      "marker": "func TestCatalogPresetEndpoints(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/authentication/salesforce.mdx#L67": [
+    {
+      "label": "A sandbox with a My Domain login host uses the My Domain endpoints",
+      "test": "providers/catalog_options_test.go",
+      "marker": "func TestCatalogPresetEndpoints(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/authentication/paypal.mdx#L9": [
+    {
+      "label": "Sandbox and live PayPal apps each sign in against their own environment's endpoints",
+      "test": "providers/catalog_options_test.go",
+      "marker": "func TestCatalogPresetEndpoints(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/authentication/paypal.mdx#L68/`environment`": [
+    {
+      "label": "The sandbox endpoints by default and the live ones with Live",
+      "test": "providers/catalog_options_test.go",
+      "marker": "func TestCatalogPresetEndpoints(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/authentication/paypal.mdx#L105/`environment`": [
+    {
+      "label": "The sandbox is the default environment and Live selects the live endpoints",
+      "test": "providers/catalog_options_test.go",
+      "marker": "func TestCatalogPresetEndpoints(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "provider-option/discord/permissions": [
+    {
+      "label": "Bot permissions are sent only when the bot scope is requested, from the preset's scopes or the call, and a call's own permissions win",
+      "test": "providers/catalog_options_test.go",
+      "marker": "func TestCatalogPresetParams(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/authentication/discord.mdx#L64": [
+    {
+      "label": "Discord bot permissions are added to the authorization URL only with the bot scope",
+      "test": "providers/catalog_options_test.go",
+      "marker": "func TestCatalogPresetParams(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "provider-option/dropbox/accessType": [
+    {
+      "label": "DropboxOptions.AccessType is sent as token_access_type, and a call's additionalParams override it",
+      "test": "providers/catalog_options_test.go",
+      "marker": "func TestCatalogPresetParams(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "provider-option/facebook/configId": [
+    {
+      "label": "FacebookOptions.ConfigID is sent as config_id",
+      "test": "providers/catalog_options_test.go",
+      "marker": "func TestCatalogPresetParams(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "provider-option/reddit/duration": [
+    {
+      "label": "RedditOptions.Duration is sent as duration",
+      "test": "providers/catalog_options_test.go",
+      "marker": "func TestCatalogPresetParams(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "provider-option/facebook/fields": [
+    {
+      "label": "FacebookOptions.Fields are appended to the Graph profile fields, which stay id, name, email and picture without them",
+      "test": "providers/catalog_options_test.go",
+      "marker": "func TestCatalogPresetEndpoints(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/authentication/facebook.mdx#L95/`fields`": [
+    {
+      "label": "Extra Graph profile fields are requested after the default ones",
+      "test": "providers/catalog_options_test.go",
+      "marker": "func TestCatalogPresetEndpoints(t *testing.T) {",
       "complete": true
     }
   ]

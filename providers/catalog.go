@@ -76,6 +76,12 @@ func New(name, clientID, secret string) (auth.OAuthProvider, error) {
 	if !ok {
 		return auth.OAuthProvider{}, fmt.Errorf("unknown provider %q", name)
 	}
+	return fromCatalog(name, clientID, secret, entry), nil
+}
+
+// fromCatalog builds the provider for a catalog entry, which may have been
+// moved to another instance with at.
+func fromCatalog(name, clientID, secret string, entry catalogEntry) auth.OAuthProvider {
 	style := oauth2.AuthStyleInParams
 	if entry.Basic && (name != "cloudflare" || secret != "") {
 		style = oauth2.AuthStyleInHeader
@@ -100,7 +106,24 @@ func New(name, clientID, secret string) (auth.OAuthProvider, error) {
 	if entry.Refresh != nil {
 		p.Refresh = entry.Refresh.exchange
 	}
-	return p, nil
+	return p
+}
+
+// at returns a copy of e whose endpoints under from are moved under to.
+func (e catalogEntry) at(from, to string) catalogEntry {
+	move := func(u string) string {
+		if rest, ok := strings.CutPrefix(u, from); ok {
+			return to + rest
+		}
+		return u
+	}
+	e.Authorization, e.Token, e.Profile = move(e.Authorization), move(e.Token), move(e.Profile)
+	if e.Refresh != nil {
+		refresh := *e.Refresh
+		refresh.URL = move(refresh.URL)
+		e.Refresh = &refresh
+	}
+	return e
 }
 
 func (e catalogEntry) resolve(ctx context.Context, name, clientID, secret string, t *oauth2.Token) (auth.OAuthProfile, error) {

@@ -73,7 +73,19 @@ Apple requires a services ID or bundle identifier and an Apple-issued developer 
 
 Microsoft uses the common Entra endpoint by default. Use `providers.Microsoft(id, secret, providers.MicrosoftOptions{TenantID: tenant})` for a tenant GUID, `organizations`, or `consumers`. Verified tokens must match the tenant issuer and account class. `Authority` selects another sign-in origin, such as `https://<tenant-id>.ciamlogin.com` for External ID with the tenant GUID as `TenantID`, or a sovereign cloud; it must be a secure origin with no path. `AdditionalClientIDs` lists other client IDs a directly submitted ID token may name as its audience, while the code exchange uses the client ID. `HTTPClient` fetches the signing keys, the token endpoint and the photo. The profile photo is fetched from Microsoft Graph at `ProfilePhotoSize` pixels (48, the default, or 64, 96, 120, 240, 360, 432, 504 or 648, checked when the provider is built), without following redirects, and stored as a data URI of at most 1 MiB; larger photos are left out. Set `DisableProfilePhoto` to skip the request, or wrap the preset's `Resolve` to store the image elsewhere or clear it before it reaches the user row. [Microsoft option tests](../providers/microsoft_test.go)
 
-The catalog covers default provider flows. Advanced provider-specific SDK parameters, custom claims mappings and scope overrides may require configuring `auth.OAuthProvider` directly.
+The catalog covers default provider flows. Some presets also have a constructor with options:
+
+| Constructor | Options |
+| --- | --- |
+| `providers.GitLab(id, secret, providers.GitLabOptions{Issuer: "https://gitlab.company.com"})` | A self-managed instance, optionally under a path; https only. Empty uses gitlab.com |
+| `providers.Salesforce(id, secret, providers.SalesforceOptions{...})` | `Sandbox` uses test.salesforce.com; `LoginURL`, a bare My Domain host, wins over it |
+| `providers.PayPal(id, secret, providers.PayPalOptions{Live: true})` | The live endpoints instead of the sandbox |
+| `providers.Discord(id, secret, providers.DiscordOptions{Permissions: 8})` | Bot permissions, sent only when the `bot` scope is requested; zero sends none |
+| `providers.Dropbox(id, secret, providers.DropboxOptions{AccessType: "offline"})` | `token_access_type`: offline, online or legacy |
+| `providers.Facebook(id, secret, providers.FacebookOptions{Fields: []string{"birthday"}, ConfigID: "..."})` | More Graph profile fields, and a Login for Business `config_id` |
+| `providers.Reddit(id, secret, providers.RedditOptions{Duration: "permanent"})` | `duration`, permanent for a refresh token |
+
+`GitLab` and `Salesforce` return an error for a URL they cannot use. A call's `additionalParams` override the parameters these options send. Other provider-specific parameters, custom claims mappings and scope overrides may require configuring `auth.OAuthProvider` directly. [Preset option tests](../providers/catalog_options_test.go)
 
 Cognito requires a region, user pool ID and hosted sign-in domain. A public client can use an empty client secret. The optional `IdentityProvider` sets the hosted-UI identity provider.
 
@@ -91,7 +103,7 @@ social["cognito"] = cognito
 
 Cognito accepts user-pool ID tokens for direct sign-in as well. Paybin uses the public issuer by default and requires a working OIDC discovery document and RSA signing keys. Use `providers.Paybin(id, secret, issuer)` for a self-hosted issuer. Twitch requests email and profile claims in a signed ID token. Both use browser authorization-code grants.
 
-The default PayPal registration uses the sandbox. Notion requests the workspace owner's profile with the versioned API. Facebook verifies the returned access token against the configured app before reading the profile. X reads confirmed email using a second provider request. TikTok, WeChat, Reddit, Roblox and X can return a provider-specific placeholder when the service withholds email. Placeholder addresses remain unverified. VK requires the device ID on its callback. The local tests use provider response fixtures and test signing keys.
+The default PayPal registration uses the sandbox; `providers.PayPal` with `Live` uses the live endpoints. Notion requests the workspace owner's profile with the versioned API. Facebook verifies the returned access token against the configured app before reading the profile. X reads confirmed email using a second provider request. TikTok, WeChat, Reddit, Roblox and X can return a provider-specific placeholder when the service withholds email. Placeholder addresses remain unverified. VK requires the device ID on its callback. The local tests use provider response fixtures and test signing keys.
 
 To complete sign-in while keeping the opener on its current page, use [OAuth popup sign-in](oauth-popup.md).
 
