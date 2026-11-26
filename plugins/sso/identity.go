@@ -80,12 +80,15 @@ func providerHTTP(host *auth.Auth, configured *http.Client) *http.Client {
 	}
 	return &http.Client{Transport: providerTransport{host, trusted}, Timeout: timeout, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 }
-func resolveIdentity(ctx context.Context, client *http.Client, p BrowserProvider, token *oauth2.Token, nonce string) (auth.OAuthProfile, error) {
+
+// resolveIdentity also returns the verified ID token claims, nil without an
+// ID token.
+func resolveIdentity(ctx context.Context, client *http.Client, p BrowserProvider, token *oauth2.Token, nonce string) (auth.OAuthProfile, map[string]any, error) {
 	var out auth.OAuthProfile
-	var claims map[string]any
+	var claims, idClaims map[string]any
 	raw, ok := token.Extra("id_token").(string)
 	if token.Extra("id_token") != nil && (!ok || raw == "") {
-		return out, invalidIdentity
+		return out, nil, invalidIdentity
 	}
 	sub := ""
 	if raw != "" {
@@ -93,47 +96,48 @@ func resolveIdentity(ctx context.Context, client *http.Client, p BrowserProvider
 		verifier := oidc.NewVerifier(p.Issuer, oidc.NewRemoteKeySet(oidc.ClientContext(ctx, client), cfg.JWKSEndpoint), &oidc.Config{ClientID: cfg.ClientID, SupportedSigningAlgs: signingAlgorithms})
 		verified, e := verifier.Verify(ctx, raw)
 		if e != nil || verified.Issuer != p.Issuer || verified.Subject == "" || nonce == "" || verified.Nonce != nonce || verified.IssuedAt.IsZero() || verified.IssuedAt.After(time.Now().Add(1*time.Minute)) || !verified.Expiry.After(verified.IssuedAt) {
-			return out, invalidIdentity
+			return out, nil, invalidIdentity
 		}
 		if verified.AccessTokenHash != "" && verified.VerifyAccessToken(token.AccessToken) != nil {
-			return out, invalidIdentity
+			return out, nil, invalidIdentity
 		}
 		if e := verified.Claims(&claims); e != nil {
-			return out, invalidIdentity
+			return out, nil, invalidIdentity
 		}
+		idClaims = claims
 		azp, has := claims["azp"]
 		if (len(verified.Audience) > 1 || has) && azp != cfg.ClientID {
-			return out, invalidIdentity
+			return out, nil, invalidIdentity
 		}
 		sub = verified.Subject
 	}
 	if endpoint := p.OIDC.UserInfoEndpoint; endpoint != "" {
 		if token.AccessToken == "" {
-			return out, invalidIdentity
+			return out, nil, invalidIdentity
 		}
 		req, e := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 		if e != nil {
-			return out, invalidIdentity
+			return out, nil, invalidIdentity
 		}
 		req.Header.Set("Authorization", "Bearer "+token.AccessToken)
 		req.Header.Set("Accept", "application/json")
 		res, e := client.Do(req)
 		if e != nil {
-			return out, invalidIdentity
+			return out, nil, invalidIdentity
 		}
 		defer res.Body.Close()
 		claims = nil
 		if res.StatusCode != 200 || json.NewDecoder(res.Body).Decode(&claims) != nil {
-			return out, invalidIdentity
+			return out, nil, invalidIdentity
 		}
 		id, ok := claims["sub"].(string)
 		if !ok || id == "" || sub != "" && sub != id {
-			return out, invalidIdentity
+			return out, nil, invalidIdentity
 		}
 		sub = id
 	}
 	if sub == "" || claims == nil {
-		return out, invalidIdentity
+		return out, nil, invalidIdentity
 	}
 	field := func(k, def string) any {
 		key, _ := p.OIDC.Mapping[k].(string)
@@ -167,5 +171,5 @@ func resolveIdentity(ctx context.Context, client *http.Client, p BrowserProvider
 			out.AdditionalFields[name] = value
 		}
 	}
-	return out, nil
+	return out, idClaims, nil
 }

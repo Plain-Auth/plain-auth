@@ -318,14 +318,35 @@ func (o Options) finish(c auth.EndpointContext) (any, error) {
 	if err != nil {
 		return fail("invalid_grant")
 	}
-	profile, err := resolveIdentity(ctx, client, p, token, flow.Nonce)
+	profile, idClaims, err := resolveIdentity(ctx, client, p, token, flow.Nonce)
 	if err != nil {
 		return fail("invalid_provider")
+	}
+	var resolved UserResolution
+	if o.ResolveUser != nil {
+		if idClaims == nil {
+			return enterpriseFailure(c, flow, "invalid_provider", "id_token_required_for_user_resolution")
+		}
+		// A profile without a subject or email is refused by the sign-in.
+		if profile.Subject != "" && profile.Email != "" {
+			// The resolver runs before the sign-in transaction, never inside
+			// it; the store rechecks the selected user and the identity under
+			// lock.
+			resolved, err = o.resolveUser(c, UserResolutionInput{Protocol: "oidc", ProviderID: p.ProviderID, AccountKey: AccountKey{Issuer: p.Issuer, AccountID: profile.Subject},
+				User: providerUser(profile), Claims: cloneClaims(profile.Data), IDTokenClaims: cloneClaims(idClaims), ProviderReference: p.Reference})
+			if err != nil {
+				return enterpriseFailure(c, flow, errResolution.Code, errResolution.Message)
+			}
+			if resolved.Action == ResolveReject {
+				return enterpriseFailure(c, flow, resolved.Code, resolved.Message)
+			}
+		}
 	}
 	idToken, _ := token.Extra("id_token").(string)
 	scope, _ := token.Extra("scope").(string)
 	tokens := auth.OAuthTokens{AccessToken: token.AccessToken, RefreshToken: token.RefreshToken, IDToken: idToken, Scope: strings.Join(strings.Fields(scope), ","), ExpiresAt: token.Expiry}
 	complete := func(ctx context.Context, id, sub string, t auth.OAuthTokens, u auth.User, s auth.StoredSession, opts auth.OAuthLoginOptions) (auth.User, bool, error) {
+		resolved.apply(&opts)
 		if proof {
 			return store.(DomainStore).CompleteVerifiedEnterpriseLogin(ctx, p.Reference, !o.DisableOrganizationProvisioning, id, sub, t, u, s, opts)
 		}
@@ -334,6 +355,9 @@ func (o Options) finish(c auth.EndpointContext) (any, error) {
 	result, err := c.CompleteEnterpriseFlowWith(flow, "sso-oidc", profile, tokens, auth.EnterpriseCompletion{DisableSignUp: o.DisableImplicitSignUp && !flow.RequestSignUp, OverrideUserInfo: p.OIDC.OverrideUserInfo}, complete)
 	if refused := auth.UserInfoRefusal(err); refused != nil {
 		return enterpriseFailure(c, flow, refused.Code, refused.Message)
+	}
+	if out, e, ok := resolutionFailure(c, flow, resolved, err); ok {
+		return out, e
 	}
 	if errors.Is(err, ErrDomainUnverified) {
 		return nil, err

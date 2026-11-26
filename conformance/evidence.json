@@ -41661,6 +41661,12 @@
       "label": "ValidateUserInfo receives method sso-oidc, the provider ID, the raw claims with sub and the user email for an enterprise OIDC sign-up",
       "test": "adapters/sqlstore/sso_user_validation_test.go",
       "marker": "if check.Action != auth.UserInfoCreateUser || check.Method != \"sso-oidc\""
+    },
+    {
+      "label": "Give the OIDC resolver the ID token issuer and subject, the verified ID token claims and the provider claims",
+      "test": "adapters/sqlstore/sso_resolve_user_test.go",
+      "marker": "t.Fatal(\"the resolver did not receive the verified ID token claims\", in.IDTokenClaims)",
+      "complete": true
     }
   ],
   "plugin-symbol/sso/SSOOptions": [
@@ -41685,6 +41691,11 @@
       "label": "ValidateUserInfo runs again when the enterprise user returns",
       "test": "adapters/sqlstore/sso_user_validation_test.go",
       "marker": "if check := checks[len(checks)-1]; check.Action != auth.UserInfoSignIn"
+    },
+    {
+      "label": "Run ResolveUser after the OIDC identity is verified and before the sign-in transaction, and require an ID token",
+      "test": "adapters/sqlstore/sso_resolve_user_test.go",
+      "marker": "t.Fatal(\"the resolver could not read the store, so it ran inside the sign-in transaction\", e)"
     }
   ],
   "plugin-symbol/sso/SSOOptions/trustEmailVerified": [
@@ -44634,6 +44645,105 @@
       "label": "Link an enterprise identity to a selected user without email matching or sign-up rules, keep or copy the profile, and refuse an identity another user owns or a missing user, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/sso_selected_user_test.go",
       "marker": "func TestEnterpriseSelectedUserLogin("
+    },
+    {
+      "label": "Continue, link with preserve or update, and reject an OIDC sign-in from a ResolveUser decision, and fail closed on an error, panic or invalid decision, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_resolve_user_test.go",
+      "marker": "func TestEnterpriseOIDCResolveUser(",
+      "complete": true
+    },
+    {
+      "label": "Accept only complete continue, link and reject decisions",
+      "test": "plugins/sso/resolve_test.go",
+      "marker": "func TestUserResolutionDecisions("
+    }
+  ],
+  "plugin-symbol/sso/SSOUserResolutionInput": [
+    {
+      "label": "Pass the protocol, provider, account key, provider profile, claims, ID token claims and provider reference to ResolveUser",
+      "test": "adapters/sqlstore/sso_resolve_user_test.go",
+      "marker": "t.Fatal(\"the resolver did not receive the accepted provider reference\")"
+    }
+  ],
+  "plugin-symbol/sso/SSOProviderUserProfile": [
+    {
+      "label": "Normalize the OIDC provider profile's email, verification and name for the resolver",
+      "test": "adapters/sqlstore/sso_resolve_user_test.go",
+      "marker": "t.Fatal(\"the normalized OIDC provider profile was wrong\", in.User)"
+    }
+  ],
+  "plugin-symbol/sso/SSOUserResolutionContext": [
+    {
+      "label": "Run the resolver outside the sign-in transaction, so it can read through the store",
+      "test": "adapters/sqlstore/sso_resolve_user_test.go",
+      "marker": "t.Fatal(\"the resolver could not read the store, so it ran inside the sign-in transaction\", e)"
+    }
+  ],
+  "docs/content/docs/plugins/sso/index.mdx#L23/User resolution and provisioning": [
+    {
+      "label": "Resolve OIDC users to a chosen account before the sign-in transaction",
+      "test": "adapters/sqlstore/sso_resolve_user_test.go",
+      "marker": "t.Fatal(\"a resolver link did not finish the enterprise sign-in\", got)"
+    }
+  ],
+  "docs/content/docs/plugins/sso/provisioning.mdx#L54": [
+    {
+      "label": "Link a verified OIDC identity to a chosen user without email matching, and reject or continue it",
+      "test": "adapters/sqlstore/sso_resolve_user_test.go",
+      "marker": "t.Fatal(\"the enterprise identity was not linked to the resolved user\")"
+    }
+  ],
+  "docs/content/docs/plugins/sso/provisioning.mdx#L108/`accountKey.issuer`": [
+    {
+      "label": "Use the ID token issuer as the OIDC account key issuer",
+      "test": "adapters/sqlstore/sso_resolve_user_test.go",
+      "marker": "t.Fatal(\"the OIDC account key issuer was not the ID token issuer\", in.AccountKey)"
+    }
+  ],
+  "docs/content/docs/plugins/sso/provisioning.mdx#L109/`accountKey.accountId`": [
+    {
+      "label": "Use the ID token subject as the OIDC account key ID",
+      "test": "adapters/sqlstore/sso_resolve_user_test.go",
+      "marker": "t.Fatal(\"the OIDC account key ID was not the ID token subject\", in.AccountKey)"
+    }
+  ],
+  "docs/content/docs/plugins/sso/provisioning.mdx#L110/`providerUser`": [
+    {
+      "label": "Pass the normalized provider profile to the resolver",
+      "test": "adapters/sqlstore/sso_resolve_user_test.go",
+      "marker": "t.Fatal(\"the normalized OIDC provider profile was wrong\", in.User)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/sso/provisioning.mdx#L111/`verifiedIdTokenClaims`": [
+    {
+      "label": "Pass the verified ID token claims to the resolver",
+      "test": "adapters/sqlstore/sso_resolve_user_test.go",
+      "marker": "t.Fatal(\"the resolver did not receive the verified ID token claims\", in.IDTokenClaims)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/sso/provisioning.mdx#L112/`providerClaims`": [
+    {
+      "label": "Pass the provider claims to the resolver",
+      "test": "adapters/sqlstore/sso_resolve_user_test.go",
+      "marker": "t.Fatal(\"the resolver did not receive the provider claims\", in.Claims)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/sso/provisioning.mdx#L114/`providerReference`": [
+    {
+      "label": "Pass the accepted provider configuration's reference to the resolver",
+      "test": "adapters/sqlstore/sso_resolve_user_test.go",
+      "marker": "t.Fatal(\"the resolver did not receive the accepted provider reference\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/sso/reference.mdx#L12": [
+    {
+      "label": "Resolve an OIDC sign-in to a chosen user with ResolveUser",
+      "test": "adapters/sqlstore/sso_resolve_user_test.go",
+      "marker": "t.Fatal(\"an update link did not copy the provider profile to the resolved user\", name, email, verified)"
     }
   ]
 }

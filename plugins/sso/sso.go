@@ -56,6 +56,15 @@ type Options struct {
 	// Another runtime enables this on providers defined in code; without
 	// them the host approves stored registrations.
 	AllowIDPInitiatedOIDC OIDCDirectoryPolicy
+	// ResolveUser maps every verified enterprise identity to a user:
+	// continue by the built-in rules, link it to a chosen user or reject the
+	// sign-in. It runs after the protocol identity is verified and before the
+	// sign-in transaction, never inside it, so it may read through the store
+	// or the application's database; the store then locks the chosen user
+	// and the identity and refuses a decision they no longer allow. With it,
+	// every OIDC sign-in needs an ID token. It needs a store implementing
+	// UserResolutionStore.
+	ResolveUser func(context.Context, UserResolutionInput) (UserResolution, error)
 	// HTTPClient supplies discovery transport and optional TLS settings.
 	HTTPClient *http.Client
 }
@@ -419,6 +428,9 @@ func New(o Options) (auth.Plugin, error) {
 	plugin := auth.Plugin{ID: "sso", ValidateStore: func(s auth.Store) error {
 		if _, ok := s.(Store); !ok {
 			return errors.New("sso: provider management requires a directory store")
+		}
+		if _, ok := s.(UserResolutionStore); o.ResolveUser != nil && !ok {
+			return errors.New("sso: ResolveUser requires a store implementing UserResolutionStore")
 		}
 		if o.SAML != nil {
 			if o.SAML.EnableIDPInitiatedLogout {

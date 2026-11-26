@@ -66,7 +66,7 @@ The SQL adapter rechecks the provider's immutable record ID and configuration be
 
 An organization-bound provider adds the authenticated user as a member of the bound tenant in the session transaction. Existing roles and live invitations are preserved. A full or deleted organization cannot leave a partial identity or session. These checks also apply on sign-in nodes that share the organization database and serve only the SSO routes. Set `DisableOrganizationProvisioning` to manage membership separately. [Membership and concurrent removal tests](../adapters/sqlstore/sso_browser_test.go)
 
-The native client starts the flow with `SignInSSO`. A Go flow must finish on a Go instance. The released client can use Go-created enterprise accounts on both tested implementations. Imported links require an explicit source classification before the Go runtime can use them. Arbitrary OIDC callback aliases, custom resolver/provisioning hooks, and automatic organization assignment on ordinary signup remain open.
+The native client starts the flow with `SignInSSO`. A Go flow must finish on a Go instance. The released client can use Go-created enterprise accounts on both tested implementations. Imported links require an explicit source classification before the Go runtime can use them. Arbitrary OIDC callback aliases, provisioning hooks, SAML user resolution and automatic organization assignment on ordinary signup remain open.
 
 ### Update a provider
 
@@ -75,6 +75,20 @@ The native client starts the flow with `SignInSSO`. A Go flow must finish on a G
 ### Accept IdP-initiated OIDC sign-in
 
 Set `Options.AllowIDPInitiatedOIDC` to approve reviewed registrations. A callback at `/sso/callback/{providerId}` with a code and no state then discards the code and starts a new authorization with a fresh state, nonce and PKCE verifier, which returns to the host root. The policy receives the registration's record ID, configuration reference, provider ID, issuer, client ID and organization; it runs outside any store transaction, and an error answers 503. A provider it refuses, a stateless request on the shared `/sso/callback` and a failed discovery go to the error page with `error=state_not_found`. The restarted flow cannot request sign-up when `DisableImplicitSignUp` is on. Another runtime enables this on providers defined in code and ignores `allowIdpInitiated` at registration; this library approves stored registrations by record ID and reference instead, and also ignores that key. [IdP-initiated tests](../adapters/sqlstore/sso_idp_initiated_test.go)
+
+## Resolve enterprise users
+
+Set `sso.Options.ResolveUser` to decide each verified enterprise identity yourself. It returns an `sso.UserResolution`:
+
+- `ResolveContinue` signs in by the built-in rules: an existing account link, then the verified-domain email link, then sign-up.
+- `ResolveLink` with `UserID` signs the identity in to that existing user, without email matching or the sign-up and trust rules. `Profile: "preserve"` keeps the user's profile; `"update"` copies the provider's name, image and email to it, and a changed email takes the provider's verification. A missing user redirects to the error callback with `error=user_not_found`, and an identity another user already owns with `error=account_ownership_conflict`.
+- `ResolveReject` with `Code` and an optional `Message` redirects with `error` set to the code and `error_description` to the message.
+
+A resolver that fails, panics or returns an invalid decision, including an empty one, redirects with `error=SSO_USER_RESOLUTION_FAILED`; its error is logged without the decision. `ValidateUserInfo` still checks a link, as `link-account` the first time and `sign-in` after.
+
+The input names the `Protocol` (`"oidc"` or `"saml"`), the `ProviderID`, and the `AccountKey`: for OIDC the ID token's issuer and subject. `User` is the normalized profile: email, its verification, name and image; mapped extra fields are not included, so read other claims from `Claims`, which holds the UserInfo claims, or the ID token claims without a UserInfo endpoint, with numbers as `json.Number`. `IDTokenClaims` is the verified ID token payload. `ProviderReference` is an opaque, transient fingerprint of the provider configuration the sign-in accepted; never store it as a tenant or user binding. Validate claims before using them for authorization. With a resolver, every OIDC sign-in needs an ID token: a provider that returns none redirects with `error=invalid_provider` and `error_description=id_token_required_for_user_resolution`.
+
+`ResolveUser` runs before the sign-in transaction, never inside it, so read through the store or your own database; the store then locks the chosen user and the identity and refuses a decision they no longer allow, whereas another runtime runs the resolver inside the transaction and hands it that transaction. It needs a store implementing `sso.UserResolutionStore`, as the SQL store does. [Resolver tests](../adapters/sqlstore/sso_resolve_user_test.go)
 
 ## Verify directory domains with DNS
 

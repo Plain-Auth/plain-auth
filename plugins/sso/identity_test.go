@@ -85,7 +85,7 @@ func TestEnterpriseIdentityClaimMapping(t *testing.T) {
 	resolve := func(mapping map[string]any) auth.OAuthProfile {
 		t.Helper()
 		p := BrowserProvider{Provider: Provider{ProviderID: "acme", Issuer: "https://login.company.test", OIDC: &Config{UserInfoEndpoint: "https://login.company.test/userinfo", Mapping: mapping}}}
-		profile, err := resolveIdentity(t.Context(), client, p, &oauth2.Token{AccessToken: "access-token"}, "")
+		profile, _, err := resolveIdentity(t.Context(), client, p, &oauth2.Token{AccessToken: "access-token"}, "")
 		if err != nil {
 			t.Fatal(err)
 		}
