@@ -299,10 +299,7 @@ func (o Options) samlSP(c auth.EndpointContext, p Provider) (*saml.ServiceProvid
 	if o.SAML == nil || cfg == nil || cfg.Issuer != p.Issuer || !MutableProviderID(p.ProviderID) || c.Auth.HasOAuthProvider(p.ProviderID) {
 		return nil, ErrInvalidSAML
 	}
-	spEntity := cfg.Issuer
-	if cfg.SPMetadata != nil && cfg.SPMetadata.EntityID != "" {
-		spEntity = cfg.SPMetadata.EntityID
-	}
+	spEntity := cfg.spEntityID()
 	entity, err := url.Parse(spEntity)
 	if err != nil || !entity.IsAbs() || entity.Fragment != "" || entity.User != nil {
 		return nil, ErrInvalidSAML

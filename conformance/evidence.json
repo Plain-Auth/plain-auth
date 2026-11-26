@@ -13006,6 +13006,11 @@
       "label": "Publish every OIDC update field as optional, refuse unknown ones and a null pkce",
       "test": "plugins/openapi/sso_directory_test.go",
       "marker": "t.Fatal(\"the update route requires OIDC fields or accepts unknown ones\", enabled)"
+    },
+    {
+      "label": "Merge samlConfig fields under the registration checks, clear idpInitiatedCallbackUrl with null, refuse deprecated algorithms, key material and unknown fields, answer 409 for SAML identity changes while accounts are linked and accept a certificate rotation, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_update_test.go",
+      "marker": "t.Fatal(\"a SAML identity change was accepted while accounts are linked\""
     }
   ],
   "docs/content/docs/reference/options.mdx#L327/`onExistingUserSignUp`": [
@@ -42828,6 +42833,11 @@
       "label": "Refuse a metadata update from a user who does not manage the provider",
       "test": "adapters/sqlstore/sso_saml_metadata_test.go",
       "marker": "t.Fatal(\"another manager changed a personal IdP\")"
+    },
+    {
+      "label": "Refuse samlConfig on an OIDC provider and oidcConfig on a SAML directory with another runtime's messages, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_update_test.go",
+      "marker": "t.Fatal(\"an OIDC provider accepted a SAML update\""
     }
   ],
   "docs/content/docs/plugins/sso/reference.mdx#L505/`POST /sso/delete-provider`": [
@@ -45269,9 +45279,15 @@
   ],
   "docs/content/docs/plugins/sso/index.mdx#L288/Parameter `issuer` (optional)": [
     {
-      "label": "Refuse an OIDC issuer change with 409 while accounts are linked and a SAML directory issuer change with 400",
+      "label": "Refuse an OIDC issuer change with 409 while accounts are linked",
       "test": "adapters/sqlstore/sso_update_test.go",
       "marker": "t.Fatal(\"an issuer change was accepted while accounts are linked\", w.Code, w.Body.String())"
+    },
+    {
+      "label": "Change an unlinked SAML directory's issuer, moving the default SP entity ID but not a fixed one, and answer 409 for an issuer change while accounts are linked; the stored SAML issuer always follows, a documented deviation, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_update_test.go",
+      "marker": "t.Fatal(\"a SAML issuer change was accepted while accounts are linked\"",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/sso/index.mdx#L292/Parameter `domain` (optional)": [

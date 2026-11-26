@@ -108,8 +108,12 @@ func describeSSORequest(op object, route plainauth.HTTPRoute, info plainauth.HTT
 		update := responseObject(object{"providerId": providerID, "issuer": object{"type": "string", "format": "uri"}, "domain": text, "oidcConfig": config}, "providerId")
 		update["additionalProperties"] = false
 		if info.SAMLStateCookie != "" {
-			op["description"] = op["description"].(string) + " For a SAML directory, samlConfig.idpMetadata.metadata replaces the inline IdP metadata instead; a certificate rotation preserves existing account links."
-			update["properties"].(object)["samlConfig"] = responseObject(object{"idpMetadata": responseObject(object{"metadata": text}, "metadata")}, "idpMetadata")
+			op["description"] = op["description"].(string) + " For a SAML directory, samlConfig merges entryPoint, cert, audience, callbackUrl, idpInitiatedCallbackUrl (null clears it), mapping, wantAssertionsSigned, authnRequestsSigned, identifierFormat, the algorithms and the idpMetadata and spMetadata fields under the registration checks. An issuer change also moves the default SP entity ID. Changing the IdP entity or sign-in service, the SP entity ID, NameID format, audience or signing policy returns a conflict while accounts are linked; a certificate rotation does not."
+			saml := object{"type": "object", "minProperties": 1, "properties": object{"entryPoint": object{"type": "string", "format": "uri"}, "cert": object{}, "audience": text, "callbackUrl": text,
+				"idpInitiatedCallbackUrl": object{"type": []string{"string", "null"}}, "mapping": object{"type": "object"}, "wantAssertionsSigned": object{"type": "boolean"}, "authnRequestsSigned": object{"type": "boolean"},
+				"identifierFormat": text, "signatureAlgorithm": text, "digestAlgorithm": text, "idpMetadata": object{"type": "object", "properties": object{"metadata": text, "entityID": text, "cert": object{}, "isAssertionEncrypted": object{"type": "boolean"},
+					"singleSignOnService": object{"type": "array"}, "singleLogoutService": object{"type": "array"}}}, "spMetadata": object{"type": "object", "properties": object{"entityID": text, "binding": text, "isAssertionEncrypted": object{"type": "boolean"}}}}, "additionalProperties": false}
+			update["properties"].(object)["samlConfig"] = saml
 		}
 		body(update)
 	case "/sso/providers":

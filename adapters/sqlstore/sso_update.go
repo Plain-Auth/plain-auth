@@ -36,7 +36,10 @@ func (s *Store) UpdateSSOProvider(ctx context.Context, actor sso.Actor, id, reco
 					return e
 				}
 				links := len(linked)
-				mutation := sso.ProviderMutation{Action: "update", ID: recordID, ProviderID: id, OrganizationID: current.OrganizationID, Reference: current.Reference, LinkedAccounts: links, AuthenticationBoundaryChanged: identityChanged}
+				// A SAML certificate rotation changes the trust anchor without
+				// changing the identity, and the guard still hears of it.
+				boundary := identityChanged || current.SAML != nil && next.SAML != nil && sso.SAMLTrustChanged(*current.SAML, *next.SAML)
+				mutation := sso.ProviderMutation{Action: "update", ID: recordID, ProviderID: id, OrganizationID: current.OrganizationID, Reference: current.Reference, LinkedAccounts: links, AuthenticationBoundaryChanged: boundary}
 				if e = g.check(mutation, linkDigest(linked)); e != nil {
 					return e
 				}
@@ -66,11 +69,11 @@ func (s *Store) UpdateSSOProvider(ctx context.Context, actor sso.Actor, id, reco
 						return e
 					}
 				}
+				column := `"oidcConfig"`
 				if next.SAML != nil {
-					_, e = tx.ExecContext(ctx, s.bind(`UPDATE "ssoProvider" SET "domain"=? WHERE `+s.scimExact(`"id"`)+`=?`), next.Domain, recordID)
-				} else {
-					_, e = tx.ExecContext(ctx, s.bind(`UPDATE "ssoProvider" SET "issuer"=?,"domain"=?,"oidcConfig"=? WHERE `+s.scimExact(`"id"`)+`=?`), next.Issuer, next.Domain, string(raw), recordID)
+					column = `"samlConfig"`
 				}
+				_, e = tx.ExecContext(ctx, s.bind(`UPDATE "ssoProvider" SET "issuer"=?,"domain"=?,`+column+`=? WHERE `+s.scimExact(`"id"`)+`=?`), next.Issuer, next.Domain, string(raw), recordID)
 				if e != nil {
 					return e
 				}
@@ -106,6 +109,9 @@ func (s *Store) UpdateSSOProvider(ctx context.Context, actor sso.Actor, id, reco
 // sameMapping reports whether an update leaves the OIDC claim mapping as it
 // was.
 func sameMapping(a, b sso.Provider) bool {
+	if a.SAML != nil && b.SAML != nil {
+		return reflect.DeepEqual(a.SAML.Mapping, b.SAML.Mapping)
+	}
 	if a.OIDC == nil || b.OIDC == nil {
 		return a.OIDC == b.OIDC
 	}

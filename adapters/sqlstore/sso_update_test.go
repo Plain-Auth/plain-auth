@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -262,10 +263,85 @@ func TestEnterpriseProviderUpdate(t *testing.T) {
 			if domain != "directory.example,other.example" {
 				t.Fatal("a SAML directory's domain was not updated", domain)
 			}
-			for _, body := range []map[string]any{{"providerId": "directory", "issuer": "https://other.example.test"}, {"providerId": "directory", "oidcConfig": map[string]any{"scopes": []string{"openid"}}}} {
-				if w := saml.call("POST", "sso/update-provider", owner, body); w.Code != 400 {
-					t.Fatal("a SAML directory accepted an issuer or OIDC update", w.Code, w.Body.String())
+			samlStored := func() sso.SAMLConfig {
+				t.Helper()
+				var issuer, raw string
+				must(store.db.QueryRowContext(ctx, store.bind(`SELECT "issuer","samlConfig" FROM "ssoProvider" WHERE "providerId"=?`), "directory").Scan(&issuer, &raw))
+				var cfg sso.SAMLConfig
+				must(json.Unmarshal([]byte(raw), &cfg))
+				if cfg.Issuer != issuer {
+					t.Fatal("the stored SAML issuer left the provider's", issuer, cfg.Issuer)
 				}
+				return cfg
+			}
+			samlUpdate := func(patch map[string]any) *httptest.ResponseRecorder {
+				return saml.call("POST", "sso/update-provider", owner, map[string]any{"providerId": "directory", "samlConfig": patch})
+			}
+			// An issuer change moves the default SP entity ID with it.
+			if w := saml.call("POST", "sso/update-provider", owner, map[string]any{"providerId": "directory", "issuer": "https://other.example.test"}); w.Code != 200 || samlStored().Issuer != "https://other.example.test" {
+				t.Fatal("an unlinked SAML directory's issuer did not change", w.Code, w.Body.String())
+			}
+			if w := saml.call("GET", "sso/saml2/sp/metadata?providerId=directory", "", nil); !strings.Contains(w.Body.String(), `entityID="https://other.example.test"`) {
+				t.Fatal("the SP metadata did not follow the new issuer", w.Body.String())
+			}
+			// Each protocol's configuration applies only to its own providers.
+			if w := saml.call("POST", "sso/update-provider", owner, map[string]any{"providerId": "directory", "oidcConfig": map[string]any{"scopes": []string{"openid"}}}); w.Code != 400 || !strings.Contains(w.Body.String(), "Cannot update OIDC config for a provider that doesn't have OIDC configured") {
+				t.Fatal("a SAML directory accepted an OIDC update", w.Code, w.Body.String())
+			}
+			if w := saml.call("POST", "sso/update-provider", owner, map[string]any{"providerId": "acme", "samlConfig": map[string]any{"audience": "urn:example:audience"}}); w.Code != 400 || !strings.Contains(w.Body.String(), "Cannot update SAML config for a provider that doesn't have SAML configured") {
+				t.Fatal("an OIDC provider accepted a SAML update", w.Code, w.Body.String())
+			}
+			// samlConfig merges its fields under the registration checks.
+			if w := samlUpdate(map[string]any{"audience": "urn:example:audience", "callbackUrl": "/landing", "mapping": map[string]any{"email": "mail"},
+				"identifierFormat": "urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress", "idpInitiatedCallbackUrl": "/portal"}); w.Code != 200 {
+				t.Fatal("a SAML merge was refused", w.Code, w.Body.String())
+			}
+			if cfg := samlStored(); cfg.Audience != "urn:example:audience" || cfg.CallbackURL != "/landing" || cfg.Mapping.Email != "mail" || cfg.IdentifierFormat != "urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress" || cfg.IDPInitiatedCallbackURL != "/portal" || cfg.EntryPoint != "https://identity.example.test/sso" {
+				t.Fatal("the SAML merge did not keep and change the right fields", cfg)
+			}
+			if w := samlUpdate(map[string]any{"idpInitiatedCallbackUrl": nil}); w.Code != 200 || samlStored().IDPInitiatedCallbackURL != "" {
+				t.Fatal("a null idpInitiatedCallbackUrl did not clear it", w.Code, w.Body.String())
+			}
+			// With spMetadata.entityID set, an issuer change leaves the SP entity ID.
+			if w := samlUpdate(map[string]any{"spMetadata": map[string]any{"entityID": "https://service.test/fixed-sp"}}); w.Code != 200 {
+				t.Fatal("an SP entity ID merge was refused", w.Code, w.Body.String())
+			}
+			if w := saml.call("POST", "sso/update-provider", owner, map[string]any{"providerId": "directory", "issuer": "https://second.example.test"}); w.Code != 200 {
+				t.Fatal("an issuer change beside a fixed SP entity ID was refused", w.Code, w.Body.String())
+			}
+			if w := saml.call("GET", "sso/saml2/sp/metadata?providerId=directory", "", nil); !strings.Contains(w.Body.String(), `entityID="https://service.test/fixed-sp"`) {
+				t.Fatal("an issuer change moved a fixed SP entity ID", w.Body.String())
+			}
+			for _, c := range []struct {
+				patch map[string]any
+				text  string
+			}{
+				{map[string]any{"signatureAlgorithm": "rsa-sha1"}, "SAML_DEPRECATED_CONFIG_ALGORITHM"},
+				{map[string]any{"spMetadata": map[string]any{"privateKey": "PEM"}}, "SAML private keys are not accepted"},
+				{map[string]any{"unknown": true}, "Unsupported SAML update field"},
+				{map[string]any{"entryPoint": nil}, "Invalid or unsupported SAML configuration"},
+			} {
+				if w := samlUpdate(c.patch); w.Code != 400 || !strings.Contains(w.Body.String(), c.text) {
+					t.Fatal("an unusable SAML merge was not refused", c.patch, w.Code, w.Body.String())
+				}
+			}
+			// With a linked account an identity change answers 409 and a
+			// certificate rotation goes through.
+			_, err = store.db.ExecContext(ctx, store.bind(`INSERT INTO "account" ("id","providerId","accountId","userId","createdAt","updatedAt") VALUES (?,?,?,?,?,?)`), "directory-linked", "directory", "employee", userID, now, now)
+			must(err)
+			before := samlStored()
+			for _, patch := range []map[string]any{{"entryPoint": "https://identity.example.test/other"}, {"audience": "urn:other"}, {"identifierFormat": "urn:oasis:names:tc:SAML:2.0:nameid-format:persistent"},
+				{"spMetadata": map[string]any{"entityID": "https://service.test/other-sp"}}, {"wantAssertionsSigned": false}} {
+				if w := samlUpdate(patch); w.Code != 409 || !strings.Contains(w.Body.String(), "Cannot change SSO provider identity fields while linked accounts exist") || !reflect.DeepEqual(samlStored(), before) {
+					t.Fatal("a SAML identity change was accepted while accounts are linked", patch, w.Code, w.Body.String())
+				}
+			}
+			if w := saml.call("POST", "sso/update-provider", owner, map[string]any{"providerId": "directory", "issuer": "https://third.example.test"}); w.Code != 409 {
+				t.Fatal("a SAML issuer change was accepted while accounts are linked", w.Code, w.Body.String())
+			}
+			_, _, rotated := samlTestCertificate(t)
+			if w := samlUpdate(map[string]any{"cert": rotated}); w.Code != 200 || samlStored().Certificates[0] != rotated {
+				t.Fatal("a certificate rotation was refused while accounts are linked", w.Code, w.Body.String())
 			}
 		})
 	}

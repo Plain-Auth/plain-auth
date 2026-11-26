@@ -112,9 +112,11 @@ type UpdateSSOProviderRequest struct {
 	Issuer     string         `json:"issuer,omitempty"`
 	Domain     string         `json:"domain,omitempty"`
 	OIDC       map[string]any `json:"oidcConfig,omitempty"`
+	// SAML merges into a SAML directory's configuration.
+	SAML map[string]any `json:"samlConfig,omitempty"`
 }
 
-// UpdateSSOProvider changes a provider's issuer, domain or OIDC
+// UpdateSSOProvider changes a provider's issuer, domain, OIDC or SAML
 // configuration with the manager's session.
 func (c *Client) UpdateSSOProvider(ctx context.Context, in UpdateSSOProviderRequest) (sso.PublicProvider, error) {
 	var result sso.PublicProvider

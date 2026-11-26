@@ -27,7 +27,7 @@ type ProviderUpdateStore interface {
 // updateProvider changes a provider's issuer, domain or OIDC configuration.
 // A body with samlConfig replaces a SAML directory's metadata instead.
 func (o Options) updateProvider(c auth.EndpointContext, store Store, actor Actor) (any, error) {
-	if _, ok := c.Body["samlConfig"]; ok && o.SAML != nil {
+	if metadataOnlyUpdate(c.Body) && o.SAML != nil {
 		return o.updateSAMLMetadata(c, store, actor)
 	}
 	id, _ := c.Body["providerId"].(string)
@@ -37,6 +37,10 @@ func (o Options) updateProvider(c auth.EndpointContext, store Store, actor Actor
 	for key := range c.Body {
 		switch key {
 		case "providerId", "issuer", "domain", "oidcConfig":
+		case "samlConfig":
+			if o.SAML == nil {
+				return nil, apiError(400, "Unsupported update field")
+			}
 		default:
 			return nil, apiError(400, "Unsupported update field")
 		}
@@ -77,6 +81,15 @@ func (o Options) updateProvider(c auth.EndpointContext, store Store, actor Actor
 			return nil, apiError(400, "Invalid OpenID Connect configuration")
 		}
 	}
+	var samlPatch map[string]any
+	if raw, ok := c.Body["samlConfig"]; ok {
+		if samlPatch, ok = raw.(map[string]any); !ok {
+			return nil, ErrInvalidSAML
+		}
+		if err := o.checkSAMLPatch(samlPatch); err != nil {
+			return nil, err
+		}
+	}
 	ctx := c.Request.Context()
 	visible, err := store.ReadSSOProviders(ctx, actor, id)
 	if err != nil {
@@ -92,18 +105,41 @@ func (o Options) updateProvider(c auth.EndpointContext, store Store, actor Actor
 	change := func(current Provider) (Provider, bool, error) {
 		next, identity := current, false
 		if issuer != nil {
-			if current.SAML != nil {
-				return next, false, apiError(400, "Register a SAML directory again to change its issuer")
-			}
 			identity = *issuer != current.Issuer
 			next.Issuer = *issuer
 		}
 		if domain != nil {
 			next.Domain = *domain
 		}
+		if current.SAML != nil {
+			if patch != nil {
+				return next, false, apiError(400, "Cannot update OIDC config for a provider that doesn't have OIDC configured")
+			}
+			if samlPatch == nil && issuer == nil {
+				return next, identity, nil
+			}
+			// The stored SAML configuration always carries the provider's
+			// issuer, so an issuer change also moves the default SP entity ID
+			// and audience; another runtime keeps the old samlConfig.issuer
+			// when the request does not also send samlConfig. Library code
+			// only: the request's trusted origins were resolved at entry, so
+			// no host code runs inside the store transaction.
+			cfg, err := o.mergeSAMLUpdate(*current.SAML, samlPatch, next.Issuer)
+			if err != nil {
+				return next, false, err
+			}
+			next.SAML = cfg
+			if _, err := o.samlSP(c, next); err != nil {
+				return next, false, err
+			}
+			return next, identity || !SameSAMLIdentity(*current.SAML, *cfg), nil
+		}
+		if samlPatch != nil {
+			return next, false, apiError(400, "Cannot update SAML config for a provider that doesn't have SAML configured")
+		}
 		if current.OIDC == nil {
 			if patch != nil {
-				return next, false, apiError(400, "oidcConfig applies only to an OpenID Connect provider")
+				return next, false, apiError(400, "Cannot update OIDC config for a provider that doesn't have OIDC configured")
 			}
 			return next, identity, nil
 		}

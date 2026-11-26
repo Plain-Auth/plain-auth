@@ -90,11 +90,23 @@ func ssoLocations(services []SAMLService) (redirect, post string, err error) {
 	return redirect, post, nil
 }
 
-// SameSAMLIdentity reports whether changing only IdP metadata preserves the
-// authority that created previously linked accounts. Keys can rotate independently.
+// SameSAMLIdentity reports whether a change preserves the authority that
+// created previously linked accounts: the IdP entity and sign-in services,
+// the SP entity, the NameID format, the audience and the assertion signing
+// policy, as another runtime compares them. Keys can rotate independently.
 func SameSAMLIdentity(current, next SAMLConfig) bool {
 	a, b := current.authority(), next.authority()
-	return a.entity == b.entity && a.redirect == b.redirect && a.post == b.post
+	return a.entity == b.entity && a.redirect == b.redirect && a.post == b.post && current.spEntityID() == next.spEntityID() &&
+		current.IdentifierFormat == next.IdentifierFormat && current.Audience == next.Audience && current.assertionSignatureRequired() == next.assertionSignatureRequired()
+}
+
+// spEntityID is the directory's SP entity ID: spMetadata.entityID, or the
+// provider's issuer.
+func (c SAMLConfig) spEntityID() string {
+	if c.SPMetadata != nil && c.SPMetadata.EntityID != "" {
+		return c.SPMetadata.EntityID
+	}
+	return c.Issuer
 }
 
 func boundedMetadata(data []byte) bool {
