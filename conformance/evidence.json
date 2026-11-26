@@ -2807,6 +2807,11 @@
       "label": "Refuse an unknown authenticator attachment with a validation error before the session is read, and issue no challenge cookie",
       "test": "adapters/sqlstore/passkey_options_test.go",
       "marker": "an unknown authenticator attachment was not refused"
+    },
+    {
+      "label": "Ask for credProps in registration options when no extension resolver is configured",
+      "test": "adapters/sqlstore/passkey_options_test.go",
+      "marker": "registration options without a resolver asked for %v, want credProps"
     }
   ],
   "plugin/passkey/GET /passkey/generate-authenticate-options": [
@@ -2868,9 +2873,9 @@
       "marker": "request(second, \"verify-registration\", resp, 400, cs[0], session)"
     },
     {
-      "label": "Refuse on another instance a registration that lacks the large blob support its challenge required",
+      "label": "Accept a registration without client extension outputs, as the browser client sends it, even when the options require large blob support",
       "test": "adapters/sqlstore/passkey_options_test.go",
-      "marker": "another instance verified a registration without the large blob support its challenge required"
+      "marker": "row := register(key, map[string]any{})"
     }
   ],
   "plugin/passkey/POST /passkey/verify-authentication": [
@@ -2908,6 +2913,11 @@
       "label": "Answer 401 for an assertion whose signature does not verify and 400 for another refused assertion, and 500 UNABLE_TO_CREATE_SESSION when a session hook skips the session, on three SQL engines",
       "test": "adapters/sqlstore/passkey_errors_test.go",
       "marker": "passkeyError(t, err, 401, \"AUTHENTICATION_FAILED\", \"Authentication failed\")"
+    },
+    {
+      "label": "Refuse a malformed signature or a stored key that does not parse with 400 AUTHENTICATION_FAILED, keeping 401 for a well-formed signature that does not verify",
+      "test": "adapters/sqlstore/passkey_errors_test.go",
+      "marker": "// A signature that is not a well-formed signature is refused like any other assertion."
     }
   ],
   "plugin/passkey/GET /passkey/list-user-passkeys": [
@@ -2937,6 +2947,11 @@
       "label": "Answer 404 PASSKEY_NOT_FOUND alike for an unknown ID and another account's, and 401 UNAUTHORIZED without a session",
       "test": "adapters/sqlstore/passkey_errors_test.go",
       "marker": "if rows(\"owner\") != 1 {"
+    },
+    {
+      "label": "Answer VALIDATION_ERROR to an update or delete whose id is missing or not a string, and 404 PASSKEY_NOT_FOUND to an empty one",
+      "test": "adapters/sqlstore/passkey_errors_test.go",
+      "marker": "\"[body.id] Invalid input: expected string, received number\""
     }
   ],
   "plugin/passkey/POST /passkey/delete-passkey": [
@@ -38982,10 +38997,9 @@
   ],
   "docs/content/docs/plugins/passkey.mdx#L498/authenticatorSelection": [
     {
-      "label": "Advertise the configured authenticator attachment and resident-key requirement in registration options, and the defaults when they are unset",
+      "label": "Advertise the configured authenticator attachment and resident-key requirement in registration options, and the defaults when they are unset; user verification stays the required-or-preferred switch",
       "test": "adapters/sqlstore/passkey_options_test.go",
-      "marker": "func TestPasskeyAuthenticatorSelection(",
-      "complete": true
+      "marker": "func TestPasskeyAuthenticatorSelection("
     },
     {
       "label": "Refuse an unknown authenticator attachment or resident-key requirement when the plugin is built",
@@ -39082,7 +39096,7 @@
   ],
   "plugin-symbol/passkey/PasskeyRegistrationOptions/extensions": [
     {
-      "label": "Merge the resolver's registration extensions with credProps, record them with the challenge so another instance enforces a required large blob, and accept client outputs the server did not request, on three SQL engines",
+      "label": "Merge the resolver's registration extensions with credProps, and accept the registration without checking client extension outputs, requested or not, on three SQL engines",
       "test": "adapters/sqlstore/passkey_options_test.go",
       "marker": "registration options lost the resolved extensions",
       "complete": true
@@ -39090,7 +39104,7 @@
   ],
   "plugin-symbol/passkey/PasskeyAuthenticationOptions/extensions": [
     {
-      "label": "Add the sign-in extensions the resolver returns for each request, enforce a requested large blob read on another instance, and accept an output the request did not ask for, on three SQL engines",
+      "label": "Add the sign-in extensions the resolver returns for each request, and accept the sign-in without checking client extension outputs, on three SQL engines",
       "test": "adapters/sqlstore/passkey_options_test.go",
       "marker": "a signed-out sign-in received the signed-in caller's extensions",
       "complete": true
@@ -39098,7 +39112,7 @@
   ],
   "plugin-symbol/passkey/PasskeyAuthenticationOptions/afterVerification": [
     {
-      "label": "Pass each verified assertion, its stored passkey and the client's response to the callback before the counter is saved and the session is issued, outside any store transaction, on three SQL engines",
+      "label": "Pass each verified assertion, its stored passkey, its user-verified flag and the client's response to the callback before the counter is saved and the session is issued, outside any store transaction, on three SQL engines",
       "test": "adapters/sqlstore/passkey_options_test.go",
       "marker": "AfterVerification did not see the verified assertion before it was saved",
       "complete": true

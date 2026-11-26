@@ -27,6 +27,7 @@ type softwareKey struct {
 	id     []byte
 	handle string
 	aaguid []byte // the authenticator model reported at registration; nil reports the all-zero AAGUID
+	noUV   bool   // assert user presence without user verification
 }
 
 func newSoftwareKey(t *testing.T) *softwareKey {
@@ -43,6 +44,9 @@ func (k *softwareKey) response(t *testing.T, challenge, origin, rp string, count
 	t.Helper()
 	kind := "webauthn.get"
 	flags := byte(0x05)
+	if k.noUV {
+		flags = 0x01
+	}
 	if register {
 		kind = "webauthn.create"
 		flags |= 0x40

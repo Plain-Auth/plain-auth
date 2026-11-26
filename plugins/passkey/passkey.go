@@ -18,7 +18,9 @@ import (
 	"time"
 
 	authn "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/internal/jsjson"
 	"github.com/go-webauthn/webauthn/protocol"
+	"github.com/go-webauthn/webauthn/protocol/webauthncose"
 	wa "github.com/go-webauthn/webauthn/webauthn"
 	"github.com/google/uuid"
 )
@@ -449,7 +451,7 @@ func (s service) beginRegistration(c authn.EndpointContext) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	state.Data = *data
+	state.Data = clientOutputsUnchecked(*data)
 	err = s.remember(c, state)
 	return creation.Response, err
 }
@@ -557,10 +559,22 @@ func (s service) beginLogin(c authn.EndpointContext) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	state.Data = *data
+	state.Data = clientOutputsUnchecked(*data)
 	err = s.remember(c, state)
 	return assertion.Response, err
 }
+
+// clientOutputsUnchecked keeps the ceremony from checking the large blob
+// client extension outputs, as on the other runtime: client outputs are
+// unsigned, and the published browser client never sends them. Unrequested
+// outputs are ignored by the WebAuthn configuration, and signed
+// authenticator outputs, such as an enforced credProtect policy, are still
+// checked.
+func clientOutputsUnchecked(data wa.SessionData) wa.SessionData {
+	data.Extensions.LargeBlob, data.Extensions.LargeBlobRead, data.Extensions.LargeBlobWrite = "", false, false
+	return data
+}
+
 func (s service) finishLogin(c authn.EndpointContext) (any, error) {
 	state, err := s.take(c, "authentication")
 	if err != nil {
@@ -590,6 +604,11 @@ func (s service) finishLogin(c authn.EndpointContext) (any, error) {
 	if err != nil {
 		return nil, err
 	}
+	if _, err := webauthncose.ParsePublicKey(stored.PublicKey); err != nil {
+		// A stored key that does not parse is refused like any other
+		// assertion, not as a signature that does not verify.
+		return nil, ErrAuthentication
+	}
 	user.credentials = wa.Credentials{stored}
 	if len(state.Data.AllowedCredentialIDs) > 1 {
 		rows, err := store.ListPasskeys(c.Request.Context(), record.UserID)
@@ -613,13 +632,13 @@ func (s service) finishLogin(c authn.EndpointContext) (any, error) {
 	}, state.Data, response)
 	if err != nil || verified.Authenticator.CloneWarning {
 		var refused *protocol.Error
-		if errors.As(err, &refused) && refused.Type == protocol.ErrAssertionSignature.Type {
+		if errors.As(err, &refused) && refused.Type == protocol.ErrAssertionSignature.Type && !errors.Is(err, webauthncose.ErrSigNotProvidedOrInvalid) {
 			return nil, errSignature
 		}
 		return nil, ErrAuthentication
 	}
 	if after := s.authentication.AfterVerification; after != nil {
-		if err := after(c, VerifiedAuthentication{Passkey: record, Credential: *verified, Response: json.RawMessage(raw)}); err != nil {
+		if err := after(c, VerifiedAuthentication{Passkey: record, Credential: *verified, UserVerified: response.Response.AuthenticatorData.Flags.HasUserVerified(), Response: json.RawMessage(raw)}); err != nil {
 			var refusal *authn.APIError
 			if errors.As(err, &refusal) {
 				return nil, err
@@ -649,8 +668,15 @@ func (s service) manage(c authn.EndpointContext, rename bool) (any, error) {
 		return nil, err
 	}
 	id, ok := c.Body["id"].(string)
-	if !ok || id == "" {
-		return nil, ErrMissing
+	if !ok {
+		received := "undefined"
+		if v, present := c.Body["id"]; present {
+			received = jsjson.TypeName(v)
+		}
+		return nil, problem(400, "VALIDATION_ERROR", "[body.id] Invalid input: expected string, received "+received)
+	}
+	if id == "" {
+		return nil, errNotOwned
 	}
 	var name *string
 	if rename {

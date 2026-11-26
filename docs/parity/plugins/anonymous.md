@@ -63,7 +63,7 @@
       - [x] Wait for MFA completion before transferring guest data ([test](../../../adapters/sqlstore/anonymous_test.go#L217))
       - [x] Carry a guest through a provider redirect without the primary cookie ([test](../../../adapters/sqlstore/anonymous_oauth_test.go#L98))
       - [x] Complete guest handoff with the official Google One Tap client ([test](../../../conformance/core.test.mjs#L1769))
-      - [x] Transfer only after a verified WebAuthn assertion ([test](../../../adapters/sqlstore/passkey_test.go#L233))
+      - [x] Transfer only after a verified WebAuthn assertion ([test](../../../adapters/sqlstore/passkey_test.go#L237))
       - [x] Link after local verification of the email OTP ([test](../../../adapters/sqlstore/anonymous_test.go#L186))
       - [x] Link a guest after the email sign-in link is verified ([test](../../../adapters/sqlstore/anonymous_test.go#L194))
       - [x] Hand a guest off to the account it signs in to with a phone code and remove the guest, on the memory and SQL stores ([test](../../../adapters/sqlstore/anonymous_test.go#L344))

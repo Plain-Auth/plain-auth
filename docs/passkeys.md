@@ -142,17 +142,17 @@ options.Authentication.Extensions = func(c plainauth.EndpointContext) (protocol.
 }
 ```
 
-Registration always asks for `credProps` as well, as the browser client's WebAuthn library does. An error from a resolver refuses the request, and no challenge is issued. The challenge records the requested extensions, so another server instance verifies against them, and a requirement such as large blob support `required` refuses a response that does not meet it. Client extension outputs, including ones the server did not request, are accepted and not acted on, so the browser client's own `extensions` option keeps working.
+Registration always asks for `credProps` as well, as another runtime's server does. An error from a resolver refuses the request, and no challenge is issued. As on another runtime, the server does not check client extension outputs (`clientExtensionResults`): they are unsigned client data, and the browser client's `addPasskey` and `signIn.passkey` never send them, so a large blob requirement or write is passed to the browser and not enforced here. Read the outputs your own client forwards, for example in the sign-in callback. Signed authenticator extension outputs, such as an enforced credProtect policy, are checked against the challenge.
 
 Inputs are checked against the ceremony, so a registration-only input such as `credProps` in `Authentication.Extensions`, or an authentication-only input such as `appid` at registration, fails the options request with a server error instead of reaching the browser, where another runtime passes it through. Leave `credProps` out of sign-in extensions. [Extension and callback tests](../adapters/sqlstore/passkey_options_test.go)
 
 ## Sign-in callback
 
-`Authentication.AfterVerification` receives each assertion that passed verification as a `passkey.VerifiedAuthentication`: the stored passkey as it was before this sign-in, the verified go-webauthn credential with its new signature counter and flags, and the credential JSON the client sent, including `clientExtensionResults`. It runs after the challenge is spent and before the counter is saved and the session is issued, outside any store transaction. Return an error to refuse the sign-in. Nothing is saved: a `*plainauth.APIError` is the response, and any other error is logged and answered with 400 `AUTHENTICATION_FAILED`, as another refused assertion is.
+`Authentication.AfterVerification` receives each assertion that passed verification as a `passkey.VerifiedAuthentication`: the stored passkey as it was before this sign-in, the verified go-webauthn credential with its new signature counter, `UserVerified` for this assertion's user-verified flag, and the credential JSON the client sent. The browser client sends no `clientExtensionResults`; the credential's `Flags` are the stored record's, not this assertion's. It runs after the challenge is spent and before the counter is saved and the session is issued, outside any store transaction. Return an error to refuse the sign-in. Nothing is saved: a `*plainauth.APIError` is the response, and any other error is logged and answered with 400 `AUTHENTICATION_FAILED`, as another refused assertion is.
 
 ```go
 options.Authentication.AfterVerification = func(c plainauth.EndpointContext, v passkey.VerifiedAuthentication) error {
-    if !v.Credential.Flags.UserVerified {
+    if !v.UserVerified {
         return &plainauth.APIError{Status: 403, Code: "USER_VERIFICATION_REQUIRED", Message: "Verify your identity on the authenticator"}
     }
     return audit.Record(c.Request.Context(), v.Passkey.UserID, "passkey sign-in")
@@ -163,7 +163,7 @@ options.Authentication.AfterVerification = func(c plainauth.EndpointContext, v p
 
 | Code | Status | When |
 | --- | ---: | --- |
-| `VALIDATION_ERROR` | 400 | An `authenticatorAttachment` query other than `platform` or `cross-platform`, or a rename without a name |
+| `VALIDATION_ERROR` | 400 | An `authenticatorAttachment` query other than `platform` or `cross-platform`, an update or delete whose `id` is missing or not a string, or a rename without a name |
 | `CHALLENGE_NOT_FOUND` | 400 | The challenge cookie is missing, expired, already spent or from another ceremony |
 | `FAILED_TO_VERIFY_REGISTRATION` | 400 | The attestation does not verify |
 | `PREVIOUSLY_REGISTERED` | 400 | The credential is already stored |
@@ -173,8 +173,8 @@ options.Authentication.AfterVerification = func(c plainauth.EndpointContext, v p
 | `RESOLVED_USER_INVALID` | 400 | `ResolveUser` returned no ID or name, or a new account's email is invalid |
 | `USER_NOT_FOUND` | 500 | The decision names an account that does not exist |
 | `UNABLE_TO_CREATE_SESSION` | 500 | A session create hook skipped the session |
-| `AUTHENTICATION_FAILED` | 400, or 401 when the signature does not verify | The assertion is refused |
-| `PASSKEY_NOT_FOUND` | 401 at sign-in, 404 on update and delete | No stored passkey has this credential, or the caller owns none with this ID |
+| `AUTHENTICATION_FAILED` | 400, or 401 when a well-formed signature does not verify | The assertion is refused |
+| `PASSKEY_NOT_FOUND` | 401 at sign-in, 404 on update and delete | No stored passkey has this credential, or the caller owns none with this ID, including an empty one |
 | `UNAUTHORIZED` | 401 | List, update or delete without a session |
 
 `New` refuses a configuration without `Origins`, so no request answers `ORIGIN_NOT_CONFIGURED`. A rename runs in one transaction, so `FAILED_TO_UPDATE_PASSKEY` never occurs. `REGISTRATION_CANCELLED`, `AUTH_CANCELLED` and `UNKNOWN_ERROR` come only from the browser client. These answers differ from another runtime's, for safety:

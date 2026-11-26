@@ -17,9 +17,11 @@ import (
 // credProps on sign-in, fails the request with a server error, where the
 // other runtime passes it to the browser.
 //
-// The challenge records the requested extensions. Client extension outputs,
-// requested or not, are accepted and not acted on, so the browser client's
-// own extensions option keeps working.
+// As on the other runtime, the server does not check client extension
+// outputs (clientExtensionResults): they are unsigned client data, and the
+// published browser client never sends them. Signed authenticator extension
+// outputs, such as an enforced credProtect policy, are checked against the
+// challenge.
 type ExtensionsResolver func(auth.EndpointContext) (protocol.AuthenticationExtensions, error)
 
 // AuthenticationOptions configures passkey sign-in.
@@ -43,10 +45,13 @@ type VerifiedAuthentication struct {
 	// Passkey is the stored passkey that signed, as it was before this
 	// sign-in.
 	Passkey Record
-	// Credential is the verified credential, with the new signature counter
-	// and the authenticator's flags.
+	// Credential is the verified credential, with the new signature counter.
+	// Its Flags are the stored record's, not this assertion's.
 	Credential wa.Credential
-	// Response is the credential JSON the client sent, including its
-	// clientExtensionResults.
+	// UserVerified reports whether this assertion's authenticator data
+	// carries the user-verified flag.
+	UserVerified bool
+	// Response is the credential JSON the client sent. The published browser
+	// client sends no clientExtensionResults.
 	Response json.RawMessage
 }

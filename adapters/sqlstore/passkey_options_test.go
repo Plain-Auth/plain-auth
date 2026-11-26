@@ -144,6 +144,9 @@ func TestPasskeyAuthenticatorSelection(t *testing.T) {
 			if got := options["authenticatorSelection"]; !reflect.DeepEqual(got, tc.want) {
 				t.Fatalf("registration options advertised %v, want %v", got, tc.want)
 			}
+			if got := options["extensions"]; !reflect.DeepEqual(got, map[string]any{"credProps": true}) {
+				t.Fatalf("registration options without a resolver asked for %v, want credProps", got)
+			}
 		})
 	}
 	p := newPasskeyPeers(t, "sqlite", pk.Options{}, auth.Options{})
@@ -226,24 +229,23 @@ func TestPasskeyCeremonyOptionsAcrossEngines(t *testing.T) {
 				t.Fatal("registration options carried a sign-in extension")
 			}
 			key := newSoftwareKey(t)
-			register := func(outputs map[string]any, status int) map[string]any {
+			register := func(k *softwareKey, outputs map[string]any) map[string]any {
 				t.Helper()
 				options, set := p.call(t, p.first, "generate-register-options", nil, 200, p.session)
 				if want := map[string]any{"credProps": true, "largeBlob": map[string]any{"support": "required"}}; !reflect.DeepEqual(options["extensions"], want) {
 					t.Fatalf("registration options lost the resolved extensions: %v", options["extensions"])
 				}
-				key.handle = options["user"].(map[string]any)["id"].(string)
-				resp := key.response(t, options["challenge"].(string), passkeyPeerOrigin, "example.test", 0, true)
+				k.handle = options["user"].(map[string]any)["id"].(string)
+				resp := k.response(t, options["challenge"].(string), passkeyPeerOrigin, "example.test", 0, true)
 				resp["clientExtensionResults"] = outputs
-				row, _ := p.call(t, p.second, "verify-registration", map[string]any{"response": resp}, status, set[0], p.session)
+				row, _ := p.call(t, p.second, "verify-registration", map[string]any{"response": resp}, 200, set[0], p.session)
 				return row
 			}
-			if body := register(map[string]any{"credProps": map[string]any{"rk": true}}, 400); body["code"] != "FAILED_TO_VERIFY_REGISTRATION" {
-				t.Fatal("another instance verified a registration without the large blob support its challenge required", body)
-			}
-			row := register(map[string]any{"credProps": map[string]any{"rk": true}, "largeBlob": map[string]any{"supported": true}, "hmacCreateSecret": true}, 200)
-			if row["userId"] != p.owner.User.ID {
-				t.Fatal("an extension output the server did not request refused the registration", row)
+			// The browser client sends no client extension outputs, so a
+			// required large blob is not checked against them.
+			row := register(key, map[string]any{})
+			if other := register(newSoftwareKey(t), map[string]any{"largeBlob": map[string]any{"supported": false}, "hmacCreateSecret": true}); row["userId"] != p.owner.User.ID || other["userId"] != p.owner.User.ID {
+				t.Fatal("an extension output the server did not request refused the registration", row, other)
 			}
 
 			count := uint32(0)
@@ -268,18 +270,19 @@ func TestPasskeyCeremonyOptionsAcrossEngines(t *testing.T) {
 			}
 			blob := map[string]any{"largeBlob": map[string]any{"blob": "AQID"}}
 			written := map[string]any{"largeBlob": map[string]any{"written": true}}
-			login(true, written, 400)
-			signed, _ := login(true, blob, 200)
+			signed, _ := login(true, written, 200)
 			if signed["user"].(map[string]any)["id"] != p.owner.User.ID {
-				t.Fatal("the large blob read did not sign the owner in", signed)
+				t.Fatal("a client extension output refused the owner's sign-in", signed)
 			}
-			login(false, written, 200)
+			key.noUV = true
+			login(false, blob, 200)
+			key.noUV = false
 			response := map[string]any{}
 			if len(seen) == 2 {
 				_ = json.Unmarshal(seen[0].Response, &response)
 			}
-			if len(seen) != 2 || seen[0].Passkey.ID != row["id"] || seen[0].Passkey.UserID != p.owner.User.ID || seen[0].Passkey.Counter != 0 || seen[0].Credential.Authenticator.SignCount != 2 ||
-				!bytes.Equal(seen[0].Credential.ID, key.id) || during[0] != [2]int{0, 1} || !reflect.DeepEqual(response["clientExtensionResults"], blob) {
+			if len(seen) != 2 || seen[0].Passkey.ID != row["id"] || seen[0].Passkey.UserID != p.owner.User.ID || seen[0].Passkey.Counter != 0 || seen[0].Credential.Authenticator.SignCount != 1 ||
+				!bytes.Equal(seen[0].Credential.ID, key.id) || during[0] != [2]int{0, 1} || !reflect.DeepEqual(response["clientExtensionResults"], written) || !seen[0].UserVerified || seen[1].UserVerified {
 				t.Fatal("AfterVerification did not see the verified assertion before it was saved", len(seen), during)
 			}
 			refuse := func(err error, status int, code string) {
@@ -309,7 +312,7 @@ func TestPasskeyCeremonyOptionsAcrossEngines(t *testing.T) {
 				t.Fatal("a registration-only input reached sign-in options")
 			}
 			misconfigured = false
-			if calls["/api/auth/passkey/generate-register-options"] != 4 || calls["/api/auth/passkey/generate-authenticate-options"] != 7 {
+			if calls["/api/auth/passkey/generate-register-options"] != 4 || calls["/api/auth/passkey/generate-authenticate-options"] != 6 {
 				t.Fatal("the extension resolvers did not see each options request", calls)
 			}
 		})

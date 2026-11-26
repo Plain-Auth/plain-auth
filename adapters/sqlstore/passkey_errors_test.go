@@ -2,6 +2,7 @@ package sqlstore
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -186,6 +187,17 @@ func TestPasskeyErrorCodesAcrossEngines(t *testing.T) {
 			impostor.id, impostor.handle = key.id, key.handle
 			_, err = login(impostor, origin, 1)
 			passkeyError(t, err, 401, "AUTHENTICATION_FAILED", "Authentication failed")
+			options, err := c.BeginPasskeyLogin(ctx)
+			must(err)
+			forged := key.response(t, base64.RawURLEncoding.EncodeToString(options.Challenge), origin, rp, 1, false)
+			junk := make([]byte, 64)
+			rand.Read(junk)
+			forged["response"].(map[string]any)["signature"] = base64.RawURLEncoding.EncodeToString(junk)
+			malformed, err := json.Marshal(forged)
+			must(err)
+			// A signature that is not a well-formed signature is refused like any other assertion.
+			_, err = c.FinishPasskeyLogin(ctx, malformed)
+			passkeyError(t, err, 400, "AUTHENTICATION_FAILED", "Authentication failed")
 			_, err = login(newSoftwareKey(t), origin, 1)
 			passkeyError(t, err, 401, "PASSKEY_NOT_FOUND", "Passkey not found")
 			// The counter and the session commit together, so the skipped
@@ -210,9 +222,19 @@ func TestPasskeyErrorCodesAcrossEngines(t *testing.T) {
 					passkeyError(t, attempt.c.Do(ctx, "POST", path, map[string]any{"id": attempt.id, "name": "Renamed"}, nil), 404, "PASSKEY_NOT_FOUND", "Passkey not found")
 				}
 			}
+			for _, path := range []string{"/passkey/update-passkey", "/passkey/delete-passkey"} {
+				passkeyError(t, c.Do(ctx, "POST", path, map[string]any{"name": "Renamed"}, nil), 400, "VALIDATION_ERROR", "[body.id] Invalid input: expected string, received undefined")
+				passkeyError(t, c.Do(ctx, "POST", path, map[string]any{"id": 5, "name": "Renamed"}, nil), 400, "VALIDATION_ERROR", "[body.id] Invalid input: expected string, received number")
+				passkeyError(t, c.Do(ctx, "POST", path, map[string]any{"id": "", "name": "Renamed"}, nil), 404, "PASSKEY_NOT_FOUND", "Passkey not found")
+			}
 			if rows("owner") != 1 {
 				t.Fatal("a refused update or delete changed the owner's passkey")
 			}
+			// A stored key that does not parse is refused like any other assertion.
+			_, err = store.db.ExecContext(ctx, store.bind(`UPDATE "passkey" SET "publicKey"=? WHERE "userId"=?`), base64.StdEncoding.EncodeToString([]byte("not a key")), "owner")
+			must(err)
+			_, err = login(key, origin, 2)
+			passkeyError(t, err, 400, "AUTHENTICATION_FAILED", "Authentication failed")
 
 			plain, stopPlain := serve(pk.Options{Registration: pk.RegistrationOptions{AllowWithoutSession: true}}, auth.DatabaseHooks{})
 			defer stopPlain()

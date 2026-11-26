@@ -37,8 +37,11 @@ func (c EndpointContext) IssueSession(userID string, commit func(context.Context
 
 // IssueSessionOr is IssueSession for an endpoint that answers skipped,
 // instead of 401 FAILED_TO_CREATE_SESSION, when a session create before hook
-// skips the session.
+// skips the session. A nil skipped keeps 401 FAILED_TO_CREATE_SESSION.
 func (c EndpointContext) IssueSessionOr(skipped error, userID string, commit func(context.Context, StoredSession) (User, error)) (*SessionResult, error) {
+	if skipped == nil {
+		skipped = errSessionSkipped()
+	}
 	r := c.Request
 	session, _ := c.Auth.newSession(userID, RequestMeta{IPAddress: c.Auth.clientIP(r), UserAgent: r.UserAgent()})
 	return c.commitIssuedSession(userID, session, nil, skipped, commit)

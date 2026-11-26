@@ -24,8 +24,9 @@ type RegistrationOptions struct {
 	AfterVerification   func(auth.EndpointContext, VerifiedRegistration) (RegistrationDecision, error)
 	// Extensions adds WebAuthn extension inputs to each GET
 	// /passkey/generate-register-options response. Registration always asks
-	// for credProps as well. An authentication-only input such as AppID
-	// fails the request. See ExtensionsResolver.
+	// for credProps as well, as the other runtime's server does. An
+	// authentication-only input such as AppID fails the request. See
+	// ExtensionsResolver.
 	Extensions ExtensionsResolver
 }
 
