@@ -3016,7 +3016,7 @@
       "marker": "func TestLINEChannelTokenVerification("
     },
     {
-      "label": "A LINE ID token signs in directly at LINE() and New(\"line\") once LINE's verify endpoint accepts it for that channel with the nonce, sending only the client ID, token and nonce; a token LINE refuses answers INVALID_TOKEN (deviation: the nonce is required)",
+      "label": "A LINE ID token signs in directly at LINE() and New(\"line\") once LINE's verify endpoint accepts it for that channel with the nonce, sending only the client ID, token and nonce; a request without a nonce never reaches LINE (deviation: the nonce is required), a token LINE refuses answers INVALID_TOKEN, and New(\"line\") hands hooks the raw verified claims",
       "test": "providers/line_test.go",
       "marker": "func TestLINEDirectIDToken(t *testing.T) {"
     }
@@ -8121,7 +8121,7 @@
       "marker": "test(\"OAuth profile presets match"
     },
     {
-      "label": "Two LINE channels under their own keys keep their own client IDs, secrets, callbacks and account namespaces: the same LINE user is a separate account per key, a state from one key fails at the other's callback, and a direct ID token works only at its own channel's key",
+      "label": "Two LINE channels under their own keys keep their own client IDs, secrets, callbacks and account namespaces: a LINE user ID is a separate account per key, the same unverified email at a second key answers account_not_linked, a state from one key fails at the other's callback, and a direct ID token works only at its own channel's key",
       "test": "providers/line_test.go",
       "marker": "func TestLINEChannelsUnderSeparateKeys(t *testing.T) {"
     }
@@ -25331,7 +25331,7 @@
       "marker": "func TestProfilePresetBrowserSignIn("
     },
     {
-      "label": "Two LINE channels under their own keys keep their own client IDs, secrets, callbacks and account namespaces: the same LINE user is a separate account per key, a state from one key fails at the other's callback, and a direct ID token works only at its own channel's key",
+      "label": "Two LINE channels under their own keys keep their own client IDs, secrets, callbacks and account namespaces: a LINE user ID is a separate account per key, the same unverified email at a second key answers account_not_linked, a state from one key fails at the other's callback, and a direct ID token works only at its own channel's key",
       "test": "providers/line_test.go",
       "marker": "func TestLINEChannelsUnderSeparateKeys(t *testing.T) {",
       "complete": true
@@ -26634,7 +26634,7 @@
       "marker": "test(\"OAuth profile presets match"
     },
     {
-      "label": "Two LINE channels under their own keys keep their own client IDs, secrets, callbacks and account namespaces: the same LINE user is a separate account per key, a state from one key fails at the other's callback, and a direct ID token works only at its own channel's key",
+      "label": "Two LINE channels under their own keys keep their own client IDs, secrets, callbacks and account namespaces: a LINE user ID is a separate account per key, the same unverified email at a second key answers account_not_linked, a state from one key fails at the other's callback, and a direct ID token works only at its own channel's key",
       "test": "providers/line_test.go",
       "marker": "func TestLINEChannelsUnderSeparateKeys(t *testing.T) {"
     }
@@ -30710,14 +30710,14 @@
   ],
   "docs/content/docs/authentication/line.mdx#L57": [
     {
-      "label": "A LINE ID token signs in directly at LINE() and New(\"line\") once LINE's verify endpoint accepts it for that channel with the nonce, sending only the client ID, token and nonce; a token LINE refuses answers INVALID_TOKEN (deviation: the nonce is required)",
+      "label": "A LINE ID token signs in directly at LINE() and New(\"line\") once LINE's verify endpoint accepts it for that channel with the nonce, sending only the client ID, token and nonce; a request without a nonce never reaches LINE (deviation: the nonce is required), a token LINE refuses answers INVALID_TOKEN, and New(\"line\") hands hooks the raw verified claims",
       "test": "providers/line_test.go",
       "marker": "func TestLINEDirectIDToken(t *testing.T) {"
     }
   ],
   "docs/content/docs/authentication/line.mdx#L79": [
     {
-      "label": "Two LINE channels under their own keys keep their own client IDs, secrets, callbacks and account namespaces: the same LINE user is a separate account per key, a state from one key fails at the other's callback, and a direct ID token works only at its own channel's key",
+      "label": "Two LINE channels under their own keys keep their own client IDs, secrets, callbacks and account namespaces: a LINE user ID is a separate account per key, the same unverified email at a second key answers account_not_linked, a state from one key fails at the other's callback, and a direct ID token works only at its own channel's key",
       "test": "providers/line_test.go",
       "marker": "func TestLINEChannelsUnderSeparateKeys(t *testing.T) {",
       "complete": true
@@ -30725,7 +30725,7 @@
   ],
   "plugin-symbol/generic-oauth/LineOptions/providerId": [
     {
-      "label": "Two LINE channels under their own keys keep their own client IDs, secrets, callbacks and account namespaces: the same LINE user is a separate account per key, a state from one key fails at the other's callback, and a direct ID token works only at its own channel's key",
+      "label": "Two LINE channels under their own keys keep their own client IDs, secrets, callbacks and account namespaces: a LINE user ID is a separate account per key, the same unverified email at a second key answers account_not_linked, a state from one key fails at the other's callback, and a direct ID token works only at its own channel's key",
       "test": "providers/line_test.go",
       "marker": "func TestLINEChannelsUnderSeparateKeys(t *testing.T) {",
       "complete": true

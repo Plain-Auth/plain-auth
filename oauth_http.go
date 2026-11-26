@@ -3,6 +3,7 @@ package plainauth
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"io"
@@ -630,6 +631,24 @@ func idTokenShape(body wireBody, signIn bool) error {
 
 // accountSubject reports whether a provider subject can name an account:
 // not blank, not a placeholder such as "null", and at most 1024 bytes.
+// replayKey names a token for its single-use record. JWS decoders accept
+// a segment with base64 padding or other spare bits, so a re-encoded copy of
+// a used token still verifies; its segments are encoded again canonically.
+func replayKey(raw string) string {
+	parts := strings.Split(raw, ".")
+	if len(parts) != 3 {
+		return raw
+	}
+	for i, part := range parts {
+		b, err := base64.RawURLEncoding.DecodeString(strings.TrimRight(part, "="))
+		if err != nil {
+			return raw
+		}
+		parts[i] = base64.RawURLEncoding.EncodeToString(b)
+	}
+	return strings.Join(parts, ".")
+}
+
 func accountSubject(s string) bool {
 	return strings.TrimSpace(s) != "" && s != "undefined" && s != "null" && len(s) <= 1024
 }
@@ -748,7 +767,7 @@ func (a *Auth) completeProfileWith(ctx context.Context, r *http.Request, method,
 	candidate := User{ID: randomID(), Name: p.Name, Email: strings.ToLower(p.Email), EmailVerified: p.EmailVerified, Image: p.Image, CreatedAt: now, UpdatedAt: now}
 	session := a.oauthSessionDraft(candidate.ID, RequestMeta{IPAddress: a.clientIP(r), UserAgent: r.UserAgent()}, options.RequireEmailVerification)
 	if !options.IDTokenValidUntil.IsZero() {
-		options.IDTokenHash = sha256.Sum256([]byte(id + "\x00" + tokens.IDToken))
+		options.IDTokenHash = sha256.Sum256([]byte(id + "\x00" + replayKey(tokens.IDToken)))
 	}
 	if a.opts.EncryptOAuthTokens {
 		var err error

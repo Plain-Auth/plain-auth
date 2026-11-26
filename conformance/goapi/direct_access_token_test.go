@@ -135,3 +135,36 @@ func TestProviderAccessTokenSignIn(t *testing.T) {
 		t.Fatal("the verifiers saw", got)
 	}
 }
+
+// A direct ID token signs in once: a copy whose segments are re-encoded,
+// with padding or other spare bits, decodes to the same token and is
+// refused too, while a different token still signs in.
+func TestDirectIDTokenReencodedReplay(t *testing.T) {
+	n, err := newTokenAuthNode(t, auth.OAuthProvider{
+		Config: oauth2.Config{ClientID: "client", ClientSecret: "secret", Endpoint: oauth2.Endpoint{AuthURL: "https://idp.example/authorize", TokenURL: "https://idp.example/token"}},
+		Resolve: func(context.Context, *oauth2.Token, string) (auth.OAuthProfile, error) {
+			return auth.OAuthProfile{}, errors.New("unused")
+		},
+		// Like a JWS decoder, this verifier reads each segment leniently.
+		VerifyIDToken: func(_ context.Context, raw, _ string) (auth.OAuthProfile, time.Time, error) {
+			return auth.OAuthProfile{Subject: "subject", Email: "person@example.org", EmailVerified: true}, time.Now().Add(time.Minute), nil
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	signIn := func(token string) int {
+		return n.post(t, "/sign-in/social", `{"provider":"work","idToken":{"token":"`+token+`","nonce":"n"}}`).StatusCode
+	}
+	if status := signIn("aGk.aGk.aGk"); status != 200 {
+		t.Fatal("the first sign-in answered", status)
+	}
+	for _, copy := range []string{"aGk.aGk.aGk", "aGk.aGk.aGl", "aGk.aGk.aGk=", "aGl.aGk.aGk"} {
+		if status := signIn(copy); status != 401 {
+			t.Fatal("a copy of the used token,", copy, "answered", status)
+		}
+	}
+	if status := signIn("aGk.aGk.aGw"); status != 200 {
+		t.Fatal("a different token answered", status)
+	}
+}

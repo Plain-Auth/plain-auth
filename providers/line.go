@@ -61,23 +61,33 @@ func lineClient(ctx context.Context) *http.Client {
 	return noRedirects(client)
 }
 
-// lineIDToken checks an ID token at LINE's verify endpoint for channelID,
-// which covers the HS256 tokens of web channels and the ES256 tokens of the
-// SDKs, then checks the claims against this sign-in.
+// lineIDToken checks an ID token for channelID and maps its claims.
 func lineIDToken(ctx context.Context, channelID, raw, nonce string) (auth.OAuthProfile, time.Time, error) {
+	claims, exp, err := lineVerify(ctx, channelID, raw, nonce)
+	if err != nil {
+		return auth.OAuthProfile{}, time.Time{}, err
+	}
+	profile, err := lineProfile(claims)
+	return profile, exp, err
+}
+
+// lineVerify checks an ID token at LINE's verify endpoint for channelID,
+// which covers the HS256 tokens of web channels and the ES256 tokens of the
+// SDKs, then checks the claims against this sign-in and returns them.
+func lineVerify(ctx context.Context, channelID, raw, nonce string) (profileData, time.Time, error) {
 	if raw == "" || nonce == "" {
-		return auth.OAuthProfile{}, time.Time{}, errors.New("missing LINE ID token or nonce")
+		return nil, time.Time{}, errors.New("missing LINE ID token or nonce")
 	}
 	form := url.Values{"client_id": {channelID}, "id_token": {raw}, "nonce": {nonce}}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, lineAPI+"/verify", strings.NewReader(form.Encode()))
 	if err != nil {
-		return auth.OAuthProfile{}, time.Time{}, err
+		return nil, time.Time{}, err
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
 	claims, err := providerJSON(lineClient(ctx), req)
 	if err != nil {
-		return auth.OAuthProfile{}, time.Time{}, err
+		return nil, time.Time{}, err
 	}
 	now := time.Now().Unix()
 	exp, errExp := strconv.ParseInt(claims.text("exp"), 10, 64)
@@ -85,10 +95,9 @@ func lineIDToken(ctx context.Context, channelID, raw, nonce string) (auth.OAuthP
 	// Like other ID tokens, one at most an hour old signs in.
 	if claims.text("iss") != lineIssuer || claims.text("aud") != channelID || claims.text("nonce") != nonce || errExp != nil || errIat != nil ||
 		exp <= now || iat <= 0 || iat >= exp || iat > now+60 || iat < now-3600 {
-		return auth.OAuthProfile{}, time.Time{}, errors.New("LINE ID token claims do not match this sign-in")
+		return nil, time.Time{}, errors.New("LINE ID token claims do not match this sign-in")
 	}
-	profile, err := lineProfile(claims)
-	return profile, time.Unix(exp, 0), err
+	return claims, time.Unix(exp, 0), nil
 }
 
 // lineProfile maps LINE's claims. A profile without an email is returned

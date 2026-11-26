@@ -74,8 +74,16 @@ func New(name, clientID, secret string) (auth.OAuthProvider, error) {
 		return Kakao(clientID, secret, KakaoOptions{}), nil
 	case "line":
 		p := fromCatalog(name, clientID, secret, catalog[name])
+		// The browser flow passes LINE's raw profile as Data, so a direct
+		// sign-in passes the raw verified claims.
 		p.VerifyIDToken = func(ctx context.Context, raw, nonce string) (auth.OAuthProfile, time.Time, error) {
-			return lineIDToken(ctx, clientID, raw, nonce)
+			claims, exp, err := lineVerify(ctx, clientID, raw, nonce)
+			if err != nil {
+				return auth.OAuthProfile{}, time.Time{}, err
+			}
+			profile, err := lineProfile(claims)
+			profile.Data = claims
+			return profile, exp, err
 		}
 		return p, nil
 	}

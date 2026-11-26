@@ -117,7 +117,7 @@ func (f *lineFixture) client(t *testing.T) *http.Client {
 				return textResponse(http.StatusBadRequest, "application/json", `{"error":"invalid_request"}`), nil
 			}
 			now := time.Now().Unix()
-			return jsonResponse(t, map[string]any{"iss": lineIssuer, "aud": parts[0], "nonce": r.PostForm.Get("nonce"), "iat": now, "exp": now + 900, "sub": parts[1], "email": parts[2], "name": "Jo"}), nil
+			return jsonResponse(t, map[string]any{"iss": lineIssuer, "aud": parts[0], "nonce": r.PostForm.Get("nonce"), "iat": now, "exp": now + 900, "sub": parts[1], "email": parts[2], "name": "Jo", "picture": "https://img.example/jo.png"}), nil
 		}
 		t.Fatalf("unexpected request %s", r.URL)
 		return nil, nil
@@ -125,14 +125,18 @@ func (f *lineFixture) client(t *testing.T) *http.Client {
 }
 
 // lineAuth serves providers from one SQLite store.
-func lineAuth(t *testing.T, providers map[string]auth.OAuthProvider) (*auth.Auth, *sqlite.Store) {
+func lineAuth(t *testing.T, providers map[string]auth.OAuthProvider, configure ...func(*auth.Options)) (*auth.Auth, *sqlite.Store) {
 	t.Helper()
 	store, err := sqlite.Open(":memory:")
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { store.Close() })
-	h, err := auth.New(auth.Options{Store: store, Secret: strings.Repeat("s", 32), BaseURL: "https://app.example.org", RateLimit: new(bool), SocialProviders: providers})
+	o := auth.Options{Store: store, Secret: strings.Repeat("s", 32), BaseURL: "https://app.example.org", RateLimit: new(bool), SocialProviders: providers}
+	for _, c := range configure {
+		c(&o)
+	}
+	h, err := auth.New(o)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -153,8 +157,11 @@ func serve(h *auth.Auth, method, path, body string, cookies []*http.Cookie) *htt
 
 // A LINE ID token signs in directly at LINE() and New("line") once LINE's
 // verify endpoint accepts it for that channel with the nonce; the request
-// carries exactly the client ID, token and nonce and no credentials. A token
-// LINE refuses answers INVALID_TOKEN.
+// carries exactly the client ID, token and nonce and no credentials. A
+// request without a nonce never reaches LINE, and a token LINE refuses
+// answers INVALID_TOKEN. New("line") hands hooks LINE's raw claims, as its
+// browser flow hands them LINE's raw profile; LINE() hands them its mapped
+// profile.
 func TestLINEDirectIDToken(t *testing.T) {
 	catalogLINE, err := New("line", "channel", "secret")
 	if err != nil {
@@ -163,7 +170,18 @@ func TestLINEDirectIDToken(t *testing.T) {
 	for name, p := range map[string]auth.OAuthProvider{"LINE()": LINE("channel", "secret"), "New": catalogLINE} {
 		f := &lineFixture{}
 		p.HTTPClient = f.client(t)
-		h, _ := lineAuth(t, map[string]auth.OAuthProvider{"line": p})
+		var profile map[string]any
+		h, _ := lineAuth(t, map[string]auth.OAuthProvider{"line": p}, func(o *auth.Options) {
+			o.ValidateUserInfo = func(_ context.Context, v auth.UserInfoValidation) error {
+				profile = v.Profile
+				return nil
+			}
+		})
+		for _, body := range []string{`{"token":"channel:U1:jo@example.org"}`, `{"token":"channel:U1:jo@example.org","nonce":""}`} {
+			if res := serve(h, "POST", "/sign-in/social", `{"provider":"line","idToken":`+body+`}`, nil); res.Code != 401 || !strings.Contains(res.Body.String(), "INVALID_TOKEN") || len(f.verifies) != 0 {
+				t.Fatal(name, "answered a token without a nonce with", res.Code, res.Body)
+			}
+		}
 		res := serve(h, "POST", "/sign-in/social", `{"provider":"line","idToken":{"token":"channel:U1:jo@example.org","nonce":"n"}}`, nil)
 		var signedIn struct{ User struct{ EmailVerified bool } }
 		if res.Code != 200 || json.Unmarshal(res.Body.Bytes(), &signedIn) != nil || signedIn.User.EmailVerified {
@@ -177,12 +195,18 @@ func TestLINEDirectIDToken(t *testing.T) {
 		if res.Code != 401 || !strings.Contains(res.Body.String(), "INVALID_TOKEN") {
 			t.Fatal(name, "accepted a token LINE refused:", res.Code, res.Body)
 		}
+		raw := profile["picture"] == "https://img.example/jo.png" && profile["iss"] == lineIssuer && profile["image"] == nil
+		mapped := profile["image"] == "https://img.example/jo.png" && profile["emailVerified"] == false && profile["iss"] == nil
+		if name == "New" && !raw || name == "LINE()" && !mapped {
+			t.Fatal(name, "handed hooks", profile)
+		}
 	}
 }
 
 // Two LINE channels under their own keys keep their own client IDs,
 // secrets, callbacks and account namespaces: the same LINE user ID in each
-// is a different account, a state from one key fails at the other's
+// is a different account, the same unverified email at the second key
+// answers account_not_linked, a state from one key fails at the other's
 // callback, and a direct ID token works only at its own channel's key.
 func TestLINEChannelsUnderSeparateKeys(t *testing.T) {
 	f := &lineFixture{}
@@ -225,6 +249,19 @@ func TestLINEChannelsUnderSeparateKeys(t *testing.T) {
 	}
 	if users["line-jp"] == users["line-th"] {
 		t.Fatal("the same LINE user ID in two channels is one account")
+	}
+	// LINE emails are unverified, so the same person with the same email at
+	// a second key is not linked implicitly.
+	for _, key := range []string{"line-jp", "line-th"} {
+		authorize, cookies := start(key)
+		done := serve(h, "GET", "/callback/"+key+"?"+url.Values{"code": {"U5:same@example.org"}, "state": {authorize.Query().Get("state")}}.Encode(), "", cookies)
+		want := "/done"
+		if key == "line-th" {
+			want = "error=account_not_linked"
+		}
+		if !strings.Contains(done.Header().Get("Location"), want) {
+			t.Fatal("the same email at", key, "went to", done.Header().Get("Location"))
+		}
 	}
 	authorize, cookies := start("line-jp")
 	tokens := len(f.tokens)
