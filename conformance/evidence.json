@@ -45415,6 +45415,12 @@
       "label": "Refuse an add or replace without a value",
       "test": "plugins/scim/http_test.go",
       "marker": "t.Fatal(\"an add or replace without a value was accepted\")"
+    },
+    {
+      "label": "Remove an Enterprise field through a null alias value",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "t.Fatal(\"the enterprise path alias did not clear a field\", got[urn])",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L207/A key in a PATCH value that merges into the stored value: a pathless value, `name`, the Enterprise extension, `manager`, or a filtered value such as `addresses[type eq \"work\"]`": [
@@ -45432,6 +45438,12 @@
       "label": "Merge a filtered address value and remove its null keys, and leave an unmatched filter that only clears fields alone",
       "test": "adapters/sqlstore/scim_attributes_test.go",
       "marker": "t.Fatal(\"a selected address kept a null subattribute\", got[\"addresses\"])"
+    },
+    {
+      "label": "Remove null Enterprise keys after the merge, ignore a null read-only manager displayName and clear the extension from a pathless all-null value, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "t.Fatal(\"a null Enterprise key was not removed after the merge\", got[urn])",
+      "complete": true
     }
   ],
   "plugin-symbol/scim/SCIMCanonicalAddress": [
@@ -45532,6 +45544,11 @@
       "label": "Order and check the User schema list, read case-insensitive Enterprise keys, unwrap one-element scalars, count limits in code points, refuse an undeclared object and drop an all-null one",
       "test": "plugins/scim/enterprise_test.go",
       "marker": "func TestSCIMEnterpriseUserProfileNormalization("
+    },
+    {
+      "label": "Undeclare the extension when a pathless value clears its last field",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "t.Fatal(\"clearing every Enterprise field kept its schema declaration\", got[\"schemas\"])"
     }
   ],
   "plugin-symbol/scim/SCIMCanonicalManager": [
@@ -45560,6 +45577,32 @@
       "test": "adapters/sqlstore/scim_attributes_test.go",
       "marker": "t.Fatal(\"the User resource type did not declare the Enterprise extension\", got)",
       "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L382/`enterpriseUrn` and its writable subattributes": [
+    {
+      "label": "Patch URN-qualified attributes, merge object values, declare the extension on a write, refuse unknown or empty attributes and remove the extension with its declaration, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "func TestSCIMEnterpriseUserPatchOverHTTP(",
+      "complete": true
+    },
+    {
+      "label": "Declare the extension when a core-only User gets an Enterprise attribute",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "t.Fatal(\"an Enterprise write did not declare the extension\", got)"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L383/`manager`, `manager.value`, `manager.$ref`": [
+    {
+      "label": "Set, merge and clear the Enterprise manager through the classic aliases, refuse a writable displayName and keep the manager under the URN, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "t.Fatal(\"the manager alias did not set the Enterprise manager\", got[urn])",
+      "complete": true
+    },
+    {
+      "label": "Drop an emptied manager from the extension",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "t.Fatal(\"an emptied manager stayed in the extension\", got[urn])"
     }
   ]
 }

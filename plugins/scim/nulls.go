@@ -26,6 +26,7 @@ const (
 	nullInvalid                 // the attribute cannot be null
 	nullEntries                 // whole multi-valued entries; null subattributes are dropped
 	nullMerge                   // a complex value merged into the stored one
+	nullIgnored                 // a read-only attribute; the null is ignored
 )
 
 // userNullTarget says how a null at a User path applies, and for a merged
@@ -33,6 +34,22 @@ const (
 // so its operation still reports the path error.
 func userNullTarget(path string) (nullKind, string) {
 	relative := withoutSchema(path, UserSchema)
+	if attr, sub, ok, err := enterprisePath(relative); ok && err == nil {
+		// The URN joins its attributes with ":", the other forms with ".".
+		separator := "."
+		if strings.EqualFold(strings.TrimSpace(relative), EnterpriseUserSchema) {
+			separator = ":"
+		}
+		switch {
+		case attr == "":
+			return nullMerge, strings.TrimSpace(path) + separator
+		case sub == "displayName":
+			return nullIgnored, ""
+		case attr == "manager" && sub == "":
+			return nullMerge, strings.TrimSpace(path) + "."
+		}
+		return nullRemove, ""
+	}
 	switch {
 	case strings.EqualFold(relative, "active"):
 		return nullInvalid, ""
@@ -66,7 +83,7 @@ func expandNulls(ops []patchOp) ([]patchOp, error) {
 				if err != nil {
 					return nil, err
 				}
-				out = append(out, removal)
+				out = append(out, removal...)
 				continue
 			case kind == nullEntries:
 				o.value = stripNulls(o.value, 0)
@@ -121,7 +138,7 @@ func splitNulls(record map[string]any, prefix string) (map[string]any, []patchOp
 			if err != nil {
 				return nil, nil, err
 			}
-			removals = append(removals, removal)
+			removals = append(removals, removal...)
 			continue
 		}
 		if nested := singleRecord(entry); kind == nullMerge && nested != nil {
@@ -143,11 +160,14 @@ func splitNulls(record map[string]any, prefix string) (map[string]any, []patchOp
 	return kept, removals, nil
 }
 
-func nullRemoval(path string, kind nullKind) (patchOp, error) {
-	if kind == nullInvalid {
-		return patchOp{}, invalid("invalidValue", path+" cannot be null")
+func nullRemoval(path string, kind nullKind) ([]patchOp, error) {
+	switch kind {
+	case nullInvalid:
+		return nil, invalid("invalidValue", path+" cannot be null")
+	case nullIgnored:
+		return nil, nil
 	}
-	return patchOp{op: "remove", path: path}, nil
+	return []patchOp{{op: "remove", path: path}}, nil
 }
 
 // singleRecord reads an object, or the one object Entra may wrap in an array.

@@ -87,6 +87,7 @@
   - [ ] `SCIMEnterpriseUser`
     - [x] Create, read and replace an Enterprise User, return the extension under its URN and store it under the canonical enterprise key, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L795))
     - [x] Order and check the User schema list, read case-insensitive Enterprise keys, unwrap one-element scalars, count limits in code points, refuse an undeclared object and drop an all-null one ([test](../../../plugins/scim/enterprise_test.go#L9))
+    - [x] Undeclare the extension when a pathless value clears its last field ([test](../../../adapters/sqlstore/scim_attributes_test.go#L927))
   - [ ] `SCIMGroupAuthorizationSource`
   - [ ] `SCIMIdentity`
     - [x] Resolve incoming SCIM Users to existing accounts before the directory transaction, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_identity_test.go#L20))
@@ -371,14 +372,16 @@
       - [x] An attribute or subattribute in a `POST` or `PUT` body ([test](../../../adapters/sqlstore/scim_attributes_test.go#L53))
         - [x] Drop null attributes, name parts and email subattributes on create and replace, and refuse a null userName, active or email entry, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L53))
         - [x] Drop a null Group externalId and member subattribute and empty the members on a null PUT ([test](../../../adapters/sqlstore/scim_attributes_test.go#L172))
-      - [ ] The `value` of a PATCH `add` or `replace` operation
+      - [x] The `value` of a PATCH `add` or `replace` operation ([test](../../../adapters/sqlstore/scim_attributes_test.go#L882))
         - [x] Remove the target of a null add or replace value and refuse a null active, userName or emails, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L571))
         - [x] Leave the User unchanged after a refused null PATCH ([test](../../../adapters/sqlstore/scim_attributes_test.go#L607))
         - [x] Refuse an add or replace without a value ([test](../../../plugins/scim/http_test.go#L329))
-      - [ ] A key in a PATCH value that merges into the stored value: a pathless value, `name`, the Enterprise extension, `manager`, or a filtered value such as `addresses[type eq "work"]`
+        - [x] Remove an Enterprise field through a null alias value ([test](../../../adapters/sqlstore/scim_attributes_test.go#L882))
+      - [x] A key in a PATCH value that merges into the stored value: a pathless value, `name`, the Enterprise extension, `manager`, or a filtered value such as `addresses[type eq "work"]` ([test](../../../adapters/sqlstore/scim_attributes_test.go#L879))
         - [x] Remove null name and pathless keys after the operation's other keys apply, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L578))
         - [x] Expand null keys of name, wrapped and pathless values into ordered removals and drop nulls in whole email entries ([test](../../../plugins/scim/http_test.go#L322))
         - [x] Merge a filtered address value and remove its null keys, and leave an unmatched filter that only clears fields alone ([test](../../../adapters/sqlstore/scim_attributes_test.go#L705))
+        - [x] Remove null Enterprise keys after the merge, ignore a null read-only manager displayName and clear the extension from a pathless all-null value, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L879))
       - [ ] A subattribute of a value in a PATCH that adds or replaces whole values, such as `emails` or `addresses`
         - [x] Drop null subattributes in whole emails and roles PATCH values ([test](../../../adapters/sqlstore/scim_attributes_test.go#L260))
     - [ ] Microsoft Entra Group compatibility
@@ -499,8 +502,12 @@
         - [x] Add, select, merge, create on a miss and remove phone numbers, addresses and entitlements through the role paths, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L666))
         - [x] Demote the stored primary phone number when an added one is primary ([test](../../../adapters/sqlstore/scim_attributes_test.go#L688))
         - [x] Create a type-stamped address when a subattribute selector matches nothing ([test](../../../adapters/sqlstore/scim_attributes_test.go#L696))
-      - [ ] `enterpriseUrn` and its writable subattributes
-      - [ ] `manager`, `manager.value`, `manager.$ref`
+      - [x] `enterpriseUrn` and its writable subattributes ([test](../../../adapters/sqlstore/scim_attributes_test.go#L837))
+        - [x] Patch URN-qualified attributes, merge object values, declare the extension on a write, refuse unknown or empty attributes and remove the extension with its declaration, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L837))
+        - [x] Declare the extension when a core-only User gets an Enterprise attribute ([test](../../../adapters/sqlstore/scim_attributes_test.go#L919))
+      - [x] `manager`, `manager.value`, `manager.$ref` ([test](../../../adapters/sqlstore/scim_attributes_test.go#L889))
+        - [x] Set, merge and clear the Enterprise manager through the classic aliases, refuse a writable displayName and keep the manager under the URN, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L889))
+        - [x] Drop an emptied manager from the extension ([test](../../../adapters/sqlstore/scim_attributes_test.go#L905))
     - [ ] Group PATCH paths
       - [x] Apply schema-prefixed and pathless Group PATCH values, remove a member by a prefixed selector and clear members with null ([test](../../../adapters/sqlstore/scim_groups_test.go#L251))
       - [ ] `displayName`

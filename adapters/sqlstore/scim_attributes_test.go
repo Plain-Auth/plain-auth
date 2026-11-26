@@ -829,3 +829,103 @@ func TestSCIMEnterpriseUserOverHTTP(t *testing.T) {
 		})
 	}
 }
+
+// Enterprise paths patch the extension like another runtime: qualified
+// attributes and object values merge, writes declare the extension, the
+// classic manager aliases reach its manager, and removing the last field
+// removes the extension and its declaration.
+func TestSCIMEnterpriseUserPatchOverHTTP(t *testing.T) {
+	const urn = scim.EnterpriseUserSchema
+	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
+		t.Run(dialect, func(t *testing.T) {
+			_, call := attributeDirectory(t, dialect)
+			user := func(name string, fields map[string]any) func(int, string, ...any) map[string]any {
+				t.Helper()
+				body := map[string]any{"schemas": []string{scim.UserSchema}, "userName": name}
+				if fields != nil {
+					body["schemas"], body[urn] = []string{scim.UserSchema, urn}, fields
+				}
+				id := call("POST", "Users", body, 201, "the User was refused")["id"].(string)
+				return func(status int, failure string, ops ...any) map[string]any {
+					t.Helper()
+					got := call("PATCH", "Users/"+id, map[string]any{"schemas": []string{scim.PatchSchema}, "Operations": ops}, status, failure)
+					if status == 200 {
+						if _, leaked := got["manager"]; leaked {
+							t.Fatal("a manager alias leaked into the response", got)
+						}
+						if read := call("GET", "Users/"+id, nil, 200, "the patched User could not be read"); !jsonEqual(read[urn], got[urn]) || !jsonEqual(read["schemas"], got["schemas"]) {
+							t.Fatal("an Enterprise PATCH answered values it did not store", read[urn], got[urn])
+						}
+					}
+					return got
+				}
+			}
+			op := func(o, path string, value any) map[string]any {
+				m := map[string]any{"op": o, "path": path}
+				if value != nil {
+					m["value"] = value
+				}
+				return m
+			}
+			declared := []any{scim.UserSchema, urn}
+			patch := user("ent@example.test", map[string]any{"department": "R&D", "costCenter": "C1", "manager": map[string]any{"value": "m-1"}})
+			if got := patch(200, "a qualified Enterprise path failed", op("replace", urn+":department", "Eng")); !jsonEqual(got[urn], map[string]any{"department": "Eng", "costCenter": "C1", "manager": map[string]any{"value": "m-1"}}) {
+				t.Fatal("a qualified Enterprise path did not preserve the other fields", got[urn])
+			}
+			if got := patch(200, "an Enterprise object replace failed", op("replace", urn, map[string]any{"Division": "D", "manager": map[string]any{"$ref": "https://directory.example.test/Users/m-1"}})); !jsonEqual(got[urn], map[string]any{"department": "Eng", "costCenter": "C1", "division": "D", "manager": map[string]any{"value": "m-1", "$ref": "https://directory.example.test/Users/m-1"}}) {
+				t.Fatal("an Enterprise object replace did not merge", got[urn])
+			}
+			if got := patch(200, "a null Enterprise key failed", op("replace", urn, map[string]any{"department": nil, "employeeNumber": "7"})); got[urn].(map[string]any)["department"] != nil || got[urn].(map[string]any)["employeeNumber"] != "7" {
+				t.Fatal("a null Enterprise key was not removed after the merge", got[urn])
+			}
+			if got := patch(200, "the enterprise alias failed", op("replace", "enterprise", map[string]any{"costCenter": nil})); got[urn].(map[string]any)["costCenter"] != nil {
+				t.Fatal("the enterprise path alias did not clear a field", got[urn])
+			}
+			before := patch(200, "reading the manager failed", op("replace", "title", "Lead"))[urn]
+			if got := patch(200, "a null manager displayName failed", op("replace", urn+":manager", map[string]any{"displayName": nil})); !jsonEqual(got[urn], before) {
+				t.Fatal("a null read-only manager displayName changed the manager", got[urn])
+			}
+			if got := patch(200, "the manager alias failed", op("replace", "manager", "m-9")); !jsonEqual(got[urn].(map[string]any)["manager"], map[string]any{"value": "m-9", "$ref": "https://directory.example.test/Users/m-1"}) {
+				t.Fatal("the manager alias did not set the Enterprise manager", got[urn])
+			}
+			if got := patch(200, "manager.$ref failed", op("replace", "manager.$ref", "https://directory.example.test/Users/m-9")); !jsonEqual(got[urn].(map[string]any)["manager"], map[string]any{"value": "m-9", "$ref": "https://directory.example.test/Users/m-9"}) {
+				t.Fatal("manager.$ref did not merge into the manager", got[urn])
+			}
+			if body := patch(400, "manager.displayName was writable", op("replace", "manager.displayName", "Boss")); body["scimType"] != "mutability" {
+				t.Fatal("manager.displayName was not mutability", body)
+			}
+			if body := patch(400, "a manager without value or $ref was accepted", op("replace", "manager", map[string]any{"displayName": "Boss"})); body["scimType"] != "invalidValue" {
+				t.Fatal("a manager without value or $ref was not invalidValue", body)
+			}
+			if got := patch(200, "an empty manager replace failed", op("replace", "manager", "")); got[urn].(map[string]any)["manager"] != nil {
+				t.Fatal("an empty manager replace did not clear it", got[urn])
+			}
+			patch(200, "setting the manager failed", op("add", "manager", map[string]any{"value": "m-1"}))
+			if got := patch(200, "removing manager.value failed", op("remove", "manager.value", nil)); got[urn].(map[string]any)["manager"] != nil {
+				t.Fatal("an emptied manager stayed in the extension", got[urn])
+			}
+			if body := patch(400, "an unknown Enterprise attribute path was accepted", op("replace", urn+":unknownAttr", "x")); body["scimType"] != "invalidPath" {
+				t.Fatal("an unknown Enterprise attribute path was not invalidPath", body)
+			}
+			if body := patch(400, "an empty Enterprise department was accepted", op("replace", urn+":department", "")); body["scimType"] != "invalidValue" {
+				t.Fatal("an empty Enterprise department was not invalidValue", body)
+			}
+			if got := patch(200, "removing the Enterprise extension failed", op("remove", urn, nil)); got[urn] != nil || !jsonEqual(got["schemas"], []any{scim.UserSchema}) {
+				t.Fatal("removing the Enterprise extension kept its declaration", got)
+			}
+
+			core := user("core@example.test", nil)
+			if got := core(200, "an Enterprise write failed", op("replace", urn+":employeeNumber", "42")); !jsonEqual(got["schemas"], declared) || !jsonEqual(got[urn], map[string]any{"employeeNumber": "42"}) {
+				t.Fatal("an Enterprise write did not declare the extension", got)
+			}
+			if got := core(200, "a flat pathless Enterprise key failed", map[string]any{"op": "replace", "value": map[string]any{urn + ":department": "Ops", "manager": "m-2"}}); !jsonEqual(got[urn], map[string]any{"employeeNumber": "42", "department": "Ops", "manager": map[string]any{"value": "m-2"}}) {
+				t.Fatal("flat pathless Enterprise keys were not applied", got[urn])
+			}
+			if got := core(200, "a pathless all-null Enterprise clear failed", map[string]any{"op": "replace", "value": map[string]any{urn: map[string]any{"employeeNumber": nil, "department": nil, "manager": nil}}}); got[urn] != nil {
+				t.Fatal("clearing every Enterprise field kept the extension", got)
+			} else if !jsonEqual(got["schemas"], []any{scim.UserSchema}) {
+				t.Fatal("clearing every Enterprise field kept its schema declaration", got["schemas"])
+			}
+		})
+	}
+}
