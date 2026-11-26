@@ -47,9 +47,10 @@
     - [x] Store entitlements in the canonical serialized attributes and return them, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L688))
   - [x] `SCIMCanonicalManager` ([test](../../../plugins/scim/enterprise_test.go#L72))
     - [x] Store a manager string, object or one-element array as value and $ref, discard its displayName and refuse an empty, multiple or overlong manager ([test](../../../plugins/scim/enterprise_test.go#L72))
-  - [ ] `SCIMCanonicalName`
+  - [x] `SCIMCanonicalName` ([test](../../../adapters/sqlstore/scim_attributes_contract_test.go#L69))
     - [x] Derive a created User's display name from its given and family names on both runtimes ([test](../../../conformance/scim-contract.mjs#L60))
     - [x] Name the linked account from the User's given and family names ([test](../../../adapters/sqlstore/scim_test.go#L139))
+    - [x] Supply a missing name and displayName from the primary email, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_contract_test.go#L69))
   - [x] `SCIMCanonicalPhoneNumber` ([test](../../../plugins/scim/multivalued_test.go#L23))
     - [x] Trim phone numbers, lowercase their type, read a string primary as a Boolean, and refuse eleven entries, two primaries, a missing value or a scalar ([test](../../../plugins/scim/multivalued_test.go#L23))
     - [x] Store and return created phone numbers and keep them through a PATCH, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L674))
@@ -453,8 +454,9 @@
         - [x] Remove null Enterprise keys after the merge, ignore a null read-only manager displayName and clear the extension from a pathless all-null value, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L929))
         - [x] Remove a null Enterprise key through the enterprise path alias ([test](../../../adapters/sqlstore/scim_attributes_test.go#L932))
         - [x] Remove a null formatted name after the other null name parts, so it composes from what remains ([test](../../../adapters/sqlstore/scim_attributes_test.go#L653))
-      - [ ] A subattribute of a value in a PATCH that adds or replaces whole values, such as `emails` or `addresses`
+      - [x] A subattribute of a value in a PATCH that adds or replaces whole values, such as `emails` or `addresses` ([test](../../../adapters/sqlstore/scim_attributes_contract_test.go#L127))
         - [x] Drop null subattributes in whole emails and roles PATCH values ([test](../../../adapters/sqlstore/scim_attributes_test.go#L260))
+        - [x] Drop null subattributes inside replaced addresses and emails and accept a null member display, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_contract_test.go#L127))
     - [ ] Microsoft Entra Group compatibility
       - [x] Create a Group whose schema list carries the classic Entra marker when the compatibility option is on ([test](../../../adapters/sqlstore/scim_groups_test.go#L96))
   - [ ] Users
@@ -492,10 +494,12 @@
         - [x] Derive the account name from given and family names when neither a formatted name nor displayName is sent ([test](../../../adapters/sqlstore/scim_test.go#L139))
       - [x] `name.middleName`, `name.honorificPrefix`, `name.honorificSuffix` ([test](../../../adapters/sqlstore/scim_attributes_test.go#L123))
         - [x] Store and return the middle name and honorifics, and replace them on PUT ([test](../../../adapters/sqlstore/scim_attributes_test.go#L123))
-      - [ ] `emails`
+      - [x] `emails` ([test](../../../adapters/sqlstore/scim_attributes_contract_test.go#L83))
         - [x] Lowercase an email value and mark the only work email primary on both runtimes ([test](../../../conformance/scim-contract.mjs#L61))
-      - [ ] `title`, `userType`, `preferredLanguage`, `locale`, `timezone`
+        - [x] Accept twenty emails and a 254-character address and refuse more, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_contract_test.go#L83))
+      - [x] `title`, `userType`, `preferredLanguage`, `locale`, `timezone` ([test](../../../adapters/sqlstore/scim_attributes_contract_test.go#L98))
         - [x] Return a title sent in a User replacement on both runtimes ([test](../../../conformance/scim-contract.mjs#L71))
+        - [x] Round-trip the five profile strings on create and read, and clear them with a PUT that omits them, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_contract_test.go#L98))
       - [x] `phoneNumbers`, `addresses`, `roles`, `entitlements` ([test](../../../adapters/sqlstore/scim_attributes_test.go#L662))
         - [x] Create, return, patch around and replace Users with phone numbers, addresses and entitlements, and list them in the User schema after timezone and around roles, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L662))
         - [x] Drop the multi-valued attributes a PUT omits ([test](../../../adapters/sqlstore/scim_attributes_test.go#L696))
@@ -560,8 +564,9 @@
         - [x] Unwrap a one-element userName array ([test](../../../adapters/sqlstore/scim_attributes_test.go#L438))
       - [x] `externalId` ([test](../../../adapters/sqlstore/scim_attributes_test.go#L242))
         - [x] Add, replace, filter and remove a User externalId through PATCH, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L242))
-      - [ ] `active`
+      - [x] `active` ([test](../../../adapters/sqlstore/scim_attributes_contract_test.go#L122))
         - [x] Deactivate a User by patching active with the string false and revoke its sessions ([test](../../../adapters/sqlstore/scim_test.go#L202))
+        - [x] Deactivate with PATCH add active false and restore true with PATCH remove active, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_contract_test.go#L122))
       - [x] `displayName` ([test](../../../adapters/sqlstore/scim_attributes_test.go#L253))
         - [x] Replace displayName, carry it to the account name and fall back to the formatted name on removal, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L253))
         - [x] Fall back from a removed display name to the formatted name at once, so a removed formatted name in the same PATCH keeps it ([test](../../../adapters/sqlstore/scim_attributes_test.go#L644))
@@ -580,8 +585,9 @@
       - [x] `emails[type eq "work"].value` ([test](../../../adapters/sqlstore/scim_attributes_test.go#L514))
         - [x] Replace a type-selected email, append a non-primary email on a miss, remove the selected type, ignore an unmatched removal, refuse removing the last email and select the primary email, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L514))
         - [x] Append a non-primary email when a type selector matches nothing ([test](../../../adapters/sqlstore/scim_attributes_test.go#L518))
-      - [ ] `title`, `userType`, `preferredLanguage`, `locale`, `timezone`
+      - [x] `title`, `userType`, `preferredLanguage`, `locale`, `timezone` ([test](../../../adapters/sqlstore/scim_attributes_contract_test.go#L114))
         - [x] Replace title and locale through concurrent PATCH requests on two servers without losing either ([test](../../../adapters/sqlstore/scim_test.go#L193))
+        - [x] Add, replace and remove the five profile strings with PATCH, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_contract_test.go#L114))
       - [x] `phoneNumbers`, `addresses`, `roles`, `entitlements`, their subattributes and type paths ([test](../../../adapters/sqlstore/scim_attributes_test.go#L712))
         - [x] Add, select, merge, create on a miss and remove phone numbers, addresses and entitlements through the role paths, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L712))
         - [x] Demote the stored primary phone number when an added one is primary ([test](../../../adapters/sqlstore/scim_attributes_test.go#L734))

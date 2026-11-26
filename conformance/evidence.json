@@ -43657,6 +43657,12 @@
       "label": "Name the linked account from the User's given and family names",
       "test": "adapters/sqlstore/scim_test.go",
       "marker": "if account.Name != \"Rae Doe\" || account.EmailVerified {"
+    },
+    {
+      "label": "Supply a missing name and displayName from the primary email, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_attributes_contract_test.go",
+      "marker": "t.Fatal(\"the primary email did not supply the name and displayName\", bare)",
+      "complete": true
     }
   ],
   "plugin-symbol/scim/SCIMCanonicalRole": [
@@ -44224,6 +44230,12 @@
       "label": "Lowercase an email value and mark the only work email primary on both runtimes",
       "test": "conformance/scim-contract.mjs",
       "marker": "assert.deepEqual(user.emails,[{value:\"person@example.test\",type:\"work\",primary:true}]);"
+    },
+    {
+      "label": "Accept twenty emails and a 254-character address and refuse more, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_attributes_contract_test.go",
+      "marker": "call(\"POST\", \"Users\", map[string]any{\"schemas\": []string{scim.UserSchema}, \"userName\": \"longer\", \"emails\": emails(long(255))}, 400)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L255/`title`, `userType`, `preferredLanguage`, `locale`, `timezone`": [
@@ -44231,6 +44243,12 @@
       "label": "Return a title sent in a User replacement on both runtimes",
       "test": "conformance/scim-contract.mjs",
       "marker": "assert.equal(replaced.title,\"Manager\")"
+    },
+    {
+      "label": "Round-trip the five profile strings on create and read, and clear them with a PUT that omits them, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_attributes_contract_test.go",
+      "marker": "t.Fatal(\"PUT kept a profile string it did not send\", k)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L295": [
@@ -44387,6 +44405,12 @@
       "label": "Deactivate a User by patching active with the string false and revoke its sessions",
       "test": "adapters/sqlstore/scim_test.go",
       "marker": "call(a, \"PATCH\", path, \"writer\", patch(replace(\"active\", \"false\")), 200)"
+    },
+    {
+      "label": "Deactivate with PATCH add active false and restore true with PATCH remove active, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_attributes_contract_test.go",
+      "marker": "t.Fatal(\"PATCH remove active did not restore true\", got)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L380/`title`, `userType`, `preferredLanguage`, `locale`, `timezone`": [
@@ -44394,6 +44418,12 @@
       "label": "Replace title and locale through concurrent PATCH requests on two servers without losing either",
       "test": "adapters/sqlstore/scim_test.go",
       "marker": "t.Fatal(\"lost update\", merged)"
+    },
+    {
+      "label": "Add, replace and remove the five profile strings with PATCH, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_attributes_contract_test.go",
+      "marker": "t.Fatal(\"PATCH remove kept a profile string\", k)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L395/`displayName`": [
@@ -46112,6 +46142,12 @@
       "label": "Drop null subattributes in whole emails and roles PATCH values",
       "test": "adapters/sqlstore/scim_attributes_test.go",
       "marker": "t.Fatal(\"a null subattribute in a whole roles value was kept\", got[\"roles\"])"
+    },
+    {
+      "label": "Drop null subattributes inside replaced addresses and emails and accept a null member display, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_attributes_contract_test.go",
+      "marker": "t.Fatal(\"a null address subattribute was kept\", addr)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L184": [
