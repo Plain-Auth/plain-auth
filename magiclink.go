@@ -155,6 +155,8 @@ func (o MagicLinkOptions) request(c EndpointContext) (any, error) {
 			return nil, err
 		}
 	}
+	// A generated token is capped at 240 bytes, the room a raw stored key
+	// has in the verification identifier. The other runtime sets no cap.
 	if token == "" || len(token) > 240 {
 		return nil, errors.New("invalid generated magic link token")
 	}
@@ -176,6 +178,8 @@ func (o MagicLinkOptions) request(c EndpointContext) (any, error) {
 		return nil, err
 	}
 	now := a.now().UTC().Truncate(time.Millisecond)
+	// The address is stored and delivered in lower case, as accounts match
+	// it. GenerateToken above receives it as the request sent it.
 	ch := MagicLinkChallenge{Key: key, Email: strings.ToLower(email), Name: name, CreatedAt: now, ExpiresAt: now.Add(o.ExpiresIn)}
 	// A declined link answers as a sent one, with nothing stored or mailed.
 	declined, err := a.createVerification(ctx, magicLinkRecord(key, ch.ExpiresAt), func() error {

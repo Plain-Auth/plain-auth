@@ -2574,6 +2574,12 @@
       "label": "Redirect an expired link to the error page with INVALID_TOKEN",
       "test": "adapters/sqlstore/magiclink_test.go",
       "marker": "expectRedirect(verify(second, expired.URL), \"/failed?error=INVALID_TOKEN\")"
+    },
+    {
+      "label": "Store a link that expires five minutes after it is created when no lifetime is set, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/magiclink_test.go",
+      "marker": "default link lifetime:",
+      "complete": true
     }
   ],
   "plugin-symbol/magic-link/MagicLinkOptions/sendMagicLink": [
@@ -2607,6 +2613,17 @@
       "label": "Apply the configured per-endpoint request budget",
       "test": "adapters/sqlstore/magiclink_test.go",
       "marker": "custom limit returned"
+    },
+    {
+      "label": "Answer the sixth POST /sign-in/magic-link in a minute with 429 and a 60-second retry when no rule is set, on three SQL engines",
+      "test": "adapters/sqlstore/magiclink_test.go",
+      "marker": "default request limit:"
+    },
+    {
+      "label": "Count GET /magic-link/verify separately under the same default rule and answer its sixth request in a minute with 429",
+      "test": "adapters/sqlstore/magiclink_test.go",
+      "marker": "default verify limit:",
+      "complete": true
     }
   ],
   "plugin-symbol/magic-link/MagicLinkOptions/generateToken": [
@@ -2614,6 +2631,12 @@
       "label": "Deliver the value from the configured generator",
       "test": "adapters/sqlstore/magiclink_test.go",
       "marker": "sender or generator:"
+    },
+    {
+      "label": "Pass the address as the request sent it to the configured generator",
+      "test": "adapters/sqlstore/magiclink_test.go",
+      "marker": "generator received",
+      "complete": true
     }
   ],
   "plugin-symbol/magic-link/MagicLinkOptions/storeToken": [
@@ -34886,6 +34909,58 @@
       "test": "plugins/lastlogin/lastlogin_test.go",
       "marker": "the preference did not copy the cross-site session attributes",
       "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/magic-link.mdx#L151/rateLimit": [
+    {
+      "label": "Answer the sixth POST /sign-in/magic-link in a minute with 429 and a 60-second retry when no rule is set, on three SQL engines",
+      "test": "adapters/sqlstore/magiclink_test.go",
+      "marker": "default request limit:"
+    },
+    {
+      "label": "Count GET /magic-link/verify separately under the same default rule and answer its sixth request in a minute with 429",
+      "test": "adapters/sqlstore/magiclink_test.go",
+      "marker": "default verify limit:",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/magic-link.mdx#L153/generateToken": [
+    {
+      "label": "Pass the address as the request sent it to the configured generator",
+      "test": "adapters/sqlstore/magiclink_test.go",
+      "marker": "generator received",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/magic-link.mdx#L145/expiresIn": [
+    {
+      "label": "Store a link that expires five minutes after it is created when no lifetime is set, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/magiclink_test.go",
+      "marker": "default link lifetime:",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/magic-link/magicLink": [
+    {
+      "label": "Install the plugin on the Go memory and SQL stores and run request, delivery, redemption, replay and closed-registration flows with the official client",
+      "test": "conformance/magic-link-delivery.mjs",
+      "marker": "export async function compareMagicLinkDelivery(",
+      "complete": true
+    },
+    {
+      "label": "Store a link that expires five minutes after it is created when no lifetime is set, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/magiclink_test.go",
+      "marker": "default link lifetime:"
+    },
+    {
+      "label": "Answer the sixth POST /sign-in/magic-link in a minute with 429 and a 60-second retry when no rule is set, on three SQL engines",
+      "test": "adapters/sqlstore/magiclink_test.go",
+      "marker": "default request limit:"
+    },
+    {
+      "label": "Count GET /magic-link/verify separately under the same default rule and answer its sixth request in a minute with 429",
+      "test": "adapters/sqlstore/magiclink_test.go",
+      "marker": "default verify limit:"
     }
   ]
 }

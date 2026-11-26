@@ -2,16 +2,16 @@
 
 ## Verification progress
 
-**1,964 of 6,455 inventory entries are fully verified (30.4%).**
+**1,971 of 6,455 inventory entries are fully verified (30.5%).**
 
 | Inventory status | Entries |
 | --- | ---: |
-| Fully verified | 1,964 |
-| Partially verified | 1,400 |
-| No linked test evidence | 3,091 |
+| Fully verified | 1,971 |
+| Partially verified | 1,397 |
+| No linked test evidence | 3,087 |
 | Not applicable to a Go server | 570 |
 
-The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 5,489 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
+The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 5,501 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
 
 Entries that exist only for JavaScript clients, frameworks or runtimes are listed as not applicable, with the reason, and are left out of the totals. Backlog entries stay open on the roadmap but are not scheduled.
 
@@ -108,7 +108,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Internationalization](plugins/i18n.md) | 183 | 6 | 0 |
 | [JSON Web Tokens](plugins/jwt.md) | 13 | 75 | 0 |
 | [Last login method](plugins/last-login-method.md) | 98 | 19 | 2 |
-| [Magic link](plugins/magic-link.md) | 87 | 12 | 0 |
+| [Magic link](plugins/magic-link.md) | 106 | 5 | 0 |
 | [Model Context Protocol](plugins/mcp.md) | 0 | 108 | 0 |
 | [Multi session](plugins/multi-session.md) | 58 | 5 | 0 |
 | [OAuth popup](plugins/oauth-popup.md) | 56 | 5 | 0 |

@@ -211,8 +211,10 @@ func TestMagicLinkTokenOptions(t *testing.T) {
 	const origin = "https://options.test"
 	for _, custom := range []bool{false, true} {
 		var msg magiclink.Message
+		var requested string
 		token := rand.Text()
-		opt := magiclink.Options{Send: func(_ context.Context, m magiclink.Message) error { msg = m; return nil }, GenerateToken: func(context.Context, string) (string, error) { return token, nil }, ExpiresIn: 2 * time.Minute}
+		opt := magiclink.Options{Send: func(_ context.Context, m magiclink.Message) error { msg = m; return nil }, ExpiresIn: 2 * time.Minute,
+			GenerateToken: func(_ context.Context, email string) (string, error) { requested = email; return token, nil }}
 		key := token
 		if custom {
 			key = "custom-" + token
@@ -226,12 +228,15 @@ func TestMagicLinkTokenOptions(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		r := httptest.NewRequest("POST", origin+"/api/auth/sign-in/magic-link", strings.NewReader(`{"email":"someone@example.test"}`))
+		r := httptest.NewRequest("POST", origin+"/api/auth/sign-in/magic-link", strings.NewReader(`{"email":"Someone@Example.test"}`))
 		r.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		a.ServeHTTP(w, r)
 		if w.Code != 200 || msg.Token != token {
 			t.Fatalf("sender or generator: %d %s", w.Code, w.Body)
+		}
+		if requested != "Someone@Example.test" {
+			t.Fatalf("generator received %q", requested)
 		}
 		var created, expires time.Time
 		if err := s.db.QueryRowContext(ctx, `SELECT "createdAt","expiresAt" FROM "verification" WHERE "identifier"=?`, "magic-link:"+key).Scan(&created, &expires); err != nil || expires.Sub(created) != 2*time.Minute {
@@ -242,5 +247,66 @@ func TestMagicLinkTokenOptions(t *testing.T) {
 		if w.Code != 302 || w.Header().Get("Location") != origin+"/" {
 			t.Fatal("unable to consume generated link")
 		}
+	}
+}
+
+// Without options, a link lives five minutes and each of the request and
+// verify routes admits five requests a minute from one peer.
+func TestMagicLinkDefaults(t *testing.T) {
+	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
+		t.Run(dialect, func(t *testing.T) {
+			ctx := t.Context()
+			s, err := Open(ctx, dialect, organizationTestDSN(t, dialect))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer s.Close()
+			var msg magiclink.Message
+			p, err := magiclink.New(magiclink.Options{Send: func(_ context.Context, m magiclink.Message) error { msg = m; return nil }})
+			if err != nil {
+				t.Fatal(err)
+			}
+			const origin = "https://defaults.test"
+			on := true
+			a, err := auth.New(auth.Options{BaseURL: origin, Store: s, Secret: "magic-link-defaults-secret-00000000000", RateLimit: &on, Plugins: []auth.Plugin{p}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			call := func(method, target, body string) *httptest.ResponseRecorder {
+				r := httptest.NewRequest(method, target, strings.NewReader(body))
+				r.Header.Set("Content-Type", "application/json")
+				w := httptest.NewRecorder()
+				a.ServeHTTP(w, r)
+				return w
+			}
+			request := func() *httptest.ResponseRecorder {
+				return call("POST", origin+"/api/auth/sign-in/magic-link", `{"email":"defaults@example.test"}`)
+			}
+			if w := request(); w.Code != 200 {
+				t.Fatalf("first request: HTTP %d %s", w.Code, w.Body)
+			}
+			var created, expires time.Time
+			if err := s.db.QueryRowContext(ctx, s.bind(`SELECT "createdAt","expiresAt" FROM "verification" WHERE "identifier"=?`), "magic-link:"+msg.Token).Scan(&created, &expires); err != nil || expires.Sub(created) != 5*time.Minute {
+				t.Fatalf("default link lifetime: %v %v", expires.Sub(created), err)
+			}
+			link := msg.URL
+			for i := 2; i <= 5; i++ {
+				if w := request(); w.Code != 200 {
+					t.Fatalf("request %d within the limit: HTTP %d", i, w.Code)
+				}
+			}
+			if w := request(); w.Code != 429 || w.Header().Get("X-Retry-After") != "60" {
+				t.Fatalf("default request limit: HTTP %d, retry %q", w.Code, w.Header().Get("X-Retry-After"))
+			}
+			// The verify route counts its own five requests.
+			for i := 1; i <= 5; i++ {
+				if w := call("GET", link, ""); w.Code != 302 {
+					t.Fatalf("verification %d within the limit: HTTP %d", i, w.Code)
+				}
+			}
+			if w := call("GET", link, ""); w.Code != 429 || w.Header().Get("X-Retry-After") != "60" {
+				t.Fatalf("default verify limit: HTTP %d, retry %q", w.Code, w.Header().Get("X-Retry-After"))
+			}
+		})
 	}
 }
