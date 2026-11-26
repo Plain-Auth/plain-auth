@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -31,6 +32,18 @@ func TestSCIMProtocolAndCredentialConfiguration(t *testing.T) {
 	for _, cs := range [][]Connection{{conn("ba_scim_connection_managed", "a")}, {conn("a", "one"), conn("b", "one")}, {conn("a", "one"), conn("a", "two")}, {conn("a", "")}, {conn("a", "two words")}, {{Directory: Directory{ID: "a"}, Credentials: []Credential{{ID: "key", Token: "one", Scopes: []string{"bad"}}}}}} {
 		if _, err := New(host, Options{Store: failureStore{}, Connections: cs}); err == nil {
 			t.Fatal("accepted invalid connection")
+		}
+	}
+	// Each of these configurations is refused at startup.
+	for name, o := range map[string]Options{
+		"no connection, verifier or catalog": {Store: failureStore{}},
+		"a connection without credentials":   {Store: failureStore{}, Connections: []Connection{{Directory: Directory{ID: "a"}}}},
+		"a padded provisioning domain":       {Store: failureStore{}, Connections: []Connection{{Directory: Directory{ID: "a", ProvisioningDomainID: " padded"}, Credentials: []Credential{{ID: "one", Token: "t"}}}}},
+		"two credentials with one ID":        {Store: failureStore{}, Connections: []Connection{{Directory: Directory{ID: "a"}, Credentials: []Credential{{ID: "one", Token: "t1"}, {ID: "one", Token: "t2"}}}}},
+		"a padded credential ID":             {Store: failureStore{}, Connections: []Connection{{Directory: Directory{ID: "a"}, Credentials: []Credential{{ID: " one", Token: "t"}}}}},
+	} {
+		if _, err := New(host, o); err == nil {
+			t.Fatal("scim.New accepted a configuration with", name)
 		}
 	}
 	options := Options{Store: failureStore{}, Connections: []Connection{conn("a", "one")}}
@@ -118,7 +131,27 @@ func TestSCIMNormalizedProfileAndPatch(t *testing.T) {
 	if _, e := patchProfile(r, []any{map[string]any{"op": "add", "path": "emails", "value": map[string]any{"type": "work", "value": "second@example.test"}}}); e == nil {
 		t.Fatal("an emails add with a bare object was accepted")
 	}
+	// Emails are bounded at 20 entries and 254 characters, and without a
+	// primary or a work email the first one is primary.
+	many := []any{}
+	for i := range 21 {
+		many = append(many, map[string]any{"value": fmt.Sprintf("m%02d@example.test", i)})
+	}
+	untyped, err := normalize(map[string]any{"schemas": []any{UserSchema}, "userName": "u@example.test", "emails": []any{map[string]any{"value": "first@example.test"}, map[string]any{"value": "second@example.test"}}})
+	if err != nil || untyped.PrimaryEmail != "first@example.test" {
+		t.Fatal("the first of two untyped emails did not become primary", untyped.PrimaryEmail, err)
+	}
+	// Name parts allow 256 code points and the formatted name 1,024.
+	if _, err := normalize(map[string]any{"schemas": []any{UserSchema}, "userName": "u@example.test", "name": map[string]any{"givenName": strings.Repeat("é", 256), "formatted": strings.Repeat("é", 1024)}}); err != nil {
+		t.Fatal("name parts at their limits were refused", err)
+	}
 	for _, bad := range []map[string]any{
+		{"userName": "u@example.test", "emails": many},
+		{"userName": "u@example.test", "emails": []any{map[string]any{"value": strings.Repeat("a", 243) + "@example.test"}}},
+		{"userName": "u@example.test", "emails": []any{map[string]any{"value": "not-an-email"}}},
+		{"userName": "u@example.test", "name": map[string]any{"givenName": strings.Repeat("é", 257)}},
+		{"userName": "u@example.test", "name": map[string]any{"formatted": strings.Repeat("é", 1025)}},
+		{"userName": "u@example.test", "name": map[string]any{"middleName": " "}},
 		{"userName": "no-address"},
 		{"userName": "foo@example.test", "emails": []any{map[string]any{"type": "work", "value": "aaa@example.test"}, map[string]any{"type": "WORK", "value": "bbb@example.test"}}},
 		{"userName": "foo@example.test", "emails": []any{map[string]any{"primary": true, "value": "one@example.test"}, map[string]any{"primary": "true", "value": "two@example.test"}}},

@@ -678,7 +678,7 @@
     - [x] Configure application before and after hooks for the mounted HTTP endpoints ([test](../../conformance/goapi/endpoint_hooks_test.go#L22))
   - [x] `disabledPaths` ([test](../../conformance/goapi/disabled_paths_test.go#L14))
     - [x] Disable exact mount-relative HTTP paths before key extraction and request hooks, omit their fixed routes from OpenAPI and retain native Go calls ([test](../../conformance/goapi/disabled_paths_test.go#L14))
-    - [x] Apply the same per-path HTTP setting to the SCIM wrapper and preserve neighboring resource operations ([test](../../plugins/scim/http_test.go#L135))
+    - [x] Apply the same per-path HTTP setting to the SCIM wrapper and preserve neighboring resource operations ([test](../../plugins/scim/http_test.go#L168))
   - [ ] `telemetry`
 
 ## Security

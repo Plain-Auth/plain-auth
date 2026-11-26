@@ -9943,6 +9943,11 @@
       "label": "Answer 409 when a directory's provisioning domain differs from the one recorded on first use",
       "test": "adapters/sqlstore/scim_test.go",
       "marker": "call(build(second, \"moved\"), \"GET\", \"Users\", \"writer\", nil, 409)"
+    },
+    {
+      "label": "Refuse a padded provisioning domain at startup",
+      "test": "plugins/scim/http_test.go",
+      "marker": "t.Fatal(\"scim.New accepted a configuration with\", name)"
     }
   ],
   "plugin-symbol/scim/SCIMConnectionOptions/id": [
@@ -43290,6 +43295,12 @@
       "label": "Make the work address the primary email of a created User whose emails carry types",
       "test": "adapters/sqlstore/scim_test.go",
       "marker": "account, e := first.FindAccountUser(ctx, \"primary@example.test\")"
+    },
+    {
+      "label": "Refuse 21 emails, a 255-character address and an invalid address, and make the first of two untyped emails primary",
+      "test": "plugins/scim/http_test.go",
+      "marker": "t.Fatal(\"the first of two untyped emails did not become primary\", untyped.PrimaryEmail, err)",
+      "complete": true
     }
   ],
   "plugin-symbol/scim/SCIMOptions": [
@@ -43309,6 +43320,11 @@
       "label": "Authenticate managed credentials when no code-defined connection is configured",
       "test": "adapters/sqlstore/scim_managed_test.go",
       "marker": "scim.Options{Store: st, Managed:"
+    },
+    {
+      "label": "Refuse a configuration without connections, verifier or catalog, a connection without credentials, duplicate or padded credential IDs at startup",
+      "test": "plugins/scim/http_test.go",
+      "marker": "t.Fatal(\"scim.New accepted a configuration with\", name)"
     }
   ],
   "plugin-symbol/scim/SCIMProjection": [
@@ -45941,6 +45957,21 @@
       "test": "adapters/sqlstore/scim_projection_test.go",
       "marker": "func TestSCIMGroupApplicationProjection(",
       "complete": true
+    }
+  ],
+  "plugin-symbol/scim/SCIMName": [
+    {
+      "label": "Accept name parts of 256 and a formatted name of 1,024 code points, and refuse one more or an empty part",
+      "test": "plugins/scim/http_test.go",
+      "marker": "t.Fatal(\"name parts at their limits were refused\", err)",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/scim/scim": [
+    {
+      "label": "Refuse invalid connection and credential configurations at startup",
+      "test": "plugins/scim/http_test.go",
+      "marker": "t.Fatal(\"scim.New accepted a configuration with\", name)"
     }
   ]
 }
