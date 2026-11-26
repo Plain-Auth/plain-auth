@@ -37,6 +37,11 @@ type JWTOptions struct {
 	// The store, not the plugin, picks the active key and serializes its
 	// generation, so concurrent requests share one new key.
 	KeyStore JWTStore
+	// DisablePrivateKeyEncryption stores new private keys as plain JWK JSON
+	// and reads stored keys that way. Encryption is on by default. Turn it
+	// off only when another system must read the keys and protects the
+	// table itself. An instance cannot sign with a key stored the other way.
+	DisablePrivateKeyEncryption bool
 }
 
 type PublicJWTKey struct {
@@ -46,6 +51,8 @@ type PublicJWTKey struct {
 }
 type StoredJWTKey struct {
 	PublicJWTKey
+	// EncryptedPrivateKey holds the sealed private JWK, or the plain private
+	// JWK JSON when DisablePrivateKeyEncryption is set.
 	EncryptedPrivateKey string
 }
 
@@ -233,15 +240,19 @@ func (a *Auth) activeSigningKey(ctx context.Context, now time.Time, algorithm st
 		if err != nil {
 			return StoredJWTKey{}, err
 		}
-		encrypted, err := a.sealRecord("jwk", secret)
-		if err != nil {
-			return StoredJWTKey{}, err
+		stored := string(secret)
+		if !opts.DisablePrivateKeyEncryption {
+			encrypted, err := a.sealRecord("jwk", secret)
+			if err != nil {
+				return StoredJWTKey{}, err
+			}
+			envelope, err := json.Marshal(encrypted)
+			if err != nil {
+				return StoredJWTKey{}, err
+			}
+			stored = string(envelope)
 		}
-		envelope, err := json.Marshal(encrypted)
-		if err != nil {
-			return StoredJWTKey{}, err
-		}
-		row := StoredJWTKey{PublicJWTKey: PublicJWTKey{ID: randomID(), Algorithm: algorithm, Curve: curve, PublicKey: string(public), CreatedAt: now}, EncryptedPrivateKey: string(envelope)}
+		row := StoredJWTKey{PublicJWTKey: PublicJWTKey{ID: randomID(), Algorithm: algorithm, Curve: curve, PublicKey: string(public), CreatedAt: now}, EncryptedPrivateKey: stored}
 		if opts.RotationInterval > 0 {
 			ends := now.Add(opts.RotationInterval)
 			row.ExpiresAt = &ends
@@ -285,13 +296,16 @@ func (a *Auth) signSessionJWT(ctx context.Context, s SessionResult) (string, err
 }
 
 func (a *Auth) signStoredJWTKey(row StoredJWTKey, claims map[string]any, settings JWTSignOptions) (string, error) {
-	var envelope string
-	if err := json.Unmarshal([]byte(row.EncryptedPrivateKey), &envelope); err != nil {
-		return "", errors.New("jwt: invalid encrypted private key")
-	}
-	plain, err := a.openRecord("jwk", envelope)
-	if err != nil {
-		return "", errors.New("jwt: cannot decrypt the signing key")
+	plain := []byte(row.EncryptedPrivateKey)
+	if !a.serviceJWT.DisablePrivateKeyEncryption {
+		var envelope string
+		if err := json.Unmarshal(plain, &envelope); err != nil {
+			return "", errors.New("jwt: invalid encrypted private key")
+		}
+		var err error
+		if plain, err = a.openRecord("jwk", envelope); err != nil {
+			return "", errors.New("jwt: cannot decrypt the signing key")
+		}
 	}
 	var secret, pub jose.JSONWebKey
 	if json.Unmarshal(plain, &secret) != nil || !secret.Valid() || secret.IsPublic() || json.Unmarshal([]byte(row.PublicKey), &pub) != nil || !pub.IsPublic() {

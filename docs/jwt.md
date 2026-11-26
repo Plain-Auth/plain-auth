@@ -39,9 +39,10 @@ Configure the receiving service with the auth server's public JWKS address, expe
 | `GracePeriod` | An expired signing key remains published for thirty days by default. Set a duration pointer to change that window. |
 | `JWKSPath` | Sets the public verification endpoint relative to the auth mount. Defaults to `/jwks`. |
 | `DefinePayload` | Receives the authenticated session. The default payload includes the public user profile. A callback can select individual application claims. The server supplies the subject, issuer, audience and timestamps. |
+| `DisablePrivateKeyEncryption` | Stores private keys as plain JWK JSON. Encryption with the application's encryption key is the default and is recommended. An instance cannot sign with a key stored the other way and keeps choosing the newest live key, so when you change the setting delete the existing `jwks` rows, or wait for them to expire under `RotationInterval`. |
 | `KeyStore` | Keeps signing keys outside the main store. See [Keep keys in your own store](#keep-keys-in-your-own-store). |
 
-All auth instances sharing signing keys need the same encryption key configuration. The SQL store persists the encrypted private JWK under the active encryption key version and its public counterpart separately. The JWKS endpoint publishes public fields. The host can use `Auth.IssueJWT(ctx, headers)` for authenticated issuance and `Auth.PublicJWKS(ctx)` for public key discovery.
+All auth instances sharing signing keys need the same encryption key configuration. The SQL store persists the encrypted private JWK, unless `DisablePrivateKeyEncryption` is set, under the active encryption key version and its public counterpart separately. The JWKS endpoint publishes public fields. The host can use `Auth.IssueJWT(ctx, headers)` for authenticated issuance and `Auth.PublicJWKS(ctx)` for public key discovery.
 
 ## Keep keys in your own store
 

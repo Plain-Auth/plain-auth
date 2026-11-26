@@ -2,6 +2,7 @@ package sqlstore
 
 import (
 	"context"
+	"crypto"
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/rsa"
@@ -17,6 +18,7 @@ import (
 	auth "github.com/Plain-Org/plain-auth"
 	jwtplugin "github.com/Plain-Org/plain-auth/plugins/jwt"
 	"github.com/Plain-Org/plain-auth/schema"
+	jose "github.com/go-jose/go-jose/v4"
 	libjwt "github.com/golang-jwt/jwt/v5"
 )
 
@@ -388,6 +390,80 @@ func TestJWTRSAModulusLength(t *testing.T) {
 				if _, err := a.VerifyJWT(ctx, raw, auth.JWTVerifyOptions{Subject: "service-account"}); err != nil {
 					t.Fatalf("%s token with a 3072-bit key failed verification: %v", alg, err)
 				}
+			}
+		})
+	}
+}
+
+// With encryption disabled, the private key is stored as the plain JWK of
+// the published key and signs verifiable tokens; an instance that encrypts
+// refuses to sign with it.
+func TestJWTUnencryptedPrivateKey(t *testing.T) {
+	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
+		t.Run(dialect, func(t *testing.T) {
+			ctx := t.Context()
+			ddl, err := schema.Generate(dialect, []string{"jwt"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			store, err := OpenWithSchema(ctx, dialect, organizationTestDSN(t, dialect), ddl)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer store.Close()
+			const origin = "https://plain-keys.auth.test"
+			build := func(opts jwtplugin.Options) *auth.Auth {
+				p, err := jwtplugin.New(opts)
+				if err != nil {
+					t.Fatal(err)
+				}
+				a, err := auth.New(auth.Options{BaseURL: origin, Secret: strings.Repeat("s", 32), Store: store, EmailAndPassword: true, Plugins: []auth.Plugin{p}})
+				if err != nil {
+					t.Fatal(err)
+				}
+				return a
+			}
+			plain := build(jwtplugin.Options{DisablePrivateKeyEncryption: true})
+			account, err := plain.SignUpEmail(ctx, auth.SignUpInput{Name: "Plain", Email: "plain@keys.test", Password: "plain-key-password"}, auth.RequestMeta{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			cookie := plain.SessionCookie(account.Token, true)
+			token := func(a *auth.Auth) *httptest.ResponseRecorder {
+				r := httptest.NewRequest("GET", origin+"/api/auth/token", nil)
+				r.AddCookie(cookie)
+				w := httptest.NewRecorder()
+				a.ServeHTTP(w, r)
+				return w
+			}
+			w := token(plain)
+			var issued struct{ Token string }
+			if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &issued) != nil || issued.Token == "" {
+				t.Fatal("token issuance with an unencrypted key failed", w.Code, w.Body)
+			}
+			set, err := plain.PublicJWKS(ctx)
+			if err != nil || len(set.Keys) != 1 {
+				t.Fatal(err)
+			}
+			var private string
+			if err := store.db.QueryRowContext(ctx, store.bind(`SELECT "privateKey" FROM "jwks" WHERE "id"=?`), set.Keys[0].KeyID).Scan(&private); err != nil {
+				t.Fatal(err)
+			}
+			var jwk jose.JSONWebKey
+			if json.Unmarshal([]byte(private), &jwk) != nil || !jwk.Valid() || jwk.IsPublic() {
+				t.Fatal("stored private key is not a plain private JWK")
+			}
+			public := jwk.Public()
+			got, err := public.Thumbprint(crypto.SHA256)
+			want, err2 := set.Keys[0].Thumbprint(crypto.SHA256)
+			if err != nil || err2 != nil || string(got) != string(want) {
+				t.Fatal("stored private key is not the plain JWK of the published key")
+			}
+			if _, err := libjwt.Parse(issued.Token, func(*libjwt.Token) (any, error) { return set.Keys[0].Key, nil }, libjwt.WithValidMethods([]string{"EdDSA"}), libjwt.WithIssuer(origin), libjwt.WithAudience(origin), libjwt.WithExpirationRequired()); err != nil {
+				t.Fatal("independent verifier refused a token signed with an unencrypted key", err)
+			}
+			if w := token(build(jwtplugin.Options{})); w.Code != 500 {
+				t.Fatal("an encrypting instance signed with an unencrypted key", w.Code)
 			}
 		})
 	}

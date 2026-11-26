@@ -39718,5 +39718,18 @@
       "marker": "tenant key was generated more than once",
       "complete": true
     }
+  ],
+  "docs/content/docs/plugins/jwt.mdx#L506": [
+    {
+      "label": "Store the private key as the plain JWK of the published key when encryption is disabled, sign verifiable tokens with it, and refuse that key on an instance that encrypts, on three SQL engines",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "stored private key is not the plain JWK of the published key",
+      "complete": true
+    },
+    {
+      "label": "An instance with encryption enabled refuses to sign with an unencrypted key",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "an encrypting instance signed with an unencrypted key"
+    }
   ]
 }
