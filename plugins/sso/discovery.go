@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/netip"
@@ -56,6 +57,9 @@ type discoveryDocument struct {
 	Token         string   `json:"token_endpoint"`
 	Keys          string   `json:"jwks_uri"`
 	UserInfo      string   `json:"userinfo_endpoint"`
+	Revocation    string   `json:"revocation_endpoint"`
+	EndSession    string   `json:"end_session_endpoint"`
+	Introspection string   `json:"introspection_endpoint"`
 	Methods       []string `json:"token_endpoint_auth_methods_supported"`
 }
 
@@ -90,10 +94,14 @@ func hydrate(ctx context.Context, host *auth.Auth, client *http.Client, cfg *Con
 			return discoveryError(400, "issuer_mismatch", "The discovered issuer does not match the configured issuer")
 		}
 		base, _ := endpointURL(cfg.Issuer)
+		// The revocation, end-session and introspection endpoints are checked
+		// like the others but not stored, because sign-in never calls them.
 		for _, f := range []struct {
+			name     string
 			stored   *string
 			document string
-		}{{&cfg.AuthorizationEndpoint, doc.Authorization}, {&cfg.TokenEndpoint, doc.Token}, {&cfg.JWKSEndpoint, doc.Keys}, {&cfg.UserInfoEndpoint, doc.UserInfo}} {
+		}{{"token_endpoint", &cfg.TokenEndpoint, doc.Token}, {"authorization_endpoint", &cfg.AuthorizationEndpoint, doc.Authorization}, {"jwks_uri", &cfg.JWKSEndpoint, doc.Keys},
+			{"userinfo_endpoint", &cfg.UserInfoEndpoint, doc.UserInfo}, {"revocation_endpoint", nil, doc.Revocation}, {"end_session_endpoint", nil, doc.EndSession}, {"introspection_endpoint", nil, doc.Introspection}} {
 			if f.document == "" {
 				continue
 			}
@@ -109,17 +117,18 @@ func hydrate(ctx context.Context, host *auth.Auth, client *http.Client, cfg *Con
 				return discoveryError(400, "discovery_invalid_url", "Invalid URL in the discovery document")
 			}
 			raw := parsed.String()
-			if err = checkEndpoint(host, raw); err != nil {
+			if _, err = endpointURL(raw); err != nil {
 				return err
 			}
 			// A discovered endpoint must sit on a trusted origin, so a
-			// document cannot send the client secret elsewhere. Trust uses
-			// exact TrustedOrigins entries only; another runtime also honours
-			// wildcard patterns.
+			// document cannot send the client secret elsewhere. A private
+			// host outside the trusted origins answers this code too. Trust
+			// uses exact TrustedOrigins entries only; another runtime also
+			// honours wildcard patterns.
 			if !host.ExplicitlyTrustedOrigin(raw) {
-				return discoveryError(400, "discovery_untrusted_origin", "A discovered endpoint origin is not trusted")
+				return discoveryError(400, "discovery_untrusted_origin", fmt.Sprintf("The %s %q is not trusted by your trusted origins configuration", f.name, raw))
 			}
-			if *f.stored == "" {
+			if f.stored != nil && *f.stored == "" {
 				*f.stored = raw
 			}
 		}

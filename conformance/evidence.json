@@ -11185,6 +11185,11 @@
       "label": "Fail a registration with 400 after a single request when the discovery endpoint answers with a redirect",
       "test": "adapters/sqlstore/sso_test.go",
       "marker": "t.Fatal(\"discovery followed redirect\")"
+    },
+    {
+      "label": "Reject a JSON null discovery document with discovery_invalid_json",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "{\"null\", \"discovery_invalid_json\"}"
     }
   ],
   "published/sso/.": [
@@ -41167,9 +41172,14 @@
       "marker": "if cfg.TokenEndpoint != issuer+\"/token\" || cfg.JWKSEndpoint != issuer+\"/keys\""
     },
     {
-      "label": "Reject a discovered JWKS URL on a loopback address with discovery_private_host",
+      "label": "Reject a discovered JWKS URL on a loopback address outside the trusted origins with discovery_untrusted_origin",
       "test": "plugins/sso/discovery_test.go",
-      "marker": "{strings.Replace(raw, \"/keys\", \"http://127.0.0.1/keys\", 1), \"discovery_private_host\"},"
+      "marker": "{strings.Replace(raw, \"/keys\", \"http://127.0.0.1/keys\", 1), \"discovery_untrusted_origin\"},"
+    },
+    {
+      "label": "Check every discovered URL, including the revocation, end-session and introspection endpoints, against the trusted origins and name the field and URL in the refusal",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "t.Fatal(\"a discovered URL on an untrusted origin was not refused with discovery_untrusted_origin\", field, err)"
     }
   ],
   "plugin-symbol/sso/normalizeUrl": [
@@ -41193,9 +41203,9 @@
   ],
   "plugin-symbol/sso/validateDiscoveryDocument": [
     {
-      "label": "Reject a JSON null discovery document with discovery_invalid_json",
+      "label": "Reject a discovery document missing a required field with discovery_incomplete",
       "test": "plugins/sso/discovery_test.go",
-      "marker": "{\"null\", \"discovery_invalid_json\"}"
+      "marker": "t.Fatal(\"a discovery document missing a required field did not answer 400 discovery_incomplete\", field, status, code)"
     },
     {
       "label": "Reject a discovery document whose issuer differs from the configured issuer with issuer_mismatch",
@@ -41326,6 +41336,11 @@
       "label": "Reject a discovery document without jwks_uri with 400 discovery_incomplete",
       "test": "plugins/sso/discovery_test.go",
       "marker": "a discovery document without jwks_uri did not answer 400 discovery_incomplete"
+    },
+    {
+      "label": "Require issuer, authorization_endpoint and token_endpoint in the discovery document",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "t.Fatal(\"a discovery document missing a required field did not answer 400 discovery_incomplete\", field, status, code)"
     }
   ],
   "plugin-symbol/sso/deriveSAMLIdentityProviderEntityID": [
@@ -42121,9 +42136,9 @@
       "marker": "a discovery document without jwks_uri did not answer 400 discovery_incomplete"
     },
     {
-      "label": "Return 400 discovery_incomplete for a document without jwks_uri, alongside the missing-field checks",
+      "label": "Return 400 discovery_incomplete for a document missing issuer, authorization_endpoint, token_endpoint or jwks_uri, even when oidcConfig supplies that endpoint",
       "test": "plugins/sso/discovery_test.go",
-      "marker": "func TestDiscoveryErrorCodes(",
+      "marker": "t.Fatal(\"a discovery document missing a required field did not answer 400 discovery_incomplete\", field, status, code)",
       "complete": true
     }
   ],
@@ -42149,13 +42164,18 @@
     {
       "label": "Return 400 discovery_untrusted_origin for a discovered token endpoint outside the trusted origins",
       "test": "plugins/sso/discovery_test.go",
-      "marker": "a discovered token endpoint on an untrusted origin did not answer 400 discovery_untrusted_origin",
+      "marker": "a discovered token endpoint on an untrusted origin did not answer 400 discovery_untrusted_origin"
+    },
+    {
+      "label": "Refuse each discovered authorization, JWKS, UserInfo, revocation, end-session and introspection URL outside the trusted origins with 400 discovery_untrusted_origin",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "t.Fatal(\"a discovered URL on an untrusted origin was not refused with discovery_untrusted_origin\", field, err)",
       "complete": true
     }
   ],
   "docs/content/docs/plugins/sso/oidc.mdx#L120/`discovery_private_host`": [
     {
-      "label": "Reject private, reserved and cloud metadata endpoint hosts that are not explicitly trusted, including a discovered private JWKS URL, with 400 discovery_private_host",
+      "label": "Reject private, reserved and cloud metadata endpoint hosts in oidcConfig that are not explicitly trusted with 400 discovery_private_host",
       "test": "plugins/sso/discovery_test.go",
       "marker": "for _, endpoint := range []string{\"https://100.64.0.1/keys\", \"https://[2001:db8::1]/keys\", \"https://metadata.goog/keys\"} {",
       "complete": true
@@ -43854,7 +43874,7 @@
       "marker": "discovery invented a UserInfo endpoint"
     },
     {
-      "label": "Refuse a private discovered userinfo_endpoint with discovery_private_host",
+      "label": "Refuse a private discovered userinfo_endpoint outside the trusted origins with discovery_untrusted_origin",
       "test": "plugins/sso/discovery_test.go",
       "marker": "discovery stored a private userinfo_endpoint"
     }
@@ -44042,10 +44062,9 @@
   ],
   "plugin-symbol/sso/TimestampValidationOptions/clockSkew": [
     {
-      "label": "Accept an assertion expired two minutes ago under the default skew and refuse it under a one-minute skew, on SQLite, PostgreSQL and MySQL",
+      "label": "Accept an assertion expired two minutes ago under the default skew and refuse it under a one-minute skew, within the three-minute tolerance, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/sso_saml_policy_test.go",
-      "marker": "a one-minute clock skew accepted an assertion expired two minutes ago",
-      "complete": true
+      "marker": "a one-minute clock skew accepted an assertion expired two minutes ago"
     },
     {
       "label": "Refuse an assertion valid only in two minutes under a one-minute skew",
@@ -44056,6 +44075,11 @@
       "label": "Refuse a negative clock skew or one above three minutes, and keep a narrower one",
       "test": "plugins/sso/saml_test.go",
       "marker": "accepted a SAML clock skew above three minutes"
+    },
+    {
+      "label": "Narrow the bearer confirmation deadline with the clock skew before the user is provisioned",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "a one-minute clock skew accepted a bearer confirmation expired two minutes ago"
     }
   ],
   "plugin-symbol/sso/TimestampValidationOptions/requireTimestamps": [

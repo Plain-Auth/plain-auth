@@ -409,6 +409,17 @@ func TestEnterpriseSAMLResponsePolicy(t *testing.T) {
 				if location, session := run(def, future(time.Hour)); !refused(location, session, "SAML assertion is not yet valid") {
 					t.Fatal("a future assertion did not fail with saml_error", location)
 				}
+				// The bearer confirmation's deadline is narrowed before the
+				// user is provisioned, even when Conditions are valid.
+				bearer := func(a *saml.Assertion) {
+					a.Subject.SubjectConfirmations[0].SubjectConfirmationData.NotOnOrAfter = time.Now().Add(-2 * time.Minute)
+				}
+				if location, session := run(def, bearer); location.String() != "https://service.test/home" || !session {
+					t.Fatal("a bearer confirmation expired within the default clock skew was refused", location)
+				}
+				if location, session := run(strict, bearer); !refused(location, session, "SAML assertion has expired") {
+					t.Fatal("a one-minute clock skew accepted a bearer confirmation expired two minutes ago", location)
+				}
 				untimed := func(a *saml.Assertion) { a.Conditions.NotBefore, a.Conditions.NotOnOrAfter = time.Time{}, time.Time{} }
 				if location, session := run(logged, untimed); location.String() != "https://service.test/home" || !session || buf.count("SAML assertion accepted without timestamp conditions") != 1 || buf.count("providerId=clock") != 1 {
 					t.Fatal("an assertion without timestamps was refused or not logged", location)

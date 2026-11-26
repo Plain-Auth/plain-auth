@@ -64,7 +64,7 @@ func TestDiscoveryOriginAndBoundedTransport(t *testing.T) {
 	for _, body := range []struct{ value, code string }{
 		{"null", "discovery_invalid_json"}, {`{broken`, "discovery_invalid_json"},
 		{strings.Replace(raw, "https://login.example.test/tenant", "https://other.example.test/tenant", 1), "issuer_mismatch"},
-		{strings.Replace(raw, "/keys", "http://127.0.0.1/keys", 1), "discovery_private_host"},
+		{strings.Replace(raw, "/keys", "http://127.0.0.1/keys", 1), "discovery_untrusted_origin"},
 		{strings.Repeat(" ", (1<<20)+1), "discovery_invalid_json"},
 	} {
 		saved := raw
@@ -103,10 +103,13 @@ func TestDiscoveryErrorCodes(t *testing.T) {
 	host := discoveryHost(t)
 	const issuer = "https://login.example.test/tenant"
 	doc := `{"issuer":"https://login.example.test/tenant","authorization_endpoint":"/authorize","token_endpoint":"/token","jwks_uri":"/keys"}`
-	requests := 0
+	requests, served := 0, ""
 	client := &http.Client{Transport: transportFunc(func(r *http.Request) (*http.Response, error) {
 		requests++
 		status, body := 200, doc
+		if served != "" {
+			body = served
+		}
 		switch r.URL.Path {
 		case "/tenant/missing":
 			status = 404
@@ -172,6 +175,29 @@ func TestDiscoveryErrorCodes(t *testing.T) {
 	if status, code := reply(fetch("/ftp-token")); status != 400 || code != "discovery_invalid_url" {
 		t.Fatal("a discovered ftp token endpoint did not answer 400 discovery_invalid_url", status, code)
 	}
+	// Every discovered URL, stored or not, must sit on a trusted origin, and
+	// the refusal names the field and the URL.
+	for _, field := range []string{"authorization_endpoint", "jwks_uri", "userinfo_endpoint", "revocation_endpoint", "end_session_endpoint", "introspection_endpoint"} {
+		served = strings.Replace(doc, "}", `,"`+field+`":"https://elsewhere.example.test/`+field+`"}`, 1)
+		var e *auth.APIError
+		if err := fetch("/served"); !errors.As(err, &e) || e.Status != 400 || e.Code != "discovery_untrusted_origin" || e.Message != `The `+field+` "https://elsewhere.example.test/`+field+`" is not trusted by your trusted origins configuration` {
+			t.Fatal("a discovered URL on an untrusted origin was not refused with discovery_untrusted_origin", field, err)
+		}
+	}
+	served = strings.Replace(doc, "}", `,"revocation_endpoint":"ftp://login.example.test/revoke"}`, 1)
+	if status, code := reply(fetch("/served")); status != 400 || code != "discovery_invalid_url" {
+		t.Fatal("a discovered ftp revocation endpoint did not answer 400 discovery_invalid_url", status, code)
+	}
+	// A document missing a required field is refused even when oidcConfig
+	// supplies that endpoint.
+	for _, field := range []string{`"issuer":"https://login.example.test/tenant",`, `"authorization_endpoint":"/authorize",`, `,"token_endpoint":"/token"`} {
+		served = strings.Replace(doc, field, "", 1)
+		cfg := Config{Issuer: issuer, DiscoveryEndpoint: issuer + "/served", AuthorizationEndpoint: issuer + "/authorize", TokenEndpoint: issuer + "/token"}
+		if status, code := reply(hydrate(t.Context(), host, client, &cfg, false)); served == doc || status != 400 || code != "discovery_incomplete" {
+			t.Fatal("a discovery document missing a required field did not answer 400 discovery_incomplete", field, status, code)
+		}
+	}
+	served = ""
 	fetched := requests
 	for _, cfg := range []Config{
 		{Issuer: "ftp://login.example.test/tenant"},
@@ -224,7 +250,7 @@ func TestDiscoveryHydratesUserInfoEndpoint(t *testing.T) {
 	userinfo = `,"userinfo_endpoint":"https://10.0.0.5/userinfo"`
 	cfg = Config{Issuer: issuer}
 	var e *auth.APIError
-	if err := hydrate(t.Context(), host, client, &cfg, false); !errors.As(err, &e) || e.Status != 400 || e.Code != "discovery_private_host" || cfg.UserInfoEndpoint != "" {
+	if err := hydrate(t.Context(), host, client, &cfg, false); !errors.As(err, &e) || e.Status != 400 || e.Code != "discovery_untrusted_origin" || cfg.UserInfoEndpoint != "" {
 		t.Fatal("discovery stored a private userinfo_endpoint", err)
 	}
 }
