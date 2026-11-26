@@ -155,6 +155,17 @@ func TestSCIMDynamicBearer(t *testing.T) {
 				call(a, "GET", "Users", token, nil, 401)
 			}
 			call(a, "GET", "Users", "outage", nil, 500)
+			if w := scimRequest(a, "GET", "Users", "outage", nil); w.Header().Get("WWW-Authenticate") != "" {
+				t.Fatal("a failing verifier answered with a bearer challenge", w.Header())
+			}
+			// Without a verifier only code-defined tokens authenticate.
+			staticHost, e := auth.New(auth.Options{BaseURL: "https://directory.test", BasePath: "/identity/custom", Secret: strings.Repeat("s", 32), Store: first})
+			must(e)
+			staticOnly, e := scim.New(staticHost, scim.Options{Store: first, Connections: connections[1:]})
+			must(e)
+			if w := scimRequest(staticOnly, "GET", "Users", "active", nil); w.Code != 401 {
+				t.Fatal("a token without a verifier was accepted", w.Code)
+			}
 			call(a, "POST", "Users", "read", nil, 403)
 			var n int
 			must(first.db.QueryRowContext(ctx, first.bind(`SELECT COUNT(*) FROM "scimConnectionBinding"`)).Scan(&n))

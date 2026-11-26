@@ -10684,6 +10684,11 @@
       "label": "Allow a verifier-only directory and preserve static credential precedence",
       "test": "adapters/sqlstore/scim_dynamic_test.go",
       "marker": "func TestSCIMDynamicBearer("
+    },
+    {
+      "label": "Refuse a non-code-defined token without a verifier and answer a failing verifier with 500 and no bearer challenge, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_dynamic_test.go",
+      "marker": "t.Fatal(\"a token without a verifier was accepted\", w.Code)"
     }
   ],
   "plugin-symbol/scim/SCIMDeclaredConnectionVerificationResult": [
