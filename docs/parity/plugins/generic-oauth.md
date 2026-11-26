@@ -7,217 +7,420 @@
 - [ ] Generic OAuth endpoints, types and options
   - [ ] `BaseOAuthProviderOptions`
     - [ ] `clientId`
+      - [x] For every catalog provider, the client ID passed to New reaches the token exchange through /sign-in/social and /callback requests ([test](../../../providers/catalog_test.go#L79))
     - [ ] `clientSecret`
+      - [x] For every catalog provider, the client secret passed to New is sent in the token exchange, by basic auth or form fields as the provider requires ([test](../../../providers/catalog_test.go#L80))
     - [ ] `tokenEndpointAuth`
     - [ ] `scopes`
+      - [x] On both servers, a provider configured with the scope profile sends exactly that scope when the sign-in request adds none ([test](../../../conformance/social-signup.mjs#L60))
+      - [x] For every catalog provider, the authorization URL carries exactly the provider's default scopes, including none ([test](../../../providers/catalog_test.go#L163))
     - [ ] `redirectURI`
-    - [ ] `endSessionEndpoint`
+      - [x] A provider's Config.RedirectURL replaces the callback route in the authorization request and the code exchange, an application route forwards it to the callback, and a relative or non-HTTP URL is refused ([test](../../../conformance/goapi/oauth_redirect_uri_test.go#L22))
+      - [x] With BasePath /identity, each profile preset sends https://app.example/identity/callback/<provider> as redirect_uri in the authorization URL and the code exchange ([test](../../../providers/profile_presets_test.go#L53))
+    - [x] `endSessionEndpoint` ([test](../../../conformance/goapi/oauth_logout_test.go#L71))
+      - [x] Provider sign-out revokes the local session and returns the configured EndSessionEndpoint with its own query, the ID token hint, state, client ID and post-logout return URI ([test](../../../conformance/goapi/oauth_logout_test.go#L71))
+      - [x] OpenIDConnect discovery, as used by the Auth0, Keycloak and Okta presets, sets EndSessionEndpoint from the issuer's end_session_endpoint ([test](../../../providers/enterprise_oidc_test.go#L71))
     - [ ] `postLogoutRedirectURI`
+      - [x] With PostLogoutRedirectURI /bye, provider sign-out sends the absolute /bye return URI, and a callbackURL in the request replaces it ([test](../../../conformance/goapi/oauth_logout_test.go#L56))
     - [ ] `disableProviderLogout`
     - [ ] `pkce`
+      - [x] For every catalog provider, the authorization URL carries a code challenge exactly when the provider uses PKCE, and providers built with DisablePKCE send none ([test](../../../providers/catalog_test.go#L178))
+      - [x] A hand-built provider sends an S256 code challenge and a nonce by default, and the token request carries the matching verifier ([test](../../../conformance/goapi/oauth_test.go#L31))
     - [ ] `disableImplicitSignUp`
+      - [x] With DisableImplicitSignUp, a new account is refused unless requestSignUp is sent, and created when it is, for browser and ID-token sign-in ([test](../../../conformance/goapi/oauth_signup_test.go#L118))
     - [ ] `disableSignUp`
-    - [ ] `overrideUserInfo`
+      - [x] A provider with DisableSignUp declines new-account creation even when sign-up is explicitly requested, for both browser and ID-token sign-in ([test](../../../conformance/goapi/oauth_signup_test.go#L132))
+    - [x] `overrideUserInfo` ([test](../../../conformance/social-user-fields.mjs#L145))
+      - [x] With profile override on, a returning sign-in through either server updates the name, email, image and writable mapped fields, keeps fields marked not writable, and takes the provider's verification status for a changed email ([test](../../../conformance/social-user-fields.mjs#L145))
+      - [x] With profile override off, a returning sign-in through either server keeps the mapped user fields stored at registration ([test](../../../conformance/social-user-fields.mjs#L110))
   - [ ] `genericOAuth`
+    - [x] A provider built from OAuthProvider with its own authorization, token and user-info endpoints signs in through /sign-in/social and the shared /callback route with PKCE and a nonce ([test](../../../conformance/goapi/oauth_test.go#L21))
+    - [x] OpenIDConnect discovers an issuer's endpoints and signing keys, and the resulting provider accepts a direct ID-token sign-in and an explicit link ([test](../../../providers/oidc_test.go#L22))
   - [ ] `Auth0Options`
     - [ ] `domain`
+      - [x] Build the Auth0 preset from a bare mixed-case tenant domain, discover its endpoints at that host and complete a verified sign-in ([test](../../../providers/enterprise_oidc_test.go#L23))
+      - [x] Reject an empty, plain-HTTP, credentialed, path-bearing or query-bearing Auth0 domain before any discovery request ([test](../../../providers/enterprise_oidc_test.go#L129))
     - [ ] `clientId`
+      - [x] The Auth0, Keycloak and Okta presets send the configured client ID and secret by basic auth in the code exchange ([test](../../../providers/enterprise_oidc_test.go#L51))
     - [ ] `clientSecret`
+      - [x] The Auth0, Keycloak and Okta presets send the configured client ID and secret by basic auth in the code exchange ([test](../../../providers/enterprise_oidc_test.go#L51))
     - [ ] `tokenEndpointAuth`
     - [ ] `scopes`
+      - [x] The Auth0, Keycloak and Okta presets request openid profile email with a nonce and an S256 code challenge at the discovered authorization endpoint ([test](../../../providers/enterprise_oidc_test.go#L95))
+      - [x] On both servers, a provider configured with the scope profile sends exactly that scope when the sign-in request adds none ([test](../../../conformance/social-signup.mjs#L60))
     - [ ] `redirectURI`
+      - [x] A provider's Config.RedirectURL replaces the callback route in the authorization request and the code exchange, an application route forwards it to the callback, and a relative or non-HTTP URL is refused ([test](../../../conformance/goapi/oauth_redirect_uri_test.go#L22))
+      - [x] With BasePath /identity, the Auth0, Keycloak and Okta presets exchange the code with redirect_uri https://app.example/identity/callback/<provider> ([test](../../../providers/enterprise_oidc_test.go#L49))
     - [ ] `endSessionEndpoint`
+      - [x] Provider sign-out revokes the local session and returns the configured EndSessionEndpoint with its own query, the ID token hint, state, client ID and post-logout return URI ([test](../../../conformance/goapi/oauth_logout_test.go#L71))
+      - [x] Discovery sets EndSessionEndpoint from the issuer's end_session_endpoint for the Auth0, Keycloak and Okta presets ([test](../../../providers/enterprise_oidc_test.go#L71))
     - [ ] `postLogoutRedirectURI`
+      - [x] With PostLogoutRedirectURI /bye, provider sign-out sends the absolute /bye return URI, and a callbackURL in the request replaces it ([test](../../../conformance/goapi/oauth_logout_test.go#L56))
     - [ ] `disableProviderLogout`
     - [ ] `pkce`
+      - [x] The Auth0, Keycloak and Okta presets request openid profile email with a nonce and an S256 code challenge at the discovered authorization endpoint ([test](../../../providers/enterprise_oidc_test.go#L95))
+      - [x] For every catalog provider, the authorization URL carries a code challenge exactly when the provider uses PKCE, and providers built with DisablePKCE send none ([test](../../../providers/catalog_test.go#L178))
     - [ ] `disableImplicitSignUp`
+      - [x] With DisableImplicitSignUp, a new account is refused unless requestSignUp is sent, and created when it is, for browser and ID-token sign-in ([test](../../../conformance/goapi/oauth_signup_test.go#L118))
     - [ ] `disableSignUp`
-    - [ ] `overrideUserInfo`
+      - [x] A provider with DisableSignUp declines new-account creation even when sign-up is explicitly requested, for both browser and ID-token sign-in ([test](../../../conformance/goapi/oauth_signup_test.go#L132))
+    - [x] `overrideUserInfo` ([test](../../../conformance/social-user-fields.mjs#L145))
+      - [x] With profile override on, a returning sign-in through either server updates the name, email, image and writable mapped fields, keeps fields marked not writable, and takes the provider's verification status for a changed email ([test](../../../conformance/social-user-fields.mjs#L145))
+      - [x] With profile override off, a returning sign-in through either server keeps the mapped user fields stored at registration ([test](../../../conformance/social-user-fields.mjs#L110))
   - [ ] `auth0`
     - [x] Discover a configured Auth0 tenant and authenticate with a signed ID token at a custom mount ([test](../../../providers/enterprise_oidc_test.go#L23))
     - [x] Match the Auth0 tenant discovery location and default scopes with the published preset ([test](../../../conformance/enterprise-oidc.test.mjs#L6))
   - [ ] `GumroadOptions`
     - [ ] `clientId`
+      - [x] The Gumroad, HubSpot, LINE, Patreon, Slack and Yandex presets post the configured client ID and secret with the code, callback redirect URI and PKCE verifier ([test](../../../providers/profile_presets_test.go#L63))
     - [ ] `clientSecret`
+      - [x] The Gumroad, HubSpot, LINE, Patreon, Slack and Yandex presets post the configured client ID and secret with the code, callback redirect URI and PKCE verifier ([test](../../../providers/profile_presets_test.go#L63))
     - [ ] `tokenEndpointAuth`
     - [ ] `scopes`
+      - [x] The Gumroad, HubSpot, LINE, Patreon, Slack and Yandex presets send their default scopes, the callback redirect URI and an S256 challenge in the authorization URL ([test](../../../providers/profile_presets_test.go#L112))
+      - [x] On both servers, a provider configured with the scope profile sends exactly that scope when the sign-in request adds none ([test](../../../conformance/social-signup.mjs#L60))
     - [ ] `redirectURI`
+      - [x] A provider's Config.RedirectURL replaces the callback route in the authorization request and the code exchange, an application route forwards it to the callback, and a relative or non-HTTP URL is refused ([test](../../../conformance/goapi/oauth_redirect_uri_test.go#L22))
+      - [x] With BasePath /identity, each profile preset sends https://app.example/identity/callback/<provider> as redirect_uri in the authorization URL and the code exchange ([test](../../../providers/profile_presets_test.go#L53))
     - [ ] `endSessionEndpoint`
+      - [x] Provider sign-out revokes the local session and returns the configured EndSessionEndpoint with its own query, the ID token hint, state, client ID and post-logout return URI ([test](../../../conformance/goapi/oauth_logout_test.go#L71))
     - [ ] `postLogoutRedirectURI`
+      - [x] With PostLogoutRedirectURI /bye, provider sign-out sends the absolute /bye return URI, and a callbackURL in the request replaces it ([test](../../../conformance/goapi/oauth_logout_test.go#L56))
     - [ ] `disableProviderLogout`
     - [ ] `pkce`
+      - [x] The Gumroad, HubSpot, LINE, Patreon, Slack and Yandex presets send their default scopes, the callback redirect URI and an S256 challenge in the authorization URL ([test](../../../providers/profile_presets_test.go#L112))
+      - [x] For every catalog provider, the authorization URL carries a code challenge exactly when the provider uses PKCE, and providers built with DisablePKCE send none ([test](../../../providers/catalog_test.go#L178))
     - [ ] `disableImplicitSignUp`
+      - [x] With DisableImplicitSignUp, a new account is refused unless requestSignUp is sent, and created when it is, for browser and ID-token sign-in ([test](../../../conformance/goapi/oauth_signup_test.go#L118))
     - [ ] `disableSignUp`
-    - [ ] `overrideUserInfo`
+      - [x] A provider with DisableSignUp declines new-account creation even when sign-up is explicitly requested, for both browser and ID-token sign-in ([test](../../../conformance/goapi/oauth_signup_test.go#L132))
+    - [x] `overrideUserInfo` ([test](../../../conformance/social-user-fields.mjs#L145))
+      - [x] With profile override on, a returning sign-in through either server updates the name, email, image and writable mapped fields, keeps fields marked not writable, and takes the provider's verification status for a changed email ([test](../../../conformance/social-user-fields.mjs#L145))
+      - [x] With profile override off, a returning sign-in through either server keeps the mapped user fields stored at registration ([test](../../../conformance/social-user-fields.mjs#L110))
   - [ ] `gumroad`
     - [x] Complete authorization-code sign-in, bind the provider subject and read the linked account profile ([test](../../../providers/profile_presets_test.go#L22))
     - [x] Compare default scopes, authenticated profile fields and subject with the published provider preset ([test](../../../conformance/profile-presets.test.mjs#L6))
   - [ ] `HubSpotOptions`
     - [ ] `scopes`
+      - [x] The Gumroad, HubSpot, LINE, Patreon, Slack and Yandex presets send their default scopes, the callback redirect URI and an S256 challenge in the authorization URL ([test](../../../providers/profile_presets_test.go#L112))
+      - [x] On both servers, a provider configured with the scope profile sends exactly that scope when the sign-in request adds none ([test](../../../conformance/social-signup.mjs#L60))
     - [ ] `clientId`
+      - [x] The Gumroad, HubSpot, LINE, Patreon, Slack and Yandex presets post the configured client ID and secret with the code, callback redirect URI and PKCE verifier ([test](../../../providers/profile_presets_test.go#L63))
+      - [x] HubSpot posts the configured client ID and secret with the access token to token introspection ([test](../../../providers/profile_presets_test.go#L79))
+      - [x] An introspected HubSpot token issued to a different client is rejected ([test](../../../providers/profile_presets_test.go#L191))
     - [ ] `clientSecret`
+      - [x] The Gumroad, HubSpot, LINE, Patreon, Slack and Yandex presets post the configured client ID and secret with the code, callback redirect URI and PKCE verifier ([test](../../../providers/profile_presets_test.go#L63))
+      - [x] HubSpot posts the configured client ID and secret with the access token to token introspection ([test](../../../providers/profile_presets_test.go#L79))
     - [ ] `tokenEndpointAuth`
     - [ ] `redirectURI`
+      - [x] A provider's Config.RedirectURL replaces the callback route in the authorization request and the code exchange, an application route forwards it to the callback, and a relative or non-HTTP URL is refused ([test](../../../conformance/goapi/oauth_redirect_uri_test.go#L22))
+      - [x] With BasePath /identity, each profile preset sends https://app.example/identity/callback/<provider> as redirect_uri in the authorization URL and the code exchange ([test](../../../providers/profile_presets_test.go#L53))
     - [ ] `endSessionEndpoint`
+      - [x] Provider sign-out revokes the local session and returns the configured EndSessionEndpoint with its own query, the ID token hint, state, client ID and post-logout return URI ([test](../../../conformance/goapi/oauth_logout_test.go#L71))
     - [ ] `postLogoutRedirectURI`
+      - [x] With PostLogoutRedirectURI /bye, provider sign-out sends the absolute /bye return URI, and a callbackURL in the request replaces it ([test](../../../conformance/goapi/oauth_logout_test.go#L56))
     - [ ] `disableProviderLogout`
     - [ ] `pkce`
+      - [x] The Gumroad, HubSpot, LINE, Patreon, Slack and Yandex presets send their default scopes, the callback redirect URI and an S256 challenge in the authorization URL ([test](../../../providers/profile_presets_test.go#L112))
+      - [x] For every catalog provider, the authorization URL carries a code challenge exactly when the provider uses PKCE, and providers built with DisablePKCE send none ([test](../../../providers/catalog_test.go#L178))
     - [ ] `disableImplicitSignUp`
+      - [x] With DisableImplicitSignUp, a new account is refused unless requestSignUp is sent, and created when it is, for browser and ID-token sign-in ([test](../../../conformance/goapi/oauth_signup_test.go#L118))
     - [ ] `disableSignUp`
-    - [ ] `overrideUserInfo`
+      - [x] A provider with DisableSignUp declines new-account creation even when sign-up is explicitly requested, for both browser and ID-token sign-in ([test](../../../conformance/goapi/oauth_signup_test.go#L132))
+    - [x] `overrideUserInfo` ([test](../../../conformance/social-user-fields.mjs#L145))
+      - [x] With profile override on, a returning sign-in through either server updates the name, email, image and writable mapped fields, keeps fields marked not writable, and takes the provider's verification status for a changed email ([test](../../../conformance/social-user-fields.mjs#L145))
+      - [x] With profile override off, a returning sign-in through either server keeps the mapped user fields stored at registration ([test](../../../conformance/social-user-fields.mjs#L110))
   - [ ] `hubspot`
     - [x] Complete authorization-code sign-in, bind the provider subject and read the linked account profile ([test](../../../providers/profile_presets_test.go#L22))
     - [x] Compare default scopes, authenticated profile fields and subject with the published provider preset ([test](../../../conformance/profile-presets.test.mjs#L6))
     - [x] Validate the introspected token’s registered client, active status and access-token use ([test](../../../providers/profile_presets_test.go#L178))
   - [ ] `KeycloakOptions`
     - [ ] `issuer`
+      - [x] Build the Keycloak preset from a realm issuer with a trailing slash, discover its endpoints under that realm and complete a verified sign-in ([test](../../../providers/enterprise_oidc_test.go#L23))
+      - [x] Reject a Keycloak issuer that lacks an HTTPS scheme or carries a fragment or query, before any discovery request ([test](../../../providers/enterprise_oidc_test.go#L134))
     - [ ] `clientId`
+      - [x] The Auth0, Keycloak and Okta presets send the configured client ID and secret by basic auth in the code exchange ([test](../../../providers/enterprise_oidc_test.go#L51))
     - [ ] `clientSecret`
+      - [x] The Auth0, Keycloak and Okta presets send the configured client ID and secret by basic auth in the code exchange ([test](../../../providers/enterprise_oidc_test.go#L51))
     - [ ] `tokenEndpointAuth`
     - [ ] `scopes`
+      - [x] The Auth0, Keycloak and Okta presets request openid profile email with a nonce and an S256 code challenge at the discovered authorization endpoint ([test](../../../providers/enterprise_oidc_test.go#L95))
+      - [x] On both servers, a provider configured with the scope profile sends exactly that scope when the sign-in request adds none ([test](../../../conformance/social-signup.mjs#L60))
     - [ ] `redirectURI`
+      - [x] A provider's Config.RedirectURL replaces the callback route in the authorization request and the code exchange, an application route forwards it to the callback, and a relative or non-HTTP URL is refused ([test](../../../conformance/goapi/oauth_redirect_uri_test.go#L22))
+      - [x] With BasePath /identity, the Auth0, Keycloak and Okta presets exchange the code with redirect_uri https://app.example/identity/callback/<provider> ([test](../../../providers/enterprise_oidc_test.go#L49))
     - [ ] `endSessionEndpoint`
+      - [x] Provider sign-out revokes the local session and returns the configured EndSessionEndpoint with its own query, the ID token hint, state, client ID and post-logout return URI ([test](../../../conformance/goapi/oauth_logout_test.go#L71))
+      - [x] Discovery sets EndSessionEndpoint from the issuer's end_session_endpoint for the Auth0, Keycloak and Okta presets ([test](../../../providers/enterprise_oidc_test.go#L71))
     - [ ] `postLogoutRedirectURI`
+      - [x] With PostLogoutRedirectURI /bye, provider sign-out sends the absolute /bye return URI, and a callbackURL in the request replaces it ([test](../../../conformance/goapi/oauth_logout_test.go#L56))
     - [ ] `disableProviderLogout`
     - [ ] `pkce`
+      - [x] The Auth0, Keycloak and Okta presets request openid profile email with a nonce and an S256 code challenge at the discovered authorization endpoint ([test](../../../providers/enterprise_oidc_test.go#L95))
+      - [x] For every catalog provider, the authorization URL carries a code challenge exactly when the provider uses PKCE, and providers built with DisablePKCE send none ([test](../../../providers/catalog_test.go#L178))
     - [ ] `disableImplicitSignUp`
+      - [x] With DisableImplicitSignUp, a new account is refused unless requestSignUp is sent, and created when it is, for browser and ID-token sign-in ([test](../../../conformance/goapi/oauth_signup_test.go#L118))
     - [ ] `disableSignUp`
-    - [ ] `overrideUserInfo`
+      - [x] A provider with DisableSignUp declines new-account creation even when sign-up is explicitly requested, for both browser and ID-token sign-in ([test](../../../conformance/goapi/oauth_signup_test.go#L132))
+    - [x] `overrideUserInfo` ([test](../../../conformance/social-user-fields.mjs#L145))
+      - [x] With profile override on, a returning sign-in through either server updates the name, email, image and writable mapped fields, keeps fields marked not writable, and takes the provider's verification status for a changed email ([test](../../../conformance/social-user-fields.mjs#L145))
+      - [x] With profile override off, a returning sign-in through either server keeps the mapped user fields stored at registration ([test](../../../conformance/social-user-fields.mjs#L110))
   - [ ] `keycloak`
     - [x] Discover a configured Keycloak realm and authenticate with a signed ID token at a custom mount ([test](../../../providers/enterprise_oidc_test.go#L23))
     - [x] Match the Keycloak realm discovery location and default scopes with the published preset ([test](../../../conformance/enterprise-oidc.test.mjs#L6))
   - [ ] `LineOptions`
     - [ ] `providerId`
     - [ ] `clientId`
+      - [x] The Gumroad, HubSpot, LINE, Patreon, Slack and Yandex presets post the configured client ID and secret with the code, callback redirect URI and PKCE verifier ([test](../../../providers/profile_presets_test.go#L63))
     - [ ] `clientSecret`
+      - [x] The Gumroad, HubSpot, LINE, Patreon, Slack and Yandex presets post the configured client ID and secret with the code, callback redirect URI and PKCE verifier ([test](../../../providers/profile_presets_test.go#L63))
     - [ ] `tokenEndpointAuth`
     - [ ] `scopes`
+      - [x] The Gumroad, HubSpot, LINE, Patreon, Slack and Yandex presets send their default scopes, the callback redirect URI and an S256 challenge in the authorization URL ([test](../../../providers/profile_presets_test.go#L112))
+      - [x] On both servers, a provider configured with the scope profile sends exactly that scope when the sign-in request adds none ([test](../../../conformance/social-signup.mjs#L60))
     - [ ] `redirectURI`
+      - [x] A provider's Config.RedirectURL replaces the callback route in the authorization request and the code exchange, an application route forwards it to the callback, and a relative or non-HTTP URL is refused ([test](../../../conformance/goapi/oauth_redirect_uri_test.go#L22))
+      - [x] With BasePath /identity, each profile preset sends https://app.example/identity/callback/<provider> as redirect_uri in the authorization URL and the code exchange ([test](../../../providers/profile_presets_test.go#L53))
     - [ ] `endSessionEndpoint`
+      - [x] Provider sign-out revokes the local session and returns the configured EndSessionEndpoint with its own query, the ID token hint, state, client ID and post-logout return URI ([test](../../../conformance/goapi/oauth_logout_test.go#L71))
     - [ ] `postLogoutRedirectURI`
+      - [x] With PostLogoutRedirectURI /bye, provider sign-out sends the absolute /bye return URI, and a callbackURL in the request replaces it ([test](../../../conformance/goapi/oauth_logout_test.go#L56))
     - [ ] `disableProviderLogout`
     - [ ] `pkce`
+      - [x] The Gumroad, HubSpot, LINE, Patreon, Slack and Yandex presets send their default scopes, the callback redirect URI and an S256 challenge in the authorization URL ([test](../../../providers/profile_presets_test.go#L112))
+      - [x] For every catalog provider, the authorization URL carries a code challenge exactly when the provider uses PKCE, and providers built with DisablePKCE send none ([test](../../../providers/catalog_test.go#L178))
     - [ ] `disableImplicitSignUp`
-    - [ ] `disableSignUp`
-    - [ ] `overrideUserInfo`
+      - [x] With DisableImplicitSignUp, a new account is refused unless requestSignUp is sent, and created when it is, for browser and ID-token sign-in ([test](../../../conformance/goapi/oauth_signup_test.go#L118))
+    - [x] `disableSignUp` ([test](../../../conformance/goapi/oauth_signup_test.go#L132))
+      - [x] Decline a new account from a provider with sign-up disabled even when sign-up is requested, in browser and ID-token sign-in ([test](../../../conformance/goapi/oauth_signup_test.go#L132))
+    - [x] `overrideUserInfo` ([test](../../../conformance/social-user-fields.mjs#L145))
+      - [x] Refresh a returning profile with either server, preserve protected fields and use the new mailbox verification status ([test](../../../conformance/social-user-fields.mjs#L145))
+      - [x] Apply the provider profile-update policy on direct sign-in, Google One Tap and permitted automatic links across three SQL engines ([test](../../../adapters/sqlstore/oauth_profile_sync_test.go#L16))
   - [ ] `line`
     - [x] Use channel-bound verification for ID tokens and reject the wrong issuer, audience, nonce or validity period ([test](../../../providers/line_test.go#L16))
     - [x] Complete access-token sign-in and persist the authenticated LINE subject and unverified email ([test](../../../providers/profile_presets_test.go#L22))
     - [x] Match the LINE default scopes, UserInfo mapping and subject with the published preset ([test](../../../conformance/profile-presets.test.mjs#L6))
   - [ ] `MicrosoftEntraIdOptions`
-    - [ ] `tenantId`
+    - [x] `tenantId` ([test](../../../providers/entra_test.go#L52))
+      - [x] Refuse an empty, shared or malformed tenant and accept an upper-case tenant GUID ([test](../../../providers/entra_test.go#L52))
+      - [x] Build the Entra authorization URL from the lower-cased tenant ([test](../../../providers/entra_test.go#L61))
+      - [x] Reject a signed identity without an object ID, from another tenant or for another audience ([test](../../../providers/entra_test.go#L93))
     - [ ] `clientId`
+      - [x] Reject an Entra ID token issued for an audience other than the configured client ID ([test](../../../providers/entra_test.go#L93))
     - [ ] `clientSecret`
     - [ ] `tokenEndpointAuth`
-    - [ ] `scopes`
-    - [ ] `redirectURI`
+    - [x] `scopes` ([test](../../../providers/entra_test.go#L61))
+      - [x] Default the Entra scopes to openid, profile and email ([test](../../../providers/entra_test.go#L61))
+      - [x] Replace a preset's default scopes with the configured list in sign-in and link authorization requests ([test](../../../conformance/goapi/provider_contract_test.go#L68))
+    - [x] `redirectURI` ([test](../../../conformance/goapi/oauth_redirect_uri_test.go#L22))
+      - [x] Use a provider's own redirect URL in the authorization request and code exchange, forward it to the callback, and refuse a relative or non-HTTP URL ([test](../../../conformance/goapi/oauth_redirect_uri_test.go#L22))
+      - [x] Return the provider to the default callback route under the auth mount when no redirect URL is set ([test](../../../conformance/goapi/oauth_test.go#L141))
     - [ ] `endSessionEndpoint`
-    - [ ] `postLogoutRedirectURI`
+      - [x] Send the signed-out user to the configured end-session endpoint, keeping its query and adding the ID token hint, state and client ID ([test](../../../conformance/goapi/oauth_logout_test.go#L17))
+    - [x] `postLogoutRedirectURI` ([test](../../../conformance/goapi/oauth_logout_test.go#L70))
+      - [x] Send the configured post-logout return URI, or the sign-out's own callback URL, to the end-session endpoint and refuse an untrusted one ([test](../../../conformance/goapi/oauth_logout_test.go#L70))
     - [ ] `disableProviderLogout`
-    - [ ] `pkce`
-    - [ ] `disableImplicitSignUp`
-    - [ ] `disableSignUp`
-    - [ ] `overrideUserInfo`
+    - [x] `pkce` ([test](../../../conformance/goapi/oauth_test.go#L30))
+      - [x] Send an S256 code challenge and nonce to the authorization endpoint by default ([test](../../../conformance/goapi/oauth_test.go#L30))
+      - [x] Omit the code challenge for catalog providers configured without PKCE ([test](../../../providers/catalog_test.go#L177))
+    - [x] `disableImplicitSignUp` ([test](../../../conformance/goapi/oauth_signup_test.go#L118))
+      - [x] Refuse a new account unless the sign-in sends requestSignUp, and create it when it does, in browser and ID-token sign-in ([test](../../../conformance/goapi/oauth_signup_test.go#L118))
+    - [x] `disableSignUp` ([test](../../../conformance/goapi/oauth_signup_test.go#L132))
+      - [x] Decline a new account from a provider with sign-up disabled even when sign-up is requested, in browser and ID-token sign-in ([test](../../../conformance/goapi/oauth_signup_test.go#L132))
+    - [x] `overrideUserInfo` ([test](../../../conformance/social-user-fields.mjs#L145))
+      - [x] Refresh a returning profile with either server, preserve protected fields and use the new mailbox verification status ([test](../../../conformance/social-user-fields.mjs#L145))
+      - [x] Apply the provider profile-update policy on direct sign-in, Google One Tap and permitted automatic links across three SQL engines ([test](../../../adapters/sqlstore/oauth_profile_sync_test.go#L16))
   - [ ] `microsoftEntraId`
     - [x] Use a signed tenant-bound object ID and match the Graph subject before supplementing identity fields ([test](../../../providers/entra_test.go#L20))
     - [x] Compare tenant discovery, default scopes, graph merging and absent-email behavior with the published preset ([test](../../../conformance/entra-profiles.test.mjs#L6))
   - [ ] `OktaOptions`
-    - [ ] `issuer`
-    - [ ] `clientId`
-    - [ ] `clientSecret`
+    - [x] `issuer` ([test](../../../providers/enterprise_oidc_test.go#L23))
+      - [x] Discover an Okta custom authorization server issuer given with a trailing slash and an organization issuer, and sign in with a verified ID token ([test](../../../providers/enterprise_oidc_test.go#L23))
+      - [x] Refuse an Okta issuer without an HTTPS scheme or with a query or fragment, without fetching discovery ([test](../../../providers/enterprise_oidc_test.go#L122))
+    - [x] `clientId` ([test](../../../providers/enterprise_oidc_test.go#L48))
+      - [x] Authenticate an enterprise preset's code exchange, Okta included, with the configured client ID by HTTP Basic ([test](../../../providers/enterprise_oidc_test.go#L48))
+    - [x] `clientSecret` ([test](../../../providers/enterprise_oidc_test.go#L48))
+      - [x] Authenticate an enterprise preset's code exchange, Okta included, with the configured client secret by HTTP Basic ([test](../../../providers/enterprise_oidc_test.go#L48))
     - [ ] `tokenEndpointAuth`
-    - [ ] `scopes`
-    - [ ] `redirectURI`
-    - [ ] `endSessionEndpoint`
-    - [ ] `postLogoutRedirectURI`
+    - [x] `scopes` ([test](../../../providers/enterprise_oidc_test.go#L94))
+      - [x] Request openid, profile and email by default for discovered enterprise presets, Okta included ([test](../../../providers/enterprise_oidc_test.go#L94))
+      - [x] Replace a preset's default scopes with the configured list in sign-in and link authorization requests ([test](../../../conformance/goapi/provider_contract_test.go#L68))
+    - [x] `redirectURI` ([test](../../../providers/enterprise_oidc_test.go#L49))
+      - [x] Exchange the code with the default callback under a custom auth mount for each enterprise preset ([test](../../../providers/enterprise_oidc_test.go#L49))
+      - [x] Use a provider's own redirect URL in the authorization request and code exchange, forward it to the callback, and refuse a relative or non-HTTP URL ([test](../../../conformance/goapi/oauth_redirect_uri_test.go#L22))
+    - [x] `endSessionEndpoint` ([test](../../../providers/enterprise_oidc_test.go#L70))
+      - [x] Take the provider logout URL from an enterprise preset's discovery document ([test](../../../providers/enterprise_oidc_test.go#L70))
+      - [x] Send the signed-out user to the configured end-session endpoint, keeping its query and adding the ID token hint, state and client ID ([test](../../../conformance/goapi/oauth_logout_test.go#L17))
+    - [x] `postLogoutRedirectURI` ([test](../../../conformance/goapi/oauth_logout_test.go#L70))
+      - [x] Send the configured post-logout return URI, or the sign-out's own callback URL, to the end-session endpoint and refuse an untrusted one ([test](../../../conformance/goapi/oauth_logout_test.go#L70))
     - [ ] `disableProviderLogout`
-    - [ ] `pkce`
-    - [ ] `disableImplicitSignUp`
-    - [ ] `disableSignUp`
-    - [ ] `overrideUserInfo`
+    - [x] `pkce` ([test](../../../providers/enterprise_oidc_test.go#L50))
+      - [x] Verify the S256 code verifier from an enterprise preset's authorization at the token endpoint ([test](../../../providers/enterprise_oidc_test.go#L50))
+      - [x] Omit the code challenge for catalog providers configured without PKCE ([test](../../../providers/catalog_test.go#L177))
+    - [x] `disableImplicitSignUp` ([test](../../../conformance/goapi/oauth_signup_test.go#L118))
+      - [x] Refuse a new account unless the sign-in sends requestSignUp, and create it when it does, in browser and ID-token sign-in ([test](../../../conformance/goapi/oauth_signup_test.go#L118))
+    - [x] `disableSignUp` ([test](../../../conformance/goapi/oauth_signup_test.go#L132))
+      - [x] Decline a new account from a provider with sign-up disabled even when sign-up is requested, in browser and ID-token sign-in ([test](../../../conformance/goapi/oauth_signup_test.go#L132))
+    - [x] `overrideUserInfo` ([test](../../../conformance/social-user-fields.mjs#L145))
+      - [x] Refresh a returning profile with either server, preserve protected fields and use the new mailbox verification status ([test](../../../conformance/social-user-fields.mjs#L145))
+      - [x] Apply the provider profile-update policy on direct sign-in, Google One Tap and permitted automatic links across three SQL engines ([test](../../../adapters/sqlstore/oauth_profile_sync_test.go#L16))
   - [ ] `okta`
     - [x] Discover a configured Okta organization or custom authorization server and authenticate with a signed ID token at a custom mount ([test](../../../providers/enterprise_oidc_test.go#L23))
     - [x] Match the Okta organization or custom authorization server discovery location and default scopes with the published preset ([test](../../../conformance/enterprise-oidc.test.mjs#L6))
   - [ ] `PatreonOptions`
-    - [ ] `clientId`
-    - [ ] `clientSecret`
+    - [x] `clientId` ([test](../../../providers/profile_presets_test.go#L62))
+      - [x] Send the configured client ID and secret as form fields in each profile preset's code exchange ([test](../../../providers/profile_presets_test.go#L62))
+    - [x] `clientSecret` ([test](../../../providers/profile_presets_test.go#L62))
+      - [x] Send the configured client ID and secret as form fields in each profile preset's code exchange ([test](../../../providers/profile_presets_test.go#L62))
     - [ ] `tokenEndpointAuth`
-    - [ ] `scopes`
-    - [ ] `redirectURI`
-    - [ ] `endSessionEndpoint`
-    - [ ] `postLogoutRedirectURI`
+    - [x] `scopes` ([test](../../../providers/profile_presets_test.go#L111))
+      - [x] Request each profile preset's default scopes in the authorization URL ([test](../../../providers/profile_presets_test.go#L111))
+      - [x] Replace a preset's default scopes with the configured list in sign-in and link authorization requests ([test](../../../conformance/goapi/provider_contract_test.go#L68))
+    - [x] `redirectURI` ([test](../../../providers/profile_presets_test.go#L111))
+      - [x] Send the default callback under a custom auth mount in each profile preset's authorization URL ([test](../../../providers/profile_presets_test.go#L111))
+      - [x] Use a provider's own redirect URL in the authorization request and code exchange, forward it to the callback, and refuse a relative or non-HTTP URL ([test](../../../conformance/goapi/oauth_redirect_uri_test.go#L22))
+    - [x] `endSessionEndpoint` ([test](../../../conformance/goapi/oauth_logout_test.go#L17))
+      - [x] Send the signed-out user to the configured end-session endpoint, keeping its query and adding the ID token hint, state and client ID ([test](../../../conformance/goapi/oauth_logout_test.go#L17))
+    - [x] `postLogoutRedirectURI` ([test](../../../conformance/goapi/oauth_logout_test.go#L70))
+      - [x] Send the configured post-logout return URI, or the sign-out's own callback URL, to the end-session endpoint and refuse an untrusted one ([test](../../../conformance/goapi/oauth_logout_test.go#L70))
     - [ ] `disableProviderLogout`
-    - [ ] `pkce`
-    - [ ] `disableImplicitSignUp`
-    - [ ] `disableSignUp`
-    - [ ] `overrideUserInfo`
+    - [x] `pkce` ([test](../../../providers/profile_presets_test.go#L111))
+      - [x] Send an S256 code challenge in each profile preset's authorization URL ([test](../../../providers/profile_presets_test.go#L111))
+      - [x] Omit the code challenge for catalog providers configured without PKCE ([test](../../../providers/catalog_test.go#L177))
+    - [x] `disableImplicitSignUp` ([test](../../../conformance/goapi/oauth_signup_test.go#L118))
+      - [x] Refuse a new account unless the sign-in sends requestSignUp, and create it when it does, in browser and ID-token sign-in ([test](../../../conformance/goapi/oauth_signup_test.go#L118))
+    - [x] `disableSignUp` ([test](../../../conformance/goapi/oauth_signup_test.go#L132))
+      - [x] Decline a new account from a provider with sign-up disabled even when sign-up is requested, in browser and ID-token sign-in ([test](../../../conformance/goapi/oauth_signup_test.go#L132))
+    - [x] `overrideUserInfo` ([test](../../../conformance/social-user-fields.mjs#L145))
+      - [x] Refresh a returning profile with either server, preserve protected fields and use the new mailbox verification status ([test](../../../conformance/social-user-fields.mjs#L145))
+      - [x] Apply the provider profile-update policy on direct sign-in, Google One Tap and permitted automatic links across three SQL engines ([test](../../../adapters/sqlstore/oauth_profile_sync_test.go#L16))
   - [ ] `patreon`
     - [x] Complete authorization-code sign-in, bind the provider subject and read the linked account profile ([test](../../../providers/profile_presets_test.go#L22))
     - [x] Compare default scopes, authenticated profile fields and subject with the published provider preset ([test](../../../conformance/profile-presets.test.mjs#L6))
   - [ ] `SlackOptions`
-    - [ ] `clientId`
-    - [ ] `clientSecret`
+    - [x] `clientId` ([test](../../../providers/profile_presets_test.go#L62))
+      - [x] Send the configured client ID and secret as form fields in each profile preset's code exchange ([test](../../../providers/profile_presets_test.go#L62))
+    - [x] `clientSecret` ([test](../../../providers/profile_presets_test.go#L62))
+      - [x] Send the configured client ID and secret as form fields in each profile preset's code exchange ([test](../../../providers/profile_presets_test.go#L62))
     - [ ] `tokenEndpointAuth`
-    - [ ] `scopes`
-    - [ ] `redirectURI`
-    - [ ] `endSessionEndpoint`
-    - [ ] `postLogoutRedirectURI`
+    - [x] `scopes` ([test](../../../providers/profile_presets_test.go#L111))
+      - [x] Request each profile preset's default scopes in the authorization URL ([test](../../../providers/profile_presets_test.go#L111))
+      - [x] Replace a preset's default scopes with the configured list in sign-in and link authorization requests ([test](../../../conformance/goapi/provider_contract_test.go#L68))
+    - [x] `redirectURI` ([test](../../../providers/profile_presets_test.go#L111))
+      - [x] Send the default callback under a custom auth mount in each profile preset's authorization URL ([test](../../../providers/profile_presets_test.go#L111))
+      - [x] Use a provider's own redirect URL in the authorization request and code exchange, forward it to the callback, and refuse a relative or non-HTTP URL ([test](../../../conformance/goapi/oauth_redirect_uri_test.go#L22))
+    - [x] `endSessionEndpoint` ([test](../../../conformance/goapi/oauth_logout_test.go#L17))
+      - [x] Send the signed-out user to the configured end-session endpoint, keeping its query and adding the ID token hint, state and client ID ([test](../../../conformance/goapi/oauth_logout_test.go#L17))
+    - [x] `postLogoutRedirectURI` ([test](../../../conformance/goapi/oauth_logout_test.go#L70))
+      - [x] Send the configured post-logout return URI, or the sign-out's own callback URL, to the end-session endpoint and refuse an untrusted one ([test](../../../conformance/goapi/oauth_logout_test.go#L70))
     - [ ] `disableProviderLogout`
-    - [ ] `pkce`
-    - [ ] `disableImplicitSignUp`
-    - [ ] `disableSignUp`
-    - [ ] `overrideUserInfo`
+    - [x] `pkce` ([test](../../../providers/profile_presets_test.go#L111))
+      - [x] Send an S256 code challenge in each profile preset's authorization URL ([test](../../../providers/profile_presets_test.go#L111))
+      - [x] Omit the code challenge for catalog providers configured without PKCE ([test](../../../providers/catalog_test.go#L177))
+    - [x] `disableImplicitSignUp` ([test](../../../conformance/goapi/oauth_signup_test.go#L118))
+      - [x] Refuse a new account unless the sign-in sends requestSignUp, and create it when it does, in browser and ID-token sign-in ([test](../../../conformance/goapi/oauth_signup_test.go#L118))
+    - [x] `disableSignUp` ([test](../../../conformance/goapi/oauth_signup_test.go#L132))
+      - [x] Decline a new account from a provider with sign-up disabled even when sign-up is requested, in browser and ID-token sign-in ([test](../../../conformance/goapi/oauth_signup_test.go#L132))
+    - [x] `overrideUserInfo` ([test](../../../conformance/social-user-fields.mjs#L145))
+      - [x] Refresh a returning profile with either server, preserve protected fields and use the new mailbox verification status ([test](../../../conformance/social-user-fields.mjs#L145))
+      - [x] Apply the provider profile-update policy on direct sign-in, Google One Tap and permitted automatic links across three SQL engines ([test](../../../adapters/sqlstore/oauth_profile_sync_test.go#L16))
   - [ ] `slack`
     - [x] Complete authorization-code sign-in, bind the provider subject and read the linked account profile ([test](../../../providers/profile_presets_test.go#L22))
     - [x] Compare default scopes, authenticated profile fields and subject with the published provider preset ([test](../../../conformance/profile-presets.test.mjs#L6))
   - [ ] `YandexOptions`
-    - [ ] `clientId`
-    - [ ] `clientSecret`
+    - [x] `clientId` ([test](../../../providers/profile_presets_test.go#L62))
+      - [x] Send the configured client ID and secret as form fields in each profile preset's code exchange ([test](../../../providers/profile_presets_test.go#L62))
+    - [x] `clientSecret` ([test](../../../providers/profile_presets_test.go#L62))
+      - [x] Send the configured client ID and secret as form fields in each profile preset's code exchange ([test](../../../providers/profile_presets_test.go#L62))
     - [ ] `tokenEndpointAuth`
-    - [ ] `scopes`
-    - [ ] `redirectURI`
-    - [ ] `endSessionEndpoint`
-    - [ ] `postLogoutRedirectURI`
+    - [x] `scopes` ([test](../../../providers/profile_presets_test.go#L111))
+      - [x] Request each profile preset's default scopes in the authorization URL ([test](../../../providers/profile_presets_test.go#L111))
+      - [x] Replace a preset's default scopes with the configured list in sign-in and link authorization requests ([test](../../../conformance/goapi/provider_contract_test.go#L68))
+    - [x] `redirectURI` ([test](../../../providers/profile_presets_test.go#L111))
+      - [x] Send the default callback under a custom auth mount in each profile preset's authorization URL ([test](../../../providers/profile_presets_test.go#L111))
+      - [x] Use a provider's own redirect URL in the authorization request and code exchange, forward it to the callback, and refuse a relative or non-HTTP URL ([test](../../../conformance/goapi/oauth_redirect_uri_test.go#L22))
+    - [x] `endSessionEndpoint` ([test](../../../conformance/goapi/oauth_logout_test.go#L17))
+      - [x] Send the signed-out user to the configured end-session endpoint, keeping its query and adding the ID token hint, state and client ID ([test](../../../conformance/goapi/oauth_logout_test.go#L17))
+    - [x] `postLogoutRedirectURI` ([test](../../../conformance/goapi/oauth_logout_test.go#L70))
+      - [x] Send the configured post-logout return URI, or the sign-out's own callback URL, to the end-session endpoint and refuse an untrusted one ([test](../../../conformance/goapi/oauth_logout_test.go#L70))
     - [ ] `disableProviderLogout`
-    - [ ] `pkce`
-    - [ ] `disableImplicitSignUp`
-    - [ ] `disableSignUp`
-    - [ ] `overrideUserInfo`
-  - [ ] `yandex`
+    - [x] `pkce` ([test](../../../providers/profile_presets_test.go#L111))
+      - [x] Send an S256 code challenge in each profile preset's authorization URL ([test](../../../providers/profile_presets_test.go#L111))
+      - [x] Omit the code challenge for catalog providers configured without PKCE ([test](../../../providers/catalog_test.go#L177))
+    - [x] `disableImplicitSignUp` ([test](../../../conformance/goapi/oauth_signup_test.go#L118))
+      - [x] Refuse a new account unless the sign-in sends requestSignUp, and create it when it does, in browser and ID-token sign-in ([test](../../../conformance/goapi/oauth_signup_test.go#L118))
+    - [x] `disableSignUp` ([test](../../../conformance/goapi/oauth_signup_test.go#L132))
+      - [x] Decline a new account from a provider with sign-up disabled even when sign-up is requested, in browser and ID-token sign-in ([test](../../../conformance/goapi/oauth_signup_test.go#L132))
+    - [x] `overrideUserInfo` ([test](../../../conformance/social-user-fields.mjs#L145))
+      - [x] Refresh a returning profile with either server, preserve protected fields and use the new mailbox verification status ([test](../../../conformance/social-user-fields.mjs#L145))
+      - [x] Apply the provider profile-update policy on direct sign-in, Google One Tap and permitted automatic links across three SQL engines ([test](../../../adapters/sqlstore/oauth_profile_sync_test.go#L16))
+  - [x] `yandex` ([test](../../../providers/profile_presets_test.go#L147))
     - [x] Complete authorization-code sign-in, bind the provider subject and read the linked account profile ([test](../../../providers/profile_presets_test.go#L22))
     - [x] Compare default scopes, authenticated profile fields and subject with the published provider preset ([test](../../../conformance/profile-presets.test.mjs#L6))
+    - [x] Refuse an empty token or a profile without a subject, and a Yandex profile without an email ([test](../../../providers/profile_presets_test.go#L147))
   - [ ] `GenericOAuthConfig`
     - [ ] `providerId`
+      - [x] Build the authorization and code-exchange callback from the provider's registered key under the auth mount ([test](../../../providers/profile_presets_test.go#L111))
     - [ ] `name`
     - [ ] `accountSubject`
+      - [x] Store the subject each profile preset reads from its id or sub field as the linked account ID ([test](../../../providers/profile_presets_test.go#L140))
     - [ ] `discoveryUrl`
+      - [x] Read the authorization, token, key and end-session endpoints from issuer discovery, sign in with a verified ID token and reject another issuer's token ([test](../../../providers/enterprise_oidc_test.go#L23))
+      - [x] Accept a direct ID token verified against discovered keys once, and reject a reused token or a mismatched nonce ([test](../../../providers/oidc_test.go#L22))
     - [ ] `requireIdTokenVerification`
-    - [ ] `authorizationUrl`
-    - [ ] `tokenUrl`
+    - [x] `authorizationUrl` ([test](../../../conformance/goapi/oauth_test.go#L30))
+      - [x] Send the browser to the configured authorization endpoint with an S256 code challenge and nonce ([test](../../../conformance/goapi/oauth_test.go#L30))
+      - [x] Send the browser to the authorization endpoint read from enterprise issuer discovery ([test](../../../providers/enterprise_oidc_test.go#L94))
+    - [x] `tokenUrl` ([test](../../../conformance/goapi/oauth_test.go#L54))
+      - [x] Exchange the code at the configured token endpoint with the authorized redirect URI and the matching PKCE verifier ([test](../../../conformance/goapi/oauth_test.go#L54))
+      - [x] Exchange the code at the token endpoint read from discovery with the configured client credentials ([test](../../../providers/enterprise_oidc_test.go#L48))
     - [ ] `userInfoUrl`
-    - [ ] `endSessionEndpoint`
-    - [ ] `postLogoutRedirectURI`
+    - [x] `endSessionEndpoint` ([test](../../../conformance/goapi/oauth_logout_test.go#L17))
+      - [x] Send the signed-out user to the configured end-session endpoint, keeping its query and adding the ID token hint, state and client ID ([test](../../../conformance/goapi/oauth_logout_test.go#L17))
+      - [x] Take the provider logout URL from an enterprise preset's discovery document ([test](../../../providers/enterprise_oidc_test.go#L70))
+    - [x] `postLogoutRedirectURI` ([test](../../../conformance/goapi/oauth_logout_test.go#L70))
+      - [x] Send the configured post-logout return URI, or the sign-out's own callback URL, to the end-session endpoint and refuse an untrusted one ([test](../../../conformance/goapi/oauth_logout_test.go#L70))
     - [ ] `disableProviderLogout`
-    - [ ] `clientId`
-    - [ ] `clientSecret`
+    - [x] `clientId` ([test](../../../providers/catalog_test.go#L79))
+      - [x] Send the configured client ID in every catalog provider's code exchange through real sign-in and callback requests ([test](../../../providers/catalog_test.go#L79))
+    - [x] `clientSecret` ([test](../../../providers/catalog_test.go#L80))
+      - [x] Send the configured client secret in every catalog provider's code exchange, by HTTP Basic or form fields as the provider requires ([test](../../../providers/catalog_test.go#L80))
     - [ ] `tokenEndpointAuth`
     - [ ] `scopes`
+      - [x] Request only the configured scopes on sign-in and link authorization URLs, replacing a preset's defaults ([test](../../../conformance/goapi/provider_contract_test.go#L67))
+      - [x] Request each catalog provider's configured scopes on the authorization URL, and no scope for providers configured without any ([test](../../../providers/catalog_test.go#L162))
     - [ ] `redirectURI`
+      - [x] Return the browser from the provider to the mounted callback route for the registered provider name by default ([test](../../../conformance/goapi/oauth_test.go#L141))
+      - [x] Send a configured redirect URL in both the authorization request and the code exchange, and refuse one that is not an absolute HTTP(S) URL ([test](../../../conformance/goapi/oauth_redirect_uri_test.go#L95))
     - [ ] `responseType`
+      - [x] Send the Apple preset's configured response_type of code id_token in place of the default code ([test](../../../providers/apple_microsoft_test.go#L102))
     - [ ] `responseMode`
+      - [x] Send response_mode=form_post for the Apple preset and complete sign-in from the provider's cross-site form POST callback ([test](../../../providers/apple_microsoft_test.go#L40))
     - [ ] `prompt`
+      - [x] Send the configured prompt value on sign-in and link authorization URLs ([test](../../../conformance/goapi/provider_contract_test.go#L67))
     - [ ] `pkce`
+      - [x] Send an S256 code challenge and a nonce on a hand-configured provider's authorization request ([test](../../../conformance/goapi/oauth_test.go#L30))
+      - [x] Omit the code challenge for catalog providers configured without PKCE and send it for the others ([test](../../../providers/catalog_test.go#L178))
     - [ ] `accessType`
     - [ ] `accessTokenExpiresIn`
     - [ ] `getToken`
+      - [x] Complete browser sign-in through a provider's own code exchange function instead of a token endpoint request ([test](../../../conformance/goapi/oauth_signup_test.go#L38))
+      - [x] Pass the callback's device ID to the VK provider's own code exchange ([test](../../../providers/catalog_test.go#L76))
     - [ ] `getUserInfo`
+      - [x] Sign in with the profile a hand-configured provider's own profile function reads from its user-info endpoint ([test](../../../conformance/goapi/oauth_test.go#L177))
     - [ ] `mapProfileToUser`
+      - [x] Store provider-mapped additional user fields at social registration, ignore undeclared and server-owned values, and keep a returning user's fields ([test](../../../adapters/sqlstore/oauth_user_fields_test.go#L112))
     - [ ] `authorizationUrlParams`
+      - [x] Add a configured authorization parameter (prompt) to every sign-in and link authorization URL ([test](../../../conformance/goapi/provider_contract_test.go#L67))
+      - [x] Replace the default response_type with the Apple preset's configured code id_token and add response_mode=form_post ([test](../../../providers/apple_microsoft_test.go#L102))
     - [ ] `tokenUrlParams`
     - [ ] `refreshTokenParams`
     - [ ] `disableImplicitSignUp`
+      - [x] Refuse a first-time account without requestSignUp, create it with requestSignUp and sign a returning user in, for browser and ID-token sign-in ([test](../../../conformance/goapi/oauth_signup_test.go#L117))
     - [ ] `disableSignUp`
+      - [x] Refuse a new account from a provider with sign-up disabled even when requestSignUp is set, for browser and ID-token sign-in ([test](../../../conformance/goapi/oauth_signup_test.go#L131))
     - [ ] `authentication`
+      - [x] Send client credentials in a Basic header or in the token form, as each catalog provider is configured ([test](../../../providers/catalog_test.go#L59))
     - [ ] `discoveryHeaders`
     - [ ] `authorizationHeaders`
     - [x] `overrideUserInfo` ([test](../../../conformance/social-user-fields.mjs#L145))
@@ -228,7 +431,10 @@
     - [ ] `disableIdTokenNonceBinding`
   - [ ] `GenericOAuthOptions`
     - [ ] `config`
+      - [x] Register three hand-configured providers in one SocialProviders map and apply each one's own sign-up and ID-token settings ([test](../../../conformance/goapi/oauth_signup_test.go#L54))
   - [ ] `GenericOAuthUserInfo`
+    - [x] Return each catalog provider's profile object, as that provider defines it, from account-info for the linked account ([test](../../../providers/catalog_test.go#L230))
+    - [x] Map each catalog provider's profile to its stable account subject, checked apart from the local user ID ([test](../../../providers/catalog_test.go#L242))
 
 ## Generic OAuth
 
@@ -236,64 +442,117 @@
   - [ ] When to Use This Plugin
     - [ ] Customization Options
       - [ ] Provider uses non-standard token exchange (GET, custom params)
+        - [x] Exchange WeChat codes with a GET request carrying appid and secret through the provider's own exchange function ([test](../../../providers/catalog_test.go#L66))
       - [ ] Provider returns a non-standard user profile
+        - [x] Map each catalog provider's own profile response to the user's email, verification status, name and image ([test](../../../providers/catalog_test.go#L203))
       - [ ] You need to map profile fields to your user model
+        - [x] Store provider-mapped additional user fields at social registration, ignore undeclared and server-owned values, and keep a returning user's fields ([test](../../../adapters/sqlstore/oauth_user_fields_test.go#L112))
       - [ ] Provider requires extra authorization parameters
+        - [x] Add a configured authorization parameter (prompt) to every sign-in and link authorization URL ([test](../../../conformance/goapi/provider_contract_test.go#L67))
       - [ ] Provider requires extra token parameters
       - [ ] Provider requires custom HTTP headers
       - [ ] Provider does not support OIDC discovery
+        - [x] Sign in through a provider configured with explicit authorization and token endpoints and its own profile function ([test](../../../conformance/goapi/oauth_test.go#L21))
       - [ ] Provider uses a non-standard immutable user identifier
+        - [x] Map each catalog provider's profile to its stable account subject, checked apart from the local user ID ([test](../../../providers/catalog_test.go#L242))
       - [ ] Provider rejects PKCE
+        - [x] Omit the code challenge for catalog providers configured without PKCE and send it for the others ([test](../../../providers/catalog_test.go#L178))
   - [ ] Usage
     - [ ] Sign In
+      - [x] Start a hand-configured provider's sign-in, return to the callback URL with a session, and refuse an unbound or reused callback ([test](../../../conformance/goapi/oauth_test.go#L21))
+      - [x] Keep the browser's additionalData with the flow and hand it to the callback's provider functions, validation and hooks, without reserved names ([test](../../../conformance/goapi/oauth_additional_data_test.go#L27))
     - [ ] Sign In with an ID Token
+      - [x] Sign in and link with a discovered provider's signed ID token, and refuse a reused token or a nonce mismatch ([test](../../../providers/oidc_test.go#L22))
+      - [x] Answer USER_EMAIL_NOT_FOUND for a verified ID token without an email and INVALID_TOKEN for a refused one, without a session ([test](../../../conformance/goapi/provider_contract_test.go#L70))
     - [ ] Link Account
+      - [x] Link a provider through /link-social from a live session, and fail the link when that session was revoked or signed out ([test](../../../adapters/sqlstore/oauth_link_session_test.go#L22))
     - [ ] Handle OAuth Callback
+      - [x] Return from the provider to the mounted callback route for the registered provider name ([test](../../../conformance/goapi/oauth_test.go#L141))
   - [ ] Validate OAuth User Info
+    - [x] Check social sign-up, returning sign-in and email-link sign-in with the provider name and fresh profile, and send refusals to the error callback ([test](../../../conformance/goapi/user_validation_test.go#L267))
+    - [x] Refuse ID-token sign-ups and explicit links with a 403 and the application's code, leaving a refused identity unlinked ([test](../../../conformance/goapi/user_validation_test.go#L338))
     - [ ] RP-Initiated Logout
+      - [x] Clear the session and build the provider end-session URL with id_token_hint, state, client_id and the default or requested return URI, without redirecting when asked ([test](../../../conformance/goapi/oauth_logout_test.go#L70))
+      - [x] Compare a hand-configured provider's end-session URL and local sign-out with the other runtime ([test](../../../conformance/social-logout.mjs#L4))
   - [ ] Provider Helpers
   - [ ] Configuration
     - [ ] Manual Configuration
     - [ ] Other Provider Configurations
       - [ ] providerId
+        - [x] Return the browser to the callback route named by the provider's SocialProviders key ([test](../../../conformance/goapi/oauth_test.go#L141))
       - [ ] accountSubject
+        - [x] Map each catalog provider's profile to its stable account subject, checked apart from the local user ID ([test](../../../providers/catalog_test.go#L242))
       - [ ] discoveryUrl
+        - [x] Discover authorization, token and signing-key endpoints at startup and sign in with the discovered issuer, default scopes, nonce and PKCE ([test](../../../providers/enterprise_oidc_test.go#L95))
+        - [x] Reject an ID token signed for another issuer by a discovered provider ([test](../../../providers/enterprise_oidc_test.go#L116))
+        - [x] Reject a discovered provider's ID token whose nonce does not match ([test](../../../providers/oidc_test.go#L121))
       - [ ] requireIdTokenVerification
       - [ ] disableIdTokenNonceBinding
       - [ ] authorizationUrl
+        - [x] Send a hand-configured provider's sign-in to its configured authorization endpoint with state, nonce and an S256 challenge ([test](../../../conformance/goapi/oauth_test.go#L30))
       - [ ] tokenUrl
+        - [x] Exchange the code at a hand-configured provider's token endpoint with the matching redirect URI and PKCE verifier ([test](../../../conformance/goapi/oauth_test.go#L54))
       - [ ] userInfoUrl
       - [ ] endSessionEndpoint
+        - [x] Send provider sign-out to a configured end-session endpoint, keeping its own query parameters ([test](../../../conformance/goapi/oauth_logout_test.go#L70))
+        - [x] Read the end-session endpoint from the issuer's discovery document ([test](../../../providers/enterprise_oidc_test.go#L71))
       - [ ] postLogoutRedirectURI
+        - [x] Send the provider's configured post-logout return URI when sign-out names no callback, and the requested one when it does ([test](../../../conformance/goapi/oauth_logout_test.go#L70))
       - [ ] disableProviderLogout
       - [ ] clientId
+        - [x] Send the configured client ID and secret with the authorization-code grant at each catalog provider's token endpoint ([test](../../../providers/catalog_test.go#L80))
       - [ ] clientSecret
+        - [x] Send the configured client ID and secret with the authorization-code grant at each catalog provider's token endpoint ([test](../../../providers/catalog_test.go#L80))
       - [ ] tokenEndpointAuth
       - [ ] scopes
+        - [x] Request only the configured scopes on sign-in and link authorization URLs, replacing a preset's defaults ([test](../../../conformance/goapi/provider_contract_test.go#L67))
       - [ ] redirectURI
+        - [x] Return the browser from the provider to the mounted callback route for the registered provider name by default ([test](../../../conformance/goapi/oauth_test.go#L141))
+        - [x] Send a configured redirect URL in both the authorization request and the code exchange, and refuse one that is not an absolute HTTP(S) URL ([test](../../../conformance/goapi/oauth_redirect_uri_test.go#L95))
       - [ ] responseType
+        - [x] Send the Apple preset's configured response_type of code id_token in place of the default code ([test](../../../providers/apple_microsoft_test.go#L102))
       - [ ] responseMode
+        - [x] Send response_mode=form_post for the Apple preset and complete sign-in from the provider's cross-site form POST callback ([test](../../../providers/apple_microsoft_test.go#L40))
       - [ ] prompt
+        - [x] Send the configured prompt value on sign-in and link authorization URLs ([test](../../../conformance/goapi/provider_contract_test.go#L67))
       - [ ] pkce
+        - [x] Send an S256 code challenge and a nonce on a hand-configured provider's authorization request ([test](../../../conformance/goapi/oauth_test.go#L30))
+        - [x] Omit the code challenge for catalog providers configured without PKCE and send it for the others ([test](../../../providers/catalog_test.go#L178))
       - [ ] accessType
       - [ ] accessTokenExpiresIn
       - [ ] getToken
+        - [x] Complete browser sign-in through a provider's own code exchange function instead of a token endpoint request ([test](../../../conformance/goapi/oauth_signup_test.go#L38))
+        - [x] Exchange WeChat codes with a GET request carrying appid and secret through the provider's own exchange function ([test](../../../providers/catalog_test.go#L66))
       - [ ] getUserInfo
+        - [x] Sign in with the profile a hand-configured provider's own profile function reads from its user-info endpoint ([test](../../../conformance/goapi/oauth_test.go#L177))
+        - [x] Sign in and link with a discovered provider's signed ID token, and refuse a reused token or a nonce mismatch ([test](../../../providers/oidc_test.go#L22))
       - [ ] mapProfileToUser
+        - [x] Store provider-mapped additional user fields at social registration, ignore undeclared and server-owned values, and keep a returning user's fields ([test](../../../adapters/sqlstore/oauth_user_fields_test.go#L112))
       - [ ] authorizationUrlParams
+        - [x] Add a configured authorization parameter (prompt) to every sign-in and link authorization URL ([test](../../../conformance/goapi/provider_contract_test.go#L67))
+        - [x] Replace the default response_type with the Apple preset's configured code id_token and add response_mode=form_post ([test](../../../providers/apple_microsoft_test.go#L102))
       - [ ] tokenUrlParams
       - [ ] refreshTokenParams
       - [ ] disableImplicitSignUp
+        - [x] Refuse a first-time account without requestSignUp, create it with requestSignUp and sign a returning user in, for browser and ID-token sign-in ([test](../../../conformance/goapi/oauth_signup_test.go#L117))
       - [ ] disableSignUp
+        - [x] Refuse a new account from a provider with sign-up disabled even when requestSignUp is set, for browser and ID-token sign-in ([test](../../../conformance/goapi/oauth_signup_test.go#L131))
       - [ ] authentication
+        - [x] Send client credentials in a Basic header or in the token form, as each catalog provider is configured ([test](../../../providers/catalog_test.go#L59))
       - [ ] discoveryHeaders
       - [ ] authorizationHeaders
       - [x] overrideUserInfo ([test](../../../conformance/social-user-fields.mjs#L145))
         - [x] Refresh a returning profile with either server, preserve protected fields and use the new mailbox verification status ([test](../../../conformance/social-user-fields.mjs#L145))
   - [ ] Advanced Usage
     - [ ] Custom Token Exchange
+      - [x] Exchange WeChat codes with a GET request carrying appid and secret through the provider's own exchange function ([test](../../../providers/catalog_test.go#L66))
+      - [x] Read the openid field from WeChat's token response and send it with the profile request ([test](../../../providers/catalog_test.go#L99))
     - [ ] Custom User Info Fetching
+      - [x] Sign in with the profile a hand-configured provider's own profile function reads from its user-info endpoint ([test](../../../conformance/goapi/oauth_test.go#L177))
     - [ ] Map User Info Fields
+      - [x] Store provider-mapped additional user fields at social registration, ignore undeclared and server-owned values, and keep a returning user's fields ([test](../../../adapters/sqlstore/oauth_user_fields_test.go#L112))
     - [ ] Accessing Raw Token Data
+      - [x] Read the openid field from WeChat's token response and send it with the profile request ([test](../../../providers/catalog_test.go#L99))
     - [ ] IDP-Initiated Flows
     - [ ] Error Handling
+      - [x] Send each failed callback to the error callback, or to the error page when none was given, with the provider error or failure code and no session ([test](../../../conformance/goapi/oauth_callback_errors_test.go#L23))

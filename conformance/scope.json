@@ -740,6 +740,62 @@
         "`--cwd <cwd>`"
       ],
       "reason": "not applicable: names the JavaScript project whose package.json and auth configuration the report describes; authctl info reports its own build, the Go runtime and the platform"
+    },
+    {
+      "page": "runtime.md",
+      "section": "Social sign-in",
+      "labels": [
+        "`requestShippingAddress`"
+      ],
+      "reason": "not applicable: declared in the PayPal options type but never read by the provider, so it has no runtime behaviour"
+    },
+    {
+      "page": "runtime.md",
+      "section": "Social sign-in",
+      "labels": [
+        "`scheme`"
+      ],
+      "reason": "not applicable: declared in the VK options type but never read by the provider, so it has no runtime behaviour"
+    },
+    {
+      "page": "runtime.md",
+      "section": "Social sign-in",
+      "labels": [
+        "`platformType`"
+      ],
+      "reason": "not applicable: declared in the WeChat options type but never read; its only value, WebsiteApp, is the QR-code website login the provider always uses"
+    },
+    {
+      "page": "authentication.md",
+      "section": "Other Social Providers",
+      "labels": [
+        "AgentID"
+      ],
+      "reason": "not applicable: JavaScript only. It is a third-party npm package that returns a TypeScript GenericOAuthConfig. A Go host registers such an issuer with providers.OpenIDConnect or its own OAuthProvider."
+    },
+    {
+      "page": "authentication.md",
+      "section": "Other Social Providers",
+      "labels": [
+        "EVE Online"
+      ],
+      "reason": "not applicable: JavaScript only. It is a third-party npm package that returns a TypeScript GenericOAuthConfig. A Go host configures EVE SSO as its own OAuthProvider."
+    },
+    {
+      "page": "authentication.md",
+      "section": "Other Social Providers",
+      "labels": [
+        "ThunderID"
+      ],
+      "reason": "not applicable: JavaScript only. It is a third-party npm package that returns a TypeScript GenericOAuthConfig. A Go host registers the issuer with providers.OpenIDConnect."
+    },
+    {
+      "page": "authentication.md",
+      "section": "Other Social Providers",
+      "labels": [
+        "Create a Provider Helper"
+      ],
+      "reason": "not applicable: TypeScript authoring pattern. A helper typed with BaseOAuthProviderOptions returns a GenericOAuthConfig and is shared as an npm package. In Go a helper is any function that returns plainauth.OAuthProvider, like the constructors in providers/."
     }
   ],
   "backlog": [

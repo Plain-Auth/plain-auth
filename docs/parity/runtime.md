@@ -164,102 +164,160 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
     - [x] Validate the configured form-post flow and verify a signed native token ([test](../../providers/apple_microsoft_test.go#L40))
     - [x] Select a native bundle ID or explicit app audiences and keep the browser exchange bound to its own Services ID ([test](../../providers/apple_audiences_test.go#L20))
     - [x] Use the released client with signed native tokens for accepted identities and reject an unlisted app on both runtimes ([test](../../conformance/apple-native.mjs#L19))
-  - [ ] `atlassian`
+    - [x] Generate the ES256 client-secret JWT from the team ID, key ID and Services ID within Apple's six-month limit and keep it as the provider secret ([test](../../providers/apple_secret_test.go#L30))
+  - [x] `atlassian` ([test](../../providers/catalog_test.go#L283))
     - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
+    - [x] Send the refresh grant to the provider's token endpoint with its client authentication and fields, and return the new tokens ([test](../../providers/catalog_test.go#L283))
   - [ ] `cloudflare`
     - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
+    - [x] Send the refresh grant to the provider's token endpoint with its client authentication and fields, and return the new tokens ([test](../../providers/catalog_test.go#L283))
   - [ ] `cognito`
     - [x] Complete a browser code exchange with a local issuer and its signed claims ([test](../../providers/issuer_test.go#L25))
+    - [x] A Cognito token response without an ID token reads the hosted userinfo endpoint and accepts a string email_verified ([test](../../providers/issuer_test.go#L142))
   - [ ] `discord`
     - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
+    - [x] Send the refresh grant to the provider's token endpoint with its client authentication and fields, and return the new tokens ([test](../../providers/catalog_test.go#L283))
   - [ ] `dropbox`
     - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
+    - [x] Send the refresh grant to the provider's token endpoint with its client authentication and fields, and return the new tokens ([test](../../providers/catalog_test.go#L283))
   - [ ] `facebook`
     - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
-  - [ ] `figma`
+    - [x] Send the refresh grant to the provider's token endpoint with its client authentication and fields, and return the new tokens ([test](../../providers/catalog_test.go#L283))
+    - [x] Refuse a Facebook access token issued to another app, or a profile whose ID differs from the token's user ([test](../../providers/catalog_test.go#L249))
+  - [x] `figma` ([test](../../providers/catalog_test.go#L283))
     - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
+    - [x] Send the refresh grant to the provider's token endpoint with its client authentication and fields, and return the new tokens ([test](../../providers/catalog_test.go#L283))
   - [ ] `github`
     - [x] Resolve a verified GitHub address through the provider API fixture ([test](../../providers/providers_test.go#L57))
   - [ ] `gitlab`
     - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
+    - [x] Send the refresh grant to the provider's token endpoint with its client authentication and fields, and return the new tokens ([test](../../providers/catalog_test.go#L283))
   - [ ] `google`
     - [x] Verify the signature and claims of a Google ID token against a test issuer ([test](../../providers/providers_test.go#L19))
-  - [ ] `huggingface`
+  - [x] `huggingface` ([test](../../providers/catalog_test.go#L283))
     - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
+    - [x] Send the refresh grant to the provider's token endpoint with its client authentication and fields, and return the new tokens ([test](../../providers/catalog_test.go#L283))
   - [ ] `kakao`
     - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
-  - [ ] `kick`
+    - [x] Send the refresh grant to the provider's token endpoint with its client authentication and fields, and return the new tokens ([test](../../providers/catalog_test.go#L283))
+    - [x] Treat a Kakao email that Kakao marks verified but not valid as unverified ([test](../../providers/catalog_test.go#L249))
+  - [x] `kick` ([test](../../providers/catalog_test.go#L283))
     - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
+    - [x] Send the refresh grant to the provider's token endpoint with its client authentication and fields, and return the new tokens ([test](../../providers/catalog_test.go#L283))
   - [ ] `line`
     - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
+    - [x] Send the refresh grant to the provider's token endpoint with its client authentication and fields, and return the new tokens ([test](../../providers/catalog_test.go#L283))
+    - [x] The LINE channel constructor checks the code-exchange ID token at LINE's verify endpoint and refuses another channel, nonce or issuer, or an expired token ([test](../../providers/line_test.go#L16))
   - [ ] `linear`
     - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
-  - [ ] `linkedin`
+    - [x] Send the refresh grant to the provider's token endpoint with its client authentication and fields, and return the new tokens ([test](../../providers/catalog_test.go#L283))
+  - [x] `linkedin` ([test](../../providers/catalog_test.go#L283))
     - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
+    - [x] Send the refresh grant to the provider's token endpoint with its client authentication and fields, and return the new tokens ([test](../../providers/catalog_test.go#L283))
   - [ ] `microsoft`
     - [x] Verify tenant, issuer and mailbox claims using local issuer fixtures ([test](../../providers/apple_microsoft_test.go#L146))
-  - [ ] `naver`
+  - [x] `naver` ([test](../../providers/catalog_test.go#L283))
     - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
+    - [x] Send the refresh grant to the provider's token endpoint with its client authentication and fields, and return the new tokens ([test](../../providers/catalog_test.go#L283))
   - [ ] `notion`
     - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
+    - [x] Send the refresh grant to the provider's token endpoint with its client authentication and fields, and return the new tokens ([test](../../providers/catalog_test.go#L283))
   - [ ] `paybin`
     - [x] Complete a browser code exchange with a local issuer and its signed claims ([test](../../providers/issuer_test.go#L25))
   - [ ] `paypal`
     - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
-  - [ ] `polar`
+    - [x] Send the refresh grant to the provider's token endpoint with its client authentication and fields, and return the new tokens ([test](../../providers/catalog_test.go#L283))
+    - [x] Refuse a PayPal ID token whose subject differs from the userinfo subject ([test](../../providers/catalog_test.go#L249))
+  - [x] `polar` ([test](../../providers/catalog_test.go#L283))
     - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
+    - [x] Send the refresh grant to the provider's token endpoint with its client authentication and fields, and return the new tokens ([test](../../providers/catalog_test.go#L283))
   - [ ] `railway`
     - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
+    - [x] Send the refresh grant to the provider's token endpoint with its client authentication and fields, and return the new tokens ([test](../../providers/catalog_test.go#L283))
   - [ ] `reddit`
     - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
+    - [x] Send the refresh grant to the provider's token endpoint with its client authentication and fields, and return the new tokens ([test](../../providers/catalog_test.go#L283))
   - [ ] `roblox`
     - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
+    - [x] Send the refresh grant to the provider's token endpoint with its client authentication and fields, and return the new tokens ([test](../../providers/catalog_test.go#L283))
   - [ ] `salesforce`
     - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
+    - [x] Send the refresh grant to the provider's token endpoint with its client authentication and fields, and return the new tokens ([test](../../providers/catalog_test.go#L283))
   - [ ] `slack`
     - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
-  - [ ] `spotify`
+    - [x] Send the refresh grant to the provider's token endpoint with its client authentication and fields, and return the new tokens ([test](../../providers/catalog_test.go#L283))
+  - [x] `spotify` ([test](../../providers/catalog_test.go#L283))
     - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
-  - [ ] `tiktok`
+    - [x] Send the refresh grant to the provider's token endpoint with its client authentication and fields, and return the new tokens ([test](../../providers/catalog_test.go#L283))
+  - [x] `tiktok` ([test](../../providers/catalog_test.go#L283))
     - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
+    - [x] Send the refresh grant to the provider's token endpoint with its client authentication and fields, and return the new tokens ([test](../../providers/catalog_test.go#L283))
   - [ ] `twitch`
     - [x] Complete a browser code exchange with a local issuer and its signed claims ([test](../../providers/issuer_test.go#L25))
-  - [ ] `twitter`
+  - [x] `twitter` ([test](../../providers/catalog_test.go#L283))
     - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
+    - [x] Send the refresh grant to the provider's token endpoint with its client authentication and fields, and return the new tokens ([test](../../providers/catalog_test.go#L283))
+    - [x] Resolve an X profile without a confirmed email as unverified ([test](../../providers/catalog_test.go#L249))
   - [ ] `vercel`
     - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
+    - [x] The Vercel preset turns token refresh off ([test](../../providers/catalog_test.go#L292))
   - [ ] `vk`
     - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
+    - [x] Send the refresh grant to the provider's token endpoint with its client authentication and fields, and return the new tokens ([test](../../providers/catalog_test.go#L283))
   - [ ] `wechat`
     - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
+    - [x] Send the refresh grant to the provider's token endpoint with its client authentication and fields, and return the new tokens ([test](../../providers/catalog_test.go#L283))
   - [ ] `zoom`
     - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
+    - [x] Send the refresh grant to the provider's token endpoint with its client authentication and fields, and return the new tokens ([test](../../providers/catalog_test.go#L283))
 - [ ] Shared social sign-in configuration
   - [ ] `clientId`
-  - [ ] `clientSecret`
-  - [ ] `scope`
-  - [ ] `disableDefaultScope`
-  - [ ] `redirectURI`
+    - [x] For every catalog provider, the configured client ID reaches the token exchange through real /sign-in/social and /callback requests ([test](../../providers/catalog_test.go#L79))
+    - [x] With an Apple native bundle ID configured, the Services ID stays the provider's browser client ID ([test](../../providers/apple_audiences_test.go#L47))
+  - [x] `clientSecret` ([test](../../providers/catalog_test.go#L80))
+    - [x] For every catalog provider, the configured client secret is sent in the token exchange, by basic auth or form fields as the provider requires ([test](../../providers/catalog_test.go#L80))
+  - [x] `scope` ([test](../../conformance/social-signup.mjs#L60))
+    - [x] On both servers, the configured provider scopes appear in the authorization URL ([test](../../conformance/social-signup.mjs#L60))
+    - [x] A preset's Config.Scopes is the scope of the link authorization URL as well as the sign-in one ([test](../../conformance/goapi/provider_contract_test.go#L95))
+  - [x] `disableDefaultScope` ([test](../../conformance/goapi/provider_contract_test.go#L68))
+    - [x] Replacing a preset's Config.Scopes drops its default scopes from the authorization URL ([test](../../conformance/goapi/provider_contract_test.go#L68))
+  - [x] `redirectURI` ([test](../../conformance/goapi/oauth_redirect_uri_test.go#L22))
+    - [x] A provider's Config.RedirectURL replaces the callback route in the authorization request and the code exchange, an application route forwards it to the callback, and a relative or non-HTTP URL is refused ([test](../../conformance/goapi/oauth_redirect_uri_test.go#L22))
   - [ ] `authorizationEndpoint`
-  - [ ] `clientKey`
+    - [x] A provider whose Config.Endpoint.AuthURL points at a local server sends the browser to that endpoint, and the code flow completes with PKCE and nonce ([test](../../conformance/goapi/oauth_test.go#L21))
+  - [x] `clientKey` ([test](../../providers/catalog_test.go#L174))
+    - [x] For TikTok, the configured key is sent as client_key, not client_id, in both the authorization URL and the token form ([test](../../providers/catalog_test.go#L174))
   - [x] `disableIdTokenSignIn` ([test](../../conformance/apple-native.mjs#L51))
     - [x] Decline signed client ID tokens for sign-in and account linking while preserving browser authorization ([test](../../conformance/apple-native.mjs#L51))
     - [x] Finish the browser code exchange with direct grants disabled and keep other providers available ([test](../../conformance/goapi/oauth_signup_test.go#L139))
     - [x] Complete a separately enabled Google One Tap challenge with the direct social grant disabled ([test](../../conformance/core.test.mjs#L648))
   - [ ] `verifyIdToken`
-  - [ ] `getUserInfo`
-  - [ ] `refreshAccessToken`
-  - [ ] `mapProfileToUser`
+    - [x] A custom VerifyIDToken on a preset receives the raw token and nonce and decides the sign-in; its error answers INVALID_TOKEN without a session ([test](../../conformance/goapi/provider_contract_test.go#L93))
+  - [x] `getUserInfo` ([test](../../conformance/goapi/oauth_test.go#L177))
+    - [x] A custom Resolve function fetches user info from the provider with the issued access token ([test](../../conformance/goapi/oauth_test.go#L177))
+    - [x] account-info returns the user and the raw data a custom Resolve produced, the same as the other runtime ([test](../../conformance/provider-credentials.mjs#L76))
+    - [x] A profile the resolver cannot return redirects with error=unable_to_get_user_info ([test](../../conformance/goapi/oauth_callback_errors_test.go#L106))
+  - [x] `refreshAccessToken` ([test](../../adapters/sqlstore/oauth_encryption_test.go#L117))
+    - [x] A custom Refresh function receives the stored refresh token, and its returned tokens replace the stored credentials on three SQL engines ([test](../../adapters/sqlstore/oauth_encryption_test.go#L117))
+    - [x] A custom Refresh receives the stored refresh token; refresh-token returns its rotated refresh token on both runtimes ([test](../../conformance/provider-credentials.mjs#L70))
+  - [x] `mapProfileToUser` ([test](../../conformance/social-user-fields.mjs#L110))
+    - [x] On both servers, extra values mapped from the provider profile fill configured user fields on first sign-in, a profile missing a required field is refused, and a returning sign-in does not rewrite them ([test](../../conformance/social-user-fields.mjs#L110))
   - [x] `getAccountFields` ([test](../../conformance/apple-native.mjs#L87))
     - [x] Map signed provider account fields across both servers, preserve credentials and explicitly reauthorize an existing link ([test](../../conformance/apple-native.mjs#L87))
     - [x] Map browser grants on first links and verified email linking, keep identity bindings and reject invalid updates atomically ([test](../../conformance/account-fields.mjs#L25))
     - [x] Keep provider credentials separate from native input, transform fields once and expose only owned public account fields on three SQL engines ([test](../../adapters/sqlstore/account_fields_test.go#L17))
     - [x] Use creation defaults while completing the separately verified One Tap challenge ([test](../../conformance/core.test.mjs#L1766))
     - [x] Complete proxy sign-in across two deployments without invoking provider account mapping on either host ([test](../../adapters/sqlstore/oauth_proxy_test.go#L74))
-  - [ ] `disableImplicitSignUp`
-  - [ ] `disableSignUp`
-  - [ ] `prompt`
-  - [ ] `responseMode`
+  - [x] `disableImplicitSignUp` ([test](../../conformance/goapi/oauth_signup_test.go#L118))
+    - [x] With DisableImplicitSignUp, a new account is refused unless requestSignUp is sent, for both browser and ID-token sign-in ([test](../../conformance/goapi/oauth_signup_test.go#L118))
+    - [x] With requestSignUp sent, the new account is created, and the browser lands on the new-user callback ([test](../../conformance/goapi/oauth_signup_test.go#L125))
+  - [x] `disableSignUp` ([test](../../conformance/goapi/oauth_signup_test.go#L132))
+    - [x] A provider with DisableSignUp declines new-account creation even when sign-up is explicitly requested, for both browser and ID-token sign-in ([test](../../conformance/goapi/oauth_signup_test.go#L132))
+  - [x] `prompt` ([test](../../conformance/goapi/provider_contract_test.go#L96))
+    - [x] AuthorizationParams adds a configured prompt to every sign-in and link authorization URL ([test](../../conformance/goapi/provider_contract_test.go#L96))
+  - [x] `responseMode` ([test](../../providers/apple_microsoft_test.go#L102))
+    - [x] The Apple preset sends response_mode=form_post in the authorization URL, and its cross-site form callback is redirected to a GET callback that signs the user in ([test](../../providers/apple_microsoft_test.go#L102))
+    - [x] The default query-mode callback completes a browser sign-in ([test](../../conformance/goapi/oauth_test.go#L21))
   - [x] `overrideUserInfoOnSignIn` ([test](../../conformance/social-user-fields.mjs#L145))
     - [x] Refresh a returning profile with either server, preserve protected fields and use the new mailbox verification status ([test](../../conformance/social-user-fields.mjs#L145))
     - [x] Apply the provider policy on direct sign-in, Google One Tap and permitted automatic links across three SQL engines ([test](../../adapters/sqlstore/oauth_profile_sync_test.go#L16))
@@ -272,126 +330,204 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
 - [ ] Provider-specific settings and overrides
   - [ ] `apple`
     - [ ] `clientId`
-    - [ ] `appBundleIdentifier`
-    - [ ] `audience`
+      - [x] The Services ID given as ClientID stays the browser client ID when a native bundle ID is configured ([test](../../providers/apple_audiences_test.go#L47))
+      - [x] The browser code exchange sends the client ID with a client-secret JWT whose subject is that ID ([test](../../providers/apple_microsoft_test.go#L63))
+    - [x] `appBundleIdentifier` ([test](../../providers/apple_audiences_test.go#L80))
+      - [x] With AppBundleIdentifier set, a native ID token for the bundle ID signs in through /sign-in/social and gets a session ([test](../../providers/apple_audiences_test.go#L80))
+      - [x] The native verifier refuses a token for the web Services ID, and the browser exchange refuses one for the bundle ID ([test](../../providers/apple_audiences_test.go#L50))
+      - [x] On both servers, a bundle ID setting accepts native tokens for the bundle ID only ([test](../../conformance/apple-native.mjs#L23))
+    - [x] `audience` ([test](../../providers/apple_audiences_test.go#L105))
+      - [x] Explicit native audiences replace the bundle ID: listed apps pass, the bundle ID and unknown apps fail, and a token for several audiences needs a listed authorized party ([test](../../providers/apple_audiences_test.go#L105))
+      - [x] On both servers, an explicit audience list accepts tokens for the listed apps and refuses the bundle ID and unrelated apps ([test](../../conformance/apple-native.mjs#L24))
   - [ ] `atlassian`
-    - [ ] `clientId`
+    - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
+      - [x] The client ID given to providers.New reaches the token exchange through real /sign-in/social and callback requests ([test](../../providers/catalog_test.go#L79))
   - [ ] `cloudflare`
-    - [ ] `clientId`
+    - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
+      - [x] The client ID given to providers.New reaches the token exchange through real /sign-in/social and callback requests ([test](../../providers/catalog_test.go#L79))
     - [ ] `tokenEndpointAuth`
     - [ ] `tokenEndpointAuthMethod`
   - [ ] `cognito`
     - [ ] `clientId`
-    - [ ] `domain`
-    - [ ] `region`
-    - [ ] `userPoolId`
+      - [x] Cognito's code exchange sends the configured client ID and secret in the token form ([test](../../providers/issuer_test.go#L61))
+    - [x] `domain` ([test](../../providers/issuer_test.go#L48))
+      - [x] A Cognito provider built from a hosted domain sends the browser to that domain's /oauth2/authorize and redeems the code at its /oauth2/token ([test](../../providers/issuer_test.go#L48))
+    - [x] `region` ([test](../../providers/issuer_test.go#L70))
+      - [x] A code-exchange ID token from the user pool issuer built from the region and user pool ID is verified with keys fetched from that pool's JWKS URL ([test](../../providers/issuer_test.go#L70))
+    - [x] `userPoolId` ([test](../../providers/issuer_test.go#L70))
+      - [x] A code-exchange ID token from the user pool issuer built from the region and user pool ID is verified with keys fetched from that pool's JWKS URL ([test](../../providers/issuer_test.go#L70))
     - [ ] `requireClientSecret`
     - [ ] `identityProvider`
   - [ ] `discord`
-    - [ ] `clientId`
+    - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
+      - [x] The client ID given to providers.New reaches the token exchange through real /sign-in/social and callback requests ([test](../../providers/catalog_test.go#L79))
     - [ ] `prompt`
+      - [x] The Discord preset's authorization URL carries its default prompt=none ([test](../../providers/catalog_test.go#L167))
     - [ ] `permissions`
   - [ ] `dropbox`
-    - [ ] `clientId`
+    - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
+      - [x] The client ID given to providers.New reaches the token exchange through real /sign-in/social and callback requests ([test](../../providers/catalog_test.go#L79))
     - [ ] `accessType`
   - [ ] `facebook`
     - [ ] `clientId`
+      - [x] The client ID given to providers.New reaches the token exchange through real /sign-in/social and callback requests ([test](../../providers/catalog_test.go#L79))
+      - [x] Facebook's token check sends the client ID and secret as the app token to debug_token ([test](../../providers/catalog_test.go#L123))
+      - [x] Refuse a Facebook access token that debug_token reports as issued to another app ([test](../../providers/catalog_test.go#L249))
     - [ ] `fields`
     - [ ] `configId`
   - [ ] `figma`
-    - [ ] `clientId`
+    - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
+      - [x] The client ID given to providers.New reaches the token exchange through real /sign-in/social and callback requests ([test](../../providers/catalog_test.go#L79))
   - [ ] `github`
     - [ ] `clientId`
   - [ ] `gitlab`
-    - [ ] `clientId`
+    - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
+      - [x] The client ID given to providers.New reaches the token exchange through real /sign-in/social and callback requests ([test](../../providers/catalog_test.go#L79))
     - [ ] `issuer`
   - [ ] `google`
     - [ ] `clientId`
+      - [x] Reject a Google ID token addressed to an audience other than the configured client ID ([test](../../providers/providers_test.go#L31))
     - [ ] `accessType`
     - [ ] `display`
     - [ ] `hd`
+      - [x] Reject One Tap Google ID tokens whose hd claim names another Workspace or is missing, and accept any Workspace with *, on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/onetap_test.go#L27))
+      - [x] Refuse a proxied preview sign-in whose Google profile names a different hosted domain ([test](../../adapters/sqlstore/oauth_proxy_test.go#L316))
     - [ ] `includeGrantedScopes`
   - [ ] `huggingface`
-    - [ ] `clientId`
+    - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
+      - [x] Authenticate each catalog provider's browser code exchange with the configured client ID and secret ([test](../../providers/catalog_test.go#L79))
   - [ ] `kakao`
     - [ ] `clientId`
+      - [x] Authenticate each catalog provider's browser code exchange with the configured client ID and secret ([test](../../providers/catalog_test.go#L79))
   - [ ] `kick`
-    - [ ] `clientId`
+    - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
+      - [x] Authenticate each catalog provider's browser code exchange with the configured client ID and secret ([test](../../providers/catalog_test.go#L79))
   - [ ] `line`
-    - [ ] `clientId`
+    - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
+      - [x] Authenticate each catalog provider's browser code exchange with the configured client ID and secret ([test](../../providers/catalog_test.go#L79))
+      - [x] Send the channel ID with the LINE ID token to the verify endpoint and reject a token issued for another channel ([test](../../providers/line_test.go#L25))
   - [ ] `linear`
-    - [ ] `clientId`
+    - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
+      - [x] Authenticate each catalog provider's browser code exchange with the configured client ID and secret ([test](../../providers/catalog_test.go#L79))
   - [ ] `linkedin`
-    - [ ] `clientId`
+    - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
+      - [x] Authenticate each catalog provider's browser code exchange with the configured client ID and secret ([test](../../providers/catalog_test.go#L79))
   - [ ] `microsoft`
     - [ ] `clientId`
     - [ ] `tenantId`
+      - [x] Accept organization tokens and refuse consumer tokens under organizations, do the reverse under consumers, refuse a common-tenant token whose tid differs from its issuer, and accept a single-tenant token from that tenant ([test](../../providers/apple_microsoft_test.go#L146))
     - [ ] `authority`
     - [ ] `clientAssertion`
     - [ ] `profilePhotoSize`
     - [ ] `disableProfilePhoto`
   - [ ] `naver`
-    - [ ] `clientId`
+    - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
+      - [x] Authenticate each catalog provider's browser code exchange with the configured client ID and secret ([test](../../providers/catalog_test.go#L79))
   - [ ] `notion`
-    - [ ] `clientId`
+    - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
+      - [x] Authenticate each catalog provider's browser code exchange with the configured client ID and secret ([test](../../providers/catalog_test.go#L79))
   - [ ] `paybin`
-    - [ ] `clientId`
+    - [x] `clientId` ([test](../../providers/issuer_test.go#L60))
+      - [x] Send the configured client ID and secret in the browser code exchange for Paybin, Twitch and Cognito ([test](../../providers/issuer_test.go#L60))
     - [ ] `issuer`
+      - [x] Use https://idp.paybin.io for authorization, the code exchange and signing-key discovery when no Paybin issuer is given ([test](../../providers/issuer_test.go#L25))
   - [ ] `paypal`
-    - [ ] `clientId`
+    - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
+      - [x] Authenticate each catalog provider's browser code exchange with the configured client ID and secret ([test](../../providers/catalog_test.go#L79))
     - [ ] `environment`
-    - [ ] `requestShippingAddress`
+      - [x] Send sign-in to each catalog provider's recorded endpoints, which for PayPal are the sandbox authorization, token and userinfo endpoints ([test](../../providers/catalog_test.go#L162))
+    - `requestShippingAddress` — *not applicable: declared in the PayPal options type but never read by the provider, so it has no runtime behaviour*
   - [ ] `railway`
-    - [ ] `clientId`
+    - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
+      - [x] Authenticate each catalog provider's browser code exchange with the configured client ID and secret ([test](../../providers/catalog_test.go#L79))
   - [ ] `reddit`
-    - [ ] `clientId`
+    - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
+      - [x] Authenticate each catalog provider's browser code exchange with the configured client ID and secret ([test](../../providers/catalog_test.go#L79))
     - [ ] `duration`
   - [ ] `roblox`
-    - [ ] `clientId`
+    - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
+      - [x] Authenticate each catalog provider's browser code exchange with the configured client ID and secret ([test](../../providers/catalog_test.go#L79))
     - [ ] `prompt`
+      - [x] Send each catalog provider's fixed authorization parameters, including Roblox's prompt=select_account consent ([test](../../providers/catalog_test.go#L165))
   - [ ] `salesforce`
-    - [ ] `clientId`
+    - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
+      - [x] Authenticate each catalog provider's browser code exchange with the configured client ID and secret ([test](../../providers/catalog_test.go#L79))
     - [ ] `environment`
+      - [x] Send sign-in to each catalog provider's recorded endpoints, which for Salesforce are the production login.salesforce.com authorization, token and userinfo endpoints ([test](../../providers/catalog_test.go#L162))
     - [ ] `loginUrl`
-    - [ ] `redirectURI`
+    - [x] `redirectURI` ([test](../../conformance/goapi/oauth_redirect_uri_test.go#L22))
+      - [x] Replace the callback route with a provider's Config.RedirectURL in the authorization request and the code exchange, and refuse a relative or non-HTTP URL ([test](../../conformance/goapi/oauth_redirect_uri_test.go#L22))
   - [ ] `slack`
-    - [ ] `clientId`
+    - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
+      - [x] Authenticate each catalog provider's browser code exchange with the configured client ID and secret ([test](../../providers/catalog_test.go#L79))
   - [ ] `spotify`
-    - [ ] `clientId`
+    - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
+      - [x] Authenticate each catalog provider's browser code exchange with the configured client ID and secret ([test](../../providers/catalog_test.go#L79))
   - [ ] `tiktok`
-    - [ ] `clientId`
-    - [ ] `clientSecret`
-    - [ ] `clientKey`
+    - [x] `clientId` ([test](../../providers/catalog_test.go#L173))
+      - [x] Send client_key and no client_id on the TikTok authorization URL ([test](../../providers/catalog_test.go#L173))
+      - [x] Send no client_id field in the TikTok code exchange ([test](../../providers/catalog_test.go#L71))
+    - [x] `clientSecret` ([test](../../providers/catalog_test.go#L79))
+      - [x] Authenticate each catalog provider's browser code exchange with the configured client ID and secret ([test](../../providers/catalog_test.go#L79))
+      - [x] Send each catalog provider's recorded refresh fields, which for TikTok are client_key, client_secret, grant_type and refresh_token ([test](../../providers/catalog_test.go#L283))
+    - [x] `clientKey` ([test](../../providers/catalog_test.go#L70))
+      - [x] Identify the TikTok code exchange by its client_key field ([test](../../providers/catalog_test.go#L70))
+      - [x] Put the client key on the TikTok authorization URL as client_key ([test](../../providers/catalog_test.go#L173))
   - [ ] `twitch`
-    - [ ] `clientId`
+    - [x] `clientId` ([test](../../providers/issuer_test.go#L60))
+      - [x] Send the configured client ID and secret in the browser code exchange for Paybin, Twitch and Cognito ([test](../../providers/issuer_test.go#L60))
     - [ ] `claims`
+      - [x] Request the email, email_verified, preferred_username and picture ID-token claims on the Twitch authorization URL ([test](../../providers/issuer_test.go#L112))
   - [ ] `twitter`
-    - [ ] `clientId`
+    - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
+      - [x] Authenticate each catalog provider's browser code exchange with the configured client ID and secret ([test](../../providers/catalog_test.go#L79))
   - [ ] `vercel`
-    - [ ] `clientId`
+    - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
+      - [x] Authenticate each catalog provider's browser code exchange with the configured client ID and secret ([test](../../providers/catalog_test.go#L79))
     - [ ] `tokenEndpointAuth`
+      - [x] Send client_id and client_secret in the form body, without HTTP Basic, for catalog providers that use body authentication such as Vercel ([test](../../providers/catalog_test.go#L62))
   - [ ] `vk`
-    - [ ] `clientId`
-    - [ ] `scheme`
+    - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
+      - [x] Authenticate each catalog provider's browser code exchange with the configured client ID and secret ([test](../../providers/catalog_test.go#L79))
+      - [x] Send the configured client ID with the access token in the VK userinfo request ([test](../../providers/catalog_test.go#L94))
+    - `scheme` — *not applicable: declared in the VK options type but never read by the provider, so it has no runtime behaviour*
   - [ ] `wechat`
-    - [ ] `clientId`
-    - [ ] `clientSecret`
-    - [ ] `platformType`
+    - [x] `clientId` ([test](../../providers/catalog_test.go#L170))
+      - [x] Send the app ID as appid and no client_id on the WeChat authorization URL ([test](../../providers/catalog_test.go#L170))
+      - [x] Send the app ID and secret as appid and secret in the WeChat code exchange ([test](../../providers/catalog_test.go#L64))
+    - [x] `clientSecret` ([test](../../providers/catalog_test.go#L64))
+      - [x] Send the app ID and secret as appid and secret in the WeChat code exchange ([test](../../providers/catalog_test.go#L64))
+    - `platformType` — *not applicable: declared in the WeChat options type but never read; its only value, WebsiteApp, is the QR-code website login the provider always uses*
     - [ ] `lang`
+      - [x] Send each catalog provider's fixed authorization parameters, including WeChat's lang=cn ([test](../../providers/catalog_test.go#L165))
 - [ ] Generic OAuth provider presets
   - [ ] auth0
-    - [ ] `domain`
+    - [x] `domain` ([test](../../providers/enterprise_oidc_test.go#L23))
+      - [x] Discover an Auth0 tenant from a mixed-case bare domain at its HTTPS root issuer and complete a signed browser sign-in ([test](../../providers/enterprise_oidc_test.go#L23))
+      - [x] Refuse an empty, HTTP, credentialed, path or query Auth0 domain without discovery ([test](../../providers/enterprise_oidc_test.go#L122))
+      - [x] Check that the other runtime builds the same discovery URL from the shared Auth0 domain fixture ([test](../../conformance/enterprise-oidc.test.mjs#L6))
   - [ ] gumroad
   - [ ] hubspot
-    - [ ] `scopes`
+    - [x] `scopes` ([test](../../providers/profile_presets_test.go#L111))
+      - [x] Request the default oauth scope on the HubSpot preset's authorization URL ([test](../../providers/profile_presets_test.go#L111))
+      - [x] Replace the Google provider's default scopes through Config.Scopes on the sign-in and link authorization URLs ([test](../../conformance/goapi/provider_contract_test.go#L41))
   - [ ] keycloak
-    - [ ] `issuer`
+    - [x] `issuer` ([test](../../providers/enterprise_oidc_test.go#L23))
+      - [x] Discover a Keycloak realm issuer given with a trailing slash and complete a signed browser sign-in ([test](../../providers/enterprise_oidc_test.go#L23))
+      - [x] Refuse a Keycloak issuer that is not an HTTPS URL or carries a query or fragment ([test](../../providers/enterprise_oidc_test.go#L122))
+      - [x] Check that the other runtime builds the same discovery URL from the shared Keycloak issuer fixture ([test](../../conformance/enterprise-oidc.test.mjs#L6))
   - [ ] line
     - [ ] `providerId`
+      - [x] Register the LINE channel preset under the line key and use that key's callback URL in the authorization request and the code exchange ([test](../../providers/profile_presets_test.go#L22))
   - [ ] microsoft-entra-id
-    - [ ] `tenantId`
+    - [x] `tenantId` ([test](../../providers/entra_test.go#L20))
+      - [x] Refuse an empty, multi-tenant or malformed Entra tenant ID, lower-case an upper-case GUID and authorize at that tenant's endpoint ([test](../../providers/entra_test.go#L20))
+      - [x] Check that the other runtime lower-cases the tenant GUID into its discovery URL and refuses the common tenant ([test](../../conformance/entra-profiles.test.mjs#L6))
   - [ ] okta
-    - [ ] `issuer`
+    - [x] `issuer` ([test](../../providers/enterprise_oidc_test.go#L23))
+      - [x] Discover an Okta custom authorization server or organization issuer, with or without a trailing slash, and complete a signed browser sign-in ([test](../../providers/enterprise_oidc_test.go#L23))
+      - [x] Refuse an Okta issuer that is not an HTTPS URL or carries a query or fragment ([test](../../providers/enterprise_oidc_test.go#L122))
+      - [x] Check that the other runtime builds the same discovery URL from the shared Okta issuer fixtures ([test](../../conformance/enterprise-oidc.test.mjs#L6))
   - [ ] patreon
   - [ ] slack
   - [ ] yandex
