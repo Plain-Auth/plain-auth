@@ -249,3 +249,62 @@ func TestSCIMManagedCredentials(t *testing.T) {
 		})
 	}
 }
+
+// Without a cap a managed connection keeps five active credentials, and a
+// zero last-use interval records every use.
+func TestSCIMManagedDefaultCapAndZeroInterval(t *testing.T) {
+	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
+		t.Run(dialect, func(t *testing.T) {
+			ctx := t.Context()
+			must := func(e error) {
+				t.Helper()
+				if e != nil {
+					t.Fatal(e)
+				}
+			}
+			ddl, e := schema.Generate(dialect, []string{"scim-managed"})
+			must(e)
+			store, e := OpenWithSchema(ctx, dialect, organizationTestDSN(t, dialect), ddl)
+			must(e)
+			defer store.Close()
+			host, e := auth.New(auth.Options{Store: store, Secret: strings.Repeat("x", 32), BaseURL: "https://catalog.test", BasePath: "/identity/custom"})
+			must(e)
+			zero := time.Duration(0)
+			h, e := scim.New(host, scim.Options{Store: store, Managed: &scim.ManagedOptions{CredentialHashSecret: strings.Repeat("managed-key-", 3), LastUsedWriteInterval: &zero}})
+			must(e)
+			catalog := h.Catalog()
+			policy := scim.CredentialPolicy{Scopes: []string{scim.UsersRead, scim.UsersWrite}, ExpiresAt: time.Now().Add(time.Hour)}
+			first, e := catalog.Create(ctx, "Domain", "default-cap-0001", "actor", policy)
+			must(e)
+			d := scim.Directory{ID: first.Connection.ConnectionID, ProvisioningDomainID: first.Connection.ProvisioningDomainID}
+			for i := 0; i < 4; i++ {
+				if _, e := catalog.Rotate(ctx, d, "actor", policy); e != nil {
+					t.Fatal("the default cap refused one of the first five active credentials", i, e)
+				}
+			}
+			if sixth, e := catalog.Rotate(ctx, d, "actor", policy); !errors.Is(e, scim.ErrManagedConflict) || sixth.Token != "" {
+				t.Fatal("a sixth active credential was issued under the default cap", e)
+			}
+			lastUsed := func() time.Time {
+				t.Helper()
+				if w := scimRequest(h, "GET", "Users", first.Token, nil); w.Code != 200 {
+					t.Fatal("GET failed", w.Code, w.Body.String())
+				}
+				state, e := catalog.Get(ctx, d)
+				must(e)
+				for _, c := range state.Credentials {
+					if c.CredentialID == first.Credential.CredentialID && c.LastUsedAt != nil {
+						return *c.LastUsedAt
+					}
+				}
+				t.Fatal("the credential's use was not recorded")
+				return time.Time{}
+			}
+			before := lastUsed()
+			time.Sleep(5 * time.Millisecond)
+			if after := lastUsed(); !after.After(before) {
+				t.Fatal("a zero last-used write interval skipped an update", before, after)
+			}
+		})
+	}
+}

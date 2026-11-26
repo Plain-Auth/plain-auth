@@ -94,10 +94,14 @@
   - [ ] `SCIMManagedConnectionOptions`
     - [ ] `credentialHashSecret`
       - [x] Authenticate the other implementation’s issued credential from a shared keyed digest ([test](../../../conformance/scim-managed.mjs#L13))
-    - [ ] `maxActiveCredentials`
+    - [x] `maxActiveCredentials` ([test](../../../adapters/sqlstore/scim_managed_test.go#L286))
       - [x] Bound concurrent credential rotations and reclaim slots after expiry ([test](../../../adapters/sqlstore/scim_managed_test.go#L31))
-    - [ ] `lastUsedWriteIntervalSeconds`
+      - [x] Default the managed credential cap to five, keep 100 and refuse values outside 1 through 100 ([test](../../../plugins/scim/managed_test.go#L16))
+      - [x] Issue five active credentials without a cap and refuse a sixth, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_managed_test.go#L286))
+    - [x] `lastUsedWriteIntervalSeconds` ([test](../../../adapters/sqlstore/scim_managed_test.go#L306))
       - [x] Record first usage and throttle immediate subsequent timestamp writes ([test](../../../adapters/sqlstore/scim_managed_test.go#L31))
+      - [x] Default the last-use interval to five minutes, keep zero and a custom value, and refuse a negative one ([test](../../../plugins/scim/managed_test.go#L43))
+      - [x] Record every use with a zero last-use interval, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_managed_test.go#L306))
   - [ ] `SCIMMicrosoftEntraCompatibilityOptions`
     - [ ] `acceptLegacyGroupSchema`
       - [x] Accept one attribute-free Entra schema marker only when enabled and return the canonical Group schema ([test](../../../plugins/scim/groups_test.go#L8))

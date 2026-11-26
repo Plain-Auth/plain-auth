@@ -10715,6 +10715,17 @@
       "label": "Bound concurrent credential rotations and reclaim slots after expiry",
       "test": "adapters/sqlstore/scim_managed_test.go",
       "marker": "func TestSCIMManagedCredentials("
+    },
+    {
+      "label": "Default the managed credential cap to five, keep 100 and refuse values outside 1 through 100",
+      "test": "plugins/scim/managed_test.go",
+      "marker": "func TestSCIMManagedCatalogOptionBounds("
+    },
+    {
+      "label": "Issue five active credentials without a cap and refuse a sixth, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_managed_test.go",
+      "marker": "t.Fatal(\"a sixth active credential was issued under the default cap\", e)",
+      "complete": true
     }
   ],
   "plugin-symbol/scim/SCIMManagedConnectionOptions/lastUsedWriteIntervalSeconds": [
@@ -10722,6 +10733,17 @@
       "label": "Record first usage and throttle immediate subsequent timestamp writes",
       "test": "adapters/sqlstore/scim_managed_test.go",
       "marker": "func TestSCIMManagedCredentials("
+    },
+    {
+      "label": "Default the last-use interval to five minutes, keep zero and a custom value, and refuse a negative one",
+      "test": "plugins/scim/managed_test.go",
+      "marker": "t.Fatal(\"a negative last-used write interval was accepted\", err)"
+    },
+    {
+      "label": "Record every use with a zero last-use interval, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_managed_test.go",
+      "marker": "t.Fatal(\"a zero last-used write interval skipped an update\", before, after)",
+      "complete": true
     }
   ],
   "plugin-symbol/scim/SCIMOptions/managedConnections": [
