@@ -80,7 +80,7 @@
     - [ ] `tokenEndpointAuthentication`
       - [x] Hydrate client_secret_basic when both secret methods are advertised ([test](../../../plugins/sso/discovery_test.go#L61))
       - [x] Hydrate client_secret_post when only that method is advertised, on both runtimes ([test](../../../conformance/sso-providers.mjs#L67))
-    - [ ] `scopesSupported`
+    - `scopesSupported` — *not applicable: scopesSupported is a field of the result of the other runtime's exported discovery helper, which its plugin neither stores nor reads; this library exposes no discovery helper and registration stores the same configuration either way*
   - [ ] `OIDCDiscoveryDocument`
     - [x] Read issuer, authorization_endpoint, token_endpoint, jwks_uri and token_endpoint_auth_methods_supported from a discovery document ([test](../../../plugins/sso/discovery_test.go#L26))
   - [ ] `REQUIRED_DISCOVERY_FIELDS`

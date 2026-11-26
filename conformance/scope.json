@@ -1120,6 +1120,15 @@
       ],
       "reason": "not applicable: TypeScript credential discriminant; the other runtime declares the \"bearer\" literal only in its option type (packages/scim/src/configuration.ts) and never reads it at run time, and Go credentials are a bearer-only struct with no type field",
       "within": "Bearer credential options"
+    },
+    {
+      "page": "plugins/sso.md",
+      "section": "Interfaces",
+      "within": "`HydratedOIDCConfig`",
+      "labels": [
+        "`scopesSupported`"
+      ],
+      "reason": "not applicable: scopesSupported is a field of the result of the other runtime's exported discovery helper, which its plugin neither stores nor reads; this library exposes no discovery helper and registration stores the same configuration either way"
     }
   ],
   "backlog": [

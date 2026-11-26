@@ -26,6 +26,8 @@ type Options struct {
 	// its authorization have been checked inside the store transaction.
 	GuardProviderMutation MutationGuard
 	// SharedCallback registers the same /sso/callback URL for every enterprise client.
+	// The shared callback is always {basePath}/sso/callback; another runtime
+	// also accepts another path or a full URL.
 	SharedCallback bool
 	// DisableImplicitSignUp requires requestSignUp before creating an account.
 	DisableImplicitSignUp bool
