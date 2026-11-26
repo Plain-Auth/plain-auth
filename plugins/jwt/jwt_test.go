@@ -33,3 +33,21 @@ func TestNewRefusesUnsupportedAlgorithms(t *testing.T) {
 		}
 	}
 }
+
+// A remote key set needs an explicit algorithm and a usable absolute
+// address.
+func TestNewChecksRemoteKeySet(t *testing.T) {
+	if _, err := jwt.New(jwt.Options{RemoteJWKSURL: "https://keys.example.test/jwks.json"}); err == nil {
+		t.Fatal("accepted a remote key set without an explicit algorithm")
+	}
+	for _, raw := range []string{"not-a-url", "http://", "//example.com", "example.com/jwks", "http://keys.example.test/jwks", "https://user@keys.example.test/jwks", "https://keys.example.test/jwks#v1", "https://:443/jwks", "https://keys.example.test/jwks#"} {
+		if _, err := jwt.New(jwt.Options{Algorithm: "ES256", RemoteJWKSURL: raw}); err == nil {
+			t.Fatalf("accepted remote key-set URL %q", raw)
+		}
+	}
+	for _, raw := range []string{"https://example.com/.well-known/jwks.json", "https://example.com:8080/jwks.json", "https://example.com/jwks?version=1&format=json", "http://localhost:8080/jwks"} {
+		if _, err := jwt.New(jwt.Options{Algorithm: "ES256", RemoteJWKSURL: raw}); err != nil {
+			t.Fatalf("refused remote key-set URL %q: %v", raw, err)
+		}
+	}
+}

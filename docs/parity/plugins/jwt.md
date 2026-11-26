@@ -95,7 +95,9 @@
     - [ ] OAuth Provider Mode
       - [x] Disable both the browser token endpoint and the session JWT response header while retaining ordinary sessions ([test](../../../conformance/core.test.mjs#L1395))
       - [x] Report a token signed with a published key but carrying no authorized party as inactive at introspection ([test](../../../conformance/oauth-signed-introspection.mjs#L104))
-    - [ ] Remote JWKS Url
+    - [x] Remote JWKS Url ([test](../../../conformance/goapi/jwt_remote_keys_test.go#L64))
+      - [x] Stop serving the local key route, advertise the remote key-set address in authorization-server and OpenID discovery, and keep issuing tokens that verify with the exported keys ([test](../../../conformance/goapi/jwt_remote_keys_test.go#L64))
+      - [x] Require an explicit signing algorithm and an absolute HTTPS address, or HTTP on loopback, for a remote key set ([test](../../../plugins/jwt/jwt_test.go#L41))
     - [ ] Custom JWKS Path
       - [x] Serve the key set at a configured path to anonymous callers ([test](../../../adapters/sqlstore/jwt_test.go#L90))
       - [x] Serve the key set at the default /jwks path to the Go client ([test](../../../client/jwt_test.go#L46))

@@ -39731,5 +39731,18 @@
       "test": "adapters/sqlstore/jwt_test.go",
       "marker": "an encrypting instance signed with an unencrypted key"
     }
+  ],
+  "docs/content/docs/plugins/jwt.mdx#L248": [
+    {
+      "label": "Stop serving the local key route, advertise the remote key-set address in authorization-server and OpenID discovery, and keep issuing tokens that verify with the exported keys",
+      "test": "conformance/goapi/jwt_remote_keys_test.go",
+      "marker": "discovery at %s does not advertise the remote key set",
+      "complete": true
+    },
+    {
+      "label": "Require an explicit signing algorithm and an absolute HTTPS address, or HTTP on loopback, for a remote key set",
+      "test": "plugins/jwt/jwt_test.go",
+      "marker": "accepted a remote key set without an explicit algorithm"
+    }
   ]
 }

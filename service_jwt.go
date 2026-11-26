@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"net/url"
 	"slices"
 	"strings"
 	"time"
@@ -42,6 +43,12 @@ type JWTOptions struct {
 	// off only when another system must read the keys and protects the
 	// table itself. An instance cannot sign with a key stored the other way.
 	DisablePrivateKeyEncryption bool
+	// RemoteJWKSURL publishes the key set at another address, such as a CDN.
+	// The JWKSPath route is not served, and discovery advertises this URL.
+	// Algorithm must be set. Keep every active and recently retired public
+	// key there, for example by copying Auth.PublicJWKS. Verification here
+	// still reads the key store and never fetches the URL.
+	RemoteJWKSURL string
 }
 
 type PublicJWTKey struct {
@@ -79,6 +86,20 @@ func (a *Auth) jwtKeys() JWTStore {
 }
 
 func NewJWT(opts JWTOptions) (Plugin, error) {
+	if opts.RemoteJWKSURL != "" {
+		// Discovery advertises the signing algorithm, which a remote key set
+		// cannot reveal.
+		if opts.Algorithm == "" {
+			return Plugin{}, errors.New("jwt: RemoteJWKSURL requires an explicit Algorithm")
+		}
+		// Only a usable absolute address is accepted, so discovery never
+		// advertises a relative or malformed key URL; another runtime
+		// accepts any string.
+		u, err := url.Parse(opts.RemoteJWKSURL)
+		if err != nil || u.Hostname() == "" || u.User != nil || strings.ContainsAny(opts.RemoteJWKSURL, "#\\ \t\r\n") || !(u.Scheme == "https" || u.Scheme == "http" && loopbackHost(u.Host)) {
+			return Plugin{}, errors.New("jwt: RemoteJWKSURL must be an absolute HTTPS URL, or HTTP on a loopback host")
+		}
+	}
 	if opts.Algorithm == "" {
 		opts.Algorithm = string(jose.EdDSA)
 	}
@@ -136,17 +157,23 @@ func NewJWT(opts JWTOptions) (Plugin, error) {
 			}
 			return nil
 		},
-		Endpoints: []Endpoint{
-			{Method: http.MethodGet, Path: opts.JWKSPath, Handler: func(c EndpointContext) (any, error) { return c.Auth.PublicJWKS(c.Request.Context()) }},
-			{Method: http.MethodGet, Path: "/token", Handler: func(c EndpointContext) (any, error) {
-				token, err := c.Auth.IssueJWT(c.Request.Context(), c.Request.Header)
-				if err != nil {
-					return nil, err
-				}
-				return map[string]string{"token": token}, nil
-			}},
-		},
+		Endpoints: jwtEndpoints(opts),
 	}, nil
+}
+
+func jwtEndpoints(opts JWTOptions) []Endpoint {
+	endpoints := []Endpoint{{Method: http.MethodGet, Path: "/token", Handler: func(c EndpointContext) (any, error) {
+		token, err := c.Auth.IssueJWT(c.Request.Context(), c.Request.Header)
+		if err != nil {
+			return nil, err
+		}
+		return map[string]string{"token": token}, nil
+	}}}
+	// A remote key set replaces the local route, which then answers 404.
+	if opts.RemoteJWKSURL == "" {
+		endpoints = append([]Endpoint{{Method: http.MethodGet, Path: opts.JWKSPath, Handler: func(c EndpointContext) (any, error) { return c.Auth.PublicJWKS(c.Request.Context()) }}}, endpoints...)
+	}
+	return endpoints
 }
 
 // JWTSigningAlgorithm returns the configured primary algorithm, or an empty string
@@ -158,10 +185,14 @@ func (a *Auth) JWTSigningAlgorithm() string {
 	return a.serviceJWT.Algorithm
 }
 
-// PublicJWKSURL returns the configured key-set endpoint when it is served.
+// PublicJWKSURL returns RemoteJWKSURL when set, otherwise the served key-set
+// endpoint, or an empty string when that path is disabled.
 func (a *Auth) PublicJWKSURL() string {
 	if a.serviceJWT == nil {
 		return ""
+	}
+	if a.serviceJWT.RemoteJWKSURL != "" {
+		return a.serviceJWT.RemoteJWKSURL
 	}
 	if _, disabled := a.disabledPaths[a.serviceJWT.JWKSPath]; disabled {
 		return ""
