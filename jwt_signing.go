@@ -53,6 +53,12 @@ type JWTSigningRequest struct {
 // whatever the signer produces.
 func (a *Auth) signWithCallback(ctx context.Context, claims map[string]any, settings JWTSignOptions) (string, error) {
 	opts := a.serviceJWT
+	// The claims are recorded before the signer runs, so a signer that edits
+	// the request's map still fails the comparison below.
+	body, err := json.Marshal(claims)
+	if err != nil {
+		return "", err
+	}
 	token, err := opts.Sign(ctx, JWTSigningRequest{Claims: claims, Type: settings.Type, ContentType: settings.ContentType, Algorithm: settings.Algorithm, KeyID: settings.KeyID})
 	if err != nil {
 		return "", err
@@ -73,8 +79,7 @@ func (a *Auth) signWithCallback(ctx context.Context, claims map[string]any, sett
 		return "", invalid
 	}
 	var got, sent map[string]any
-	body, err := json.Marshal(claims)
-	if err != nil || json.Unmarshal(jws.UnsafePayloadWithoutVerification(), &got) != nil || json.Unmarshal(body, &sent) != nil || !reflect.DeepEqual(got, sent) {
+	if json.Unmarshal(jws.UnsafePayloadWithoutVerification(), &got) != nil || json.Unmarshal(body, &sent) != nil || !reflect.DeepEqual(got, sent) {
 		return "", invalid
 	}
 	return token, nil

@@ -621,6 +621,54 @@ func TestJWTSessionCookieCache(t *testing.T) {
 			if name, _, _ := view([]*http.Cookie{original[0], forge(libjwt.SigningMethodEdDSA, other, map[string]any{"kid": set.Keys[0].KeyID, "typ": "plainauth.session-cache+jwt"})}); name != "Live" {
 				t.Fatal("accepted a snapshot signed by another key under the published key ID")
 			}
+			// Snapshots minted with the same key but the wrong type, audience,
+			// subject, session or issuer are refused.
+			base := map[string]any{}
+			for k, v := range claims {
+				switch k {
+				case "sub", "iss", "aud", "iat", "exp", "nbf":
+				default:
+					base[k] = v
+				}
+			}
+			minted := func(subject, typ, audience, issuer, sid string) []*http.Cookie {
+				t.Helper()
+				c := map[string]any{}
+				for k, v := range base {
+					c[k] = v
+				}
+				c["sid"] = sid
+				opts := auth.JWTSignOptions{Type: typ, Issuer: issuer, Claims: c}
+				if audience != "" {
+					opts.Audience = []string{audience}
+				}
+				raw, err := a.SignJWT(ctx, subject, opts)
+				if err != nil {
+					t.Fatal(err)
+				}
+				forged := *original[1]
+				forged.Value = raw
+				return []*http.Cookie{original[0], &forged}
+			}
+			const typ, aud = "plainauth.session-cache+jwt", "plainauth:session-cache"
+			if name, _, _ := view(minted(account.User.ID, typ, aud, "", account.Token)); name != "Before" {
+				t.Fatal("a correctly minted snapshot was refused")
+			}
+			if name, _, _ := view(minted(account.User.ID, typ, "", "", account.Token)); name != "Live" {
+				t.Fatal("accepted a snapshot without the session-cache audience")
+			}
+			if name, _, _ := view(minted(account.User.ID, "", aud, "", account.Token)); name != "Live" {
+				t.Fatal("accepted a snapshot without the session-cache type")
+			}
+			if name, _, _ := view(minted("other", typ, aud, "", account.Token)); name != "Live" {
+				t.Fatal("accepted a snapshot whose subject is another user")
+			}
+			if name, _, _ := view(minted(account.User.ID, typ, aud, "", "other")); name != "Live" {
+				t.Fatal("accepted a snapshot whose sid is another session")
+			}
+			if name, _, _ := view(minted(account.User.ID, typ, aud, "https://elsewhere.test", account.Token)); name != "Live" {
+				t.Fatal("accepted a snapshot from another issuer")
+			}
 			second := call("POST", "/sign-in/email", `{"email":"snap@example.test","password":"snapshot-password"}`, nil)
 			var again auth.AuthResult
 			if err := json.Unmarshal(second.Body.Bytes(), &again); err != nil {

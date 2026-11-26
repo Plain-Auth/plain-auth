@@ -39748,8 +39748,7 @@
     {
       "label": "Keep signing keys in a host keyring outside the main store, and choose each tenant's keys from the request context for publication, issuance, session headers and verification",
       "test": "conformance/goapi/jwt_key_store_test.go",
-      "marker": "keyring selected the same key for two tenants",
-      "complete": true
+      "marker": "keyring selected the same key for two tenants"
     },
     {
       "label": "Refuse a pinned key ID from another tenant's keyring and verify host calls only against the caller's tenant",
@@ -39761,8 +39760,7 @@
     {
       "label": "Store and read signing keys through an in-memory keyring instead of the database, choosing each tenant's keys from the request context, with no regeneration per request",
       "test": "conformance/goapi/jwt_key_store_test.go",
-      "marker": "tenant key was generated more than once",
-      "complete": true
+      "marker": "tenant key was generated more than once"
     }
   ],
   "docs/content/docs/plugins/jwt.mdx#L506": [
@@ -39802,6 +39800,11 @@
       "label": "Refuse a custom signer without a remote key-set address",
       "test": "plugins/jwt/jwt_test.go",
       "marker": "accepted a custom signer without a remote key set"
+    },
+    {
+      "label": "Refuse a signer result with another algorithm than the primary one, another key than the pinned one, no requested content type, or claims the signer edited in the request",
+      "test": "conformance/goapi/jwt_signer_test.go",
+      "marker": "accepted a token under another key than the pinned one"
     }
   ],
   "docs/content/docs/plugins/jwt.mdx#L330": [
@@ -39831,6 +39834,11 @@
       "label": "Refuse the option without the jwt cache strategy, with the session token header on or with a custom signer, and warn when the cache outlives the key grace period",
       "test": "adapters/sqlstore/jwt_test.go",
       "marker": "accepted plugin-signed snapshots without the jwt cache strategy"
+    },
+    {
+      "label": "Refuse snapshots minted with the plugin key but without the session-cache type or audience, or naming another user, session or issuer",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "accepted a snapshot without the session-cache audience"
     }
   ],
   "docs/content/docs/plugins/jwt.mdx#L448": [

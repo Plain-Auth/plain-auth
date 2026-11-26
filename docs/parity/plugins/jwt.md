@@ -37,6 +37,7 @@
     - [x] `sessionCookieCache` ([test](../../../adapters/sqlstore/jwt_test.go#L591))
       - [x] Sign jwt-strategy session snapshots with the plugin's published key and serve later views from them, including after a rotation within the grace period, on three SQL engines ([test](../../../adapters/sqlstore/jwt_test.go#L591))
       - [x] Refuse the option without the jwt cache strategy, with the session token header on or with a custom signer, and warn when the cache outlives the key grace period ([test](../../../adapters/sqlstore/jwt_test.go#L503))
+      - [x] Refuse snapshots minted with the plugin key but without the session-cache type or audience, or naming another user, session or issuer ([test](../../../adapters/sqlstore/jwt_test.go#L658))
     - [ ] `jwks`
       - [x] Generate ES256 keys and validate their signatures with a separate verifier ([test](../../../adapters/sqlstore/jwt_test.go#L201))
       - [x] Mint a new key after the current one expires, and keep the previous public key published during the default grace period ([test](../../../adapters/sqlstore/jwt_test.go#L161))
@@ -47,7 +48,7 @@
       - [x] Suppress the assertion on session retrieval when requested ([test](../../../adapters/sqlstore/jwt_test.go#L149))
       - [x] By default, send the token header on session retrieval and expose it to browsers; omit it once disabled ([test](../../../adapters/sqlstore/jwt_test.go#L144))
     - [ ] `schema`
-    - [x] `adapter` ([test](../../../conformance/goapi/jwt_key_store_test.go#L150))
+    - [ ] `adapter`
       - [x] Keep signing keys in a host keyring outside the main store, and choose each tenant's keys from the request context for publication, issuance, session headers and verification ([test](../../../conformance/goapi/jwt_key_store_test.go#L150))
       - [x] Refuse a pinned key ID from another tenant's keyring and verify host calls only against the caller's tenant ([test](../../../conformance/goapi/jwt_key_store_test.go#L182))
   - [ ] `JWKOptions`
@@ -108,13 +109,14 @@
       - [x] Client Configuration: ([test](../../../conformance/core.test.mjs#L467))
         - [x] Read one public key through the published client configured with the server's custom key path on both servers, and get 404 from a client left on the default path ([test](../../../conformance/core.test.mjs#L467))
         - [x] The Go client reads the key set at the server's custom path and gets 404 at the default path ([test](../../../client/jwt_test.go#L99))
-    - [x] Custom Signing ([test](../../../conformance/goapi/jwt_signer_test.go#L175))
-      - [x] Hand the finished claims and the requested type, content type, algorithm and key ID to a host signer, and reject results that are not compact JWS tokens, drop the requested header values or change the claims ([test](../../../conformance/goapi/jwt_signer_test.go#L175))
+    - [x] Custom Signing ([test](../../../conformance/goapi/jwt_signer_test.go#L189))
+      - [x] Hand the finished claims and the requested type, content type, algorithm and key ID to a host signer, and reject results that are not compact JWS tokens, drop the requested header values or change the claims ([test](../../../conformance/goapi/jwt_signer_test.go#L189))
       - [x] Refuse a custom signer without a remote key-set address ([test](../../../plugins/jwt/jwt_test.go#L62))
-      - [x] Localized Signing ([test](../../../conformance/goapi/jwt_signer_test.go#L157))
-        - [x] Sign session and service tokens with a host-held Ed25519 key and key ID, merge the requested at+jwt type and content type into the header, and verify the results independently and through the host's public keys ([test](../../../conformance/goapi/jwt_signer_test.go#L157))
-      - [x] Remote Signing ([test](../../../conformance/goapi/jwt_signer_test.go#L237))
-        - [x] Build the signing input in the host, sign its SHA-256 digest with a separate key service, and verify the ES256 token independently without minting a local key ([test](../../../conformance/goapi/jwt_signer_test.go#L237))
+      - [x] Refuse a signer result with another algorithm than the primary one, another key than the pinned one, no requested content type, or claims the signer edited in the request ([test](../../../conformance/goapi/jwt_signer_test.go#L205))
+      - [x] Localized Signing ([test](../../../conformance/goapi/jwt_signer_test.go#L171))
+        - [x] Sign session and service tokens with a host-held Ed25519 key and key ID, merge the requested at+jwt type and content type into the header, and verify the results independently and through the host's public keys ([test](../../../conformance/goapi/jwt_signer_test.go#L171))
+      - [x] Remote Signing ([test](../../../conformance/goapi/jwt_signer_test.go#L267))
+        - [x] Build the signing input in the host, sign its SHA-256 digest with a separate key service, and verify the ES256 token independently without minting a local key ([test](../../../conformance/goapi/jwt_signer_test.go#L267))
   - [ ] Schema
     - [x] Generate the jwks table for the jwt profile exactly as the other runtime does on SQLite, PostgreSQL and MySQL ([test](../../../conformance/schema.test.mjs#L106))
     - [ ] JWKS
@@ -179,5 +181,5 @@
     - [ ] Modify Issuer, Audience, Subject or Expiration time
       - [x] Sign with a configured issuer, audience and lifetime that an independent verifier accepts ([test](../../../adapters/sqlstore/jwt_test.go#L131))
       - [x] Default to the server URL as issuer and audience and to a 15-minute lifetime on both servers ([test](../../../conformance/core.test.mjs#L456))
-    - [x] Custom Adapter ([test](../../../conformance/goapi/jwt_key_store_test.go#L153))
+    - [ ] Custom Adapter
       - [x] Store and read signing keys through an in-memory keyring instead of the database, choosing each tenant's keys from the request context, with no regeneration per request ([test](../../../conformance/goapi/jwt_key_store_test.go#L153))

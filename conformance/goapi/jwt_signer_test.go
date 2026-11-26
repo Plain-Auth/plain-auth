@@ -81,6 +81,10 @@ func TestJWTCustomSigner(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		other, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		if err != nil {
+			t.Fatal(err)
+		}
 		published, _ := json.Marshal(jose.JSONWebKey{Key: hostPublic})
 		keys := &signerKeys{public: authn.PublicJWTKey{ID: "local-1", Algorithm: "EdDSA", Curve: "Ed25519", PublicKey: string(published), CreatedAt: time.Now()}}
 		mode := "ok"
@@ -102,15 +106,25 @@ func TestJWTCustomSigner(t *testing.T) {
 				}
 				altered["sub"] = "someone-else"
 				claims = altered
+			case "mutate-claims":
+				req.Claims["sub"] = "someone-else"
 			}
-			options := (&jose.SignerOptions{}).WithHeader("kid", "local-1").WithType("JWT")
+			kid := "local-1"
+			if mode == "wrong-kid" {
+				kid = "local-2"
+			}
+			options := (&jose.SignerOptions{}).WithHeader("kid", kid).WithType("JWT")
 			if req.Type != "" && mode != "drop-type" {
 				options.WithType(jose.ContentType(req.Type))
 			}
-			if req.ContentType != "" {
+			if req.ContentType != "" && mode != "drop-cty" {
 				options.WithContentType(jose.ContentType(req.ContentType))
 			}
-			signer, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.EdDSA, Key: hostPrivate}, options)
+			key := jose.SigningKey{Algorithm: jose.EdDSA, Key: hostPrivate}
+			if mode == "wrong-alg" {
+				key = jose.SigningKey{Algorithm: jose.ES256, Key: other}
+			}
+			signer, err := jose.NewSigner(key, options)
 			if err != nil {
 				return "", err
 			}
@@ -124,7 +138,7 @@ func TestJWTCustomSigner(t *testing.T) {
 			}
 			return signed.CompactSerialize()
 		}
-		a, session := signerServer(t, store, authn.JWTOptions{Algorithm: "EdDSA", RemoteJWKSURL: "https://keys.example.test/jwks.json", KeyStore: keys, Sign: sign})
+		a, session := signerServer(t, store, authn.JWTOptions{Algorithm: "EdDSA", AdditionalAlgorithms: []string{"ES256"}, RemoteJWKSURL: "https://keys.example.test/jwks.json", KeyStore: keys, Sign: sign})
 		token, user, status := session()
 		if status != 200 || len(requests) != 1 {
 			t.Fatal("session token issuance failed", status)
@@ -153,7 +167,7 @@ func TestJWTCustomSigner(t *testing.T) {
 		if last.Type != "at+jwt" || last.ContentType != "application/json" || last.Algorithm != "EdDSA" || last.KeyID != "local-1" || last.Claims["sub"] != "worker" || last.Claims["aud"] != "https://api.example.test" || last.Claims["scope"] != "reports" {
 			t.Fatal("signer did not receive the requested header and pinned key", last)
 		}
-		if parsed, err := verify(raw, "https://api.example.test"); err != nil || parsed.Header["typ"] != "at+jwt" {
+		if parsed, err := verify(raw, "https://api.example.test"); err != nil || parsed.Header["typ"] != "at+jwt" || parsed.Header["cty"] != "application/json" {
 			t.Fatal("localized signer dropped the requested type", err)
 		}
 		if _, err := a.VerifyJWT(ctx, raw, authn.JWTVerifyOptions{Audience: "https://api.example.test", Subject: "worker"}); err != nil {
@@ -177,6 +191,22 @@ func TestJWTCustomSigner(t *testing.T) {
 		mode = "alter-claims"
 		if _, err := a.SignJWT(ctx, "worker", authn.JWTSignOptions{}); err == nil {
 			t.Fatal("accepted a token whose claims differ from the request")
+		}
+		mode = "mutate-claims"
+		if _, err := a.SignJWT(ctx, "worker", authn.JWTSignOptions{}); err == nil {
+			t.Fatal("accepted a token whose signer edited the request's claims")
+		}
+		mode = "wrong-alg"
+		if _, err := a.SignJWT(ctx, "worker", authn.JWTSignOptions{}); err == nil {
+			t.Fatal("accepted a token signed with another configured algorithm than the primary one")
+		}
+		mode = "wrong-kid"
+		if _, err := a.SignJWT(ctx, "worker", authn.JWTSignOptions{KeyID: "local-1"}); err == nil {
+			t.Fatal("accepted a token under another key than the pinned one")
+		}
+		mode = "drop-cty"
+		if _, err := a.SignJWT(ctx, "worker", authn.JWTSignOptions{ContentType: "application/json"}); err == nil {
+			t.Fatal("accepted a token without the requested content type")
 		}
 		mode = "fail"
 		if _, err := a.SignJWT(ctx, "worker", authn.JWTSignOptions{}); err == nil || !strings.Contains(err.Error(), "key service unavailable") {
