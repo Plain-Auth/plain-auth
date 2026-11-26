@@ -34,7 +34,7 @@ const (
 // so its operation still reports the path error.
 func userNullTarget(path string) (nullKind, string) {
 	relative := withoutSchema(path, UserSchema)
-	if attr, sub, ok, err := enterprisePath(relative); ok && err == nil && relative == strings.TrimSpace(path) {
+	if attr, sub, ok, err := enterprisePath(relative); ok && err == nil && enterpriseReachable(relative, relative != strings.TrimSpace(path)) {
 		// The URN joins its attributes with ":", the other forms with ".".
 		separator := "."
 		if strings.EqualFold(strings.TrimSpace(relative), EnterpriseUserSchema) {

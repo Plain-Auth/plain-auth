@@ -2,6 +2,7 @@ package scim
 
 import (
 	"regexp"
+	"slices"
 	"strings"
 )
 
@@ -12,7 +13,8 @@ import (
 
 var commonAttributes = []any{map[string]any{"name": "schemas"}, map[string]any{"name": "id"}, map[string]any{"name": "externalId"}, map[string]any{"name": "meta"}}
 
-var valuePath = regexp.MustCompile(`(?i)^([a-z$][\w$-]*)\s*\[[^\]]*\](?:\s*\.\s*([a-z$][\w$-]*))?$`)
+// valuePath matches the type and primary filters a User PATCH path may use.
+var valuePath = regexp.MustCompile(`(?i)^([a-z$][\w$-]*)\s*\[\s*(?:type\s+eq\s+"[^"]+"|primary\s+eq\s+"?(?:true|false)"?)\s*\](?:\s*\.\s*([a-z$][\w$-]*))?$`)
 
 func schemaAttributes(key string) []any {
 	attributes, _ := descriptors[key]["attributes"].([]any)
@@ -74,10 +76,13 @@ func userPatchDuplicates(path string, value any) error {
 	if path != "" {
 		return duplicateNames(value, userPathAttributes(path), false)
 	}
-	if err := duplicateNames(value, append(append([]any{}, commonAttributes...), schemaAttributes("Schemas")...), true); err != nil {
+	record, ok := value.(map[string]any)
+	if !ok {
+		return nil
+	}
+	if err := duplicateNames(record, append(append([]any{}, commonAttributes...), schemaAttributes("Schemas")...), true); err != nil {
 		return err
 	}
-	record, _ := value.(map[string]any)
 	for key, entry := range record {
 		if err := duplicateNames(entry, userPathAttributes(key), false); err != nil {
 			return err
@@ -87,24 +92,37 @@ func userPatchDuplicates(path string, value any) error {
 }
 
 // userPathAttributes returns the subattributes a User PATCH path's value
-// holds, or nil when the path names no complex attribute.
+// holds, or nil when the path names no complex attribute or cannot be
+// resolved, so its operation reports the path error instead.
 func userPathAttributes(path string) []any {
 	path = strings.TrimSpace(path)
 	relative := withoutSchema(path, UserSchema)
-	if relative == path {
-		if attr, sub, ok, err := enterprisePath(relative); ok {
-			enterprise := schemaAttributes("EnterpriseSchema")
-			if err != nil || attr == "" {
-				return enterprise
-			}
-			return subAttributes(declared(enterprise, attr), sub)
+	if attr, sub, ok, err := enterprisePath(relative); ok && enterpriseReachable(relative, relative != path) {
+		enterprise := schemaAttributes("EnterpriseSchema")
+		switch {
+		case err != nil:
+			return nil
+		case attr == "":
+			return enterprise
 		}
+		return subAttributes(declared(enterprise, attr), sub)
 	}
-	attr, sub, _ := strings.Cut(relative, ".")
 	if m := valuePath.FindStringSubmatch(relative); m != nil {
-		attr, sub = m[1], m[2]
+		d := declared(schemaAttributes("Schemas"), m[1])
+		if d == nil || d["multiValued"] != true {
+			return nil
+		}
+		return subAttributes(d, m[2])
 	}
-	return subAttributes(declared(schemaAttributes("Schemas"), attr), sub)
+	segments := strings.Split(relative, ".")
+	if len(segments) > 2 || slices.Contains(segments, "") || strings.Contains(relative, "[") {
+		return nil
+	}
+	sub := ""
+	if len(segments) == 2 {
+		sub = segments[1]
+	}
+	return subAttributes(declared(schemaAttributes("Schemas"), segments[0]), sub)
 }
 
 func subAttributes(d map[string]any, sub string) []any {
@@ -116,4 +134,32 @@ func subAttributes(d map[string]any, sub string) []any {
 		subs, _ = declared(subs, sub)["subAttributes"].([]any)
 	}
 	return subs
+}
+
+// opsDuplicates checks each User PATCH operation's value; an operation that
+// is not an object or whose path is not a string is left to the parser.
+func opsDuplicates(ops []any) error {
+	for _, item := range ops {
+		op, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		var path, value any
+		for key, v := range op {
+			switch strings.ToLower(key) {
+			case "path":
+				path = v
+			case "value":
+				value = v
+			}
+		}
+		text, isString := path.(string)
+		if path != nil && !isString {
+			continue
+		}
+		if err := userPatchDuplicates(strings.TrimSpace(text), value); err != nil {
+			return err
+		}
+	}
+	return nil
 }

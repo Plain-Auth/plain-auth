@@ -108,6 +108,21 @@ func emailEntry(item any) (map[string]any, [2]string, bool, error) {
 	return v, [2]string{typ, address}, primary, nil
 }
 
+// submittedEmails returns checked emails as sent, without the primary flags
+// the server assigns, for the size bound.
+func submittedEmails(raw any) []any {
+	items, _ := raw.([]any)
+	out := make([]any, 0, len(items))
+	for _, item := range items {
+		v, _, primary, _ := emailEntry(item)
+		if sent, _ := object(item, emailFields); sent["primary"] != nil {
+			v["primary"] = primary
+		}
+		out = append(out, v)
+	}
+	return out
+}
+
 func emailValues(raw any, user string) ([]any, string, error) {
 	items, ok := raw.([]any)
 	if raw != nil && !ok || len(items) > 20 {
@@ -155,6 +170,11 @@ func emailValues(raw any, user string) ([]any, string, error) {
 }
 
 func normalize(input any) (p Profile, err error) {
+	// id and meta are never stored, but two spellings of either are refused
+	// like those of a stored attribute.
+	if err := duplicateNames(input, commonAttributes, false); err != nil {
+		return p, err
+	}
 	m, err := object(input, userFields)
 	if err != nil {
 		return p, err
@@ -183,7 +203,7 @@ func normalize(input any) (p Profile, err error) {
 		return p, err
 	}
 	if m["emails"] != nil {
-		parsed["emails"] = emails
+		parsed["emails"] = submittedEmails(m["emails"])
 	}
 	name := map[string]any{}
 	if m["name"] != nil {
@@ -242,15 +262,19 @@ func normalize(input any) (p Profile, err error) {
 	}
 	p.Attributes = map[string]any{"schemas": schemas, "name": name, "emails": emails}
 	if raw, ok := m[EnterpriseUserSchema]; ok {
-		// Read even an all-null object, so two spellings of one field are
-		// refused, null or not.
-		extension, err := enterpriseUser(raw)
-		if err != nil {
-			return p, err
-		}
-		if !allNull(raw) {
+		if allNull(raw) {
+			// An all-null object is unassigned, but two spellings of one of
+			// its fields are still refused.
+			if err := duplicateNames(raw, schemaAttributes("EnterpriseSchema"), false); err != nil {
+				return p, err
+			}
+		} else {
 			if !declared {
 				return p, invalid("invalidValue", "The Enterprise User extension requires its schema URI")
+			}
+			extension, err := enterpriseUser(raw)
+			if err != nil {
+				return p, err
 			}
 			p.Attributes["enterprise"] = extension
 			parsed[EnterpriseUserSchema] = extension

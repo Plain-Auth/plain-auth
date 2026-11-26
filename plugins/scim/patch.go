@@ -121,9 +121,7 @@ func patchValue(m map[string]any, path, op string, value any) error {
 	if readOnlyUserPath(strings.TrimSpace(path)) {
 		return invalid("mutability", "The targeted User attribute is read-only")
 	}
-	// The Enterprise forms and the manager alias are not core attributes, so
-	// the core schema prefix does not reach them.
-	if attr, sub, ok, err := enterprisePath(path); ok && !prefixed {
+	if attr, sub, ok, err := enterprisePath(path); ok && enterpriseReachable(path, prefixed) {
 		if err != nil {
 			return err
 		}

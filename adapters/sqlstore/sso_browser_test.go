@@ -509,10 +509,23 @@ func TestEnterpriseOIDCBrowser(t *testing.T) {
 			noCookie := pendingLogin
 			noCookie.cookie = ""
 			target(finish(peer, noCookie), "/identity/error?error=state_mismatch")
+			// The identity provider's error comes back with its description, or
+			// the error itself when it sends none.
 			denial := pendingLogin
 			denial.path += "&error=access_denied"
-			target(finish(peer, denial), "/retry?error=invalid_request")
+			target(finish(peer, denial), "/retry?error=access_denied&error_description=access_denied")
 			target(finish(peer, pendingLogin), "/identity/error?error=state_mismatch")
+			for _, c := range []struct{ query, want string }{
+				{"&error=consent_required&error_description=Ask+an+administrator", "/retry?error=consent_required&error_description=Ask+an+administrator"},
+				{"", "/retry?error=invalid_request&error_description=authorization_code_not_found"},
+			} {
+				login := begin()
+				login.path = strings.Replace(login.path, "code=", "ignored=", 1) + c.query
+				w := finish(peer, login)
+				if w.Code != 302 || w.Header().Get("Location") != "https://service.test"+c.want {
+					t.Fatal("the callback did not send the identity provider's error back", c.query, w.Header().Get("Location"))
+				}
+			}
 			pendingLogin = begin()
 			disabled := finish(two, pendingLogin)
 			if disabled.Code != 400 || !strings.Contains(disabled.Body.String(), "issuer login is unavailable") {

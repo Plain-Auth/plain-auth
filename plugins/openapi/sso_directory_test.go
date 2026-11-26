@@ -217,8 +217,10 @@ func TestEnterpriseSAMLDocumentation(t *testing.T) {
 		}
 		const startLogout = "/sso/saml2/logout/{providerId}"
 		const finishLogout = "/sso/saml2/sp/slo/{providerId}"
+		// The logout routes are mounted with SAML and answer
+		// SINGLE_LOGOUT_NOT_ENABLED while single logout is off.
 		for _, route := range []string{startLogout, finishLogout} {
-			if _, ok := paths[route]; ok != strings.HasSuffix(mode, "logout") {
+			if _, ok := paths[route]; ok != enabled {
 				t.Fatal("logout route availability", mode, route)
 			}
 		}

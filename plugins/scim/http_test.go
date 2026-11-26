@@ -292,6 +292,19 @@ func TestSCIMCaseDuplicateAttributesAreInvalidSyntax(t *testing.T) {
 			t.Fatal("a PATCH value with a null second spelling was not invalidSyntax", op, err)
 		}
 	}
+	// A path that cannot be resolved reports its own error, not the names.
+	for _, op := range []map[string]any{
+		{"op": "replace", "path": EnterpriseUserSchema + ":unknownAttr", "value": map[string]any{"department": "a", "Department": "b"}},
+		{"op": "replace", "path": `addresses[value eq "x"]`, "value": map[string]any{"locality": "a", "LOCALITY": "b"}},
+		{"op": "replace", "value": []any{map[string]any{"displayName": "a", "DisplayName": "b"}}},
+	} {
+		if _, err := patchProfile(current, []any{op}); err == nil || syntax(err) {
+			t.Fatal("an unresolvable PATCH path reported duplicate names", op, err)
+		}
+	}
+	if _, err := normalize(map[string]any{"schemas": []any{UserSchema}, "userName": "a@example.test", "id": "a", "ID": "b"}); !syntax(err) {
+		t.Fatal("a User naming id twice was not invalidSyntax", err)
+	}
 	if _, err := patchProfile(current, []any{map[string]any{"op": "replace", "path": "emails", "value": []any{map[string]any{"value": "a@example.test", "unknown": "a", "UNKNOWN": nil}}}}); err != nil {
 		t.Fatal("two spellings of an undeclared key were refused", err)
 	}
@@ -361,15 +374,20 @@ func TestSCIMSerializedSizeCountsParsedValues(t *testing.T) {
 			t.Fatal("a User was refused for raw values the parsed document drops", err)
 		}
 	}
+	// Each value keeps to its own limit, and astral characters count two
+	// UTF-16 units, so roles and entitlements pass the bound together.
 	long := map[string]any{"schemas": []any{UserSchema}, "userName": "ada@example.test", "roles": []any{}}
 	for i := range 10 {
-		long["roles"] = append(long["roles"].([]any), map[string]any{"value": strings.Repeat("é", 1024) + string(rune('a'+i)), "display": strings.Repeat("é", 1024), "type": strings.Repeat(string(rune('a'+i)), 200)})
+		long["roles"] = append(long["roles"].([]any), map[string]any{"value": strings.Repeat("😀", 1023) + string(rune('a'+i)), "display": strings.Repeat("😀", 1024)})
 	}
-	for _, k := range []string{"title", "userType", "preferredLanguage", "locale", "timezone"} {
-		long[k] = strings.Repeat("x", 250)
+	long["entitlements"] = long["roles"]
+	if _, err := normalize(long); err == nil || err.(*Error).Detail != "SCIM User attributes exceed the supported serialized size" {
+		t.Fatal("a User over the serialized size was not refused for its size", err)
 	}
-	long["phoneNumbers"], long["entitlements"] = long["roles"], long["roles"]
-	if _, err := normalize(long); err == nil {
-		t.Fatal("a User over the serialized size was accepted")
+	// The bound counts emails as sent, without the primary flags the server
+	// assigns.
+	sent := submittedEmails([]any{map[string]any{"value": "A@example.test"}, map[string]any{"value": "b@example.test", "primary": "TRUE"}})
+	if !reflect.DeepEqual(sent, []any{map[string]any{"value": "a@example.test"}, map[string]any{"value": "b@example.test", "primary": true}}) {
+		t.Fatal("the size bound counted emails other than as sent", sent)
 	}
 }

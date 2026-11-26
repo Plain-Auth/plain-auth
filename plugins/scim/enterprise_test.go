@@ -36,6 +36,13 @@ func TestSCIMEnterpriseUserProfileNormalization(t *testing.T) {
 	if _, err := user(map[string]any{EnterpriseUserSchema: map[string]any{"department": "a", "Department": "b"}}); err == nil || err.(*Error).Type != "invalidSyntax" {
 		t.Fatal("an Enterprise object naming department twice was not invalidSyntax", err)
 	}
+	// A nested all-null value leaves the object unassigned, as another
+	// runtime strips it.
+	for _, extension := range []map[string]any{{"department": map[string]any{"value": nil}}, {"manager": map[string]any{"$ref": map[string]any{"x": nil}}}} {
+		if p, err := user(map[string]any{"schemas": []any{UserSchema}, EnterpriseUserSchema: extension}); err != nil || p.Attributes["enterprise"] != nil {
+			t.Fatal("an Enterprise object holding only nested nulls was not treated as omitted", extension, err)
+		}
+	}
 	for _, extension := range []map[string]any{{"department": nil, "Department": nil}, {"manager": map[string]any{"value": nil, "VALUE": nil}}} {
 		if _, err := user(map[string]any{"schemas": []any{UserSchema}, EnterpriseUserSchema: extension}); err == nil || err.(*Error).Type != "invalidSyntax" {
 			t.Fatal("an all-null Enterprise object naming a field twice was not invalidSyntax", extension, err)

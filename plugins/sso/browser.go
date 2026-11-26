@@ -99,6 +99,17 @@ func (o Options) start(c auth.EndpointContext) (any, error) {
 		find = store.(DomainStore).FindVerifiedBrowserProvider
 	}
 	p, err := find(c.Request.Context(), sel)
+	if errors.Is(err, ErrMissing) && kind != "" {
+		// Like another runtime, name the protocol a found provider lacks.
+		any := sel
+		any.Protocol = ""
+		if other, e := find(c.Request.Context(), any); e == nil && available(c, other) {
+			if kind == "saml" {
+				return nil, apiError(400, "SAML provider is not configured")
+			}
+			return nil, apiError(400, "OIDC provider is not configured")
+		}
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -265,12 +276,23 @@ func (o Options) finish(c auth.EndpointContext) (any, error) {
 	}
 	fail := func(code string) (any, error) { return enterpriseFailure(c, flow, code, "") }
 	q := c.Request.URL.Query()
-	if q.Get("error") != "" || q.Get("code") == "" {
-		return fail("invalid_request")
+	if idpError := q.Get("error"); idpError != "" || q.Get("code") == "" {
+		// Send the identity provider's error back, as another runtime does.
+		code, description := idpError, q.Get("error_description")
+		if code == "" {
+			code = "invalid_request"
+		}
+		if description == "" {
+			description = idpError
+		}
+		if description == "" {
+			description = "authorization_code_not_found"
+		}
+		return enterpriseFailure(c, flow, code, description)
 	}
 	p, err := store.FindBrowserProvider(c.Request.Context(), Selector{ProviderID: flow.Provider})
 	if errors.Is(err, ErrMissing) {
-		return fail("invalid_provider")
+		return enterpriseFailure(c, flow, "invalid_provider", "provider not found")
 	}
 	if err != nil {
 		return nil, err

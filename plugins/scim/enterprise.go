@@ -157,6 +157,14 @@ func enterprisePath(path string) (attr, sub string, ok bool, err error) {
 	return attr, sub, true, nil
 }
 
+// enterpriseReachable reports whether an Enterprise form applies to a User
+// path. Behind the core User schema prefix only the enterprise alias does, as
+// in another runtime; the URN forms and the manager alias do not.
+func enterpriseReachable(path string, prefixed bool) bool {
+	lower := strings.ToLower(strings.TrimSpace(path))
+	return !prefixed || lower == "enterprise" || strings.HasPrefix(lower, "enterprise.")
+}
+
 // patchEnterprise applies an Enterprise path to the URN-keyed extension in m.
 // Writes declare the URI in schemas; removing the last field removes the
 // extension and its declaration. normalize then checks the values.

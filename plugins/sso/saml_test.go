@@ -471,9 +471,14 @@ func TestSAMLAlgorithmOptions(t *testing.T) {
 // A directory's recorded algorithms decode, accept short forms and full
 // URIs, and are refused when deprecated, unknown or outside an allow-list.
 func TestSAMLConfigAlgorithms(t *testing.T) {
-	cfg, err := DecodeSAMLConfig([]byte(`{"entryPoint":"https://idp.example/sso","idpMetadata":{"entityID":"https://idp.example"},"signatureAlgorithm":"rsa-sha256","digestAlgorithm":"sha256"}`))
+	cfg, err := DecodeSAMLConfig([]byte(`{"entryPoint":"https://idp.example/sso","cert":"pem","idpMetadata":{"entityID":"https://idp.example"},"signatureAlgorithm":"rsa-sha256","digestAlgorithm":"sha256"}`))
 	if err != nil || cfg.SignatureAlgorithm != "rsa-sha256" || cfg.DigestAlgorithm != "sha256" {
 		t.Fatal("DecodeSAMLConfig refused or dropped the configured algorithms", err)
+	}
+	// A configuration without any signing certificate source names the gap.
+	var missing *auth.APIError
+	if _, err := DecodeSAMLConfig([]byte(`{"entryPoint":"https://idp.example/sso","idpMetadata":{"entityID":"https://idp.example"}}`)); !errors.As(err, &missing) || missing.Code != "CERT_SOURCE_MISSING" {
+		t.Fatal("a SAML configuration without a certificate source did not answer CERT_SOURCE_MISSING", err)
 	}
 	failure := func(err error) (string, string) {
 		var e *auth.APIError

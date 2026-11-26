@@ -11456,6 +11456,11 @@
       "label": "Run the enterprise flow's verification create hooks; a declined flow is never stored",
       "test": "adapters/sqlstore/sso_hooks_test.go",
       "marker": "// A declined enterprise flow is never stored."
+    },
+    {
+      "label": "Answer 400 naming the protocol a found provider lacks when providerType asks for it, both ways",
+      "test": "adapters/sqlstore/sso_saml_defaults_test.go",
+      "marker": "t.Fatal(\"a providerType the provider lacks did not name the missing protocol\", c.kind, w.Code, w.Body.String())"
     }
   ],
   "plugin/sso/ /sso/callback/:providerId": [
@@ -11518,6 +11523,11 @@
       "label": "An identity provider's error callback still spends the flow with its verification hooks",
       "test": "adapters/sqlstore/sso_hooks_test.go",
       "marker": "// A provider error still spends the flow with its hooks."
+    },
+    {
+      "label": "Send the identity provider's error and description back, defaulting the description to the error and a missing code to invalid_request and authorization_code_not_found",
+      "test": "adapters/sqlstore/sso_browser_test.go",
+      "marker": "t.Fatal(\"the callback did not send the identity provider's error back\", c.query, w.Header().Get(\"Location\"))"
     }
   ],
   "plugin/sso/ /sso/callback": [
@@ -13491,6 +13501,11 @@
       "label": "Run the logout request's create and the binding's delete verification hooks in one pass; a declined request signs out but its LogoutResponse answers 400",
       "test": "adapters/sqlstore/sso_saml_hooks_test.go",
       "marker": "// A declined logout request signs out, and its response answers 400."
+    },
+    {
+      "label": "Answer 401 without a session and 400 SINGLE_LOGOUT_NOT_ENABLED with a session while single logout is off",
+      "test": "adapters/sqlstore/sso_saml_defaults_test.go",
+      "marker": "t.Fatal(\"a logout route did not answer SINGLE_LOGOUT_NOT_ENABLED with single logout off\", w.Code, w.Body.String())"
     }
   ],
   "plugin/sso/GET / POST /sso/saml2/sp/slo/:providerId": [
@@ -13528,6 +13543,11 @@
       "label": "An IdP LogoutRequest runs the verification delete hooks of every binding it ends, in one pass",
       "test": "adapters/sqlstore/sso_saml_hooks_test.go",
       "marker": "// An IdP logout runs every binding's delete hooks in one pass."
+    },
+    {
+      "label": "Answer 400 SINGLE_LOGOUT_NOT_ENABLED on the SLO route while single logout is off",
+      "test": "adapters/sqlstore/sso_saml_defaults_test.go",
+      "marker": "t.Fatal(\"a logout route did not answer SINGLE_LOGOUT_NOT_ENABLED with single logout off\", w.Code, w.Body.String())"
     }
   ],
   "docs/content/docs/plugins/test-utils.mdx#L77": [
@@ -42498,6 +42518,11 @@
       "label": "List the logout start and SLO routes in the generated OpenAPI document only when single logout is enabled",
       "test": "plugins/openapi/sso_directory_test.go",
       "marker": "t.Fatal(\"logout route availability\", mode, route)"
+    },
+    {
+      "label": "Answer 404 SAML_PROVIDER_NOT_FOUND for a logout of an unknown provider",
+      "test": "adapters/sqlstore/sso_saml_logout_test.go",
+      "marker": "t.Fatal(\"a logout for an unknown provider did not answer SAML_PROVIDER_NOT_FOUND\", e)"
     }
   ],
   "docs/content/docs/plugins/sso/reference.mdx#L502/`GET /sso/providers`": [
@@ -42923,6 +42948,12 @@
       "label": "Take the IdP entity ID from registered metadata XML",
       "test": "adapters/sqlstore/sso_saml_metadata_test.go",
       "marker": "t.Fatal(\"wrong imported authority\")"
+    },
+    {
+      "label": "Refuse a SAML configuration without cert, idpMetadata.cert or metadata XML with CERT_SOURCE_MISSING",
+      "test": "plugins/sso/saml_test.go",
+      "marker": "t.Fatal(\"a SAML configuration without a certificate source did not answer CERT_SOURCE_MISSING\", err)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/sso/saml.mdx#L92": [
@@ -45416,6 +45447,11 @@
       "label": "Refuse an all-null Enterprise object naming a field twice",
       "test": "plugins/scim/enterprise_test.go",
       "marker": "t.Fatal(\"an all-null Enterprise object naming a field twice was not invalidSyntax\", extension, err)"
+    },
+    {
+      "label": "Refuse two spellings before the User lookup, skip unresolvable paths, and refuse two spellings of id on POST",
+      "test": "plugins/scim/http_test.go",
+      "marker": "t.Fatal(\"an unresolvable PATCH path reported duplicate names\", op, err)"
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L351": [
@@ -45693,6 +45729,11 @@
       "test": "conformance/scim-contract.mjs",
       "marker": "export async function enterpriseProfileContract(",
       "complete": true
+    },
+    {
+      "label": "Treat an Enterprise object holding only nested nulls as omitted",
+      "test": "plugins/scim/enterprise_test.go",
+      "marker": "t.Fatal(\"an Enterprise object holding only nested nulls was not treated as omitted\", extension, err)"
     }
   ],
   "plugin-symbol/scim/SCIMCanonicalManager": [
@@ -45745,6 +45786,11 @@
       "label": "Declare the extension when a core-only User gets an Enterprise attribute",
       "test": "adapters/sqlstore/scim_attributes_test.go",
       "marker": "t.Fatal(\"an Enterprise write did not declare the extension\", got)"
+    },
+    {
+      "label": "Reach the Enterprise extension through the enterprise alias behind the core User prefix",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "t.Fatal(\"a core-prefixed enterprise alias did not set the field\", got[urn])"
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L383/`manager`, `manager.value`, `manager.$ref`": [

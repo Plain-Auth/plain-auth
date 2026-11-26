@@ -488,13 +488,13 @@ func New(o Options) (auth.Plugin, error) {
 		plugin.Endpoints = append(plugin.Endpoints, request, verify)
 	}
 	if o.SAML != nil {
-		if o.SAML.EnableSingleLogout {
-			slo := auth.Endpoint{Path: "/sso/saml2/sp/slo/:providerId", Method: "GET", Handler: o.finishLogout}
-			if o.SAML.EnableIDPInitiatedLogout {
-				slo.OpenAPI = json.RawMessage(`{"x-plainauth-idp-logout":true}`)
-			}
-			plugin.Endpoints = append(plugin.Endpoints, endpoint("/sso/saml2/logout/:providerId", "POST", o.startLogout), slo)
+		// The logout routes are mounted with SAML, as another runtime mounts
+		// them, and answer SINGLE_LOGOUT_NOT_ENABLED while single logout is off.
+		slo := auth.Endpoint{Path: "/sso/saml2/sp/slo/:providerId", Method: "GET", Handler: o.finishLogout}
+		if o.SAML.EnableSingleLogout && o.SAML.EnableIDPInitiatedLogout {
+			slo.OpenAPI = json.RawMessage(`{"x-plainauth-idp-logout":true}`)
 		}
+		plugin.Endpoints = append(plugin.Endpoints, endpoint("/sso/saml2/logout/:providerId", "POST", o.startLogout), slo)
 		acs := auth.Endpoint{Method: "POST", Path: "/sso/saml2/sp/acs/:providerId", RawBody: true, Handler: o.samlFinish}
 		if o.SAML.AllowIDPInitiated != nil {
 			acs.OpenAPI = json.RawMessage(`{"x-plainauth-idp-initiated":true}`)

@@ -118,8 +118,8 @@
     - [x] Reject issuer and endpoint replacement on linked directories, accept overlapping signing keys, and reject retired keys after rotation ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L121))
     - [x] Allow an active organization administrator to replace metadata and deny the same live session after demotion ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L152))
     - [x] Rotate a client secret, change scopes, mapping and domain, and refuse identity changes while accounts are linked, unsupported fields and other users, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_update_test.go#L22))
-    - [x] Describe the OIDC update fields on every host's OpenAPI document ([test](../../../plugins/openapi/sso_directory_test.go#L252))
-    - [x] Publish every OIDC update field as optional, refuse unknown ones and a null pkce ([test](../../../plugins/openapi/sso_directory_test.go#L255))
+    - [x] Describe the OIDC update fields on every host's OpenAPI document ([test](../../../plugins/openapi/sso_directory_test.go#L254))
+    - [x] Publish every OIDC update field as optional, refuse unknown ones and a null pkce ([test](../../../plugins/openapi/sso_directory_test.go#L257))
   - [ ] `POST /sso/delete-provider`
     - [x] Delete the exact OIDC provider and its account links through the released SDK on both implementations ([test](../../../conformance/sso-providers.mjs#L109))
     - [x] Recheck current tenant authority, protect unrelated links and serialize concurrent sign-in against deletion on all three SQL engines ([test](../../../adapters/sqlstore/sso_delete_test.go#L19))
@@ -150,6 +150,7 @@
     - [x] Resume the original client authorization with the enterprise employee’s new session and redeem the code after consent ([test](../../../conformance/oauth-enterprise-authorization.mjs#L43))
     - [x] Validate the signed query at entry and use the application callback after a SAML assertion ([test](../../../adapters/sqlstore/sso_saml_test.go#L350))
     - [x] Run the enterprise flow's verification create hooks; a declined flow is never stored ([test](../../../adapters/sqlstore/sso_hooks_test.go#L241))
+    - [x] Answer 400 naming the protocol a found provider lacks when providerType asks for it, both ways ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L83))
   - [ ] `/sso/callback/:providerId`
     - [x] Redeem a browser-bound code with PKCE and either secret authentication method, then issue a session for the stable provider subject ([test](../../../adapters/sqlstore/sso_browser_test.go#L169))
     - [x] Reject changed provider configuration before exchange and inside the account, membership and session transaction ([test](../../../adapters/sqlstore/sso_browser_test.go#L366))
@@ -159,10 +160,11 @@
     - [x] Link a verified local mailbox within the proved subdomain to the authenticated identity ([test](../../../adapters/sqlstore/sso_domain_test.go#L305))
     - [x] Reject two distinct mailboxes that compare equal under an accent-insensitive MySQL collation ([test](../../../adapters/sqlstore/sso_domain_test.go#L339))
     - [x] Resume the original client authorization with the enterprise employee’s new session and redeem the code after consent ([test](../../../conformance/oauth-enterprise-authorization.mjs#L43))
-    - [x] Check the issuer signature and browser binding on a second node before the token exchange ([test](../../../adapters/sqlstore/sso_browser_test.go#L533))
+    - [x] Check the issuer signature and browser binding on a second node before the token exchange ([test](../../../adapters/sqlstore/sso_browser_test.go#L546))
     - [x] ValidateUserInfo checks an enterprise OIDC sign-up and a returning sign-in with the SSO provider ID and raw claims, and a refusal returns to the error callback with error and error_description ([test](../../../adapters/sqlstore/sso_user_validation_test.go#L25))
     - [x] Spend the flow with its verification delete hooks before the code exchange; a declined spend redirects with state_mismatch and keeps it ([test](../../../adapters/sqlstore/sso_hooks_test.go#L262))
     - [x] An identity provider's error callback still spends the flow with its verification hooks ([test](../../../adapters/sqlstore/sso_hooks_test.go#L286))
+    - [x] Send the identity provider's error and description back, defaulting the description to the error and a missing code to invalid_request and authorization_code_not_found ([test](../../../adapters/sqlstore/sso_browser_test.go#L526))
   - [ ] `/sso/callback`
     - [x] Authenticate using the shared callback on both servers and preserve the canonical linked account in SQLite ([test](../../../conformance/sso-browser.mjs#L59))
     - [x] Resume the original client authorization with the enterprise employee’s new session and redeem the code after consent ([test](../../../conformance/oauth-enterprise-authorization.mjs#L43))
@@ -182,18 +184,20 @@
     - [x] A declined RelayState answers 400 INVALID_OAUTH_STATE and keeps the flow for a retry ([test](../../../adapters/sqlstore/sso_saml_test.go#L324))
     - [x] The logout binding's verification create hooks follow the sign-in's session hooks once ([test](../../../adapters/sqlstore/sso_saml_hooks_test.go#L105))
   - [ ] `GET / POST /sso/saml2/sp/slo/:providerId`
-    - [x] Accept a signed HTTP-Redirect acknowledgement once across replicas and preserve a newer login during the round trip ([test](../../../adapters/sqlstore/sso_saml_logout_test.go#L224))
+    - [x] Accept a signed HTTP-Redirect acknowledgement once across replicas and preserve a newer login during the round trip ([test](../../../adapters/sqlstore/sso_saml_logout_test.go#L229))
     - [x] Complete the strict Go Redirect return with an independent IdP and capture the pinned reference’s signed-response rejection ([test](../../../conformance/core.test.mjs#L1638))
     - [x] Accept a signed directory LogoutRequest once across replicas, revoke sessions for the exact qualified NameID and SessionIndex, and preserve another immutable registration on three SQL engines ([test](../../../adapters/sqlstore/sso_saml_idp_logout_test.go#L231))
     - [x] Expire a request waiting on a directory lock and keep a renewed SAML session bound past its original TTL ([test](../../../adapters/sqlstore/sso_saml_idp_logout_test.go#L170))
     - [x] Return an independently verified signed Redirect acknowledgement to the IdP; the strict pinned runtime rejects the same signed request ([test](../../../conformance/core.test.mjs#L1656))
     - [x] Spend the logout request with its verification delete hooks after the response's signature is checked; a declined spend answers 400 and keeps it ([test](../../../adapters/sqlstore/sso_saml_hooks_test.go#L158))
     - [x] An IdP LogoutRequest runs the verification delete hooks of every binding it ends, in one pass ([test](../../../adapters/sqlstore/sso_saml_hooks_test.go#L273))
+    - [x] Answer 400 SINGLE_LOGOUT_NOT_ENABLED on the SLO route while single logout is off ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L93))
   - [ ] `POST /sso/saml2/logout/:providerId`
     - [x] Use the native SDK to revoke exactly the recorded local SAML login and sign the original IdP NameID and SessionIndex on three SQL engines ([test](../../../adapters/sqlstore/sso_saml_logout_test.go#L30))
     - [x] Revoke the current local login through the released client on both runtimes and verify the Go request’s RSA-SHA256 Redirect signature ([test](../../../conformance/sso-saml.mjs#L342))
     - [x] A SAML logout binding carries the expiry a session create hook gave its session ([test](../../../adapters/sqlstore/sso_saml_test.go#L404))
     - [x] Run the logout request's create and the binding's delete verification hooks in one pass; a declined request signs out but its LogoutResponse answers 400 ([test](../../../adapters/sqlstore/sso_saml_hooks_test.go#L192))
+    - [x] Answer 401 without a session and 400 SINGLE_LOGOUT_NOT_ENABLED with a session while single logout is off ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L93))
   - [ ] `AlgorithmValidationOptions`
     - [x] Apply the signature allow-list to the assertion signature inside an allowed response, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L260))
     - [x] Refuse deprecated, unlisted and unknown signature methods and digests with their SAML_ codes, naming only exported URIs ([test](../../../plugins/sso/saml_test.go#L344))
@@ -209,7 +213,7 @@
     - [ ] `allowedDigestAlgorithms`
       - [x] Refuse a response whose signature digest is outside the digest allow-list, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L254))
       - [x] Refuse a SHA-1 digest allow-list entry when building the plugin ([test](../../../plugins/sso/saml_test.go#L464))
-      - [x] Apply the digest allow-list to a directory's digestAlgorithm ([test](../../../plugins/sso/saml_test.go#L508))
+      - [x] Apply the digest allow-list to a directory's digestAlgorithm ([test](../../../plugins/sso/saml_test.go#L513))
     - [ ] `allowedKeyEncryptionAlgorithms`
     - [ ] `allowedDataEncryptionAlgorithms`
   - [x] `DataEncryptionAlgorithm` ([test](../../../plugins/sso/saml_test.go#L336))
@@ -327,10 +331,10 @@
       - [x] Sign the HTTP-Redirect AuthnRequest when the directory sets authnRequestsSigned, and have the IdP verify it ([test](../../../adapters/sqlstore/sso_saml_test.go#L249))
     - [x] `signatureAlgorithm` ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L375))
       - [x] Register, store and return a directory's signatureAlgorithm, refusing deprecated, unknown and unlisted values with their codes and storing nothing, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L375))
-      - [x] Accept short forms in any case and full URIs for signatureAlgorithm ([test](../../../plugins/sso/saml_test.go#L490))
+      - [x] Accept short forms in any case and full URIs for signatureAlgorithm ([test](../../../plugins/sso/saml_test.go#L495))
     - [x] `digestAlgorithm` ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L352))
       - [x] Register and return a directory's digestAlgorithm and refuse a deprecated one, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L352))
-      - [x] Refuse an unknown or unlisted digestAlgorithm ([test](../../../plugins/sso/saml_test.go#L508))
+      - [x] Refuse an unknown or unlisted digestAlgorithm ([test](../../../plugins/sso/saml_test.go#L513))
     - [x] `identifierFormat` ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L391))
       - [x] Advertise the directory's identifierFormat in the SP metadata, request it in the AuthnRequest and sign in with a persistent NameID the IdP enforces, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L391))
       - [x] Advertise the directory's identifierFormat in the SP metadata ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L387))
@@ -719,11 +723,12 @@
       - [x] Serve a provider's SP metadata as application/xml to a request without a session ([test](../../../adapters/sqlstore/sso_saml_test.go#L185))
     - [ ] `GET / POST /sso/saml2/sp/slo/:providerId`
       - [x] Accept a signed IdP LogoutRequest at the SLO route exactly once across two instances ([test](../../../adapters/sqlstore/sso_saml_idp_logout_test.go#L231))
-      - [x] Accept a signed LogoutResponse at the SLO route exactly once across two instances ([test](../../../adapters/sqlstore/sso_saml_logout_test.go#L224))
+      - [x] Accept a signed LogoutResponse at the SLO route exactly once across two instances ([test](../../../adapters/sqlstore/sso_saml_logout_test.go#L229))
     - [ ] `POST /sso/saml2/logout/:providerId`
       - [x] Start SP-initiated logout from the current SAML session, end it and redirect to the IdP with a signed LogoutRequest ([test](../../../adapters/sqlstore/sso_saml_logout_test.go#L30))
       - [x] Refuse SP-initiated logout from a password session ([test](../../../adapters/sqlstore/sso_saml_logout_test.go#L118))
-      - [x] List the logout start and SLO routes in the generated OpenAPI document only when single logout is enabled ([test](../../../plugins/openapi/sso_directory_test.go#L222))
+      - [x] List the logout start and SLO routes in the generated OpenAPI document only when single logout is enabled ([test](../../../plugins/openapi/sso_directory_test.go#L224))
+      - [x] Answer 404 SAML_PROVIDER_NOT_FOUND for a logout of an unknown provider ([test](../../../adapters/sqlstore/sso_saml_logout_test.go#L125))
     - [x] `GET /sso/providers` ([test](../../../plugins/openapi/sso_directory_test.go#L106))
       - [x] Answer 401 to the provider list and provider lookup without a session ([test](../../../plugins/openapi/sso_directory_test.go#L106))
       - [x] Drop organization providers from the list once the caller is demoted from admin ([test](../../../adapters/sqlstore/sso_test.go#L291))
@@ -762,7 +767,7 @@
         - [x] Find a SAML sign-in's logout record by its session ID and give it the session's expiry ([test](../../../adapters/sqlstore/sso_saml_test.go#L411))
         - [x] Find a SAML login's logout record by its session ID, give it the session's expiry and refuse another session's record ([test](../../../adapters/sqlstore/sso_saml_test.go#L65))
       - [x] `saml-logout-request:` ([test](../../../adapters/sqlstore/sso_saml_test.go#L65))
-        - [x] Reject a LogoutResponse once its stored logout request has expired ([test](../../../adapters/sqlstore/sso_saml_logout_test.go#L232))
+        - [x] Reject a LogoutResponse once its stored logout request has expired ([test](../../../adapters/sqlstore/sso_saml_logout_test.go#L237))
         - [x] Store each SP-initiated LogoutRequest once and refuse responses to another, an expired or an already spent request ([test](../../../adapters/sqlstore/sso_saml_test.go#L65))
       - [x] `_{tokenPrefix}-{providerId}` ([test](../../../adapters/sqlstore/sso_domain_test.go#L165))
         - [x] Store a provider's DNS token in a verification row named by the token prefix and provider ID, valid for seven days ([test](../../../adapters/sqlstore/sso_domain_test.go#L165))
@@ -773,10 +778,10 @@
   - [x] Size limit ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L213))
     - [x] Redirect a SAMLResponse over the default or configured limit with saml_error before decoding it, and accept one under the limit, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L213))
     - [x] Accept a SAMLResponse under the default limit ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L218))
-  - [x] One assertion ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L173))
+  - [x] One assertion ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L195))
     - [x] Pass the envelope check only with exactly one top-level signed assertion, refusing a second, a nested or a missing assertion ([test](../../../plugins/sso/saml_test.go#L244))
     - [x] Count plain and encrypted assertions anywhere in a response, so none or more than one is named by its error code ([test](../../../plugins/sso/saml_test.go#L259))
-    - [x] Redirect with error=saml_multiple_assertions and store no user or session for a response the IdP signed over two assertions, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L173))
+    - [x] Redirect with error=saml_multiple_assertions and store no user or session for a response the IdP signed over two assertions, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L195))
   - [ ] Signature
     - [x] Reject a SAML response signed by a key other than the provider's certificate ([test](../../../adapters/sqlstore/sso_saml_test.go#L680))
     - [x] Reject an encrypted assertion whose only signature is on the response ([test](../../../adapters/sqlstore/sso_saml_test.go#L568))
@@ -855,7 +860,7 @@
       - [x] Redirect an RSA 1.5 key transport with saml_deprecated_algorithm whatever the content cipher, before naming Triple DES ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L295))
     - [ ] `SAML_DEPRECATED_CONFIG_ALGORITHM`
       - [x] Refuse registration with a deprecated signatureAlgorithm with 400 SAML_DEPRECATED_CONFIG_ALGORITHM and its message, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L349))
-      - [x] Name a deprecated digestAlgorithm in SAML_DEPRECATED_CONFIG_ALGORITHM ([test](../../../plugins/sso/saml_test.go#L514))
+      - [x] Name a deprecated digestAlgorithm in SAML_DEPRECATED_CONFIG_ALGORITHM ([test](../../../plugins/sso/saml_test.go#L519))
   - [ ] Size limits
     - [x] Reject an IdP metadata update larger than the default 100 KiB limit ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L81))
     - [x] Refuse a negative or over-1 MiB MaxMetadataSize and default it to 100 KiB ([test](../../../plugins/sso/saml_test.go#L48))
@@ -875,14 +880,15 @@
     - [x] ACS URL ([test](../../../adapters/sqlstore/sso_saml_test.go#L190))
       - [x] Advertise the ACS at the auth mount's /sso/saml2/sp/acs/{providerId} in SP metadata ([test](../../../adapters/sqlstore/sso_saml_test.go#L190))
       - [x] Advertise the mounted ACS location in SP metadata on both runtimes ([test](../../../conformance/sso-saml.mjs#L231))
-    - [x] SP entity ID ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L155))
-      - [x] Publish the registered issuer as the SP entity ID when spMetadata.entityID is unset ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L77))
-      - [x] Send the registered issuer as the AuthnRequest issuer ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L93))
-      - [x] Accept an assertion addressed to the default SP entity ID and refuse one for another audience, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L155))
-  - [ ] Register a SAML provider
+    - [x] SP entity ID ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L177))
+      - [x] Publish the registered issuer as the SP entity ID when spMetadata.entityID is unset ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L99))
+      - [x] Send the registered issuer as the AuthnRequest issuer ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L115))
+      - [x] Accept an assertion addressed to the default SP entity ID and refuse one for another audience, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L177))
+  - [x] Register a SAML provider ([test](../../../plugins/sso/saml_test.go#L481))
     - [x] Register a SAML provider from IdP metadata XML through the released client and return the XML ([test](../../../conformance/sso-saml.mjs#L205))
     - [x] Register a SAML provider from an IdP entity ID and signing certificate through the released client and return the certificate ([test](../../../conformance/sso-saml.mjs#L206))
     - [x] Take the IdP entity ID from registered metadata XML ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L62))
+    - [x] Refuse a SAML configuration without cert, idpMetadata.cert or metadata XML with CERT_SOURCE_MISSING ([test](../../../plugins/sso/saml_test.go#L481))
   - [ ] Service provider settings
     - [x] Generate SP metadata with the configured SP entity ID and the provider's ACS ([test](../../../adapters/sqlstore/sso_saml_test.go#L191))
     - [ ] Signed assertions
@@ -929,4 +935,4 @@
     - [x] Advertise the SLO route in generated SP metadata when single logout is on ([test](../../../adapters/sqlstore/sso_saml_test.go#L196))
     - [ ] `saml.logoutRequestTTL`
       - [x] Give the logout browser binding the default five-minute lifetime ([test](../../../conformance/sso-saml.mjs#L338))
-      - [x] Reject a LogoutResponse once its stored logout request has expired ([test](../../../adapters/sqlstore/sso_saml_logout_test.go#L232))
+      - [x] Reject a LogoutResponse once its stored logout request has expired ([test](../../../adapters/sqlstore/sso_saml_logout_test.go#L237))

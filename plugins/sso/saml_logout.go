@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"net/url"
 	"strings"
 	"time"
@@ -75,10 +76,12 @@ func logoutLocation(services []SAMLService) (string, error) {
 	return target, nil
 }
 
+var errLogoutDisabled = &auth.APIError{Status: 400, Code: "SINGLE_LOGOUT_NOT_ENABLED", Message: "Single Logout is not enabled"}
+
 func availableSAMLLogout(c auth.EndpointContext, p Provider) error {
 	location := p.SAML.authority().logout
 	if location == "" {
-		return &auth.APIError{Status: 400, Code: "IDP_SLO_NOT_SUPPORTED", Message: "IdP does not support Single Logout"}
+		return &auth.APIError{Status: 400, Code: "IDP_SLO_NOT_SUPPORTED", Message: "IdP does not support Single Logout Service"}
 	}
 	loginEndpoint, _ := url.Parse(p.SAML.authority().redirect)
 	logoutEndpoint, e := url.Parse(location)
@@ -144,11 +147,17 @@ func logoutBrowserHash(value string) string {
 	return hex.EncodeToString(sum[:])
 }
 func (o Options) startLogout(c auth.EndpointContext, _ Store, actor Actor) (any, error) {
-	store := c.Store().(SAMLLogoutStore)
 	if !c.DirectBrowserSession(actor.SessionToken) {
 		return nil, ErrUnauthenticated
 	}
+	if !o.SAML.EnableSingleLogout {
+		return nil, errLogoutDisabled
+	}
+	store := c.Store().(SAMLLogoutStore)
 	p, sp, err := o.logoutProvider(c, store, "/sso/saml2/logout/")
+	if errors.Is(err, ErrMissing) {
+		return nil, &auth.APIError{Status: 404, Code: "SAML_PROVIDER_NOT_FOUND", Message: "SAML provider not found"}
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -212,6 +221,9 @@ func (o Options) startLogout(c auth.EndpointContext, _ Store, actor Actor) (any,
 }
 
 func (o Options) finishLogout(c auth.EndpointContext) (any, error) {
+	if !o.SAML.EnableSingleLogout {
+		return nil, errLogoutDisabled
+	}
 	store := c.Store().(SAMLLogoutStore)
 	if len(c.Request.URL.RawQuery) > 1<<20 {
 		return nil, ErrSAMLLogoutResponse

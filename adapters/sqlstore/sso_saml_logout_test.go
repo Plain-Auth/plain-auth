@@ -119,6 +119,11 @@ func testSAMLLogout(t *testing.T, first, second *Store, idp *saml.IdentityProvid
 	}
 	h := newBrowser()
 	login(t, h, "employee", nil)
+	// An unknown provider answers with another runtime's code.
+	var notFound *auth.APIError
+	if _, e := sdk(h).StartSAMLLogout(ctx, "absent", "/signed-out"); !errors.As(e, &notFound) || notFound.Status != 404 || notFound.Code != "SAML_PROVIDER_NOT_FOUND" || notFound.Message != "SAML provider not found" {
+		t.Fatal("a logout for an unknown provider did not answer SAML_PROVIDER_NOT_FOUND", e)
+	}
 	another := newBrowser()
 	login(t, another, "employee", nil)
 	a, e := sdk(h).GetSession(ctx)

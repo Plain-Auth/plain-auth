@@ -71,6 +71,28 @@ func TestEnterpriseSAMLDefaults(t *testing.T) {
 			if w := call("POST", "sso/register", owner, map[string]any{"providerId": "acme", "issuer": spIssuer, "domain": "acme.example", "samlConfig": map[string]any{"entryPoint": entry, "cert": idpPEM, "idpMetadata": map[string]any{"entityID": idpEntity}}}); w.Code != 200 {
 				t.Fatal("a SAML directory without spMetadata did not register", w.Code, w.Body.String())
 			}
+			// A providerType the provider lacks names the missing protocol.
+			if w := call("POST", "sso/register", owner, map[string]any{"providerId": "oidc-one", "issuer": "https://idp.example.test", "domain": "oidc.example",
+				"oidcConfig": map[string]any{"clientId": "application", "clientSecret": "private", "skipDiscovery": true,
+					"authorizationEndpoint": "https://idp.example.test/authorize", "tokenEndpoint": "https://idp.example.test/token", "jwksEndpoint": "https://idp.example.test/keys"}}); w.Code != 200 {
+				t.Fatal("an OIDC provider did not register", w.Code, w.Body.String())
+			}
+			for _, c := range []struct{ provider, kind, message string }{{"acme", "oidc", "OIDC provider is not configured"}, {"oidc-one", "saml", "SAML provider is not configured"}} {
+				w := call("POST", "sign-in/sso", "", map[string]any{"providerId": c.provider, "providerType": c.kind, "callbackURL": "/home"})
+				if w.Code != 400 || !strings.Contains(w.Body.String(), c.message) {
+					t.Fatal("a providerType the provider lacks did not name the missing protocol", c.kind, w.Code, w.Body.String())
+				}
+			}
+			// The logout routes answer SINGLE_LOGOUT_NOT_ENABLED while single
+			// logout is off, after the session check.
+			if w := call("POST", "sso/saml2/logout/acme", "", map[string]any{}); w.Code != 401 {
+				t.Fatal("a logout without a session did not answer 401", w.Code, w.Body.String())
+			}
+			for _, w := range []*httptest.ResponseRecorder{call("POST", "sso/saml2/logout/acme", owner, map[string]any{}), call("GET", "sso/saml2/sp/slo/acme", "", nil)} {
+				if w.Code != 400 || !strings.Contains(w.Body.String(), `"code":"SINGLE_LOGOUT_NOT_ENABLED"`) {
+					t.Fatal("a logout route did not answer SINGLE_LOGOUT_NOT_ENABLED with single logout off", w.Code, w.Body.String())
+				}
+			}
 			w := call("GET", "sso/saml2/sp/metadata?providerId=acme", "", nil)
 			var metadata saml.EntityDescriptor
 			if w.Code != 200 || xml.Unmarshal(w.Body.Bytes(), &metadata) != nil || metadata.EntityID != spIssuer {

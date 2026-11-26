@@ -941,6 +941,15 @@ func TestSCIMEnterpriseUserPatchOverHTTP(t *testing.T) {
 			if body := patch(400, "a core-prefixed manager alias was accepted", op("replace", scim.UserSchema+":manager", "m-2")); body["scimType"] != "invalidPath" {
 				t.Fatal("a core-prefixed manager alias was not invalidPath", body)
 			}
+			// The enterprise alias still works behind the core prefix.
+			if got := patch(200, "a core-prefixed enterprise alias failed", op("replace", scim.UserSchema+":enterprise.division", "Core")); got[urn].(map[string]any)["division"] != "Core" {
+				t.Fatal("a core-prefixed enterprise alias did not set the field", got[urn])
+			}
+			// Two spellings are refused before the User is looked up.
+			body := call("PATCH", "Users/absent", map[string]any{"schemas": []string{scim.PatchSchema}, "Operations": []any{map[string]any{"op": "replace", "value": map[string]any{"displayName": "A", "DisplayName": nil}}}}, 400, "a PATCH of an unknown User with two spellings was not refused first")
+			if body["scimType"] != "invalidSyntax" {
+				t.Fatal("a PATCH of an unknown User with two spellings was not invalidSyntax", body)
+			}
 			patch(200, "setting a cost center failed", op("replace", urn+":costCenter", "C2"))
 			if got := patch(200, "a null Enterprise value failed", map[string]any{"op": "replace", "path": urn + ":costCenter", "value": nil}); got[urn].(map[string]any)["costCenter"] != nil {
 				t.Fatal("a null Enterprise attribute value did not remove it", got[urn])

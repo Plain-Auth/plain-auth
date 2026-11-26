@@ -140,6 +140,11 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			var ops []any
 			ops, err = patchOperations(input)
 			if err == nil {
+				// Refuse two spellings of one attribute before the User is
+				// looked up, as another runtime does on the request body.
+				err = opsDuplicates(ops)
+			}
+			if err == nil {
 				// An unchanged PATCH, including an empty Operations array, keeps
 				// the stored resource and its lastModified.
 				var unchanged Record

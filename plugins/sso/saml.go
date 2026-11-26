@@ -179,6 +179,8 @@ type SAMLConfig struct {
 	DigestAlgorithm    string `json:"digestAlgorithm,omitempty"`
 }
 
+var errCertSourceMissing = &auth.APIError{Status: 400, Code: "CERT_SOURCE_MISSING", Message: "samlConfig requires either a signing certificate (cert or idpMetadata.cert) or an idpMetadata.metadata XML document."}
+
 func DecodeSAMLConfig(raw []byte) (*SAMLConfig, error) {
 	var c SAMLConfig
 	d := json.NewDecoder(bytes.NewReader(raw))
@@ -188,6 +190,11 @@ func DecodeSAMLConfig(raw []byte) (*SAMLConfig, error) {
 	}
 	if !validSAMLLanding(c.IDPInitiatedCallbackURL) || strings.Contains(c.CallbackURL, "#") || c.EntryPoint == "" || (c.IDPMetadata.EntityID == "" && c.IDPMetadata.Metadata == "") || c.WantAssertionsSigned != nil && !*c.WantAssertionsSigned {
 		return nil, ErrInvalidSAML
+	}
+	// Like another runtime, name a configuration without any signing
+	// certificate source.
+	if len(c.Certificates) == 0 && len(c.IDPMetadata.Certificates) == 0 && c.IDPMetadata.Metadata == "" {
+		return nil, errCertSourceMissing
 	}
 	if _, err := logoutLocation(c.IDPMetadata.SingleLogoutService); err != nil {
 		return nil, err
