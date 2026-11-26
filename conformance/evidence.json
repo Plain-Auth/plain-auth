@@ -45229,5 +45229,12 @@
       "test": "adapters/sqlstore/scim_attributes_test.go",
       "marker": "t.Fatal(\"a null subattribute in a whole roles value was kept\", got[\"roles\"])"
     }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L184": [
+    {
+      "label": "Report two spellings of one attribute, even with a null value, as invalidSyntax in a User, a role, a pathless PATCH value and a Group",
+      "test": "plugins/scim/http_test.go",
+      "marker": "func TestSCIMCaseDuplicateAttributesAreInvalidSyntax("
+    }
   ]
 }

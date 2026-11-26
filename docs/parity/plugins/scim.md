@@ -346,6 +346,7 @@
         - [x] Refuse Group creation to read-only and Users-only credentials with 403 ([test](../../../adapters/sqlstore/scim_groups_test.go#L67))
         - [x] Refuse Group deletion to a read-only credential with 403 ([test](../../../adapters/sqlstore/scim_projection_test.go#L234))
   - [ ] HTTP behavior
+    - [x] Report two spellings of one attribute, even with a null value, as invalidSyntax in a User, a role, a pathless PATCH value and a Group ([test](../../../plugins/scim/http_test.go#L235))
     - [ ] Null attribute values
       - [x] Reject active: null in a User replacement with 400 on both runtimes ([test](../../../conformance/scim-roles.mjs#L48))
       - [x] An attribute or subattribute in a `POST` or `PUT` body ([test](../../../adapters/sqlstore/scim_attributes_test.go#L52))

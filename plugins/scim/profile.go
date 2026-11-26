@@ -28,18 +28,21 @@ func object(input any, allowed []string) (map[string]any, error) {
 		return nil, invalid("invalidValue", "Expected an object")
 	}
 	out := make(map[string]any, len(m))
+	seen := make(map[string]bool, len(m))
 	for k, v := range m {
-		if v == nil {
-			continue
-		}
 		name := field(k, allowed)
 		if name == "" {
 			continue
 		}
-		if _, ok := out[name]; ok {
-			return nil, invalid("invalidValue", "Duplicate attribute "+name)
+		// RFC 7643 names are case-insensitive, so two spellings name one
+		// attribute, null or not.
+		if seen[name] {
+			return nil, invalid("invalidSyntax", "Duplicate attribute "+name)
 		}
-		out[name] = v
+		seen[name] = true
+		if v != nil {
+			out[name] = v
+		}
 	}
 	return out, nil
 }
@@ -137,6 +140,10 @@ func emailValues(raw any, user string) ([]any, string, error) {
 }
 
 func normalize(input any) (p Profile, err error) {
+	m, err := object(input, userFields)
+	if err != nil {
+		return p, err
+	}
 	if m, ok := input.(map[string]any); ok {
 		for key, value := range m {
 			if strings.EqualFold(key, "active") && value == nil {
@@ -146,10 +153,6 @@ func normalize(input any) (p Profile, err error) {
 				return p, invalid("invalidValue", "Unsupported User attribute "+key)
 			}
 		}
-	}
-	m, err := object(input, userFields)
-	if err != nil {
-		return p, err
 	}
 	schemas, ok := m["schemas"].([]any)
 	if !ok || len(schemas) != 1 || schemas[0] != UserSchema {

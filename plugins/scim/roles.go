@@ -96,7 +96,7 @@ func roleObject(raw any) (map[string]any, error) {
 	for name, v := range input {
 		if k := field(name, roleFields); k != "" {
 			if _, duplicate := item[k]; duplicate {
-				return nil, invalid("invalidValue", "Duplicate role attribute "+k)
+				return nil, invalid("invalidSyntax", "Duplicate role attribute "+k)
 			}
 			if k == "primary" && v != nil {
 				if b, e := boolValue(v); e == nil {

@@ -229,3 +229,30 @@ func TestSCIMDiscoveryDocumentsAndRefusedRoutes(t *testing.T) {
 		t.Fatal("Basic authentication was not refused with a bearer challenge", w.Code, w.Header().Get("WWW-Authenticate"), w.Body.String())
 	}
 }
+
+// Two spellings of one attribute are a syntax error, whether either value
+// is null, in a User, a role, a pathless PATCH value or a Group.
+func TestSCIMCaseDuplicateAttributesAreInvalidSyntax(t *testing.T) {
+	syntax := func(err error) bool {
+		var e *Error
+		return errors.As(err, &e) && e.Type == "invalidSyntax"
+	}
+	user := map[string]any{"schemas": []any{UserSchema}, "userName": "a@example.test", "UserName": "b@example.test"}
+	if _, err := normalize(user); !syntax(err) {
+		t.Fatal("a case-duplicate User attribute was not invalidSyntax", err)
+	}
+	if _, err := normalize(map[string]any{"schemas": []any{UserSchema}, "userName": "a@example.test", "active": true, "Active": nil}); !syntax(err) {
+		t.Fatal("a case-duplicate null attribute was not invalidSyntax", err)
+	}
+	if _, err := roleObject(map[string]any{"value": "a", "Value": "b"}); !syntax(err) {
+		t.Fatal("a case-duplicate role attribute was not invalidSyntax", err)
+	}
+	current := Record{Profile: Profile{UserName: "a@example.test", PrimaryEmail: "a@example.test", Active: true, Attributes: map[string]any{"schemas": []any{UserSchema}, "name": map[string]any{}, "emails": []any{map[string]any{"value": "a@example.test", "primary": true}}}}}
+	ops := []any{map[string]any{"op": "replace", "value": map[string]any{"displayName": "One", "DisplayName": "Two"}}}
+	if _, err := patchProfile(current, ops); !syntax(err) {
+		t.Fatal("a case-duplicate pathless PATCH value was not invalidSyntax", err)
+	}
+	if _, err := parseGroup(map[string]any{"schemas": []any{GroupSchema}, "displayName": "One", "DISPLAYNAME": "Two"}, false); !syntax(err) {
+		t.Fatal("a case-duplicate Group attribute was not invalidSyntax", err)
+	}
+}

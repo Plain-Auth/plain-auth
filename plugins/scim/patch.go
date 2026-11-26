@@ -52,6 +52,9 @@ func patchProfile(r Record, ops []any) (Profile, error) {
 			if !ok || len(fields) == 0 {
 				return Profile{}, invalid("invalidValue", "Expected an attribute map")
 			}
+			if _, err = object(fields, userFields); err != nil {
+				return Profile{}, err
+			}
 			for name, value := range fields {
 				if err = patchValue(m, name, op, value); err != nil {
 					return Profile{}, err
