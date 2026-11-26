@@ -43624,5 +43624,78 @@
       "test": "adapters/sqlstore/scim_managed_test.go",
       "marker": "\"connection.created\", \"credential.issued\""
     }
+  ],
+  "plugin-symbol/2fa/TWO_FACTOR_ERROR_CODES": [
+    {
+      "label": "Answer the two-factor errors with their error-table status, code and message from the factor routes, sign-in and the Go calls, apart from the documented deviations, on three SQL engines",
+      "test": "adapters/sqlstore/twofactor_errors_test.go",
+      "marker": "func TestTwoFactorErrorCodesAcrossEngines(",
+      "complete": true
+    },
+    {
+      "label": "Refuse send-otp without a sender with OTP_NOT_CONFIGURED before reading the challenge",
+      "test": "adapters/sqlstore/twofactor_errors_test.go",
+      "marker": "send-otp without a sender did not answer OTP_NOT_CONFIGURED before the challenge"
+    },
+    {
+      "label": "Refuse a sign-in with no usable factor and no stored backup codes with 400 TOTP_NOT_CONFIGURED",
+      "test": "adapters/sqlstore/twofactor_errors_test.go",
+      "marker": "a sign-in with no usable factor did not answer TOTP_NOT_CONFIGURED"
+    }
+  ],
+  "plugin-symbol/2fa/backupCode2fa": [
+    {
+      "label": "Refuse backup-code proofs and listing without codes with BACKUP_CODES_NOT_ENABLED, generation without an authenticator or with a wrong password, and answer wrong or unreadable codes with INVALID_BACKUP_CODE, on three SQL engines",
+      "test": "adapters/sqlstore/twofactor_errors_test.go",
+      "marker": "verify-backup-code without a record did not answer BACKUP_CODES_NOT_ENABLED",
+      "complete": true
+    },
+    {
+      "label": "Refuse /two-factor/generate-backup-codes for an account without an authenticator with TWO_FACTOR_NOT_ENABLED",
+      "test": "adapters/sqlstore/twofactor_errors_test.go",
+      "marker": "generate-backup-codes without a record did not answer TWO_FACTOR_NOT_ENABLED"
+    },
+    {
+      "label": "Refuse /two-factor/generate-backup-codes with a wrong password with 400 INVALID_PASSWORD and its message",
+      "test": "adapters/sqlstore/twofactor_errors_test.go",
+      "marker": "generate-backup-codes with a wrong password did not answer INVALID_PASSWORD"
+    },
+    {
+      "label": "Answer a wrong backup code with 401 INVALID_BACKUP_CODE",
+      "test": "adapters/sqlstore/twofactor_errors_test.go",
+      "marker": "a wrong backup code did not answer INVALID_BACKUP_CODE"
+    },
+    {
+      "label": "Answer ViewBackupCodes for unreadable codes with 400 INVALID_BACKUP_CODE",
+      "test": "adapters/sqlstore/twofactor_errors_test.go",
+      "marker": "ViewBackupCodes for unreadable codes did not answer INVALID_BACKUP_CODE"
+    },
+    {
+      "label": "Answer ViewBackupCodes without a record with BACKUP_CODES_NOT_ENABLED",
+      "test": "adapters/sqlstore/twofactor_errors_test.go",
+      "marker": "ViewBackupCodes without a record did not answer BACKUP_CODES_NOT_ENABLED"
+    }
+  ],
+  "plugin-symbol/2fa/totp2fa": [
+    {
+      "label": "With authenticators disabled, check the verify-totp body and then answer TOTP_NOT_CONFIGURED before reading a session, challenge, factor or lockout",
+      "test": "adapters/sqlstore/twofactor_options_test.go",
+      "marker": "a disabled authenticator was not refused before the challenge was read"
+    },
+    {
+      "label": "Accept enrollment and sign-in codes from the configured 45-second period before or after the current one, and refuse codes two periods away",
+      "test": "adapters/sqlstore/twofactor_options_test.go",
+      "marker": "func TestTOTPProviderRefusalsAndPeriodWindow("
+    },
+    {
+      "label": "Answer verify-totp without an authenticator with TOTP_NOT_ENABLED",
+      "test": "adapters/sqlstore/twofactor_errors_test.go",
+      "marker": "verify-totp without a record did not answer TOTP_NOT_ENABLED"
+    },
+    {
+      "label": "Answer a sign-in code for an authenticator awaiting confirmation with TOTP_NOT_ENABLED",
+      "test": "adapters/sqlstore/twofactor_errors_test.go",
+      "marker": "verify-totp for an unconfirmed authenticator during sign-in did not answer TOTP_NOT_ENABLED"
+    }
   ]
 }

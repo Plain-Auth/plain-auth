@@ -193,11 +193,13 @@ func (a *Auth) factorLoginDecision(out *AuthResult, h *factorHooks, pins factorP
 			result = AuthResult{User: state.User, Token: session.Token}
 			return FactorChange{Session: &session}, nil
 		}
-		// An enabled account with unavailable factor material must never fall
-		// through to an authenticated session.
+		// An enabled account with no usable factor and no stored backup codes
+		// is refused, even from a remembered browser, rather than given a
+		// challenge it cannot complete; the other runtime issues a challenge,
+		// or signs a remembered browser in.
 		methods := a.factorMethods(state)
 		if len(methods) == 0 && (state.Record == nil || !state.Record.Verified || state.Record.BackupCodes == "") {
-			return FactorChange{}, &APIError{403, "TOTP_NOT_CONFIGURED", "Two-factor verification is unavailable"}
+			return FactorChange{}, &APIError{400, "TOTP_NOT_CONFIGURED", "TOTP is not available"}
 		}
 		uid, declined := state.User.ID, false
 		if state.TrustedGrant != "" {
@@ -281,6 +283,25 @@ func (a *Auth) factorEndpoint(route string, c EndpointContext) (any, error) {
 		if _, valid := v.(bool); !valid {
 			return nil, fieldTypeError("trustDevice", "boolean", c.Body)
 		}
+	}
+	if isSend && a.factorOptions.OTP.Send == nil {
+		// Refused before the session or challenge is read, as the other
+		// runtime does.
+		return nil, &APIError{400, "OTP_NOT_CONFIGURED", "otp isn't configured"}
+	}
+	if route == "/two-factor/verify-totp" && a.factorOptions.TOTP.Disabled {
+		// The body is checked, and then a disabled authenticator is refused
+		// before any session, challenge, factor or lockout is read, as the
+		// other runtime does.
+		if _, err := requiredString(c.Body, "code"); err != nil {
+			return nil, err
+		}
+		if v, ok := c.Body["trustDevice"]; ok {
+			if _, valid := v.(bool); !valid {
+				return nil, fieldTypeError("trustDevice", "boolean", c.Body)
+			}
+		}
+		return nil, &APIError{400, "TOTP_NOT_CONFIGURED", "totp isn't configured"}
 	}
 	subject.ReadDelivery = isSend || route == "/two-factor/verify-otp"
 	isProof := route == "/two-factor/verify-totp" || route == "/two-factor/verify-backup-code" || route == "/two-factor/verify-otp"
@@ -459,15 +480,21 @@ func (p *factorRequest) verify(state FactorState) (FactorChange, error) {
 			return ch, fieldTypeError("trustDevice", "boolean", p.body)
 		}
 	}
-	if p.route == "/two-factor/verify-otp" && p.auth.factorOptions.OTP.Send == nil {
-		return ch, &APIError{400, "OTP_NOT_CONFIGURED", "OTP is not available"}
+	// A record without an authenticator or backup codes, kept for delivered
+	// codes, stands for no record on the route that needs them.
+	if state.Record == nil || (p.route == "/two-factor/verify-totp" && state.Record.Secret == "") || (p.route == "/two-factor/verify-backup-code" && state.Record.BackupCodes == "") {
+		return ch, p.notEnabled(state)
 	}
-	if state.Record == nil {
-		return ch, &APIError{400, "TOTP_NOT_ENABLED", "Two factor is not enabled"}
+	// During sign-in an authenticator awaiting confirmation is not enabled,
+	// nor are its backup codes; the other runtime accepts those backup codes.
+	if p.subject.Challenge != "" && state.Enabled && !state.Record.Verified && p.route != "/two-factor/verify-otp" {
+		return ch, p.notEnabled(state)
 	}
 	if p.subject.Challenge != "" && (!state.Enabled || (!state.Record.Verified && !(p.route == "/two-factor/verify-otp" && state.Record.hasPendingAuthenticator()))) {
 		return ch, factorCookieError()
 	}
+	// The lock also refuses signed-in proofs, whose failures count toward
+	// it; the other runtime locks sign-in proofs only.
 	if !p.auth.factorOptions.Lockout.Disabled && state.Record.LockedUntil != nil && state.Record.LockedUntil.After(p.subject.Now) {
 		return ch, &APIError{429, "ACCOUNT_TEMPORARILY_LOCKED", "Too many failed verification attempts. Your account is temporarily locked. Please try again later."}
 	}
@@ -479,12 +506,11 @@ func (p *factorRequest) verify(state FactorState) (FactorChange, error) {
 	// The refusals that compare nothing come before any comparison.
 	switch p.route {
 	case "/two-factor/verify-totp":
-		// The challenge, the factor and the lockout are checked first; the
-		// other runtime refuses a disabled authenticator before them.
-		if p.auth.factorOptions.TOTP.Disabled || record.Secret == "" {
-			return ch, &APIError{400, "TOTP_NOT_CONFIGURED", "TOTP is not available"}
-		}
+		// factorEndpoint refused a disabled authenticator, and the checks
+		// above a missing or unconfirmed one.
 	case "/two-factor/verify-otp":
+		// Only /two-factor/enable with the password enrolls an account; the
+		// other runtime also enrolls one through a verified code.
 		if !state.Enabled || (!record.Verified && !record.hasPendingAuthenticator()) {
 			return ch, &APIError{400, "OTP_NOT_ENABLED", "OTP not enabled"}
 		}
@@ -493,11 +519,10 @@ func (p *factorRequest) verify(state FactorState) (FactorChange, error) {
 			return ch, nil
 		}
 	default:
+		// Backup codes of an authenticator awaiting confirmation never
+		// verify; the other runtime accepts them.
 		if !state.Enabled || !record.Verified {
-			return ch, &APIError{400, "TWO_FACTOR_NOT_ENABLED", "Two factor isn't enabled"}
-		}
-		if record.BackupCodes == "" {
-			return ch, &APIError{400, "BACKUP_CODES_NOT_ENABLED", "Backup codes are not enabled"}
+			return ch, &APIError{400, "BACKUP_CODES_NOT_ENABLED", "Backup codes aren't enabled"}
 		}
 	}
 	// A grant is stored only by a correct proof that signs in.
@@ -562,6 +587,9 @@ func (p *factorRequest) verify(state FactorState) (FactorChange, error) {
 		}
 		ch.SaveRecord = &record
 		ch.IncrementAttempts = p.subject.Challenge != ""
+		// The fifth failed proof of any kind ends the challenge at once; the
+		// other runtime counts only authenticator and backup-code failures and
+		// answers the next proof with TOO_MANY_ATTEMPTS_REQUEST_NEW_CODE first.
 		if ch.IncrementAttempts && state.Attempts+1 >= 5 {
 			ch.ConsumeChallenge = true
 			p.clearChallenge = true
@@ -662,9 +690,10 @@ func (p *factorRequest) manage(state FactorState) (FactorChange, error) {
 			return ch, err
 		}
 	}
-	// The password is checked before each route's own refusals
-	// (TOTP_NOT_CONFIGURED, TWO_FACTOR_NOT_ENABLED), so every factor change
-	// answers the password first.
+	// The password is checked before each route's own refusals, so every
+	// factor change answers the password first; the other runtime refuses
+	// /two-factor/get-totp-uri, and /two-factor/generate-backup-codes for an
+	// account without two-factor, before checking it.
 	if state.PasswordHash != "" || !allowPasswordless {
 		// An account with a password that leaves it out is refused like a
 		// wrong one.
@@ -731,11 +760,10 @@ func (p *factorRequest) manage(state FactorState) (FactorChange, error) {
 		p.out = map[string]any{"method": "totp", "totpURI": p.auth.factorOptions.TOTP.uri(issuer, state.User.Email, []byte(secret)), "backupCodes": codes}
 		return ch, nil
 	}
-	if state.Record == nil {
-		return ch, &APIError{400, "TWO_FACTOR_NOT_ENABLED", "Two factor isn't enabled"}
-	}
 	switch p.route {
 	case "/two-factor/disable":
+		// An account without a record, such as one enrolled by the user flag
+		// alone, can still turn the factor off.
 		enabled := false
 		ch.Enabled = &enabled
 		ch.DeleteRecord = true
@@ -745,8 +773,13 @@ func (p *factorRequest) manage(state FactorState) (FactorChange, error) {
 		p.issued = raw
 		p.out = map[string]bool{"status": true}
 	case "/two-factor/get-totp-uri":
-		if o.TOTP.Disabled || state.Record.Secret == "" {
-			return ch, &APIError{400, "TOTP_NOT_CONFIGURED", "TOTP is not available"}
+		if o.TOTP.Disabled {
+			return ch, &APIError{400, "TOTP_NOT_CONFIGURED", "totp isn't configured"}
+		}
+		// A record without an authenticator, kept for delivered codes, stands
+		// for no record.
+		if state.Record == nil || state.Record.Secret == "" {
+			return ch, &APIError{400, "TOTP_NOT_ENABLED", "TOTP not enabled"}
 		}
 		raw, err := p.auth.openAuthenticator(state.Record.Secret)
 		if err != nil {
@@ -754,7 +787,10 @@ func (p *factorRequest) manage(state FactorState) (FactorChange, error) {
 		}
 		p.out = map[string]string{"totpURI": p.auth.factorOptions.TOTP.uri(p.auth.factorOptions.Issuer, state.User.Email, raw)}
 	case "/two-factor/generate-backup-codes":
-		if !state.Enabled || !state.Record.Verified {
+		// A record without an authenticator, kept for delivered codes, stands
+		// for no record. Backup codes such an account already holds keep
+		// verifying but are not replaced; the other runtime keeps none for it.
+		if !state.Enabled || state.Record == nil || state.Record.Secret == "" {
 			return ch, &APIError{400, "TWO_FACTOR_NOT_ENABLED", "Two factor isn't enabled"}
 		}
 		codes, err := p.auth.factorOptions.Backup.generate(p.ctx)
@@ -770,6 +806,21 @@ func (p *factorRequest) manage(state FactorState) (FactorChange, error) {
 		p.out = map[string]any{"status": true, "backupCodes": codes}
 	}
 	return ch, nil
+}
+
+// notEnabled refuses a proof that the account has no factor to judge by.
+func (p *factorRequest) notEnabled(state FactorState) *APIError {
+	switch p.route {
+	case "/two-factor/verify-backup-code":
+		return &APIError{400, "BACKUP_CODES_NOT_ENABLED", "Backup codes aren't enabled"}
+	case "/two-factor/verify-otp":
+		if !state.Enabled {
+			return &APIError{400, "OTP_NOT_ENABLED", "OTP not enabled"}
+		}
+		// Sending a code stores a record, so an account without one has no code.
+		return otpExpired()
+	}
+	return &APIError{400, "TOTP_NOT_ENABLED", "TOTP not enabled"}
 }
 
 func factorCookieError() *APIError {

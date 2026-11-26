@@ -53,9 +53,12 @@ func (p *factorRequest) sendOTP(st FactorState) (FactorChange, error) {
 	if o.Send == nil {
 		return ch, &APIError{400, "OTP_NOT_CONFIGURED", "OTP is not available"}
 	}
+	// Only /two-factor/enable with the password enrolls an account; the other
+	// runtime sends a code to any session and enrolls it on a verified code.
 	if !st.Enabled || (st.Record != nil && !st.Record.Verified && !st.Record.hasPendingAuthenticator()) {
 		return ch, &APIError{400, "OTP_NOT_ENABLED", "OTP not enabled"}
 	}
+	// The lock also refuses a new code; the other runtime keeps no lock here.
 	if st.Record != nil && !p.auth.factorOptions.Lockout.Disabled && st.Record.LockedUntil != nil && st.Record.LockedUntil.After(p.subject.Now) {
 		return ch, &APIError{429, "ACCOUNT_TEMPORARILY_LOCKED", "Too many failed verification attempts. Your account is temporarily locked. Please try again later."}
 	}
@@ -101,8 +104,11 @@ func (p *factorRequest) sendOTP(st FactorState) (FactorChange, error) {
 	p.out = map[string]bool{"status": true}
 	return ch, nil
 }
-func otpExpired() *APIError     { return &APIError{400, "OTP_HAS_EXPIRED", "OTP has expired"} }
-func otpUnavailable() *APIError { return &APIError{400, "OTP_HAS_EXPIRED", "OTP is unavailable"} }
+func otpExpired() *APIError { return &APIError{400, "OTP_HAS_EXPIRED", "OTP has expired"} }
+
+// otpUnavailable answers a code still being sent, or sent again since its
+// hooks ran, like an expired one.
+func otpUnavailable() *APIError { return &APIError{400, "OTP_HAS_EXPIRED", "OTP has expired"} }
 
 // deliveryReady refuses a guess at a delivered code still being sent, and
 // removes one that is missing or expired, before anything compares it.

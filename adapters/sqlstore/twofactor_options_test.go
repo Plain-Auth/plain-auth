@@ -14,6 +14,7 @@ import (
 
 	auth "github.com/Plain-Org/plain-auth"
 	"github.com/Plain-Org/plain-auth/plugins/twofactor"
+	"github.com/pquerna/otp"
 	"github.com/pquerna/otp/totp"
 )
 
@@ -314,5 +315,103 @@ func TestAuthenticatorStepWindow(t *testing.T) {
 		h.cookie(h.request(h.first, "two-factor/verify-totp", codeAt(30*time.Second), 200, h.challenge(h.second, owner)), "session_token")
 		// A code from an earlier period than the last accepted one is refused.
 		h.answer(h.second, "two-factor/verify-totp", codeAt(0), 401, "INVALID_CODE", h.challenge(h.first, owner))
+	})
+}
+
+// With authenticators disabled, verify-totp checks its body and then answers
+// TOTP_NOT_CONFIGURED before reading a session, challenge, factor or lockout.
+// Codes from the configured period before or after the current one verify at
+// enrollment and sign-in, and codes two periods away do not.
+func TestTOTPProviderRefusalsAndPeriodWindow(t *testing.T) {
+	withFactorDatabases(t, twofactor.Options{}, func(h *factorHarness) {
+		t := h.t
+		ctx := t.Context()
+		const password = "private-fixture-credential"
+		post := func(a *auth.Auth, path string, body any, cookies ...*http.Cookie) *httptest.ResponseRecorder {
+			t.Helper()
+			data, _ := json.Marshal(body)
+			r := httptest.NewRequest("POST", "https://factor.example/api/auth/"+path, strings.NewReader(string(data)))
+			r.Header.Set("Origin", "https://factor.example")
+			r.Header.Set("Content-Type", "application/json")
+			for _, c := range cookies {
+				r.AddCookie(c)
+			}
+			w := httptest.NewRecorder()
+			a.ServeHTTP(w, r)
+			return w
+		}
+		refusal := func(w *httptest.ResponseRecorder) string {
+			var got struct{ Code string }
+			_ = json.Unmarshal(w.Body.Bytes(), &got)
+			return got.Code
+		}
+		off := h.instance(twofactor.Options{TOTP: twofactor.TOTPOptions{Disabled: true}})
+		owner := h.enroll()
+		reg, err := h.first.SignUpEmail(ctx, auth.SignUpInput{Email: strings.ToLower(rand.Text()) + "@example.test", Password: password, Name: "Bare"}, auth.RequestMeta{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		bare := h.first.SessionCookie(reg.Token, true)
+		code, err := totp.GenerateCode(owner.secret, time.Now())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if w := post(off, "two-factor/verify-totp", map[string]any{}); w.Code != 400 || refusal(w) != "VALIDATION_ERROR" {
+			t.Fatal("a disabled authenticator was refused before the body was checked", w.Code, w.Body)
+		}
+		if w := post(off, "two-factor/verify-totp", map[string]any{"code": code}); w.Code != 400 || !strings.Contains(w.Body.String(), `"message":"totp isn't configured"`) {
+			t.Fatal("a disabled authenticator was not refused before the challenge was read", w.Code, w.Body)
+		}
+		if w := post(off, "two-factor/verify-totp", map[string]any{"code": code}, bare); w.Code != 400 || refusal(w) != "TOTP_NOT_CONFIGURED" {
+			t.Fatal("a disabled authenticator was not refused before the missing factor", w.Code, w.Body)
+		}
+		challenge := h.challenge(h.first, owner)
+		if _, err := h.store.db.ExecContext(ctx, h.store.bind(`UPDATE "twoFactor" SET "lockedUntil"=? WHERE "userId"=?`), h.store.date(time.Now().Add(time.Hour)), owner.userID); err != nil {
+			t.Fatal(err)
+		}
+		if w := post(off, "two-factor/verify-totp", map[string]any{"code": code}, challenge); w.Code != 400 || refusal(w) != "TOTP_NOT_CONFIGURED" {
+			t.Fatal("a disabled authenticator was not refused before the account lockout", w.Code, w.Body)
+		}
+
+		// The configured period sets the window, at enrollment and sign-in.
+		slow := h.instance(twofactor.Options{TOTP: twofactor.TOTPOptions{Period: 45 * time.Second}})
+		email := strings.ToLower(rand.Text()) + "@example.test"
+		slowReg, err := slow.SignUpEmail(ctx, auth.SignUpInput{Email: email, Password: password, Name: "Slow"}, auth.RequestMeta{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		slowSession := slow.SessionCookie(slowReg.Token, true)
+		var setup struct{ TOTPURI string }
+		if w := post(slow, "two-factor/enable", map[string]string{"password": password}, slowSession); w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &setup) != nil {
+			t.Fatal("authenticator enrollment failed", w.Code, w.Body)
+		}
+		uri, err := url.Parse(setup.TOTPURI)
+		if err != nil || uri.Query().Get("period") != "45" {
+			t.Fatal("the authenticator URI did not carry the configured 45-second period", setup.TOTPURI, err)
+		}
+		secret := uri.Query().Get("secret")
+		at := midStep(45 * time.Second)
+		codeAt := func(offset time.Duration) map[string]any {
+			code, err := totp.GenerateCodeCustom(secret, at.Add(offset), totp.ValidateOpts{Period: 45, Digits: otp.DigitsSix, Algorithm: otp.AlgorithmSHA1})
+			if err != nil {
+				t.Fatal(err)
+			}
+			return map[string]any{"code": code}
+		}
+		for _, offset := range []time.Duration{-90 * time.Second, 90 * time.Second} {
+			if w := post(slow, "two-factor/verify-totp", codeAt(offset), slowSession); w.Code != 401 {
+				t.Fatal("an enrollment code two 45-second periods away was accepted", offset, w.Code, w.Body)
+			}
+		}
+		if w := post(slow, "two-factor/verify-totp", codeAt(-45*time.Second), slowSession); w.Code != 200 {
+			t.Fatal("an enrollment code from the previous 45-second period was refused", w.Code, w.Body)
+		}
+		slowChallenge := h.cookie(post(slow, "sign-in/email", map[string]string{"email": email, "password": password}), "two_factor")
+		if w := post(slow, "two-factor/verify-totp", codeAt(90*time.Second), slowChallenge); w.Code != 401 {
+			t.Fatal("a sign-in code two 45-second periods away was accepted", w.Code, w.Body)
+		}
+		if w := post(slow, "two-factor/verify-totp", codeAt(45*time.Second), slowChallenge); w.Code != 200 {
+			t.Fatal("a sign-in code from the next 45-second period was refused", w.Code, w.Body)
+		}
 	})
 }

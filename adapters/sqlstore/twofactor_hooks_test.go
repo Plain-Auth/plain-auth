@@ -499,7 +499,7 @@ func TestVerificationHooksAroundTwoFactor(t *testing.T) {
 		w = h.request(h.first, "two-factor/verify-otp", map[string]any{"code": lastCode()}, 400, cookie)
 		got, _ = drain()
 		same(got, "v-delete-before:2fa-otp", "v-create-before:2fa-otp", "v-create-after:2fa-otp", "send", "v-delete-before:2fa")
-		if !strings.Contains(w.Body.String(), "OTP is unavailable") || !strings.HasSuffix(value("2fa-otp-"+key), ":0") || value("2fa-attempts-"+key) != "0" {
+		if !strings.Contains(w.Body.String(), `"message":"OTP has expired"`) || !strings.HasSuffix(value("2fa-otp-"+key), ":0") || value("2fa-attempts-"+key) != "0" {
 			t.Fatal("a code sent again was judged:", w.Body.String())
 		}
 		h.request(h.second, "two-factor/verify-otp", map[string]any{"code": lastCode()}, 200, cookie)

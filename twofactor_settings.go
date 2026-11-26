@@ -149,7 +149,7 @@ func (o FactorTOTPOptions) step(raw []byte, code string, now time.Time) (int64, 
 // GenerateTOTP computes the current code for a raw provisioning secret in trusted application code.
 func (a *Auth) GenerateTOTP(secret string) (string, error) {
 	if a.factorOptions == nil || a.factorOptions.TOTP.Disabled {
-		return "", &APIError{400, "TOTP_NOT_CONFIGURED", "TOTP is not available"}
+		return "", &APIError{400, "TOTP_NOT_CONFIGURED", "totp isn't configured"}
 	}
 	key := base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString([]byte(secret))
 	return totp.GenerateCodeCustom(key, a.now(), a.factorOptions.TOTP.validate())
@@ -224,24 +224,35 @@ func (a *Auth) readBackupCodes(ctx context.Context, data string) ([]string, erro
 		return nil, err
 	}
 	var codes []string
-	err = json.Unmarshal([]byte(data), &codes)
-	return codes, err
+	// Codes that do not parse as a JSON list read as none, as the other
+	// runtime reads them: verification then counts a wrong code.
+	if json.Unmarshal([]byte(data), &codes) != nil {
+		return nil, nil
+	}
+	return codes, nil
 }
 
 // ViewBackupCodes reads the remaining codes for a trusted, server-supplied user ID.
 // Applications must authorize the administrator or owner before calling this method.
 func (a *Auth) ViewBackupCodes(ctx context.Context, userID string) ([]string, error) {
 	if a.factorStore == nil {
-		return nil, &APIError{400, "BACKUP_CODES_NOT_ENABLED", "Backup codes are not enabled"}
+		return nil, &APIError{400, "BACKUP_CODES_NOT_ENABLED", "Backup codes aren't enabled"}
 	}
 	var codes []string
 	err := a.factorStore.WithTwoFactor(ctx, FactorSubject{UserID: userID, Now: a.now()}, func(st FactorState) (FactorChange, error) {
 		if st.Record == nil || st.Record.BackupCodes == "" {
-			return FactorChange{}, &APIError{400, "BACKUP_CODES_NOT_ENABLED", "Backup codes are not enabled"}
+			return FactorChange{}, &APIError{400, "BACKUP_CODES_NOT_ENABLED", "Backup codes aren't enabled"}
 		}
 		var err error
 		codes, err = a.readBackupCodes(ctx, st.Record.BackupCodes)
+		if err == nil && codes == nil {
+			return FactorChange{}, &APIError{400, "INVALID_BACKUP_CODE", "Invalid backup code"}
+		}
 		return FactorChange{}, err
 	})
+	if errors.Is(err, ErrNotFound) {
+		// An unknown account has no codes, as the other runtime answers.
+		return nil, &APIError{400, "BACKUP_CODES_NOT_ENABLED", "Backup codes aren't enabled"}
+	}
 	return codes, err
 }

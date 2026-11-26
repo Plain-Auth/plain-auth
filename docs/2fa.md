@@ -39,7 +39,7 @@ A host can also enable authenticator enrollment from a personal application key.
 | `POST /two-factor/disable` | `password` | Removes the factor, invalidates outstanding challenges and replaces existing sessions with a new session for the caller. |
 | `POST /two-factor/verify-backup-code` | `code`, optional `disableSession` | During sign-in, setting `disableSession` to `true` consumes the challenge and backup code without issuing a session. |
 
-A challenge expires after ten minutes or five failed proofs. Ten consecutive failed verification attempts lock verification on the account for fifteen minutes. A successful proof resets the account failure count. Password changes and password recovery invalidate outstanding challenges. The server accepts an authenticator code from the current period and from the periods just before and after it. A sign-in then accepts only a code from a later period than the last one accepted, so each period grants at most one login. The management routes check the password first, so a wrong one answers `INVALID_PASSWORD` even where authenticators are disabled or no factor is enrolled. Backup codes can each be spent once across all instances.
+A challenge expires after ten minutes or five failed proofs. Ten consecutive failed verification attempts lock verification on the account for fifteen minutes. A successful proof resets the account failure count. Password changes and password recovery invalidate outstanding challenges. The server accepts an authenticator code from the current period and from the periods just before and after it. A sign-in then accepts only a code from a later period than the last one accepted, so each period grants at most one login. The management routes check the password first, so a wrong one answers `INVALID_PASSWORD` even where authenticators are disabled or no factor is enrolled; another runtime answers the refusals of `/two-factor/get-totp-uri`, and of `/two-factor/generate-backup-codes` for an account without two-factor, before the password. `/two-factor/verify-totp` answers `TOTP_NOT_ENABLED` to an account without an authenticator, including one enrolled for delivered codes alone, and during sign-in to an authenticator that is not confirmed yet. Backup codes can each be spent once across all instances.
 
 Provisioning secrets use authenticated encryption at rest. Backup codes use the same protection by default. Every encrypted record identifies its key version. A single configured secret uses version zero. To rotate it, include it as version zero in the key list and place the new key first. Keep each version available until the credentials it protects have been replaced. The session user's `twoFactorEnabled` field reports enrollment status.
 
@@ -79,7 +79,7 @@ An account enrolled with delivered codes can set up an authenticator while conti
 | Setting on `twofactor.Options` | Behavior |
 | --- | --- |
 | `TOTP.Digits`, `TOTP.Period` | Six or eight digits, with a whole-second period. Defaults to six digits and 30 seconds. The provisioning URI carries both values. |
-| `TOTP.Disabled` | Disables the authenticator method. `/two-factor/enable` without `"method":"otp"`, `/two-factor/get-totp-uri` and `/two-factor/verify-totp` answer `TOTP_NOT_CONFIGURED`. `/two-factor/verify-totp` answers a missing challenge, a missing factor and a locked account first, and compares or counts no code. Sign-in leaves `totp` out of `twoFactorMethods`. Backup codes and delivered codes keep working. |
+| `TOTP.Disabled` | Disables the authenticator method. `/two-factor/enable` without `"method":"otp"`, `/two-factor/get-totp-uri` and `/two-factor/verify-totp` answer `TOTP_NOT_CONFIGURED`. `/two-factor/verify-totp` checks its body and then answers before it reads a session, challenge, factor or lockout, so it compares or counts no code. Sign-in leaves `totp` out of `twoFactorMethods`. Backup codes and delivered codes keep working. |
 | `Backup.Amount`, `Backup.Length` | Defaults to ten codes of ten random characters each, separated after the first five. Generated codes are distinct. `New` refuses a negative value, one above 256, and a one-character length with more than 62 codes. |
 | `Backup.Generate` | Supplies a distinct, nonempty set of application-generated recovery codes. |
 | `Backup.Store` | Accepts `encrypted` (default) or `plain`. A paired `Backup.Encrypt` and `Backup.Decrypt` supplies a custom storage format. |
@@ -90,6 +90,28 @@ An account enrolled with delivered codes can set up an authenticator while conti
 | `SkipVerificationOnEnable` | Enables authenticator enrollment immediately after the password check and replaces the existing sessions. |
 
 Trusted Go code can call `Auth.GenerateTOTP(rawSecret)` and `Auth.ViewBackupCodes(ctx, userID)`. Authorize requests for recovery material before passing the account ID to the latter operation. Both functions stay inside the Go process.
+
+## Errors
+
+Each error carries its status, code and message from the two-factor error table.
+
+| Code | Status | When |
+| --- | ---: | --- |
+| `OTP_NOT_ENABLED` | 400 | `/two-factor/send-otp` or `/two-factor/verify-otp` from a session whose account has not enrolled; only `/two-factor/enable` with the password enrolls an account, where another runtime also enrolls one through a verified code |
+| `OTP_NOT_CONFIGURED` | 400 | Delivered-code enrollment without `OTP.Send`, or `/two-factor/send-otp` without it, which answers `otp isn't configured` before reading the session or challenge |
+| `OTP_HAS_EXPIRED` | 400 | No live delivered code: none was sent, it expired, or it is still being sent |
+| `TOTP_NOT_ENABLED` | 400 | `/two-factor/get-totp-uri` or `/two-factor/verify-totp` for an account without an authenticator, or a sign-in proof for one awaiting confirmation |
+| `TOTP_ALREADY_ENABLED` | 400 | Authenticator enrollment for an account with a confirmed authenticator |
+| `TOTP_NOT_CONFIGURED` | 400 | `TOTP.Disabled` is set: enrollment and `Auth.ImportTOTP` answer `TOTP is not available`, and `/two-factor/get-totp-uri`, `/two-factor/verify-totp` and `Auth.GenerateTOTP` answer `totp isn't configured`. A password sign-in for an enrolled account with no usable factor and no stored backup codes also answers `TOTP is not available`, even from a remembered browser, where another runtime issues a challenge or signs that browser in |
+| `TWO_FACTOR_NOT_ENABLED` | 400 | `/two-factor/generate-backup-codes` for an account that has not enabled two-factor or has no authenticator; backup codes an account enrolled with delivered codes alone already holds keep working, where another runtime has none |
+| `BACKUP_CODES_NOT_ENABLED` | 400 | A backup-code proof or `Auth.ViewBackupCodes` for an account without codes, an unknown account included; backup codes of an authenticator awaiting confirmation also answer it, where another runtime accepts them |
+| `INVALID_BACKUP_CODE` | 401, or 400 from `Auth.ViewBackupCodes` | A wrong backup code, or stored codes that are not a JSON list once decrypted |
+| `INVALID_CODE` | 401 | A wrong authenticator or delivered code |
+| `TOO_MANY_ATTEMPTS_REQUEST_NEW_CODE` | 400 | A delivered code past `OTP.AllowedAttempts`. The fifth failed proof of any kind ends a challenge at once, so the next proof answers `INVALID_TWO_FACTOR_COOKIE`; another runtime counts only authenticator and backup-code failures there and answers the next one with this code first |
+| `ACCOUNT_TEMPORARILY_LOCKED` | 429 | The account lock is active. It also covers accounts enrolled with delivered codes alone, proofs from a signed-in session and `/two-factor/send-otp`, where another runtime locks only sign-in proofs of accounts with a factor record |
+| `INVALID_TWO_FACTOR_COOKIE` | 401 | A proof or code request without a live challenge |
+
+[Error code tests](../adapters/sqlstore/twofactor_errors_test.go)
 
 ## Import an existing authenticator
 
