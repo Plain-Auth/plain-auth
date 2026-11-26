@@ -383,13 +383,15 @@
   - [ ] `GenericOAuthConfig`
     - [ ] `providerId`
       - [x] Build the authorization and code-exchange callback from the provider's registered key under the auth mount ([test](../../../providers/profile_presets_test.go#L111))
-    - [ ] `name`
+    - [x] `name` ([test](../../../conformance/goapi/oauth_provider_options_test.go#L161))
+      - [x] A provider's Name defaults to its SocialProviders key and OAuthProviderName returns it ([test](../../../conformance/goapi/oauth_provider_options_test.go#L161))
     - [ ] `accountSubject`
       - [x] Store the subject each profile preset reads from its id or sub field as the linked account ID ([test](../../../providers/profile_presets_test.go#L140))
     - [ ] `discoveryUrl`
       - [x] Read the authorization, token, key and end-session endpoints from issuer discovery, sign in with a verified ID token and reject another issuer's token ([test](../../../providers/enterprise_oidc_test.go#L23))
       - [x] Accept a direct ID token verified against discovered keys once, and reject a reused token or a mismatched nonce ([test](../../../providers/oidc_test.go#L22))
-    - [ ] `requireIdTokenVerification`
+    - [x] `requireIdTokenVerification` ([test](../../../providers/oidc_test.go#L128))
+      - [x] OpenIDConnect refuses discovery without signing keys, with insecure keys, without or with another issuer, or without a token endpoint, and fetches no keys; there is no skip-and-retry mode, so ID tokens are always verified ([test](../../../providers/oidc_test.go#L128))
     - [x] `authorizationUrl` ([test](../../../conformance/goapi/oauth_test.go#L30))
       - [x] Send the browser to the configured authorization endpoint with an S256 code challenge and nonce ([test](../../../conformance/goapi/oauth_test.go#L30))
       - [x] Send the browser to the authorization endpoint read from enterprise issuer discovery ([test](../../../providers/enterprise_oidc_test.go#L94))
@@ -425,8 +427,10 @@
     - [ ] `pkce`
       - [x] Send an S256 code challenge and a nonce on a hand-configured provider's authorization request ([test](../../../conformance/goapi/oauth_test.go#L30))
       - [x] Omit the code challenge for catalog providers configured without PKCE and send it for the others ([test](../../../providers/catalog_test.go#L178))
-    - [ ] `accessType`
-    - [ ] `accessTokenExpiresIn`
+    - [x] `accessType` ([test](../../../conformance/goapi/oauth_provider_options_test.go#L61))
+      - [x] AccessType is sent as access_type on sign-in and link authorization URLs, and AuthorizationParams override it ([test](../../../conformance/goapi/oauth_provider_options_test.go#L61))
+    - [x] `accessTokenExpiresIn` ([test](../../../conformance/goapi/oauth_provider_options_test.go#L103))
+      - [x] DefaultAccessTokenLifetime gives a token without expires_in an expiry on the code exchange and refresh, a provider's expires_in wins, no default leaves it unset, and a negative default is refused ([test](../../../conformance/goapi/oauth_provider_options_test.go#L103))
     - [ ] `getToken`
       - [x] Complete browser sign-in through a provider's own code exchange function instead of a token endpoint request ([test](../../../conformance/goapi/oauth_signup_test.go#L38))
       - [x] Pass the callback's device ID to the VK provider's own code exchange ([test](../../../providers/catalog_test.go#L76))
@@ -511,7 +515,8 @@
         - [x] Discover authorization, token and signing-key endpoints at startup and sign in with the discovered issuer, default scopes, nonce and PKCE ([test](../../../providers/enterprise_oidc_test.go#L95))
         - [x] Reject an ID token signed for another issuer by a discovered provider ([test](../../../providers/enterprise_oidc_test.go#L116))
         - [x] Reject a discovered provider's ID token whose nonce does not match ([test](../../../providers/oidc_test.go#L121))
-      - [ ] requireIdTokenVerification
+      - [x] requireIdTokenVerification ([test](../../../providers/oidc_test.go#L128))
+        - [x] Discovery that cannot verify ID tokens is refused when the provider is built ([test](../../../providers/oidc_test.go#L128))
       - [ ] disableIdTokenNonceBinding
       - [ ] authorizationUrl
         - [x] Send a hand-configured provider's sign-in to its configured authorization endpoint with state, nonce and an S256 challenge ([test](../../../conformance/goapi/oauth_test.go#L30))
@@ -545,8 +550,10 @@
       - [ ] pkce
         - [x] Send an S256 code challenge and a nonce on a hand-configured provider's authorization request ([test](../../../conformance/goapi/oauth_test.go#L30))
         - [x] Omit the code challenge for catalog providers configured without PKCE and send it for the others ([test](../../../providers/catalog_test.go#L178))
-      - [ ] accessType
-      - [ ] accessTokenExpiresIn
+      - [x] accessType ([test](../../../conformance/goapi/oauth_provider_options_test.go#L61))
+        - [x] access_type=offline is added to sign-in and link authorization URLs ([test](../../../conformance/goapi/oauth_provider_options_test.go#L61))
+      - [x] accessTokenExpiresIn ([test](../../../conformance/goapi/oauth_provider_options_test.go#L103))
+        - [x] A fallback access token lifetime applies when the provider sends no expires_in ([test](../../../conformance/goapi/oauth_provider_options_test.go#L103))
       - [ ] getToken
         - [x] Complete browser sign-in through a provider's own code exchange function instead of a token endpoint request ([test](../../../conformance/goapi/oauth_signup_test.go#L38))
         - [x] Exchange WeChat codes with a GET request carrying appid and secret through the provider's own exchange function ([test](../../../providers/catalog_test.go#L66))

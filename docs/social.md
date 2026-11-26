@@ -46,7 +46,9 @@ For another provider, populate `auth.OAuthProvider.Config` with the provider's O
 
 The provider returns the browser to `{BaseURL}{BasePath}/callback/{id}`. To register another address, set `Config.RedirectURL` to an absolute HTTP or HTTPS URL. The authorization request and the code exchange both send it, and your application must forward that route to the callback, keeping the query. [Redirect URL tests](../conformance/goapi/oauth_redirect_uri_test.go)
 
-For an OpenID Connect provider, use discovery at startup. Supply the issuer from trusted application configuration.
+A provider can also set `AccessType`, sent as `access_type` (its `AuthorizationParams` and a call's `additionalParams` override it), `DefaultAccessTokenLifetime`, the access token lifetime assumed when a token response has no `expires_in`, on the code exchange and refresh alike, and `Name`, a display label that defaults to its `SocialProviders` key and that `Auth.OAuthProviderName` returns. [Provider option tests](../conformance/goapi/oauth_provider_options_test.go)
+
+For an OpenID Connect provider, use discovery at startup. Supply the issuer from trusted application configuration. Discovery must give a matching issuer and HTTPS signing keys, authorization and token endpoints, or `OpenIDConnect` returns an error and fetches no keys; the application decides whether to retry. [Discovery tests](../providers/oidc_test.go)
 
 ```go
 work, err := providers.OpenIDConnect(ctx, os.Getenv("WORK_OIDC_ISSUER"),

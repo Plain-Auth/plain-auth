@@ -30454,5 +30454,61 @@
       "marker": "func TestMicrosoftClientAssertion(t *testing.T) {",
       "complete": true
     }
+  ],
+  "plugin-symbol/generic-oauth/GenericOAuthConfig/requireIdTokenVerification": [
+    {
+      "label": "OpenIDConnect refuses discovery without signing keys, with insecure keys, without or with another issuer, or without a token endpoint, and fetches no keys; there is no skip-and-retry mode, so ID tokens are always verified",
+      "test": "providers/oidc_test.go",
+      "marker": "func TestOpenIDConnectRefusesUnverifiableDiscovery(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/generic-oauth.mdx#L254/requireIdTokenVerification": [
+    {
+      "label": "Discovery that cannot verify ID tokens is refused when the provider is built",
+      "test": "providers/oidc_test.go",
+      "marker": "func TestOpenIDConnectRefusesUnverifiableDiscovery(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/generic-oauth/GenericOAuthConfig/accessType": [
+    {
+      "label": "AccessType is sent as access_type on sign-in and link authorization URLs, and AuthorizationParams override it",
+      "test": "conformance/goapi/oauth_provider_options_test.go",
+      "marker": "func TestOAuthAccessType(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/generic-oauth.mdx#L302/accessType": [
+    {
+      "label": "access_type=offline is added to sign-in and link authorization URLs",
+      "test": "conformance/goapi/oauth_provider_options_test.go",
+      "marker": "func TestOAuthAccessType(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/generic-oauth/GenericOAuthConfig/accessTokenExpiresIn": [
+    {
+      "label": "DefaultAccessTokenLifetime gives a token without expires_in an expiry on the code exchange and refresh, a provider's expires_in wins, no default leaves it unset, and a negative default is refused",
+      "test": "conformance/goapi/oauth_provider_options_test.go",
+      "marker": "func TestOAuthDefaultAccessTokenLifetime(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/generic-oauth.mdx#L304/accessTokenExpiresIn": [
+    {
+      "label": "A fallback access token lifetime applies when the provider sends no expires_in",
+      "test": "conformance/goapi/oauth_provider_options_test.go",
+      "marker": "func TestOAuthDefaultAccessTokenLifetime(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/generic-oauth/GenericOAuthConfig/name": [
+    {
+      "label": "A provider's Name defaults to its SocialProviders key and OAuthProviderName returns it",
+      "test": "conformance/goapi/oauth_provider_options_test.go",
+      "marker": "func TestOAuthProviderName(t *testing.T) {",
+      "complete": true
+    }
   ]
 }

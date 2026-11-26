@@ -205,6 +205,9 @@ func (a *Auth) beginBrowserOAuth(h http.Header, r *http.Request, p OAuthProvider
 	if !p.DisablePKCE {
 		opts = append(opts, oauth2.S256ChallengeOption(flow.Verifier))
 	}
+	if p.AccessType != "" {
+		opts = append(opts, oauth2.SetAuthURLParam("access_type", p.AccessType))
+	}
 	for key, values := range p.AuthorizationParams {
 		if len(values) > 0 {
 			opts = append(opts, oauth2.SetAuthURLParam(key, values[0]))
@@ -537,7 +540,7 @@ func (a *Auth) exchangeProviderCode(ctx context.Context, p OAuthProvider, flow O
 		}
 	}
 	scope := strings.Join(scopes, ",")
-	tokens := OAuthTokens{AccessToken: token.AccessToken, RefreshToken: token.RefreshToken, IDToken: idToken, Scope: scope, ExpiresAt: token.Expiry}
+	tokens := OAuthTokens{AccessToken: token.AccessToken, RefreshToken: token.RefreshToken, IDToken: idToken, Scope: scope, ExpiresAt: p.accessTokenExpiry(token, a.now())}
 	if lifetime := refreshLifetime(token); lifetime > 0 {
 		tokens.RefreshExpiresAt = a.now().Add(lifetime)
 	}

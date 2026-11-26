@@ -211,7 +211,7 @@ func (a *Auth) validCredential(ctx context.Context, store ProviderCredentialStor
 			return current, false, failure
 		}
 		current.AccessToken = t.AccessToken
-		current.ExpiresAt = t.Expiry
+		current.ExpiresAt = p.accessTokenExpiry(t, a.now())
 		if t.RefreshToken != "" {
 			current.RefreshToken = t.RefreshToken
 		}

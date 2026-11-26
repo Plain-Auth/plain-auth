@@ -21,6 +21,13 @@ func (a *Auth) HasOAuthProvider(id string) bool {
 	return false
 }
 
+// OAuthProviderName returns the display name of the configured provider id,
+// which defaults to id, and whether it is configured.
+func (a *Auth) OAuthProviderName(id string) (string, bool) {
+	p, ok := a.opts.SocialProviders[id]
+	return p.Name, ok
+}
+
 // TrustedProviderIDs returns the provider IDs trusted for account linking on
 // this request, from TrustedProviders or TrustedProvidersForRequest.
 func (a *Auth) TrustedProviderIDs(r *http.Request) ([]string, error) {

@@ -53,6 +53,15 @@ type OAuthProvider struct {
 	DisableIDTokenSignIn bool
 	// Refresh overrides the standard OAuth 2.0 refresh request.
 	Refresh func(context.Context, oauth2.Config, string) (*oauth2.Token, error)
+	// Name is a display label; it defaults to the SocialProviders key.
+	Name string
+	// AccessType is sent as access_type on the authorization URL, such as
+	// "offline"; AuthorizationParams and a call's additionalParams override
+	// it.
+	AccessType string
+	// DefaultAccessTokenLifetime is the access token lifetime assumed when a
+	// token response has no expires_in; zero assumes none.
+	DefaultAccessTokenLifetime time.Duration
 	// TokenEndpointAuth chooses how the code exchange and refresh
 	// authenticate the client. It cannot be combined with ExchangeCode or
 	// Refresh, which replace these requests.
@@ -263,6 +272,12 @@ func prepareOAuthProviders(in map[string]OAuthProvider, store Store, userFieldsO
 		if err := prepareTokenEndpointAuth(id, &p); err != nil {
 			return nil, err
 		}
+		if p.Name == "" {
+			p.Name = id
+		}
+		if p.DefaultAccessTokenLifetime < 0 {
+			return nil, fmt.Errorf("auth: OAuth provider %q: DefaultAccessTokenLifetime is negative", id)
+		}
 		endpoints := []string{p.Config.Endpoint.AuthURL, p.Config.Endpoint.TokenURL}
 		if p.EndSessionEndpoint != "" {
 			endpoints = append(endpoints, p.EndSessionEndpoint)
@@ -307,4 +322,13 @@ func prepareOAuthProviders(in map[string]OAuthProvider, store Store, userFieldsO
 
 func (a *Auth) oauthCookie(name, value string, maxAge int) *http.Cookie {
 	return a.browserCookie(name, value, maxAge)
+}
+
+// accessTokenExpiry returns the token's expiry, or now plus the provider's
+// default lifetime when the response gave none.
+func (p OAuthProvider) accessTokenExpiry(t *oauth2.Token, now time.Time) time.Time {
+	if t.Expiry.IsZero() && p.DefaultAccessTokenLifetime > 0 {
+		return now.Add(p.DefaultAccessTokenLifetime)
+	}
+	return t.Expiry
 }

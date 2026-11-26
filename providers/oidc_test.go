@@ -121,3 +121,37 @@ func TestDiscoveredOIDCDirectGrantAndExplicitLink(t *testing.T) {
 		t.Fatalf("nonce mismatch: %d", res.Code)
 	}
 }
+
+// OpenIDConnect refuses discovery that does not let it verify ID tokens: no
+// signing keys or insecure ones, no or another issuer, or no token endpoint.
+// No signing keys are fetched for a refused issuer.
+func TestOpenIDConnectRefusesUnverifiableDiscovery(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		edit func(base string, doc map[string]any)
+	}{
+		{"no jwks_uri", func(_ string, d map[string]any) { delete(d, "jwks_uri") }},
+		{"insecure jwks_uri", func(_ string, d map[string]any) { d["jwks_uri"] = "http://keys.example/jwks" }},
+		{"no issuer", func(_ string, d map[string]any) { delete(d, "issuer") }},
+		{"another issuer", func(_ string, d map[string]any) { d["issuer"] = "https://other.example" }},
+		{"no token endpoint", func(_ string, d map[string]any) { delete(d, "token_endpoint") }},
+	} {
+		keys := 0
+		var issuer *httptest.Server
+		issuer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch r.URL.Path {
+			case "/.well-known/openid-configuration":
+				doc := map[string]any{"issuer": issuer.URL, "authorization_endpoint": issuer.URL + "/authorize", "token_endpoint": issuer.URL + "/token", "jwks_uri": issuer.URL + "/keys", "id_token_signing_alg_values_supported": []string{"RS256"}}
+				tc.edit(issuer.URL, doc)
+				w.Header().Set("Content-Type", "application/json")
+				_ = json.NewEncoder(w).Encode(doc)
+			case "/keys":
+				keys++
+			}
+		}))
+		if _, err := OpenIDConnect(context.Background(), issuer.URL, "client", "secret"); err == nil || keys != 0 {
+			t.Fatalf("%s: OpenIDConnect returned %v after %d key requests", tc.name, err, keys)
+		}
+		issuer.Close()
+	}
+}
