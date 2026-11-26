@@ -177,7 +177,7 @@ func (a *Auth) adminUpdateFields(ctx context.Context, actor *User, u *User, req 
 				u.BanExpires = &until
 			}
 		default:
-			if _, declared := a.opts.UserAdditionalFields[key]; !creating || !declared {
+			if _, declared := a.opts.UserAdditionalFields[key]; !declared {
 				return validationError("Unknown user field")
 			}
 		}

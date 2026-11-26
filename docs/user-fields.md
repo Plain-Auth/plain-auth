@@ -64,7 +64,7 @@ err = auth.UpdateTrustedUserFields(ctx, userID, map[string]any{
 })
 ```
 
-`Hidden` excludes a column from public user reads, even when the owner may write it. Pair it with `ServerOnly` when only a trusted application may supply the value. Hidden fields are ordinary database values. Apply your storage access controls and encryption requirements to them. Configured nodes read user profiles from storage for current-session requests and bypass the browser session snapshot. Use the same field declarations across nodes serving your application.
+`Hidden` excludes a column from public user reads, even when the owner may write it. Pair it with `ServerOnly` when only a trusted application may supply the value. An operator with `user:update` changes writable and hidden fields through `POST /admin/update-user`; see [Administration](admin.md#permissions). Hidden fields are ordinary database values. Apply your storage access controls and encryption requirements to them. Configured nodes read user profiles from storage for current-session requests and bypass the browser session snapshot. Use the same field declarations across nodes serving your application.
 
 ## Compute a default at registration
 

@@ -25,7 +25,7 @@ func TestAdminCreateProfileFields(t *testing.T) {
 			}
 			t.Cleanup(func() { store.Close() })
 			p, err := admin.New(admin.Options{Roles: map[string]auth.AdminPermissions{
-				"user": {}, "creator": {"user": {"create"}}, "admin": {"user": {"create", "get", "list", "set-role", "set-email", "ban"}},
+				"user": {}, "creator": {"user": {"create"}}, "admin": {"user": {"create", "get", "list", "set-role", "set-email", "ban", "update"}},
 			}})
 			if err != nil {
 				t.Fatal(err)
@@ -142,6 +142,40 @@ func TestAdminCreateProfileFields(t *testing.T) {
 			if _, ok := page.Users[0].AdditionalField("privateRank"); ok {
 				t.Fatal("administrative browse exposed hidden fields")
 			}
+			edited, err := manager.AdminUpdateUser(ctx, view.ID, map[string]any{"locale": "admin-edited", "activeFlag": true, "secretNote": "edited-hidden"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			checkUserField(t, *edited, "locale", "admin-edited")
+			checkUserField(t, *edited, "activeFlag", true)
+			if _, ok := edited.AdditionalField("secretNote"); ok {
+				t.Fatal("update-user returned a hidden field")
+			}
+			var hidden string
+			if err := store.db.QueryRowContext(ctx, store.bind(`SELECT "secretNote" FROM "user" WHERE "id"=?`), view.ID).Scan(&hidden); err != nil || hidden != "edited-hidden" {
+				t.Fatal("update-user did not store the hidden field", hidden, err)
+			}
+			if reread, err := manager.AdminGetUser(ctx, view.ID); err != nil {
+				t.Fatal(err)
+			} else {
+				checkUserField(t, *reread, "locale", "admin-edited")
+			}
+			_, err = manager.AdminUpdateUser(ctx, view.ID, map[string]any{"accountClass": "elevated"})
+			var refused *auth.APIError
+			if !errors.As(err, &refused) || refused.Code != "FIELD_NOT_ALLOWED" {
+				t.Fatal("an administrator changed a server-owned field through update-user", err)
+			}
+			if kept, err := manager.AdminGetUser(ctx, view.ID); err != nil {
+				t.Fatal(err)
+			} else {
+				checkUserField(t, *kept, "accountClass", "basic")
+			}
+			_, err = manager.AdminUpdateUser(ctx, view.ID, map[string]any{"score": 3.5})
+			expectCode(err, "VALIDATION_ERROR")
+			_, err = manager.AdminUpdateUser(ctx, view.ID, map[string]any{"undeclared": "x"})
+			expectCode(err, "VALIDATION_ERROR")
+			_, err = creator.AdminUpdateUser(ctx, view.ID, map[string]any{"locale": "creator-edit"})
+			expectCode(err, "YOU_ARE_NOT_ALLOWED_TO_UPDATE_USERS")
 			_, err = host.AdminCreateUser(ctx, input)
 			expectCode(err, "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL")
 			_, err = host.AdminCreateUser(ctx, auth.AdminCreateUserRequest{Name: "Invalid", Email: "invalid@example.test", Data: map[string]any{"locale": "x", "score": 3.5}})

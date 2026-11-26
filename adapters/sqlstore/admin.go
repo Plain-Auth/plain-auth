@@ -293,6 +293,17 @@ func (t *adminTX) CreateUser(u authn.User, hash string) error {
 	return t.CreateAdminUserWithFields(u, hash, authn.UserFieldValues{})
 }
 
+// UpdateAdminUserFields writes configured columns in the open
+// administrative transaction.
+func (t *adminTX) UpdateAdminUserFields(id string, values authn.UserFieldValues) error {
+	cols, args := t.s.appendUserFieldUpdates(nil, nil, values.Columns())
+	if len(cols) == 0 {
+		return nil
+	}
+	_, err := t.s.execUserUpdate(t.ctx, t.tx, id, t.s.bind(`UPDATE "user" SET `+strings.Join(cols, ",")+` WHERE "id"=?`), append(args, id)...)
+	return err
+}
+
 func (t *adminTX) CreateAdminUserWithFields(u authn.User, hash string, fields authn.UserFieldValues) error {
 	s := t.s
 	var expires any

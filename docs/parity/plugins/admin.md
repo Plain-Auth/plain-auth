@@ -27,7 +27,7 @@
     - [x] Drive the fifteen administrative routes through the released admin client against the Go server and the other runtime sharing one database ([test](../../../conformance/core.test.mjs#L754))
   - [ ] `ADMIN_ERROR_CODES`
     - [x] Return YOU_ARE_NOT_ALLOWED_TO_GET_USER, YOU_ARE_NOT_ALLOWED_TO_REVOKE_USERS_SESSIONS, YOU_ARE_NOT_ALLOWED_TO_CHANGE_USERS_ROLE, YOU_ARE_NOT_ALLOWED_TO_SET_USERS_EMAIL, YOU_ARE_NOT_ALLOWED_TO_BAN_USERS, USER_ID_CANNOT_BE_UPDATED, PASSWORD_CANNOT_BE_UPDATED_VIA_UPDATE_USER, YOU_ARE_NOT_ALLOWED_TO_SET_NON_EXISTENT_VALUE, YOU_CANNOT_BAN_YOURSELF, YOU_CANNOT_IMPERSONATE_ADMINS and YOU_CANNOT_REMOVE_YOURSELF from the administrative routes over HTTP, and BANNED_USER from email sign-in after a ban ([test](../../../adapters/sqlstore/admin_test.go#L21))
-    - [x] Return YOU_ARE_NOT_ALLOWED_TO_CREATE_USERS after a live demotion and USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL for a taken address ([test](../../../adapters/sqlstore/admin_user_fields_test.go#L200))
+    - [x] Return YOU_ARE_NOT_ALLOWED_TO_CREATE_USERS after a live demotion and USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL for a taken address ([test](../../../adapters/sqlstore/admin_user_fields_test.go#L234))
     - [x] Return YOU_ARE_NOT_ALLOWED_TO_SET_USERS_PHONE_NUMBER and YOU_ARE_NOT_ALLOWED_TO_UPDATE_USERS for phone edits without the grants ([test](../../../adapters/sqlstore/phone_admin_test.go#L79))
   - [x] `POST /admin/set-role` ([test](../../../adapters/sqlstore/admin_policy_test.go#L120))
     - [x] Assign a configured role and reject an unknown role ([test](../../../adapters/sqlstore/admin_test.go#L154))
@@ -41,8 +41,8 @@
     - [x] Drop unproven phone numbers at account creation and admit explicit, authorized verified imports ([test](../../../conformance/phone-admin-contract.mjs#L46))
     - [x] Persist typed fields from data and return public values through the released administrative client ([test](../../../conformance/admin-fields.mjs#L72))
     - [x] Create profiles with trusted server-owned values and omit protected fields from the native response ([test](../../../adapters/sqlstore/admin_user_fields_test.go#L77))
-    - [x] Roll back the new account and credential when the stored public profile cannot be read ([test](../../../adapters/sqlstore/admin_user_fields_test.go#L223))
-    - [x] Keep one profile and its matching credential when trusted and authenticated creates compete for the same address ([test](../../../adapters/sqlstore/admin_user_fields_test.go#L191))
+    - [x] Roll back the new account and credential when the stored public profile cannot be read ([test](../../../adapters/sqlstore/admin_user_fields_test.go#L257))
+    - [x] Keep one profile and its matching credential when trusted and authenticated creates compete for the same address ([test](../../../adapters/sqlstore/admin_user_fields_test.go#L225))
     - [x] ValidateUserInfo checks an administrator's new user outside the transaction, after the permission and email checks, and a refusal stores nothing ([test](../../../conformance/goapi/user_validation_test.go#L449))
     - [x] Refuse a malformed top-level or data role, an undefined role and an invalid address, check the set-role and ban grants before the data role and the address, accept an empty name, and store a mixed-case address in lower case ([test](../../../adapters/sqlstore/admin_policy_test.go#L172))
     - [x] Answer INVALID_EMAIL for an invalid address through the released client on both servers ([test](../../../conformance/core.test.mjs#L760))
@@ -209,7 +209,7 @@
         - [x] Accept a set-role request from an administrator through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L761))
         - [x] Change a role over POST /admin/set-role through the typed client and enforce the new grant ([test](../../../adapters/sqlstore/phone_admin_test.go#L173))
         - [ ] Parameter `userId` (optional)
-          - [x] Demote the account named by userId so its existing session can no longer create users ([test](../../../adapters/sqlstore/admin_user_fields_test.go#L195))
+          - [x] Demote the account named by userId so its existing session can no longer create users ([test](../../../adapters/sqlstore/admin_user_fields_test.go#L229))
         - [ ] Parameter `role`
           - [x] Set a role sent as a one-element array by the typed client ([test](../../../adapters/sqlstore/phone_admin_test.go#L173))
           - [x] Accept a role sent as a single string through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L761))
@@ -223,16 +223,18 @@
           - [x] Sign in on the other runtime with the password an administrator set ([test](../../../conformance/core.test.mjs#L779))
         - [x] Parameter `userId` ([test](../../../adapters/sqlstore/admin_test.go#L196))
           - [x] Sign the target account in with the password set for its userId ([test](../../../adapters/sqlstore/admin_test.go#L196))
-    - [ ] Update user
+    - [x] Update user ([test](../../../conformance/core.test.mjs#L765))
       - [x] Update a user’s profile and gate changes to protected fields ([test](../../../adapters/sqlstore/admin_test.go#L159))
       - [x] Update a user's name and return the changed user through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L765))
-      - [ ] `POST /admin/update-user`
+      - [x] `POST /admin/update-user` ([test](../../../conformance/core.test.mjs#L765))
         - [x] Return the updated user object itself from POST /admin/update-user on both runtimes ([test](../../../conformance/core.test.mjs#L765))
         - [x] Refuse an update with 401 UNAUTHORIZED once an administrator has revoked the caller's sessions ([test](../../../adapters/sqlstore/phone_admin_test.go#L179))
         - [x] Refuse an update with 403 to a signed-in account whose role lacks the user update grant ([test](../../../adapters/sqlstore/phone_admin_test.go#L79))
         - [x] Parameter `userId` ([test](../../../adapters/sqlstore/admin_test.go#L156))
           - [x] Update the account named by userId and return its new name, email and verification state ([test](../../../adapters/sqlstore/admin_test.go#L156))
-        - [ ] Parameter `data`
+        - [x] Parameter `data` ([test](../../../adapters/sqlstore/admin_user_fields_test.go#L149))
+          - [x] Write declared and hidden user fields sent in data, refuse mistyped and undeclared keys, and return the stored public values, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/admin_user_fields_test.go#L149))
+          - [x] Refuse a server-owned field in update-user data with FIELD_NOT_ALLOWED and keep its stored value ([test](../../../adapters/sqlstore/admin_user_fields_test.go#L166))
     - [ ] Ban User
       - [x] Revoke existing logins, deny new sessions and automatically clear expired bans ([test](../../../adapters/sqlstore/admin_test.go#L303))
       - [x] Revoke the banned user's existing session and refuse their next password sign-in with BANNED_USER ([test](../../../adapters/sqlstore/admin_test.go#L176))

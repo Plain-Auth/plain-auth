@@ -463,6 +463,7 @@ func (a *Auth) executeAdmin(ctx context.Context, h http.Header, req AdminRequest
 		if err != nil {
 			return err
 		}
+		var fields UserFieldValues
 		switch op {
 		case "get-user":
 			out.User = &u
@@ -496,6 +497,15 @@ func (a *Auth) executeAdmin(ctx context.Context, h http.Header, req AdminRequest
 			if err := a.adminUpdateFields(ctx, &actor.User, &u, req, false); err != nil {
 				return err
 			}
+			if op == "update-user" {
+				// Declared fields follow the create rules: a session operator
+				// may not write ServerOnly fields, which stay with
+				// UpdateTrustedUserFields, and values are type-checked. The
+				// other runtime writes any declared key unchecked.
+				if fields, err = a.prepareUserFields(a.userFieldInput(req.Data), false, false); err != nil {
+					return err
+				}
+			}
 		case "ban-user":
 			if u.ID == actor.User.ID {
 				return adminError(400, "YOU_CANNOT_BAN_YOURSELF", "You cannot ban yourself")
@@ -526,6 +536,18 @@ func (a *Auth) executeAdmin(ctx context.Context, h http.Header, req AdminRequest
 		u.UpdatedAt = now
 		if err := tx.UpdateUser(u); err != nil {
 			return err
+		}
+		if fields.Present() {
+			w, ok := tx.(AdminUserFieldUpdater)
+			if !ok {
+				return errors.New("admin: transaction does not support configured user fields")
+			}
+			if err := w.UpdateAdminUserFields(u.ID, fields); err != nil {
+				return err
+			}
+			if u, err = tx.User(u.ID); err != nil {
+				return err
+			}
 		}
 		if u.Banned {
 			if err := tx.RevokeUserSessions(u.ID); err != nil {

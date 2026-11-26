@@ -39598,5 +39598,18 @@
       "marker": "func TestAdminUserHasPermissionAcrossEngines(",
       "complete": true
     }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L293/Parameter `data`": [
+    {
+      "label": "Write declared and hidden user fields sent in data, refuse mistyped and undeclared keys, and return the stored public values, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/admin_user_fields_test.go",
+      "marker": "checkUserField(t, *edited, \"locale\", \"admin-edited\")",
+      "complete": true
+    },
+    {
+      "label": "Refuse a server-owned field in update-user data with FIELD_NOT_ALLOWED and keep its stored value",
+      "test": "adapters/sqlstore/admin_user_fields_test.go",
+      "marker": "an administrator changed a server-owned field through update-user"
+    }
   ]
 }

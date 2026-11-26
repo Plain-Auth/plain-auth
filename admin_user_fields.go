@@ -177,8 +177,14 @@ func (a *Auth) createAdministrativeUser(ctx context.Context, tx AdminUserCreator
 	return planned(&stored)
 }
 
+// AdminUserFieldUpdater writes validated configured fields in the
+// administrative transaction, alongside the profile update.
+type AdminUserFieldUpdater interface {
+	UpdateAdminUserFields(userID string, values UserFieldValues) error
+}
+
 func (a *Auth) configureAdminProjection(tx AdminUserCreator, op string) error {
-	if len(a.opts.UserAdditionalFields) > 0 && (op == "get-user" || op == "list-users" || op == "create-user") {
+	if len(a.opts.UserAdditionalFields) > 0 && (op == "get-user" || op == "list-users" || op == "create-user" || op == "update-user") {
 		fields, ok := tx.(AdminUserFieldTransaction)
 		if !ok {
 			return errors.New("admin: transaction does not support configured user fields")

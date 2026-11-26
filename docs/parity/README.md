@@ -2,16 +2,16 @@
 
 ## Verification progress
 
-**2,251 of 6,437 inventory entries are fully verified (35.0%).**
+**2,254 of 6,437 inventory entries are fully verified (35.0%).**
 
 | Inventory status | Entries |
 | --- | ---: |
-| Fully verified | 2,251 |
-| Partially verified | 1,495 |
-| No linked test evidence | 2,691 |
+| Fully verified | 2,254 |
+| Partially verified | 1,493 |
+| No linked test evidence | 2,690 |
 | Not applicable to a Go server | 588 |
 
-The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 6,218 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
+The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 6,220 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
 
 Entries that exist only for JavaScript clients, frameworks or runtimes are listed as not applicable, with the reason, and are left out of the totals. Backlog entries stay open on the roadmap but are not scheduled.
 
@@ -92,7 +92,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Two-factor authentication](plugins/2fa.md) | 212 | 97 | 6 |
 | [Access](plugins/access.md) | 25 | 1 | 4 |
 | [Additional fields](plugins/additional-fields.md) | 0 | 0 | 2 |
-| [Admin](plugins/admin.md) | 310 | 59 | 6 |
+| [Admin](plugins/admin.md) | 315 | 56 | 6 |
 | [Anonymous](plugins/anonymous.md) | 87 | 7 | 0 |
 | [API keys](plugins/api-key.md) | 335 | 164 | 1 |
 | [Bearer](plugins/bearer.md) | 30 | 0 | 0 |
