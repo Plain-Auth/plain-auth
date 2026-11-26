@@ -41849,6 +41849,12 @@
       "label": "Return only the last four characters of the client ID",
       "test": "conformance/sso-providers.mjs",
       "marker": "assert.equal(fetched.oidcConfig.clientIdLastFour, \"****5678\");"
+    },
+    {
+      "label": "Refuse an ID token for another client and mask the client ID to its last four characters in reads, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_oidc_contract_test.go",
+      "marker": "t.Fatal(\"an ID token for another client was accepted\", location)",
+      "complete": true
     }
   ],
   "plugin-symbol/sso/OIDCConfig/clientSecret": [
@@ -41908,6 +41914,12 @@
       "label": "Store and return the registered scopes on both runtimes",
       "test": "conformance/sso-providers.mjs",
       "marker": "assert.deepEqual(fetched.oidcConfig.scopes, oidcConfig.scopes);"
+    },
+    {
+      "label": "Ask for a provider's stored scopes, or openid email profile offline_access without them, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_oidc_contract_test.go",
+      "marker": "t.Fatal(\"a sign-in asked for the wrong scopes\", id, got, want)",
+      "complete": true
     }
   ],
   "plugin-symbol/sso/OIDCConfig/tokenEndpoint": [
@@ -42445,6 +42457,12 @@
       "label": "Reject a duplicate provider ID, a built-in sign-in method name and a trusted provider name in another case with 422",
       "test": "adapters/sqlstore/sso_test.go",
       "marker": "check(call(one, path, other, makeBody(\"partner\", \"\", \"/discovery\")), 422)"
+    },
+    {
+      "label": "Refuse a configured social provider's ID in another case with 422, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_oidc_contract_test.go",
+      "marker": "t.Fatal(\"a social provider's ID was registered in another case\", w.Code, w.Body.String())",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/sso/index.mdx#L114/`issuer`": [
@@ -42518,6 +42536,12 @@
       "label": "Request only the scopes passed at sign-in",
       "test": "adapters/sqlstore/sso_browser_test.go",
       "marker": "parsed.Query().Get(\"scope\") != \"openid\""
+    },
+    {
+      "label": "Ask for the provider's stored scopes, or the default set, when a sign-in names none, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_oidc_contract_test.go",
+      "marker": "t.Fatal(\"a sign-in asked for the wrong scopes\", id, got, want)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/sso/index.mdx#L257/Parameter `loginHint` (optional)": [
@@ -42533,6 +42557,12 @@
       "label": "Add a prompt parameter to the OIDC authorization request and reject a reserved state parameter",
       "test": "adapters/sqlstore/sso_browser_test.go",
       "marker": "\"additionalParams\": map[string]any{\"state\": \"x\"}"
+    },
+    {
+      "label": "Refuse client_id and redirect_uri as additional parameters and any additionalParams on a SAML sign-in, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_oidc_contract_test.go",
+      "marker": "t.Fatal(\"additionalParams was accepted for a SAML sign-in\", w.Code, w.Body.String())",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/sso/index.mdx#L265/Parameter `requestSignUp` (optional)": [
@@ -46871,6 +46901,14 @@
       "label": "Pass validated grants with their Group and source User and without unknown roles, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/scim_projection_test.go",
       "marker": "t.Fatal(\"a reconciled grant lost its source User or kept an unknown role\", g)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/sso/reference.mdx#L252": [
+    {
+      "label": "Default the scopes, require clientId at registration and store an overrideUserInfo update, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_oidc_contract_test.go",
+      "marker": "t.Fatal(\"update-provider did not store overrideUserInfo\", raw)",
       "complete": true
     }
   ]
