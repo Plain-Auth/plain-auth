@@ -57,7 +57,9 @@
       - [x] addMember ([test](../../../adapters/sqlstore/organization_fixtures_test.go#L89))
         - [x] Use the configured trusted grant service and give an existing user the default member role or a supported explicit role ([test](../../../adapters/sqlstore/organization_fixtures_test.go#L89))
         - [x] Confirm row creation, member role defaults and tenant-scoped teardown in the released test helpers ([test](../../../conformance/auth-test-helpers.test.mjs#L72))
-    - [ ] Auth Helpers
+    - [x] Auth Helpers ([test](../../../adapters/sqlstore/organization_fixtures_test.go#L295))
+      - [x] LoginWithOptions, GetAuthHeadersWithOptions and GetCookiesWithOptions store supplied session fields, keep defaults for omitted ones and ignore supplied standard session fields ([test](../../../adapters/sqlstore/fixture_session_fields_test.go#L16))
+      - [x] The three login helpers select a supplied organization and team that an independent instance reads back over HTTP, and refuse a selection the user cannot make without leaving a session (deviation: the selection is stored after the insert) ([test](../../../adapters/sqlstore/organization_fixtures_test.go#L295))
       - [x] login ([test](../../../adapters/sqlstore/fixture_session_fields_test.go#L96))
         - [x] Issue an authenticated session with the configured lifetime and owner ([test](../../../authtest/server_test.go#L88))
         - [x] Supply trusted required attributes and read the session through an independent instance ([test](../../../adapters/sqlstore/fixture_session_fields_test.go#L96))

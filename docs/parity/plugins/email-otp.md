@@ -287,7 +287,9 @@
       - [x] Refuse sign-in with 403 TOO_MANY_ATTEMPTS after three wrong guesses at the code ([test](../../../conformance/goapi/database_verification_code_hooks_test.go#L229))
     - [ ] `resendStrategy`
       - [x] Resend the same encrypted code with its attempt count kept when reuse is configured ([test](../../../adapters/sqlstore/emailotp_test.go#L240))
-    - [ ] `"rotate"`
+    - [x] `"rotate"` ([test](../../../adapters/sqlstore/emailotp_resend_test.go#L101))
+      - [x] Mail and store a new code when a plain code is resent with no strategy set or an encrypted code is resent with rotate ([test](../../../adapters/sqlstore/emailotp_resend_test.go#L94))
+      - [x] Refuse the earlier code after a rotate resend and give the new code a fresh attempt budget ([test](../../../adapters/sqlstore/emailotp_resend_test.go#L101))
     - [ ] `"reuse"`
       - [x] Mail the same plain code again on a reuse resend ([test](../../../conformance/goapi/database_verification_code_hooks_test.go#L486))
       - [x] Send a new code on resend when codes are hashed, even with reuse configured ([test](../../../adapters/sqlstore/emailotp_test.go#L261))

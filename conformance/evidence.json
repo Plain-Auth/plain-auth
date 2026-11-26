@@ -3886,6 +3886,11 @@
       "test": "plugins/captcha/captcha_test.go",
       "marker": "SiteVerifyURLOverride: f.Override",
       "complete": true
+    },
+    {
+      "label": "Refuse an override that is not an absolute http or https address with a host, or that carries credentials or a fragment (deviation: refused at startup)",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "t.Fatal(\"New accepted the verification address\", address)"
     }
   ],
   "plugin-symbol/captcha/BaseCaptchaOptions/endpoints": [
@@ -8998,6 +9003,12 @@
       "label": "Deliver a fresh code through the Go SDK and persist its attempt counter",
       "test": "adapters/sqlstore/phone_test.go",
       "marker": "canonical verification row mismatch"
+    },
+    {
+      "label": "Answer 501 SEND_OTP_NOT_IMPLEMENTED from the send route when SendOTP is unset, before the number validator runs, and store no code",
+      "test": "adapters/sqlstore/phone_options_test.go",
+      "marker": "t.Fatal(\"send-otp without SendOTP answered\", err)",
+      "complete": true
     }
   ],
   "plugin/phone-number/POST /phone-number/verify": [
@@ -9147,6 +9158,12 @@
       "label": "Reject a number before invoking the delivery adapter",
       "test": "adapters/sqlstore/phone_test.go",
       "marker": "invalid number was delivered"
+    },
+    {
+      "label": "Refuse a number the validator rejects with 400 INVALID_PHONE_NUMBER on the send route, password sign-in, verification and reset requests, texting nothing and setting no session cookie (deviation: the validator guards every phone route)",
+      "test": "adapters/sqlstore/phone_options_test.go",
+      "marker": "t.Fatal(\"a number the validator rejects was texted or signed in\")",
+      "complete": true
     }
   ],
   "plugin-symbol/phone-number/PhoneNumberOptions/requireVerification": [
@@ -9197,6 +9214,12 @@
       "label": "Expire a proof then remove its storage row",
       "test": "adapters/sqlstore/phone_test.go",
       "marker": "444444\"), 400, \"OTP_EXPIRED\""
+    },
+    {
+      "label": "Store sent verification and password-reset phone codes that expire five minutes after they are issued by default, and after the configured ExpiresIn when one is set",
+      "test": "adapters/sqlstore/phone_options_test.go",
+      "marker": "a sent phone code does not expire after the default five minutes or the configured ExpiresIn:",
+      "complete": true
     }
   ],
   "plugin-symbol/phone-number/PhoneNumberOptions/allowedAttempts": [
@@ -37552,6 +37575,82 @@
       "label": "With no theme configured, the served page carries the default theme",
       "test": "plugins/openapi/openapi_test.go",
       "marker": "t.Fatal(\"unset theme did not select the default theme\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/test-utils.mdx#L155": [
+    {
+      "label": "LoginWithOptions, GetAuthHeadersWithOptions and GetCookiesWithOptions store supplied session fields, keep defaults for omitted ones and ignore supplied standard session fields",
+      "test": "adapters/sqlstore/fixture_session_fields_test.go",
+      "marker": "func TestFixtureSessionFieldOptions("
+    },
+    {
+      "label": "The three login helpers select a supplied organization and team that an independent instance reads back over HTTP, and refuse a selection the user cannot make without leaving a session (deviation: the selection is stored after the insert)",
+      "test": "adapters/sqlstore/organization_fixtures_test.go",
+      "marker": "func TestFixtureSessionSelectsOrganization(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/captcha/GoogleRecaptchaOptions/siteVerifyURLOverride": [
+    {
+      "label": "Send the form-encoded Google reCAPTCHA verification request to the configured override address, as recorded from the other runtime",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "t.Fatalf(\"no fixture sends %s verification to an override address\", p)",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/captcha/CloudflareTurnstileOptions/siteVerifyURLOverride": [
+    {
+      "label": "Send the Cloudflare Turnstile JSON verification request to the configured override address, as recorded from the other runtime",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "t.Fatalf(\"no fixture sends %s verification to an override address\", p)",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/captcha/HCaptchaOptions/siteVerifyURLOverride": [
+    {
+      "label": "Send the form-encoded hCaptcha verification request with the site key to the configured override address, as recorded from the other runtime",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "t.Fatalf(\"no fixture sends %s verification to an override address\", p)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/phone-number.mdx#L205/Parameter `rememberMe` (optional)": [
+    {
+      "label": "Give a browser-session cookie, the dont_remember marker and a one-day session when rememberMe is false",
+      "test": "adapters/sqlstore/phone_options_test.go",
+      "marker": "rememberMe false did not give a browser-session cookie with the dont_remember marker"
+    },
+    {
+      "label": "Cap a rememberMe false session at a configured SessionTTL shorter than a day (deviation: the other runtime always uses one day)",
+      "test": "adapters/sqlstore/phone_options_test.go",
+      "marker": "a rememberMe false session outlived a shorter SessionTTL:"
+    },
+    {
+      "label": "Give a persistent cookie and the default seven-day session, and clear the dont_remember marker, when rememberMe is true or left out",
+      "test": "adapters/sqlstore/phone_options_test.go",
+      "marker": "a true or omitted rememberMe did not give a persistent session and clear the marker",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/phone-number.mdx#L312": [
+    {
+      "label": "Store sent verification and password-reset phone codes that expire five minutes after they are issued by default, and after the configured ExpiresIn when one is set",
+      "test": "adapters/sqlstore/phone_options_test.go",
+      "marker": "a sent phone code does not expire after the default five minutes or the configured ExpiresIn:",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/email-otp.mdx#L422/`\"rotate\"`": [
+    {
+      "label": "Mail and store a new code when a plain code is resent with no strategy set or an encrypted code is resent with rotate",
+      "test": "adapters/sqlstore/emailotp_resend_test.go",
+      "marker": "a rotate resend did not mail and store a new code"
+    },
+    {
+      "label": "Refuse the earlier code after a rotate resend and give the new code a fresh attempt budget",
+      "test": "adapters/sqlstore/emailotp_resend_test.go",
+      "marker": "after a rotate resend the new code did not sign in with a fresh attempt budget:",
       "complete": true
     }
   ]

@@ -19,8 +19,9 @@
   - [ ] `POST /sign-in/phone-number`
     - [x] Return a session after a valid password and challenge an enrolled account ([test](../../../adapters/sqlstore/phone_accounts_test.go#L300))
     - [x] Refuse a wrong password for a registered number with 401 INVALID_PHONE_NUMBER_OR_PASSWORD ([test](../../../adapters/sqlstore/phone_accounts_test.go#L106))
-  - [ ] `POST /phone-number/send-otp`
+  - [x] `POST /phone-number/send-otp` ([test](../../../adapters/sqlstore/phone_options_test.go#L162))
     - [x] Deliver a fresh code through the Go SDK and persist its attempt counter ([test](../../../adapters/sqlstore/phone_test.go#L90))
+    - [x] Answer 501 SEND_OTP_NOT_IMPLEMENTED from the send route when SendOTP is unset, before the number validator runs, and store no code ([test](../../../adapters/sqlstore/phone_options_test.go#L162))
   - [ ] `POST /phone-number/verify`
     - [x] Verify a first-use number, suppress session creation, link to an owner and reject reuse ([test](../../../conformance/phone-contract.mjs#L68))
     - [x] Count an incorrect anonymous link attempt, spend a correct proof and keep the caller signed out on both servers ([test](../../../conformance/phone-contract.mjs#L31))
@@ -50,10 +51,12 @@
     - [ ] `sendPasswordResetOTP`
       - [x] Deliver reset messages only for eligible accounts ([test](../../../adapters/sqlstore/phone_accounts_test.go#L95))
       - [x] Answer 200 over HTTP when delivering a reset code to a verified number fails, and log the failure without the number ([test](../../../adapters/sqlstore/phone_delivery_test.go#L71))
-    - [ ] `expiresIn`
+    - [x] `expiresIn` ([test](../../../adapters/sqlstore/phone_options_test.go#L155))
       - [x] Expire a proof then remove its storage row ([test](../../../adapters/sqlstore/phone_test.go#L144))
-    - [ ] `phoneNumberValidator`
+      - [x] Store sent verification and password-reset phone codes that expire five minutes after they are issued by default, and after the configured ExpiresIn when one is set ([test](../../../adapters/sqlstore/phone_options_test.go#L155))
+    - [x] `phoneNumberValidator` ([test](../../../adapters/sqlstore/phone_options_test.go#L178))
       - [x] Reject a number before invoking the delivery adapter ([test](../../../adapters/sqlstore/phone_test.go#L73))
+      - [x] Refuse a number the validator rejects with 400 INVALID_PHONE_NUMBER on the send route, password sign-in, verification and reset requests, texting nothing and setting no session cookie (deviation: the validator guards every phone route) ([test](../../../adapters/sqlstore/phone_options_test.go#L178))
     - [ ] `requireVerification`
       - [x] Gate imported unverified phone credentials and request a verification proof ([test](../../../adapters/sqlstore/phone_accounts_test.go#L289))
       - [x] Answer 401 PHONE_NUMBER_NOT_VERIFIED over HTTP to an unverified number's password sign-in and call the code sender once ([test](../../../adapters/sqlstore/phone_delivery_test.go#L61))
@@ -111,7 +114,10 @@
           - [x] Sign in by phone number into the account that holds the number after it moved to another user ([test](../../../adapters/sqlstore/phone_accounts_test.go#L153))
         - [x] Parameter `password` ([test](../../../adapters/sqlstore/phone_accounts_test.go#L106))
           - [x] Refuse a phone sign-in with a wrong password as INVALID_PHONE_NUMBER_OR_PASSWORD, then accept the right one ([test](../../../adapters/sqlstore/phone_accounts_test.go#L106))
-        - [ ] Parameter `rememberMe` (optional)
+        - [x] Parameter `rememberMe` (optional) ([test](../../../adapters/sqlstore/phone_options_test.go#L121))
+          - [x] Give a browser-session cookie, the dont_remember marker and a one-day session when rememberMe is false ([test](../../../adapters/sqlstore/phone_options_test.go#L118))
+          - [x] Cap a rememberMe false session at a configured SessionTTL shorter than a day (deviation: the other runtime always uses one day) ([test](../../../adapters/sqlstore/phone_options_test.go#L126))
+          - [x] Give a persistent cookie and the default seven-day session, and clear the dont_remember marker, when rememberMe is true or left out ([test](../../../adapters/sqlstore/phone_options_test.go#L121))
     - [x] Update Phone Number ([test](../../../adapters/sqlstore/phone_registration_fields_test.go#L138))
       - [x] Keep the same authenticated session while linking a verified number ([test](../../../adapters/sqlstore/phone_accounts_test.go#L150))
       - [x] Replace a signed-in user's number with a newly verified one through updatePhoneNumber, keeping the session token ([test](../../../adapters/sqlstore/phone_registration_fields_test.go#L138))
@@ -145,7 +151,8 @@
       - [x] Text six-digit codes by default on both servers ([test](../../../conformance/phone-contract.mjs#L19))
     - [x] `sendOTP` ([test](../../../adapters/sqlstore/phone_test.go#L85))
       - [x] Pass the number and a six-digit verification code to SendOTP ([test](../../../adapters/sqlstore/phone_test.go#L85))
-    - [ ] `expiresIn`
+    - [x] `expiresIn` ([test](../../../adapters/sqlstore/phone_options_test.go#L155))
+      - [x] Store sent verification and password-reset phone codes that expire five minutes after they are issued by default, and after the configured ExpiresIn when one is set ([test](../../../adapters/sqlstore/phone_options_test.go#L155))
     - [ ] `callbackOnVerification`
       - [x] Call OnVerification with the verified number and its user once per successful verification ([test](../../../adapters/sqlstore/phone_accounts_test.go#L156))
     - [ ] `sendPasswordResetOTP`
