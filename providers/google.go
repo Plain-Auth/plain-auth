@@ -68,16 +68,20 @@ func GoogleWithOptions(o GoogleOptions) authn.OAuthProvider {
 	return p
 }
 
+// googleIssuers are both spellings Google uses for its ID token issuer.
+var googleIssuers = []string{"https://accounts.google.com", "accounts.google.com"}
+
 func google(id, secret string, keys oidc.KeySet, client *http.Client, more ...string) authn.OAuthProvider {
-	verifier := oidc.NewVerifier("https://accounts.google.com", keys, &oidc.Config{ClientID: id, SupportedSigningAlgs: []string{"RS256"}})
-	p := oidcProvider(id, secret, endpoints.Google, verifier, client)
+	rules := idTokenRules{profile: standardProfile, issuers: googleIssuers}
+	verifier := oidc.NewVerifier("https://accounts.google.com", keys, &oidc.Config{ClientID: id, SkipIssuerCheck: true, SupportedSigningAlgs: []string{"RS256"}})
+	p := signedProvider(id, secret, endpoints.Google, verifier, client, rules)
 	p.AllowVerifiedEmailLink = true
 	if ids := clientIDs(id, more); len(ids) > 1 {
 		// A directly submitted token may be issued to any of the app's client
 		// IDs; the code exchange still checks ClientID only.
-		direct := oidc.NewVerifier("https://accounts.google.com", keys, &oidc.Config{SkipClientIDCheck: true, SupportedSigningAlgs: []string{"RS256"}})
+		direct := oidc.NewVerifier("https://accounts.google.com", keys, &oidc.Config{SkipClientIDCheck: true, SkipIssuerCheck: true, SupportedSigningAlgs: []string{"RS256"}})
 		p.VerifyIDToken = func(ctx context.Context, raw, nonce string) (authn.OAuthProfile, time.Time, error) {
-			return resolveSignedToken(ctx, direct, idTokenRules{profile: standardProfile}, ids, raw, nonce, "")
+			return resolveSignedToken(ctx, direct, rules, ids, raw, nonce, "")
 		}
 	}
 	return p
@@ -98,6 +102,9 @@ func clientIDs(id string, more []string) []string {
 type idTokenRules struct {
 	allowHashedNonce bool
 	profile          func(*oidc.IDToken) (authn.OAuthProfile, error)
+	// issuers, when set, are the accepted issuers for a verifier that skips
+	// its own issuer check.
+	issuers []string
 }
 
 func oidcProvider(id, secret string, endpoint oauth2.Endpoint, verifier *oidc.IDTokenVerifier, client *http.Client) authn.OAuthProvider {
@@ -125,6 +132,9 @@ func resolveSignedToken(ctx context.Context, verifier *oidc.IDTokenVerifier, rul
 	token, err := verifier.Verify(ctx, raw)
 	if err != nil {
 		return profile, time.Time{}, err
+	}
+	if len(rules.issuers) > 0 && !slices.Contains(rules.issuers, token.Issuer) {
+		return profile, time.Time{}, errors.New("unexpected OpenID Connect issuer")
 	}
 	nonceOK := subtle.ConstantTimeCompare([]byte(token.Nonce), []byte(nonce)) == 1
 	if !nonceOK && rules.allowHashedNonce {

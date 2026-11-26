@@ -121,8 +121,21 @@ func TestMicrosoftBrowserSignIn(t *testing.T) {
 		return err
 	}
 	const other = "30000000-aaaa-0000-bbbb-000000000000"
-	if err := direct(authority+"/"+tid+"/v2.0", "native-app", tid); err != nil {
-		t.Fatal("a token for an additional client ID was refused:", err)
+	for _, aud := range []string{"client", "native-app"} {
+		if err := direct(authority+"/"+tid+"/v2.0", aud, tid); err != nil {
+			t.Fatal("a direct token for", aud, "was refused:", err)
+		}
+	}
+	multi := func(azp string) error {
+		claims := map[string]any{"aud": []string{"client", "other"}, "oid": "oid", "tid": tid, "email": "person@example.org"}
+		if azp != "" {
+			claims["azp"] = azp
+		}
+		_, _, err := p.VerifyIDToken(ctx, signedClaims(t, key, authority+"/"+tid+"/v2.0", "sub", "n", claims), "n")
+		return err
+	}
+	if multi("client") != nil || multi("") == nil {
+		t.Fatal("the authorized-party rule for several audiences is wrong")
 	}
 	for name, err := range map[string]error{
 		"another audience":      direct(authority+"/"+tid+"/v2.0", "other", tid),
@@ -177,6 +190,28 @@ func TestMicrosoftProfilePhoto(t *testing.T) {
 		profile, err := p.Resolve(context.WithValue(context.Background(), oauth2.HTTPClient, client), token, "n")
 		if err != nil || profile.Image == nil || *profile.Image != tc.want || calls != tc.calls {
 			t.Fatalf("%s: image %v, calls %d, err %v", tc.name, profile.Image, calls, err)
+		}
+	}
+	// The photo comes from the Graph of the authority's cloud, and from none
+	// when that cloud's Graph is unknown.
+	for authority, graph := range map[string]string{
+		"https://login.microsoftonline.us": "https://graph.microsoft.us",
+		"https://login.chinacloudapi.cn":   "https://microsoftgraph.chinacloudapi.cn",
+		"https://login.example.org":        "",
+	} {
+		var seen []string
+		client := &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+			seen = append(seen, r.URL.String())
+			return &http.Response{StatusCode: 200, Header: http.Header{}, Body: io.NopCloser(strings.NewReader("photo"))}, nil
+		})}
+		raw := signedClaims(t, key, authority+"/"+tid+"/v2.0", "sub", "n", map[string]any{"oid": "oid", "tid": tid})
+		cloudToken := (&oauth2.Token{AccessToken: "access"}).WithExtra(map[string]any{"id_token": raw})
+		p := microsoftProvider("client", "secret", tid, MicrosoftOptions{Authority: authority}, keys)
+		if _, err := p.Resolve(context.WithValue(context.Background(), oauth2.HTTPClient, client), cloudToken, "n"); err != nil {
+			t.Fatal(authority, err)
+		}
+		if graph == "" && len(seen) != 0 || graph != "" && (len(seen) != 1 || seen[0] != graph+"/v1.0/me/photos/48x48/$value") {
+			t.Fatalf("%s fetched the photo from %v", authority, seen)
 		}
 	}
 }

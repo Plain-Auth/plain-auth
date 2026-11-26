@@ -26,6 +26,22 @@ var tenantIDPattern = regexp.MustCompile(`(?i)^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0
 
 var microsoftPhotoSizes = []int{48, 64, 96, 120, 240, 360, 432, 504, 648}
 
+// microsoftGraph returns the Graph origin of the cloud an authority belongs
+// to, or "" for an authority whose Graph is unknown: the photo is then not
+// fetched, so a token never leaves its cloud.
+func microsoftGraph(authority string) string {
+	host := strings.TrimPrefix(authority, "https://")
+	switch {
+	case host == "login.microsoftonline.com" || strings.HasSuffix(host, ".ciamlogin.com"):
+		return "https://graph.microsoft.com"
+	case host == "login.microsoftonline.us":
+		return "https://graph.microsoft.us"
+	case host == "login.chinacloudapi.cn" || host == "login.partner.microsoftonline.cn":
+		return "https://microsoftgraph.chinacloudapi.cn"
+	}
+	return ""
+}
+
 // MicrosoftOptions selects an Entra account class or concrete tenant GUID.
 // The default uses the common endpoint and fetches a 48-pixel profile photo.
 type MicrosoftOptions struct {
@@ -127,7 +143,8 @@ func microsoftProvider(id, secret, tenant string, o MicrosoftOptions, keys oidc.
 			return resolveSignedToken(ctx, direct, idTokenRules{profile: mapProfile}, ids, raw, nonce, "")
 		}
 	}
-	if !o.DisableProfilePhoto {
+	graph := microsoftGraph(authority)
+	if !o.DisableProfilePhoto && graph != "" {
 		resolve := p.Resolve
 		p.Resolve = func(ctx context.Context, t *oauth2.Token, nonce string) (authn.OAuthProfile, error) {
 			profile, err := resolve(ctx, t, nonce)
@@ -135,7 +152,7 @@ func microsoftProvider(id, secret, tenant string, o MicrosoftOptions, keys oidc.
 				return profile, err
 			}
 			if t.AccessToken != "" {
-				req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("https://graph.microsoft.com/v1.0/me/photos/%dx%d/$value", size, size), nil)
+				req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("%s/v1.0/me/photos/%dx%d/$value", graph, size, size), nil)
 				if err != nil {
 					return profile, err
 				}

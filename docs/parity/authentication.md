@@ -377,7 +377,7 @@
       - [x] On HTTPS deployments, starting sign-in/social for the provider registered as google sends redirect_uri <BaseURL>/identity/callback/google ([test](../../adapters/sqlstore/oauth_proxy_test.go#L194))
       - [x] A social sign-in started on host b.example sends redirect_uri https://b.example/api/auth/callback/local under the default mount ([test](../../conformance/goapi/dynamic_base_url_test.go#L342))
   - [ ] Configure the provider
-    - [x] providers.Google refuses an ID token whose audience is not the configured client ID ([test](../../providers/providers_test.go#L31))
+    - [x] providers.Google refuses an ID token whose audience is not the configured client ID ([test](../../providers/providers_test.go#L32))
     - [x] With providers.Google("client", "secret") registered as google, sign-in/social answers an authorization URL carrying the configured scope and prompt ([test](../../conformance/goapi/provider_contract_test.go#L67))
     - [ ] Important: Set Your Base URL
       - [x] With BaseURL set per deployment, the google authorization request's redirect_uri is that BaseURL plus /identity/callback/google ([test](../../adapters/sqlstore/oauth_proxy_test.go#L194))
@@ -411,7 +411,7 @@
       - [x] Incremental authorization is on by default through include_granted_scopes=true and DisableIncludeGrantedScopes turns it off ([test](../../providers/google_test.go#L60))
     - [x] Always get refresh token ([test](../../providers/google_test.go#L60))
       - [x] AuthorizationParams prompt=select_account consent on providers.Google appears on the sign-in authorization URL (access_type=offline is not asserted) ([test](../../conformance/goapi/provider_contract_test.go#L67))
-      - [x] AccessType offline with prompt select_account consent puts access_type=offline and the prompt on every authorization URL ([test](../../providers/google_test.go#L60))
+      - [x] AccessType offline with prompt select_account consent puts access_type=offline and the prompt on the sign-in authorization URL ([test](../../providers/google_test.go#L60))
     - [ ] Restricting to a Google Workspace domain
       - [x] On both runtimes, additionalParams on sign-in/social and link-social reach the authorization URL (prompt consent, ui_locales fr) ([test](../../conformance/social-signup.mjs#L57))
 
@@ -529,20 +529,20 @@
 ## Microsoft
 
 - [ ] Microsoft
-  - [x] Get your Microsoft credentials ([test](../../providers/microsoft_test.go#L205))
+  - [x] Get your Microsoft credentials ([test](../../providers/microsoft_test.go#L240))
     - [x] A registered Microsoft app signs in through the browser with its client ID and secret ([test](../../providers/microsoft_test.go#L37))
-    - [x] A Microsoft app signs in with a client assertion instead of a secret ([test](../../providers/microsoft_test.go#L205))
+    - [x] A Microsoft app signs in with a client assertion instead of a secret ([test](../../providers/microsoft_test.go#L240))
   - [ ] Configure the provider
     - [x] The Microsoft provider's ID-token check refuses consumer-tenant tokens in organizations mode and organization-tenant tokens in consumers mode, refuses a token whose issuer names a different tenant than its tid, and accepts matching tokens in organizations, consumers, common and tenant-GUID modes ([test](../../providers/apple_microsoft_test.go#L166))
     - [x] Authority URL ([test](../../providers/microsoft_test.go#L37))
       - [x] An External ID authority with a tenant GUID completes a browser sign-in against that authority's endpoints and keys ([test](../../providers/microsoft_test.go#L37))
-    - [x] Client assertions ([test](../../providers/microsoft_test.go#L205))
-      - [x] A client assertion callback authenticates Microsoft's code exchange and refresh instead of a client secret ([test](../../providers/microsoft_test.go#L205))
+    - [x] Client assertions ([test](../../providers/microsoft_test.go#L240))
+      - [x] A client assertion callback authenticates Microsoft's code exchange and refresh instead of a client secret ([test](../../providers/microsoft_test.go#L240))
   - [ ] Account identifiers
     - [x] A verified Microsoft ID token maps to the oid claim as the account subject, not the pairwise sub ([test](../../providers/apple_microsoft_test.go#L170))
     - [x] A single-tenant Entra provider uses the oid claim as the subject for both the code-flow and the native ID token ([test](../../providers/entra_test.go#L84))
-  - [x] Large Profile Images ⚠️ ([test](../../providers/microsoft_test.go#L145))
-    - [x] The Graph photo is stored as a data URI only up to 1 MiB, and DisableProfilePhoto skips it ([test](../../providers/microsoft_test.go#L145))
+  - [x] Large Profile Images ⚠️ ([test](../../providers/microsoft_test.go#L158))
+    - [x] The Graph photo is stored as a data URI only up to 1 MiB, and DisableProfilePhoto skips it ([test](../../providers/microsoft_test.go#L158))
   - [ ] Sign In with Microsoft
     - [x] A browser sign-in through providers.Microsoft completes the callback against the v2.0 authorize and token endpoints with PKCE and the client secret ([test](../../providers/microsoft_test.go#L37))
     - [x] `provider` ([test](../../providers/microsoft_test.go#L37))

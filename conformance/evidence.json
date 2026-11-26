@@ -26044,7 +26044,7 @@
       "marker": "if q := start(\"/sign-in/social\", \"\"); q.Get(\"scope\") != \"openid\" || q.Get(\"prompt\") != \"select_account consent\" {"
     },
     {
-      "label": "AccessType offline with prompt select_account consent puts access_type=offline and the prompt on every authorization URL",
+      "label": "AccessType offline with prompt select_account consent puts access_type=offline and the prompt on the sign-in authorization URL",
       "test": "providers/google_test.go",
       "marker": "func TestGoogleAuthorizationOptions(t *testing.T) {",
       "complete": true
@@ -30005,15 +30005,25 @@
   ],
   "provider-option/microsoft/profilePhotoSize": [
     {
-      "label": "ProfilePhotoSize picks the Graph photo size, 48 by default, and an unsupported size is refused when the provider is built",
+      "label": "The Graph photo is fetched at 48 pixels by default, from the Graph of the authority's cloud",
       "test": "providers/microsoft_test.go",
-      "marker": "func TestMicrosoftProfilePhoto(t *testing.T) {",
+      "marker": "func TestMicrosoftProfilePhoto(t *testing.T) {"
+    },
+    {
+      "label": "ProfilePhotoSize 96 fetches the 96x96 Graph photo during a browser sign-in",
+      "test": "providers/microsoft_test.go",
+      "marker": "func TestMicrosoftBrowserSignIn(t *testing.T) {",
       "complete": true
+    },
+    {
+      "label": "An unsupported photo size is refused when the provider is built",
+      "test": "providers/microsoft_test.go",
+      "marker": "func TestMicrosoftOptionValidation(t *testing.T) {"
     }
   ],
   "provider-option/microsoft/disableProfilePhoto": [
     {
-      "label": "DisableProfilePhoto makes no Graph request and keeps the token's picture; by default the photo is fetched and a missing or oversized photo leaves the image unset",
+      "label": "DisableProfilePhoto makes no Graph request and keeps the token's picture; by default the photo is fetched, and a missing or oversized photo keeps the token's picture",
       "test": "providers/microsoft_test.go",
       "marker": "func TestMicrosoftProfilePhoto(t *testing.T) {",
       "complete": true
@@ -30029,10 +30039,15 @@
   ],
   "provider-option/gitlab/issuer": [
     {
-      "label": "GitLabOptions.Issuer moves the authorize, token, profile and refresh endpoints to a self-managed instance, with or without a path; an insecure or query-bearing issuer is refused",
+      "label": "GitLabOptions.Issuer moves the authorize, token, profile and refresh endpoints to a self-managed instance, with or without a path",
       "test": "providers/catalog_options_test.go",
       "marker": "func TestCatalogPresetEndpoints(t *testing.T) {",
       "complete": true
+    },
+    {
+      "label": "An insecure, query-bearing or fragment-bearing GitLab issuer is refused when the provider is built",
+      "test": "providers/catalog_options_test.go",
+      "marker": "func TestCatalogPresetValidation(t *testing.T) {"
     }
   ],
   "docs/content/docs/authentication/gitlab.mdx#L39/`issuer`": [
@@ -30053,10 +30068,15 @@
   ],
   "provider-option/salesforce/loginUrl": [
     {
-      "label": "A My Domain LoginURL replaces the login host for every endpoint and wins over Sandbox; a value that is not a bare host is refused",
+      "label": "A My Domain LoginURL replaces the login host for every endpoint and wins over Sandbox",
       "test": "providers/catalog_options_test.go",
       "marker": "func TestCatalogPresetEndpoints(t *testing.T) {",
       "complete": true
+    },
+    {
+      "label": "A Salesforce LoginURL with a path, userinfo, port or query, or with no host, is refused when the provider is built",
+      "test": "providers/catalog_options_test.go",
+      "marker": "func TestCatalogPresetValidation(t *testing.T) {"
     }
   ],
   "docs/content/docs/authentication/salesforce.mdx#L63/`environment`": [

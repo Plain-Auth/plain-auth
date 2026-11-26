@@ -27,6 +27,7 @@ func TestGoogleVerifiesIDToken(t *testing.T) {
 		valid                         bool
 	}{
 		{"valid", "https://accounts.google.com", "client", "state-nonce", true},
+		{"bare issuer", "accounts.google.com", "client", "state-nonce", true},
 		{"wrong issuer", "https://other.example", "client", "state-nonce", false},
 		{"wrong audience", "https://accounts.google.com", "other", "state-nonce", false},
 		{"wrong nonce", "https://accounts.google.com", "client", "unrelated", false},

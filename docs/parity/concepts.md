@@ -637,7 +637,7 @@
       - [x] A browser sign-in through the Facebook preset gives the same email, name and image as the other runtime's provider, with the email unverified ([test](../../providers/catalog_test.go#L203))
       - [x] The catalog's Facebook profile mapping, called directly, returns the app-scoped id as subject, equal to the other runtime's account subject ([test](../../providers/catalog_test.go#L242))
     - [ ] GitHub
-      - [x] When /user returns a null email, the preset takes the primary address from /user/emails, copies its verified flag either way and uses the numeric id as subject ([test](../../providers/providers_test.go#L57))
+      - [x] When /user returns a null email, the preset takes the primary address from /user/emails, copies its verified flag either way and uses the numeric id as subject ([test](../../providers/providers_test.go#L58))
     - [ ] Kakao
       - [x] A browser sign-in through the Kakao preset gives the same email, name and image as the other runtime's provider, with the email verified ([test](../../providers/catalog_test.go#L203))
       - [x] The catalog's Kakao profile mapping, called directly, returns the numeric id as subject, equal to the other runtime's account subject ([test](../../providers/catalog_test.go#L242))
@@ -657,7 +657,7 @@
       - [ ] Apple
         - [x] A browser Apple sign-in requests only the token endpoint (no user-info request), takes the email from the ID token and the name from Apple's first-consent user field ([test](../../providers/apple_microsoft_test.go#L40))
       - [ ] GitHub
-        - [x] When /user returns a null email, the preset reads the primary address from /user/emails and copies its verified flag ([test](../../providers/providers_test.go#L57))
+        - [x] When /user returns a null email, the preset reads the primary address from /user/emails and copies its verified flag ([test](../../providers/providers_test.go#L58))
       - [x] Microsoft Entra ID ([test](../../providers/apple_microsoft_test.go#L170))
         - [x] The Microsoft provider anchors the account on oid and leaves the email unverified unless Microsoft lists it as a verified address ([test](../../providers/apple_microsoft_test.go#L170))
         - [x] The Entra preset requires an oid within the configured tenant and refuses tokens without one, from another tenant or for another audience ([test](../../providers/entra_test.go#L20))

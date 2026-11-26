@@ -89,8 +89,9 @@ func TestGoogleAdditionalClientIDs(t *testing.T) {
 		t.Fatal(err)
 	}
 	p := google("web", "secret", &oidc.StaticKeySet{PublicKeys: []crypto.PublicKey{&key.PublicKey}}, nil, "ios", "android", "")
+	issuer := "https://accounts.google.com"
 	sign := func(aud any, azp string) string {
-		claims := jwt.MapClaims{"iss": "https://accounts.google.com", "aud": aud, "nonce": "n", "sub": "subject", "exp": time.Now().Add(time.Minute).Unix(), "iat": time.Now().Unix(), "email": "person@example.org", "email_verified": true}
+		claims := jwt.MapClaims{"iss": issuer, "aud": aud, "nonce": "n", "sub": "subject", "exp": time.Now().Add(time.Minute).Unix(), "iat": time.Now().Unix(), "email": "person@example.org", "email_verified": true}
 		if azp != "" {
 			claims["azp"] = azp
 		}
@@ -120,8 +121,17 @@ func TestGoogleAdditionalClientIDs(t *testing.T) {
 			t.Fatalf("%s: valid=%v, got %v", tc.name, tc.valid, err)
 		}
 	}
+	issuer = "accounts.google.com"
+	if _, _, err := p.VerifyIDToken(context.Background(), sign("web", "android"), "n"); err != nil {
+		t.Fatal("a native token with the bare issuer was refused:", err)
+	}
+	issuer = "https://accounts.google.com"
+	web := (&oauth2.Token{AccessToken: "access"}).WithExtra(map[string]any{"id_token": sign("web", "")})
+	if profile, err := p.Resolve(context.Background(), web, "n"); err != nil || profile.Subject != "subject" {
+		t.Fatal("the code exchange refused a token for ClientID:", err)
+	}
 	token := (&oauth2.Token{AccessToken: "access"}).WithExtra(map[string]any{"id_token": sign("ios", "")})
-	if _, err := p.Resolve(context.Background(), token, "n"); err == nil {
-		t.Fatal("the code exchange accepted a token issued to another client ID")
+	if _, err := p.Resolve(context.Background(), token, "n"); err == nil || !strings.Contains(err.Error(), "audience") {
+		t.Fatal("the code exchange accepted a token issued to another client ID:", err)
 	}
 }
