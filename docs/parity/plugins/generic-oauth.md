@@ -461,7 +461,8 @@
       - [x] Refresh a returning profile with either server, preserve protected fields and use the new mailbox verification status ([test](../../../conformance/social-user-fields.mjs#L145))
     - [x] `requireEmailVerification` ([test](../../../conformance/social-user-fields.mjs#L200))
       - [x] Withhold sessions for unverified social accounts, honor mail delivery settings and accept confirmation by either server ([test](../../../conformance/social-user-fields.mjs#L200))
-    - [ ] `allowIdpInitiated`
+    - [x] `allowIdpInitiated` ([test](../../../conformance/goapi/oauth_idp_initiated_test.go#L39))
+      - [x] AllowIdPInitiated restarts a callback with a code and no state as a fresh authorization with new state, nonce and PKCE, without exchanging the code, and the restarted sign-in completes toward BaseURL; an empty, unknown or missing state still fails, a form POST without state goes through the GET callback, and a provider without the setting answers state_not_found ([test](../../../conformance/goapi/oauth_idp_initiated_test.go#L39))
     - [x] `disableIdTokenNonceBinding` ([test](../../../providers/oidc_test.go#L165))
       - [x] DisableNonceBinding sends no nonce on browser sign-in and accepts an ID token without one, while the default refuses it (deviation: a directly submitted ID token still needs its nonce) ([test](../../../providers/oidc_test.go#L165))
   - [ ] `GenericOAuthOptions`
@@ -603,6 +604,7 @@
       - [x] Store provider-mapped additional user fields at social registration, ignore undeclared and server-owned values, and keep a returning user's fields ([test](../../../adapters/sqlstore/oauth_user_fields_test.go#L112))
     - [ ] Accessing Raw Token Data
       - [x] Read the openid field from WeChat's token response and send it with the profile request ([test](../../../providers/catalog_test.go#L99))
-    - [ ] IDP-Initiated Flows
+    - [x] IDP-Initiated Flows ([test](../../../conformance/goapi/oauth_idp_initiated_test.go#L39))
+      - [x] AllowIdPInitiated restarts a callback with a code and no state as a fresh authorization with new state, nonce and PKCE, without exchanging the code, and the restarted sign-in completes toward BaseURL; an empty, unknown or missing state still fails, a form POST without state goes through the GET callback, and a provider without the setting answers state_not_found ([test](../../../conformance/goapi/oauth_idp_initiated_test.go#L39))
     - [ ] Error Handling
       - [x] Send each failed callback to the error callback, or to the error page when none was given, with the provider error or failure code and no session ([test](../../../conformance/goapi/oauth_callback_errors_test.go#L23))

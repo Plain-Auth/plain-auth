@@ -91,6 +91,11 @@ type OAuthProvider struct {
 	DisableRefresh         bool
 	HTTPClient             *http.Client
 	AllowVerifiedEmailLink bool
+	// AllowIdPInitiated restarts a callback that brings a code and no state,
+	// as a provider-initiated sign-in such as Clever's does: the code is
+	// discarded and a fresh authorization starts, returning to BaseURL. It
+	// cannot link an account or request sign-up.
+	AllowIdPInitiated bool
 	// DisableSignUp prevents this provider from creating new accounts.
 	DisableSignUp bool
 	// DisableImplicitSignUp requires requestSignUp for new browser and direct ID-token accounts.

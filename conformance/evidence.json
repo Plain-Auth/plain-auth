@@ -30624,5 +30624,21 @@
       "marker": "func TestOpenIDConnectWithOptions(t *testing.T) {",
       "complete": true
     }
+  ],
+  "plugin-symbol/generic-oauth/GenericOAuthConfig/allowIdpInitiated": [
+    {
+      "label": "AllowIdPInitiated restarts a callback with a code and no state as a fresh authorization with new state, nonce and PKCE, without exchanging the code, and the restarted sign-in completes toward BaseURL; an empty, unknown or missing state still fails, a form POST without state goes through the GET callback, and a provider without the setting answers state_not_found",
+      "test": "conformance/goapi/oauth_idp_initiated_test.go",
+      "marker": "func TestOAuthIdPInitiated(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/generic-oauth.mdx#L528": [
+    {
+      "label": "AllowIdPInitiated restarts a callback with a code and no state as a fresh authorization with new state, nonce and PKCE, without exchanging the code, and the restarted sign-in completes toward BaseURL; an empty, unknown or missing state still fails, a form POST without state goes through the GET callback, and a provider without the setting answers state_not_found",
+      "test": "conformance/goapi/oauth_idp_initiated_test.go",
+      "marker": "func TestOAuthIdPInitiated(t *testing.T) {",
+      "complete": true
+    }
   ]
 }

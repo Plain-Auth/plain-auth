@@ -267,6 +267,15 @@ func (a *Auth) finishOAuth(w http.ResponseWriter, r *http.Request, id string) (a
 		return nil, &APIError{400, "INVALID_CALLBACK_URL", "Invalid OAuth callback"}
 	}
 	q := r.URL.Query()
+	// A provider-initiated sign-in brings a code and no state. The code is
+	// never exchanged: a fresh authorization starts in its place.
+	if _, sent := q["state"]; !sent && p.AllowIdPInitiated && len(q["code"]) == 1 && q.Get("code") != "" {
+		target, _, err := a.beginBrowserOAuth(w.Header(), r, p, wireBody{}, OAuthFlow{Provider: id}, nil)
+		if err != nil {
+			return nil, err
+		}
+		return Redirect(target), nil
+	}
 	state := q.Get("state")
 	return a.finishBrowserOAuth(w, r, id, p, state, q, nil)
 }
