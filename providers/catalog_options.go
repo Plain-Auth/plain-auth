@@ -2,6 +2,7 @@ package providers
 
 import (
 	"errors"
+	"net/http"
 	"net/url"
 	"slices"
 	"strconv"
@@ -115,9 +116,17 @@ type FacebookOptions struct {
 	// ConfigID is sent as config_id, for a Facebook Login for Business
 	// configuration.
 	ConfigID string
+	// Audiences lists the app's other Facebook App IDs whose Limited Login
+	// ID tokens and access tokens may sign in directly; the client ID is
+	// always accepted.
+	Audiences []string
+	// HTTPClient fetches the Limited Login signing keys.
+	HTTPClient *http.Client
 }
 
-// Facebook configures Facebook sign-in.
+// Facebook configures Facebook sign-in: the browser flow, and direct
+// sign-in with an iOS Limited Login ID token or an access token. Each access
+// token is first checked with Graph's debug_token, which needs the secret.
 func Facebook(clientID, secret string, o FacebookOptions) auth.OAuthProvider {
 	entry := catalog["facebook"]
 	if len(o.Fields) > 0 {
@@ -127,6 +136,7 @@ func Facebook(clientID, secret string, o FacebookOptions) auth.OAuthProvider {
 	if o.ConfigID != "" {
 		p.AuthorizationParams.Set("config_id", o.ConfigID)
 	}
+	facebookLogin(&p, clientIDs(clientID, o.Audiences), secret, entry.Profile, o.HTTPClient)
 	return p
 }
 

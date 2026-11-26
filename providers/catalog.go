@@ -68,6 +68,8 @@ func New(name, clientID, secret string) (auth.OAuthProvider, error) {
 		return Apple(clientID, secret), nil
 	case "microsoft":
 		return Microsoft(clientID, secret, MicrosoftOptions{})
+	case "facebook":
+		return Facebook(clientID, secret, FacebookOptions{}), nil
 	}
 	if preset, ok := profilePresets[name]; ok {
 		return preset.provider(name, clientID, secret), nil
@@ -164,26 +166,9 @@ func (e catalogEntry) resolve(ctx context.Context, name, clientID, secret string
 	if name == "reddit" {
 		req.Header.Set("User-Agent", "authn-go")
 	}
-	var fbSubject string
-	if name == "facebook" {
-		target := "https://graph.facebook.com/debug_token?" + url.Values{"access_token": {clientID + "|" + secret}, "input_token": {t.AccessToken}}.Encode()
-		debugReq, err := http.NewRequestWithContext(ctx, "GET", target, nil)
-		if err != nil {
-			return result, err
-		}
-		verified, err := providerJSON(client, debugReq)
-		data := verified.object("data")
-		if err != nil || !data.verified("is_valid") || data.text("app_id") != clientID || data.text("user_id") == "" {
-			return result, errors.New("Facebook token binding failed")
-		}
-		fbSubject = data.text("user_id")
-	}
 	p, err := providerJSON(client, req)
 	if err != nil {
 		return result, err
-	}
-	if name == "facebook" && p.text("id") != fbSubject {
-		return result, errors.New("Facebook account binding failed")
 	}
 	if name == "wechat" && (p.text("openid") != t.Extra("openid") || (p.text("errcode") != "" && p.text("errcode") != "0")) {
 		return result, errors.New("WeChat account binding failed")

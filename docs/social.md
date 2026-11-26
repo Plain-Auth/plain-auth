@@ -106,7 +106,7 @@ The catalog covers default provider flows. Some presets also have a constructor 
 | `providers.PayPal(id, secret, providers.PayPalOptions{Live: true})` | The live endpoints instead of the sandbox |
 | `providers.Discord(id, secret, providers.DiscordOptions{Permissions: 8})` | Bot permissions, sent only when the `bot` scope is requested; zero sends none |
 | `providers.Dropbox(id, secret, providers.DropboxOptions{AccessType: "offline"})` | `token_access_type`: offline, online or legacy |
-| `providers.Facebook(id, secret, providers.FacebookOptions{Fields: []string{"birthday"}, ConfigID: "..."})` | More Graph profile fields, and a Login for Business `config_id` |
+| `providers.Facebook(id, secret, providers.FacebookOptions{Fields: []string{"birthday"}, ConfigID: "..."})` | More Graph profile fields, and a Login for Business `config_id`; `Audiences` for direct sign-in, described below |
 | `providers.Reddit(id, secret, providers.RedditOptions{Duration: "permanent"})` | `duration`, permanent for a refresh token |
 
 `GitLab` and `Salesforce` return an error for a URL they cannot use. A call's `additionalParams` override the parameters these options send. Other provider-specific parameters, custom claims mappings and scope overrides may require configuring `auth.OAuthProvider` directly. [Preset option tests](../providers/catalog_options_test.go)
@@ -310,6 +310,17 @@ Browser exchanges pass the provider's tokens to the hook. Read a provider-specif
 ## Encrypt provider credentials
 
 Set `Options.EncryptOAuthTokens` to `true` on every instance before accepting social sign-ins to store encrypted access, refresh and ID tokens. The default is `false`. Encryption uses the configured key ring, authenticates the provider, account subject and token field, and preserves the provider's expiry and scopes for lookup. New grants and refreshed tokens use the active encryption key. Keep a retiring key available until all accounts that use it have refreshed or reauthorized. Applications continue to use the same account-selection, access, refresh and user-info APIs. [Storage and rotation tests](../adapters/sqlstore/oauth_encryption_test.go)
+
+## Facebook Limited Login and access tokens
+
+`providers.Facebook(appID, appSecret, providers.FacebookOptions{Audiences: []string{otherAppID}})` also signs in directly on the sign-in and link routes, with either of two bodies:
+
+| Client | `idToken` body |
+| --- | --- |
+| iOS Limited Login | `{ "token": "<ID token>", "nonce": "<nonce>" }`, with the nonce passed to the SDK's login configuration |
+| An access token | `{ "token": "<access token>", "accessToken": "<the same token>" }` |
+
+A Limited Login ID token must be signed by Facebook's Limited Login keys for the App ID or a listed audience, carry the nonce and be at most an hour old; Facebook does not say whether its email is verified, so it is not. An access token is first checked with Graph's `debug_token`, using the App ID and secret, and must be valid for the App ID or a listed audience; `/me` must then name the same user, without following redirects, so the secret-bearing check never reaches another host. Both name the user by the same app-scoped ID as the browser flow, so they sign into the same account. An access token is kept as the account's access token and signs in at most once an hour. A Limited Login token without a nonce is refused; use the browser flow from an SDK that cannot set one. [Facebook tests](../providers/facebook_test.go)
 
 ## Gumroad, HubSpot, Patreon, Slack and Yandex
 

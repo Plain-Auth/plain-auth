@@ -184,6 +184,8 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
     - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
     - [x] Send the refresh grant to the provider's token endpoint with its client authentication and fields, and return the new tokens ([test](../../providers/catalog_test.go#L283))
     - [x] Refuse a Facebook access token issued to another app, or a profile whose ID differs from the token's user ([test](../../providers/catalog_test.go#L249))
+    - [x] A Limited Login ID token signs in for the App ID or a listed audience with its nonce, within the hour, with an unverified email; another audience, issuer, nonce, key or an old token is refused (deviation: the nonce is required) ([test](../../providers/facebook_test.go#L73))
+    - [x] An access token sent as token and accessToken signs in after debug_token binds it to the app and /me names the same user, a Limited Login token then signs into the same account, and account-info returns the Graph profile ([test](../../providers/facebook_test.go#L106))
   - [x] `figma` ([test](../../providers/catalog_test.go#L283))
     - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
     - [x] Send the refresh grant to the provider's token endpoint with its client authentication and fields, and return the new tokens ([test](../../providers/catalog_test.go#L283))
@@ -376,10 +378,11 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
     - [x] `accessType` ([test](../../providers/catalog_options_test.go#L107))
       - [x] DropboxOptions.AccessType is sent as token_access_type, and a call's additionalParams override it ([test](../../providers/catalog_options_test.go#L107))
   - [ ] `facebook`
-    - [ ] `clientId`
+    - [x] `clientId` ([test](../../providers/facebook_test.go#L162))
       - [x] The client ID given to providers.New reaches the token exchange through real /sign-in/social and callback requests ([test](../../providers/catalog_test.go#L79))
       - [x] Facebook's token check sends the client ID and secret as the app token to debug_token ([test](../../providers/catalog_test.go#L123))
       - [x] Refuse a Facebook access token that debug_token reports as issued to another app ([test](../../providers/catalog_test.go#L249))
+      - [x] Several App IDs: Audiences adds App IDs whose access tokens and Limited Login tokens sign in, besides the client ID ([test](../../providers/facebook_test.go#L162))
     - [x] `fields` ([test](../../providers/catalog_options_test.go#L43))
       - [x] FacebookOptions.Fields are appended to the Graph profile fields, which stay id, name, email and picture without them ([test](../../providers/catalog_options_test.go#L43))
     - [x] `configId` ([test](../../providers/catalog_options_test.go#L107))
