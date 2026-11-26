@@ -204,7 +204,7 @@
     - [x] Discover Groups only when the store provides the Group operations ([test](../../../conformance/scim-contract.mjs#L92))
     - [x] Serve the resource type list without a bearer credential ([test](../../../adapters/sqlstore/scim_test.go#L92))
     - [x] List the Group resource type on both runtimes ([test](../../../conformance/scim-contract.mjs#L102))
-    - [x] Give each resource type its own location, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_users_contract_test.go#L111))
+    - [x] Give each resource type its own location, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_users_contract_test.go#L124))
   - [ ] `GET /scim/v2/ResourceTypes/:resourceTypeId`
     - [x] Resolve the User resource type and reject an unavailable resource type ([test](../../../plugins/scim/http_test.go#L26))
     - [x] Retrieve the Group resource type on both implementations ([test](../../../conformance/scim-contract.mjs#L92))
@@ -293,6 +293,7 @@
     - [x] Normalize directory role values, type and primary flags and replace the role profile when reprovisioning the same inactive external identity ([test](../../../conformance/scim-roles.mjs#L59))
     - [x] ValidateUserInfo checks a provisioned user with method scim on SQLite, PostgreSQL and MySQL, and a refusal answers a SCIM 403 with the message and stores nothing ([test](../../../adapters/sqlstore/scim_user_validation_test.go#L17))
     - [x] Link an existing account from a POST, and skip the resolver for a reclaimed deleted or inactive User's externalId ([test](../../../adapters/sqlstore/scim_identity_test.go#L197))
+    - [x] Narrow a POST response with attributes, create an inactive User, and refuse a body without userName or schemas, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_users_contract_test.go#L110))
   - [x] `GET /scim/v2/Users/:userId` ([test](../../../adapters/sqlstore/scim_test.go#L143))
     - [x] Read a scoped User written by the other implementation from shared SQLite ([test](../../../conformance/scim-contract.mjs#L45))
     - [x] Read canonical directory role arrays from SQLite records written by either implementation ([test](../../../conformance/scim-roles.mjs#L75))

@@ -103,6 +103,19 @@ func TestSCIMUserContract(t *testing.T) {
 			// A deleted User answers 404 to a second DELETE.
 			call("DELETE", lowerPath, "writer", nil, 204, "")
 			call("DELETE", lowerPath, "writer", nil, 404, "")
+			// POST narrows its response, creates inactive Users and refuses
+			// malformed bodies.
+			narrowed := call("POST", "Users?attributes=userName", "writer", user("writer", "narrow", "", "narrow@example.test"), 201, "")
+			if narrowed["userName"] != "narrow" || narrowed["id"] == nil || narrowed["emails"] != nil || narrowed["meta"] != nil {
+				t.Fatal("attributes did not narrow a POST response", narrowed)
+			}
+			inactive := user("writer", "inactive", "", "inactive@example.test")
+			inactive["active"] = false
+			if got := call("POST", "Users", "writer", inactive, 201, ""); got["active"] != false {
+				t.Fatal("a User created inactive was active", got)
+			}
+			call("POST", "Users", "writer", map[string]any{"schemas": []string{scim.UserSchema}, "emails": []map[string]any{{"value": "nouser@example.test"}}}, 400, "")
+			call("POST", "Users", "writer", map[string]any{"userName": "noschemas", "emails": []map[string]any{{"value": "noschemas@example.test"}}}, 400, "")
 			// Each resource type names its own location.
 			types := call("GET", "ResourceTypes", "", nil, 200, "")
 			for _, raw := range types["Resources"].([]any) {
