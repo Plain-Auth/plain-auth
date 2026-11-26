@@ -340,3 +340,60 @@ func TestSCIMUserPatchOperationForms(t *testing.T) {
 		})
 	}
 }
+
+// A row written before serializedAttributes existed is read from its
+// mirror columns, and its next change writes the canonical attributes.
+func TestSCIMUserPrereleaseRow(t *testing.T) {
+	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
+		t.Run(dialect, func(t *testing.T) {
+			ctx := t.Context()
+			store, call := attributeDirectory(t, dialect)
+			name := map[string]any{"formatted": "Legacy Employee", "givenName": "Legacy", "familyName": "Employee"}
+			created := call("POST", "Users", map[string]any{"schemas": []string{scim.UserSchema}, "userName": "legacy.login@example.test", "name": name,
+				"emails": []any{map[string]any{"value": "legacy.primary@example.test", "primary": true}}}, 201, "the User was refused")
+			id := created["id"].(string)
+			setColumn := func(value any) {
+				t.Helper()
+				if _, err := store.db.ExecContext(ctx, store.bind(`UPDATE "scimUser" SET "serializedAttributes"=? WHERE "id"=?`), value, id); err != nil {
+					t.Fatal(err)
+				}
+			}
+			stored := func() bool {
+				t.Helper()
+				var raw any
+				if err := store.db.QueryRowContext(ctx, store.bind(`SELECT "serializedAttributes" FROM "scimUser" WHERE "id"=?`), id).Scan(&raw); err != nil {
+					t.Fatal(err)
+				}
+				return raw != nil
+			}
+			setColumn(nil)
+			got := call("GET", "Users/"+id, nil, 200, "GET failed on a prerelease row")
+			if !jsonEqual(got["name"], name) {
+				t.Fatal("a prerelease row lost its mirrored name", got["name"])
+			}
+			if !jsonEqual(got["emails"], []any{map[string]any{"value": "legacy.primary@example.test", "primary": true}}) {
+				t.Fatal("a prerelease row lost its mirrored emails", got["emails"])
+			}
+			if stored() {
+				t.Fatal("reading a prerelease row rewrote it")
+			}
+			call("PUT", "Users/"+id, map[string]any{"schemas": []string{scim.UserSchema}, "userName": "legacy.login@example.test", "name": map[string]any{"formatted": "Renamed Employee"},
+				"emails": []any{map[string]any{"value": "legacy.primary@example.test", "primary": true}}}, 200, "PUT failed on a prerelease row")
+			if !stored() {
+				t.Fatal("PUT did not write canonical attributes for a prerelease row")
+			}
+			setColumn(nil)
+			call("PATCH", "Users/"+id, map[string]any{"schemas": []string{scim.PatchSchema}, "Operations": []any{map[string]any{"op": "replace", "path": "title", "value": "Archivist"}}}, 200, "PATCH failed on a prerelease row")
+			if got := call("GET", "Users/"+id, nil, 200, "GET failed"); got["title"] != "Archivist" {
+				t.Fatal("PATCH failed on a prerelease row", got["title"])
+			}
+			if !stored() {
+				t.Fatal("PATCH did not write canonical attributes for a prerelease row")
+			}
+			setColumn("")
+			if got := call("GET", "Users/"+id, nil, 200, "an empty serializedAttributes value was not read from the mirrors"); got["name"].(map[string]any)["formatted"] != "Renamed Employee" {
+				t.Fatal("an empty serializedAttributes value was not read from the mirrors", got["name"])
+			}
+		})
+	}
+}

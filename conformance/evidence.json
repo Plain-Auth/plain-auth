@@ -45262,5 +45262,13 @@
       "test": "adapters/sqlstore/scim_attributes_test.go",
       "marker": "t.Fatal(\"PATCH accepted a write to User meta\", body)"
     }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L554": [
+    {
+      "label": "Serve GET, PUT and PATCH for a row without serializedAttributes from its mirror columns, write canonical attributes on its next change and read an empty value the same way, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "func TestSCIMUserPrereleaseRow(",
+      "complete": true
+    }
   ]
 }

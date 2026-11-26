@@ -538,4 +538,5 @@
     - [ ] `scimManagedConnectionEvent`
       - [x] Emit the scimManagedConnectionEvent table from the schema CLI exactly as the other runtime's migration ([test](../../../conformance/schema.test.mjs#L106))
       - [x] Record connection creation, issuance, rotation and revocation events in sequence order ([test](../../../adapters/sqlstore/scim_managed_test.go#L233))
-    - [ ] Legacy SCIM cutover
+    - [x] Legacy SCIM cutover ([test](../../../adapters/sqlstore/scim_attributes_test.go#L346))
+      - [x] Serve GET, PUT and PATCH for a row without serializedAttributes from its mirror columns, write canonical attributes on its next change and read an empty value the same way, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L346))

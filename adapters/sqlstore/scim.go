@@ -109,7 +109,9 @@ func scanSCIMUser(row rowScanner) (u directoryUser, err error) {
 		return u, err
 	}
 	u.ExternalID = external.String
-	if attrs.Valid {
+	// An empty or NULL value predates canonical attributes; derive the
+	// profile from the mirror columns like another runtime.
+	if attrs.Valid && attrs.String != "" {
 		err = json.Unmarshal([]byte(attrs.String), &u.Attributes)
 		if err == nil && u.Attributes == nil {
 			err = errors.New("sqlstore: empty SCIM attributes")
@@ -121,10 +123,10 @@ func scanSCIMUser(row rowScanner) (u directoryUser, err error) {
 		return u, err
 	}
 	name := map[string]any{"formatted": formatted}
-	if given.Valid {
+	if given.String != "" {
 		name["givenName"] = given.String
 	}
-	if family.Valid {
+	if family.String != "" {
 		name["familyName"] = family.String
 	}
 	u.Attributes = map[string]any{"name": name, "schemas": []any{scim.UserSchema}, "emails": entries}
