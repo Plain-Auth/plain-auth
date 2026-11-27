@@ -4,7 +4,6 @@ package polar
 import (
 	"context"
 	"crypto/sha256"
-	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -59,9 +58,17 @@ type WebhookOptions struct {
 	Secret string
 	// LegacySecret selects the raw UTF-8 signing key used for secrets created before 8 September 2026.
 	LegacySecret bool
-	// OnCheckout runs in the same SQL transaction as the verified delivery receipt.
-	// Use tx for local writes or an outbox. External effects belong outside this callback.
-	OnCheckout func(context.Context, *sql.Tx, Event) error
+	// OnEvent receives every verified delivery once the integration has
+	// recorded its own checkout state. It never runs inside a store
+	// transaction or while a ledger lock is held. Polar retries a failed
+	// delivery for a limited time, and a retry, a concurrent copy or a replay
+	// inside the five-minute signature window runs OnEvent again with the
+	// same DeliveryID, so make its effects idempotent. Deliveries for one
+	// checkout can run concurrently and finish out of order (see
+	// Purchase.Changed). An error or panic is logged without its text and
+	// answered with 400 so Polar retries; it never undoes the recorded
+	// checkout state.
+	OnEvent func(context.Context, Event) error
 }
 
 // Service handles personal checkouts and signed deliveries for one merchant.
@@ -320,7 +327,8 @@ func (s *Service) createRemote(ctx context.Context, req reservation, email strin
 	if snapshot.Attempt != req.Attempt {
 		return conflict()
 	}
-	return s.apply(ctx, snapshot, nil)
+	_, err = s.apply(ctx, snapshot, nil)
+	return err
 }
 
 func pending() error {
@@ -358,5 +366,6 @@ func (s *Service) ReconcileCheckout(ctx context.Context, id string) error {
 	if reply == nil || reply.Checkout == nil || reply.Checkout.ID != id {
 		return conflict()
 	}
-	return s.apply(ctx, fromSDK(reply.Checkout), nil)
+	_, err = s.apply(ctx, fromSDK(reply.Checkout), nil)
+	return err
 }

@@ -13398,6 +13398,11 @@
       "label": "Verify raw-body and time-bound delivery signatures for current and legacy merchant secrets",
       "test": "integrations/polar/checkout_test.go",
       "marker": "\"wrong-mode\", time.Now(), true"
+    },
+    {
+      "label": "Keep an unsigned or altered delivery away from the event handler",
+      "test": "integrations/polar/webhook_test.go",
+      "marker": "// An unsigned delivery never reaches the handler."
     }
   ],
   "docs/content/docs/plugins/polar.mdx#L39": [
@@ -13457,20 +13462,35 @@
       "label": "Close an expired checkout and preserve completed state when the original creation response arrives late",
       "test": "integrations/polar/checkout_test.go",
       "marker": "an expired checkout still disclosed its hosted URL"
+    },
+    {
+      "label": "Run the event handler for every verified delivery and answer its error or panic with 400 so Polar retries, without logging the error text, on three SQL engines",
+      "test": "integrations/polar/webhook_test.go",
+      "marker": "// A failing or panicking handler answers 400 without its text."
+    },
+    {
+      "label": "Run the event handler only after the checkout state has committed, with no ledger transaction open",
+      "test": "integrations/polar/checkout_test.go",
+      "marker": "// No ledger transaction is open while the handler runs."
     }
   ],
   "docs/content/docs/plugins/polar.mdx#L444/`onCheckoutCreated`": [
     {
-      "label": "Run a callback in the same transaction as its checkout and receipt, with rollback and redelivery",
+      "label": "Deliver a reserved checkout's creation with its committed purchase, keep the checkout after a handler error and run the handler again on retry, on three SQL engines",
       "test": "integrations/polar/checkout_test.go",
-      "marker": "transactional callback count"
+      "marker": "the open purchase was not reported once per state"
+    },
+    {
+      "label": "Pass a merchant checkout this installation did not reserve to the handler without a purchase",
+      "test": "integrations/polar/webhook_test.go",
+      "marker": "// An untagged checkout and a bad timestamp reach the handler without a purchase."
     }
   ],
   "docs/content/docs/plugins/polar.mdx#L445/`onCheckoutUpdated`": [
     {
-      "label": "Handle concurrent repeat deliveries once and prevent stale notifications from reopening checkout",
+      "label": "Apply concurrent copies of one update once in the ledger, and pass a stale update to the handler without a purchase, on three SQL engines",
       "test": "integrations/polar/checkout_test.go",
-      "marker": "duplicate/out-of-order delivery executed"
+      "marker": "a stale delivery was reported as a purchase"
     }
   ],
   "docs/content/docs/plugins/polar.mdx#L18/Customer Portal": [
@@ -52012,6 +52032,13 @@
       "label": "Configure the client, merchant and the checkout, portal and webhook sections, refusing a section without the ledger or checkout without products and a success URL",
       "test": "integrations/polar/checkout_test.go",
       "marker": "func TestOptionSections(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/plugins/polar.mdx#L443/`onPayload`": [
+    {
+      "label": "Pass every verified delivery, untagged checkouts and undefined types included, to one handler with its delivery ID, type, timestamp and body, on three SQL engines",
+      "test": "integrations/polar/webhook_test.go",
+      "marker": "func TestEventHandlerReceivesVerifiedDeliveries(t *testing.T) {"
     }
   ]
 }

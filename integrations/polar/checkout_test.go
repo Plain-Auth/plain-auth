@@ -258,18 +258,35 @@ func TestOwnedCheckoutAndVerifiedDeliveries(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, err = db.Exec("CREATE TABLE customer_checkout_events (delivery VARCHAR(128) PRIMARY KEY, owner_id VARCHAR(128) NOT NULL)"); err != nil {
-				t.Fatal(err)
-			}
 			mock := new(provider)
 			var reject atomic.Bool
+			// The handler fulfils once per checkout and status, as the guide advises.
+			var handledMu sync.Mutex
+			fulfilled := map[string]Purchase{}
+			byDelivery := map[string]*Purchase{}
+			handled := 0
+			purchases := func() int {
+				handledMu.Lock()
+				defer handledMu.Unlock()
+				return len(fulfilled)
+			}
 			opts := Options{Client: polargo.New(polargo.WithSecurity("fake-token"), polargo.WithClient(transport(mock.create))), Ledger: ledger, OrganizationID: merchant,
 				Checkout: &CheckoutOptions{Products: map[string]string{"pro": product, "team": otherProduct}, HostedOrigin: hosted, SuccessURL: "/success?checkout_id={CHECKOUT_ID}", ReturnURL: "/cancel"}}
 			opts.Webhooks = &WebhookOptions{Secret: dashboardSecret,
-				OnCheckout: func(ctx context.Context, tx *sql.Tx, e Event) error {
-					if _, err := tx.ExecContext(ctx, ledger.bind("INSERT INTO customer_checkout_events (delivery,owner_id) VALUES (?,?)"), e.DeliveryID, e.OwnerID); err != nil {
+				OnEvent: func(ctx context.Context, e Event) error {
+					// No ledger transaction is open while the handler runs.
+					probe, cancel := context.WithTimeout(ctx, 2*time.Second)
+					defer cancel()
+					if _, err := ledger.db.ExecContext(probe, ledger.bind("UPDATE plainauth_polar_checkout SET status=status WHERE 1=0")); err != nil {
 						return err
 					}
+					handledMu.Lock()
+					handled++
+					byDelivery[e.DeliveryID] = e.Purchase
+					if p := e.Purchase; p != nil {
+						fulfilled[p.CheckoutID+":"+p.Status] = *p
+					}
+					handledMu.Unlock()
 					if reject.Swap(false) {
 						return errors.New("transient callback failure")
 					}
@@ -392,19 +409,25 @@ func TestOwnedCheckoutAndVerifiedDeliveries(t *testing.T) {
 			expect(t, call(a, "/polar/webhooks", raw, "", nil, ambiguous), 403)
 			unknown := eventPayload("unrelated.new.event", nil)
 			expect(t, notify(a, unknown, "future-event-type"), 200)
+			// A failing handler answers 400 after the ledger committed the
+			// delivery, so the lost response recovers and the retry, on a node
+			// with only webhooks, runs the handler again.
 			reject.Store(true)
-			expect(t, notify(a, raw, "created"), 500)
-			expect(t, buy(replica, alice, "lost", body), 409)
+			if w := notify(a, raw, "created"); w.Code != 400 || !strings.Contains(w.Body.String(), "POLAR_WEBHOOK_ERROR") || strings.Contains(w.Body.String(), "transient") {
+				t.Fatal("a failing handler was not answered with POLAR_WEBHOOK_ERROR", w.Code, w.Body.String())
+			}
 			expect(t, buy(hooksOnly, alice, "lost", body), 404)
 			expect(t, notify(hooksOnly, raw, "created"), 200)
-			if !strings.Contains(expect(t, buy(a, alice, "lost", body), 200), snapshot["id"].(string)) {
+			if !strings.Contains(expect(t, buy(replica, alice, "lost", body), 200), snapshot["id"].(string)) {
 				t.Fatal("signed event failed to recover lost response")
 			}
 			expect(t, notify(a, raw, "created"), 200)
 			expect(t, notify(a, raw+" ", "created"), 409)
-			var count int
-			if err := db.QueryRow("SELECT COUNT(*) FROM customer_checkout_events").Scan(&count); err != nil || count != 1 {
-				t.Fatalf("transactional callback count = %d: %v", count, err)
+			handledMu.Lock()
+			opened, runs := fulfilled[snapshot["id"].(string)+":open"], handled
+			handledMu.Unlock()
+			if purchases() != 1 || opened.OwnerID == "" || opened.ProductID != product || opened.Changed.IsZero() || runs < 3 {
+				t.Fatalf("the open purchase was not reported once per state: %d %+v %d", purchases(), opened, runs)
 			}
 			snapshot["status"] = "succeeded"
 			snapshot["modified_at"] = time.Now().Add(time.Minute).UTC()
@@ -421,10 +444,16 @@ func TestOwnedCheckoutAndVerifiedDeliveries(t *testing.T) {
 					t.Fatalf("concurrent duplicate returned %d", code)
 				}
 			}
+			handledMu.Lock()
+			before := handled
+			handledMu.Unlock()
 			expect(t, notify(a, raw, "old-open"), 200)
 			expect(t, buy(a, alice, "lost", body), 409)
-			if err := db.QueryRow("SELECT COUNT(*) FROM customer_checkout_events").Scan(&count); err != nil || count != 2 {
-				t.Fatalf("duplicate/out-of-order delivery executed: %d %v", count, err)
+			handledMu.Lock()
+			staleRan, stalePurchase := handled-before, byDelivery["old-open"]
+			handledMu.Unlock()
+			if purchases() != 2 || staleRan != 1 || stalePurchase != nil {
+				t.Fatalf("a stale delivery was reported as a purchase: %d %d", purchases(), staleRan)
 			}
 			// A read-only provider fetch can recover a known, bound checkout even if webhook delivery is delayed.
 			expect(t, buy(replica, bob, "read-recovery", body), 409)
@@ -439,7 +468,7 @@ func TestOwnedCheckoutAndVerifiedDeliveries(t *testing.T) {
 			if !strings.Contains(expect(t, buy(a, bob, "read-recovery", body), 200), saved["id"].(string)) {
 				t.Fatal("read-only recovery lost customer ownership")
 			}
-			if err := db.QueryRow("SELECT COUNT(*) FROM customer_checkout_events").Scan(&count); err != nil || count != 2 {
+			if purchases() != 2 {
 				t.Fatal("operator recovery synthesized a provider delivery")
 			}
 
