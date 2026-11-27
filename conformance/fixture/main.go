@@ -685,6 +685,9 @@ func main() {
 	if config := os.Getenv("CONFORMANCE_RESOURCE_CHALLENGES"); config != "" {
 		handler = resourceChallengeFixture(config, handler)
 	}
+	if config := os.Getenv("CONFORMANCE_RESOURCE_VERIFIER"); config != "" {
+		handler = resourceVerifierFixture(config, handler)
+	}
 	if discoveryConfig != "" {
 		var config struct {
 			Metadata oauthprovider.ResourceMetadata

@@ -1021,6 +1021,8 @@
   - [ ] Verify access tokens
     - [x] Return a browser-readable challenge for a missing or invalid token on an application route ([test](../../../conformance/resource-challenges.mjs#L27))
     - [x] Check authenticated token binding, request method, public URL and proof-of-possession errors on a protected HTTP route ([test](../../../conformance/dpop-proofs.mjs#L67))
+    - [x] Verify bearer access tokens against the issuer's JWKS with the same status, error, description and missing scopes as the other runtime; requiring at+jwt and exp is a documented deviation ([test](../../../conformance/resource-verifier.mjs#L10))
+    - [x] Refuse a wrong typ, issuer or audience, a missing claim, an expired or not yet valid token, symmetric and unsigned tokens, malformed scope claims and DPoP-bound tokens, and report every missing scope at once ([test](../../../plugins/oauthprovider/access_token_verifier_test.go#L22))
   - [ ] JWT or opaque tokens
     - [x] Introspect a resource-bound JWT minted by an independent issuer and preserve the claims originally signed for the grant ([test](../../../conformance/oauth-signed-introspection.mjs#L49))
     - [ ] How the API verifies it
@@ -1036,7 +1038,8 @@
     - [x] Introspect a resource-bound JWT minted by an independent issuer and preserve the claims originally signed for the grant ([test](../../../conformance/oauth-signed-introspection.mjs#L49))
     - [x] Distinguish an expired or malformed signed JWT from an unrecognized token that still matches an independently stored refresh grant ([test](../../../conformance/oauth-signed-introspection.mjs#L84))
     - [x] Recheck current credentials, session and resource state and surface key-store failures on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_signed_introspection_test.go#L41))
-  - [ ] Scopes and permissions
+  - [x] Scopes and permissions ([test](../../../plugins/oauthprovider/access_token_verifier_test.go#L161))
+    - [x] Match required scopes exactly or with a host matcher over the de-duplicated granted scopes, reporting every missing scope as insufficient_scope ([test](../../../plugins/oauthprovider/access_token_verifier_test.go#L161))
   - [x] Protected resource metadata ([test](../../../conformance/resource-discovery.mjs#L7))
     - [x] Publish a path-specific HTTPS document with local issuer defaults, explicit issuers, filtered scopes and empty capabilities ([test](../../../conformance/resource-discovery.mjs#L7))
     - [x] Preserve escaped paths and query identity and serve public GET, HEAD and preflight over TLS ([test](../../../plugins/oauthprovider/discovery_test.go#L15))

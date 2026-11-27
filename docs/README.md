@@ -92,6 +92,7 @@ Each guide explains one capability and links to the tests that prove it. New to 
 | Add discovery fields to the OAuth provider through an extension | [OAuth provider extensions](oauth-extensions.md) |
 | Read current OIDC profile and email claims using a signed or opaque access token | [OpenID Connect UserInfo](oauth-userinfo.md) |
 | Publish OAuth issuers and scopes, verify DPoP proofs and return authentication challenges from a protected API | [Resource discovery and challenges](oauth-resource-discovery.md) |
+| Verify the provider's signed access tokens and their scopes in your API or another service | [Protect your API](oauth-resource-server.md) |
 | Register OAuth resources, change their policies, and link registered clients | [Resource management](oauth-resource-management.md) |
 | Register OAuth clients and rotate confidential client secrets | [OAuth client registration](oauth-client-registration.md) |
 | Grant or revoke machine-to-machine scopes from Go server code | [Machine scope management](oauth-client-registration.md#grant-machine-to-machine-scopes) |

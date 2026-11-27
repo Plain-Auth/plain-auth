@@ -1926,6 +1926,11 @@ test("a provider extension adds discovery fields without replacing the provider'
   await compareExtensionMetadata(t, { reference, goFixture });
 });
 
+test("a resource server verifies bearer access tokens as the other runtime does", async t => {
+  const { compareResourceVerifier } = await import("./resource-verifier.mjs");
+  await compareResourceVerifier(t, goFixture);
+});
+
 test("a provider extension grant issues client tokens through the provider", async t => {
   const { compareExtensionGrant } = await import("./oauth-extensions.mjs");
   await compareExtensionGrant(t, { reference, goFixture });
