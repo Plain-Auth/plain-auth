@@ -286,8 +286,10 @@ const insecureRedirectMessage = "Redirect URI must use HTTPS (HTTP allowed only 
 
 // redirectTransportAllowed applies the HTTPS policy alone, as another
 // runtime does at authorize and for post-logout URIs: any scheme but http
-// passes, and http passes on a loopback host for a client that is not web
-// or when AllowHTTPRedirect accepts it, never with credentials.
+// passes, http passes on a loopback host for a client that is not web, and
+// otherwise when AllowHTTPRedirect accepts a URL without credentials. A
+// native loopback callback with credentials passes here and fails the
+// registered match.
 func (r RegistrationOptions) redirectTransportAllowed(raw string, web bool) bool {
 	u, err := url.Parse(raw)
 	if err != nil || !u.IsAbs() {

@@ -1911,6 +1911,11 @@ test("machine clients obtain signed and opaque access tokens for their registere
   await compareResourceMachineTokens(t, { reference, goFixture });
 });
 
+test("a pushed authorization request resolves through the host callback", async t => {
+  const { compareRequestURI } = await import("./oauth-request-uri.mjs");
+  await compareRequestURI(t, { reference, goFixture });
+});
+
 test("a required openid scope refuses authorization requests that omit it", async t => {
   const { compareRequiredOpenID } = await import("./oauth-require-openid.mjs");
   await compareRequiredOpenID(t, { reference, goFixture });

@@ -162,11 +162,11 @@ func groupOperations(raw map[string]any) ([]any, error) {
 	}
 	schemas, ok := m["schemas"].([]any)
 	if !ok || len(schemas) != 1 || schemas[0] != PatchSchema {
-		return nil, invalid("invalidSyntax", "The PatchOp schema is required")
+		return nil, invalid("invalidValue", "The PatchOp schema is required")
 	}
 	ops, ok := m["Operations"].([]any)
 	if !ok {
-		return nil, invalid("invalidSyntax", "Operations must be an array")
+		return nil, invalid("invalidValue", "Operations must be an array")
 	}
 	return ops, nil
 }
@@ -253,7 +253,7 @@ func (g *groupPatch) attribute(path, op string, val any, provided bool) error {
 func groupOpShape(raw any) (m map[string]any, op, path string, e error) {
 	record, ok := raw.(map[string]any)
 	if !ok {
-		return nil, "", "", invalid("invalidSyntax", "Expected a Group patch operation")
+		return nil, "", "", invalid("invalidValue", "Expected a Group patch operation")
 	}
 	if m, e = object(record, []string{"op", "path", "value"}); e != nil {
 		return nil, "", "", e
@@ -267,12 +267,12 @@ func groupOpShape(raw any) (m map[string]any, op, path string, e error) {
 		op = strings.ToLower(str)
 	}
 	if op != "remove" && op != "replace" && op != "add" {
-		return nil, "", "", invalid("invalidSyntax", "Unknown Group patch operation")
+		return nil, "", "", invalid("invalidValue", "Unknown Group patch operation")
 	}
 	if m["path"] != nil {
 		var ok bool
 		if path, ok = m["path"].(string); !ok {
-			return nil, "", "", invalid("invalidPath", "Expected a Group attribute path")
+			return nil, "", "", invalid("invalidValue", "Expected a Group attribute path")
 		}
 		path = strings.TrimSpace(path)
 	}

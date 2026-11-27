@@ -48540,7 +48540,7 @@
   ],
   "plugin-symbol/oauth-provider/isRedirectUriTransportAllowed": [
     {
-      "label": "Accept every scheme but http, http on a loopback host for a client that is not web or when the host approves it, and never http with credentials or an unparsable URL",
+      "label": "Accept every scheme but http and http on a loopback host for a client that is not web, otherwise http only when the host approves a URL without credentials, and refuse an unparsable or relative URL",
       "test": "plugins/oauthprovider/registration_test.go",
       "marker": "func TestRedirectTransportPolicy(",
       "complete": true
@@ -48673,6 +48673,19 @@
       "label": "Read the client's public fields from the login page's signed query and refuse another client, an altered query and a missing one, on both runtimes",
       "test": "conformance/oauth-browser-login.mjs",
       "marker": "const shown = await request(\"oauth2/public-client-prelogin\", { client_id: app.client_id, oauth_query: q });"
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/requestUriResolver": [
+    {
+      "label": "Resolve a pushed request through the host callback with only client_id kept from the URL, sign the resolved request for the login page, and send an unknown URI, a missing client or a failing resolver nowhere near the client, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_request_uri_test.go",
+      "marker": "func TestPushedAuthorizationRequests(",
+      "complete": true
+    },
+    {
+      "label": "Carry a resolved pushed request to the login page and refuse an unknown URI or a missing client on the error page, on both runtimes",
+      "test": "conformance/oauth-request-uri.mjs",
+      "marker": "const login = await authorize({ client_id: app.client_id, request_uri: \"urn:par:good\", state: \"url\", scope: \"reports\" });"
     }
   ]
 }

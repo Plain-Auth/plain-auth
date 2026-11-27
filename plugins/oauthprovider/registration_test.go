@@ -105,6 +105,8 @@ func TestRedirectTransportPolicy(t *testing.T) {
 		{"http://localhost:3000/cb", true, false}, {"http://192.168.1.2/cb", false, false}, {"http://example.com/cb", true, false},
 		{"http://intranet.example/cb", true, true}, {"http://intranet.example/cb", false, true},
 		{"http://user@intranet.example/cb", true, false}, {"relative/cb", false, false}, {"", false, false},
+		// A native loopback callback passes before credentials are read.
+		{"http://user@127.0.0.1/cb", false, true},
 	} {
 		if got := r.redirectTransportAllowed(tc.uri, tc.web); got != tc.want {
 			t.Errorf("transport of %q (web %v) = %v", tc.uri, tc.web, got)

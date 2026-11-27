@@ -163,6 +163,16 @@ func registrationFixtureOptions() op.Options {
 		}
 	}
 	opts.Authorization.RequireOpenID = os.Getenv("CONFORMANCE_REQUIRE_OPENID") == "1"
+	if os.Getenv("CONFORMANCE_REQUEST_URI") == "1" {
+		// The pushed request conformance/oauth-request-uri.mjs stores.
+		opts.Authorization.RequestURIResolver = func(_ context.Context, requestURI, _ string) (url.Values, error) {
+			if requestURI != "urn:par:good" {
+				return nil, nil
+			}
+			return url.Values{"response_type": {"code"}, "redirect_uri": {"https://reader.example.test/callback"}, "scope": {"openid"}, "state": {"pushed"},
+				"code_challenge": {"E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM"}, "code_challenge_method": {"S256"}}, nil
+		}
+	}
 	if mode == "resources" {
 		opts.Registration.DefaultResources = []string{"urn:reports"}
 		opts.Registration.AllowedResources = []string{"urn:billing", "urn:disabled", "urn:missing"}

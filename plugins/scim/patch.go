@@ -13,13 +13,13 @@ func patchOperations(input any) ([]any, error) {
 	}
 	schemas, ok := m["schemas"].([]any)
 	if !ok || len(schemas) != 1 || schemas[0] != PatchSchema {
-		return nil, invalid("invalidSyntax", "The PatchOp schema is required")
+		return nil, invalid("invalidValue", "The PatchOp schema is required")
 	}
 	// An empty Operations array is a valid no-op; the request body limit
 	// bounds a long one.
 	ops, ok := m["Operations"].([]any)
 	if !ok {
-		return nil, invalid("invalidSyntax", "Operations must be an array")
+		return nil, invalid("invalidValue", "Operations must be an array")
 	}
 	return ops, nil
 }
@@ -85,17 +85,17 @@ func userOps(raw []any) ([]patchOp, error) {
 		if v["op"] != nil {
 			name, ok := v["op"].(string)
 			if !ok {
-				return nil, invalid("invalidSyntax", "Expected a patch operation")
+				return nil, invalid("invalidValue", "Expected a patch operation")
 			}
 			o.op = strings.ToLower(name)
 		}
 		if o.op != "add" && o.op != "replace" && o.op != "remove" {
-			return nil, invalid("invalidSyntax", "Unsupported patch operation")
+			return nil, invalid("invalidValue", "Unsupported patch operation")
 		}
 		if v["path"] != nil {
 			path, ok := v["path"].(string)
 			if !ok {
-				return nil, invalid("invalidPath", "Expected an attribute path")
+				return nil, invalid("invalidValue", "Expected an attribute path")
 			}
 			o.path = strings.TrimSpace(path)
 		}
@@ -109,8 +109,11 @@ func userOps(raw []any) ([]patchOp, error) {
 	return ops, nil
 }
 
+// Every PatchOp shape failure answers invalidValue, as another runtime's
+// body schema failures do.
+//
 // nullOpField reports an operation whose op or path key holds null, which
-// another runtime's body schema refuses as a non-string (invalidValue). Its
+// that schema refuses as a non-string. Its
 // schema reads those exact keys, so a null under another spelling is
 // ignored, as it strips unknown keys. Other operation keys are matched
 // without regard to case here, where it reads only op, path and value.

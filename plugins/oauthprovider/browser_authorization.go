@@ -51,6 +51,11 @@ type BrowserAuthorizationOptions struct {
 	// scheme. Returning an error rejects the redirect.
 	ValidateRedirectURI func(ctx context.Context, requested string, registered []string, defaultMatch bool) (bool, error)
 	RateLimit           *auth.RateLimitRule
+	// RequestURIResolver resolves a pushed authorization request: it returns
+	// the stored parameters for request_uri and the URL's client_id, or nil
+	// when the URI is unknown or expired. It runs outside any transaction,
+	// and the host owns the pushed request endpoint.
+	RequestURIResolver func(ctx context.Context, requestURI, clientID string) (url.Values, error)
 	// AllowPublicClientPrelogin serves POST /oauth2/public-client-prelogin to
 	// login pages without a session. The signed oauth_query must name the
 	// requested client, and its public fields, contacts included, become
@@ -160,6 +165,30 @@ func (opts Options) runBrowserAuthorization(c auth.EndpointContext, q url.Values
 			return nil, err
 		}
 		return browserRedirect(c, page, url.Values{"error": {code}, "error_description": {description}}, false), nil
+	}
+	// A pushed request is resolved first, as in another runtime: every
+	// parameter but client_id comes from the stored request. Failures go to
+	// the error page, where that runtime may use the URL's redirect_uri,
+	// which is not part of the pushed request.
+	if resolve := opts.Authorization.RequestURIResolver; resolve != nil && q.Has("request_uri") && !q.Has("request") {
+		if len(q["client_id"]) != 1 || q.Get("client_id") == "" {
+			return serverError("invalid_request", "client_id is required")
+		}
+		resolved, err := resolve(c.Request.Context(), q.Get("request_uri"), q.Get("client_id"))
+		if err != nil {
+			return nil, err
+		}
+		if resolved == nil {
+			return serverError("invalid_request_uri", "request_uri is invalid or expired")
+		}
+		next := url.Values{}
+		for k, v := range resolved {
+			if k != "request" && k != "request_uri" {
+				next[k] = slices.Clone(v)
+			}
+		}
+		next.Set("client_id", q.Get("client_id"))
+		q = next
 	}
 	selection := opts.Authorization.SelectAccount
 	if selection.Page == "" && slices.Contains(promptValues(q.Get("prompt")), "select_account") {

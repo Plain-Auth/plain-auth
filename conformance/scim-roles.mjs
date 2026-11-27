@@ -51,6 +51,10 @@ export async function directoryRoles(t, {goFixture, reference, client}) {
     assert.deepEqual((await call("GET",path,200)).roles,before);
     const invalidPath = await call("PATCH",path,400,patch({op:"remove",path:'roles[value eq "staff"]'}));
     assert.equal(invalidPath.scimType,"invalidPath");
+    // A body failing the PatchOp shape answers invalidValue.
+    for (const op of [{op:"move",path:"title",value:"X"}, {op:5,path:"title",value:"X"}, {op:"replace",path:5,value:"X"}]) {
+      assert.equal((await call("PATCH",path,400,patch(op))).scimType,"invalidValue");
+    }
     const inactive = await change({op:"replace",path:"active",value:false});
     assert.equal(inactive.active,false);
     assert.deepEqual(inactive.roles,before);

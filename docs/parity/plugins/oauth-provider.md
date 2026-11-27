@@ -10,11 +10,11 @@
     - [x] Publish the issuer serialized as a WHATWG URL without its query, fragment and one trailing slash, and accept both the published and the configured spelling in the token issuer check ([test](../../../oauth_issuer_test.go#L22))
     - [x] Publish discovery for an issuer with a query and trailing slash at its normalized paths ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L115))
     - [x] Sign machine access tokens with the published issuer when the configured issuer has a trailing slash, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_machine_resources_test.go#L127))
-  - [x] `PublicClientJwksValidationResult` ([test](../../../plugins/oauthprovider/registration_test.go#L171))
-    - [x] Return a validation error for unsupported algorithms and private key members ([test](../../../plugins/oauthprovider/registration_test.go#L115))
-    - [x] Refuse each invalid public key set with invalid_client_metadata and the description naming its reason ([test](../../../plugins/oauthprovider/registration_test.go#L171))
-  - [x] `validatePublicClientJwks` ([test](../../../plugins/oauthprovider/registration_test.go#L115))
-    - [x] Validate public RSA, EC and Ed25519 keys and compatible signing algorithms and reject private key material ([test](../../../plugins/oauthprovider/registration_test.go#L115))
+  - [x] `PublicClientJwksValidationResult` ([test](../../../plugins/oauthprovider/registration_test.go#L173))
+    - [x] Return a validation error for unsupported algorithms and private key members ([test](../../../plugins/oauthprovider/registration_test.go#L117))
+    - [x] Refuse each invalid public key set with invalid_client_metadata and the description naming its reason ([test](../../../plugins/oauthprovider/registration_test.go#L173))
+  - [x] `validatePublicClientJwks` ([test](../../../plugins/oauthprovider/registration_test.go#L117))
+    - [x] Validate public RSA, EC and Ed25519 keys and compatible signing algorithms and reject private key material ([test](../../../plugins/oauthprovider/registration_test.go#L117))
   - [ ] `isForbiddenCimdClientMetadataField`
   - [ ] `oauthProviderResourceClient`
     - [x] Derive protected-resource discovery from a local auth mount and issuer or from standalone configuration ([test](../../../conformance/resource-discovery.mjs#L7))
@@ -453,7 +453,9 @@
       - [x] Derive pairwise refresh subjects from the first redirect host with normalized international names, IPv6 literals and non-default ports ([test](../../../plugins/oauthprovider/pairwise_subject_test.go#L10))
       - [x] Keep a stored pairwise account identifier private if the required secret is missing ([test](../../../adapters/sqlstore/oauth_refresh_introspection_test.go#L123))
       - [x] Refuse a pairwise secret shorter than 32 bytes when the plugin is built ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L245))
-    - [ ] `requestUriResolver`
+    - [x] `requestUriResolver` ([test](../../../adapters/sqlstore/oauth_request_uri_test.go#L24))
+      - [x] Resolve a pushed request through the host callback with only client_id kept from the URL, sign the resolved request for the login page, and send an unknown URI, a missing client or a failing resolver nowhere near the client, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_request_uri_test.go#L24))
+      - [x] Carry a resolved pushed request to the login page and refuse an unknown URI or a missing client on the error page, on both runtimes ([test](../../../conformance/oauth-request-uri.mjs#L40))
     - [ ] `dpop`
       - [x] Enforce issuer proof algorithms and shared replay storage during machine issuance on all three SQL engines ([test](../../../adapters/sqlstore/oauth_dpop_issuance_test.go#L39))
       - [x] Keep replay records with the verification records in the shared database when SecondaryStorage holds sessions, so a second issuer refuses a replay and the storage receives no reservation ([test](../../../adapters/sqlstore/dpop_secondary_storage_test.go#L26))
@@ -547,7 +549,7 @@
   - [x] `isPKCERequired` ([test](../../../plugins/oauthprovider/authorization_code_test.go#L15))
     - [x] Resolve public and confidential client PKCE requirements, including offline scopes, OIDC nonces and explicit registration policy ([test](../../../plugins/oauthprovider/authorization_code_test.go#L15))
   - [x] `isRedirectUriTransportAllowed` ([test](../../../plugins/oauthprovider/registration_test.go#L95))
-    - [x] Accept every scheme but http, http on a loopback host for a client that is not web or when the host approves it, and never http with credentials or an unparsable URL ([test](../../../plugins/oauthprovider/registration_test.go#L95))
+    - [x] Accept every scheme but http and http on a loopback host for a client that is not web, otherwise http only when the host approves a URL without credentials, and refuse an unparsable or relative URL ([test](../../../plugins/oauthprovider/registration_test.go#L95))
     - [x] Send a callback that fails the HTTPS policy to the error page with invalid_request and the insecure redirect message, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_redirect_transport_test.go#L110))
   - [x] `isInsecureRedirectUriAllowed` ([test](../../../plugins/oauthprovider/registration_test.go#L75))
     - [x] Refuse an HTTP callback with credentials even on an approved host, and accept an approved HTTP web callback ([test](../../../plugins/oauthprovider/registration_test.go#L75))

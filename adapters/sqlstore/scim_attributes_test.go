@@ -322,7 +322,7 @@ func TestSCIMUserPatchOperationForms(t *testing.T) {
 			if got := patch(200, "an empty pathless PATCH value was refused", map[string]any{"op": "replace", "value": map[string]any{}}); modified(got) != stamped || revision() != unchangedRevision {
 				t.Fatal("an empty pathless PATCH value rewrote the User", stamped, modified(got))
 			}
-			if body := patch(400, "an unknown PATCH op was accepted", map[string]any{"op": "move", "path": "title", "value": "X"}); body["scimType"] != "invalidSyntax" {
+			if body := patch(400, "an unknown PATCH op was accepted", map[string]any{"op": "move", "path": "title", "value": "X"}); body["scimType"] != "invalidValue" {
 				t.Fatal("an unknown PATCH op was accepted", body)
 			}
 			if body := patch(400, "a pathless User remove did not answer noTarget", map[string]any{"op": "remove"}); body["scimType"] != "noTarget" {
