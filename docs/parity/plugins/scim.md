@@ -107,7 +107,7 @@
     - [x] Refuse identity resolution on a store that cannot apply it ([test](../../../plugins/scim/http_test.go#L208))
   - [x] `SCIMIdentityResolution` ([test](../../../adapters/sqlstore/scim_identity_test.go#L158))
     - [x] Create on the zero value, link with manage or preserve, answer 409 for a missing account and 500 for a failing or invalid decision ([test](../../../adapters/sqlstore/scim_identity_test.go#L158))
-    - [x] Run a reclaim whose inactive User vanished before the write through the resolver again, and create an account when the resolver says create ([test](../../../adapters/sqlstore/scim_identity_test.go#L221))
+    - [x] Run a reclaim whose inactive User vanished before the write through the resolver again, and create an account when the resolver says create ([test](../../../adapters/sqlstore/scim_identity_test.go#L230))
     - [x] Create an account for the source on an explicit create decision ([test](../../../adapters/sqlstore/scim_identity_test.go#L184))
   - [x] `SCIMIdentityResolutionContext` ([test](../../../adapters/sqlstore/scim_identity_test.go#L117))
     - [x] Run the SCIM resolver outside the directory transaction, so it can read through the store ([test](../../../adapters/sqlstore/scim_identity_test.go#L117))
@@ -133,7 +133,7 @@
       - [x] Record every use with a zero last-use interval, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_managed_test.go#L348))
   - [ ] `SCIMMicrosoftEntraCompatibilityOptions`
     - [x] `acceptLegacyGroupSchema` ([test](../../../adapters/sqlstore/scim_groups_test.go#L309))
-      - [x] Accept one attribute-free Entra schema marker only when enabled and return the canonical Group schema ([test](../../../plugins/scim/groups_test.go#L8))
+      - [x] Accept one attribute-free Entra schema marker only when enabled and return the canonical Group schema ([test](../../../plugins/scim/groups_test.go#L9))
       - [x] Create a Group under an explicit compatibility option using the legacy marker and the core schema ([test](../../../adapters/sqlstore/scim_groups_test.go#L20))
       - [x] Accept the legacy Entra marker only on Group creation, never echo or advertise it, and refuse it in PUT and PATCH bodies, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_groups_test.go#L309))
   - [x] `SCIMName` ([test](../../../plugins/scim/http_test.go#L155))
@@ -311,7 +311,7 @@
     - [x] Create, reject conflicts, reprovision inactive Users and restore an external identity after deletion ([test](../../../conformance/scim-contract.mjs#L45))
     - [x] Normalize directory role values, type and primary flags and replace the role profile when reprovisioning the same inactive external identity ([test](../../../conformance/scim-roles.mjs#L59))
     - [x] ValidateUserInfo checks a provisioned user with method scim on SQLite, PostgreSQL and MySQL, and a refusal answers a SCIM 403 with the message and stores nothing ([test](../../../adapters/sqlstore/scim_user_validation_test.go#L17))
-    - [x] Link an existing account from a POST, and skip the resolver for a reclaimed deleted or inactive User's externalId ([test](../../../adapters/sqlstore/scim_identity_test.go#L197))
+    - [x] Link an existing account from a POST, and skip the resolver for a reclaimed deleted or inactive User's externalId ([test](../../../adapters/sqlstore/scim_identity_test.go#L206))
     - [x] Narrow a POST response with attributes, create an inactive User, and refuse a body without userName or schemas, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_users_contract_test.go#L115))
   - [x] `GET /scim/v2/Users/:userId` ([test](../../../adapters/sqlstore/scim_test.go#L144))
     - [x] Read a scoped User written by the other implementation from shared SQLite ([test](../../../conformance/scim-contract.mjs#L45))
@@ -393,9 +393,10 @@
     - [x] Grant no authorization for a Group membership by itself, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_groups_contract_test.go#L120))
     - [x] Grant nothing for Users with roles and Groups until a projection is enabled, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_projection_test.go#L185))
   - [ ] Provision users
-    - [ ] Link an existing authentication User
+    - [x] Link an existing authentication User ([test](../../../adapters/sqlstore/scim_identity_test.go#L126))
       - [x] Link an incoming SCIM User to an existing authentication user ([test](../../../adapters/sqlstore/scim_identity_test.go#L126))
-      - [ ] `{ action: "create" }`
+      - [x] `{ action: "create" }` ([test](../../../adapters/sqlstore/scim_identity_test.go#L193))
+        - [x] Create an account for an explicit create decision whose name and email then follow the source, which owns its profile, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_identity_test.go#L193))
       - [x] `{ action: "link", userId, profile: "manage" }` ([test](../../../adapters/sqlstore/scim_identity_test.go#L146))
         - [x] Hand the linked account's email and name to the managing source, unverify a changed email, and refuse a second managing source ([test](../../../adapters/sqlstore/scim_identity_test.go#L146))
       - [x] `{ action: "link", userId, profile: "preserve" }` ([test](../../../adapters/sqlstore/scim_identity_test.go#L132))
@@ -511,8 +512,9 @@
       - [x] A subattribute of a value in a PATCH that adds or replaces whole values, such as `emails` or `addresses` ([test](../../../adapters/sqlstore/scim_attributes_contract_test.go#L127))
         - [x] Drop null subattributes in whole emails and roles PATCH values ([test](../../../adapters/sqlstore/scim_attributes_test.go#L260))
         - [x] Drop null subattributes inside replaced addresses and emails and accept a null member display, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_contract_test.go#L127))
-    - [ ] Microsoft Entra Group compatibility
+    - [x] Microsoft Entra Group compatibility ([test](../../../plugins/scim/groups_test.go#L32))
       - [x] Create a Group whose schema list carries the classic Entra marker when the compatibility option is on ([test](../../../adapters/sqlstore/scim_groups_test.go#L96))
+      - [x] Refuse other Group extension schema URIs, including another Entra one, with invalidValue while the classic marker exception is on ([test](../../../plugins/scim/groups_test.go#L32))
   - [ ] Users
     - [x] Drop a deleted User from the member list of its Group ([test](../../../adapters/sqlstore/scim_groups_test.go#L165))
     - [x] Withdraw the projected role grants of a deleted User ([test](../../../adapters/sqlstore/scim_projection_test.go#L432))

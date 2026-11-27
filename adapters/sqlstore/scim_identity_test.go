@@ -183,6 +183,15 @@ func TestSCIMIdentityResolution(t *testing.T) {
 			if account, err := store.FindAccountUser(ctx, "explicit@example.test"); w.Code != 201 || err != nil || owner(explicit["id"]) != account.ID {
 				t.Fatal("an explicit create decision did not create an account for the source", w.Code, err)
 			}
+			// The created account follows its source's profile.
+			if w := patch(explicit["id"], map[string]any{"op": "replace", "path": "displayName", "value": "Explicit Renamed"}, map[string]any{"op": "replace", "path": "emails", "value": []any{map[string]any{"value": "renamed@example.test", "primary": true}}}); w.Code != 200 {
+				t.Fatal("the explicitly created source could not be patched", w.Code, w.Body.String())
+			}
+			var profileSource string
+			must(store.db.QueryRowContext(ctx, store.bind(`SELECT "profileSourceId" FROM "scimSubject" WHERE "userId"=?`), owner(explicit["id"])).Scan(&profileSource))
+			if name, email, _ := profile(owner(explicit["id"])); name != "Explicit Renamed" || email != "renamed@example.test" || profileSource != explicit["id"] {
+				t.Fatal("an explicitly created account did not follow its source's profile", name, email, profileSource)
+			}
 
 			w, stable := post("writer", "stable", "stable-1", "Stable", "stable@example.test")
 			first := owner(stable["id"])

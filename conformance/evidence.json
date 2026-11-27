@@ -44530,6 +44530,12 @@
       "label": "Create a Group whose schema list carries the classic Entra marker when the compatibility option is on",
       "test": "adapters/sqlstore/scim_groups_test.go",
       "marker": "g[\"schemas\"] = []string{scim.GroupSchema, \"http://schemas.microsoft.com/2006/11/ResourceManagement/ADSCIM/2.0/Group\"}"
+    },
+    {
+      "label": "Refuse other Group extension schema URIs, including another Entra one, with invalidValue while the classic marker exception is on",
+      "test": "plugins/scim/groups_test.go",
+      "marker": "t.Fatal(\"accepted an unknown Group extension schema with the legacy exception\", extension, e)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L231": [
@@ -47527,6 +47533,14 @@
       "label": "Hand the mapper and the reconciler's grant an empty externalId for a Group created without one, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/scim_projection_test.go",
       "marker": "t.Fatal(\"the role mapper did not receive the source and Group\", m)"
+    }
+  ],
+  "docs/content/docs/plugins/scim/index.mdx#L214/`{ action: \"create\" }`": [
+    {
+      "label": "Create an account for an explicit create decision whose name and email then follow the source, which owns its profile, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_identity_test.go",
+      "marker": "t.Fatal(\"an explicitly created account did not follow its source's profile\", name, email, profileSource)",
+      "complete": true
     }
   ]
 }

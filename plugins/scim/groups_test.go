@@ -1,6 +1,7 @@
 package scim
 
 import (
+	"errors"
 	"net/url"
 	"testing"
 )
@@ -21,6 +22,15 @@ func TestSCIMGroupCompatibilityAndPatchForms(t *testing.T) {
 	base["schemas"] = []any{GroupSchema, legacyGroupSchema, legacyGroupSchema}
 	if _, e := parseGroup(base, true); e == nil {
 		t.Fatal("accepted repeated schema marker")
+	}
+	// The exception names only the classic marker: other extension URIs,
+	// including another Entra one, stay invalid.
+	for _, extension := range []string{"urn:example:params:scim:schemas:extension:2.0:Group", "urn:ietf:params:scim:schemas:extension:Microsoft:Entra:2.0:Group"} {
+		base["schemas"] = []any{GroupSchema, extension}
+		var se *Error
+		if _, e := parseGroup(base, true); !errors.As(e, &se) || se.Status != 400 || se.Type != "invalidValue" {
+			t.Fatal("accepted an unknown Group extension schema with the legacy exception", extension, e)
+		}
 	}
 	g := Group{ID: "group", DisplayName: "Initial", ExternalID: "ext", Members: []GroupMember{{"one", "One"}, {"two", "Two"}}}
 	op := func(method, path string, v any) map[string]any {
