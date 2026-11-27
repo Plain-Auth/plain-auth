@@ -140,6 +140,33 @@ func TestAdminClientCreation(t *testing.T) {
 			if links(withLinks.ClientID) != 2 {
 				t.Fatal("the requested and default resources were not both linked", links(withLinks.ClientID))
 			}
+			// UpdateClient changes the administrator settings and metadata,
+			// and a disabled client gets no tokens until it is enabled again.
+			token := func() int {
+				req := httptest.NewRequest("POST", origin+"/api/auth/oauth2/token", strings.NewReader(form.Encode()))
+				req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+				out := httptest.NewRecorder()
+				h.ServeHTTP(out, req)
+				return out.Code
+			}
+			if _, err := manager.UpdateClient(ctx, headers, created.ClientID, op.ClientAdminUpdate{Disabled: &yes}); err != nil || token() == 200 {
+				t.Fatal("a disabled client still got a token", err)
+			}
+			if _, err := manager.UpdateClient(ctx, headers, created.ClientID, op.ClientAdminUpdate{Disabled: &no}); err != nil || token() != 200 {
+				t.Fatal("an enabled client got no token", err)
+			}
+			updated, err := manager.UpdateClient(ctx, headers, app.ClientID, op.ClientAdminUpdate{Fields: map[string]any{"client_name": "Admin named"},
+				SkipConsent: &no, Metadata: map[string]json.RawMessage{"tier": json.RawMessage(`"silver"`), "userId": json.RawMessage(`"x"`)}})
+			must(err)
+			var name, meta sql.NullString
+			must(s.db.QueryRowContext(ctx, s.bind(`SELECT "name","metadata","skipConsent" FROM "oauthClient" WHERE "clientId"=?`), app.ClientID).Scan(&name, &meta, &skip))
+			if name.String != "Admin named" || meta.String != `{"tier":"silver"}` || skip.Bool || updated.SkipConsent == nil || *updated.SkipConsent {
+				t.Fatal("the administrator update was not stored", name, meta, skip)
+			}
+			// A scopes-only update goes through SetClientCredentialsScopes.
+			if scoped, err := manager.UpdateClient(ctx, headers, created.ClientID, op.ClientAdminUpdate{ClientCredentialsScopes: []string{}}); err != nil || len(scoped.ClientCredentialsScopes) != 0 {
+				t.Fatal("a scopes-only update did not clear the machine scopes", scoped.ClientCredentialsScopes, err)
+			}
 		})
 	}
 }

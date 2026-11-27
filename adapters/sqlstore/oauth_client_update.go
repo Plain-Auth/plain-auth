@@ -87,6 +87,20 @@ func (s *Store) UpdateOAuthClient(ctx context.Context, u op.ClientUpdate) (op.Cl
 	}
 	if u.ClearMachineScopes {
 		set("clientCredentialsScopes", "[]")
+	} else if u.MachineScopes != nil {
+		set("clientCredentialsScopes", list(u.MachineScopes))
+	}
+	for column, value := range map[string]*bool{"skipConsent": u.SkipConsent, "enableEndSession": u.EnableEndSession, "disabled": u.Disabled, "dpopBoundAccessTokens": u.DPoPBoundAccessTokens} {
+		if value != nil {
+			set(column, *value)
+		}
+	}
+	if len(u.Extensions) > 0 {
+		raw, err := json.Marshal(u.Extensions)
+		if err != nil {
+			return op.ClientDetails{}, err
+		}
+		set("metadata", string(raw))
 	}
 	set("updatedAt", s.date(u.UpdatedAt))
 	args = append(args, u.ClientID)

@@ -173,3 +173,125 @@ func (m *ClientManager) CreateClient(ctx context.Context, headers http.Header, i
 	}
 	return AdministrativeClient{RegisteredClient: created, SkipConsent: in.SkipConsent, EnableEndSession: in.EnableEndSession, ClientCredentialsScopes: scopes}, nil
 }
+
+// ClientAdminUpdate is the server-only input to ClientManager.UpdateClient.
+// Fields replaces owner-editable registration fields by wire name, as
+// /oauth2/update-client reads them; a nil setting below keeps the stored
+// value, and an empty Metadata keeps the stored metadata object.
+type ClientAdminUpdate struct {
+	Fields                                                         map[string]any
+	SkipConsent, EnableEndSession, Disabled, DPoPBoundAccessTokens *bool
+	ClientCredentialsScopes                                        []string
+	Metadata                                                       map[string]json.RawMessage
+}
+
+func (u ClientAdminUpdate) settingsOnly() bool {
+	return len(u.Fields) == 0 && u.SkipConsent == nil && u.EnableEndSession == nil && u.Disabled == nil && u.DPoPBoundAccessTokens == nil && len(u.Metadata) == 0
+}
+
+// UpdateClient changes a client with administrator settings, as another
+// runtime's adminUpdateOAuthClient does, as a Go method. An update that sets
+// only ClientCredentialsScopes may target another owner's client, as
+// SetClientCredentialsScopes does; any other update needs ownership.
+func (m *ClientManager) UpdateClient(ctx context.Context, headers http.Header, id string, in ClientAdminUpdate) (AdministrativeClient, error) {
+	if in.settingsOnly() && in.ClientCredentialsScopes != nil {
+		scopes, err := m.SetClientCredentialsScopes(ctx, headers, id, in.ClientCredentialsScopes)
+		if err != nil {
+			return AdministrativeClient{}, err
+		}
+		current, err := m.store.LookupOAuthClient(ctx, id)
+		if err != nil {
+			return AdministrativeClient{}, scopeManagementError(err)
+		}
+		return AdministrativeClient{RegisteredClient: registeredView(current), SkipConsent: current.SkipConsent, EnableEndSession: current.EnableEndSession, ClientCredentialsScopes: scopes}, nil
+	}
+	session, err := m.auth.GetSession(ctx, headers)
+	if err != nil {
+		return AdministrativeClient{}, err
+	}
+	if session == nil {
+		return AdministrativeClient{}, auth.StatusOnlyError(http.StatusUnauthorized)
+	}
+	if err := session.Session.RequireOwner(); err != nil {
+		return AdministrativeClient{}, err
+	}
+	access := RegistrationAccess{SessionResult: *session, Headers: headers.Clone()}
+	if err := m.opts.allowClient(ctx, access, "update", id); err != nil {
+		return AdministrativeClient{}, err
+	}
+	if slices.Contains(m.opts.ImmutableClientIDs, id) {
+		return AdministrativeClient{}, registrationProblem(400, "invalid_client", "trusted clients must be updated manually")
+	}
+	store, ok := m.store.(ClientUpdateStore)
+	if !ok {
+		return AdministrativeClient{}, errors.New("oauthprovider: client updates require a ClientUpdateStore")
+	}
+	current, err := m.store.LookupOAuthClient(ctx, id)
+	if err != nil {
+		return AdministrativeClient{}, scopeManagementError(err)
+	}
+	owned, err := m.opts.ownsClient(ctx, access, current)
+	if err != nil {
+		return AdministrativeClient{}, err
+	}
+	if !owned {
+		return AdministrativeClient{}, auth.StatusOnlyError(http.StatusUnauthorized)
+	}
+	patch := map[string]any{}
+	for _, name := range ownerUpdateFields {
+		if value, present := in.Fields[name]; present {
+			patch[name] = value
+		}
+	}
+	if _, err := readRegistration(patch); err != nil {
+		return AdministrativeClient{}, err
+	}
+	change, err := m.opts.clientChange(m.auth, current, patch)
+	if err != nil {
+		return AdministrativeClient{}, err
+	}
+	change.SkipConsent, change.EnableEndSession, change.Disabled, change.DPoPBoundAccessTokens = in.SkipConsent, in.EnableEndSession, in.Disabled, in.DPoPBoundAccessTokens
+	for name, value := range in.Metadata {
+		if clientExtension(name) {
+			if change.Extensions == nil {
+				change.Extensions = map[string]json.RawMessage{}
+			}
+			change.Extensions[name] = value
+		}
+	}
+	if in.ClientCredentialsScopes != nil && !change.ClearMachineScopes {
+		scopes, err := normalizeScopeField("body.update.client_credentials_scopes", in.ClientCredentialsScopes)
+		if err != nil {
+			return AdministrativeClient{}, err
+		}
+		var invalid []string
+		for _, scope := range scopes {
+			if userDelegatedScope(scope) || !slices.Contains(m.opts.Scopes, scope) {
+				invalid = append(invalid, scope)
+			}
+		}
+		if len(invalid) > 0 {
+			return AdministrativeClient{}, registrationProblem(400, "invalid_scope", "The following client_credentials scopes are invalid: "+strings.Join(invalid, ", "))
+		}
+		if len(scopes) > 0 {
+			if err := m.opts.allowClient(ctx, access, "configure-client-credentials-scopes", id); err != nil {
+				return AdministrativeClient{}, err
+			}
+		}
+		change.MachineScopes = scopes
+	}
+	updated, err := applyClientChange(ctx, store, change)
+	if err != nil {
+		return AdministrativeClient{}, err
+	}
+	return AdministrativeClient{RegisteredClient: registeredView(updated), SkipConsent: updated.SkipConsent, EnableEndSession: updated.EnableEndSession, ClientCredentialsScopes: change.MachineScopes}, nil
+}
+
+// registeredView presents stored client details in the registration
+// response shape, without a secret.
+func registeredView(c ClientDetails) RegisteredClient {
+	raw, _ := json.Marshal(c) // ClientDetails always encodes.
+	var r RegisteredClient
+	_ = json.Unmarshal(raw, &r)
+	return r
+}

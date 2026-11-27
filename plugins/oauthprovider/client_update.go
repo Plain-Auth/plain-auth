@@ -35,6 +35,11 @@ type ClientUpdate struct {
 	Fields             []string
 	ClearMachineScopes bool
 	UpdatedAt          time.Time
+	// The settings below are set only by ClientManager.UpdateClient; nil
+	// keeps the stored value.
+	SkipConsent, EnableEndSession, Disabled, DPoPBoundAccessTokens *bool
+	MachineScopes                                                  []string
+	Extensions                                                     map[string]json.RawMessage
 }
 
 // ClientUpdateStore applies an owner's update in one transaction.
@@ -110,36 +115,54 @@ func (opts Options) updateClient(c auth.EndpointContext) (any, error) {
 	if len(patch) == 0 {
 		return current, nil
 	}
-	// The merged registration passes the same rules as a created client.
-	raw, err := json.Marshal(current)
+	change, err := opts.clientChange(c.Auth, current, patch)
 	if err != nil {
 		return nil, err
+	}
+	return applyClientChange(ctx, store, change)
+}
+
+// clientChange merges owner-editable fields into a client and validates the
+// result with the creation rules.
+func (opts Options) clientChange(a *auth.Auth, current ClientDetails, patch map[string]any) (ClientUpdate, error) {
+	raw, err := json.Marshal(current)
+	if err != nil {
+		return ClientUpdate{}, err
 	}
 	var merged map[string]any
 	if err := json.Unmarshal(raw, &merged); err != nil {
-		return nil, err
+		return ClientUpdate{}, err
 	}
 	delete(merged, "skip_consent")
+	// A stored empty list means none was given, as at creation.
+	for name, value := range merged {
+		if list, ok := value.([]any); ok && len(list) == 0 {
+			delete(merged, name)
+		}
+	}
 	maps.Copy(merged, patch)
 	m, err := readRegistration(merged)
 	if err != nil {
-		return nil, err
+		return ClientUpdate{}, err
 	}
-	if err := opts.prepareMetadata(c.Auth, &m, managedClient); err != nil {
-		return nil, err
+	if err := opts.prepareMetadata(a, &m, managedClient); err != nil {
+		return ClientUpdate{}, err
 	}
 	fields := slices.Sorted(maps.Keys(patch))
 	if slices.Contains(fields, "grant_types") && !slices.Contains(fields, "response_types") {
 		fields = append(fields, "response_types")
 	}
-	change := ClientUpdate{ClientID: id, Expected: current, Metadata: m, Fields: fields, UpdatedAt: time.Now().UTC().Truncate(time.Second),
-		ClearMachineScopes: !slices.Contains(m.GrantTypes, "client_credentials") || m.TokenEndpointAuthMethod == "none"}
+	return ClientUpdate{ClientID: current.ClientID, Expected: current, Metadata: m, Fields: fields, UpdatedAt: time.Now().UTC().Truncate(time.Second),
+		ClearMachineScopes: !slices.Contains(m.GrantTypes, "client_credentials") || m.TokenEndpointAuthMethod == "none"}, nil
+}
+
+func applyClientChange(ctx context.Context, store ClientUpdateStore, change ClientUpdate) (ClientDetails, error) {
 	updated, err := store.UpdateOAuthClient(ctx, change)
 	switch {
 	case errors.Is(err, ErrClientNotFound):
-		return nil, registrationProblem(404, "not_found", "client not found")
+		return ClientDetails{}, registrationProblem(404, "not_found", "client not found")
 	case errors.Is(err, ErrClientChanged):
-		return nil, registrationProblem(409, "invalid_request", "client changed while updating; retry")
+		return ClientDetails{}, registrationProblem(409, "invalid_request", "client changed while updating; retry")
 	}
 	return updated, err
 }

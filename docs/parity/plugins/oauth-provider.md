@@ -188,6 +188,7 @@
   - [ ] `adminUpdateOAuthClient`
     - [x] Grant, narrow and revoke machine access from server code and verify the changed scope ceiling at an independent issuer ([test](../../../conformance/oauth-registration.mjs#L407))
     - [x] Require separate update and machine-scope privileges and reject user-delegated scopes, public clients and impersonation sessions on three SQL engines ([test](../../../adapters/sqlstore/oauth_client_scopes_test.go#L132))
+    - [x] Update a client from server code: change owner fields, consent skipping and metadata, disable and enable it with tokens refused meanwhile, and clear machine scopes through the scopes-only path, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_admin_test.go#L153))
   - [ ] `updateOAuthClient`
     - [x] Replace an owner's registration fields through the creation rules, ignore fields an owner cannot change, refuse another owner, trusted and unknown clients, and clear machine scopes without the machine grant, on SQLite, PostgreSQL and MySQL; the 409 on a concurrent change is a documented deviation ([test](../../../adapters/sqlstore/oauth_client_update_test.go#L21))
   - [x] `rotateClientSecret` ([test](../../../adapters/sqlstore/oauth_secret_rotation_test.go#L171))
@@ -621,6 +622,7 @@
       - [x] Delete personally owned or tenant-owned registrations with an empty success response and enforce the session, privilege and immutable-client rules ([test](../../../conformance/oauth-client-directory.mjs#L188))
     - [ ] Restricted fields
       - [ ] `skip_consent`
+        - [x] Update a client from server code: change owner fields, consent skipping and metadata, disable and enable it with tokens refused meanwhile, and clear machine scopes through the scopes-only path, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_admin_test.go#L153))
       - [ ] `enable_end_session`
       - [ ] `require_pkce`
         - [x] Create a client from server code with consent skipping, end session, PKCE, machine scopes and metadata, approve machine scopes and requested resource links separately, link default resources and always return the machine scopes, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_admin_test.go#L24))
@@ -630,7 +632,9 @@
       - [ ] `resources`
         - [x] Create a client from server code with consent skipping, end session, PKCE, machine scopes and metadata, approve machine scopes and requested resource links separately, link default resources and always return the machine scopes, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_admin_test.go#L24))
       - [ ] `disabled`
+        - [x] Update a client from server code: change owner fields, consent skipping and metadata, disable and enable it with tokens refused meanwhile, and clear machine scopes through the scopes-only path, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_admin_test.go#L153))
       - [ ] `metadata`
+        - [x] Update a client from server code: change owner fields, consent skipping and metadata, disable and enable it with tokens refused meanwhile, and clear machine scopes through the scopes-only path, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_admin_test.go#L153))
     - [ ] Client credentials scopes
       - [x] Grant, narrow and revoke machine access from server code and verify the changed scope ceiling at an independent issuer ([test](../../../conformance/oauth-registration.mjs#L407))
       - [x] Require separate update and machine-scope privileges and reject user-delegated scopes, public clients and impersonation sessions on three SQL engines ([test](../../../adapters/sqlstore/oauth_client_scopes_test.go#L132))
@@ -822,6 +826,7 @@
     - [ ] `POST /admin/oauth2/create-client` (server API only)
     - [ ] `PATCH /admin/oauth2/update-client` (server API only)
       - [x] Grant, narrow and revoke machine access from server code and verify the changed scope ceiling at an independent issuer ([test](../../../conformance/oauth-registration.mjs#L407))
+      - [x] Update a client from server code: change owner fields, consent skipping and metadata, disable and enable it with tokens refused meanwhile, and clear machine scopes through the scopes-only path, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_admin_test.go#L153))
     - [ ] `POST /oauth2/create-client`
       - [x] Create a client for a signed-in owner with dynamic registration disabled, bound by the issuer's grants and scopes, without the registration ceiling or PKCE setting, dropping owner-only fields and refusing anonymous or denied callers, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_creation_test.go#L24))
     - [ ] `GET /oauth2/get-client`
