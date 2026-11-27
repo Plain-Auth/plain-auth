@@ -213,6 +213,10 @@ func (u ClientAdminUpdate) settingsOnly() bool {
 // only ClientCredentialsScopes may target another owner's client, as
 // SetClientCredentialsScopes does; any other update needs ownership.
 func (m *ClientManager) UpdateClient(ctx context.Context, headers http.Header, id string, in ClientAdminUpdate) (AdministrativeClient, error) {
+	ctx, err := m.opts.discoverClient(ctx, m.auth, m.store, headers, id)
+	if err != nil {
+		return AdministrativeClient{}, err
+	}
 	if in.settingsOnly() && in.ClientCredentialsScopes != nil {
 		scopes, err := m.SetClientCredentialsScopes(ctx, headers, id, in.ClientCredentialsScopes)
 		if err != nil {

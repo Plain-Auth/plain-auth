@@ -232,6 +232,11 @@ func (l *logoutCall) readCurrentSession() error {
 
 // client looks up a logout client; a missing one is nil.
 func (l *logoutCall) client(id string) (*ClientDetails, error) {
+	c, err := l.opts.discoverRequestClient(l.c, id)
+	if err != nil {
+		return nil, err
+	}
+	l.c = c
 	client, err := l.store.LookupOAuthClient(l.c.Request.Context(), id)
 	if errors.Is(err, ErrClientNotFound) {
 		return nil, nil

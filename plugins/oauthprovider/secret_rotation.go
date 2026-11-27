@@ -61,11 +61,11 @@ func (c ClientDetails) canRotateSecret() bool {
 }
 
 func (opts Options) rotateClientSecret(c auth.EndpointContext) (any, error) {
-	ctx := c.Request.Context()
-	id, access, err := opts.clientMutationAccess(c, "rotate")
+	c, id, access, err := opts.clientMutationAccess(c, "rotate")
 	if err != nil {
 		return nil, err
 	}
+	ctx := c.Request.Context()
 	store, ok := c.Store().(SecretRotationStore)
 	if !ok {
 		return nil, &auth.APIError{Status: 501, Code: "OAUTH_CLIENT_ROTATION_UNAVAILABLE", Message: "The configured store does not support OAuth client secret rotation"}

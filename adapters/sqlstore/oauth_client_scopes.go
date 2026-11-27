@@ -29,7 +29,10 @@ func (s *Store) SetOAuthClientCredentialsScopes(ctx context.Context, change op.C
 	if err != nil {
 		return err
 	}
-	const q = `UPDATE "oauthClient" SET "clientCredentialsScopes"=?, "updatedAt"=? WHERE "clientId"=?`
+	// A discovered client keeps updatedAt, which bounds how long its stored
+	// document may be served, so an admin edit cannot extend it.
+	const q = `UPDATE "oauthClient" SET "clientCredentialsScopes"=?,
+		"updatedAt"=CASE WHEN "clientDiscoveryId" IS NULL OR "clientDiscoveryId"='' THEN ? ELSE "updatedAt" END WHERE "clientId"=?`
 	if _, err := tx.ExecContext(ctx, s.bind(q), string(scopes), s.date(change.UpdatedAt), c.ClientID); err != nil {
 		return err
 	}

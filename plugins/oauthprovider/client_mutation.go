@@ -8,33 +8,34 @@ import (
 	auth "github.com/Plain-Org/plain-auth"
 )
 
-func (opts Options) clientMutationAccess(c auth.EndpointContext, action string) (string, RegistrationAccess, error) {
+func (opts Options) clientMutationAccess(c auth.EndpointContext, action string) (auth.EndpointContext, string, RegistrationAccess, error) {
 	c.ResponseHeader.Set("Cache-Control", "no-store")
 	c.ResponseHeader.Set("Pragma", "no-cache")
 	var access RegistrationAccess
 	id, ok := c.Body["client_id"].(string)
 	if !ok {
-		return "", access, &auth.APIError{Status: 400, Code: "VALIDATION_ERROR", Message: "[body.client_id] Invalid input: expected string, received " + consentFieldType(c.Body, "client_id")}
+		return c, "", access, &auth.APIError{Status: 400, Code: "VALIDATION_ERROR", Message: "[body.client_id] Invalid input: expected string, received " + consentFieldType(c.Body, "client_id")}
 	}
 	ctx := c.Request.Context()
 	session, err := c.Auth.GetSession(ctx, c.Request.Header)
 	if err != nil {
-		return "", access, err
+		return c, "", access, err
 	}
 	if session == nil {
-		return "", access, &auth.APIError{Status: 401, Code: "UNAUTHORIZED", Message: "Unauthorized"}
+		return c, "", access, &auth.APIError{Status: 401, Code: "UNAUTHORIZED", Message: "Unauthorized"}
 	}
 	if err := session.Session.RequireOwner(); err != nil {
-		return "", access, err
+		return c, "", access, err
 	}
 	access = RegistrationAccess{SessionResult: *session, Headers: c.Request.Header.Clone()}
 	if err := opts.allowClient(ctx, access, action, id); err != nil {
-		return "", access, err
+		return c, "", access, err
 	}
 	if slices.Contains(opts.ImmutableClientIDs, id) {
-		return "", access, registrationProblem(400, "invalid_client", "trusted clients must be updated manually")
+		return c, "", access, registrationProblem(400, "invalid_client", "trusted clients must be updated manually")
 	}
-	return id, access, nil
+	c, err = opts.discoverRequestClient(c, id)
+	return c, id, access, err
 }
 
 func (c ClientDetails) ownerIDs() (userID, referenceID string) {
@@ -55,7 +56,7 @@ type ClientDeletionStore interface {
 }
 
 func (opts Options) deleteClient(c auth.EndpointContext) (any, error) {
-	id, access, err := opts.clientMutationAccess(c, "delete")
+	c, id, access, err := opts.clientMutationAccess(c, "delete")
 	if err != nil {
 		return nil, err
 	}

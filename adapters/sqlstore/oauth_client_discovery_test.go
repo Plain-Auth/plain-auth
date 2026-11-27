@@ -7,6 +7,8 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
+	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
@@ -37,6 +39,8 @@ func (d *stubDiscovery) discovery(id string) op.ClientDiscovery {
 			switch d.mode.Load() {
 			case "nil":
 				return nil, nil
+			case "stored":
+				return req.Existing, nil
 			case "error":
 				return nil, &auth.OAuthError{Status: 400, Code: "invalid_client", Description: "metadata document unavailable"}
 			}
@@ -86,6 +90,7 @@ func TestClientDiscoveryLookups(t *testing.T) {
 			write(`INSERT INTO "session" ("id","userId","token","createdAt","updatedAt","expiresAt") VALUES ('sid','owner','browser',?,?,?)`, s.date(now), s.date(now), s.date(now.Add(time.Hour)))
 			const base = "https://issuer.example.test"
 			first, second := &stubDiscovery{}, &stubDiscovery{}
+			var opts op.Options
 			host := func(discoveries ...op.ClientDiscovery) *auth.Auth {
 				t.Helper()
 				// The extension grant reads clients through the provider's API.
@@ -100,8 +105,11 @@ func TestClientDiscoveryLookups(t *testing.T) {
 					}
 					return op.TokenResponse{AccessToken: "x", TokenType: "Bearer", Fields: map[string]any{"client": client.ClientID, "other": *other.Name}}, nil
 				}
-				p, err := op.New(op.Options{Scopes: []string{"offline_access", "read"}, Extensions: []op.Extension{{ClientDiscoveries: discoveries, Grants: map[string]op.GrantHandler{"urn:test:grant": grant}}},
-					Authorization: op.BrowserAuthorizationOptions{LoginPage: "/login", ConsentPage: "/consent", AllowPublicClientPrelogin: true}})
+				opts = op.Options{Scopes: []string{"offline_access", "read"}, Extensions: []op.Extension{{ClientDiscoveries: discoveries, Grants: map[string]op.GrantHandler{"urn:test:grant": grant}}},
+					Authorization:    op.BrowserAuthorizationOptions{LoginPage: "/login", ConsentPage: "/consent", AllowPublicClientPrelogin: true},
+					ClientPrivileges: func(context.Context, op.ClientAccess) (bool, error) { return true, nil }}
+				opts.Assertions.AllowKeyRotation = true
+				p, err := op.New(opts)
 				must(err)
 				off := false
 				h, err := auth.New(auth.Options{BaseURL: base, Secret: strings.Repeat("c", 40), Plugins: []auth.Plugin{p}, Store: s, RateLimit: &off})
@@ -174,6 +182,11 @@ func TestClientDiscoveryLookups(t *testing.T) {
 			if status, body := post(h, "/oauth2/token", url.Values{"grant_type": {"urn:test:grant"}, "client_id": {app}, "other": {looked}}); status != 200 || body["client"] != app || body["other"] != "Doc App" {
 				t.Fatal("the extension grant did not resolve discovered clients", status, body)
 			}
+			// A client resolved once in a request is not resolved again.
+			calls := first.calls.Load()
+			if status, body := post(h, "/oauth2/token", url.Values{"grant_type": {"urn:test:grant"}, "client_id": {app}, "other": {app}}); status != 200 || first.calls.Load() != calls+1 {
+				t.Fatal("a client was resolved twice in one request", status, body, first.calls.Load()-calls)
+			}
 			// With consent, a code exchanges, refreshes and revokes.
 			write(`INSERT INTO "oauthConsent" ("id","clientId","userId","scopes","createdAt","updatedAt") VALUES ('approval',?,'owner',?,?,?)`, app, `["offline_access","read"]`, s.date(now), s.date(now))
 			got := authorize(h, app, "offline_access read")
@@ -209,10 +222,71 @@ func TestClientDiscoveryLookups(t *testing.T) {
 			if status, body := post(h, "/oauth2/introspect", url.Values{"client_assertion": {assertion}, "client_assertion_type": {op.ClientAssertionType}, "token": {"unknown"}}); status != 200 || body["active"] != false {
 				t.Fatal("a discovered client could not introspect", status, body)
 			}
+			// An owner cannot delete a discovered client, its keys are rotated
+			// where it publishes them, an admin sets its machine scopes without
+			// moving updatedAt, and end-session finds it.
+			jsonPost := func(path string, body map[string]any) (int, map[string]any) {
+				t.Helper()
+				raw, err := json.Marshal(body)
+				must(err)
+				req := httptest.NewRequest("POST", base+"/api/auth"+path, strings.NewReader(string(raw)))
+				req.Header.Set("Content-Type", "application/json")
+				req.Header.Set("Origin", base)
+				req.AddCookie(h.SessionCookie("browser", true))
+				out := httptest.NewRecorder()
+				h.ServeHTTP(out, req)
+				var reply map[string]any
+				json.Unmarshal(out.Body.Bytes(), &reply)
+				return out.Code, reply
+			}
+			if status, body := jsonPost("/oauth2/delete-client", map[string]any{"client_id": app}); status != 401 {
+				t.Fatal("an owner deleted a discovered client", status, body)
+			}
+			if status, body := jsonPost("/oauth2/update-client", map[string]any{"client_id": app, "update": map[string]any{"client_name": "Renamed"}}); status != 401 {
+				t.Fatal("an owner updated a discovered client", status, body)
+			}
+			var public map[string]any
+			must(json.Unmarshal([]byte(first.keys), &public))
+			claims, err = json.Marshal(map[string]any{"iss": keyed, "sub": keyed, "aud": base + "/api/auth/oauth2/client/rotate-keys", "exp": time.Now().Unix() + 60, "jti": "rotate-1"})
+			must(err)
+			signed, err = signer.Sign(claims)
+			must(err)
+			rotation, err := signed.CompactSerialize()
+			must(err)
+			if status, body := jsonPost("/oauth2/client/rotate-keys", map[string]any{"client_assertion": rotation, "client_assertion_type": op.ClientAssertionType, "jwks": public}); status/100 != 4 ||
+				body["error_description"] != "client keys are not stored inline; rotate them where the client publishes them" {
+				t.Fatal("a discovered client's keys were rotated", status, body)
+			}
+			first.mode.Store("stored")
+			before := now.Add(-time.Hour)
+			write(`UPDATE "oauthClient" SET "updatedAt"=? WHERE "clientId"=?`, s.date(before), keyed)
+			manager, err := op.NewClientManager(h, s, opts)
+			must(err)
+			header := http.Header{"Cookie": {h.SessionCookie("browser", true).String()}}
+			if granted, err := manager.SetClientCredentialsScopes(ctx, header, keyed, []string{"read"}); err != nil || len(granted) != 1 || granted[0] != "read" {
+				t.Fatal("an admin could not set a discovered client's machine scopes", granted, err)
+			}
+			var after time.Time
+			must(s.db.QueryRowContext(ctx, s.bind(`SELECT "updatedAt" FROM "oauthClient" WHERE "clientId"=?`), keyed).Scan(&after))
+			if !after.Equal(before) {
+				t.Fatal("setting machine scopes moved a discovered client's updatedAt", before, after)
+			}
+			var refusal auth.StatusOnlyError
+			if _, err := manager.UpdateClient(ctx, header, app, op.ClientAdminUpdate{Fields: map[string]any{"client_name": "Renamed"}}); !errors.As(err, &refusal) || refusal != http.StatusUnauthorized {
+				t.Fatal("an admin update of an unowned discovered client was not refused as unowned", err)
+			}
+			first.mode.Store("")
+			req = httptest.NewRequest("GET", base+"/api/auth/oauth2/end-session?client_id="+url.QueryEscape(app), nil)
+			req.Header.Set("Accept", "application/json")
+			out = httptest.NewRecorder()
+			h.ServeHTTP(out, req)
+			if out.Code != 401 || !strings.Contains(out.Body.String(), "The client is not allowed to initiate logout") {
+				t.Fatal("end-session did not find the discovered client", out.Code, out.Body.String())
+			}
 			// A local https client never reaches the discovery.
 			write(`INSERT INTO "oauthClient" ("id","clientId","applicationType","redirectUris","scopes","tokenEndpointAuthMethod") VALUES ('local','https://local.example.test/app','native',?,?,'none')`,
 				`["http://127.0.0.1:41234/cb"]`, `["read"]`)
-			calls := first.calls.Load()
+			calls = first.calls.Load()
 			if got := authorize(h, "https://local.example.test/app", "read"); got.Get("error") != "consent_required" || first.calls.Load() != calls {
 				t.Fatal("a local client went to the discovery", got, first.calls.Load())
 			}

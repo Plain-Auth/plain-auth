@@ -62,8 +62,9 @@ func (opts *Options) collectDiscoveries() error {
 // no longer configured, no longer matches or resolves nothing. An unknown
 // ID goes to each matching discovery in order. A resolved client is marked
 // in the returned context for the store; a Resolve error is returned.
-func (opts Options) discoverClient(ctx context.Context, a *auth.Auth, store auth.Store, header http.Header, clientID string) (context.Context, error) {
-	if clientID == "" || !slices.ContainsFunc(opts.discoveries, func(d *ClientDiscovery) bool { return d.Matches(clientID) }) {
+func (opts Options) discoverClient(ctx context.Context, a *auth.Auth, store any, header http.Header, clientID string) (context.Context, error) {
+	// A client resolved earlier in the request is not resolved again.
+	if clientID == "" || ResolvedDiscovery(ctx, clientID) != "" || !slices.ContainsFunc(opts.discoveries, func(d *ClientDiscovery) bool { return d.Matches(clientID) }) {
 		return ctx, nil
 	}
 	clients, ok := store.(DiscoveredClientStore)

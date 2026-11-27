@@ -84,6 +84,10 @@ func (opts Options) updateClient(c auth.EndpointContext) (any, error) {
 	if slices.Contains(opts.ImmutableClientIDs, id) {
 		return nil, registrationProblem(400, "invalid_client", "trusted clients must be updated manually")
 	}
+	if c, err = opts.discoverRequestClient(c, id); err != nil {
+		return nil, err
+	}
+	ctx = c.Request.Context()
 	patch := map[string]any{}
 	for _, name := range ownerUpdateFields {
 		if value, present := update[name]; present {

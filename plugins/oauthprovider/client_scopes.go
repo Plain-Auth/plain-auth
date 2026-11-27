@@ -68,6 +68,9 @@ func NewClientManager(a *auth.Auth, store ClientCredentialsScopeStore, opts Opti
 	if err := opts.checkSecretStorage(); err != nil {
 		return nil, err
 	}
+	if err := opts.collectDiscoveries(); err != nil {
+		return nil, err
+	}
 	return &ClientManager{auth: a, store: store, opts: opts}, nil
 }
 
@@ -95,6 +98,9 @@ func (m *ClientManager) SetClientCredentialsScopes(ctx context.Context, headers 
 	}
 	if slices.Contains(m.opts.ImmutableClientIDs, id) {
 		return nil, registrationProblem(400, "invalid_client", "trusted clients must be updated manually")
+	}
+	if ctx, err = m.opts.discoverClient(ctx, m.auth, m.store, headers, id); err != nil {
+		return nil, err
 	}
 	c, err := m.store.LookupOAuthClient(ctx, id)
 	if err != nil {

@@ -69,11 +69,19 @@ func (opts Options) rotateClientKeys(c auth.EndpointContext) (any, error) {
 	if err != nil {
 		return nil, err
 	}
+	c, err = opts.discoverRequestClient(c, assertion.clientID)
+	if err != nil {
+		return nil, err
+	}
 	ctx := c.Request.Context()
 	store := c.Store().(ClientKeyRotationStore) // Validated at startup when enabled.
 	first, err := store.LookupMachineClient(ctx, assertion.clientID)
 	if err != nil {
 		return nil, tokenEndpointError(c.ResponseHeader, "", err)
+	}
+	// A discovered client's keys belong to its published metadata.
+	if ResolvedDiscovery(ctx, first.ClientID) != "" {
+		return nil, invalidClient("client keys are not stored inline; rotate them where the client publishes them")
 	}
 	in := tokenRequest{id: assertion.clientID, method: "private_key_jwt"}
 	if err := in.checkMethod(first); err != nil {

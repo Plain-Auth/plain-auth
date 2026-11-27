@@ -323,7 +323,7 @@
     - [x] Add an extension's ID token claims only where the token has none and never as protocol or standard profile claims, pass the account and grant type for code and refresh exchanges, and add its UserInfo claims under the standard ones, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_secret_id_token_test.go#L137))
   - [ ] `OAuthUserInfoExtensionInput`
   - [ ] `OAuthProviderExtension`
-    - [x] Carry client discoveries on a provider extension, consulted in extension order with the first match winning, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_discovery_test.go#L66))
+    - [x] Carry client discoveries on a provider extension, consulted in extension order with the first match winning, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_discovery_test.go#L70))
   - [x] `InitialAccessTokenAuthorization` ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L93))
     - [x] Register a client without an owner when the initial access token's authorization names nobody, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L84))
     - [x] Register a client without an owner when the initial access token's authorization names nobody, and attach only the named reference otherwise, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L93))
@@ -994,7 +994,7 @@
     - [x] `userinfo` ([test](../../../adapters/sqlstore/oauth_introspection_test.go#L146))
       - [x] Share the default 60-request limit, explicit limits and the host global limit on the UserInfo route ([test](../../../adapters/sqlstore/oauth_introspection_test.go#L146))
   - [ ] Provider extensions
-    - [x] Resolve discovered clients by their stored discovery ID, failing closed when it is removed, and only add discovery fields the provider does not own, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_discovery_test.go#L233))
+    - [x] Resolve discovered clients by their stored discovery ID, failing closed when it is removed, and only add discovery fields the provider does not own, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_discovery_test.go#L307))
     - [ ] `authorization`
     - [ ] `url`
     - [ ] `replayStore`
