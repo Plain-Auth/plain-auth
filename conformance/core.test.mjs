@@ -1635,6 +1635,11 @@ test("updateUserInfoOnLink copies the provider's name and image when an identity
   await compareLinkProfileCopy(t,{reference,goFixture,instrument});
 });
 
+test("a plan change with line items updates the subscription's items directly with the same form on both runtimes", async t => {
+  const { multiItemPlanChange } = await import("./stripe-lifecycle-fixture.mjs");
+  await multiItemPlanChange(t, { reference, goFixture, instrument });
+});
+
 test("signed Stripe lifecycle deliveries distinguish dashboard creation, pending cancellation, updates, and deletion on both runtimes", async t => {
   const { subscriptionLifecycleCallbacks } = await import("./stripe-lifecycle-fixture.mjs");
   await subscriptionLifecycleCallbacks(t, { reference, goFixture, instrument });

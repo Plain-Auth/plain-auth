@@ -14035,6 +14035,11 @@
       "label": "Change a subscription to, from and between plans with line items in one direct update that follows the configured items and quantities",
       "test": "adapters/sqlstore/stripe_plan_items_test.go",
       "marker": "the line item change was not sent exactly"
+    },
+    {
+      "label": "Send the same direct item update and proration as another runtime when switching to a plan with a metered line item",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "assert.deepEqual(forms.Go, forms.reference);"
     }
   ],
   "docs/content/docs/reference/options.mdx#L282/`autoSignInAfterVerification`": [

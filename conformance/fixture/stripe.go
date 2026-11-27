@@ -67,6 +67,9 @@ func fixtureStripe(ctx context.Context, store *sqlstore.Store, endpoint string, 
 	if os.Getenv("CONFORMANCE_STRIPE_FREE_TRIAL") == "1" {
 		subscriptions.Plans[0].FreeTrial = &billing.FreeTrial{Days: 14}
 	}
+	if os.Getenv("CONFORMANCE_STRIPE_LINE_ITEMS") == "1" {
+		subscriptions.Plans = append(subscriptions.Plans, billing.Plan{Name: "platform", PriceID: "price_platform", LineItems: []billing.LineItem{{Price: "price_requests"}}})
+	}
 	if os.Getenv("CONFORMANCE_STRIPE_METERED_ADDONS") == "1" {
 		subscriptions.Plans[1].MeteredPriceIDs = []string{"price_storage_annual", "price_requests_annual"}
 	}

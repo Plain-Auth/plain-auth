@@ -14,6 +14,8 @@ const basicPrice = "price_basic";
 const teamPrice = "price_team";
 const planLimits = { projects: 5, features: ["api"], sso: true, storage: [10, "GB"] };
 const annualTeamPrice = "price_team_annual";
+const platformPrice = "price_platform";
+const requestsPrice = "price_requests";
 const period = 2_592_000;
 
 function subscription(owner) {
@@ -47,11 +49,28 @@ async function localStripe(t) {
     if (path === "/v1/subscriptions" && req.method === "GET") {
       const data = [...subscriptions.values()].filter(s => s.customer === url.searchParams.get("customer"));
       result = { object: "list", has_more: false, url: path, data };
-    } else if (req.method === "GET" && [basicPrice, teamPrice, annualTeamPrice].some(id => path === "/v1/prices/" + id)) {
+    } else if (req.method === "GET" && [basicPrice, teamPrice, annualTeamPrice, platformPrice, requestsPrice].some(id => path === "/v1/prices/" + id)) {
       const id = path.split("/").at(-1);
       result = { id, object: "price", active: true, type: "recurring", recurring: {
-        interval: id === annualTeamPrice ? "year" : "month", interval_count: 1, usage_type: "licensed",
+        interval: id === annualTeamPrice ? "year" : "month", interval_count: 1, usage_type: id === requestsPrice ? "metered" : "licensed",
       } };
+    } else if (sub && path === "/v1/subscriptions/" + sub.id && req.method === "POST" && form.has("items[0][id]")) {
+      // A direct item update: replace, delete or add items in order.
+      for (let i = 0; form.has("items[" + i + "][id]") || form.has("items[" + i + "][price]"); i++) {
+        const at = key => form.get("items[" + i + "][" + key + "]");
+        const price = id => ({ id, object: "price", recurring: { interval: "month", interval_count: 1, usage_type: id === requestsPrice ? "metered" : "licensed" } });
+        const existing = sub.items.data.find(item => item.id === at("id"));
+        if (existing && at("deleted") === "true") sub.items.data = sub.items.data.filter(item => item !== existing);
+        else if (existing) {
+          if (at("price")) existing.price = price(at("price"));
+          if (at("quantity")) existing.quantity = Number(at("quantity"));
+        } else {
+          const base = sub.items.data[0];
+          sub.items.data.push({ object: "subscription_item", id: "si_added_" + i, current_period_start: base.current_period_start, current_period_end: base.current_period_end,
+            price: price(at("price")), ...(at("quantity") ? { quantity: Number(at("quantity")) } : {}) });
+        }
+      }
+      result = sub;
     } else if (sub && path === "/v1/subscriptions/" + sub.id && req.method === "GET") {
       result = sub;
     } else if (sub && path === "/v1/subscriptions/" + sub.id && req.method === "POST" && (form.get("cancel_at_period_end") === "false" || form.get("cancel_at") === "")) {
@@ -593,4 +612,42 @@ export async function subscriptionLifecycleCallbacks(t, { reference, goFixture, 
     }
     assert.deepEqual(ok(await client.subscription.list()), []);
   });
+}
+
+// A switch to a plan with a metered line item updates the subscription's
+// items directly on both runtimes, with the same item form and proration,
+// and the list shows the new plan at once.
+export async function multiItemPlanChange(t, { reference, goFixture, instrument }) {
+  const forms = {};
+  for (const runtime of ["reference", "Go"]) await t.test(runtime, async t => {
+    const provider = await localStripe(t);
+    const server = runtime === "Go"
+      ? await goFixture(t, ["stripe-subscriptions"], { CONFORMANCE_STRIPE_URL: provider.url, CONFORMANCE_STRIPE_LINE_ITEMS: "1" })
+      : await reference(t, [stripe({ stripeClient: provider.api, stripeWebhookSecret: webhookSecret,
+        subscription: { enabled: true, plans: [{ name: "basic", priceId: basicPrice }, { name: "team", priceId: teamPrice, annualDiscountPriceId: annualTeamPrice },
+          { name: "platform", priceId: platformPrice, lineItems: [{ price: requestsPrice }] }] } })]);
+    const db = server.database ?? new DatabaseSync(server.databasePath);
+    if (!server.database) t.after(() => db.close());
+    const owner = instrument(server, [stripeClient({ subscription: true })]).client;
+    const signup = ok(await owner.signUp.email({ name: "Platform", email: "platform@example.test", password: "offline-platform-password" }));
+    const sub = provider.subscriptions.get("sub_owner");
+    seed(db, signup.user.id, sub);
+    const returnUrl = server.baseURL + "/account/billing";
+    const change = ok(await owner.subscription.upgrade({ subscriptionId: sub.id, plan: "platform", returnUrl, disableRedirect: true }));
+    assert.deepEqual(change, { url: returnUrl, redirect: false });
+    const updates = provider.calls.filter(c => c.method === "POST" && c.path === "/v1/subscriptions/" + sub.id);
+    assert.equal(updates.length, 1);
+    assert.equal(provider.calls.some(c => c.path === "/v1/billing_portal/sessions"), false);
+    forms[runtime] = Object.fromEntries(updates[0].form);
+    assert.deepEqual(forms[runtime], {
+      "items[0][id]": "si_owner", "items[0][price]": platformPrice, "items[0][quantity]": "1",
+      "items[1][price]": requestsPrice, proration_behavior: "create_prorations",
+    });
+    const [row] = ok(await owner.subscription.list());
+    assert.deepEqual([row.plan, row.priceId], ["platform", platformPrice]);
+    await signedUpdate(server, provider, "evt_platform", sub);
+    const [synced] = ok(await owner.subscription.list());
+    assert.deepEqual([synced.plan, synced.priceId, synced.seats], ["platform", platformPrice, 1]);
+  });
+  assert.deepEqual(forms.Go, forms.reference);
 }

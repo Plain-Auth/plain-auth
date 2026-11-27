@@ -8,10 +8,10 @@
   - [x] Use one registered callback with independent deployments and session stores ([test](../../../adapters/sqlstore/oauth_proxy_test.go#L45))
   - [ ] `GET /callback/:id/oauth-proxy`
     - [x] Consume the originating browser state once and verify the provider before creating the preview session ([test](../../../adapters/sqlstore/oauth_proxy_test.go#L208))
-    - [x] Complete a popup across sites and return its session to the trusted opener ([test](../../../conformance/core.test.mjs#L1792))
+    - [x] Complete a popup across sites and return its session to the trusted opener ([test](../../../conformance/core.test.mjs#L1797))
     - [x] Enforce verification required by the production provider when completing sign-in on a separately configured preview ([test](../../../adapters/sqlstore/oauth_proxy_test.go#L322))
   - [ ] `GET /oauth-proxy-callback`
-    - [x] Accept the unqualified return path for a returning account through the released browser client ([test](../../../conformance/core.test.mjs#L1782))
+    - [x] Accept the unqualified return path for a returning account through the released browser client ([test](../../../conformance/core.test.mjs#L1787))
   - [x] `OAuthProxyOptions` ([test](../../../oauth_proxy_test.go#L15))
     - [x] Configure the registered origin, current origin, lifetime and shared key ([test](../../../oauth_proxy_test.go#L15))
     - [x] `currentURL` ([test](../../../oauth_proxy_test.go#L104))
@@ -29,8 +29,8 @@
 
 - [ ] OAuth Proxy
   - Upgrading existing deployments — *not applicable: cutover notes for the other runtime's earlier releases and their proxy state format; this library has no earlier proxy format to upgrade from*
-  - [x] How it works ([test](../../../conformance/core.test.mjs#L1787))
-    - [x] Follow the complete production-to-preview return with host-scoped cookies in Chrome ([test](../../../conformance/core.test.mjs#L1787))
+  - [x] How it works ([test](../../../conformance/core.test.mjs#L1792))
+    - [x] Follow the complete production-to-preview return with host-scoped cookies in Chrome ([test](../../../conformance/core.test.mjs#L1792))
   - [ ] Options
     - [x] productionURL ([test](../../../adapters/sqlstore/oauth_proxy_test.go#L194))
       - [x] Send the production redirect URI and bypass the proxy on production itself ([test](../../../adapters/sqlstore/oauth_proxy_test.go#L194))
