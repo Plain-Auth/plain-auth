@@ -692,9 +692,11 @@
   - [ ] Trusted clients
   - [ ] Client CRUD privileges
     - [x] Check read and list privileges on the owner endpoints while keeping public display accessible to signed-in users ([test](../../../conformance/oauth-client-directory.mjs#L130))
+    - [x] Pass every client management action and its client ID to the privilege callback, refuse a denied action with 401 and never let an approval stand in for ownership, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_privileges_test.go#L84))
   - [ ] Organizations
     - [ ] An organization uses the client
     - [ ] An organization owns the client
+      - [x] Never list an ownerless client and refuse owner reads and updates of it, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_privileges_test.go#L118))
 
 ## OAuth 2.1 Provider
 

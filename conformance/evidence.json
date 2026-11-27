@@ -17264,6 +17264,11 @@
       "label": "Check read and list privileges on the owner endpoints while keeping public display accessible to signed-in users",
       "test": "conformance/oauth-client-directory.mjs",
       "marker": "const publicView = await ok("
+    },
+    {
+      "label": "Pass every client management action and its client ID to the privilege callback, refuse a denied action with 401 and never let an approval stand in for ownership, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_client_privileges_test.go",
+      "marker": "t.Fatal(\"the privilege callback did not see every action and client\", got)"
     }
   ],
   "plugin-symbol/oauth-provider/OAuthClient": [
@@ -48954,6 +48959,13 @@
       "label": "Update a client from server code: change owner fields, consent skipping and metadata, disable and enable it with tokens refused meanwhile, and clear machine scopes through the scopes-only path, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_client_admin_test.go",
       "marker": "t.Fatal(\"a disabled client still got a token\", err)"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/clients.mdx#L380": [
+    {
+      "label": "Never list an ownerless client and refuse owner reads and updates of it, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_client_privileges_test.go",
+      "marker": "t.Fatal(\"an ownerless client was listed\", list)"
     }
   ]
 }
