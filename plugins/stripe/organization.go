@@ -11,15 +11,17 @@ import (
 	"github.com/Plain-Org/plain-auth"
 )
 
-// ReferenceAuthorization contains the membership read under the database lock.
+// ReferenceAuthorization contains the membership role read just before the
+// store's transaction, which then requires the same role under its lock.
 // Role can contain multiple comma-separated organization roles.
 type ReferenceAuthorization struct {
 	UserID, OrganizationID, SessionID, Role, Action string
 }
 
 type OrganizationOptions struct {
-	// AuthorizeReference is called for every organization operation and before
-	// committing its effects. Use a local, side-effect-free permission check.
+	// AuthorizeReference is called for every organization operation, before
+	// the store opens the transaction that commits its effects, never inside
+	// it. Use a side-effect-free permission check.
 	AuthorizeReference func(ReferenceAuthorization) bool
 }
 

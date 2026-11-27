@@ -32,13 +32,22 @@ func (s *Store) CheckSubscriptionSchema(ctx context.Context) error {
 	return nil
 }
 func (s *Store) billingTransaction(ctx context.Context, userID, token string, now time.Time, action func(*sql.Tx) error) error {
+	org, scoped := billing.OrganizationFromContext(ctx)
+	var authorized string
+	if scoped && org.Actor != "" {
+		role, err := s.authorizeStripeActor(ctx, org, userID)
+		if err != nil {
+			return err
+		}
+		authorized = role
+	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
-	if org, ok := billing.OrganizationFromContext(ctx); ok {
-		err = s.lockStripeOrganization(ctx, tx, org, userID, token, now)
+	if scoped {
+		err = s.lockStripeOrganization(ctx, tx, org, userID, token, now, authorized)
 	} else if token == "" {
 		err = s.lockAccount(ctx, tx, userID)
 	} else {

@@ -74,7 +74,54 @@ func (s *Store) distinctStripeReference(ctx context.Context, q rowQuerier, ref, 
 	return nil
 }
 
-func (s *Store) lockStripeOrganization(ctx context.Context, tx *sql.Tx, scope billing.OrganizationScope, reference, token string, now time.Time) error {
+// authorizeStripeActor reads the actor's membership role and asks the
+// host's policy before any transaction opens, so host code never runs
+// with rows locked; the transaction then requires the same role.
+func (s *Store) authorizeStripeActor(ctx context.Context, scope billing.OrganizationScope, reference string) (string, error) {
+	if reference == "" || reference != scope.ID || scope.Authorize == nil {
+		return "", billing.ErrOrganizationBillingAccess
+	}
+	role, err := stripeMemberRole(ctx, s.db, s.bind(stripeMemberQuery), reference, scope.Actor)
+	if err != nil {
+		return "", err
+	}
+	if !scope.Authorize(billing.ReferenceAuthorization{UserID: scope.Actor, OrganizationID: reference, SessionID: scope.Session, Role: role, Action: scope.Action}) {
+		return "", billing.ErrOrganizationBillingAccess
+	}
+	return role, nil
+}
+
+const stripeMemberQuery = `SELECT "role" FROM "member" WHERE "organizationId"=? AND "userId"=? LIMIT 2`
+
+// stripeMemberRole reads the actor's single membership role; none, or more
+// than one membership, refuses billing access.
+func stripeMemberRole(ctx context.Context, db interface {
+	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
+}, query, reference, actor string) (string, error) {
+	rows, err := db.QueryContext(ctx, query, reference, actor)
+	if err != nil {
+		return "", err
+	}
+	defer rows.Close()
+	var role string
+	if !rows.Next() {
+		if err := rows.Err(); err != nil {
+			return "", err
+		}
+		return "", billing.ErrOrganizationBillingAccess
+	}
+	if err := rows.Scan(&role); err != nil {
+		return "", err
+	}
+	if rows.Next() {
+		return "", billing.ErrOrganizationBillingAccess
+	}
+	return role, rows.Err()
+}
+
+// lockStripeOrganization locks the actor's session and the organization and
+// requires the role the policy authorized before the transaction.
+func (s *Store) lockStripeOrganization(ctx context.Context, tx *sql.Tx, scope billing.OrganizationScope, reference, token string, now time.Time, authorized string) error {
 	if reference == "" || reference != scope.ID {
 		return billing.ErrOrganizationBillingAccess
 	}
@@ -106,28 +153,11 @@ func (s *Store) lockStripeOrganization(ctx context.Context, tx *sql.Tx, scope bi
 	if scope.Actor == "" {
 		return nil
 	}
-	rows, err := tx.QueryContext(ctx, s.readForUpdate(`SELECT "role" FROM "member" WHERE "organizationId"=? AND "userId"=? LIMIT 2`), reference, scope.Actor)
+	role, err := stripeMemberRole(ctx, tx, s.readForUpdate(stripeMemberQuery), reference, scope.Actor)
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
-	var role string
-	if !rows.Next() {
-		if err := rows.Err(); err != nil {
-			return err
-		}
-		return billing.ErrOrganizationBillingAccess
-	}
-	if err = rows.Scan(&role); err != nil {
-		return err
-	}
-	if rows.Next() {
-		return billing.ErrOrganizationBillingAccess
-	}
-	if err := rows.Err(); err != nil {
-		return err
-	}
-	if !scope.Authorize(billing.ReferenceAuthorization{UserID: scope.Actor, OrganizationID: reference, SessionID: scope.Session, Role: role, Action: scope.Action}) {
+	if role != authorized {
 		return billing.ErrOrganizationBillingAccess
 	}
 	return nil

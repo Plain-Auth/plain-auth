@@ -2,12 +2,14 @@ package sqlstore
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -49,6 +51,9 @@ func TestOrganizationBillingIsolation(t *testing.T) {
 			var calls, checkoutCalls int
 			paidSeats, remoteSeats := 3, 3
 			var clearedSubscriptionMetadata bool
+			var policyMu sync.Mutex
+			var probeErr error
+			var demote string
 			currentPrice := "price_basic"
 			currentStatus := "active"
 			now := time.Now().Unix()
@@ -130,6 +135,23 @@ func TestOrganizationBillingIsolation(t *testing.T) {
 			}
 			stripePlugin := billing.New(billing.Options{WebhookSecret: "whsec_local_org", Portal: &billing.PortalOptions{Client: provider, Customers: store}, Subscriptions: &billing.SubscriptionOptions{Client: provider, Plans: []billing.Plan{{Name: "basic", PriceID: "price_basic"}, {Name: "pro", PriceID: "price_pro"}}},
 				Organization: &billing.OrganizationOptions{AuthorizeReference: func(policy billing.ReferenceAuthorization) bool {
+					// No transaction is open while the policy runs, so a write
+					// to the organization row does not wait for its lock.
+					probe, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+					defer cancel()
+					_, err := store.db.ExecContext(probe, store.bind(`UPDATE "organization" SET "name"="name" WHERE "id"=?`), policy.OrganizationID)
+					policyMu.Lock()
+					defer policyMu.Unlock()
+					if err != nil && probeErr == nil {
+						probeErr = err
+					}
+					if demote != "" && policy.UserID == demote {
+						demote = ""
+						if _, err := store.db.ExecContext(probe, store.bind(`UPDATE "member" SET "role"='member' WHERE "userId"=? AND "organizationId"=?`), policy.UserID, policy.OrganizationID); err != nil && probeErr == nil {
+							probeErr = err
+						}
+						return true
+					}
 					if policy.OrganizationID == protectedOrganization {
 						return false
 					}
@@ -225,6 +247,18 @@ func TestOrganizationBillingIsolation(t *testing.T) {
 				t.Fatal("cached organization checkout was recreated", err)
 			}
 			portal := stripeclient.Portal{CustomerType: "organization", ReferenceID: group, ReturnURL: "/billing"}
+			// A role that changes after the policy approved it is refused
+			// under the lock, before Stripe.
+			before := calls
+			policyMu.Lock()
+			demote = did
+			policyMu.Unlock()
+			page, err = deputy.BillingPortal(ctx, portal)
+			code(err, 401, "UNAUTHORIZED")
+			if page.URL != "" || calls != before {
+				t.Fatal("a role changed after the policy reached Stripe", calls-before)
+			}
+			exec(`UPDATE "member" SET "role"='admin' WHERE "userId"=?`, did)
 			beforePortal = func() { exec(`UPDATE "member" SET "role"='finance' WHERE "userId"=?`, did) }
 			page, err = deputy.BillingPortal(ctx, portal)
 			code(err, 401, "UNAUTHORIZED")
@@ -321,6 +355,11 @@ func TestOrganizationBillingIsolation(t *testing.T) {
 			}
 			if rows, err := deputy.ListOrganization(ctx, group); err != nil || len(rows) != 0 {
 				t.Fatal("canceled organization subscription remained active", rows, err)
+			}
+			policyMu.Lock()
+			defer policyMu.Unlock()
+			if probeErr != nil {
+				t.Fatal("the policy ran inside a store transaction", probeErr)
 			}
 		})
 	}
