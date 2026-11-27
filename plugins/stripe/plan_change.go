@@ -82,7 +82,8 @@ func (s *subscriptions) changePlan(c auth.EndpointContext, selection billingSele
 	if scheduled && item.Quantity != 1 {
 		return nil, errUnsupportedScheduledSeats
 	}
-	sourcePrice, sourceQuantity = s.prices[item.Price.ID], item.Quantity
+	sourcePrice, _ = s.priceOf(item.Price)
+	sourceQuantity = item.Quantity
 	if sub.Status == sdk.SubscriptionStatusActive && item.Price.ID == target && item.Quantity == quantity && (item.CurrentPeriodEnd == 0 || item.CurrentPeriodEnd > time.Now().Unix()) {
 		return nil, errAlreadySubscribed
 	}
@@ -142,7 +143,8 @@ func (s *subscriptions) verifyPriceInterval(ctx context.Context, target, interva
 }
 
 func (s *subscriptions) licensedPrice(p *sdk.Price) bool {
-	return p != nil && licensedAtInterval(p, s.prices[p.ID].interval)
+	price, _ := s.priceOf(p)
+	return p != nil && licensedAtInterval(p, price.interval)
 }
 
 func licensedAtInterval(p *sdk.Price, interval string) bool {

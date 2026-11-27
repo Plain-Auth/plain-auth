@@ -45,7 +45,16 @@ type Plan struct {
 	// Group labels related plans for the application; the plugin only
 	// passes it on and never sends it to Stripe.
 	Group string `json:",omitempty"`
+	// RetiredPriceIDs are earlier base prices of this plan that existing
+	// subscriptions may still use. They are never sold. A subscription on one
+	// maps to this plan, at the price's monthly or yearly interval. Keep a
+	// price here while any subscription uses it. Membership-based plans
+	// cannot retire prices, since seat updates bind the configured prices.
+	RetiredPriceIDs []string `json:",omitempty"`
 }
+
+// maxRetiredPrices bounds a plan's retired prices, so a stored plan stays small.
+const maxRetiredPrices = 100
 
 // maxLimitsBytes bounds a plan's marshalled limits, so a stored callback
 // receipt that carries the plan fits every supported store's column.
@@ -225,6 +234,7 @@ type subscriptions struct {
 	checkoutParams                              func(context.Context, CheckoutSessionInput) (*sdk.CheckoutSessionCreateParams, error)
 	organization                                *OrganizationOptions
 	prices                                      map[string]subscriptionPrice
+	retired                                     map[string]string // retired price ID to plan name
 	client                                      *sdk.Client
 	plans                                       map[string]Plan
 	requireEmailVerification                    bool
@@ -245,7 +255,7 @@ func configureSubscriptions(o *SubscriptionOptions) (*subscriptions, error) {
 		return nil, errors.New("stripe: subscriptions require a client and plans")
 	}
 	s := &subscriptions{client: o.Client, plans: map[string]Plan{}, requireEmailVerification: o.RequireEmailVerification, onUpdate: o.OnSubscriptionUpdate, onCreated: o.OnSubscriptionCreated, onCancel: o.OnSubscriptionCancel, onDeleted: o.OnSubscriptionDeleted, onComplete: o.OnSubscriptionComplete, checkoutParams: o.CheckoutSessionParams}
-	s.prices = make(map[string]subscriptionPrice)
+	s.prices, s.retired = make(map[string]subscriptionPrice), make(map[string]string)
 	for _, p := range o.Plans {
 		if p.FreeTrial != nil {
 			trial := *p.FreeTrial
@@ -277,6 +287,7 @@ func configureSubscriptions(o *SubscriptionOptions) (*subscriptions, error) {
 			return nil, errors.New("stripe: unknown proration behavior")
 		}
 		p.MeteredPriceIDs = slices.Clone(p.MeteredPriceIDs)
+		p.RetiredPriceIDs = slices.Clone(p.RetiredPriceIDs)
 		limits, err := jsonLimits(p.Limits)
 		if err != nil {
 			return nil, err
@@ -303,7 +314,67 @@ func configureSubscriptions(o *SubscriptionOptions) (*subscriptions, error) {
 	if err := s.validateMeteredAddons(); err != nil {
 		return nil, err
 	}
+	if err := s.configureRetiredPrices(); err != nil {
+		return nil, err
+	}
 	return s, nil
+}
+
+// configureRetiredPrices checks that each retired price is a price ID used
+// nowhere else in the catalog, and indexes it by plan.
+func (s *subscriptions) configureRetiredPrices() error {
+	used := make(map[string]bool)
+	for price := range s.prices {
+		used[price] = true
+	}
+	for _, p := range s.plans {
+		used[p.SeatPriceID] = true
+		for _, price := range p.MeteredPriceIDs {
+			used[price] = true
+		}
+	}
+	for _, p := range s.plans {
+		if len(p.RetiredPriceIDs) == 0 {
+			continue
+		}
+		if p.SeatPriceID != "" {
+			return errors.New("stripe: a membership-based plan cannot retire prices")
+		}
+		if len(p.RetiredPriceIDs) > maxRetiredPrices {
+			return errors.New("stripe: a plan retires at most 100 prices")
+		}
+		for _, price := range p.RetiredPriceIDs {
+			if !strings.HasPrefix(price, "price_") || len(price) == 6 || used[price] {
+				return errors.New("stripe: each retired price must be a distinct price ID configured nowhere else")
+			}
+			used[price] = true
+			s.retired[price] = p.Name
+		}
+	}
+	return nil
+}
+
+// priceOf maps a price Stripe reports to its plan and interval: a
+// configured price, or a retired one at its own monthly or yearly interval.
+// Any other price maps to nothing, so its subscription is unmapped, where
+// another runtime keeps an unknown single price's stored plan: a price
+// nobody configured must not keep a plan's entitlements.
+func (s *subscriptions) priceOf(p *sdk.Price) (subscriptionPrice, bool) {
+	if p == nil {
+		return subscriptionPrice{}, false
+	}
+	if price, ok := s.prices[p.ID]; ok {
+		return price, true
+	}
+	plan, ok := s.retired[p.ID]
+	if !ok || p.Recurring == nil || p.Recurring.IntervalCount != 1 {
+		return subscriptionPrice{}, false
+	}
+	switch interval := string(p.Recurring.Interval); interval {
+	case "month", "year":
+		return subscriptionPrice{plan, interval}, true
+	}
+	return subscriptionPrice{}, false
 }
 func (s *subscriptions) list(c auth.EndpointContext) (any, error) {
 	selection, err := selectBilling(&c, listFields, "list-subscription", s.organization)

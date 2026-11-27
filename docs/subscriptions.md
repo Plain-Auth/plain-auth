@@ -318,6 +318,10 @@ Processing is safe across replicas. The adapter records processed event IDs for 
 
 Custom stores can implement `stripeplugin.SubscriptionLifecycleStore` to enable these writes. The optional `OnEvent` callback receives authenticated notifications, including retries. Use the Stripe event ID when the callback sends messages or performs other side effects. The SQL tests use a local provider transport and independent database connections. [Subscription lifecycle tests](../adapters/sqlstore/stripe_lifecycle_test.go)
 
+### Retire a price
+
+To move a plan to a new price while existing subscribers stay on the old one, set the new price as `PriceID` or `AnnualPriceID` and list the old one in `RetiredPriceIDs`. A subscription on a retired price keeps its plan, at the monthly or yearly interval the price reports, and lists the plan's configured price. A retired price is never sold: Checkout sends the configured price, and asking for the same plan from a retired price moves the subscription to the configured one rather than answering `ALREADY_SUBSCRIBED_PLAN`. Keep a price listed while any subscription uses it. A price that is configured nowhere marks its subscription `unmapped`, where another runtime keeps an unknown single price's stored plan, so a price nobody configured never keeps a plan's entitlements. Each retired price must be a price ID used nowhere else, at most 100 per plan, and membership-based plans cannot retire prices, since seat updates are bound to the configured prices. [Retired price tests](../adapters/sqlstore/stripe_retired_prices_test.go)
+
 ### Observe committed subscription updates
 
 Set `OnSubscriptionUpdate` on `stripeplugin.SubscriptionOptions` to receive signed `customer.subscription.updated` deliveries for a subscription that is already linked locally or has a verified pending checkout.

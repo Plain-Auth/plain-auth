@@ -96,3 +96,42 @@ func TestPlanNamesAndPrices(t *testing.T) {
 		t.Error("a padded plan name was refused", err)
 	}
 }
+
+// A retired price must be a distinct price ID configured nowhere else, at
+// most 100 per plan, and never on a membership-based plan.
+func TestRetiredPriceConfiguration(t *testing.T) {
+	start := func(plans ...stripeplugin.Plan) error {
+		_, err := authn.New(authn.Options{Store: memory.New(), BaseURL: "http://auth.test", Secret: "test-secret-0123456789-abcdefghijk",
+			Plugins: []authn.Plugin{stripeplugin.New(stripeplugin.Options{WebhookSecret: "whsec_local",
+				Organization:  &stripeplugin.OrganizationOptions{AuthorizeReference: func(stripeplugin.ReferenceAuthorization) bool { return true }},
+				Subscriptions: &stripeplugin.SubscriptionOptions{Client: stripesdk.NewClient("sk_test_local"), Plans: plans}})}})
+		return err
+	}
+	const distinct = "stripe: each retired price must be a distinct price ID configured nowhere else"
+	many := make([]string, 101)
+	for i := range many {
+		many[i] = "price_old_" + strings.Repeat("x", i+1)
+	}
+	for name, tc := range map[string]struct {
+		plans []stripeplugin.Plan
+		want  string
+	}{
+		"duplicate":  {[]stripeplugin.Plan{{Name: "pro", PriceID: "price_new", RetiredPriceIDs: []string{"price_old", "price_old"}}}, distinct},
+		"other plan": {[]stripeplugin.Plan{{Name: "pro", PriceID: "price_new", RetiredPriceIDs: []string{"price_old"}}, {Name: "team", PriceID: "price_team", RetiredPriceIDs: []string{"price_old"}}}, distinct},
+		"base":       {[]stripeplugin.Plan{{Name: "pro", PriceID: "price_new", RetiredPriceIDs: []string{"price_team"}}, {Name: "team", PriceID: "price_team"}}, distinct},
+		"own base":   {[]stripeplugin.Plan{{Name: "pro", PriceID: "price_new", AnnualPriceID: "price_year", RetiredPriceIDs: []string{"price_year"}}}, distinct},
+		"seat":       {[]stripeplugin.Plan{{Name: "pro", PriceID: "price_new", RetiredPriceIDs: []string{"price_member"}}, {Name: "team", PriceID: "price_team", SeatPriceID: "price_member"}}, distinct},
+		"add-on":     {[]stripeplugin.Plan{{Name: "pro", PriceID: "price_new", MeteredPriceIDs: []string{"price_usage"}, RetiredPriceIDs: []string{"price_usage"}}}, distinct},
+		"bare":       {[]stripeplugin.Plan{{Name: "pro", PriceID: "price_new", RetiredPriceIDs: []string{"price_"}}}, distinct},
+		"product":    {[]stripeplugin.Plan{{Name: "pro", PriceID: "price_new", RetiredPriceIDs: []string{"prod_old"}}}, distinct},
+		"over 100":   {[]stripeplugin.Plan{{Name: "pro", PriceID: "price_new", RetiredPriceIDs: many}}, "stripe: a plan retires at most 100 prices"},
+		"seat plan":  {[]stripeplugin.Plan{{Name: "team", PriceID: "price_team", SeatPriceID: "price_team", RetiredPriceIDs: []string{"price_old"}}}, "stripe: a membership-based plan cannot retire prices"},
+	} {
+		if err := start(tc.plans...); err == nil || err.Error() != tc.want {
+			t.Error("a retired price was handled wrongly", name, err)
+		}
+	}
+	if err := start(stripeplugin.Plan{Name: "pro", PriceID: "price_new", RetiredPriceIDs: many[:100]}); err != nil && strings.Contains(err.Error(), "retire") {
+		t.Error("100 retired prices were refused", err)
+	}
+}

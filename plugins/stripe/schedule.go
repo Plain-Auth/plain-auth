@@ -49,7 +49,7 @@ func (s *subscriptions) scheduleChange(c plainauth.EndpointContext, selection bi
 	if sub.Schedule != nil {
 		attached = sub.Schedule.ID
 	}
-	sourcePrice := s.prices[item.Price.ID]
+	sourcePrice, _ := s.priceOf(item.Price)
 	want := ScheduleChange{
 		Owner: selection.reference, Customer: sub.Customer.ID, LocalID: local.ID, Subscription: sub.ID,
 		Item: item.ID, Current: item.Price.ID, Target: target, CurrentPlan: sourcePrice.plan, CurrentInterval: sourcePrice.interval,

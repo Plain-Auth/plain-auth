@@ -198,7 +198,7 @@ func (s *subscriptions) subscriptionChange(sub *sdk.Subscription, deleted bool, 
 			if item == nil || item.Price == nil {
 				continue
 			}
-			price := s.prices[item.Price.ID]
+			price, _ := s.priceOf(item.Price)
 			plan := s.plans[price.plan]
 			if len(plan.MeteredPriceIDs) == 0 {
 				continue
@@ -238,7 +238,8 @@ func (s *subscriptions) subscriptionChange(sub *sdk.Subscription, deleted bool, 
 	}
 	seats := item.Quantity
 	if item.Price.Recurring != nil && item.Price.Recurring.UsageType == sdk.PriceRecurringUsageTypeMetered {
-		if !recurringAtInterval(item.Price, s.prices[item.Price.ID].interval, sdk.PriceRecurringUsageTypeMetered) {
+		price, _ := s.priceOf(item.Price)
+		if !recurringAtInterval(item.Price, price.interval, sdk.PriceRecurringUsageTypeMetered) {
 			return change
 		}
 		// The subscription API uses one as the default for an item with no quantity.
@@ -250,7 +251,7 @@ func (s *subscriptions) subscriptionChange(sub *sdk.Subscription, deleted bool, 
 		return change
 	}
 	change.PeriodStart, change.PeriodEnd, change.Seats = item.CurrentPeriodStart, item.CurrentPeriodEnd, seats
-	if price, ok := s.prices[item.Price.ID]; ok && (item.Price.Recurring == nil || string(item.Price.Recurring.Interval) == price.interval) {
+	if price, ok := s.priceOf(item.Price); ok && (item.Price.Recurring == nil || string(item.Price.Recurring.Interval) == price.interval) {
 		change.Plan, change.Interval = price.plan, price.interval
 	}
 	return change
