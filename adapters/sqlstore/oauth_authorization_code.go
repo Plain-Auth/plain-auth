@@ -180,14 +180,31 @@ func (s *Store) insertDelegatedTokens(ctx context.Context, tx *sql.Tx, clientID 
 		if refresh.AuthTime != nil {
 			authTime = s.date(*refresh.AuthTime)
 		}
-		const insertRefresh = `INSERT INTO "oauthRefreshToken" ("id","token","clientId","userId","sessionId","referenceId","authorizationCodeId","scopes","createdAt","expiresAt","authTime","requestedUserInfoClaims") VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`
-		if _, err := tx.ExecContext(ctx, s.bind(insertRefresh), id, refreshDigest, clientID, record.UserID, refreshSessionID, record.ReferenceID, codeID, string(scopes), s.date(record.IssuedAt), s.date(refresh.ExpiresAt), authTime, claims); err != nil {
+		resources, err := resourceColumn(refresh.Resources)
+		if err != nil {
+			return err
+		}
+		const insertRefresh = `INSERT INTO "oauthRefreshToken" ("id","token","clientId","userId","sessionId","referenceId","authorizationCodeId","scopes","createdAt","expiresAt","authTime","requestedUserInfoClaims","resources") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`
+		if _, err := tx.ExecContext(ctx, s.bind(insertRefresh), id, refreshDigest, clientID, record.UserID, refreshSessionID, record.ReferenceID, codeID, string(scopes), s.date(record.IssuedAt), s.date(refresh.ExpiresAt), authTime, claims, resources); err != nil {
 			return err
 		}
 	}
-	const insert = `INSERT INTO "oauthAccessToken" ("id","token","clientId","userId","sessionId","referenceId","authorizationCodeId","scopes","createdAt","expiresAt","refreshId","requestedUserInfoClaims") VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`
-	_, err = tx.ExecContext(ctx, s.bind(insert), rand.Text(), record.StoredToken, clientID, record.UserID, accessSessionID, record.ReferenceID, codeID, string(scopes), s.date(record.IssuedAt), s.date(record.ExpiresAt), refreshID, claims)
+	resources, err := resourceColumn(record.Resources)
+	if err != nil {
+		return err
+	}
+	const insert = `INSERT INTO "oauthAccessToken" ("id","token","clientId","userId","sessionId","referenceId","authorizationCodeId","scopes","createdAt","expiresAt","refreshId","requestedUserInfoClaims","resources") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`
+	_, err = tx.ExecContext(ctx, s.bind(insert), rand.Text(), record.StoredToken, clientID, record.UserID, accessSessionID, record.ReferenceID, codeID, string(scopes), s.date(record.IssuedAt), s.date(record.ExpiresAt), refreshID, claims, resources)
 	return err
+}
+
+// resourceColumn encodes a token's resources, or NULL for none.
+func resourceColumn(ids []string) (sql.NullString, error) {
+	if len(ids) == 0 {
+		return sql.NullString{}, nil
+	}
+	raw, err := json.Marshal(ids)
+	return sql.NullString{String: string(raw), Valid: err == nil}, err
 }
 
 func (s *Store) readDelegatedClient(ctx context.Context, tx *sql.Tx, clientID string, check func(op.MachineClient) error) (op.AuthorizationCodeClient, error) {

@@ -35,6 +35,8 @@ type DelegatedAccessRecord struct {
 	// Deferred asks the store to run its issue phase, outside the grant
 	// transaction, even without a refresh or ID token.
 	Deferred bool
+	// Resources are the token's resource audiences, stored with it.
+	Resources []string
 }
 
 // InitialRefreshGrant holds the expiry and original authentication time of a
@@ -43,6 +45,9 @@ type DelegatedAccessRecord struct {
 type InitialRefreshGrant struct {
 	ExpiresAt time.Time
 	AuthTime  *time.Time
+	// Resources are the resources the grant authorized, which later
+	// refresh exchanges may request.
+	Resources []string
 }
 
 // DelegatedToken is the response to an authorization-code or refresh exchange.
@@ -219,6 +224,10 @@ func (opts Options) redeemAuthorizationCode(c auth.EndpointContext, in tokenRequ
 		return result, err
 	}
 	offlineStore, canIssueRefresh := store.(OfflineAuthorizationCodeStore)
+	// policy holds the resources' policy rows once read; needed names the
+	// resources prepare asked for.
+	var policy *codeResources
+	var needed []string
 	now := time.Now().UTC().Truncate(time.Second)
 	openidStore, supportsOpenID := store.(OpenIDGrantStore)
 	var codeValue json.RawMessage
@@ -241,11 +250,41 @@ func (opts Options) redeemAuthorizationCode(c auth.EndpointContext, in tokenRequ
 		if err != nil {
 			return DelegatedAccessRecord{}, err
 		}
+		effective, authorized, err := code.resources(in.resources)
+		if err != nil {
+			return DelegatedAccessRecord{}, err
+		}
+		refreshLifetime := opts.Tokens.RefreshLifetime
+		if len(effective) > 0 {
+			// The UserInfo URL is an implicit audience, not a registered resource.
+			userInfo := c.Auth.PublicURL() + "/oauth2/userinfo"
+			ids := slices.DeleteFunc(slices.Clone(effective), func(id string) bool { return id == userInfo })
+			if policy == nil || !slices.Equal(policy.ids, ids) {
+				needed = ids
+				return DelegatedAccessRecord{}, errResourcePolicyNeeded
+			}
+			granted, err := opts.Tokens.resourcePolicy(client.ClientID, false, scopes, ids, policy.rows, lifetime)
+			if err != nil {
+				return DelegatedAccessRecord{}, err
+			}
+			if granted.bound {
+				if in.proof == "" {
+					return DelegatedAccessRecord{}, proofError("DPoP proof header is required")
+				}
+				return DelegatedAccessRecord{}, registrationProblem(501, "server_error", "sender-bound authorization-code issuance is unavailable")
+			}
+			scopes, lifetime = granted.scopes, granted.lifetime
+			refreshLifetime = granted.refreshLifetime(refreshLifetime)
+			// Narrowed scopes keep the claims only openid allows.
+			if claims, err = opts.grantUserInfoClaims(code.Query.Claims, slices.Contains(scopes, "openid")); err != nil {
+				return DelegatedAccessRecord{}, registrationProblem(400, "invalid_grant", "malformed authorization claims")
+			}
+		}
 		result.MachineToken = machineResponse(issued, "", scopes, now, lifetime)
 		record := DelegatedAccessRecord{
 			MachineTokenRecord: MachineTokenRecord{StoredToken: stored, Scopes: scopes, IssuedAt: now, ExpiresAt: now.Add(lifetime)},
 			UserID:             code.UserID, SessionID: code.SessionID, ReferenceID: code.ReferenceID,
-			RequestedUserInfoClaims: claims,
+			RequestedUserInfoClaims: claims, Resources: effective,
 		}
 		var authTime time.Time
 		if code.AuthTime != nil {
@@ -276,7 +315,10 @@ func (opts Options) redeemAuthorizationCode(c auth.EndpointContext, in tokenRequ
 			if !canIssueRefresh {
 				return DelegatedAccessRecord{}, &auth.APIError{Status: 501, Code: "OAUTH_REFRESH_STORE_UNAVAILABLE", Message: "The configured store does not support offline grants"}
 			}
-			record.Refresh = &InitialRefreshGrant{ExpiresAt: now.Add(opts.Tokens.RefreshLifetime)}
+			record.Refresh = &InitialRefreshGrant{ExpiresAt: now.Add(refreshLifetime), Resources: authorized}
+			if len(authorized) == 0 {
+				record.Refresh.Resources = effective
+			}
 			if code.AuthTime != nil {
 				record.Refresh.AuthTime = &authTime
 			}
@@ -317,13 +359,28 @@ func (opts Options) redeemAuthorizationCode(c auth.EndpointContext, in tokenRequ
 	err = c.GateVerifications(func(ctx context.Context) error {
 		now = time.Now().UTC().Truncate(time.Second) // a rerun follows slow hooks
 		var err error
-		switch {
-		case supportsOpenID:
-			err = openidStore.RedeemOpenIDCode(ctx, in.id, identifier, checkClient, prepare, issueOpenID)
-		case canIssueRefresh:
-			err = offlineStore.RedeemAuthorizationCodeWithRefresh(ctx, in.id, identifier, checkClient, prepare, issueRefresh)
-		default:
-			err = store.RedeemAuthorizationCode(ctx, in.id, identifier, checkClient, prepare)
+		for range 3 {
+			switch {
+			case supportsOpenID:
+				err = openidStore.RedeemOpenIDCode(ctx, in.id, identifier, checkClient, prepare, issueOpenID)
+			case canIssueRefresh:
+				err = offlineStore.RedeemAuthorizationCodeWithRefresh(ctx, in.id, identifier, checkClient, prepare, issueRefresh)
+			default:
+				err = store.RedeemAuthorizationCode(ctx, in.id, identifier, checkClient, prepare)
+			}
+			if !errors.Is(err, errResourcePolicyNeeded) {
+				break
+			}
+			// Read outside the redemption's transaction, as another runtime
+			// reads them; the second pass uses this policy.
+			read, err := opts.readCodeResources(c, in.id, needed)
+			if err != nil {
+				return err
+			}
+			policy = &read
+		}
+		if errors.Is(err, errResourcePolicyNeeded) {
+			err = registrationProblem(400, "invalid_request", "resource policy changed during issuance, retry the request")
 		}
 		committed = err == nil
 		return err
@@ -386,10 +443,63 @@ func (code storedAuthorizationCode) scopesForExchange(client AuthorizationCodeCl
 		}
 		return nil, registrationProblem(501, "server_error", "sender-bound authorization-code issuance is unavailable")
 	}
-	if len(code.Resources) > 0 || (len(q.Resource) > 0 && string(q.Resource) != "null") || len(in.resources) > 0 {
-		return nil, registrationProblem(501, "server_error", "resource-targeted authorization-code issuance is unavailable")
-	}
 	return scopes, nil
+}
+
+// resources returns the token's resources, the requested ones or else those
+// the code authorized, and those the code authorized, from its top-level
+// resource or a legacy query.resource. A requested resource the code did
+// not authorize is refused, as in another runtime.
+func (code storedAuthorizationCode) resources(requested []string) (effective, authorized []string, err error) {
+	authorized = code.Resources
+	if len(authorized) == 0 && len(code.Query.Resource) > 0 {
+		var one string
+		if json.Unmarshal(code.Query.Resource, &one) == nil {
+			authorized = []string{one}
+		} else if json.Unmarshal(code.Query.Resource, &authorized) != nil {
+			return nil, nil, registrationProblem(400, "invalid_grant", "malformed verification value")
+		}
+	}
+	effective = authorized
+	if len(requested) > 0 {
+		effective = requested
+		if len(authorized) > 0 {
+			for _, id := range requested {
+				if !slices.Contains(authorized, id) {
+					return nil, nil, registrationProblem(400, "invalid_target", "requested resource not authorized")
+				}
+			}
+		}
+	}
+	return distinct(effective), authorized, nil
+}
+
+// errResourcePolicyNeeded stops a redemption whose resources' policies are
+// not read yet. prepare returns it before the code is spent or a hook is
+// asked; they are read outside the transaction and the redemption runs again.
+var errResourcePolicyNeeded = errors.New("oauthprovider: resource policy needed")
+
+// codeResources holds the policy rows of a redemption's resources.
+type codeResources struct {
+	ids  []string
+	rows map[string]MachineResource
+}
+
+// readCodeResources reads the policy rows of resources for a client.
+func (opts Options) readCodeResources(c auth.EndpointContext, clientID string, ids []string) (codeResources, error) {
+	store, ok := c.Store().(ResourceMachineTokenStore)
+	if !ok {
+		return codeResources{}, &auth.APIError{Status: 501, Code: "OAUTH_RESOURCE_TOKEN_STORE_UNAVAILABLE", Message: "The configured store cannot issue resource-targeted tokens"}
+	}
+	if err := opts.seedResources(c); err != nil {
+		return codeResources{}, err
+	}
+	read := codeResources{ids: slices.Clone(ids)}
+	err := store.WithMachineResources(c.Request.Context(), clientID, ids, func(_ MachineClient, rows map[string]MachineResource) (*ResourceMachineTokenRecord, error) {
+		read.rows = rows
+		return nil, nil
+	})
+	return read, err
 }
 
 func (opts TokenOptions) issueRefreshToken(ctx context.Context, sessionID string) (wire, digest string, err error) {

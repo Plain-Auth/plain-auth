@@ -496,7 +496,9 @@
     - [x] Accept identifier strings and full policy objects, including signing, lifetimes, scopes, claims, metadata and flags ([test](../../../conformance/resource-seeds.mjs#L37))
   - [ ] `OAuthClientResource`
   - [ ] `StoredAuthorizationQuery`
-  - [ ] `VerificationValue`
+  - [x] `VerificationValue` ([test](../../../adapters/sqlstore/oauth_code_resources_test.go#L175))
+    - [x] Write a code's resources in its top-level resource list and read them back at redemption, falling back to a legacy query.resource, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_code_resources_test.go#L175))
+    - [x] Carry the resources through the signed consent page into the code value ([test](../../../adapters/sqlstore/oauth_browser_resources_test.go#L24))
   - [ ] `SchemaClient`
   - [ ] `OAuthOpaqueAccessToken`
   - [ ] `OAuthRefreshToken`
@@ -742,6 +744,7 @@
   - [ ] Run your first flow
     - [ ] Register the API and a client
     - [ ] Send the user to the authorize endpoint
+      - [x] Accept a resource at authorize and redeem the code into a token for it, with the resource's scopes and lifetimes, on SQLite, PostgreSQL and MySQL; the token is opaque so far ([test](../../../adapters/sqlstore/oauth_code_resources_test.go#L24))
     - [x] Sign in and consent ([test](../../../conformance/oauth-browser-login.mjs#L78))
       - [x] Sign in on the login page, approve on the consent page and return the code with state and issuer to the callback ([test](../../../conformance/oauth-browser-login.mjs#L78))
     - [ ] Exchange the code for tokens

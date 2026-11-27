@@ -66,11 +66,32 @@ func TestAuthorizationCodeGrantBoundaries(t *testing.T) {
 	check(basic, "unexpected", 400, "invalid_request")
 	check(`{"query":{"client_id":"app","scope":"offline_access"}}`, "", 400, "invalid_request")
 	check(`{"query":{"client_id":"app","scope":"read","dpop_jkt":"thumbprint"}}`, "", 400, "invalid_dpop_proof")
-	check(`{"resource":["urn:protected"],"query":{"client_id":"app","scope":"read"}}`, "", 501, "server_error")
-	check(`{"query":{"client_id":"app","scope":"read","resource":"urn:protected"}}`, "", 501, "server_error")
-	in.resources = []string{"urn:protected"}
-	check(basic, "", 501, "server_error")
-	in.resources = nil
+	check(`{"resource":["urn:protected"],"query":{"client_id":"app","scope":"read"}}`, "", 200, "")
+	// A code's resources come from its top-level list or a legacy
+	// query.resource; a request may name only resources the code authorized,
+	// any when it authorized none.
+	for _, tc := range []struct {
+		raw                  string
+		requested, effective []string
+		refused              bool
+	}{
+		{`{"resource":["urn:a","urn:b"],"query":{}}`, nil, []string{"urn:a", "urn:b"}, false},
+		{`{"query":{"resource":"urn:a"}}`, nil, []string{"urn:a"}, false},
+		{`{"query":{"resource":["urn:a"]}}`, []string{"urn:a"}, []string{"urn:a"}, false},
+		{`{"resource":["urn:a","urn:b"],"query":{}}`, []string{"urn:b"}, []string{"urn:b"}, false},
+		{`{"resource":["urn:a"],"query":{}}`, []string{"urn:c"}, nil, true},
+		{`{"resource":[],"query":{}}`, []string{"urn:c"}, []string{"urn:c"}, false},
+	} {
+		var code storedAuthorizationCode
+		if err := json.Unmarshal([]byte(tc.raw), &code); err != nil {
+			t.Fatal(err)
+		}
+		effective, _, err := code.resources(tc.requested)
+		var p *auth.OAuthError
+		if tc.refused != (errors.As(err, &p) && p.Code == "invalid_target") || !tc.refused && !slices.Equal(effective, tc.effective) {
+			t.Fatal("wrong code resources", tc.raw, tc.requested, effective, err)
+		}
+	}
 	in.proof = "proof"
 	check(basic, "", 501, "server_error")
 	in.proof = ""

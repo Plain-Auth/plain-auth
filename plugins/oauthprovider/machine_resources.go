@@ -41,6 +41,17 @@ type machineResourcePolicy struct {
 	algorithm, keyID string
 	claims           map[string]json.RawMessage
 	bound            bool
+	// refreshTTL is the shortest refresh lifetime the resources set, in
+	// seconds, or nil.
+	refreshTTL *int64
+}
+
+// refreshLifetime caps a refresh lifetime at the resources' shortest.
+func (p machineResourcePolicy) refreshLifetime(lifetime time.Duration) time.Duration {
+	if p.refreshTTL != nil && time.Duration(*p.refreshTTL)*time.Second < lifetime {
+		return time.Duration(*p.refreshTTL) * time.Second
+	}
+	return lifetime
 }
 
 func (opts TokenOptions) machineResourcePolicy(client MachineClient, scopes, identifiers []string, rows map[string]MachineResource, now time.Time) (machineResourcePolicy, error) {
@@ -88,6 +99,9 @@ func (opts TokenOptions) resourcePolicy(clientID string, bound bool, scopes, ide
 				return p, registrationProblem(400, "invalid_target", "requested resource has an invalid access token lifetime")
 			}
 			p.lifetime = time.Duration(*ttl) * time.Second
+		}
+		if ttl := row.RefreshTokenTTL; ttl != nil && *ttl > 0 && (p.refreshTTL == nil || *ttl < *p.refreshTTL) {
+			p.refreshTTL = ttl
 		}
 		if alg := row.SigningAlgorithm; alg != nil && *alg != "" {
 			algConflict = algConflict || p.algorithm != "" && p.algorithm != *alg

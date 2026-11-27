@@ -49131,5 +49131,25 @@
       "marker": "t.Fatal(\"accepted consent did not record the resources\", resources)",
       "complete": true
     }
+  ],
+  "plugin-symbol/oauth-provider/VerificationValue": [
+    {
+      "label": "Write a code's resources in its top-level resource list and read them back at redemption, falling back to a legacy query.resource, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_code_resources_test.go",
+      "marker": "t.Fatal(\"a legacy query.resource was not read\", status, body)",
+      "complete": true
+    },
+    {
+      "label": "Carry the resources through the signed consent page into the code value",
+      "test": "adapters/sqlstore/oauth_browser_resources_test.go",
+      "marker": "func TestBrowserAuthorizationResources("
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/index.mdx#L193": [
+    {
+      "label": "Accept a resource at authorize and redeem the code into a token for it, with the resource's scopes and lifetimes, on SQLite, PostgreSQL and MySQL; the token is opaque so far",
+      "test": "adapters/sqlstore/oauth_code_resources_test.go",
+      "marker": "func TestAuthorizationCodeResources("
+    }
   ]
 }
