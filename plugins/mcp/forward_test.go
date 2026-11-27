@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/Plain-Org/plain-auth/plugins/oauthprovider"
 )
@@ -110,5 +111,25 @@ func TestProviderOptionsForwarded(t *testing.T) {
 		if field.IsExported() && !same(gotValue.Field(i), wantValue.Field(i)) {
 			t.Error("a provider option was not forwarded", field.Name)
 		}
+	}
+}
+
+// The refresh reuse window defaults to 30 seconds; a negative value turns
+// it off and any other is kept.
+func TestRefreshReuseIntervalDefault(t *testing.T) {
+	for given, want := range map[time.Duration]time.Duration{0: 30 * time.Second, -time.Second: 0, 10 * time.Second: 10 * time.Second} {
+		var opts Options
+		opts.Resource = "https://api.example.test/mcp"
+		opts.Tokens.RefreshReuseInterval = given
+		if got := opts.provider().Tokens.RefreshReuseInterval; got != want {
+			t.Error("the refresh reuse window was wrong", given, got)
+		}
+	}
+	// The provider accepts the default.
+	var opts Options
+	opts.Resource, opts.Scopes = "https://api.example.test/mcp", []string{"mcp:read"}
+	opts.Authorization.LoginPage, opts.Authorization.ConsentPage = "/login", "/consent"
+	if _, err := New(opts); err != nil {
+		t.Fatal(err)
 	}
 }

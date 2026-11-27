@@ -49988,5 +49988,21 @@
       "test": "plugins/mcp/forward_test.go",
       "marker": "func TestProviderOptionsForwarded("
     }
+  ],
+  "plugin-symbol/mcp/McpOptions/refreshTokenReuseInterval": [
+    {
+      "label": "Default the refresh reuse window to 30 seconds, turn it off for a negative value and keep any other; the negative switch is a documented deviation",
+      "test": "plugins/mcp/forward_test.go",
+      "marker": "func TestRefreshReuseIntervalDefault(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/mcp.mdx#L335/`mcpOauthOptionsType.refreshTokenReuseInterval`": [
+    {
+      "label": "Default the MCP refresh reuse window to 30 seconds",
+      "test": "plugins/mcp/forward_test.go",
+      "marker": "func TestRefreshReuseIntervalDefault(",
+      "complete": true
+    }
   ]
 }

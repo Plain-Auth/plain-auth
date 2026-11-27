@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"slices"
 	"strings"
+	"time"
 
 	auth "github.com/Plain-Org/plain-auth"
 	"github.com/Plain-Org/plain-auth/plugins/oauthprovider"
@@ -69,8 +70,18 @@ func New(opts Options) (auth.Plugin, error) {
 
 // provider returns the provider options with the MCP resource declared and
 // given to registered clients by default, without changing the caller's.
+// The refresh reuse window defaults to 30 seconds, as another runtime's
+// MCP plugin defaults it, so a retried refresh recovers its response; a
+// negative value turns it off, where another runtime uses 0, since a zero
+// Duration means unset.
 func (opts Options) provider() oauthprovider.Options {
 	p := opts.Options
+	switch {
+	case p.Tokens.RefreshReuseInterval == 0:
+		p.Tokens.RefreshReuseInterval = 30 * time.Second
+	case p.Tokens.RefreshReuseInterval < 0:
+		p.Tokens.RefreshReuseInterval = 0
+	}
 	if !slices.Contains(p.Registration.DefaultResources, opts.Resource) {
 		p.Registration.DefaultResources = append(slices.Clone(p.Registration.DefaultResources), opts.Resource)
 	}
