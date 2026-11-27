@@ -157,19 +157,24 @@ func prepareResourceSeeds(defs []ResourceDefinition, mode ResourceSeedMode) (*re
 // It can be called explicitly before serving requests. A failed seed is retried
 // on the next call, including the next authorized registry operation.
 func (m *ResourceManager) Seed(ctx context.Context) error {
-	if m.seeds == nil || m.seeds.done.Load() {
+	return m.seeds.seed(ctx, m.auth, m.store, m.opts.SharedSeeds, m.validIdentifier)
+}
+
+// seed applies each declared resource once through store. A nil set has
+// nothing to apply; a failed seed is retried on the next call.
+func (s *resourceSeeds) seed(ctx context.Context, a *auth.Auth, store ResourceStore, shared *ResourceSeedCache, valid func(context.Context, string) (bool, error)) error {
+	if s == nil || s.done.Load() {
 		return nil
 	}
-	shared := m.opts.SharedSeeds
-	for i, entry := range m.seeds.entries {
+	for i, entry := range s.entries {
 		cache, key := shared, entry.key
 		if cache == nil {
-			cache = &m.seeds.local
+			cache = &s.local
 			// Distinct positions preserve the declared order of repeated entries.
 			binary.BigEndian.PutUint64(key[:8], uint64(i))
 		}
 		if err := cache.run(ctx, key, func() (bool, error) {
-			applied, err := m.seedResource(ctx, entry.ResourceDefinition)
+			applied, err := s.seedResource(ctx, a, store, valid, entry.ResourceDefinition)
 			// Another manager sharing a cache may accept a locally rejected identifier.
 			return applied || shared == nil, err
 		}); err != nil {
@@ -177,33 +182,33 @@ func (m *ResourceManager) Seed(ctx context.Context) error {
 		}
 	}
 	if shared == nil {
-		m.seeds.done.Store(true)
+		s.done.Store(true)
 	}
 	return nil
 }
 
-func (m *ResourceManager) seedResource(ctx context.Context, d ResourceDefinition) (bool, error) {
-	valid, err := m.validIdentifier(ctx, d.Identifier)
+func (s *resourceSeeds) seedResource(ctx context.Context, a *auth.Auth, store ResourceStore, valid func(context.Context, string) (bool, error), d ResourceDefinition) (bool, error) {
+	ok, err := valid(ctx, d.Identifier)
 	if err != nil {
 		return false, err
 	}
-	if d.Identifier == "" || !valid {
-		m.auth.Logger().WarnContext(ctx, "Skipping invalid OAuth resource identifier", "identifier", d.Identifier)
+	if d.Identifier == "" || !ok {
+		a.Logger().WarnContext(ctx, "Skipping invalid OAuth resource identifier", "identifier", d.Identifier)
 		return false, nil
 	}
 	fields := d.Policy
 	if alg := fields.SigningAlgorithm.value; alg != nil && !slices.Contains(resourceSigningAlgorithms(), *alg) {
-		m.auth.Logger().WarnContext(ctx, "Ignoring unsupported OAuth resource signing algorithm", "identifier", d.Identifier, "algorithm", *alg)
+		a.Logger().WarnContext(ctx, "Ignoring unsupported OAuth resource signing algorithm", "identifier", d.Identifier, "algorithm", *alg)
 		fields.SigningAlgorithm = Setting[string]{}
 	}
-	_, err = m.store.OAuthResource(ctx, d.Identifier)
+	_, err = store.OAuthResource(ctx, d.Identifier)
 	switch {
 	case errors.Is(err, auth.ErrNotFound):
 		row, err := newResource(d.Identifier, fields, resourceNow())
 		if err != nil {
 			return false, err
 		}
-		err = m.store.CreateOAuthResource(ctx, row)
+		err = store.CreateOAuthResource(ctx, row)
 		if !errors.Is(err, ErrResourceExists) {
 			return err == nil, err
 		}
@@ -211,17 +216,17 @@ func (m *ResourceManager) seedResource(ctx context.Context, d ResourceDefinition
 	case err != nil:
 		return false, err
 	}
-	if m.seeds.mode == SeedInsertOnly {
+	if s.mode == SeedInsertOnly {
 		return true, nil
 	}
-	if m.seeds.mode == SeedOverwrite {
+	if s.mode == SeedOverwrite {
 		row := Resource{Identifier: d.Identifier, Name: d.Identifier, PolicyVersion: 1, UpdatedAt: resourceNow()}
 		if err := fields.Apply(&row); err != nil {
 			return false, err
 		}
-		err = m.store.(ResourcePolicyReplacer).ReplaceOAuthResourcePolicy(ctx, row)
+		err = store.(ResourcePolicyReplacer).ReplaceOAuthResourcePolicy(ctx, row)
 		return err == nil, err
 	}
-	_, err = m.store.UpdateOAuthResource(ctx, d.Identifier, fields, resourceNow())
+	_, err = store.UpdateOAuthResource(ctx, d.Identifier, fields, resourceNow())
 	return err == nil, err
 }

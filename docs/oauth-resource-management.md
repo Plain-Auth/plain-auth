@@ -118,6 +118,10 @@ If a table or connection is unavailable, `Seed` returns an error. A later call t
 
 By default the manager remembers its completed configuration. For applications that construct a manager per request, allocate one `new(oauthprovider.ResourceSeedCache)` for each logical database and pass it as `ResourceManagerOptions.SharedSeeds` to each manager using that database. Each successful entry is remembered by its configuration and seed mode for the lifetime of that cache. Changed declarations and previously rejected identifiers can still run. Custom adapters that support overwrite implement `ResourcePolicyReplacer` as well as `ResourceStore`. [Concurrent startup and migration recovery tests](../adapters/sqlstore/oauth_resource_seed_test.go) · [Startup comparison tests](../conformance/resource-seeds.mjs)
 
+### Declare resources on the provider
+
+`oauthprovider.Options.Resources` declares the same definitions on the provider itself, with `ResourceSeedMode` and `SharedResourceSeeds` in the roles of `SeedMode` and `SharedSeeds`. The provider seeds them on the first request to any auth endpoint, as another runtime seeds its declared resources at startup, because a Go plugin has no store-backed startup step. A failure there is logged and the request goes on; resource-targeted machine token issuance and a registration that links resources retry an unfinished seed first and fail if it fails again. Registration `DefaultResources` and `AllowedResources` must be declared here, and `New` refuses one that is not. The store must implement `ResourceStore`, and `ResourcePolicyReplacer` for overwrite. The provider reads resource policy from the store on every lookup, so another runtime's resource and trusted-client caches have no counterpart. [Provider seeding tests](../adapters/sqlstore/oauth_provider_seed_test.go)
+
 ## Grant or remove client access
 
 Pass the public client ID from a registered OAuth client. `Link` verifies that both the resource and client exist and persists one link per pair. First-time success returns `Linked: true`. Repeated or concurrent calls return `AlreadyLinked: true` for the existing link.

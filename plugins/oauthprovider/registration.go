@@ -137,9 +137,36 @@ type Options struct {
 	Metadata           IssuerMetadataOptions
 	// DPoP controls sender proofs at the token endpoint. The host SQL store
 	// shares reservations automatically when ReplayStore is omitted.
-	DPoP          DPoPOptions
-	proofVerifier *DPoPVerifier
-	assertionKeys *clientKeyCache
+	DPoP DPoPOptions
+	// Resources declares the protected resources this issuer serves. They are
+	// seeded into the store on the first request and again before a lookup
+	// while a seed has not finished, and registration default and allowed
+	// resources must be among them.
+	Resources []ResourceDefinition
+	// ResourceSeedMode chooses how a declared resource meets an existing row:
+	// insert only (the default), merge or overwrite.
+	ResourceSeedMode ResourceSeedMode
+	// SharedResourceSeeds shares completed seeds with a ResourceManager or
+	// another provider using the same database.
+	SharedResourceSeeds *ResourceSeedCache
+	proofVerifier       *DPoPVerifier
+	assertionKeys       *clientKeyCache
+	resourceSeeds       *resourceSeeds
+}
+
+// seedResources applies the declared resources once through the request's
+// store, retrying a seed that has not finished.
+func (opts Options) seedResources(c auth.EndpointContext) error {
+	if opts.resourceSeeds == nil {
+		return nil
+	}
+	store, ok := c.Store().(ResourceStore)
+	if !ok {
+		return errors.New("oauthprovider: declared resources require a ResourceStore")
+	}
+	return opts.resourceSeeds.seed(c.Request.Context(), c.Auth, store, opts.SharedResourceSeeds, func(_ context.Context, id string) (bool, error) {
+		return ValidResourceIdentifier(id), nil
+	})
 }
 
 func (opts Options) clientManagementOptions() Options {
@@ -218,6 +245,26 @@ func New(opts Options) (auth.Plugin, error) {
 			return auth.Plugin{}, fmt.Errorf("oauthprovider: registration scope %q is outside the configured scopes", sc)
 		}
 	}
+	// As in another runtime, registration resources must be declared.
+	declared := map[string]bool{}
+	for _, d := range opts.Resources {
+		declared[d.Identifier] = true
+	}
+	for _, list := range []struct {
+		name string
+		ids  []string
+	}{{"default", r.DefaultResources}, {"allowed", r.AllowedResources}} {
+		for _, id := range list.ids {
+			if !declared[id] {
+				return auth.Plugin{}, fmt.Errorf("oauthprovider: registration %s resource %q is not declared in Resources", list.name, id)
+			}
+		}
+	}
+	seeds, err := prepareResourceSeeds(opts.Resources, opts.ResourceSeedMode)
+	if err != nil {
+		return auth.Plugin{}, err
+	}
+	opts.resourceSeeds, opts.Resources = seeds, nil
 	r.DefaultResources = distinct(r.DefaultResources)
 	r.AllowedResources = distinct(slices.Concat(r.DefaultResources, r.AllowedResources))
 	if r.RequirePKCE != nil {
@@ -253,7 +300,26 @@ func New(opts Options) (auth.Plugin, error) {
 		if _, ok := s.(RegistrationStore); r.Enabled && !ok {
 			return errors.New("oauthprovider: registration requires a RegistrationStore")
 		}
+		if seeds := opts.resourceSeeds; seeds != nil {
+			if _, ok := s.(ResourceStore); !ok {
+				return errors.New("oauthprovider: declared resources require a ResourceStore")
+			}
+			if _, ok := s.(ResourcePolicyReplacer); seeds.mode == SeedOverwrite && !ok {
+				return errors.New("oauthprovider: overwrite seeding requires a ResourcePolicyReplacer")
+			}
+		}
 		return nil
+	}
+	// The declared resources are seeded on the first request to any
+	// endpoint, as another runtime seeds them at startup; a failure is
+	// logged and retried by the next lookup that needs them.
+	if opts.resourceSeeds != nil {
+		p.Hooks.Before = append(p.Hooks.Before, auth.EndpointHook{Run: func(h *auth.HookContext) error {
+			if err := opts.seedResources(h.EndpointContext); err != nil {
+				h.Auth.Logger().ErrorContext(h.Request.Context(), "Seeding OAuth resources failed", "error", err)
+			}
+			return nil
+		}})
 	}
 	if slices.Contains(opts.GrantTypes, "authorization_code") {
 		p.ValidateVerificationStore = func(s auth.Store, _ auth.VerificationHookSet) error {
@@ -370,6 +436,13 @@ func (opts Options) register(c auth.EndpointContext) (any, error) {
 	}
 	if err = opts.prepareMetadata(c.Auth, &m, authenticated); err != nil {
 		return nil, err
+	}
+	// The resources a client links to must exist, so an unfinished seed of
+	// the declared ones is retried first.
+	if len(m.Resources) > 0 {
+		if err := opts.seedResources(c); err != nil {
+			return nil, err
+		}
 	}
 	ctx := c.Request.Context()
 	id, err := r.GenerateClientID()

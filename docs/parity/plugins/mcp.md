@@ -76,11 +76,11 @@
       - [x] Generate a default client ID of 32 ASCII letters ([test](../../../plugins/oauthprovider/machine_token_test.go#L124))
       - [x] Register a client with a 32-letter client ID by default, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L70))
       - [x] Register clients with 32-letter IDs and secrets by default and with the configured ID and secret generators, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L102))
-      - [x] Use the configured ID generator and keep a single complete registration after a collision ([test](../../../adapters/sqlstore/oauth_registration_test.go#L164))
+      - [x] Use the configured ID generator and keep a single complete registration after a collision ([test](../../../adapters/sqlstore/oauth_registration_test.go#L171))
     - [x] `generateClientSecret` ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L102))
       - [x] Issue a 32-letter client secret by default and rotate through a configured secret generator, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L111))
       - [x] Register clients with 32-letter IDs and secrets by default and with the configured ID and secret generators, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L102))
-      - [x] Issue the generated secret and store its digest on all SQL engines ([test](../../../adapters/sqlstore/oauth_registration_test.go#L96))
+      - [x] Issue the generated secret and store its digest on all SQL engines ([test](../../../adapters/sqlstore/oauth_registration_test.go#L103))
     - [x] `generateOpaqueAccessToken` ([test](../../../plugins/oauthprovider/machine_token_test.go#L156))
       - [x] Generate a default opaque access token of 32 letters and use a configured generator instead ([test](../../../plugins/oauthprovider/machine_token_test.go#L156))
     - [ ] `generateRefreshToken`

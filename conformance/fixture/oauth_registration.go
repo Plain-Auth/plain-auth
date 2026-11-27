@@ -174,6 +174,7 @@ func registrationFixtureOptions() op.Options {
 		}
 	}
 	if mode == "resources" {
+		opts.Resources = []op.ResourceDefinition{{Identifier: "urn:reports"}, {Identifier: "urn:billing"}, {Identifier: "urn:disabled"}, {Identifier: "urn:missing"}}
 		opts.Registration.DefaultResources = []string{"urn:reports"}
 		opts.Registration.AllowedResources = []string{"urn:billing", "urn:disabled", "urn:missing"}
 	}

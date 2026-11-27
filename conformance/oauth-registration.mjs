@@ -123,19 +123,14 @@ export async function compareClientRegistration(t, reference, goFixture) {
           return body;
         }
         if (mode === "resources") {
-          // Get the reference's startup migrations and seeds through a real request.
+          // Both runtimes seed the declared resources through a real request.
           await request("sign-up/email", {
             email: "fixture@resources.test",
             name: "owner",
             password: "local registration password",
           });
-          if (runtime === "Go") {
-            for (const id of ["urn:reports", "urn:billing", "urn:disabled", "urn:missing"]) {
-              db.prepare(
-                "INSERT INTO oauthResource(id,identifier,name,createdAt,updatedAt) VALUES(?,?,?,?,?)",
-              ).run(id, id, id, new Date().toISOString(), new Date().toISOString());
-            }
-          }
+          assert.deepEqual(db.prepare("SELECT identifier FROM oauthResource ORDER BY identifier").all().map(r => r.identifier),
+            ["urn:billing", "urn:disabled", "urn:missing", "urn:reports"]);
           db.prepare("UPDATE oauthResource SET disabled=1 WHERE identifier='urn:disabled'").run();
           db.prepare("DELETE FROM oauthResource WHERE identifier='urn:missing'").run();
           const app = await created(

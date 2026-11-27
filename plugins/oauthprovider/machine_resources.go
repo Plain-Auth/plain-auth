@@ -109,6 +109,10 @@ func (opts Options) issueResourceMachineToken(c auth.EndpointContext, store Mach
 	if !ok {
 		return MachineToken{}, &auth.APIError{Status: 501, Code: "OAUTH_RESOURCE_TOKEN_STORE_UNAVAILABLE", Message: "The configured store cannot issue resource-targeted tokens"}
 	}
+	// An unfinished seed of the declared resources is retried first.
+	if err := opts.seedResources(c); err != nil {
+		return MachineToken{}, err
+	}
 	var audiences, identifiers []string
 	seen := make(map[string]bool)
 	for _, id := range in.resources {

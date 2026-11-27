@@ -59,7 +59,10 @@ func TestDynamicOAuthRegistration(t *testing.T) {
 				return h, c
 			}
 			allowed := []string{"openid", "reports", "other"}
-			configured := op.Options{Scopes: allowed, Registration: op.RegistrationOptions{
+			// The issuer declares its resources and seeds them on the first
+			// request; urn:missing is deleted afterwards.
+			configured := op.Options{Scopes: allowed, Resources: []op.ResourceDefinition{{Identifier: "urn:reports"}, {Identifier: "urn:billing"},
+				{Identifier: "urn:disabled", Policy: op.ResourcePatch{Disabled: op.Set(true)}}, {Identifier: "urn:missing"}}, Registration: op.RegistrationOptions{
 				Enabled: true, DefaultScopes: []string{"openid"}, AllowedScopes: []string{"reports"},
 				DefaultResources: []string{"urn:reports"}, AllowedResources: []string{"urn:billing", "urn:missing", "urn:disabled"},
 				SecretPrefix: "app_", GenerateClientSecret: func() (string, error) { return "a-secret-from-generator", nil },
@@ -72,13 +75,17 @@ func TestDynamicOAuthRegistration(t *testing.T) {
 					return nil, nil
 				},
 			}}
-			host, owner := newHost(s, configured)
-			registry, err := op.NewResourceManager(host, s, op.ResourceManagerOptions{Resources: []op.ResourceDefinition{{Identifier: "urn:reports"}, {Identifier: "urn:billing"}, {Identifier: "urn:disabled", Policy: op.ResourcePatch{Disabled: op.Set(true)}}}})
-			must(err)
-			must(registry.Seed(ctx))
+			_, owner := newHost(s, configured)
 			m := op.RegistrationMetadata{Scope: "reports", Resources: []string{"urn:billing", "urn:reports", "urn:billing"}, RedirectURIs: []string{"https://app.example.test/callback"}}
-			_, err = owner.RegisterOAuthClient(ctx, m)
+			_, err := owner.RegisterOAuthClient(ctx, m)
 			expect(err, 401, "")
+			var seeded, disabled int
+			must(s.db.QueryRowContext(ctx, s.bind(`SELECT COUNT(*), SUM(CASE WHEN "disabled"=? THEN 1 ELSE 0 END) FROM "oauthResource"`), true).Scan(&seeded, &disabled))
+			if seeded != 4 || disabled != 1 {
+				t.Fatal("the first request did not seed the declared resources", seeded, disabled)
+			}
+			_, err = s.db.ExecContext(ctx, s.bind(`DELETE FROM "oauthResource" WHERE "identifier"='urn:missing'`))
+			must(err)
 			signed, err := owner.SignUpEmail(ctx, client.SignUpRequest{Name: "Owner", Email: "operator@registration.test", Password: "safe local test password"})
 			must(err)
 			app, err := owner.RegisterOAuthClient(ctx, m)
