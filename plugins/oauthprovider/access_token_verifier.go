@@ -40,6 +40,13 @@ type AccessTokenVerifierOptions struct {
 	Transport http.RoundTripper
 	// Remote introspects every token at the issuer after the local check.
 	Remote *RemoteVerification
+	// Origin is the API's public origin, which Handler joins with each
+	// request URI for DPoP proofs. It defaults to the origin of the first
+	// HTTP or HTTPS Audience, never the request's Host.
+	Origin string
+	// MetadataMappings give Handler's challenges a resource_metadata URL
+	// for an audience that is not a URL.
+	MetadataMappings map[string]string
 	// Auth, an auth instance in the same process, supplies defaults: the
 	// issuer it signs with, its keys read in process, or its RemoteJWKSURL,
 	// and its introspection endpoint for Remote. Audience is never
@@ -102,6 +109,12 @@ func NewAccessTokenVerifier(opts AccessTokenVerifierOptions) (*AccessTokenVerifi
 	}
 	if opts.Type == "" {
 		opts.Type = "at+jwt"
+	}
+	if opts.Origin != "" {
+		u, err := url.Parse(opts.Origin)
+		if err != nil || !secureURL(opts.Origin) || u.Path != "" && u.Path != "/" || u.RawQuery != "" {
+			return nil, errors.New("oauthprovider: Origin must be an HTTPS origin, or HTTP on loopback")
+		}
 	}
 	if slices.Contains(opts.RequiredClaims, "") {
 		return nil, errors.New("oauthprovider: required claim names must not be empty")

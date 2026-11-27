@@ -3,6 +3,7 @@ package oauthprovider
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -38,13 +39,16 @@ func newIntrospectionClient(transport http.RoundTripper) *http.Client {
 	return &http.Client{Transport: transport, Timeout: 5 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 }
 
+// errIntrospectionFailed marks a failed introspection call.
+var errIntrospectionFailed = errors.New("oauthprovider: introspection failed")
+
 // errIntrospection is a failed introspection call; its status is kept,
 // never the secret.
 func errIntrospection(status int) error {
 	if status == 0 {
-		return fmt.Errorf("oauthprovider: introspection failed")
+		return errIntrospectionFailed
 	}
-	return fmt.Errorf("oauthprovider: introspection failed with status %d", status)
+	return fmt.Errorf("%w with status %d", errIntrospectionFailed, status)
 }
 
 // introspect posts the token to the issuer and checks the response's

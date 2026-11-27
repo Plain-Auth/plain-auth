@@ -3,6 +3,7 @@ import { createServer } from "node:http";
 import { once } from "node:events";
 import { createHash, randomUUID } from "node:crypto";
 import { verifyAccessTokenRequest, verifyBearerToken } from "@better-auth/core/oauth2";
+import { oauthProviderResourceClient } from "@better-auth/oauth-provider/resource-client";
 import { calculateJwkThumbprint, exportJWK, generateKeyPair, SignJWT } from "jose";
 
 // Both runtimes verify the same bearer tokens against a JWKS served on
@@ -125,6 +126,49 @@ export async function compareResourceVerifier(t, goFixture) {
   assert.equal(goReplayed.status, replayed.status);
   assert.equal(goReplayed.error, replayed.error);
   assert.equal(goReplayed.error_description, replayed.error_description);
+
+  // A protected route answers each failure with the same challenge and
+  // body, and passes a verified request through.
+  const actions = oauthProviderResourceClient().getActions();
+  const route = "https://api.example.test/__fixture/protected";
+  const routeProof = (token, extra = {}) => proof(token, { url: route, ...extra });
+  const routes = [
+    ["no credentials", ""],
+    ["expired bearer", "Bearer " + await sign({ exp: now - 10 })],
+    ["unbound DPoP", "DPoP " + bearer],
+    ["bound as bearer", "Bearer " + bound, () => routeProof(bound)],
+    ["bearer scope", "Bearer " + await sign({ scope: "other" })],
+    ["DPoP scope", "DPoP " + await sign({ scope: "other", cnf: { jkt } }), () => routeProof(bound)],
+    ["valid bearer", "Bearer " + bearer],
+    ["valid DPoP", "DPoP " + bound, () => routeProof(bound)],
+  ];
+  for (const [name, authorization, makeProof] of routes) {
+    const headers = {};
+    if (authorization) headers.authorization = authorization;
+    let want;
+    try {
+      const referenceHeaders = { ...headers };
+      if (makeProof) referenceHeaders.dpop = await makeProof();
+      const payload = await actions.verifyAccessTokenRequest(new Request(route, { headers: referenceHeaders }), { verifyOptions: { issuer, audience, typ: "at+jwt" }, jwksUrl, requiredScopes: ["read"] });
+      want = { status: 200, payload };
+    } catch (error) {
+      if (!error.statusCode) throw error;
+      const h = new Headers(error.headers);
+      want = { status: error.statusCode, challenge: h.get("www-authenticate"), expose: h.get("access-control-expose-headers"), body: error.body };
+    }
+    const goHeaders = { ...headers };
+    if (makeProof) goHeaders.dpop = await makeProof();
+    const res = await server.send(new Request(server.baseURL + "/__fixture/protected", { headers: goHeaders }));
+    const got = { status: res.status, challenge: res.headers.get("www-authenticate"), expose: res.headers.get("access-control-expose-headers"), body: await res.json() };
+    assert.equal(got.status, want.status, name + " " + JSON.stringify([want, got]));
+    if (want.status === 200) {
+      assert.equal(got.body.payload.sub, want.payload.sub, name);
+      continue;
+    }
+    assert.equal(got.challenge, want.challenge, name);
+    assert.equal(got.expose, want.expose, name);
+    assert.deepEqual(got.body, want.body, name);
+  }
 
   // A token without exp passes the other runtime but not this one.
   const endless = await sign({ exp: undefined });

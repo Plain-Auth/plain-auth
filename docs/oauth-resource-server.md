@@ -47,6 +47,28 @@ claims, err := verifier.VerifyRequest(r.Context(), oauthprovider.ResourceRequest
 
 The token is then checked as `VerifyBearer` checks it, scopes included, so a missing scope is answered before the binding. A token whose `cnf` names a key must be sent with the `DPoP` scheme and a `DPoP` proof signed by that key for this method, URL and token, each proof spent once; a token without one must not use the `DPoP` scheme. A refused binding is 401 `invalid_token` or `invalid_dpop_proof` with the same descriptions as another runtime, and a replay store failure is a server error. `DPoP` in the options sets the proof age, the signing algorithms and the replay store, which defaults to memory for this verifier; pass the SQL store or a Redis store so every instance of the API spends a proof only once. [Request tests](../plugins/oauthprovider/access_token_verifier_test.go) · [Shared replay test](../adapters/sqlstore/oauth_resource_verifier_test.go)
 
+## Protect a route
+
+`Handler` wraps a route with `VerifyRequest` and its required scopes, and answers each failure with the challenge another runtime's resource client throws:
+
+```go
+protected, err := verifier.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+    claims, _ := oauthprovider.AccessTokenClaims(r.Context())
+    fmt.Fprintf(w, "hello %v", claims["sub"])
+}), "read:post")
+mux.Handle("GET /posts", protected)
+```
+
+| Failure | Response |
+| --- | --- |
+| No token | 401 with a `Bearer` challenge naming each audience's `resource_metadata`, without an error code |
+| A presented token that fails | 401 `invalid_token` with its description, in the scheme the client used |
+| A DPoP proof failure, or a bound token sent as `Bearer` | 401 with a `DPoP` challenge listing the accepted algorithms |
+| Missing scopes | 403 `insufficient_scope` naming them, in the presented scheme |
+| Any other error | logged, then 500 with `introspection failed` or `access token verification failed` |
+
+Every challenge also sets `Access-Control-Expose-Headers: WWW-Authenticate` and a JSON body with the message, error and description, so a browser client can read it. A verified request reaches the route with its claims, read with `AccessTokenClaims`. Proofs are checked against `Origin`, the API's public origin, which defaults to the origin of the first HTTP or HTTPS audience and never comes from the request's `Host`. An audience that is not a URL needs an entry in `MetadataMappings` pointing at its metadata document. `Handler` refuses an invalid scope, an unmapped audience or a missing origin when it is built, where another runtime fails each request. [Handler tests](../plugins/oauthprovider/access_token_handler_test.go) · [Cross-runtime test](../conformance/resource-verifier.mjs)
+
 ## Scopes
 
 Pass the scopes a route needs after the token. A token whose `scope` claim is not a list of scope tokens separated by single spaces answers `invalid_token` "access token scope claim is invalid"; an absent claim grants none. When scopes are missing, `VerifyBearer` answers 403 `insufficient_scope` naming all of them at once in `MissingScopes` and in the description "access token is missing required scope: …", so the client can request them together. A required scope that is not a valid scope token is a configuration error, returned before the token is read.

@@ -33,6 +33,14 @@ func resourceVerifierFixture(config string, fallback http.Handler) http.Handler 
 		claims, err := verifier.VerifyBearer(r.Context(), req.Token, req.Scopes...)
 		writeVerification(w, claims, err)
 	})
+	protected, err := verifier.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		claims, _ := oauthprovider.AccessTokenClaims(r.Context())
+		writeVerification(w, claims, nil)
+	}), "read")
+	if err != nil {
+		log.Fatal(err)
+	}
+	mux.Handle("GET /__fixture/protected", protected)
 	mux.HandleFunc("GET /__fixture/verified-resource", func(w http.ResponseWriter, r *http.Request) {
 		claims, err := verifier.VerifyRequest(r.Context(), oauthprovider.ResourceRequestFrom(r, "http://"+r.Host))
 		writeVerification(w, claims, err)

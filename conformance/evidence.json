@@ -16094,6 +16094,17 @@
       "label": "Derive protected-resource discovery from a local auth mount and issuer or from standalone configuration",
       "test": "conformance/resource-discovery.mjs",
       "marker": "export async function compareResourceDiscovery("
+    },
+    {
+      "label": "Protect a route with the resource verifier, answering missing, failed, DPoP-bound and under-scoped requests with the same challenges, expose header and bodies as the other runtime's resource client, and passing verified requests through",
+      "test": "conformance/resource-verifier.mjs",
+      "marker": "// A protected route answers each failure with the same challenge and",
+      "complete": true
+    },
+    {
+      "label": "Default a verifier's issuer and keys from the local auth instance, in process or from its remote key set, and its introspection endpoint",
+      "test": "conformance/goapi/resource_verifier_test.go",
+      "marker": "func TestResourceVerifierAuthDefaults("
     }
   ],
   "plugin-symbol/oauth-provider/createResourceServerChallenge": [

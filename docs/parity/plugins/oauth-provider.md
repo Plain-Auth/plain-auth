@@ -16,11 +16,13 @@
   - [x] `validatePublicClientJwks` ([test](../../../plugins/oauthprovider/registration_test.go#L149))
     - [x] Validate public RSA, EC and Ed25519 keys and compatible signing algorithms and reject private key material ([test](../../../plugins/oauthprovider/registration_test.go#L149))
   - [ ] `isForbiddenCimdClientMetadataField`
-  - [ ] `oauthProviderResourceClient`
+  - [x] `oauthProviderResourceClient` ([test](../../../conformance/resource-verifier.mjs#L130))
     - [x] Derive protected-resource discovery from a local auth mount and issuer or from standalone configuration ([test](../../../conformance/resource-discovery.mjs#L7))
+    - [x] Protect a route with the resource verifier, answering missing, failed, DPoP-bound and under-scoped requests with the same challenges, expose header and bodies as the other runtime's resource client, and passing verified requests through ([test](../../../conformance/resource-verifier.mjs#L130))
+    - [x] Default a verifier's issuer and keys from the local auth instance, in process or from its remote key set, and its introspection endpoint ([test](../../../conformance/goapi/resource_verifier_test.go#L29))
   - [x] `VerifyAccessTokenRemote` ([test](../../../plugins/oauthprovider/access_token_verifier_test.go#L316))
     - [x] Introspect access tokens with the API's credentials, refusing inactive, audience-less, foreign, expired and wrongly issued answers, accepting a missing aud only when allowed, skipping the local check with Force, and failing closed as a server error ([test](../../../plugins/oauthprovider/access_token_verifier_test.go#L316))
-    - [x] Introspect with the same form and headers, and answer each response alike, on both runtimes ([test](../../../conformance/resource-verifier.mjs#L137))
+    - [x] Introspect with the same form and headers, and answer each response alike, on both runtimes ([test](../../../conformance/resource-verifier.mjs#L181))
     - [x] Introspect an opaque resource token through the issuer's endpoint as a linked client and see it inactive once revoked, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_resource_verifier_test.go#L84))
   - [ ] `oauthProviderClient`
   - [ ] `oauthDeviceAuthorizationClient`
@@ -1021,17 +1023,17 @@
 ## Protect your API
 
 - [ ] Protect your API
-  - [x] Verify access tokens ([test](../../../conformance/resource-verifier.mjs#L71))
+  - [x] Verify access tokens ([test](../../../conformance/resource-verifier.mjs#L72))
     - [x] Return a browser-readable challenge for a missing or invalid token on an application route ([test](../../../conformance/resource-challenges.mjs#L27))
     - [x] Check authenticated token binding, request method, public URL and proof-of-possession errors on a protected HTTP route ([test](../../../conformance/dpop-proofs.mjs#L67))
-    - [x] Verify bearer access tokens against the issuer's JWKS with the same status, error, description and missing scopes as the other runtime; requiring at+jwt and exp is a documented deviation ([test](../../../conformance/resource-verifier.mjs#L11))
+    - [x] Verify bearer access tokens against the issuer's JWKS with the same status, error, description and missing scopes as the other runtime; requiring at+jwt and exp is a documented deviation ([test](../../../conformance/resource-verifier.mjs#L12))
     - [x] Refuse a wrong typ, issuer or audience, a missing claim, an expired or not yet valid token, symmetric and unsigned tokens, malformed scope claims and DPoP-bound tokens, and report every missing scope at once ([test](../../../plugins/oauthprovider/access_token_verifier_test.go#L28))
-    - [x] Verify bearer and DPoP-bound access token requests, scopes, schemes, proofs and replays with the same answers as the other runtime, each runtime with its own replay store ([test](../../../conformance/resource-verifier.mjs#L71))
+    - [x] Verify bearer and DPoP-bound access token requests, scopes, schemes, proofs and replays with the same answers as the other runtime, each runtime with its own replay store ([test](../../../conformance/resource-verifier.mjs#L72))
     - [x] Spend a DPoP proof once across two verifiers sharing the SQL store, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_resource_verifier_test.go#L26))
   - [ ] JWT or opaque tokens
     - [x] Introspect a resource-bound JWT minted by an independent issuer and preserve the claims originally signed for the grant ([test](../../../conformance/oauth-signed-introspection.mjs#L49))
-    - [x] How the API verifies it ([test](../../../conformance/resource-verifier.mjs#L137))
-      - [x] Verify signed tokens locally with the issuer's keys and opaque ones through introspection, on both runtimes ([test](../../../conformance/resource-verifier.mjs#L137))
+    - [x] How the API verifies it ([test](../../../conformance/resource-verifier.mjs#L181))
+      - [x] Verify signed tokens locally with the issuer's keys and opaque ones through introspection, on both runtimes ([test](../../../conformance/resource-verifier.mjs#L181))
     - [ ] Cost per request
     - [ ] Claims
   - [ ] Introspection
