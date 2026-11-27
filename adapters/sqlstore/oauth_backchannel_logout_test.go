@@ -2,6 +2,7 @@ package sqlstore
 
 import (
 	"crypto/hmac"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
@@ -144,8 +145,8 @@ func TestBackchannelLogout(t *testing.T) {
 				must(s.db.QueryRowContext(ctx, s.bind(`SELECT "id" FROM "session" WHERE "userId"=?`), signed.User.ID).Scan(&sid))
 				now := time.Now().UTC()
 				for _, id := range clients {
-					_, err := s.db.ExecContext(ctx, s.bind(`INSERT INTO "oauthAccessToken" ("id","token","clientId","sessionId","userId","scopes","createdAt","expiresAt") VALUES (?,?,?,?,?,'["openid"]',?,?)`),
-						id+sid, id+sid, id, sid, signed.User.ID, s.date(now), s.date(now.Add(time.Hour)))
+					_, err := s.db.ExecContext(ctx, s.bind(`INSERT INTO "oauthAccessToken" ("id","token","clientId","sessionId","userId","scopes","createdAt","expiresAt") VALUES (?,?,?,?,?,?,?,?)`),
+						rand.Text(), rand.Text(), id, sid, signed.User.ID, `["openid"]`, s.date(now), s.date(now.Add(time.Hour)))
 					must(err)
 				}
 				return c, signed.User.ID, sid
