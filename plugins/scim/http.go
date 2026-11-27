@@ -96,10 +96,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.serveGroups(w, r, d, id, single)
 		return
 	}
-	// A single read looks the User up before its projection, and a deletion
-	// takes none, as in another runtime.
+	// A read checks its projection last, after the User lookup or the page
+	// and filter, and a deletion takes none, as in another runtime.
 	pr, selectErr := selectionQuery(r.URL.Query(), UserSchema)
-	if selectErr != nil && !(r.Method == http.MethodGet && single) && r.Method != http.MethodDelete {
+	if selectErr != nil && r.Method != http.MethodGet && r.Method != http.MethodDelete {
 		writeError(w, selectErr)
 		return
 	}
@@ -109,6 +109,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case http.MethodGet:
 		if !single {
 			q, err := query(r.URL.Query(), equality)
+			if err == nil {
+				err = selectErr
+			}
 			if err != nil {
 				writeError(w, err)
 				return

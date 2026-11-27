@@ -69,8 +69,8 @@ func checkSAMLPortal(t *testing.T, idp *saml.IdentityProvider, spEntity, acs, or
 	for _, h := range []http.Handler{disabled, node} {
 		res := send(h, proof, origin, "", "document")
 		rejected(res, "unsolicited_response")
-		if u, _ := url.Parse(res.location); u.Query().Get("error_description") != "IdP-initiated SSO not allowed" {
-			t.Fatal("a refused portal response did not say IdP-initiated SSO is not allowed", res.location)
+		if u, _ := url.Parse(res.location); u.Query().Get("error_description") != "IdP-initiated SSO not allowed" || u.Scheme+"://"+u.Host+u.Path != home+"/company-portal" {
+			t.Fatal("a refused portal response did not return to the landing page saying IdP-initiated SSO is not allowed", res.location)
 		}
 	}
 	reviewed.Store(&directory)
@@ -124,6 +124,9 @@ func checkSAMLPortal(t *testing.T, idp *saml.IdentityProvider, spEntity, acs, or
 		t.Fatalf("no authorized session redirect: %d %s", one.status, one.location)
 	}
 	rejected(two, "replay_detected")
+	if u, _ := url.Parse(two.location); u.Scheme+"://"+u.Host+u.Path != home+"/company-portal" {
+		t.Fatal("a replayed portal response did not return to the landing page", two.location)
+	}
 	if returned := send(existingOnly, issue(nil), origin, "", "document"); returned.session == nil || returned.location != home+"/company-portal" {
 		t.Fatal("existing enterprise account could not return with implicit signup disabled", returned.status)
 	}

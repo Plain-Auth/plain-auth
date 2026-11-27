@@ -345,7 +345,7 @@ func TestDiscoveryHydratedConfiguration(t *testing.T) {
 // An untrusted discovery URL is written as another runtime's URL parser
 // writes it.
 func TestUntrustedDiscoveryURL(t *testing.T) {
-	for raw, want := range map[string]string{"https://IDP.Example.test:443": "https://idp.example.test/", "HTTP://idp.test:80/x": "http://idp.test/x", "https://idp.test:8443/a?b=c": "https://idp.test:8443/a?b=c", "https://[2001:DB8::1]:443/": "https://[2001:db8::1]/", "https://idp.test/a/./b/../c?d=e": "https://idp.test/a/c?d=e"} {
+	for raw, want := range map[string]string{"https://IDP.Example.test:443": "https://idp.example.test/", "HTTP://idp.test:80/x": "http://idp.test/x", "https://idp.test:8443/a?b=c": "https://idp.test:8443/a?b=c", "https://[2001:DB8::1]:443/": "https://[2001:db8::1]/", "https://idp.test/a/./b/../c?d=e": "https://idp.test/a/c?d=e", "https://idp.test/token?": "https://idp.test/token?", "https://idp.test/a/%2E%2e/b": "https://idp.test/b", "https://idp.test/a/.%2e/b/%2e/c": "https://idp.test/b/c"} {
 		if got := whatwgURL(raw); got != want {
 			t.Fatal("an untrusted URL was not normalized", raw, got, want)
 		}

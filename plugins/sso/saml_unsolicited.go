@@ -114,5 +114,7 @@ func incomingSAMLFlow(c *auth.EndpointContext, form url.Values) (auth.OAuthFlow,
 		return auth.OAuthFlow{}, true, errSAMLResponse
 	}
 	root, err := c.CallbackURL("/")
-	return auth.OAuthFlow{Provider: id, RedirectURI: endpoint, CallbackURL: root}, true, err
+	// A portal response has no error callback: its failures land where its
+	// sign-in would, as in another runtime.
+	return auth.OAuthFlow{Provider: id, RedirectURI: endpoint, CallbackURL: root, ErrorCallbackURL: root}, true, err
 }

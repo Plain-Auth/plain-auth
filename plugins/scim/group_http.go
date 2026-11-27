@@ -26,10 +26,10 @@ func (h *Handler) groupResource(g Group, members bool) map[string]any {
 	return m
 }
 func (h *Handler) serveGroups(w http.ResponseWriter, r *http.Request, d Directory, id string, single bool) {
-	// A single read looks the Group up before its projection, and a deletion
-	// takes none, as in another runtime.
+	// A read checks its projection last, after the Group lookup or the page
+	// and filter, and a deletion takes none, as in another runtime.
 	p, selectErr := selectionQuery(r.URL.Query(), GroupSchema)
-	if selectErr != nil && !(r.Method == http.MethodGet && single) && r.Method != http.MethodDelete {
+	if selectErr != nil && r.Method != http.MethodGet && r.Method != http.MethodDelete {
 		writeError(w, selectErr)
 		return
 	}
@@ -40,6 +40,9 @@ func (h *Handler) serveGroups(w http.ResponseWriter, r *http.Request, d Director
 	case http.MethodGet:
 		if !single {
 			q, e := query(r.URL.Query(), groupEquality)
+			if e == nil {
+				e = selectErr
+			}
 			if e != nil {
 				writeError(w, e)
 				return

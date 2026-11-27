@@ -23,6 +23,9 @@ func discoveryError(status int, code, msg string) error {
 
 // endpointURL follows the documented URL rules and is stricter than another
 // runtime's code: credentials, a fragment and a backslash are refused too.
+// Its discovery_invalid_url message, like the other two, is this library's
+// own and does not echo the URL, where another runtime names the field and
+// URL.
 func endpointURL(raw string) (*url.URL, error) {
 	u, err := url.Parse(raw)
 	if err != nil || len(raw) > 4096 || u.Hostname() == "" || u.User != nil || u.Fragment != "" || (u.Scheme != "https" && u.Scheme != "http") || strings.Contains(raw, "\\") {
@@ -103,7 +106,8 @@ func hydrate(ctx context.Context, trusted func(string) bool, client *http.Client
 		if err != nil {
 			return err
 		}
-		// The messages are the ones another runtime sends.
+		// The missing-field and issuer messages are the ones another runtime
+		// sends.
 		var missing []string
 		for _, f := range []struct{ name, value string }{{"issuer", doc.Issuer}, {"authorization_endpoint", doc.Authorization}, {"token_endpoint", doc.Token}, {"jwks_uri", doc.Keys}} {
 			if f.value == "" {
@@ -258,9 +262,11 @@ func fetchDiscovery(ctx context.Context, client *http.Client, endpoint string) (
 	if e == nil && len(data) <= bound && (len(strings.TrimSpace(string(data))) == 0 || strings.TrimSpace(string(data)) == "null") {
 		return doc, discoveryError(400, "discovery_invalid_json", "OIDC discovery returned invalid data: Discovery endpoint returned an empty response")
 	}
-	// The document is decoded into typed fields, so a field of the wrong
-	// type, such as a numeric issuer, answers invalid JSON; another runtime
-	// reads it leniently and fails a later check instead.
+	// The document is decoded into the typed fields OIDC Discovery defines,
+	// so a field of the wrong type answers invalid JSON. Another runtime
+	// reads the value as it is: a numeric issuer then fails its issuer
+	// check, while a string token_endpoint_auth_methods_supported or a false
+	// userinfo_endpoint is accepted.
 	if e != nil || len(data) > bound || json.Unmarshal(data, &doc) != nil {
 		return doc, discoveryError(400, "discovery_invalid_json", "OIDC discovery returned invalid data: Discovery endpoint returned invalid JSON")
 	}
@@ -286,7 +292,24 @@ func whatwgURL(raw string) string {
 		return raw
 	}
 	if u.Opaque == "" {
+		// %2e spells a dot segment too, and an empty query keeps its "?".
+		segments := strings.Split(u.EscapedPath(), "/")
+		for i, segment := range segments {
+			switch strings.ToLower(segment) {
+			case "%2e":
+				segments[i] = "."
+			case ".%2e", "%2e.", "%2e%2e":
+				segments[i] = ".."
+			}
+		}
+		if escaped := strings.Join(segments, "/"); escaped != u.EscapedPath() {
+			if unescaped, err := url.PathUnescape(escaped); err == nil {
+				u.Path, u.RawPath = unescaped, escaped
+			}
+		}
+		force := u.ForceQuery
 		u = u.ResolveReference(&url.URL{})
+		u.ForceQuery = force && u.RawQuery == ""
 	}
 	u.Scheme = strings.ToLower(u.Scheme)
 	host, port := strings.ToLower(u.Hostname()), u.Port()

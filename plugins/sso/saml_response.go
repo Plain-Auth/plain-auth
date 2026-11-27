@@ -453,6 +453,7 @@ func (o Options) samlFinish(c auth.EndpointContext) (any, error) {
 	}
 	if unsolicited {
 		flow.CallbackURL = samlLanding(c, flow.RedirectURI, p.SAML.IDPInitiatedCallbackURL, o.SAML.IDPInitiatedCallbackURL, p.SAML.CallbackURL)
+		flow.ErrorCallbackURL = flow.CallbackURL
 	}
 	// An oversized response is refused before it is decoded or parsed. Like
 	// the other ACS failures it redirects to this sign-in's error callback;

@@ -96,6 +96,7 @@ func TestSCIMDynamicBearer(t *testing.T) {
 			storeClaims("ba_scim_credential_fixture.fallback", good)
 			storeClaims("padded-conn", claims(" runtime", "tenant", scim.UsersRead))
 			storeClaims("long-conn", claims(strings.Repeat("r", 256), "tenant", scim.UsersRead))
+			storeClaims("rotated-out", claims("rotated", "tenant", scim.UsersRead))
 			var calls atomic.Int64
 			var itemPath atomic.Bool
 			principals := make(chan scim.Principal, 12)
@@ -130,7 +131,7 @@ func TestSCIMDynamicBearer(t *testing.T) {
 				return h
 			}
 			connections := []scim.Connection{{Directory: scim.Directory{ID: "declared", ProvisioningDomainID: "assigned"}}, {Directory: scim.Directory{ID: "static"}, Credentials: []scim.Credential{{ID: "key", Token: "static"},
-				{ID: "scoped", Token: "scoped-static", Scopes: []string{scim.UsersRead}, ExpiresAt: future}}}}
+				{ID: "scoped", Token: "scoped-static", Scopes: []string{scim.UsersRead}, ExpiresAt: future}, {ID: "old", Token: "rotated-out", ExpiresAt: time.Now().Add(-time.Minute)}}}}
 			a, b := build(first, connections), build(second, connections)
 			only := build(second, nil)
 			call := func(h http.Handler, method, path, token string, body map[string]any, status int) map[string]any {
@@ -185,6 +186,12 @@ func TestSCIMDynamicBearer(t *testing.T) {
 			call(a, "GET", "Users/absent", "scoped-static", nil, 404)
 			if p = <-principals; p.CredentialID != "scoped" || !slices.Equal(p.Scopes, []string{scim.UsersRead}) || !p.ExpiresAt.Equal(future) {
 				t.Fatal("a scoped, expiring static credential lost its scopes or expiry", p)
+			}
+			// A token matching an expired static credential falls through to the
+			// verifier, as in another runtime.
+			call(a, "GET", "Users/absent", "rotated-out", nil, 404)
+			if p = <-principals; p.Kind != "oauth-bearer" || p.ID != "rotated" {
+				t.Fatal("an expired static credential's token did not reach the verifier", p)
 			}
 			start := make(chan struct{})
 			statuses := make(chan *httptest.ResponseRecorder, 2)

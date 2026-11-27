@@ -111,6 +111,11 @@ export async function groupContract(t, goFixture) {
     await call("GET","Groups/absent?attributes=displayName&excludedAttributes=members",404);
     await call("GET","Users/absent?attributes=userName&excludedAttributes=emails",404);
     assert.equal((await call("GET",path+"?attributes=displayName&excludedAttributes=members",400)).scimType,"invalidValue");
+    // A list checks its page and filter before its projection.
+    for (const collection of ["Users","Groups"]) {
+      assert.equal((await call("GET",collection+"?filter=bogus&attributes=a%20b",400)).scimType,"invalidFilter");
+      assert.match((await call("GET",collection+"?startIndex=x&attributes=a%20b",400)).detail,/startIndex/);
+    }
     assert.equal(group.members.length,1);assert.equal(group.members[0].type,"User");assert.equal(group.members[0].display,"First");
     assert.equal(new URL(group.members[0].$ref).pathname,"/api/auth/scim/v2/Users/"+one.id);
     const duplicate=await call("POST","Groups",409,profile("SALES","other",[]));assert.equal(duplicate.scimType,"uniqueness");

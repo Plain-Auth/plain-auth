@@ -9854,6 +9854,11 @@
       "test": "adapters/sqlstore/scim_users_contract_test.go",
       "marker": "t.Fatal(\"the User list is not in creation order\"",
       "complete": true
+    },
+    {
+      "label": "Check a list's page and filter before its projection on both runtimes",
+      "test": "conformance/scim-contract.mjs",
+      "marker": "assert.equal((await call(\"GET\",collection+\"?filter=bogus&attributes=a%20b\",400)).scimType,\"invalidFilter\");"
     }
   ],
   "plugin/scim/PUT /scim/v2/Users/:userId": [
@@ -10749,6 +10754,12 @@
       "label": "Refuse a non-code-defined token without a verifier and answer a failing verifier with 500 and no bearer challenge, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/scim_dynamic_test.go",
       "marker": "t.Fatal(\"a token without a verifier was accepted\", w.Code)"
+    },
+    {
+      "label": "Pass a token matching an expired static credential to the verifier, as another runtime does, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_dynamic_test.go",
+      "marker": "t.Fatal(\"an expired static credential's token did not reach the verifier\", p)",
+      "complete": true
     }
   ],
   "plugin-symbol/scim/SCIMDeclaredConnectionVerificationResult": [
@@ -41785,6 +41796,11 @@
       "test": "plugins/sso/discovery_test.go",
       "marker": "t.Fatal(\"discovered endpoints were not resolved and normalized as another runtime does\", cfg.AuthorizationEndpoint, cfg.TokenEndpoint, cfg.JWKSEndpoint)",
       "complete": true
+    },
+    {
+      "label": "Keep an empty query and remove percent-encoded dot segments, as another runtime's URL parser does",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "\"https://idp.test/token?\": \"https://idp.test/token?\""
     }
   ],
   "plugin-symbol/sso/selectTokenEndpointAuthMethod": [
@@ -43629,12 +43645,17 @@
     {
       "label": "Refuse a portal response with unsolicited_response and IdP-initiated SSO not allowed when portal sign-in is off or the host declines it",
       "test": "adapters/sqlstore/sso_saml_portal_test.go",
-      "marker": "t.Fatal(\"a refused portal response did not say IdP-initiated SSO is not allowed\", res.location)"
+      "marker": "t.Fatal(\"a refused portal response did not return to the landing page saying IdP-initiated SSO is not allowed\", res.location)"
     },
     {
       "label": "Redirect a browser-bound response without InResponseTo with unsolicited_response and IdP-initiated SSO not allowed",
       "test": "adapters/sqlstore/sso_saml_test.go",
       "marker": "t.Fatal(\"a browser-bound response without InResponseTo was not reported as unsolicited\", status, hd.Get(\"Location\"))"
+    },
+    {
+      "label": "Return a refused or replayed portal response to the directory's landing page, as another runtime does, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_portal_test.go",
+      "marker": "t.Fatal(\"a replayed portal response did not return to the landing page\", two.location)"
     }
   ],
   "docs/content/docs/plugins/sso/saml-security.mdx#L48/`invalid_state`": [

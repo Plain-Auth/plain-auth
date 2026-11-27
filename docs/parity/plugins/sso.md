@@ -50,6 +50,7 @@
   - [x] `normalizeUrl` ([test](../../../plugins/sso/discovery_test.go#L425))
     - [x] Resolve '/authorize', 'token' and '/keys' against an issuer with a path, keeping that path ([test](../../../plugins/sso/discovery_test.go#L61))
     - [x] Resolve relative endpoints with extra leading slashes against an issuer path ending in a slash, and write absolute ones as another runtime's URL parser does ([test](../../../plugins/sso/discovery_test.go#L425))
+    - [x] Keep an empty query and remove percent-encoded dot segments, as another runtime's URL parser does ([test](../../../plugins/sso/discovery_test.go#L348))
   - [x] `selectTokenEndpointAuthMethod` ([test](../../../plugins/sso/discovery_test.go#L340))
     - [x] Select client_secret_basic when the discovery document advertises both secret methods ([test](../../../plugins/sso/discovery_test.go#L61))
     - [x] Select client_secret_post when the discovery document advertises only that method, on both runtimes ([test](../../../conformance/sso-providers.mjs#L67))
@@ -455,7 +456,7 @@
     - [x] `disableImplicitSignUp` ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L442))
       - [x] Require an explicit signup request for new enterprise users and enforce host-wide signup controls ([test](../../../adapters/sqlstore/sso_browser_test.go#L357))
       - [x] Refuse an IdP-initiated SAML sign-in for a new user with signup_disabled when implicit sign-up is off ([test](../../../adapters/sqlstore/sso_saml_portal_test.go#L78))
-      - [x] Let an existing SAML user return through the portal when implicit sign-up is off ([test](../../../adapters/sqlstore/sso_saml_portal_test.go#L127))
+      - [x] Let an existing SAML user return through the portal when implicit sign-up is off ([test](../../../adapters/sqlstore/sso_saml_portal_test.go#L130))
       - [x] Refuse a SAML sign-up under DisableImplicitSignUp even with requestSignUp ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L442))
     - [ ] `modelName`
     - [ ] `fields`
@@ -943,6 +944,7 @@
       - [x] Redirect with error=unsolicited_response for a portal response to a re-registered provider the policy has not approved ([test](../../../adapters/sqlstore/sso_saml_test.go#L815))
       - [x] Refuse a portal response with unsolicited_response and IdP-initiated SSO not allowed when portal sign-in is off or the host declines it ([test](../../../adapters/sqlstore/sso_saml_portal_test.go#L73))
       - [x] Redirect a browser-bound response without InResponseTo with unsolicited_response and IdP-initiated SSO not allowed ([test](../../../adapters/sqlstore/sso_saml_test.go#L654))
+      - [x] Return a refused or replayed portal response to the directory's landing page, as another runtime does, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_portal_test.go#L128))
     - [ ] `invalid_state`
       - [x] Redirect a response for a directory changed during the sign-in with invalid_state and sso_provider_changed_during_authentication ([test](../../../adapters/sqlstore/sso_saml_test.go#L795))
       - [x] Redirect with error=invalid_state for a request started before a certificate rotation ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L103))
