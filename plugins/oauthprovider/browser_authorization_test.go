@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"slices"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -49,6 +50,11 @@ func TestBrowserAuthorizationRules(t *testing.T) {
 		if _, err := opts.browserGrant(base, q); err == nil || err.Code != tc.code {
 			t.Errorf("%s: %v", tc.k, err)
 		}
+	}
+	// A dpop_jkt in thumbprint form is kept for the exchange.
+	jkt := strings.Repeat("A", 43)
+	if request, err := opts.browserGrant(base, url.Values{"response_type": {"code"}, "code_challenge": {"digest"}, "code_challenge_method": {"S256"}, "dpop_jkt": {jkt}}); err != nil || request.Query["dpop_jkt"] != jkt {
+		t.Fatal("a dpop_jkt was not kept", err)
 	}
 	// Resource indicators keep their request order without repeats, up to 64.
 	indicators := url.Values{"response_type": {"code"}, "code_challenge": {"digest"}, "code_challenge_method": {"S256"}, "resource": {"urn:b", "urn:a", "urn:b"}}

@@ -14,9 +14,12 @@ import (
 type RefreshGrant struct {
 	Scopes, Resources              []string
 	SessionID, AuthorizationCodeID string
-	SessionLive, SenderBound       bool
-	UserID                         string
-	AuthTime                       time.Time
+	// Thumbprint is the DPoP key the family is bound to. SenderBound marks
+	// another kind of binding, which this issuer cannot prove.
+	Thumbprint               string
+	SessionLive, SenderBound bool
+	UserID                   string
+	AuthTime                 time.Time
 }
 
 // RefreshGrantDigests contains only the storage keys of the credentials issued
@@ -63,6 +66,12 @@ func (opts Options) exchangeRefreshGrant(c auth.EndpointContext, in tokenRequest
 		return result, err
 	}
 	ctx := c.Request.Context()
+	// A DPoP proof is verified before the grant is read, and its key binds
+	// the replacements, which keep the family's key.
+	thumb, err := opts.machineThumbprint(c, in, false)
+	if err != nil {
+		return result, err
+	}
 	digest, err := opts.Tokens.storedTokenDigest(ctx, form.Get("refresh_token"), StoredRefreshToken)
 	if err != nil {
 		return result, err
@@ -90,6 +99,9 @@ func (opts Options) exchangeRefreshGrant(c auth.EndpointContext, in tokenRequest
 		if err != nil {
 			return DelegatedAccessRecord{}, err
 		}
+		if grant.Thumbprint != "" && thumb != grant.Thumbprint {
+			return DelegatedAccessRecord{}, proofError("DPoP proof key does not match the bound token")
+		}
 		ttl, err := opts.Tokens.scopeLifetime(opts.Tokens.AccessLifetime, scopes, now)
 		if err != nil {
 			return DelegatedAccessRecord{}, err
@@ -111,11 +123,8 @@ func (opts Options) exchangeRefreshGrant(c auth.EndpointContext, in tokenRequest
 			if err != nil {
 				return DelegatedAccessRecord{}, err
 			}
-			if granted.bound {
-				if in.proof == "" {
-					return DelegatedAccessRecord{}, proofError("DPoP proof header is required")
-				}
-				return DelegatedAccessRecord{}, registrationProblem(501, "server_error", "sender-bound refresh issuance is unavailable")
+			if granted.bound && thumb == "" {
+				return DelegatedAccessRecord{}, proofError("DPoP proof header is required")
 			}
 			if opts.signsResourceTokens(c) {
 				signing = newDelegatedSigning(c, granted, effective, scopes)
@@ -125,8 +134,8 @@ func (opts Options) exchangeRefreshGrant(c auth.EndpointContext, in tokenRequest
 		if err := grant.sessionBound(scopes); err != nil {
 			return DelegatedAccessRecord{}, err
 		}
-		result.MachineToken = machineResponse("", "", scopes, now, ttl)
-		record := DelegatedAccessRecord{MachineTokenRecord: MachineTokenRecord{Scopes: scopes, IssuedAt: now, ExpiresAt: now.Add(ttl)}, Resources: effective}
+		result.MachineToken = machineResponse("", thumb, scopes, now, ttl)
+		record := DelegatedAccessRecord{MachineTokenRecord: MachineTokenRecord{Scopes: scopes, IssuedAt: now, ExpiresAt: now.Add(ttl)}, Resources: effective, Thumbprint: thumb}
 		if slices.Contains(scopes, "openid") && (!opts.DisableJWTPlugin || in.secret != "") {
 			if !opts.canIssueIDToken(c) {
 				return DelegatedAccessRecord{}, registrationProblem(501, "server_error", "ID token issuance is unavailable")
@@ -170,7 +179,7 @@ func (opts Options) exchangeRefreshGrant(c auth.EndpointContext, in tokenRequest
 		var keys RefreshGrantDigests
 		var err error
 		if signing != nil {
-			access, err = opts.signDelegated(c, signing, "refresh_token", in.id, signingUser, signingSID, snapshot, now)
+			access, err = opts.signDelegated(c, signing, "refresh_token", in.id, signingUser, signingSID, thumb, snapshot, now)
 		} else {
 			access, keys.Access, err = opts.Tokens.newOpaqueToken(ctx)
 		}
@@ -235,11 +244,11 @@ func (grant RefreshGrant) scopesForRefresh(client AuthorizationCodeClient, in to
 			return nil, registrationProblem(400, "invalid_scope", "client does not allow scope "+scope)
 		}
 	}
-	if grant.SenderBound || in.proof != "" || client.RequireDPoP {
-		if in.proof == "" {
-			return nil, proofError("sender proof is required")
-		}
+	if grant.SenderBound {
 		return nil, registrationProblem(501, "server_error", "sender-bound refresh issuance is unavailable")
+	}
+	if (client.RequireDPoP || grant.Thumbprint != "") && in.proof == "" {
+		return nil, proofError("DPoP proof header is required")
 	}
 	return scopes, nil
 }

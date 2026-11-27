@@ -18287,6 +18287,12 @@
       "label": "Issue a sender-bound machine token, enforce its key on an independent resource verifier, introspect it and revoke it",
       "test": "conformance/dpop-machine-tokens.mjs",
       "marker": "assert.deepEqual(info.cnf, { jkt });"
+    },
+    {
+      "label": "Bind delegated tokens for a dpop_jkt code, a DPoP-required client or resource, and a proof on the exchange, keeping the family's key on refresh, on SQLite, PostgreSQL and MySQL; reserving the proof before the code is spent is a documented deviation",
+      "test": "adapters/sqlstore/oauth_dpop_grants_test.go",
+      "marker": "func TestDPoPBoundDelegatedGrants(",
+      "complete": true
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/dpop": [
@@ -18746,6 +18752,12 @@
       "label": "A visit that opens the consent page runs no code hooks",
       "test": "adapters/sqlstore/oauth_code_hooks_test.go",
       "marker": "// A visit that needs consent runs no code hooks."
+    },
+    {
+      "label": "Accept resource indicators checked against the registry and a dpop_jkt at authorize, carried into the code, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_browser_resources_test.go",
+      "marker": "func TestBrowserAuthorizationResources(",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/oauth-provider/reference.mdx#L318/`GET / POST /oauth2/authorize`": [
@@ -18783,6 +18795,12 @@
       "label": "Return a silent interaction error, ignore a supplied clearance on a new request and sign only a completed session’s consent page",
       "test": "conformance/oauth-post-login.mjs",
       "marker": "const gate = await begin("
+    },
+    {
+      "label": "Accept resource indicators checked against the registry and a dpop_jkt at authorize, carried into the code, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_browser_resources_test.go",
+      "marker": "func TestBrowserAuthorizationResources(",
+      "complete": true
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/validateRedirectUri": [
@@ -49227,6 +49245,46 @@
       "label": "Revoke a refresh token and leave the signed access tokens it issued active, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_code_resources_test.go",
       "marker": "t.Fatal(\"revoking the refresh token deactivated its signed access token\", status, reply)"
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthAuthorizationQuery": [
+    {
+      "label": "Accept resource indicators, up to 64 and without repeats, and a dpop_jkt in thumbprint form, refusing malformed ones with invalid_request",
+      "test": "plugins/oauthprovider/browser_authorization_test.go",
+      "marker": "// A dpop_jkt in thumbprint form is kept for the exchange.",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/StoredAuthorizationQuery": [
+    {
+      "label": "Redeem a stored code that carries a dpop_jkt or resources, requiring a proof by that key, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_dpop_grants_test.go",
+      "marker": "func TestDPoPBoundDelegatedGrants(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOpaqueAccessToken": [
+    {
+      "label": "Store a delegated opaque token's resources and DPoP confirmation, which introspection names as aud and cnf, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_dpop_grants_test.go",
+      "marker": "t.Fatal(\"introspection did not name the DPoP key\", out.Body.String())",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/index.mdx#L26/Sender-constrained tokens": [
+    {
+      "label": "Bind code, refresh and client credentials tokens to a DPoP key, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_dpop_grants_test.go",
+      "marker": "func TestDPoPBoundDelegatedGrants(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L384/`invalid_dpop_proof`": [
+    {
+      "label": "Answer invalid_dpop_proof for a missing proof or a proof by another key at the code and refresh exchanges, keeping the code or parent, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_dpop_grants_test.go",
+      "marker": "func TestDPoPBoundDelegatedGrants(",
+      "complete": true
     }
   ]
 }

@@ -51,7 +51,7 @@
   - [ ] `OAuthFieldErrorCode`
   - [ ] `OAuthFieldErrorCodeMap`
   - [ ] `OAuthRedirectOnError`
-  - [ ] `GET / POST /oauth2/authorize`
+  - [x] `GET / POST /oauth2/authorize` ([test](../../../adapters/sqlstore/oauth_browser_resources_test.go#L24))
     - [x] Complete separate provider and client PKCE exchanges and bind the issued token to the social login session ([test](../../../conformance/oauth-social-authorization.mjs#L162))
     - [x] Sign in and register a public client, then obtain a code by GET or form POST and redeem it at either issuer with S256 PKCE ([test](../../../conformance/oauth-browser-authorization.mjs#L5))
     - [x] Recheck the registered callback, owner session and scoped consent in the issuing transaction on all three databases ([test](../../../adapters/sqlstore/oauth_browser_authorization_test.go#L20))
@@ -64,6 +64,7 @@
     - [x] Reject malformed OpenID claims and unsatisfiable essential authentication context before authorizing a code ([test](../../../conformance/oauth-id-tokens.mjs#L104))
     - [x] Run the code's verification create hooks after the client, session and consent checks; a declined code redirects with a code that redeems nothing ([test](../../../adapters/sqlstore/oauth_code_hooks_test.go#L318))
     - [x] A visit that opens the consent page runs no code hooks ([test](../../../adapters/sqlstore/oauth_code_hooks_test.go#L259))
+    - [x] Accept resource indicators checked against the registry and a dpop_jkt at authorize, carried into the code, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_browser_resources_test.go#L24))
   - [ ] `GET /.well-known/oauth-authorization-server` (server API only)
     - [x] Discover endpoints and capabilities for the machine grant, then register a client, verify a signed token and revoke an opaque token ([test](../../../conformance/oauth-issuer-metadata.mjs#L97))
     - [x] Mount both issuer discovery paths through ServeMux, chi, Gorilla Mux, Gin, Echo and Fiber and read them with GET and HEAD ([test](../../../integrations/routers/routers_test.go#L169))
@@ -304,7 +305,7 @@
       - [x] Default the scopes to openid, profile, email and offline_access and refuse registration scopes outside them ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L234))
     - [x] `requireOpenId` ([test](../../../conformance/oauth-require-openid.mjs#L41))
       - [x] Refuse an authorization request whose scope parameter is missing, empty or omits openid with invalid_scope at the client's callback with its state and issuer, and send one naming openid to the login page, on both runtimes ([test](../../../conformance/oauth-require-openid.mjs#L41))
-      - [x] Refuse the option without openid in the issuer's scopes and ignore the client's default scopes ([test](../../../plugins/oauthprovider/browser_authorization_test.go#L137))
+      - [x] Refuse the option without openid in the issuer's scopes and ignore the client's default scopes ([test](../../../plugins/oauthprovider/browser_authorization_test.go#L143))
     - [ ] `validateRedirectUri`
       - [x] Apply host callback policy after validating transport and reject policy errors before redirecting ([test](../../../adapters/sqlstore/oauth_browser_authorization_test.go#L179))
       - [x] Check the redirect syntax and HTTPS policy before the host callback, never call it for credentials, let its answer replace the registered match in both directions, send later errors to a callback only it accepted, and fail closed on an error, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_redirect_transport_test.go#L134))
@@ -489,7 +490,8 @@
       - [x] Enforce issuer proof algorithms and shared replay storage during machine issuance on all three SQL engines ([test](../../../adapters/sqlstore/oauth_dpop_issuance_test.go#L39))
       - [x] Keep replay records with the verification records in the shared database when SecondaryStorage holds sessions, so a second issuer refuses a replay and the storage receives no reservation ([test](../../../adapters/sqlstore/dpop_secondary_storage_test.go#L26))
       - [x] Bound the accepted DPoP proof age with ProofMaxAge, refusing a proof 61 seconds old under a one-minute limit and accepting one 59 seconds old ([test](../../../plugins/oauthprovider/dpop_test.go#L145))
-  - [ ] `OAuthAuthorizationQuery`
+  - [x] `OAuthAuthorizationQuery` ([test](../../../plugins/oauthprovider/browser_authorization_test.go#L54))
+    - [x] Accept resource indicators, up to 64 and without repeats, and a dpop_jkt in thumbprint form, refusing malformed ones with invalid_request ([test](../../../plugins/oauthprovider/browser_authorization_test.go#L54))
   - [x] `OAuthResource` ([test](../../../conformance/resource-registry.mjs#L72))
     - [x] Round-trip the full persisted resource, including IDs, timestamps and nullable policy fields ([test](../../../conformance/resource-registry.mjs#L72))
   - [x] `OAuthResourceInput` ([test](../../../conformance/resource-seeds.mjs#L37))
@@ -497,12 +499,14 @@
     - [x] Create and load all administrative input fields in both runtimes ([test](../../../conformance/resource-registry.mjs#L49))
     - [x] Accept identifier strings and full policy objects, including signing, lifetimes, scopes, claims, metadata and flags ([test](../../../conformance/resource-seeds.mjs#L37))
   - [ ] `OAuthClientResource`
-  - [ ] `StoredAuthorizationQuery`
+  - [x] `StoredAuthorizationQuery` ([test](../../../adapters/sqlstore/oauth_dpop_grants_test.go#L64))
+    - [x] Redeem a stored code that carries a dpop_jkt or resources, requiring a proof by that key, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_dpop_grants_test.go#L64))
   - [x] `VerificationValue` ([test](../../../adapters/sqlstore/oauth_code_resources_test.go#L305))
     - [x] Write a code's resources in its top-level resource list and read them back at redemption, falling back to a legacy query.resource, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_code_resources_test.go#L305))
     - [x] Carry the resources through the signed consent page into the code value ([test](../../../adapters/sqlstore/oauth_browser_resources_test.go#L24))
   - [ ] `SchemaClient`
-  - [ ] `OAuthOpaqueAccessToken`
+  - [x] `OAuthOpaqueAccessToken` ([test](../../../adapters/sqlstore/oauth_dpop_grants_test.go#L182))
+    - [x] Store a delegated opaque token's resources and DPoP confirmation, which introspection names as aud and cnf, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_dpop_grants_test.go#L182))
   - [ ] `OAuthRefreshToken`
   - [x] `OAuthConsent` ([test](../../../adapters/sqlstore/oauth_browser_resources_test.go#L151))
     - [x] Record the approved resources on a consent, keep them when an approval names none, and require them to cover every requested resource, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_browser_resources_test.go#L151))
@@ -568,8 +572,8 @@
   - [ ] `ExtractedCredentials`
   - [ ] `destructureCredentials`
   - [ ] `extractClientCredentials`
-  - [x] `parsePrompt` ([test](../../../plugins/oauthprovider/browser_authorization_test.go#L74))
-    - [x] Accept each supported prompt and drop repeats and extra spaces from a prompt list ([test](../../../plugins/oauthprovider/browser_authorization_test.go#L74))
+  - [x] `parsePrompt` ([test](../../../plugins/oauthprovider/browser_authorization_test.go#L80))
+    - [x] Accept each supported prompt and drop repeats and extra spaces from a prompt list ([test](../../../plugins/oauthprovider/browser_authorization_test.go#L80))
   - [ ] `resolveSubjectIdentifier`
   - [x] `getConsentReferenceId` ([test](../../../adapters/sqlstore/oauth_post_login_test.go#L209))
     - [x] Resolve the approval reference for the requested or accepted scopes and support personal approval when the host returns an empty reference ([test](../../../adapters/sqlstore/oauth_post_login_test.go#L209))
@@ -721,7 +725,7 @@
   - [ ] What the provider supports
     - [ ] Grants
     - [ ] Authorization requests
-      - [x] Accept the none, login, consent, select_account and create prompts with the query response mode ([test](../../../plugins/oauthprovider/browser_authorization_test.go#L70))
+      - [x] Accept the none, login, consent, select_account and create prompts with the query response mode ([test](../../../plugins/oauthprovider/browser_authorization_test.go#L76))
     - [ ] PKCE
       - [x] Exchange a browser-issued S256 code, verify the delegated access token with an independent issuer and isolate replay cleanup to that code ([test](../../../conformance/oauth-authorization-code.mjs#L5))
       - [x] Resolve public and confidential client PKCE requirements, including offline scopes, OIDC nonces and explicit registration policy ([test](../../../plugins/oauthprovider/authorization_code_test.go#L15))
@@ -733,7 +737,8 @@
       - [x] Accept resource indicators at authorize, the code exchange, refresh and client credentials, for linked resources only by default, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_code_resources_test.go#L27))
     - [x] Access tokens ([test](../../../adapters/sqlstore/oauth_code_resources_test.go#L239))
       - [x] Sign an at+jwt access token for a resource-targeted code or refresh exchange with the jwt plugin, keep it opaque with OpaqueResourceTokens, and issue opaque tokens otherwise, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_code_resources_test.go#L239))
-    - [ ] Sender-constrained tokens
+    - [x] Sender-constrained tokens ([test](../../../adapters/sqlstore/oauth_dpop_grants_test.go#L64))
+      - [x] Bind code, refresh and client credentials tokens to a DPoP key, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_dpop_grants_test.go#L64))
     - [x] Introspection and revocation ([test](../../../conformance/oauth-client-assertions.mjs#L48))
       - [x] Introspect an active token, revoke it and then report it inactive at the issuer's own endpoints ([test](../../../conformance/oauth-client-assertions.mjs#L48))
     - [ ] Discovery
@@ -812,7 +817,7 @@
     - [x] `GET /.well-known/openid-configuration` (server API only) ([test](../../../adapters/sqlstore/oauth_end_session_test.go#L173))
       - [x] Start from a custom issuer URL, discover the endpoints, complete PKCE sign-in and verify the ID token, access-token hash and UserInfo subject using an independent Go client ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L23))
       - [x] Publish end_session_endpoint and the back-channel logout flags, the fields the OpenID document lacked, and leave the endpoint out for a store that cannot read the hinted session (a documented deviation), on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_end_session_test.go#L173))
-    - [ ] `GET / POST /oauth2/authorize`
+    - [x] `GET / POST /oauth2/authorize` ([test](../../../adapters/sqlstore/oauth_browser_resources_test.go#L24))
       - [x] Sign in and register a public client, then obtain a code by GET or form POST and redeem it at either issuer with S256 PKCE ([test](../../../conformance/oauth-browser-authorization.mjs#L5))
       - [x] Recheck the registered callback, owner session and scoped consent in the issuing transaction on all three databases ([test](../../../adapters/sqlstore/oauth_browser_authorization_test.go#L20))
       - [x] Visit a host consent page, verify the signed query independently, deny a first request or exchange a code approved for fewer scopes ([test](../../../conformance/oauth-browser-authorization.mjs#L57))
@@ -820,6 +825,7 @@
       - [x] Apply host account-selection policy to an initial request, honor silent errors and preserve consent after selection ([test](../../../conformance/oauth-account-selection.mjs#L36))
       - [x] Return an interaction error for silent onboarding and wait for the host’s stored update before exposing consent ([test](../../../conformance/oauth-signup-policy.mjs#L45))
       - [x] Return a silent interaction error, ignore a supplied clearance on a new request and sign only a completed session’s consent page ([test](../../../conformance/oauth-post-login.mjs#L87))
+      - [x] Accept resource indicators checked against the registry and a dpop_jkt at authorize, carried into the code, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_browser_resources_test.go#L24))
     - [x] `POST /oauth2/consent` ([test](../../../adapters/sqlstore/oauth_browser_resources_test.go#L151))
       - [x] Visit a host consent page, verify the signed query independently, deny a first request or exchange a code approved for fewer scopes ([test](../../../conformance/oauth-browser-authorization.mjs#L57))
       - [x] Consume a decision once across two servers, isolate sessions and tenants, and roll back consent when code storage fails ([test](../../../adapters/sqlstore/oauth_browser_consent_test.go#L25))
@@ -925,7 +931,8 @@
     - [ ] `invalid_scope`
     - [x] `invalid_target` ([test](../../../adapters/sqlstore/oauth_code_resources_test.go#L27))
       - [x] Answer 400 invalid_target for an unknown, disabled or unlinked resource, and for one the code or refresh family did not authorize, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_code_resources_test.go#L27))
-    - [ ] `invalid_dpop_proof`
+    - [x] `invalid_dpop_proof` ([test](../../../adapters/sqlstore/oauth_dpop_grants_test.go#L64))
+      - [x] Answer invalid_dpop_proof for a missing proof or a proof by another key at the code and refresh exchanges, keeping the code or parent, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_dpop_grants_test.go#L64))
   - [ ] Rate limits
     - [ ] `token`
     - [x] `authorize` ([test](../../../adapters/sqlstore/oauth_browser_authorization_test.go#L208))
@@ -1199,12 +1206,13 @@
     - [x] Exchange a browser-issued S256 code, verify the delegated access token with an independent issuer and isolate replay cleanup to that code ([test](../../../conformance/oauth-authorization-code.mjs#L5))
     - [x] Resolve public and confidential client PKCE requirements, including offline scopes, OIDC nonces and explicit registration policy ([test](../../../plugins/oauthprovider/authorization_code_test.go#L15))
     - [x] Sign in and register a public client, then obtain a code by GET or form POST and redeem it at either issuer with S256 PKCE ([test](../../../conformance/oauth-browser-authorization.mjs#L5))
-  - [ ] DPoP
+  - [x] DPoP ([test](../../../adapters/sqlstore/oauth_dpop_grants_test.go#L64))
     - [x] Verify signed DPoP proofs, their token hashes, permitted algorithms, normalized targets, validity windows and sender thumbprints ([test](../../../plugins/oauthprovider/dpop_test.go#L59))
     - [x] Exchange proof reservations with an independent runtime and reject reuse in both directions ([test](../../../conformance/dpop-proofs.mjs#L39))
     - [x] Accept a proof only once across independent connections and expire reservations on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/verification_reservation_test.go#L12))
     - [x] Share proof reservations across independent Redis clients without extending their expiry ([test](../../../adapters/redis/storage_test.go#L435))
     - [x] Issue a sender-bound machine token, enforce its key on an independent resource verifier, introspect it and revoke it ([test](../../../conformance/dpop-machine-tokens.mjs#L43))
+    - [x] Bind delegated tokens for a dpop_jkt code, a DPoP-required client or resource, and a proof on the exchange, keeping the family's key on refresh, on SQLite, PostgreSQL and MySQL; reserving the proof before the code is spent is a documented deviation ([test](../../../adapters/sqlstore/oauth_dpop_grants_test.go#L64))
   - [ ] Custom claims
     - [ ] Client-specific access token claims
     - [ ] Custom token response fields

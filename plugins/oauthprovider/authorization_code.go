@@ -37,6 +37,8 @@ type DelegatedAccessRecord struct {
 	Deferred bool
 	// Resources are the token's resource audiences, stored with it.
 	Resources []string
+	// Thumbprint is the DPoP key both issued tokens are bound to, or "".
+	Thumbprint string
 }
 
 // InitialRefreshGrant holds the expiry and original authentication time of a
@@ -223,6 +225,13 @@ func (opts Options) redeemAuthorizationCode(c auth.EndpointContext, in tokenRequ
 	if err != nil {
 		return result, err
 	}
+	// A DPoP proof is verified before the code is read, and its key binds
+	// the tokens. Its jti is reserved here, where another runtime records it
+	// once the code is spent: a failed exchange spends only its own proof.
+	thumb, err := opts.machineThumbprint(c, in, false)
+	if err != nil {
+		return result, err
+	}
 	offlineStore, canIssueRefresh := store.(OfflineAuthorizationCodeStore)
 	// policy holds the resources' policy rows once read; needed names the
 	// resources prepare asked for.
@@ -245,6 +254,9 @@ func (opts Options) redeemAuthorizationCode(c auth.EndpointContext, in tokenRequ
 		scopes, err := code.scopesForExchange(client, in, verifier, form.Get("redirect_uri"))
 		if err != nil {
 			return DelegatedAccessRecord{}, err
+		}
+		if code.Query.Thumbprint != "" && thumb != code.Query.Thumbprint {
+			return DelegatedAccessRecord{}, proofError("DPoP proof key does not match the bound token")
 		}
 		claims, err := opts.grantUserInfoClaims(code.Query.Claims, slices.Contains(scopes, "openid"))
 		if err != nil {
@@ -272,11 +284,8 @@ func (opts Options) redeemAuthorizationCode(c auth.EndpointContext, in tokenRequ
 			if err != nil {
 				return DelegatedAccessRecord{}, err
 			}
-			if granted.bound {
-				if in.proof == "" {
-					return DelegatedAccessRecord{}, proofError("DPoP proof header is required")
-				}
-				return DelegatedAccessRecord{}, registrationProblem(501, "server_error", "sender-bound authorization-code issuance is unavailable")
+			if granted.bound && thumb == "" {
+				return DelegatedAccessRecord{}, proofError("DPoP proof header is required")
 			}
 			if supportsOpenID && opts.signsResourceTokens(c) {
 				signing = newDelegatedSigning(c, granted, effective, scopes)
@@ -288,11 +297,11 @@ func (opts Options) redeemAuthorizationCode(c auth.EndpointContext, in tokenRequ
 				return DelegatedAccessRecord{}, registrationProblem(400, "invalid_grant", "malformed authorization claims")
 			}
 		}
-		result.MachineToken = machineResponse(issued, "", scopes, now, lifetime)
+		result.MachineToken = machineResponse(issued, thumb, scopes, now, lifetime)
 		record := DelegatedAccessRecord{
 			MachineTokenRecord: MachineTokenRecord{StoredToken: stored, Scopes: scopes, IssuedAt: now, ExpiresAt: now.Add(lifetime)},
 			UserID:             code.UserID, SessionID: code.SessionID, ReferenceID: code.ReferenceID,
-			RequestedUserInfoClaims: claims, Resources: effective,
+			RequestedUserInfoClaims: claims, Resources: effective, Thumbprint: thumb,
 		}
 		var authTime time.Time
 		if code.AuthTime != nil {
@@ -360,7 +369,7 @@ func (opts Options) redeemAuthorizationCode(c auth.EndpointContext, in tokenRequ
 		// The ID token's at_hash covers the access token sent, signed or not.
 		access := issued
 		if signing != nil {
-			token, err := opts.signDelegated(c, signing, "authorization_code", in.id, signingUser, grant.SessionID, grant.IDToken.ClaimsInput, now)
+			token, err := opts.signDelegated(c, signing, "authorization_code", in.id, signingUser, grant.SessionID, thumb, grant.IDToken.ClaimsInput, now)
 			if err != nil {
 				return "", err
 			}
@@ -466,11 +475,8 @@ func (code storedAuthorizationCode) scopesForExchange(client AuthorizationCodeCl
 			return nil, registrationProblem(400, "invalid_grant", "code verification failed")
 		}
 	}
-	if client.RequireDPoP || q.Thumbprint != "" || in.proof != "" {
-		if in.proof == "" {
-			return nil, proofError("DPoP proof header is required")
-		}
-		return nil, registrationProblem(501, "server_error", "sender-bound authorization-code issuance is unavailable")
+	if (client.RequireDPoP || q.Thumbprint != "") && in.proof == "" {
+		return nil, proofError("DPoP proof header is required")
 	}
 	return scopes, nil
 }

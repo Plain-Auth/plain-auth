@@ -148,7 +148,17 @@ func (s *Store) readRefreshParent(ctx context.Context, tx *sql.Tx, clientID, dig
 	if parent.authTime != nil {
 		parent.AuthTime = parent.authTime.UTC()
 	}
-	parent.SenderBound = len(confirmation) > 0 && string(confirmation) != "null"
+	// A jkt confirmation is a DPoP binding; any other kind cannot be proven here.
+	if len(confirmation) > 0 && string(confirmation) != "null" {
+		var bound struct {
+			JKT string `json:"jkt"`
+		}
+		if json.Unmarshal(confirmation, &bound) == nil && bound.JKT != "" {
+			parent.Thumbprint = bound.JKT
+		} else {
+			parent.SenderBound = true
+		}
+	}
 	for _, field := range []struct {
 		data  []byte
 		names *[]string

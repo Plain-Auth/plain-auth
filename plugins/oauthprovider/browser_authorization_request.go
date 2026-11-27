@@ -3,6 +3,7 @@ package oauthprovider
 import (
 	"encoding/json"
 	"net/url"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -101,8 +102,10 @@ func (opts Options) browserGrant(client BrowserClient, q url.Values) (browserAut
 		}
 	}
 	request.Resources = distinct(q["resource"])
-	if q.Has("dpop_jkt") || client.RequireDPoP {
-		return fail("invalid_request", "this authorization request requires an unsupported token binding")
+	// A dpop_jkt binds the code to a key the exchange must prove, as in
+	// another runtime; a DPoP-required client binds at the exchange.
+	if q.Has("dpop_jkt") && !dpopThumbprint.MatchString(q.Get("dpop_jkt")) {
+		return fail("invalid_request", "dpop_jkt must be a base64url-encoded SHA-256 JWK thumbprint")
 	}
 	prompts := distinct(promptValues(q.Get("prompt")))
 	for _, prompt := range prompts {
@@ -121,7 +124,7 @@ func (opts Options) browserGrant(client BrowserClient, q url.Values) (browserAut
 		}
 		request.MaxAge = &age
 	}
-	for _, k := range []string{"state", "code_challenge", "code_challenge_method", "nonce", "acr_values", "prompt", "display", "ui_locales", "login_hint", "response_mode"} {
+	for _, k := range []string{"state", "code_challenge", "code_challenge_method", "nonce", "acr_values", "prompt", "display", "ui_locales", "login_hint", "response_mode", "dpop_jkt"} {
 		if q.Has(k) {
 			request.Query[k] = q.Get(k)
 		}
@@ -198,3 +201,6 @@ func loopbackCallback(raw string) string {
 	}
 	return raw[:start] + host + raw[end:]
 }
+
+// dpopThumbprint is a base64url SHA-256 JWK thumbprint.
+var dpopThumbprint = regexp.MustCompile(`^[A-Za-z0-9_-]{43}$`)

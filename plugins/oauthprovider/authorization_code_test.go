@@ -92,8 +92,9 @@ func TestAuthorizationCodeGrantBoundaries(t *testing.T) {
 			t.Fatal("wrong code resources", tc.raw, tc.requested, effective, err)
 		}
 	}
+	// A proof without a binding to check passes; the exchange binds to it.
 	in.proof = "proof"
-	check(basic, "", 501, "server_error")
+	check(basic, "", 200, "")
 	in.proof = ""
 	client.RequirePKCE = nil
 	check(basic, "", 400, "invalid_request")

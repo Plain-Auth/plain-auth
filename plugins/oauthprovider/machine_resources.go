@@ -312,7 +312,7 @@ func newDelegatedSigning(c auth.EndpointContext, policy machineResourcePolicy, r
 
 // signDelegated signs the access token in the issue phase, outside store
 // transactions, with the contributed and resource claims below the issuer's.
-func (opts Options) signDelegated(c auth.EndpointContext, s *delegatedSigning, grantType, clientID, userID, sid, snapshot string, now time.Time) (string, error) {
+func (opts Options) signDelegated(c auth.EndpointContext, s *delegatedSigning, grantType, clientID, userID, sid, thumb, snapshot string, now time.Time) (string, error) {
 	in := TokenClaimsInput{ClientID: clientID, Scopes: s.policy.scopes, GrantType: grantType, Resources: s.resources}
 	if snapshot != "" {
 		var claims IDTokenClaimsInput
@@ -324,7 +324,7 @@ func (opts Options) signDelegated(c auth.EndpointContext, s *delegatedSigning, g
 	if err != nil {
 		return "", err
 	}
-	return s.policy.sign(c, userID, clientID, sid, s.audiences, "", now, extra)
+	return s.policy.sign(c, userID, clientID, sid, s.audiences, thumb, now, extra)
 }
 
 // contributesAccessClaims reports access-token claim contributors, which
