@@ -38,7 +38,10 @@ type DelegatedAccessRecord struct {
 	// Resources are the token's resource audiences, stored with it.
 	Resources []string
 	// Thumbprint is the DPoP key both issued tokens are bound to, or "".
-	Thumbprint string
+	// Confirmation is another binding an extension grant supplied, never
+	// with a Thumbprint.
+	Thumbprint   string
+	Confirmation *Confirmation
 	// ReplayUntil, set on a rotation with a reuse interval, is when the
 	// rotated token stops replaying its sealed response.
 	ReplayUntil time.Time

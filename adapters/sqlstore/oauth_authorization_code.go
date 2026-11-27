@@ -185,7 +185,7 @@ func (s *Store) insertDelegatedTokens(ctx context.Context, tx *sql.Tx, clientID 
 			return err
 		}
 		const insertRefresh = `INSERT INTO "oauthRefreshToken" ("id","token","clientId","userId","sessionId","referenceId","authorizationCodeId","scopes","createdAt","expiresAt","authTime","requestedUserInfoClaims","resources","confirmation") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
-		if _, err := tx.ExecContext(ctx, s.bind(insertRefresh), id, refreshDigest, clientID, record.UserID, refreshSessionID, record.ReferenceID, codeID, string(scopes), s.date(record.IssuedAt), s.date(refresh.ExpiresAt), authTime, claims, resources, confirmationColumn(record.Thumbprint)); err != nil {
+		if _, err := tx.ExecContext(ctx, s.bind(insertRefresh), id, refreshDigest, clientID, record.UserID, refreshSessionID, record.ReferenceID, codeID, string(scopes), s.date(record.IssuedAt), s.date(refresh.ExpiresAt), authTime, claims, resources, confirmationColumn(record.Thumbprint, record.Confirmation)); err != nil {
 			return err
 		}
 	}
@@ -198,16 +198,23 @@ func (s *Store) insertDelegatedTokens(ctx context.Context, tx *sql.Tx, clientID 
 		return err
 	}
 	const insert = `INSERT INTO "oauthAccessToken" ("id","token","clientId","userId","sessionId","referenceId","authorizationCodeId","scopes","createdAt","expiresAt","refreshId","requestedUserInfoClaims","resources","confirmation") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
-	_, err = tx.ExecContext(ctx, s.bind(insert), rand.Text(), record.StoredToken, clientID, record.UserID, accessSessionID, record.ReferenceID, codeID, string(scopes), s.date(record.IssuedAt), s.date(record.ExpiresAt), refreshID, claims, resources, confirmationColumn(record.Thumbprint))
+	_, err = tx.ExecContext(ctx, s.bind(insert), rand.Text(), record.StoredToken, clientID, record.UserID, accessSessionID, record.ReferenceID, codeID, string(scopes), s.date(record.IssuedAt), s.date(record.ExpiresAt), refreshID, claims, resources, confirmationColumn(record.Thumbprint, record.Confirmation))
 	return err
 }
 
-// confirmationColumn encodes a DPoP binding, or NULL for none.
-func confirmationColumn(thumb string) sql.NullString {
-	if thumb == "" {
+// confirmationColumn encodes a DPoP binding or another confirmation, or
+// NULL for none.
+func confirmationColumn(thumb string, cnf *op.Confirmation) sql.NullString {
+	var value any
+	switch {
+	case thumb != "":
+		value = map[string]string{"jkt": thumb}
+	case cnf != nil:
+		value = cnf
+	default:
 		return sql.NullString{}
 	}
-	raw, _ := json.Marshal(map[string]string{"jkt": thumb})
+	raw, _ := json.Marshal(value)
 	return sql.NullString{String: string(raw), Valid: true}
 }
 

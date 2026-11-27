@@ -300,6 +300,10 @@ type delegatedSigning struct {
 	policy    machineResourcePolicy
 	audiences []string
 	resources []string
+	// claims and cnf are an extension grant's per-issuance claims and
+	// binding.
+	claims map[string]any
+	cnf    *Confirmation
 }
 
 // newDelegatedSigning keeps the policy and the audiences: the resources,
@@ -322,11 +326,15 @@ func (opts Options) signDelegated(c auth.EndpointContext, s *delegatedSigning, g
 			in.User, in.Metadata = &claims.User, claims.Metadata
 		}
 	}
-	extra, err := opts.accessTokenClaims(c, in, nil)
+	extra, err := opts.accessTokenClaims(c, in, s.claims)
 	if err != nil {
 		return "", err
 	}
-	return s.policy.sign(c, userID, clientID, sid, s.audiences, jktConfirmation(thumb), now, extra)
+	cnf := jktConfirmation(thumb)
+	if s.cnf != nil {
+		cnf = s.cnf
+	}
+	return s.policy.sign(c, userID, clientID, sid, s.audiences, cnf, now, extra)
 }
 
 // contributesAccessClaims reports access-token claim contributors, which

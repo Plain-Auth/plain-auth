@@ -61,7 +61,7 @@ Plain Auth detects optional interfaces with type assertions on `Options.Store`. 
 | `DisableVerificationCleanup` | `VerificationCleanupStore` |
 | `Plugin.OnSessionsEnded`, and back-channel logout in the OAuth provider | `SessionEndReporter`: report every ended session after its transaction commits |
 | RP-initiated logout at `/oauth2/end-session` | `oauthprovider.EndSessionStore`: read a live session's token by its ID |
-| `ProviderAPI.IssueTokens` in an OAuth extension grant | `oauthprovider.ResourceMachineTokenStore`: store a record's `Confirmation` as its `cnf`, like a DPoP `Thumbprint` |
+| `ProviderAPI.IssueTokens` in an OAuth extension grant | `oauthprovider.ResourceMachineTokenStore` for client tokens and `oauthprovider.GrantTokenStore` for user tokens: store a record's `Confirmation` as its `cnf`, like a DPoP `Thumbprint` |
 | `ClientAuthenticationInput.ConsumeClientAssertion` in an OAuth client authentication strategy | `oauthprovider.ClientAssertionReplayStore`: insert an assertion digest once, atomically |
 | Plugins such as phone, username, magic link, email codes or JWT | the interface each plugin's guide names; the JWT plugin can keep its keys in `jwt.Options.KeyStore` instead |
 

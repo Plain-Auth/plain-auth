@@ -3,6 +3,7 @@ package sqlstore
 import (
 	"context"
 	"crypto/sha256"
+	"crypto/sha512"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -391,6 +392,212 @@ func TestExtensionGrantClientTokens(t *testing.T) {
 			})
 			if err == nil {
 				t.Fatal("a token with two bindings was stored")
+			}
+		})
+	}
+}
+
+// IssueTokens with a user issues as a code exchange does without a code:
+// an access token bound to the user and any live session of theirs, an ID
+// token for openid with the grant's add-only claims, and a refresh token
+// for offline_access when the client may refresh, which rotates through
+// the refresh_token grant. A session that is another user's or expired, a
+// missing user, and a user changed between the passes are refused. A
+// resource gets a signed access token, which the ID token's at_hash covers.
+func TestExtensionGrantUserTokens(t *testing.T) {
+	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
+		t.Run(dialect, func(t *testing.T) {
+			ctx := t.Context()
+			must := func(err error) {
+				t.Helper()
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			s, err := OpenWithOptions(ctx, dialect, organizationTestDSN(t, dialect), []string{"oauth-provider", "jwt"}, schema.Options{})
+			must(err)
+			t.Cleanup(func() { s.Close() })
+			write := func(q string, args ...any) {
+				t.Helper()
+				_, err := s.db.ExecContext(ctx, s.bind(q), args...)
+				must(err)
+			}
+			now := time.Now().UTC().Truncate(time.Second)
+			start := now.Add(-time.Hour)
+			for _, u := range []string{"owner", "someone"} {
+				write(`INSERT INTO "user" ("id","name","email","emailVerified","createdAt","updatedAt") VALUES (?,?,?,?,?,?)`, u, u, u+"@example.test", true, s.date(now), s.date(now))
+			}
+			write(`INSERT INTO "session" ("id","userId","token","createdAt","updatedAt","expiresAt") VALUES ('sid','owner','a',?,?,?)`, s.date(start), s.date(now), s.date(now.Add(time.Hour)))
+			write(`INSERT INTO "session" ("id","userId","token","createdAt","updatedAt","expiresAt") VALUES ('theirs','someone','b',?,?,?)`, s.date(now), s.date(now), s.date(now.Add(time.Hour)))
+			write(`INSERT INTO "session" ("id","userId","token","createdAt","updatedAt","expiresAt") VALUES ('old','owner','c',?,?,?)`, s.date(start), s.date(start), s.date(now.Add(-time.Minute)))
+			const grant = "urn:test:user"
+			secret := "user-token-secret"
+			digest := sha256.Sum256([]byte(secret))
+			for id, grants := range map[string]string{"app": `["` + grant + `","refresh_token"]`, "noref": `["` + grant + `"]`, "strict": `["` + grant + `"]`} {
+				write(`INSERT INTO "oauthClient" ("id","clientId","clientSecret","tokenEndpointAuthMethod","redirectUris","grantTypes","enableEndSession","dpopBoundAccessTokens") VALUES (?,?,?,'client_secret_post','[]',?,?,?)`,
+					id, id, base64.RawURLEncoding.EncodeToString(digest[:]), grants, true, id == "strict")
+			}
+			write(`INSERT INTO "oauthResource" ("id","identifier","name","accessTokenTtl") VALUES ('api','urn:api','API',?)`, 120)
+			write(`INSERT INTO "oauthClientResource" ("id","resourceId","clientId") VALUES ('link','urn:api','app')`)
+			// changeUser renames the user while the tokens are made.
+			changeUser := false
+			handler := func(in op.GrantInput) (op.TokenResponse, error) {
+				client, err := in.Provider.AuthenticateClient(op.ClientAuthenticationRequest{})
+				if err != nil {
+					return op.TokenResponse{}, err
+				}
+				params := op.TokenIssueParams{ClientID: client.ClientID, UserID: in.Form.Get("user"), SessionID: in.Form.Get("session"), Scopes: strings.Fields(in.Form.Get("scope")),
+					Resources: in.Form["resource"], Nonce: "n-1", RequestedUserInfoClaims: []string{"email", "bogus"},
+					IDTokenClaims: map[string]any{"shared": "issue", "grant_claim": "yes", "email": "forged", "nonce": "forged", "host": "issue"}}
+				if v := in.Form.Get("x5t"); v != "" {
+					params.Confirmation = &op.Confirmation{X5TS256: v}
+				}
+				return in.Provider.IssueTokens(params)
+			}
+			p, err := op.New(op.Options{Scopes: []string{"openid", "email", "reports", "offline_access"},
+				Extensions: []op.Extension{{Grants: map[string]op.GrantHandler{grant: handler},
+					IDTokenClaims: func(context.Context, op.TokenClaimsInput) (map[string]any, error) {
+						return map[string]any{"shared": "extension", "wallet": "ext"}, nil
+					}}},
+				Tokens: op.TokenOptions{CustomIDTokenClaims: func(context.Context, op.IDTokenClaimsInput) (map[string]any, error) {
+					return map[string]any{"host": "custom"}, nil
+				}, CustomTokenResponseFields: func(_ context.Context, in op.TokenResponseInput) (map[string]any, error) {
+					if changeUser {
+						write(`UPDATE "user" SET "name"=? WHERE "id"='owner'`, "Renamed")
+					}
+					return map[string]any{"grant": in.GrantType, "user": in.User.ID}, nil
+				}}})
+			must(err)
+			signing, err := auth.NewJWT(auth.JWTOptions{})
+			must(err)
+			const origin = "https://user.example.test"
+			off := false
+			h, err := auth.New(auth.Options{BaseURL: origin, Secret: strings.Repeat("u", 40), Store: s, Plugins: []auth.Plugin{p, signing}, RateLimit: &off})
+			must(err)
+			tokenURL := origin + "/api/auth/oauth2/token"
+			call := func(path string, form url.Values, proof string) (int, map[string]any) {
+				t.Helper()
+				req := httptest.NewRequest("POST", origin+"/api/auth"+path, strings.NewReader(form.Encode()))
+				req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+				if proof != "" {
+					req.Header.Set("DPoP", proof)
+				}
+				out := httptest.NewRecorder()
+				h.ServeHTTP(out, req)
+				var body map[string]any
+				_ = json.Unmarshal(out.Body.Bytes(), &body)
+				return out.Code, body
+			}
+			mint := func(client string, extra url.Values, proof string) (int, map[string]any) {
+				t.Helper()
+				form := url.Values{"grant_type": {grant}, "client_id": {client}, "client_secret": {secret}, "user": {"owner"}}
+				for k, v := range extra {
+					form[k] = v
+				}
+				return call("/oauth2/token", form, proof)
+			}
+			payload := func(token string) map[string]any {
+				t.Helper()
+				parts := strings.Split(token, ".")
+				if len(parts) != 3 {
+					t.Fatal("not a JWT", token)
+				}
+				raw, err := base64.RawURLEncoding.DecodeString(parts[1])
+				must(err)
+				var claims map[string]any
+				must(json.Unmarshal(raw, &claims))
+				return claims
+			}
+			row := func(table, token string) (user string, session, claims, confirmation *string) {
+				t.Helper()
+				digest := sha256.Sum256([]byte(token))
+				must(s.db.QueryRowContext(ctx, s.bind(`SELECT "userId","sessionId","requestedUserInfoClaims","confirmation" FROM "`+table+`" WHERE "token"=?`), base64.RawURLEncoding.EncodeToString(digest[:])).Scan(&user, &session, &claims, &confirmation))
+				return
+			}
+			// A session-bound user grant with every token.
+			status, body := mint("app", url.Values{"session": {"sid"}, "scope": {"openid email reports offline_access"}}, "")
+			if status != 200 || body["refresh_token"] == nil || body["id_token"] == nil || body["token_type"] != "Bearer" || body["grant"] != grant || body["user"] != "owner" {
+				t.Fatal("the user grant was wrong", status, body)
+			}
+			id := payload(body["id_token"].(string))
+			if id["sub"] != "owner" || id["aud"] != "app" || id["nonce"] != "n-1" || id["sid"] != "sid" || id["auth_time"] != float64(start.Unix()) ||
+				id["shared"] != "issue" || id["wallet"] != "ext" || id["grant_claim"] != "yes" || id["email"] == "forged" || id["at_hash"] == nil || id["host"] != "custom" {
+				t.Fatal("the ID token's claims were wrong", id)
+			}
+			user, session, claims, _ := row("oauthAccessToken", body["access_token"].(string))
+			if user != "owner" || session == nil || *session != "sid" || claims == nil || !sameJSON(*claims, `["email"]`) {
+				t.Fatal("the access token row was wrong", user, session, claims)
+			}
+			// The refresh token rotates through the refresh_token grant.
+			if status, rotated := call("/oauth2/token", url.Values{"grant_type": {"refresh_token"}, "client_id": {"app"}, "client_secret": {secret}, "refresh_token": {body["refresh_token"].(string)}}, ""); status != 200 || rotated["refresh_token"] == nil {
+				t.Fatal("the grant's refresh token did not rotate", status, rotated)
+			}
+			// A client that may not refresh gets no refresh token, and a
+			// grant without a session binds to none.
+			status, body = mint("noref", url.Values{"scope": {"reports offline_access"}}, "")
+			if status != 200 || body["refresh_token"] != nil || body["id_token"] != nil {
+				t.Fatal("a client that may not refresh got a refresh token", status, body)
+			}
+			if _, session, _, _ := row("oauthAccessToken", body["access_token"].(string)); session != nil {
+				t.Fatal("a grant without a session was bound to one", *session)
+			}
+			// A DPoP proof binds both tokens; a certificate confirmation is kept.
+			key := newDPoPKey(t)
+			status, body = mint("app", url.Values{"session": {"sid"}, "scope": {"reports offline_access"}}, key.proof(t, tokenURL))
+			_, _, _, access := row("oauthAccessToken", body["access_token"].(string))
+			_, _, _, refreshed := row("oauthRefreshToken", body["refresh_token"].(string))
+			if status != 200 || body["token_type"] != "DPoP" || access == nil || refreshed == nil || !sameJSON(*access, `{"jkt":"`+key.thumb+`"}`) || !sameJSON(*refreshed, *access) {
+				t.Fatal("the DPoP proof did not bind both tokens", status, body, access, refreshed)
+			}
+			status, body = mint("app", url.Values{"scope": {"reports"}, "x5t": {"cert"}}, "")
+			if _, _, _, access := row("oauthAccessToken", body["access_token"].(string)); status != 200 || body["token_type"] != "Bearer" || access == nil || !sameJSON(*access, `{"x5t#S256":"cert"}`) {
+				t.Fatal("the certificate confirmation was not kept", status, body, access)
+			}
+			// A client that requires DPoP needs a key.
+			if status, body := mint("strict", url.Values{"scope": {"reports"}, "x5t": {"cert"}}, ""); status != 400 || body["error"] != "invalid_dpop_proof" {
+				t.Fatal("a DPoP-required client got unbound user tokens", status, body)
+			}
+			// A resource gets a signed access token that is not stored,
+			// covered by at_hash and carrying the confirmation.
+			var stored, after int
+			must(s.db.QueryRowContext(ctx, s.bind(`SELECT COUNT(*) FROM "oauthAccessToken"`)).Scan(&stored))
+			status, body = mint("app", url.Values{"session": {"sid"}, "scope": {"openid reports"}, "resource": {"urn:api"}, "x5t": {"cert"}}, "")
+			if status != 200 || body["expires_in"] != float64(120) {
+				t.Fatal("the resource grant was wrong", status, body)
+			}
+			must(s.db.QueryRowContext(ctx, s.bind(`SELECT COUNT(*) FROM "oauthAccessToken"`)).Scan(&after))
+			if after != stored {
+				t.Fatal("the signed access token was stored")
+			}
+			signed := payload(body["access_token"].(string))
+			if signed["sub"] != "owner" || signed["sid"] != "sid" || !reflect.DeepEqual(signed["aud"], []any{"urn:api", origin + "/api/auth/oauth2/userinfo"}) ||
+				!reflect.DeepEqual(signed["cnf"], map[string]any{"x5t#S256": "cert"}) {
+				t.Fatal("the signed access token was wrong", signed)
+			}
+			// The default EdDSA key hashes with SHA-512.
+			sum := sha512.Sum512([]byte(body["access_token"].(string)))
+			if payload(body["id_token"].(string))["at_hash"] != base64.RawURLEncoding.EncodeToString(sum[:32]) {
+				t.Fatal("the ID token's at_hash did not cover the signed access token")
+			}
+			// Refusals.
+			for _, c := range []struct {
+				form              url.Values
+				code, description string
+			}{
+				{url.Values{"session": {"theirs"}}, "invalid_request", "session no longer exists"},
+				{url.Values{"session": {"old"}}, "invalid_request", "session no longer exists"},
+				{url.Values{"user": {"missing"}}, "invalid_user", "missing user, user may have been deleted"},
+			} {
+				c.form.Set("scope", "reports")
+				if status, body := mint("app", c.form, ""); status != 400 || body["error"] != c.code || body["error_description"] != c.description {
+					t.Fatal("a user grant was not refused", c.form, status, body)
+				}
+			}
+			changeUser = true
+			status, body = mint("app", url.Values{"scope": {"reports"}}, "")
+			changeUser = false
+			if status != 400 || body["error_description"] != "grant changed during issuance, retry the request" {
+				t.Fatal("a user changed during issuance was not refused", status, body)
 			}
 		})
 	}

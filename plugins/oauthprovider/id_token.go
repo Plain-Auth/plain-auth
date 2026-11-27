@@ -101,6 +101,9 @@ func (opts Options) idTokenGrant(client AuthorizationCodeClient, user, liveSessi
 type idTokenContributors struct {
 	grantType  string
 	extensions []Extension
+	// claims are an extension grant's per-issuance claims, which win over
+	// the extensions' within the add-only layer, as in another runtime.
+	claims map[string]any
 }
 
 func (opts Options) extendsIDTokens() bool {
@@ -125,6 +128,11 @@ func standardIDClaim(name string) bool {
 // add adds the extensions' ID-token claims where the token
 // has no such claim, as another runtime's additive layer does.
 func (x idTokenContributors) add(c auth.EndpointContext, claims map[string]any, clientID string, grant IDTokenGrant) error {
+	for name, value := range x.claims {
+		if _, present := claims[name]; !present && !standardIDClaim(name) {
+			claims[name] = value
+		}
+	}
 	if !slices.ContainsFunc(x.extensions, func(e Extension) bool { return e.IDTokenClaims != nil }) {
 		return nil
 	}

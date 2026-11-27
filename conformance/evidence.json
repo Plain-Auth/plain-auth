@@ -49423,6 +49423,11 @@
       "label": "Issue an extension grant's client token through the provider with the client credentials lifetime, introspecting like one, on both runtimes",
       "test": "conformance/oauth-extensions.mjs",
       "marker": "export async function compareExtensionGrant("
+    },
+    {
+      "label": "Issue a user's tokens through the provider inside an extension grant, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_extension_grant_test.go",
+      "marker": "t.Fatal(\"the user grant was wrong\", status, body)"
     }
   ],
   "plugin-symbol/oauth-provider/getOAuthProviderApi": [
@@ -49449,6 +49454,12 @@
       "label": "Issue a client token from an extension grant with scopes, resources, per-issuance claims, response fields and a confirmation, checking the registration and the resources' policy again, on SQLite, PostgreSQL and MySQL; requiring a DPoP key where DPoP is required is a documented deviation",
       "test": "adapters/sqlstore/oauth_extension_grant_test.go",
       "marker": "func TestExtensionGrantClientTokens("
+    },
+    {
+      "label": "Issue a user's access, ID and refresh tokens from an extension grant with a session, nonce, requested UserInfo claims, ID token claims, resources and a confirmation, refusing a foreign or ended session, a missing user and a change during issuance, on SQLite, PostgreSQL and MySQL; the built-in grants' rotation and code fields are left out as a documented deviation",
+      "test": "adapters/sqlstore/oauth_extension_grant_test.go",
+      "marker": "func TestExtensionGrantUserTokens(",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/oauth-provider/reference.mdx#L493/Access token": [
@@ -49457,6 +49468,13 @@
       "test": "adapters/sqlstore/oauth_extension_grant_test.go",
       "marker": "t.Fatal(\"the resource token's claims were wrong\", claims)",
       "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L494/ID token": [
+    {
+      "label": "Add an extension grant's per-issuance ID token claims above the extensions' where the token has none, never setting nonce or email, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_extension_grant_test.go",
+      "marker": "t.Fatal(\"the ID token's claims were wrong\", id)"
     }
   ]
 }

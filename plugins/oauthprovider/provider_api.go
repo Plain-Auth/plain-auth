@@ -1,6 +1,7 @@
 package oauthprovider
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"maps"
@@ -233,13 +234,28 @@ func (opts Options) tokenOperation() json.RawMessage {
 	return json.RawMessage(strings.Replace(machineTokenOperation, builtIn, `"enum":`+string(enum), 1))
 }
 
-// TokenIssueParams describes tokens an extension grant issues for a client.
-// IssueTokens applies the resources' policy and checks the registration
-// again, but does not check that the scopes were approved: the handler
-// authorizes them, for example with AuthenticateClient's Scopes.
+// TokenIssueParams describes tokens an extension grant issues for a client,
+// or for a user when UserID is set. IssueTokens applies the resources'
+// policy and checks the registration again, but does not check that the
+// scopes or the user were approved: the handler authorizes them, for
+// example with AuthenticateClient's Scopes.
 type TokenIssueParams struct {
 	ClientID string
 	Scopes   []string
+	// UserID issues the tokens for that user, with an ID token for openid
+	// and a refresh token for offline_access when the client may refresh.
+	// SessionID, when set, binds them to that user's live session.
+	UserID, SessionID, ReferenceID string
+	// Nonce and AuthTime go in the ID token; AuthTime defaults to the
+	// session's start.
+	Nonce    string
+	AuthTime time.Time
+	// RequestedUserInfoClaims are individual UserInfo claims the user
+	// approved, kept for openid when the provider supports them.
+	RequestedUserInfoClaims []string
+	// IDTokenClaims add claims to the ID token where it has none, above
+	// the extensions' IDTokenClaims; standard claims are never set.
+	IDTokenClaims map[string]any
 	// Resources are the token's audiences, as resource parameters name them.
 	Resources []string
 	// AccessTokenClaims are added to a signed access token, above the
@@ -252,9 +268,25 @@ type TokenIssueParams struct {
 	Confirmation *Confirmation
 }
 
-// IssueTokens issues an access token for a client, with the client
-// credentials lifetime, as another runtime's issueTokens does without a
-// user. With resources and the jwt plugin the token is a signed at+jwt;
+// GrantTokenStore stores the tokens an extension grant issues for a user.
+// It locks the registration, calls check and prepare, which performs no
+// I/O, and verifies the user and any session, which must be the user's and
+// live, as a code exchange does without a code. When a refresh token, an
+// ID token or host fields are needed it releases its locks, calls issue
+// outside the transaction, then repeats both checks and commits only an
+// unchanged grant with the returned refresh digest; a changed one returns
+// ErrGrantChanged.
+type GrantTokenStore interface {
+	StoreGrantTokens(ctx context.Context, clientID string, check func(MachineClient) error, prepare func(AuthorizationCodeClient) (DelegatedAccessRecord, error), issue func(DelegatedTokenIssue) (string, error)) error
+}
+
+// ErrGrantChanged means an extension grant's user, session or tokens
+// changed between a store's two passes.
+var ErrGrantChanged = errors.New("oauthprovider: grant changed during issuance")
+
+// IssueTokens issues tokens for a client, with the client credentials
+// lifetime, or for a user, as another runtime's issueTokens does. With
+// resources and the jwt plugin the access token is a signed at+jwt;
 // otherwise it is opaque and stored. A client or resource that requires
 // DPoP needs a DPoP key, from the confirmation or a proof, where another
 // runtime accepts any confirmation (safety).
@@ -266,22 +298,73 @@ func (p *ProviderAPI) IssueTokens(params TokenIssueParams) (TokenResponse, error
 	return token, nil
 }
 
-func (p *ProviderAPI) issueTokens(params TokenIssueParams) (TokenResponse, error) {
-	c, opts := p.c, p.opts
-	ctx := c.Request.Context()
+// check refuses malformed issue parameters.
+func (params TokenIssueParams) check() error {
 	if params.ClientID == "" {
-		return TokenResponse{}, errors.New("oauthprovider: IssueTokens needs a client ID")
+		return errors.New("oauthprovider: IssueTokens needs a client ID")
 	}
 	if cnf := params.Confirmation; cnf != nil && (cnf.JKT == "") == (cnf.X5TS256 == "") {
-		return TokenResponse{}, errors.New("oauthprovider: a token confirmation names exactly one key")
+		return errors.New("oauthprovider: a token confirmation names exactly one key")
 	}
 	if len(params.Resources) > 64 {
-		return TokenResponse{}, registrationProblem(400, "invalid_target", "at most 64 resource parameters are supported")
+		return registrationProblem(400, "invalid_target", "at most 64 resource parameters are supported")
 	}
 	for _, id := range params.Resources {
 		if !ValidResourceIdentifier(id) {
-			return TokenResponse{}, registrationProblem(400, "invalid_request", "resource must be an absolute URI without a fragment")
+			return registrationProblem(400, "invalid_request", "resource must be an absolute URI without a fragment")
 		}
+	}
+	return nil
+}
+
+// checkRegistration requires the issuing client to be enabled, registered
+// for the grant and, when the handler authenticated it, unchanged.
+func (p *ProviderAPI) checkRegistration(client MachineClient) error {
+	if client.Disabled {
+		return invalidClient("client is disabled")
+	}
+	if !clientAllowsGrant(client.GrantTypes, p.grant) {
+		return registrationProblem(400, "unauthorized_client", "client is not authorized to use grant type "+p.grant)
+	}
+	if p.authenticated != nil && p.authenticated.ClientID == client.ClientID {
+		return p.request.recheckClient(*p.authenticated, client)
+	}
+	return nil
+}
+
+// binding is the given confirmation, or else the request's DPoP proof key.
+func (p *ProviderAPI) binding(params TokenIssueParams, required bool) (*Confirmation, error) {
+	if params.Confirmation != nil {
+		return params.Confirmation, nil
+	}
+	if len(p.c.Request.Header.Values("DPoP")) > 1 {
+		return nil, proofError("DPoP proof header must not be repeated")
+	}
+	thumb, err := p.opts.machineThumbprint(p.c, tokenRequest{proof: p.c.Request.Header.Get("DPoP")}, required)
+	return jktConfirmation(thumb), err
+}
+
+// responseFields adds the handler's response members over the host's.
+func (params TokenIssueParams) responseFields(fields map[string]any) map[string]any {
+	if len(params.TokenResponse) == 0 {
+		return fields
+	}
+	fields = maps.Clone(fields)
+	if fields == nil {
+		fields = map[string]any{}
+	}
+	maps.Copy(fields, params.TokenResponse)
+	return fields
+}
+
+func (p *ProviderAPI) issueTokens(params TokenIssueParams) (TokenResponse, error) {
+	c, opts := p.c, p.opts
+	ctx := c.Request.Context()
+	if err := params.check(); err != nil {
+		return TokenResponse{}, err
+	}
+	if params.UserID != "" {
+		return p.issueUserTokens(params)
 	}
 	store, ok := c.Store().(ResourceMachineTokenStore)
 	if !ok {
@@ -296,16 +379,8 @@ func (p *ProviderAPI) issueTokens(params TokenIssueParams) (TokenResponse, error
 	// One issuance instant serves both passes.
 	now := time.Now().UTC().Truncate(time.Second)
 	resolve := func(client MachineClient, rows map[string]MachineResource) (machineResourcePolicy, error) {
-		if client.Disabled {
-			return machineResourcePolicy{}, invalidClient("client is disabled")
-		}
-		if !clientAllowsGrant(client.GrantTypes, p.grant) {
-			return machineResourcePolicy{}, registrationProblem(400, "unauthorized_client", "client is not authorized to use grant type "+p.grant)
-		}
-		if p.authenticated != nil && p.authenticated.ClientID == client.ClientID {
-			if err := p.request.recheckClient(*p.authenticated, client); err != nil {
-				return machineResourcePolicy{}, err
-			}
+		if err := p.checkRegistration(client); err != nil {
+			return machineResourcePolicy{}, err
 		}
 		return opts.Tokens.machineResourcePolicy(client, params.Scopes, identifiers, rows, now)
 	}
@@ -325,23 +400,10 @@ func (p *ProviderAPI) issueTokens(params TokenIssueParams) (TokenResponse, error
 	if err != nil {
 		return TokenResponse{}, err
 	}
-	if len(params.TokenResponse) > 0 {
-		fields = maps.Clone(fields)
-		if fields == nil {
-			fields = map[string]any{}
-		}
-		maps.Copy(fields, params.TokenResponse)
-	}
-	cnf := params.Confirmation
-	if cnf == nil {
-		if len(c.Request.Header.Values("DPoP")) > 1 {
-			return TokenResponse{}, proofError("DPoP proof header must not be repeated")
-		}
-		thumb, err := opts.machineThumbprint(c, tokenRequest{proof: c.Request.Header.Get("DPoP")}, policy.bound)
-		if err != nil {
-			return TokenResponse{}, err
-		}
-		cnf = jktConfirmation(thumb)
+	fields = params.responseFields(fields)
+	cnf, err := p.binding(params, policy.bound)
+	if err != nil {
+		return TokenResponse{}, err
 	}
 	unbound := cnf == nil || cnf.JKT == ""
 	signed := len(audiences) > 0 && opts.signsResourceTokens(c)

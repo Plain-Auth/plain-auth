@@ -99,3 +99,16 @@ return in.Provider.IssueTokens(oauthprovider.TokenIssueParams{
 - The client must still be enabled and registered for the grant, and when the handler called `AuthenticateClient`, its credentials must be unchanged; otherwise no token is stored.
 
 A store without `oauthprovider.ResourceMachineTokenStore` answers 501. [Client token tests](../adapters/sqlstore/oauth_extension_grant_test.go)
+
+### Issue user tokens
+
+With `UserID`, `IssueTokens` issues the user's tokens as a code exchange does without a code, the handler having authenticated the user itself:
+
+- The access token has the delegated lifetime and scope lifetimes and is stored with the user, `ReferenceID` and `RequestedUserInfoClaims`, kept for `openid` when the provider supports each claim. With `Resources` it follows the resources' policy, read outside the store's transaction, and with the jwt plugin it is a signed `at+jwt` for them and UserInfo.
+- `SessionID`, when set, binds the tokens to that session, which must be the user's and live; `AuthTime` defaults to its start. Without a session the tokens outlive any sign-in.
+- `openid` adds an ID token with the user's subject, pairwise for a pairwise client, `Nonce`, `AuthTime`, and `sid` for a client with logout enabled. `IDTokenClaims` are added where the token has none, above the extensions' `IDTokenClaims`; standard and profile claims are never set.
+- `offline_access` adds a refresh token when the client's grant types allow refresh, `authorization_code` or `refresh_token`. It rotates through the `refresh_token` grant like any other.
+- The same bindings apply as for client tokens, on both tokens.
+- `TokenIssueParams` leaves out the parent refresh token, code and stored code value that another runtime's built-in grants pass to the same call, which no extension grant needs.
+
+The store must implement `oauthprovider.GrantTokenStore`, which the SQL adapter does; otherwise the call answers 501 `OAUTH_GRANT_TOKEN_STORE_UNAVAILABLE`. It reads the client, the user and any session in a transaction, makes the refresh token, ID token, signed access token and host fields outside it, and stores the tokens only if nothing changed meanwhile. A missing user answers 400 `invalid_user`, a session that is not the user's or has ended 400 `invalid_request` "session no longer exists", and a change during issuance 400 `invalid_request` "grant changed during issuance, retry the request". [User token tests](../adapters/sqlstore/oauth_extension_grant_test.go)
