@@ -35,6 +35,11 @@ type Options struct {
 	// MaxCacheEntries bounds the cached documents and the fetch governor's
 	// records; 1000 by default.
 	MaxCacheEntries int
+	// MetadataStaleIfError serves the stored client when refreshing its
+	// document fails transiently, up to this long after it was last
+	// validated and at most 24 hours; zero turns it off. It also keeps the
+	// client's cached jwks_uri keys through transient failures.
+	MetadataStaleIfError time.Duration
 	// AllowCrossOriginJWKSURI lets a client's jwks_uri live off its client
 	// ID's origin, as the provider's ClientDiscovery hook.
 	AllowCrossOriginJWKSURI func(ctx context.Context, clientID, jwksURI string) (bool, error)

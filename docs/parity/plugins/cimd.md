@@ -23,7 +23,8 @@
     - [ ] `metadataProfile`
     - [x] `metadataRevalidationInterval` ([test](../../../plugins/cimd/cache_test.go#L11))
       - [x] Cap a document's freshness at the revalidation interval, sixty minutes by default, and revalidate on every resolution when negative ([test](../../../plugins/cimd/cache_test.go#L11))
-    - [ ] `metadataStaleIfError`
+    - [x] `metadataStaleIfError` ([test](../../../plugins/cimd/stale_test.go#L38))
+      - [x] Serve the stored client through a transient refresh failure within the bound, fetching at most once a minute, answering fetch-limit refusals within five minutes of one, and stopping after a terminal failure until a success ([test](../../../plugins/cimd/stale_test.go#L38))
     - [x] `metadataFetchPolicy` ([test](../../../plugins/cimd/resolver_test.go#L76))
       - [x] Spend the fetch budget once per shared fetch and none on a fresh hit, pacing a client after a failed save ([test](../../../plugins/cimd/resolver_test.go#L76))
     - [x] `maxCacheEntries` ([test](../../../plugins/cimd/cache_test.go#L52))
@@ -62,7 +63,8 @@
     - [ ] `cimdOptionsType.metadataProfile`
     - [x] `cimdOptionsType.metadataRevalidationInterval` ([test](../../../plugins/cimd/resolver_test.go#L118))
       - [x] Cap freshness at the revalidation interval and revalidate expired documents only on the next resolution ([test](../../../plugins/cimd/resolver_test.go#L118))
-    - [ ] `cimdOptionsType.metadataStaleIfError`
+    - [x] `cimdOptionsType.metadataStaleIfError` ([test](../../../plugins/cimd/stale_test.go#L38))
+      - [x] Serve the stored client through transient refresh failures within the bound, at most 24 hours ([test](../../../plugins/cimd/stale_test.go#L38))
     - [x] `cimdOptionsType.maxCacheEntries` ([test](../../../plugins/cimd/cache_test.go#L52))
       - [x] Keep at most the configured documents, dropping the least recently used ([test](../../../plugins/cimd/cache_test.go#L52))
     - [x] `cimdOptionsType.metadataFetchPolicy` ([test](../../../plugins/cimd/governor_test.go#L69))
@@ -85,6 +87,7 @@
   - [ ] Persistence and refresh
     - [x] Store discovered clients with their discovery ID, never take over a local client, replace document fields on a refetch and keep server-owned settings, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_cimd_test.go#L151))
     - [ ] Transient refresh failures
+      - [x] Serve stored clients through transient failures with a warning, refetch at most once a minute, and stop after terminal failures, with a watermark on evicted records ([test](../../../plugins/cimd/stale_test.go#L161))
   - [ ] Security boundary
     - [x] Fetch a document within five seconds, at most 5 KB of JSON or application/*+json, refusing redirects and classifying each failure ([test](../../../plugins/cimd/fetch_test.go#L38))
   - [x] Explicit discovery composition ([test](../../../adapters/sqlstore/oauth_cimd_test.go#L63))

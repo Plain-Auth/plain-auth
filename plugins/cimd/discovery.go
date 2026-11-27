@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	auth "github.com/Plain-Org/plain-auth"
 	"github.com/Plain-Org/plain-auth/plugins/oauthprovider"
 )
 
@@ -29,7 +30,8 @@ func NewClientDiscovery(opts Options) (oauthprovider.ClientDiscovery, error) {
 		return oauthprovider.ClientDiscovery{}, err
 	}
 	return oauthprovider.ClientDiscovery{ID: DiscoveryID, Matches: IsClientIDURLCandidate, Resolve: r.resolve, Transport: r.opts.Transport,
-		AllowCrossOriginJWKSURI: opts.AllowCrossOriginJWKSURI, Metadata: map[string]any{"client_id_metadata_document_supported": true}}, nil
+		AllowCrossOriginJWKSURI: opts.AllowCrossOriginJWKSURI, JWKSStaleIfError: opts.MetadataStaleIfError,
+		Metadata: map[string]any{"client_id_metadata_document_supported": true}}, nil
 }
 
 // flight is one fetch that every concurrent resolution of a client joins.
@@ -48,7 +50,27 @@ type resolver struct {
 	mu       sync.Mutex
 	cache    *documentCache
 	flights  map[string]*flight
+	// transients and terminals record the last failed refresh of a stored
+	// client; evicting a terminal record moves the watermark, so clients
+	// validated before it are not served stale.
+	transients map[string]staleRecord
+	terminals  map[string]time.Time
+	watermark  time.Time
 }
+
+type staleRecord struct {
+	at     time.Time
+	reason string
+}
+
+const (
+	// staleRefetch is how long the stored client answers after a transient
+	// failure without a fetch.
+	staleRefetch = time.Minute
+	// staleRefusal is how recent a transient failure must be for the stored
+	// client to answer when a fetch limit refuses the fetch.
+	staleRefusal = 5 * time.Minute
+)
 
 func newResolver(opts Options) (*resolver, error) {
 	switch {
@@ -60,13 +82,17 @@ func newResolver(opts Options) (*resolver, error) {
 	if opts.MetadataRevalidationInterval == 0 {
 		opts.MetadataRevalidationInterval = time.Hour
 	}
+	if opts.MetadataStaleIfError < 0 || opts.MetadataStaleIfError > 24*time.Hour {
+		return nil, errors.New("cimd: MetadataStaleIfError must be between zero and 24 hours")
+	}
 	opts.Transport = opts.transport()
 	governor, err := newGovernor(opts.FetchPolicy, opts.MaxCacheEntries)
 	if err != nil {
 		return nil, err
 	}
 	return &resolver{opts: opts, http: &http.Client{Transport: opts.Transport, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }},
-		governor: governor, now: time.Now, cache: newDocumentCache(opts.MaxCacheEntries), flights: map[string]*flight{}}, nil
+		governor: governor, now: time.Now, cache: newDocumentCache(opts.MaxCacheEntries), flights: map[string]*flight{},
+		transients: map[string]staleRecord{}, terminals: map[string]time.Time{}}, nil
 }
 
 // resolve answers a client discovery request. A fresh cached document the
@@ -90,9 +116,27 @@ func (r *resolver) resolve(ctx context.Context, req oauthprovider.DiscoveryReque
 		}
 		return r.save(ctx, req, entry.doc, entry, logger)
 	}
+	// After a transient failure the stored client answers for a minute
+	// without another fetch.
+	if record, ok := r.transients[id]; ok && r.now().Sub(record.at) < staleRefetch {
+		if stored := r.storedLocked(req); stored != nil {
+			r.mu.Unlock()
+			return r.serveStale(ctx, logger, stored, record.reason), nil
+		}
+	}
 	r.mu.Unlock()
+	doc, entry, err := r.shared(ctx, id, logger)
+	if err != nil {
+		return r.refused(ctx, req, err, logger)
+	}
+	return r.save(ctx, req, doc, entry, logger)
+}
+
+// shared checks the URL and joins or starts the client's fetch.
+func (r *resolver) shared(ctx context.Context, id string, logger *slog.Logger) (oauthprovider.ClientMetadataDocument, *cacheEntry, error) {
+	var none oauthprovider.ClientMetadataDocument
 	if err := r.opts.checkURL(ctx, id); err != nil {
-		return nil, err
+		return none, nil, err
 	}
 	r.mu.Lock()
 	f := r.flights[id]
@@ -100,7 +144,7 @@ func (r *resolver) resolve(ctx context.Context, req oauthprovider.DiscoveryReque
 		release, err := r.governor.acquire(id, idOrigin(id), r.now())
 		if err != nil {
 			r.mu.Unlock()
-			return nil, err
+			return none, nil, err
 		}
 		f = &flight{done: make(chan struct{})}
 		r.flights[id] = f
@@ -109,13 +153,107 @@ func (r *resolver) resolve(ctx context.Context, req oauthprovider.DiscoveryReque
 	r.mu.Unlock()
 	select {
 	case <-ctx.Done():
-		return nil, ctx.Err()
+		return none, nil, ctx.Err()
 	case <-f.done:
 	}
-	if f.err != nil {
-		return nil, f.err
+	return f.doc, f.entry, f.err
+}
+
+// refused decides whether the stored client stands in for a failed refresh:
+// after a transient failure, or after a fetch limit's refusal within five
+// minutes of one. A refused document or URL stops stale serving until a
+// fetch succeeds; other failures leave no record.
+func (r *resolver) refused(ctx context.Context, req oauthprovider.DiscoveryRequest, err error, logger *slog.Logger) (*oauthprovider.DiscoveredClient, error) {
+	id := req.ClientID
+	kind, fetched := failureKind(err)
+	r.mu.Lock()
+	stored := r.storedLocked(req)
+	now := r.now()
+	switch {
+	case stored != nil && fetched && kind == transientFailure:
+		r.recordLocked(r.transients, id, staleRecord{now, describe(err)})
+		r.mu.Unlock()
+		return r.serveStale(ctx, logger, stored, describe(err)), nil
+	case stored != nil && fetched && kind == terminalFailure:
+		r.terminalLocked(id, now)
 	}
-	return r.save(ctx, req, f.doc, f.entry, logger)
+	record, recent := r.transients[id]
+	if stored != nil && recent && now.Sub(record.at) <= staleRefusal && (governorRefusal(err) || fetched && kind == capacityFailure) {
+		r.mu.Unlock()
+		return r.serveStale(ctx, logger, stored, record.reason), nil
+	}
+	r.mu.Unlock()
+	return nil, err
+}
+
+// storedLocked returns the stored client when it may stand in for a failed
+// refresh: validated within the stale bound, after the watermark, and with
+// no terminal failure since.
+func (r *resolver) storedLocked(req oauthprovider.DiscoveryRequest) *oauthprovider.DiscoveredClient {
+	if req.Existing == nil || r.opts.MetadataStaleIfError == 0 {
+		return nil
+	}
+	if _, terminal := r.terminals[req.ClientID]; terminal {
+		return nil
+	}
+	validated := req.Existing.UpdatedAt
+	if !validated.After(r.watermark) || r.now().Sub(validated) > r.opts.MetadataStaleIfError {
+		return nil
+	}
+	return req.Existing
+}
+
+func (r *resolver) serveStale(ctx context.Context, logger *slog.Logger, stored *oauthprovider.DiscoveredClient, reason string) *oauthprovider.DiscoveredClient {
+	logger.WarnContext(ctx, "cimd is serving the stored client "+stored.ClientID+" because its metadata document could not be refreshed: "+reason)
+	return stored
+}
+
+// recordLocked sets a transient record, evicting the oldest at the bound.
+func (r *resolver) recordLocked(records map[string]staleRecord, id string, record staleRecord) {
+	delete(records, id)
+	for len(records) >= r.opts.MaxCacheEntries {
+		oldest := ""
+		for key, value := range records {
+			if oldest == "" || value.at.Before(records[oldest].at) {
+				oldest = key
+			}
+		}
+		delete(records, oldest)
+	}
+	records[id] = record
+}
+
+// terminalLocked records a terminal failure. At the bound it drops records
+// past the stale bound, then the oldest, moving the watermark.
+func (r *resolver) terminalLocked(id string, now time.Time) {
+	delete(r.terminals, id)
+	for key, at := range r.terminals {
+		if len(r.terminals) < r.opts.MaxCacheEntries {
+			break
+		}
+		if now.Sub(at) > r.opts.MetadataStaleIfError {
+			delete(r.terminals, key)
+		}
+	}
+	for len(r.terminals) >= r.opts.MaxCacheEntries {
+		oldest := ""
+		for key, at := range r.terminals {
+			if oldest == "" || at.Before(r.terminals[oldest]) {
+				oldest = key
+			}
+		}
+		delete(r.terminals, oldest)
+		r.watermark = now
+	}
+	r.terminals[id] = now
+}
+
+func describe(err error) string {
+	var problem *auth.OAuthError
+	if errors.As(err, &problem) {
+		return problem.Description
+	}
+	return err.Error()
 }
 
 // fetch runs one shared fetch, revalidating an expired entry with its
@@ -145,6 +283,14 @@ func (r *resolver) fetch(ctx context.Context, id string, f *flight, expired *cac
 	defer r.mu.Unlock()
 	delete(r.flights, id)
 	f.doc, f.err = doc, err
+	// A success ends both failure records; a failure that is neither
+	// transient nor a capacity refusal ends the transient one.
+	if kind, failed := failureKind(err); !failed {
+		delete(r.transients, id)
+		delete(r.terminals, id)
+	} else if kind == terminalFailure || kind == transportFailure {
+		delete(r.transients, id)
+	}
 	if err == nil {
 		if cacheable, expires := freshness(headers, r.opts.MetadataRevalidationInterval, now); cacheable {
 			f.entry = &cacheEntry{doc: doc, expires: expires, headers: headers}
@@ -165,6 +311,12 @@ func (r *resolver) save(ctx context.Context, req oauthprovider.DiscoveryRequest,
 	if err != nil {
 		if entry != nil && current == entry {
 			r.cache.remove(req.ClientID)
+		}
+		// A document the provider refuses stops stale serving; a storage
+		// failure says nothing about the document.
+		var problem *auth.OAuthError
+		if errors.As(err, &problem) && problem.Status == http.StatusBadRequest && r.storedLocked(req) != nil {
+			r.terminalLocked(req.ClientID, r.now())
 		}
 		r.mu.Unlock()
 		r.governor.pace(req.ClientID, r.now())

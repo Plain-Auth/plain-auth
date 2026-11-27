@@ -50610,5 +50610,28 @@
       "marker": "func TestCIMDClients(",
       "complete": true
     }
+  ],
+  "plugin-symbol/cimd/CimdOptions/metadataStaleIfError": [
+    {
+      "label": "Serve the stored client through a transient refresh failure within the bound, fetching at most once a minute, answering fetch-limit refusals within five minutes of one, and stopping after a terminal failure until a success",
+      "test": "plugins/cimd/stale_test.go",
+      "marker": "func TestStaleServing(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/cimd.mdx#L135/`cimdOptionsType.metadataStaleIfError`": [
+    {
+      "label": "Serve the stored client through transient refresh failures within the bound, at most 24 hours",
+      "test": "plugins/cimd/stale_test.go",
+      "marker": "func TestStaleServing(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/cimd.mdx#L264": [
+    {
+      "label": "Serve stored clients through transient failures with a warning, refetch at most once a minute, and stop after terminal failures, with a watermark on evicted records",
+      "test": "plugins/cimd/stale_test.go",
+      "marker": "func TestStaleWatermark("
+    }
   ]
 }
