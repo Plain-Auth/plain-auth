@@ -2,6 +2,22 @@
 
 The `plugins/mcp` package protects a Model Context Protocol server with the OAuth provider's access tokens, as another runtime's MCP package does. [Protect your API](oauth-resource-server.md) · [Feature checklist](parity/plugins/mcp.md)
 
+## Run the provider for an MCP resource
+
+`mcp.New` is the OAuth provider configured for an MCP resource, as another runtime's `mcp()` is. It takes the provider's options and the resource URL:
+
+```go
+provider, err := mcp.New(mcp.Options{
+    Options: oauthprovider.Options{
+        Scopes:        []string{"openid", "mcp:read", "mcp:write", "offline_access"},
+        Authorization: oauthprovider.BrowserAuthorizationOptions{LoginPage: "/login", ConsentPage: "/consent"},
+    },
+    Resource: "https://api.example.com/mcp",
+})
+```
+
+The resource is added to the provider's `Resources`, unless declared there already with a policy, and to `Registration.DefaultResources`, so registered clients are linked to it; the caller's options are not changed. The plugin serves the RFC 9728 protected resource metadata at `/.well-known/oauth-protected-resource` and at that path plus the resource's path, such as `/.well-known/oauth-protected-resource/mcp`: the resource, the provider's issuer, `bearer_methods_supported: ["header"]`, the DPoP signing algorithms, `dpop_bound_access_tokens_required` when the declared resource requires DPoP, and the scopes from `Metadata.Scopes` or `Scopes` without `openid`, `profile`, `email`, `phone`, `address` and `offline_access`, which belong to the authorization server. Other methods than GET and HEAD get 405. The document is built once when the host starts, where another runtime builds it on each request. The plugin is the OAuth provider, so it cannot be combined with a second one. [Plugin tests](../plugins/mcp/plugin_test.go)
+
 ## Protect an MCP route
 
 When the MCP server runs in the same process as the auth instance, `mcp.RequireAuth` protects it with the instance's own tokens, as another runtime's `requireMcpAuth` does:

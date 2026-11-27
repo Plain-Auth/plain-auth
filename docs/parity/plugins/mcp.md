@@ -28,9 +28,11 @@
       - [x] Check DPoP-bound tokens' proofs with the configured algorithms and refuse a replayed proof, on both runtimes ([test](../../../conformance/mcp.mjs#L38))
   - [ ] `McpOptions`
     - [ ] `refreshTokenReuseInterval`
-    - [ ] `resource`
+    - [x] `resource` ([test](../../../plugins/mcp/plugin_test.go#L24))
+      - [x] Validate the MCP resource, declare it on the provider and serve its protected resource metadata at the root and resource paths ([test](../../../plugins/mcp/plugin_test.go#L24))
     - [ ] `schema`
-    - [ ] `scopes`
+    - [x] `scopes` ([test](../../../plugins/mcp/plugin_test.go#L24))
+      - [x] Advertise the provider's scopes in the resource metadata without the authorization server's own ([test](../../../plugins/mcp/plugin_test.go#L24))
     - [ ] `requireOpenId`
     - [ ] `validateRedirectUri`
     - [ ] `allowInsecureRedirectUri`
@@ -133,7 +135,8 @@
       - [x] Read scoped profile claims over GET and form POST and match the subject of an independently issued ID token for signed and opaque grants ([test](../../../conformance/oauth-userinfo.mjs#L40))
   - [ ] Usage
     - [ ] Add device authorization for your own CLI
-    - [ ] Protected Resource Metadata
+    - [x] Protected Resource Metadata ([test](../../../plugins/mcp/plugin_test.go#L24))
+      - [x] Serve the MCP resource's protected resource metadata with the provider's issuer, bearer method, DPoP algorithms and requirement and resource scopes, answering GET and HEAD and refusing other methods ([test](../../../plugins/mcp/plugin_test.go#L24))
     - [ ] Optional DCR fallback
     - [x] Protecting an MCP Route ([test](../../../plugins/mcp/require_auth_test.go#L63))
       - [x] Protect an MCP route in the same process with the instance's own tokens ([test](../../../plugins/mcp/require_auth_test.go#L63))

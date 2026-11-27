@@ -49717,5 +49717,29 @@
       "marker": "func TestRequireAuth(",
       "complete": true
     }
+  ],
+  "plugin-symbol/mcp/McpOptions/resource": [
+    {
+      "label": "Validate the MCP resource, declare it on the provider and serve its protected resource metadata at the root and resource paths",
+      "test": "plugins/mcp/plugin_test.go",
+      "marker": "func TestMCPPlugin(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/mcp/McpOptions/scopes": [
+    {
+      "label": "Advertise the provider's scopes in the resource metadata without the authorization server's own",
+      "test": "plugins/mcp/plugin_test.go",
+      "marker": "func TestMCPPlugin(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/mcp.mdx#L136": [
+    {
+      "label": "Serve the MCP resource's protected resource metadata with the provider's issuer, bearer method, DPoP algorithms and requirement and resource scopes, answering GET and HEAD and refusing other methods",
+      "test": "plugins/mcp/plugin_test.go",
+      "marker": "func TestMCPPlugin(",
+      "complete": true
+    }
   ]
 }
