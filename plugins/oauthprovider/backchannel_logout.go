@@ -52,7 +52,9 @@ func (opts Options) sessionsEnded(ctx context.Context, e auth.SessionsEnded) {
 	sessions := slices.Clone(e.Sessions)
 	store := e.Store.(ClientDirectoryStore)
 	e.Auth.RunInBackgroundOrAwait(ctx, func(ctx context.Context) error {
-		opts.sendLogoutTokens(ctx, e.Auth, store, sessions)
+		// Inline delivery outlives a caller that goes away; each client is
+		// still bounded by its own deadline.
+		opts.sendLogoutTokens(context.WithoutCancel(ctx), e.Auth, store, sessions)
 		return nil
 	})
 }

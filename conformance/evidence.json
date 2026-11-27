@@ -18448,10 +18448,9 @@
       "marker": "func TestIssuerDiscoveryMounts("
     },
     {
-      "label": "Publish the same grant, response type, scope, authentication method, DPoP and back-channel logout fields as another runtime",
+      "label": "Publish the same grant, response type, scope, authentication method, DPoP and back-channel logout fields as another runtime for a machine-only issuer",
       "test": "conformance/oauth-issuer-metadata.mjs",
-      "marker": "assert.deepEqual(common, expected);",
-      "complete": true
+      "marker": "assert.deepEqual(common, expected);"
     }
   ],
   "plugin-symbol/oauth-provider/authServerMetadata": [
@@ -18461,10 +18460,9 @@
       "marker": "const { payload } = await jwtVerify(signed, keys,"
     },
     {
-      "label": "Publish the same grant, response type, scope, authentication method, DPoP and back-channel logout fields as another runtime",
+      "label": "Publish the same grant, response type, scope, authentication method, DPoP and back-channel logout fields as another runtime for a machine-only issuer",
       "test": "conformance/oauth-issuer-metadata.mjs",
-      "marker": "assert.deepEqual(common, expected);",
-      "complete": true
+      "marker": "assert.deepEqual(common, expected);"
     }
   ],
   "plugin-symbol/oauth-provider/oauthAuthorizationServerMetadata": [
@@ -19500,7 +19498,7 @@
       "marker": "router lost OpenID provider metadata"
     },
     {
-      "label": "Publish end_session_endpoint, with the always-present back-channel logout flags, completing the OpenID document; listing the endpoint only for a store that can read the hinted session is a documented deviation",
+      "label": "Publish end_session_endpoint and the back-channel logout flags, the fields the OpenID document lacked, and leave the endpoint out for a store that cannot read the hinted session (a documented deviation), on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_end_session_test.go",
       "marker": "doc.EndSessionEndpoint != mount",
       "complete": true
@@ -19513,7 +19511,7 @@
       "marker": "func TestRelyingPartyDiscoversOpenIDIssuer("
     },
     {
-      "label": "Publish end_session_endpoint, with the always-present back-channel logout flags, completing the OpenID document; listing the endpoint only for a store that can read the hinted session is a documented deviation",
+      "label": "Publish end_session_endpoint and the back-channel logout flags, the fields the OpenID document lacked, and leave the endpoint out for a store that cannot read the hinted session (a documented deviation), on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_end_session_test.go",
       "marker": "doc.EndSessionEndpoint != mount",
       "complete": true
@@ -19526,7 +19524,7 @@
       "marker": "func TestRelyingPartyDiscoversOpenIDIssuer("
     },
     {
-      "label": "Publish end_session_endpoint, with the always-present back-channel logout flags, completing the OpenID document; listing the endpoint only for a store that can read the hinted session is a documented deviation",
+      "label": "Publish end_session_endpoint and the back-channel logout flags, the fields the OpenID document lacked, and leave the endpoint out for a store that cannot read the hinted session (a documented deviation), on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_end_session_test.go",
       "marker": "doc.EndSessionEndpoint != mount",
       "complete": true
@@ -19552,7 +19550,7 @@
       "marker": "assert.deepEqual(metadata.id_token_signing_alg_values_supported, [alg]);"
     },
     {
-      "label": "Publish end_session_endpoint, with the always-present back-channel logout flags, completing the OpenID document; listing the endpoint only for a store that can read the hinted session is a documented deviation",
+      "label": "Publish end_session_endpoint and the back-channel logout flags, the fields the OpenID document lacked, and leave the endpoint out for a store that cannot read the hinted session (a documented deviation), on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_end_session_test.go",
       "marker": "doc.EndSessionEndpoint != mount",
       "complete": true

@@ -25,9 +25,9 @@
   - [ ] `OAuthDeviceAuthorizationOptions`
   - [ ] `oauthDeviceAuthorization`
   - [ ] `extendOAuthProvider`
-  - [x] `authServerMetadata` ([test](../../../conformance/oauth-issuer-metadata.mjs#L67))
+  - [ ] `authServerMetadata`
     - [x] Discover endpoints and capabilities for the machine grant, then register a client, verify a signed token and revoke an opaque token ([test](../../../conformance/oauth-issuer-metadata.mjs#L97))
-    - [x] Publish the same grant, response type, scope, authentication method, DPoP and back-channel logout fields as another runtime ([test](../../../conformance/oauth-issuer-metadata.mjs#L67))
+    - [x] Publish the same grant, response type, scope, authentication method, DPoP and back-channel logout fields as another runtime for a machine-only issuer ([test](../../../conformance/oauth-issuer-metadata.mjs#L67))
   - [x] `metadataResponse` ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L35))
     - [x] Serialize the value once, preserve independent multi-value headers, honor custom cache rules and serve JSON ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L35))
   - [ ] `oauthAuthorizationServerMetadata`
@@ -41,7 +41,7 @@
     - [x] Serve the OpenID document as JSON with the default cache rule, or with the configured headers ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L286))
   - [x] `oidcServerMetadata` ([test](../../../adapters/sqlstore/oauth_end_session_test.go#L173))
     - [x] Start from a custom issuer URL, discover the endpoints, complete PKCE sign-in and verify the ID token, access-token hash and UserInfo subject using an independent Go client ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L23))
-    - [x] Publish end_session_endpoint, with the always-present back-channel logout flags, completing the OpenID document; listing the endpoint only for a store that can read the hinted session is a documented deviation ([test](../../../adapters/sqlstore/oauth_end_session_test.go#L173))
+    - [x] Publish end_session_endpoint and the back-channel logout flags, the fields the OpenID document lacked, and leave the endpoint out for a store that cannot read the hinted session (a documented deviation), on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_end_session_test.go#L173))
   - [x] `publicSessionMiddleware` ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L171))
     - [x] Serve a client's public fields without a session for a signed query naming it, verify a present query first, refuse without the option, without a query or for another client, hide a disabled client and never cache or set a cookie, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L171))
     - [x] Read the client's public fields from the login page's signed query and refuse another client, an altered query and a missing one, on both runtimes ([test](../../../conformance/oauth-browser-login.mjs#L52))
@@ -70,7 +70,7 @@
   - [x] `GET /.well-known/openid-configuration` (server API only) ([test](../../../adapters/sqlstore/oauth_end_session_test.go#L173))
     - [x] Start from a custom issuer URL, discover the endpoints, complete PKCE sign-in and verify the ID token, access-token hash and UserInfo subject using an independent Go client ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L23))
     - [x] Serve the public provider document through ServeMux, chi, Gorilla Mux, Gin, Echo and Fiber and honor HEAD ([test](../../../integrations/routers/routers_test.go#L172))
-    - [x] Publish end_session_endpoint, with the always-present back-channel logout flags, completing the OpenID document; listing the endpoint only for a store that can read the hinted session is a documented deviation ([test](../../../adapters/sqlstore/oauth_end_session_test.go#L173))
+    - [x] Publish end_session_endpoint and the back-channel logout flags, the fields the OpenID document lacked, and leave the endpoint out for a store that cannot read the hinted session (a documented deviation), on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_end_session_test.go#L173))
   - [ ] `POST /oauth2/consent`
     - [x] Visit a host consent page, verify the signed query independently, deny a first request or exchange a code approved for fewer scopes ([test](../../../conformance/oauth-browser-authorization.mjs#L57))
     - [x] Consume a decision once across two servers, isolate sessions and tenants, and roll back consent when code storage fails ([test](../../../adapters/sqlstore/oauth_browser_consent_test.go#L25))
@@ -516,7 +516,7 @@
   - [ ] `GrantType`
   - [x] `OIDCMetadata` ([test](../../../adapters/sqlstore/oauth_end_session_test.go#L173))
     - [x] Read identical OpenID and OAuth aliases, discover signing keys and validate claims and subjects for each supported signing algorithm ([test](../../../conformance/oauth-id-tokens.mjs#L33))
-    - [x] Publish end_session_endpoint, with the always-present back-channel logout flags, completing the OpenID document; listing the endpoint only for a store that can read the hinted session is a documented deviation ([test](../../../adapters/sqlstore/oauth_end_session_test.go#L173))
+    - [x] Publish end_session_endpoint and the back-channel logout flags, the fields the OpenID document lacked, and leave the endpoint out for a store that cannot read the hinted session (a documented deviation), on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_end_session_test.go#L173))
   - [ ] `TokenEndpointAuthMethod`
   - [ ] `TokenType`
   - [ ] `OAuthClientMetadata`
@@ -800,13 +800,13 @@
     - [ ] Storage and generation
     - [ ] Other
   - [ ] Endpoints
-    - [x] `GET /.well-known/oauth-authorization-server` (server API only) ([test](../../../conformance/oauth-issuer-metadata.mjs#L67))
+    - [ ] `GET /.well-known/oauth-authorization-server` (server API only)
       - [x] Discover endpoints and capabilities for the machine grant, then register a client, verify a signed token and revoke an opaque token ([test](../../../conformance/oauth-issuer-metadata.mjs#L97))
       - [x] Retrieve the native issuer document, preserve escaped issuer paths and omit disabled endpoints and unavailable store capabilities ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L66))
-      - [x] Publish the same grant, response type, scope, authentication method, DPoP and back-channel logout fields as another runtime ([test](../../../conformance/oauth-issuer-metadata.mjs#L67))
+      - [x] Publish the same grant, response type, scope, authentication method, DPoP and back-channel logout fields as another runtime for a machine-only issuer ([test](../../../conformance/oauth-issuer-metadata.mjs#L67))
     - [x] `GET /.well-known/openid-configuration` (server API only) ([test](../../../adapters/sqlstore/oauth_end_session_test.go#L173))
       - [x] Start from a custom issuer URL, discover the endpoints, complete PKCE sign-in and verify the ID token, access-token hash and UserInfo subject using an independent Go client ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L23))
-      - [x] Publish end_session_endpoint, with the always-present back-channel logout flags, completing the OpenID document; listing the endpoint only for a store that can read the hinted session is a documented deviation ([test](../../../adapters/sqlstore/oauth_end_session_test.go#L173))
+      - [x] Publish end_session_endpoint and the back-channel logout flags, the fields the OpenID document lacked, and leave the endpoint out for a store that cannot read the hinted session (a documented deviation), on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_end_session_test.go#L173))
     - [ ] `GET / POST /oauth2/authorize`
       - [x] Sign in and register a public client, then obtain a code by GET or form POST and redeem it at either issuer with S256 PKCE ([test](../../../conformance/oauth-browser-authorization.mjs#L5))
       - [x] Recheck the registered callback, owner session and scoped consent in the issuing transaction on all three databases ([test](../../../adapters/sqlstore/oauth_browser_authorization_test.go#L20))

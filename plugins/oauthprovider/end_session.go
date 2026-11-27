@@ -210,15 +210,23 @@ func browserNavigation(h http.Header) bool {
 	return mode == "navigate" || strings.Contains(accept, "text/html") || strings.Contains(accept, "application/xhtml+xml")
 }
 
-// readCurrentSession reads the session the browser's own cookie carries.
+// readCurrentSession reads the session the browser's signed session cookie
+// names, as another runtime reads it: by its stored row, even one that has
+// expired, whatever other credentials the request carries.
 func (l *logoutCall) readCurrentSession() error {
-	session, err := l.c.Auth.GetSession(l.c.Request.Context(), l.c.Request.Header)
+	token := l.c.SAMLLogoutBrowserToken()
+	if token == "" {
+		return nil
+	}
+	row, _, err := l.c.Store().Session(l.c.Request.Context(), token)
+	if errors.Is(err, auth.ErrNotFound) {
+		return nil
+	}
 	if err != nil {
 		return registrationProblem(http.StatusInternalServerError, "server_error", "Unable to read the current session")
 	}
-	if session != nil && l.c.DirectBrowserSession(session.Session.Token) {
-		l.current = session
-	}
+	row.Token = token
+	l.current = &auth.SessionResult{Session: row.Session}
 	return nil
 }
 
@@ -597,15 +605,12 @@ func readLogoutBody(r *http.Request) (map[string]string, error) {
 				form.Add(decodeTokenFormValue(k), decodeTokenFormValue(v))
 			}
 		}
+		// The last of a repeated form field wins, as another runtime reads
+		// a form body.
 		for _, name := range logoutFields {
-			values, present := form[name]
-			if !present {
-				continue
+			if values := form[name]; len(values) > 0 {
+				out[name] = values[len(values)-1]
 			}
-			if len(values) > 1 {
-				return nil, logoutFieldProblem(name + " must not appear more than once")
-			}
-			out[name] = values[0]
 		}
 		return out, nil
 	case base == "application/json":
@@ -645,12 +650,8 @@ func readConfirmAction(r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	switch values := form["action"]; {
-	case len(values) == 0:
-		return logoutFieldProblem("action is required")
-	case len(values) > 1:
-		return logoutFieldProblem("action must not appear more than once")
-	case values[0] != "confirm":
+	// The last of a repeated field wins, as another runtime reads a form.
+	if values := form["action"]; len(values) == 0 || values[len(values)-1] != "confirm" {
 		return logoutFieldProblem("action must be one of: confirm")
 	}
 	return nil

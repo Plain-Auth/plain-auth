@@ -170,8 +170,8 @@ func TestEndSession(t *testing.T) {
 			must(err)
 			doc, err := op.GetOpenIDConfig(h)
 			must(err)
-			if doc.EndSessionEndpoint != mount+"/oauth2/end-session" {
-				t.Fatal("discovery did not publish the end-session endpoint", doc.EndSessionEndpoint)
+			if doc.EndSessionEndpoint != mount+"/oauth2/end-session" || !doc.BackchannelLogoutSupported || !doc.BackchannelLogoutSessionSupported {
+				t.Fatal("discovery did not publish the end-session endpoint and the back-channel flags", doc.EndSessionEndpoint)
 			}
 			now := time.Now()
 			hint := func(sid string, audience []string, extra map[string]any, expired bool) string {
@@ -417,6 +417,46 @@ func TestEndSession(t *testing.T) {
 			if r := confirm(browser(cookie), state); r.code != 200 || alive(token) {
 				t.Fatal("a confirmation started without the session cookie did not complete", r.code, r.body)
 			}
+			// An expired session the cookie still names is the browser's
+			// session: confirming ends it and notifies its clients.
+			cookie, token, sid = signIn(false)
+			holdTokens(sid)
+			write := func(q string, args ...any) {
+				t.Helper()
+				_, err := raw.db.ExecContext(ctx, raw.bind(q), args...)
+				must(err)
+			}
+			write(`UPDATE "session" SET "expiresAt"=? WHERE "id"=?`, raw.date(now.Add(-time.Minute)), sid)
+			state = page(send(http.MethodGet, "/oauth2/end-session", nil, "", browser(cookie)))
+			if r := confirm(browser(cookie), state); r.code != 200 || alive(token) || len(receiver.take()) != 1 {
+				t.Fatal("confirming did not end the expired session the cookie named", r.code, r.body)
+			}
+			// Another credential on the request does not hide the cookie's session.
+			cookie, token, _ = signIn(false)
+			basic := browser(cookie)
+			basic.Set("Authorization", "Basic dXNlcjpwYXNz")
+			state = page(send(http.MethodGet, "/oauth2/end-session", nil, "", basic))
+			if r := confirm(basic, state); r.code != 200 || alive(token) {
+				t.Fatal("an Authorization header hid the browser's session", r.code, r.body)
+			}
+			// The last of a repeated form field wins, as in another runtime.
+			_, token, sid = signIn(false)
+			r = send(http.MethodPost, "/oauth2/end-session", nil, url.Values{"id_token_hint": {"bad", hint(sid, []string{app}, nil, false)}}.Encode(), api())
+			if r.code != 200 || alive(token) {
+				t.Fatal("the last repeated form field did not win", r.code, r.body)
+			}
+			// A store that cannot read the hinted session publishes no
+			// end-session endpoint and answers 501.
+			bare, err := auth.New(auth.Options{BaseURL: origin, Secret: strings.Repeat("e", 40), Store: noEndSession{store}, Plugins: []auth.Plugin{mustPlugin(t, opts), mustJWT(t)}, RateLimit: &off})
+			must(err)
+			bareDoc, err := op.GetOpenIDConfig(bare)
+			must(err)
+			bareReq := httptest.NewRequest(http.MethodGet, mount+"/oauth2/end-session", nil)
+			bareOut := httptest.NewRecorder()
+			bare.ServeHTTP(bareOut, bareReq)
+			if bareDoc.EndSessionEndpoint != "" || bareOut.Code != http.StatusNotImplemented {
+				t.Fatal("a store without EndSessionStore published or served end-session", bareDoc.EndSessionEndpoint, bareOut.Code)
+			}
 			// A custom base path moves the form action and the cookie path.
 			custom := host("/identity")
 			mount = origin + "/identity"
@@ -433,4 +473,27 @@ func TestEndSession(t *testing.T) {
 func jsonNumber(n int64) string {
 	raw, _ := json.Marshal(n)
 	return string(raw)
+}
+
+// noEndSession hides EndSessionStore from a store.
+type noEndSession struct{ *endSessionStore }
+
+func (noEndSession) OAuthLogoutSessionToken() {}
+
+func mustPlugin(t *testing.T, opts op.Options) auth.Plugin {
+	t.Helper()
+	p, err := op.New(opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return p
+}
+
+func mustJWT(t *testing.T) auth.Plugin {
+	t.Helper()
+	p, err := auth.NewJWT(auth.JWTOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return p
 }
