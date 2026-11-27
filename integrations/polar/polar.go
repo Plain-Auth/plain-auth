@@ -36,6 +36,10 @@ type Options struct {
 	OrganizationID string
 	// Ledger is required when Checkout, Portal or Webhooks is set.
 	Ledger *Ledger
+	// SignUpCustomer creates a Polar customer, identified by the account ID,
+	// for each new account that is not a guest and whose email is verified
+	// when it is created.
+	SignUpCustomer *SignUpCustomerOptions
 	// Checkout enables POST /checkout.
 	Checkout *CheckoutOptions
 	// Portal enables personal portal sessions and customer-state reads.
@@ -140,8 +144,14 @@ func NewService(opts Options) (*Service, error) {
 		}
 		s.opts.Portal = &portal
 	}
+	if opts.SignUpCustomer != nil {
+		signUp := *opts.SignUpCustomer
+		s.opts.SignUpCustomer = &signUp
+	}
 	return s, nil
 }
+
+var errSignUpParams = errors.New("polar: SignUpCustomer.Params panicked")
 
 // Plugin returns the configured billing endpoints.
 func (s *Service) Plugin() auth.Plugin {
@@ -159,7 +169,11 @@ func (s *Service) Plugin() auth.Plugin {
 			auth.Endpoint{Method: "GET", Path: "/customer/state", Handler: s.customerState},
 		)
 	}
-	return auth.Plugin{ID: "polar", Endpoints: endpoints}
+	plugin := auth.Plugin{ID: "polar", Endpoints: endpoints}
+	if s.opts.SignUpCustomer != nil {
+		plugin.DatabaseHooks.User.Create.After = s.customerOnSignUp
+	}
+	return plugin
 }
 
 func canonicalID(raw string) bool {

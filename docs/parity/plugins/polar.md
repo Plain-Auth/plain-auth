@@ -10,7 +10,8 @@
       - [x] Open an allowlisted personal checkout by slug or product ID through the Polar SDK ([test](../../../integrations/polar/checkout_test.go#L386))
     - [ ] Customer Portal
       - [x] Open the merchant’s personal customer portal with an expiring, customer-bound link ([test](../../../integrations/polar/portal_test.go#L248))
-    - [ ] Automatic Customer creation on signup
+    - [x] Automatic Customer creation on signup ([test](../../../integrations/polar/customer_test.go#L27))
+      - [x] Create a verified new account's Polar customer, identified by its account ID, from HTTP and Go sign-ups without ever failing the sign-up ([test](../../../integrations/polar/customer_test.go#L27))
     - [ ] Event Ingestion & Customer Meters for flexible Usage Based Billing
     - [ ] Handle Polar Webhooks securely with signature verification
       - [x] Verify raw-body and time-bound delivery signatures for current and legacy merchant secrets ([test](../../../integrations/polar/checkout_test.go#L533))
@@ -30,10 +31,14 @@
       - [x] Require the client and merchant organization, and mount nothing else until a section is set ([test](../../../integrations/polar/checkout_test.go#L625))
       - [x] `client` ([test](../../../integrations/polar/checkout_test.go#L147))
         - [x] Send checkout requests with the configured SDK, scoped bearer and pinned API version ([test](../../../integrations/polar/checkout_test.go#L147))
-    - [ ] Optional Options
-      - [ ] `createCustomerOnSignUp`
-      - [ ] `getCustomerCreateParams`
-    - [ ] Customers
+    - [x] Optional Options ([test](../../../integrations/polar/customer_test.go#L27))
+      - [x] Configure sign-up customers and their parameters as optional sections ([test](../../../integrations/polar/customer_test.go#L27))
+      - [x] `createCustomerOnSignUp` ([test](../../../integrations/polar/customer_test.go#L109))
+        - [x] Create a verified new account's Polar customer with its ID, email and name, and none for an unverified account ([test](../../../integrations/polar/customer_test.go#L109))
+      - [x] `getCustomerCreateParams` ([test](../../../integrations/polar/customer_test.go#L136))
+        - [x] Add the host's customer parameters with the sign-up request, and create nothing when the callback fails or panics ([test](../../../integrations/polar/customer_test.go#L136))
+    - [x] Customers ([test](../../../integrations/polar/customer_test.go#L109))
+      - [x] Identify a new customer by the account ID so no mapping table is needed ([test](../../../integrations/polar/customer_test.go#L109))
   - [ ] Checkout Plugin
     - [x] Recover a lost checkout response from a signed delivery and retain the owner binding after restart ([test](../../../integrations/polar/checkout_test.go#L425))
     - [x] Reconcile an existing checkout by ID without creating another checkout or fabricating an event ([test](../../../integrations/polar/checkout_test.go#L475))

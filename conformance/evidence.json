@@ -52306,5 +52306,45 @@
       "marker": "// The annual key, and a configured ID when the key finds nothing.",
       "complete": true
     }
+  ],
+  "docs/content/docs/plugins/polar.mdx#L19/Automatic Customer creation on signup": [
+    {
+      "label": "Create a verified new account's Polar customer, identified by its account ID, from HTTP and Go sign-ups without ever failing the sign-up",
+      "test": "integrations/polar/customer_test.go",
+      "marker": "func TestSignUpCustomer(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/polar.mdx#L154/`createCustomerOnSignUp`": [
+    {
+      "label": "Create a verified new account's Polar customer with its ID, email and name, and none for an unverified account",
+      "test": "integrations/polar/customer_test.go",
+      "marker": "// A verified Go sign-up creates the customer from the account, with the",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/polar.mdx#L155/`getCustomerCreateParams`": [
+    {
+      "label": "Add the host's customer parameters with the sign-up request, and create nothing when the callback fails or panics",
+      "test": "integrations/polar/customer_test.go",
+      "marker": "// A failing or panicking callback creates none and keeps the sign-up.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/polar.mdx#L157": [
+    {
+      "label": "Identify a new customer by the account ID so no mapping table is needed",
+      "test": "integrations/polar/customer_test.go",
+      "marker": "// A verified Go sign-up creates the customer from the account, with the",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/polar.mdx#L152": [
+    {
+      "label": "Configure sign-up customers and their parameters as optional sections",
+      "test": "integrations/polar/customer_test.go",
+      "marker": "func TestSignUpCustomer(t *testing.T) {",
+      "complete": true
+    }
   ]
 }

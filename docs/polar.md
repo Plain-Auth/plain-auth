@@ -62,6 +62,23 @@ opts.Plugins = append(opts.Plugins, billing.Plugin())
 
 For sandbox requests, also pass `polargo.WithServer(polargo.ServerSandbox)`. `OpenLedger` initializes two tables and can run again after restart. All serving replicas must use the same ledger. It stores provider checkout IDs, the hosted URLs, hashed contact bindings, reservation states and delivery fingerprints. Protect this database as you would the auth database. The module pins the official Go SDK and sends `Polar-Version: 2026-10` on requests. [Polar checkout API](https://polar.sh/docs/api-reference/2026-10/checkouts/create-checkout-session) · [API versioning](https://polar.sh/docs/api-reference/versioning)
 
+## Create a customer at sign-up
+
+Set `SignUpCustomer` to create a Polar customer when a new account is stored, as another runtime's `createCustomerOnSignUp` does. The customer's external ID is the account ID, so no mapping table is needed: the portal, customer state and checkout already select the customer by it.
+
+```go
+SignUpCustomer: &polar.SignUpCustomerOptions{
+    Logger: logger, // the logger in plainauth.Options.Logger
+    Params: func(ctx context.Context, user plainauth.User, r *http.Request) (polar.CustomerParams, error) {
+        return polar.CustomerParams{Metadata: map[string]components.CustomerIndividualCreateMetadata{
+            "source": components.CreateCustomerIndividualCreateMetadataStr("web"),
+        }}, nil
+    },
+},
+```
+
+The hook runs for HTTP sign-ups and direct Go calls such as `Auth.SignUpEmail`, after the account is stored and outside any database transaction. It sends the account's ID, email and name; `Params`, like another runtime's `getCustomerCreateParams`, adds metadata, a billing address, a tax ID or a locale, and receives the sign-up request, or nil for a direct Go call. Only an account whose email is verified when it is created gets a customer, and never a guest, where another runtime creates one for every account: Polar binds a customer to its email. Magic link, email code and social sign-ups store verified accounts; an email and password account gets its customer at its first checkout, which requires a verified email. `Params` and the provider call share a 10 second bound and continue if the client disconnects. A failure, a panic or an unexpected reply is logged with the account ID alone and never fails the sign-up. The hook is a user create database hook, so the core refuses it beside the admin, passkey and SIWE plugins, and `scim.New` refuses such an Auth. [Sign-up customer tests](../integrations/polar/customer_test.go)
+
 ## Open a checkout
 
 Post to `/api/auth/checkout` with a configured `slug`, a configured product ID in `products`, or a one-element array in `products`. The server takes the customer’s external ID and verified email from the session, and the redirect destinations from the server configuration. A successful response contains `url` and `redirect`. The optional boolean `redirect` defaults to true.
