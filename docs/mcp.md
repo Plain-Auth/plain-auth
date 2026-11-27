@@ -20,6 +20,19 @@ The resource is added to the provider's `Resources`, unless declared there alrea
 
 Client registration stays off unless you enable it. For older MCP clients that need dynamic registration, set `Registration.Enabled`, `Registration.AllowUnauthenticated` and `Registration.DefaultApplicationType: "infer"`: a client registered without the `resources` extension is still linked to the MCP resource, and one with loopback callbacks is registered as `native`. Unauthenticated registration lets anyone register a client with a name and logo they choose, so also set `Registration.DefaultScopes`. The provider seeds the declared resource when the host first uses it.
 
+## Client flow
+
+The plugin serves the provider's endpoints under the auth path:
+
+| Endpoint | Path |
+| --- | --- |
+| Authorization | `/oauth2/authorize` |
+| Token | `/oauth2/token` |
+| Dynamic registration, when enabled | `/oauth2/register` |
+| UserInfo | `/oauth2/userinfo` |
+
+An MCP client authorizes with `resource` set to the MCP resource and PKCE, then exchanges the code with the same `resource`. The access token is an `at+jwt` whose `aud` holds the resource and whose `azp` is the client, which the route's guard checks. A resource the provider does not know, or one not linked to the client, gets `invalid_target` at authorize. When the guard answers 403 for a missing scope, the client authorizes again with the wider scope, which needs the user's consent. A refresh without `resource` keeps the resources of the grant. With `dpop_jkt` at authorize and a DPoP proof at the token endpoint, the token carries `cnf.jkt` and the guard asks for the `DPoP` scheme and a fresh proof. [Flow test](../adapters/sqlstore/oauth_mcp_flow_test.go)
+
 ## Protect an MCP route
 
 When the MCP server runs in the same process as the auth instance, `mcp.RequireAuth` protects it with the instance's own tokens, as another runtime's `requireMcpAuth` does:

@@ -134,8 +134,10 @@
       - [x] Give token 20, authorize 30, introspect 100, revoke 30, register 5, key rotation 5 and userinfo 60 requests a minute by default, replace a default with a configured rule and leave the host's global limit for an empty rule on every route ([test](../../../plugins/oauthprovider/machine_token_test.go#L208))
     - [ ] `pairwiseSecret`
     - [ ] `requestUriResolver`
-    - [ ] `dpop`
+    - [x] `dpop` ([test](../../../adapters/sqlstore/oauth_mcp_flow_test.go#L193))
+      - [x] Bind an MCP code-flow token to the client's DPoP key and require the DPoP scheme and a proof spent once across the database at the guard, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_mcp_flow_test.go#L193))
   - [ ] `mcp`
+    - [x] Issue resource-bound tokens through the MCP plugin's code flow, step-up and refresh, and accept them with RequireAuth, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_mcp_flow_test.go#L179))
   - [ ] `RequireMcpAuthOptions`
     - [x] Configure the guard's resource, issuer, JWKS URL, scopes and DPoP, each optional ([test](../../../plugins/mcp/require_auth_test.go#L63))
     - [x] `resource` ([test](../../../plugins/mcp/require_auth_test.go#L63))
@@ -158,9 +160,12 @@
 ## MCP
 
 - [ ] MCP
-  - [ ] Endpoints
-    - [ ] Authorization
-    - [ ] Token
+  - [x] Endpoints ([test](../../../adapters/sqlstore/oauth_mcp_flow_test.go#L69))
+    - [x] Serve the authorization and token endpoints under /oauth2 for the MCP resource, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_mcp_flow_test.go#L69))
+    - [x] Authorization ([test](../../../adapters/sqlstore/oauth_mcp_flow_test.go#L99))
+      - [x] Refuse unknown and unlinked resources at authorize and issue codes for the MCP resource, asking consent for a wider scope, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_mcp_flow_test.go#L99))
+    - [x] Token ([test](../../../adapters/sqlstore/oauth_mcp_flow_test.go#L140))
+      - [x] Exchange a code for an access token bound to the MCP resource and keep the resource on a refresh without one, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_mcp_flow_test.go#L140))
     - [x] Dynamic registration (when explicitly enabled) ([test](../../../conformance/oauth-registration.mjs#L100))
       - [x] Reject dynamic registrations until the host enables them ([test](../../../conformance/oauth-registration.mjs#L100))
     - [x] UserInfo ([test](../../../conformance/oauth-userinfo.mjs#L40))
@@ -176,7 +181,8 @@
   - [ ] Configuration
     - [ ] `mcpPluginOptionsType.loginPage`
     - [ ] `mcpPluginOptionsType.consentPage`
-    - [ ] `mcpPluginOptionsType.resource`
+    - [x] `mcpPluginOptionsType.resource` ([test](../../../adapters/sqlstore/oauth_mcp_flow_test.go#L30))
+      - [x] Bind code-flow access tokens to the configured resource as their audience, which the guard for that resource accepts, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_mcp_flow_test.go#L30))
     - [ ] `mcpOauthOptionsType.scopes`
       - [x] Advertise the four default scopes when none are configured ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L234))
     - [ ] `mcpOauthOptionsType.resources`

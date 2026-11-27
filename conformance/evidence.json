@@ -50004,5 +50004,52 @@
       "marker": "func TestRefreshReuseIntervalDefault(",
       "complete": true
     }
+  ],
+  "docs/content/docs/plugins/mcp.mdx#L93/Authorization": [
+    {
+      "label": "Refuse unknown and unlinked resources at authorize and issue codes for the MCP resource, asking consent for a wider scope, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_mcp_flow_test.go",
+      "marker": "// Unknown and unlinked resources are refused at authorize.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/mcp.mdx#L94/Token": [
+    {
+      "label": "Exchange a code for an access token bound to the MCP resource and keep the resource on a refresh without one, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_mcp_flow_test.go",
+      "marker": "// The code exchanges into a token bound to the resource.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/mcp.mdx#L299/`mcpPluginOptionsType.resource`": [
+    {
+      "label": "Bind code-flow access tokens to the configured resource as their audience, which the guard for that resource accepts, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_mcp_flow_test.go",
+      "marker": "func TestMCPResourceFlow(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/mcp/mcp": [
+    {
+      "label": "Issue resource-bound tokens through the MCP plugin's code flow, step-up and refresh, and accept them with RequireAuth, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_mcp_flow_test.go",
+      "marker": "// Step-up: the wider scope needs consent, then passes the scoped guard."
+    }
+  ],
+  "plugin-symbol/mcp/McpOptions/dpop": [
+    {
+      "label": "Bind an MCP code-flow token to the client's DPoP key and require the DPoP scheme and a proof spent once across the database at the guard, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_mcp_flow_test.go",
+      "marker": "// A DPoP-bound code gives a token the guard accepts only with a proof.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/mcp.mdx#L87": [
+    {
+      "label": "Serve the authorization and token endpoints under /oauth2 for the MCP resource, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_mcp_flow_test.go",
+      "marker": "tokenURL := origin + \"/api/auth/oauth2/token\"",
+      "complete": true
+    }
   ]
 }
