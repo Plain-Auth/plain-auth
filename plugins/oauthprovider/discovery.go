@@ -68,12 +68,12 @@ func NewResourceDiscovery(doc ResourceMetadata, opts DiscoveryOptions) (*Resourc
 			doc.AuthorizationServers = []string{opts.Auth.OAuthIssuer()}
 		}
 	}
-	u, err := metadataURL(doc.Resource, true)
+	u, err := resourceURL(doc.Resource, true)
 	if err != nil {
 		return nil, fmt.Errorf("oauthprovider: invalid resource: %w", err)
 	}
 	for _, issuer := range doc.AuthorizationServers {
-		if _, err := metadataURL(issuer, false); err != nil {
+		if _, err := resourceURL(issuer, false); err != nil {
 			return nil, fmt.Errorf("oauthprovider: invalid authorization server: %w", err)
 		}
 	}
@@ -166,7 +166,26 @@ func marshalMetadata(doc ResourceMetadata, extra map[string]json.RawMessage) ([]
 
 func metadataURL(raw string, allowQuery bool) (*url.URL, error) {
 	u, err := url.Parse(raw)
-	if err != nil || u.Scheme != "https" || u.Hostname() == "" || u.User != nil || strings.ContainsAny(raw, "#\\ \t\r\n") {
+	if err != nil || u.Scheme != "https" {
+		return nil, errors.New("expected an absolute HTTPS URL without credentials or fragment")
+	}
+	return checkedURL(raw, u, allowQuery)
+}
+
+// resourceURL is metadataURL that also accepts HTTP on a loopback host,
+// for a resource or issuer in development, as MCP allows; another runtime
+// accepts HTTP anywhere for challenges, which this keeps to loopback
+// (safety).
+func resourceURL(raw string, allowQuery bool) (*url.URL, error) {
+	u, err := url.Parse(raw)
+	if err != nil || u.Scheme != "https" && !(u.Scheme == "http" && loopback(u.Hostname())) {
+		return nil, errors.New("expected an absolute HTTPS URL, or HTTP on loopback, without credentials or fragment")
+	}
+	return checkedURL(raw, u, allowQuery)
+}
+
+func checkedURL(raw string, u *url.URL, allowQuery bool) (*url.URL, error) {
+	if u.Hostname() == "" || u.User != nil || strings.ContainsAny(raw, "#\\ \t\r\n") {
 		return nil, errors.New("expected an absolute HTTPS URL without credentials or fragment")
 	}
 	if !allowQuery && (u.RawQuery != "" || u.ForceQuery) {

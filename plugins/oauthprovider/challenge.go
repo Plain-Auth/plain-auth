@@ -53,7 +53,7 @@ func NewResourceChallenges(resources []string, opts ChallengeOptions) (*Resource
 		}
 		metadata := opts.MetadataMappings[resource]
 		if u.Host != "" || u.Scheme == "http" || u.Scheme == "https" {
-			u, err = metadataURL(resource, true)
+			u, err = resourceURL(resource, true)
 			if err != nil {
 				return nil, fmt.Errorf("oauthprovider: invalid resource: %w", err)
 			}
@@ -112,10 +112,38 @@ func quotedParameter(name, value string) string {
 	return name + "=\"" + strings.ReplaceAll(value, "\"", "\\\"") + "\""
 }
 
+// ResourceChallenge is a prepared challenge: the status, the
+// WWW-Authenticate value and the public error a response carries.
+type ResourceChallenge struct {
+	Status                     int
+	WWWAuthenticate            string
+	Message, Code, Description string
+}
+
 // Write sends a Bearer or DPoP challenge including the original public JSON error.
 // It leaves w untouched and returns false for ordinary permission denials and server
 // failures. A nil request selects the challenge from the verifier's failure alone.
 func (c *ResourceChallenges) Write(w http.ResponseWriter, r *http.Request, failure ResourceFailure) (bool, error) {
+	challenge, err := c.Prepare(r, failure)
+	if challenge == nil || err != nil {
+		return false, err
+	}
+	h := w.Header()
+	h.Add("WWW-Authenticate", challenge.WWWAuthenticate)
+	h.Add("Access-Control-Expose-Headers", "WWW-Authenticate")
+	h.Set("Content-Type", "application/json")
+	w.WriteHeader(challenge.Status)
+	body := map[string]string{"message": challenge.Message}
+	if challenge.Code != "" {
+		body["error"], body["error_description"] = challenge.Code, challenge.Description
+	}
+	return true, json.NewEncoder(w).Encode(body)
+}
+
+// Prepare computes the challenge Write sends, for a caller that writes its
+// own body, as another runtime's createResourceServerChallenge does. It is
+// nil for ordinary permission denials and server failures.
+func (c *ResourceChallenges) Prepare(r *http.Request, failure ResourceFailure) (*ResourceChallenge, error) {
 	scope := c.scopes
 	description := failure.Description
 	if description == "" {
@@ -127,14 +155,14 @@ func (c *ResourceChallenges) Write(w http.ResponseWriter, r *http.Request, failu
 		var err error
 		scope, err = challengeScopes(failure.MissingScopes)
 		if err != nil {
-			return false, err
+			return nil, err
 		}
 		if description == "" {
 			description = "access token is missing required scope: " + strings.Join(failure.MissingScopes, " ")
 		}
 		message = description
 	} else if failure.Status != http.StatusUnauthorized {
-		return false, nil
+		return nil, nil
 	}
 
 	dpop := needsDPoPChallenge(r, code, description)
@@ -146,7 +174,7 @@ func (c *ResourceChallenges) Write(w http.ResponseWriter, r *http.Request, failu
 	var desc string
 	if code != "" {
 		if !validScope(code) {
-			return false, errors.New("oauthprovider: invalid challenge error code")
+			return nil, errors.New("oauthprovider: invalid challenge error code")
 		}
 		desc = headerDescription(description)
 	}
@@ -163,16 +191,11 @@ func (c *ResourceChallenges) Write(w http.ResponseWriter, r *http.Request, failu
 		header = c.bearerHeader(code, desc, scope)
 	}
 
-	h := w.Header()
-	h.Add("WWW-Authenticate", header)
-	h.Add("Access-Control-Expose-Headers", "WWW-Authenticate")
-	h.Set("Content-Type", "application/json")
-	w.WriteHeader(failure.Status)
-	body := map[string]string{"message": message}
+	prepared := &ResourceChallenge{Status: failure.Status, WWWAuthenticate: header, Message: message, Code: code}
 	if code != "" {
-		body["error"], body["error_description"] = code, description
+		prepared.Description = description
 	}
-	return true, json.NewEncoder(w).Encode(body)
+	return prepared, nil
 }
 
 func needsDPoPChallenge(r *http.Request, code, description string) bool {

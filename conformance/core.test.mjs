@@ -1856,6 +1856,11 @@ test("protected APIs return the same Bearer and DPoP challenges as the released 
   await compareResourceChallenges(t, goFixture);
 });
 
+test("a loopback HTTP resource gets the same challenge on both runtimes", async t => {
+  const { compareLoopbackChallenge } = await import("./resource-challenges.mjs");
+  await compareLoopbackChallenge(t, goFixture);
+});
+
 test("DPoP proofs enforce sender binding and shared single use across runtimes", async t => {
   const { compareDPoPProofs } = await import("./dpop-proofs.mjs");
   await compareDPoPProofs(t, goFixture);

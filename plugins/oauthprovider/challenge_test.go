@@ -110,3 +110,44 @@ func TestResourceChallengeRejectsInvalidConfiguration(t *testing.T) {
 		t.Fatalf("default DPoP challenge: %q %v", w.Header().Get("WWW-Authenticate"), err)
 	}
 }
+
+// A loopback HTTP resource gets a challenge with an HTTP metadata link;
+// HTTP elsewhere is refused. Prepare computes what Write sends without
+// writing, and nothing for a permission denial or a server failure.
+func TestResourceChallengeLoopbackAndPrepare(t *testing.T) {
+	c, err := oauthprovider.NewResourceChallenges([]string{"http://localhost:3000/mcp"}, oauthprovider.ChallengeOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	failure := oauthprovider.ResourceFailure{Status: 401, Code: "invalid_token", Message: "token expired", Description: "token expired"}
+	prepared, err := c.Prepare(nil, failure)
+	if err != nil || prepared == nil || !strings.Contains(prepared.WWWAuthenticate, `resource_metadata="http://localhost:3000/.well-known/oauth-protected-resource/mcp"`) {
+		t.Fatal("a loopback resource did not get its metadata link", prepared, err)
+	}
+	w := httptest.NewRecorder()
+	if written, err := c.Write(w, nil, failure); !written || err != nil {
+		t.Fatal(err)
+	}
+	if w.Code != prepared.Status || w.Header().Get("WWW-Authenticate") != prepared.WWWAuthenticate {
+		t.Fatal("Write did not send the prepared challenge", w.Code, w.Header())
+	}
+	var body map[string]string
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil || body["message"] != prepared.Message || body["error"] != prepared.Code || body["error_description"] != prepared.Description {
+		t.Fatal("Write's body differed from the prepared challenge", body, prepared)
+	}
+	for _, denied := range []oauthprovider.ResourceFailure{{Status: 403, Message: "forbidden"}, {Status: 500, Message: "broken"}} {
+		if prepared, err := c.Prepare(nil, denied); prepared != nil || err != nil {
+			t.Fatal("a non-challenge failure was prepared", denied, prepared, err)
+		}
+	}
+	for _, resource := range []string{"http://127.0.0.1:8080/api", "http://[::1]:8080/api", "http://app.localhost/api"} {
+		if _, err := oauthprovider.NewResourceChallenges([]string{resource}, oauthprovider.ChallengeOptions{}); err != nil {
+			t.Error("a loopback resource was refused", resource, err)
+		}
+	}
+	for _, resource := range []string{"http://api.example.test/mcp", "http://127.example.com/mcp"} {
+		if _, err := oauthprovider.NewResourceChallenges([]string{resource}, oauthprovider.ChallengeOptions{}); err == nil {
+			t.Error("a non-loopback HTTP resource was accepted", resource)
+		}
+	}
+}

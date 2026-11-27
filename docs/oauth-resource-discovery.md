@@ -4,7 +4,7 @@ A Go API can publish a discovery document that tells OAuth clients which issuer 
 
 ## Mount the document
 
-Use the public HTTPS URL of the API as the resource identifier. For `https://api.example.com/reports`, clients fetch `https://api.example.com/.well-known/oauth-protected-resource/reports`.
+Use the public HTTPS URL of the API as the resource identifier. For `https://api.example.com/reports`, clients fetch `https://api.example.com/.well-known/oauth-protected-resource/reports`. In development, a resource and its authorization servers may use HTTP on a loopback host, such as `http://localhost:3000/mcp`; HTTP elsewhere is refused, where another runtime accepts it for challenges.
 
 ```go
 import (
@@ -46,6 +46,8 @@ With Gin, use `router.Any(discovery.Path(), gin.WrapH(discovery))`. With Gorilla
 ## Respond to a failed access-token check
 
 Use `NewResourceChallenges` to send clients from a protected route to its discovery document. Your token verifier supplies the public failure message, status, and OAuth error code. A request that presents a DPoP token receives a DPoP challenge. A request with missing bearer credentials receives a metadata pointer and optional scope hints. A verified token with insufficient privileges can receive a challenge naming the scopes it lacks. [Bearer challenges, RFC 6750 §3](https://www.rfc-editor.org/rfc/rfc6750.html#section-3) · [DPoP challenges, RFC 9449 §7](https://www.rfc-editor.org/rfc/rfc9449.html#section-7)
+
+`Write` sends the challenge with a JSON body. To send your own body, `Prepare` returns the same status, `WWW-Authenticate` value and public error without writing, or nil for a permission denial or server failure, as another runtime's `createResourceServerChallenge` does. [Challenge tests](../plugins/oauthprovider/challenge_test.go)
 
 This middleware accepts an application verifier that returns a zero status on success. An ordinary access denial uses status 403. For a scope failure, set status 403, code `insufficient_scope`, and `MissingScopes`. For an expired bearer token, set status 401 and code `invalid_token`.
 

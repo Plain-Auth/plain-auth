@@ -153,3 +153,19 @@ func TestResourceDiscoveryValidation(t *testing.T) {
 		}
 	}
 }
+
+// Discovery accepts a loopback HTTP resource and issuer, and refuses HTTP
+// elsewhere.
+func TestResourceDiscoveryLoopback(t *testing.T) {
+	if _, err := oauthprovider.NewResourceDiscovery(oauthprovider.ResourceMetadata{Resource: "http://localhost:3000/mcp", AuthorizationServers: []string{"http://127.0.0.1:3000/api/auth"}}, oauthprovider.DiscoveryOptions{}); err != nil {
+		t.Fatal("a loopback resource and issuer were refused", err)
+	}
+	for name, doc := range map[string]oauthprovider.ResourceMetadata{
+		"resource": {Resource: "http://api.example.test/mcp"},
+		"issuer":   {Resource: "https://api.example.test/mcp", AuthorizationServers: []string{"http://issuer.example.test"}},
+	} {
+		if _, err := oauthprovider.NewResourceDiscovery(doc, oauthprovider.DiscoveryOptions{}); err == nil {
+			t.Error("non-loopback HTTP was accepted", name)
+		}
+	}
+}

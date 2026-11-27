@@ -62,3 +62,19 @@ export async function compareResourceChallenges(t, goFixture) {
     });
   }
 }
+
+// A loopback HTTP resource gets the same challenge on both runtimes, with
+// an HTTP metadata link.
+export async function compareLoopbackChallenge(t, goFixture) {
+  const resources = ["http://localhost:3000/mcp"];
+  const go = await goFixture(t, [], { CONFORMANCE_RESOURCE_CHALLENGES: JSON.stringify({ Resources: resources, Options: {} }) });
+  const error = new APIError("UNAUTHORIZED", { message: "token expired", error: "invalid_token", error_description: "token expired" });
+  const expected = createResourceServerChallenge(error, resources, { request: { authorizationHeader: "Bearer sample" } });
+  const response = await fetch(go.baseURL + "/__fixture/resource-challenge", {
+    method: "POST", headers: { authorization: "Bearer sample" },
+    body: JSON.stringify({ status: 401, code: "invalid_token", message: "token expired", description: "token expired" }),
+  });
+  assert.equal(response.status, expected.statusCode);
+  assert.equal(response.headers.get("www-authenticate"), new Headers(expected.headers).get("www-authenticate"));
+  assert.match(response.headers.get("www-authenticate"), /resource_metadata="http:\/\/localhost:3000\/\.well-known\/oauth-protected-resource\/mcp"/);
+}
