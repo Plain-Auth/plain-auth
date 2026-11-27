@@ -1,6 +1,7 @@
 package oauthprovider
 
 import (
+	"context"
 	"errors"
 
 	auth "github.com/Plain-Org/plain-auth"
@@ -19,7 +20,14 @@ func (p *ProviderAPI) ValidateAccessToken(token, clientID string) (map[string]an
 	if clientID == "" {
 		return p.issuerView(token)
 	}
-	c, opts := p.c, p.opts
+	// The caller and the token's client resolve through the discoveries,
+	// as at the introspection endpoint.
+	c, err := p.opts.discoverRequestClient(p.c, clientID)
+	if err != nil {
+		return nil, err
+	}
+	p.c = c
+	opts := p.opts
 	ctx := c.Request.Context()
 	inactive := map[string]any{"active": false}
 	userInfoURL := c.Auth.PublicURL() + "/oauth2/userinfo"
@@ -33,7 +41,11 @@ func (p *ProviderAPI) ValidateAccessToken(token, clientID string) (map[string]an
 		if !valid || !ok {
 			return inactive, nil
 		}
-		_, owner, err := store.InspectSignedAccessGrant(ctx, clientID, userInfoURL, grant)
+		var owner *SignedGrantClient
+		p.c, err = opts.retryResolved(c, func(ctx context.Context) (err error) {
+			_, owner, err = store.InspectSignedAccessGrant(ctx, clientID, userInfoURL, grant)
+			return err
+		})
 		if errors.Is(err, ErrClientNotFound) {
 			return inactive, nil
 		}
@@ -53,7 +65,11 @@ func (p *ProviderAPI) ValidateAccessToken(token, clientID string) (map[string]an
 	if err != nil || digest == "" {
 		return inactive, err
 	}
-	_, access, _, err := store.InspectOpaqueAccessToken(ctx, clientID, digest, userInfoURL)
+	var access *OpaqueAccessTokenRecord
+	p.c, err = opts.retryResolved(c, func(ctx context.Context) (err error) {
+		_, access, _, err = store.InspectOpaqueAccessToken(ctx, clientID, digest, userInfoURL)
+		return err
+	})
 	if errors.Is(err, ErrClientNotFound) {
 		return inactive, nil
 	}

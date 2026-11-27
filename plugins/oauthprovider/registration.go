@@ -229,6 +229,12 @@ func (opts Options) clientManagementOptions() Options {
 	if opts.DisableJWTPlugin && r.SecretStorage == "" && r.StoreSecret == nil {
 		r.SecretStorage = "encrypted"
 	}
+	// Registration scopes, which discovered clients also receive.
+	if r.DefaultScopes == nil {
+		r.DefaultScopes = opts.Scopes
+	}
+	r.DefaultScopes = distinct(r.DefaultScopes)
+	r.AllowedScopes = distinct(slices.Concat(r.DefaultScopes, r.AllowedScopes))
 	return opts
 }
 
@@ -322,11 +328,6 @@ func New(opts Options) (auth.Plugin, error) {
 	default:
 		return auth.Plugin{}, errors.New("oauthprovider: invalid default application type")
 	}
-	if r.DefaultScopes == nil {
-		r.DefaultScopes = opts.Scopes
-	}
-	r.DefaultScopes = distinct(r.DefaultScopes)
-	r.AllowedScopes = distinct(slices.Concat(r.DefaultScopes, r.AllowedScopes))
 	for _, sc := range r.AllowedScopes {
 		if !slices.Contains(opts.Scopes, sc) {
 			return auth.Plugin{}, fmt.Errorf("oauthprovider: registration scope %q is outside the configured scopes", sc)

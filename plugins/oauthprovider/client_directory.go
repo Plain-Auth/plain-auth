@@ -312,14 +312,12 @@ func (opts Options) clientEndpoint(action string) auth.Endpoint {
 		if !ok {
 			return nil, &auth.APIError{Status: 501, Code: "OAUTH_CLIENT_DIRECTORY_UNAVAILABLE", Message: "The configured store does not support OAuth client lookup"}
 		}
-		if id != "" {
+		notFound := &auth.OAuthError{Status: 404, Code: "not_found", Description: "client not found"}
+		if action == "public-client" {
 			if c, err = opts.discoverRequestClient(c, id); err != nil {
 				return nil, err
 			}
 			ctx = c.Request.Context()
-		}
-		notFound := &auth.OAuthError{Status: 404, Code: "not_found", Description: "client not found"}
-		if action == "public-client" {
 			client, err := store.PublicOAuthClient(ctx, id)
 			if errors.Is(err, ErrClientNotFound) {
 				return nil, notFound
@@ -344,6 +342,11 @@ func (opts Options) clientEndpoint(action string) auth.Endpoint {
 		if err := opts.allowClient(ctx, access, "read", id); err != nil {
 			return nil, err
 		}
+		// A discovered client is resolved only once the caller may read it.
+		if c, err = opts.discoverRequestClient(c, id); err != nil {
+			return nil, err
+		}
+		ctx = c.Request.Context()
 		client, err := opts.ownedClient(ctx, store, access, id)
 		if errors.Is(err, ErrClientNotFound) {
 			return nil, notFound

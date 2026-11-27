@@ -50327,17 +50327,16 @@
   ],
   "docs/content/docs/plugins/oauth-provider/reference.mdx#L417": [
     {
-      "label": "Resolve discovered clients by their stored discovery ID, failing closed when it is removed, and only add discovery fields the provider does not own, on SQLite, PostgreSQL and MySQL",
+      "label": "Resolve discovered clients by their stored discovery ID, failing closed when it is removed or no longer matches, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_client_discovery_test.go",
       "marker": "// With its discovery removed, or not matching, the row stays hidden."
     }
   ],
   "plugin-symbol/oauth-provider/getClient": [
     {
-      "label": "Resolve a client through the provider: a local row as is, a discovered one through its own discovery and hidden when that is gone, at every endpoint and behind tokens and consents, on SQLite, PostgreSQL and MySQL; no trusted-client cache precedes the read, as a documented deviation",
+      "label": "Resolve a client through the provider: a local row as is, a discovered one through its own discovery and hidden when that is gone, at the token, introspection, revocation, authorize, directory, prelogin, management and end-session endpoints and behind tokens and consents, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_client_discovery_test.go",
-      "marker": "func TestClientDiscoveryLookups(",
-      "complete": true
+      "marker": "func TestClientDiscoveryLookups("
     }
   ],
   "plugin-symbol/oauth-provider/ClientMetadataResourceFetch": [

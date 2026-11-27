@@ -59,7 +59,9 @@ func (opts *Options) collectDiscoveries() error {
 }
 
 // discoverClient resolves a client ID through the client discoveries, as
-// another runtime's getClient does. A local row is used as is. A row a
+// another runtime's getClient does. No trusted-client snapshot precedes the
+// store read, where another runtime caches cachedTrustedClients; Go names
+// operator-managed clients in ImmutableClientIDs instead. A local row is used as is. A row a
 // discovery owns goes back to that discovery, and stays hidden when it is
 // no longer configured, no longer matches or resolves nothing. An unknown
 // ID goes to each matching discovery in order. A resolved client is marked

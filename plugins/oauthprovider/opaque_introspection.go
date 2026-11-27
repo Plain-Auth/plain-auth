@@ -12,7 +12,9 @@ import (
 // reads the grant, issuing client, session, and resource policy in one snapshot.
 // A non-owner may see a grant only through a link to a registered audience.
 // A known but inactive or unauthorized access token still takes precedence over
-// a refresh token with the same digest.
+// a refresh token with the same digest. A grant whose client a discovery owns
+// and the request has not resolved returns the caller with
+// *UnresolvedClientError.
 type OpaqueAccessIntrospectionStore interface {
 	MachineClientReader
 	InspectOpaqueAccessToken(ctx context.Context, callerID, digest, userInfoURL string) (MachineClient, *OpaqueAccessTokenRecord, bool, error)

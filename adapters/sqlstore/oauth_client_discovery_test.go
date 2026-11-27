@@ -112,6 +112,13 @@ func TestClientDiscoveryLookups(t *testing.T) {
 				t.Helper()
 				// The extension grant reads clients through the provider's API.
 				grant := func(in op.GrantInput) (op.TokenResponse, error) {
+					if token := in.Form.Get("validate"); token != "" {
+						claims, err := in.Provider.ValidateAccessToken(token, in.Form.Get("as"))
+						if err != nil {
+							return op.TokenResponse{}, err
+						}
+						return op.TokenResponse{AccessToken: "x", TokenType: "Bearer", Fields: map[string]any{"valid": claims["active"]}}, nil
+					}
 					client, err := in.Provider.AuthenticateClient(op.ClientAuthenticationRequest{AllowPublic: true})
 					if err != nil {
 						return op.TokenResponse{}, err
@@ -123,9 +130,11 @@ func TestClientDiscoveryLookups(t *testing.T) {
 					return op.TokenResponse{AccessToken: "x", TokenType: "Bearer", Fields: map[string]any{"client": client.ClientID, "other": *other.Name}}, nil
 				}
 				opts = op.Options{Scopes: []string{"openid", "offline_access", "read"}, Extensions: []op.Extension{{ClientDiscoveries: discoveries, Grants: map[string]op.GrantHandler{"urn:test:grant": grant}}},
-					Authorization:    op.BrowserAuthorizationOptions{LoginPage: "/login", ConsentPage: "/consent", AllowPublicClientPrelogin: true},
-					ClientPrivileges: func(context.Context, op.ClientAccess) (bool, error) { return true, nil },
-					Resources:        []op.ResourceDefinition{{Identifier: api}}}
+					Authorization: op.BrowserAuthorizationOptions{LoginPage: "/login", ConsentPage: "/consent", AllowPublicClientPrelogin: true},
+					ClientPrivileges: func(_ context.Context, a op.ClientAccess) (bool, error) {
+						return a.Headers.Get("X-Deny") != a.Action, nil
+					},
+					Resources: []op.ResourceDefinition{{Identifier: api}}}
 				opts.Assertions.AllowKeyRotation = true
 				opts.Registration.DefaultResources = []string{api}
 				opts.Tokens.OpaqueResourceTokens = opaqueTokens
@@ -268,6 +277,12 @@ func TestClientDiscoveryLookups(t *testing.T) {
 			if introspect(h, signedToken) != true || introspect(h, opaqueToken) != true {
 				t.Fatal("a resource server could not introspect a discovered client's tokens")
 			}
+			// An extension validates them for the resource server too.
+			for _, token := range []string{signedToken, opaqueToken} {
+				if status, body := post(h, "/oauth2/token", url.Values{"grant_type": {"urn:test:grant"}, "validate": {token}, "as": {"rs"}}); status != 200 || body["valid"] != true {
+					t.Fatal("the provider API could not validate a discovered client's token", status, body)
+				}
+			}
 			if code := userInfo(h, token["access_token"].(string)); code != 200 {
 				t.Fatal("UserInfo refused a discovered client's grant", code)
 			}
@@ -371,6 +386,35 @@ func TestClientDiscoveryLookups(t *testing.T) {
 			if granted, err := manager.SetClientCredentialsScopes(ctx, header, keyed, []string{"read"}); err != nil || len(granted) != 1 || granted[0] != "read" {
 				t.Fatal("an admin could not set a discovered client's machine scopes", granted, err)
 			}
+			// A client the manager discovers gets the registration scopes the
+			// plugin would give it.
+			first.mode.Store("")
+			const managed = "https://more.keys.example.test/client.json"
+			if _, err := manager.SetClientCredentialsScopes(ctx, header, managed, []string{"read"}); err != nil {
+				t.Fatal("the manager could not resolve a new discovered client", err)
+			}
+			var stored []byte
+			var registered []string
+			must(s.db.QueryRowContext(ctx, s.bind(`SELECT "scopes" FROM "oauthClient" WHERE "clientId"=?`), managed).Scan(&stored))
+			must(json.Unmarshal(stored, &registered))
+			if strings.Join(registered, " ") != "openid offline_access read" {
+				t.Fatal("the manager registered a discovered client with other scopes", registered)
+			}
+			// Discovery waits for the caller's checks.
+			calls = first.calls.Load()
+			const unseen = "https://unseen.example.test/client.json"
+			if _, err := manager.UpdateClient(ctx, http.Header{}, unseen, op.ClientAdminUpdate{Fields: map[string]any{"client_name": "x"}}); err == nil || first.calls.Load() != calls {
+				t.Fatal("an update without a session resolved a client", err, first.calls.Load()-calls)
+			}
+			req = httptest.NewRequest("GET", base+"/api/auth/oauth2/get-client?client_id="+url.QueryEscape(unseen), nil)
+			req.Header.Set("X-Deny", "read")
+			req.AddCookie(h.SessionCookie("browser", true))
+			out = httptest.NewRecorder()
+			h.ServeHTTP(out, req)
+			if out.Code/100 != 4 || first.calls.Load() != calls {
+				t.Fatal("get-client resolved a client its caller may not read", out.Code, first.calls.Load()-calls)
+			}
+			first.mode.Store("stored")
 			var after time.Time
 			must(s.db.QueryRowContext(ctx, s.bind(`SELECT "updatedAt" FROM "oauthClient" WHERE "clientId"=?`), keyed).Scan(&after))
 			if !after.Equal(before) {

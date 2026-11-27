@@ -587,8 +587,8 @@
   - [ ] `toAudienceClaim`
   - [ ] `assertNotTrustedClient`
     - [x] Refuse deletion, secret rotation and a scope update of an operator-managed client with 400 invalid_client and keep it unchanged, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_immutable_clients_test.go#L50))
-  - [x] `getClient` ([test](../../../adapters/sqlstore/oauth_client_discovery_test.go#L85))
-    - [x] Resolve a client through the provider: a local row as is, a discovered one through its own discovery and hidden when that is gone, at every endpoint and behind tokens and consents, on SQLite, PostgreSQL and MySQL; no trusted-client cache precedes the read, as a documented deviation ([test](../../../adapters/sqlstore/oauth_client_discovery_test.go#L85))
+  - [ ] `getClient`
+    - [x] Resolve a client through the provider: a local row as is, a discovered one through its own discovery and hidden when that is gone, at the token, introspection, revocation, authorize, directory, prelogin, management and end-session endpoints and behind tokens and consents, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_discovery_test.go#L85))
   - [x] `mergeDiscoveryMetadata` ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L382))
     - [x] Merge client discoveries' discovery fields in order under the provider's, a later discovery winning, keeping every field the provider declares except the metadata document flag, which an extension cannot replace ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L382))
   - [ ] `decryptStoredClientSecret`
@@ -997,7 +997,7 @@
     - [x] `userinfo` ([test](../../../adapters/sqlstore/oauth_introspection_test.go#L146))
       - [x] Share the default 60-request limit, explicit limits and the host global limit on the UserInfo route ([test](../../../adapters/sqlstore/oauth_introspection_test.go#L146))
   - [ ] Provider extensions
-    - [x] Resolve discovered clients by their stored discovery ID, failing closed when it is removed, and only add discovery fields the provider does not own, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_discovery_test.go#L412))
+    - [x] Resolve discovered clients by their stored discovery ID, failing closed when it is removed or no longer matches, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_discovery_test.go#L456))
     - [ ] `authorization`
     - [ ] `url`
     - [ ] `replayStore`

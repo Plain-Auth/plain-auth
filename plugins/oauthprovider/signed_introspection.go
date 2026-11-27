@@ -20,7 +20,9 @@ type SignedGrantClient struct {
 
 // SignedAccessIntrospectionStore reads the caller, issuer, audience links and
 // session in a single snapshot. Return a nil issuer for an inactive grant or
-// unauthorized caller. Treat the UserInfo URL as an implicit audience only.
+// unauthorized caller. Treat the UserInfo URL as an implicit audience only. A
+// grant whose client a discovery owns and the request has not resolved
+// returns the caller with *UnresolvedClientError.
 type SignedAccessIntrospectionStore interface {
 	MachineClientReader
 	InspectSignedAccessGrant(ctx context.Context, callerID, userInfoURL string, grant SignedAccessGrant) (MachineClient, *SignedGrantClient, error)
