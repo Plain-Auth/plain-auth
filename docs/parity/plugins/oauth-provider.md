@@ -950,7 +950,8 @@
         - [x] Resume the signed chooser with the selected browser account and preserve forced consent without repeating selection ([test](../../../conformance/oauth-account-selection.mjs#L44))
         - [x] Resume after the user activates a membership and distinguish an explicit continuation from a cookie reissued by an organization switch ([test](../../../conformance/oauth-post-login.mjs#L99))
         - [x] Reject a continuation whose signed query was altered ([test](../../../conformance/oauth-account-selection.mjs#L58))
-  - [ ] Manage consents
+  - [x] Manage consents ([test](../../../conformance/oauth-browser-authorization.mjs#L129))
+    - [x] Answer a silent authorization with consent_required once the user deleted the consent, on both runtimes ([test](../../../conformance/oauth-browser-authorization.mjs#L129))
     - [x] `getOAuthConsent` ([test](../../../conformance/oauth-consent.mjs#L55))
       - [x] Read a single grant through an authenticated session and retain the resource and claim lists ([test](../../../conformance/oauth-consent.mjs#L55))
     - [x] `getOAuthConsents` ([test](../../../conformance/oauth-consent.mjs#L56))

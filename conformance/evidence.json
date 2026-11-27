@@ -48311,5 +48311,13 @@
       "test": "adapters/sqlstore/oauth_immutable_clients_test.go",
       "marker": "t.Fatal(\"an operator-managed client was not refused with invalid_client\", what, err)"
     }
+  ],
+  "docs/content/docs/plugins/oauth-provider/sign-in-flow.mdx#L234": [
+    {
+      "label": "Answer a silent authorization with consent_required once the user deleted the consent, on both runtimes",
+      "test": "conformance/oauth-browser-authorization.mjs",
+      "marker": "const removed = await json(\"/oauth2/delete-consent\", { id: grant.id }, { cookie });",
+      "complete": true
+    }
   ]
 }

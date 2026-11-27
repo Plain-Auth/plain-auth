@@ -124,4 +124,9 @@ export async function exerciseBrowserAuthorization({ server, issuer, db }) {
     assert.ok(output.access_token);
     assert.equal(output.scope, "reports");
   }
+  // Once the user deletes the consent, a silent authorization needs it again.
+  const grant = db.prepare("SELECT id FROM oauthConsent WHERE clientId=? AND userId=? AND referenceId IS NULL").get(app.client_id, owner);
+  const removed = await json("/oauth2/delete-consent", { id: grant.id }, { cookie });
+  assert.equal(removed.status, 200);
+  rejected(await authorize(), "consent_required");
 }
