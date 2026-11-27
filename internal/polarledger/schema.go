@@ -26,6 +26,9 @@ func Tables(dialect string) []Table {
 			"merchant char(36) not null", "product char(36) not null",
 			"success_url text not null", "return_url text not null", "checkout_id char(36) unique",
 			"hosted_url text not null", "status varchar(16) not null", "expires_ms bigint not null", "changed_us bigint not null",
+			// Every offered product, comma-joined; '' on rows written before
+			// several products were offered, which read as product alone.
+			"products varchar(400) not null default ''",
 		}},
 		{"plainauth_polar_delivery", []string{
 			"event_key char(64) primary key", "body_hash char(64) not null", "claim char(36) not null",

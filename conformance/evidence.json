@@ -13396,6 +13396,11 @@
       "label": "Open an allowlisted personal checkout by slug or product ID through the Polar SDK",
       "test": "integrations/polar/checkout_test.go",
       "marker": "checkout ownership crossed users"
+    },
+    {
+      "label": "Open a checkout that offers several configured products in request order, on three SQL engines",
+      "test": "integrations/polar/products_test.go",
+      "marker": "// Two products reach Polar in request order, and a retry reuses the purchase."
     }
   ],
   "docs/content/docs/plugins/polar.mdx#L21/Handle Polar Webhooks securely with signature verification": [
@@ -13455,6 +13460,11 @@
       "label": "Provision the checkout ledger while the application starts and retain previously claimed webhook deliveries",
       "test": "integrations/polar/schema_test.go",
       "marker": "accepted an already recorded delivery"
+    },
+    {
+      "label": "Offer up to ten distinct configured products in one checkout, let a slug decide the purchase when both are sent, and report the product bought beside every offered one, on three SQL engines",
+      "test": "integrations/polar/products_test.go",
+      "marker": "func TestMultiProductCheckout(t *testing.T) {"
     }
   ],
   "docs/content/docs/plugins/polar.mdx#L406": [

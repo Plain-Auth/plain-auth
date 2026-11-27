@@ -7,30 +7,31 @@
 - [ ] Polar
   - [ ] Features
     - [ ] Checkout Integration
-      - [x] Open an allowlisted personal checkout by slug or product ID through the Polar SDK ([test](../../../integrations/polar/checkout_test.go#L386))
+      - [x] Open an allowlisted personal checkout by slug or product ID through the Polar SDK ([test](../../../integrations/polar/checkout_test.go#L400))
+      - [x] Open a checkout that offers several configured products in request order, on three SQL engines ([test](../../../integrations/polar/products_test.go#L85))
     - [ ] Customer Portal
       - [x] Open the merchant’s personal customer portal with an expiring, customer-bound link ([test](../../../integrations/polar/portal_test.go#L248))
     - [x] Automatic Customer creation on signup ([test](../../../integrations/polar/customer_test.go#L27))
       - [x] Create a verified new account's Polar customer, identified by its account ID, from HTTP and Go sign-ups without ever failing the sign-up ([test](../../../integrations/polar/customer_test.go#L27))
     - [ ] Event Ingestion & Customer Meters for flexible Usage Based Billing
     - [ ] Handle Polar Webhooks securely with signature verification
-      - [x] Verify raw-body and time-bound delivery signatures for current and legacy merchant secrets ([test](../../../integrations/polar/checkout_test.go#L533))
+      - [x] Verify raw-body and time-bound delivery signatures for current and legacy merchant secrets ([test](../../../integrations/polar/checkout_test.go#L547))
       - [x] Keep an unsigned or altered delivery away from the event handler ([test](../../../integrations/polar/webhook_test.go#L106))
     - [ ] Reference System to associate purchases with organizations
   - [ ] Preparation
-    - [x] Authenticate provider calls with the merchant's organization access token through the configured SDK client ([test](../../../integrations/polar/checkout_test.go#L147))
+    - [x] Authenticate provider calls with the merchant's organization access token through the configured SDK client ([test](../../../integrations/polar/checkout_test.go#L148))
     - [ ] Configuring Auth Server
-      - [x] Reject guests and delegated billing sessions even when the serving node omits the guest plugin ([test](../../../integrations/polar/checkout_test.go#L367))
-      - [x] Reject a verified guest on a checkout-only node when a PostgreSQL search path resolves the auth table from another schema ([test](../../../integrations/polar/checkout_test.go#L538))
-      - [x] Enable checkout, portal and webhooks as separate sections around one client, each mounting only its routes, with a webhooks-only node completing checkouts another node reserved ([test](../../../integrations/polar/checkout_test.go#L379))
+      - [x] Reject guests and delegated billing sessions even when the serving node omits the guest plugin ([test](../../../integrations/polar/checkout_test.go#L381))
+      - [x] Reject a verified guest on a checkout-only node when a PostgreSQL search path resolves the auth table from another schema ([test](../../../integrations/polar/checkout_test.go#L552))
+      - [x] Enable checkout, portal and webhooks as separate sections around one client, each mounting only its routes, with a webhooks-only node completing checkouts another node reserved ([test](../../../integrations/polar/checkout_test.go#L393))
     - [ ] Configuring Auth Client
   - [ ] Configuration Options
-    - [x] Configure the client, merchant and the checkout, portal and webhook sections, refusing a section without the ledger or checkout without products and a success URL ([test](../../../integrations/polar/checkout_test.go#L625))
-    - [x] Required Options ([test](../../../integrations/polar/checkout_test.go#L625))
-      - [x] Send provider requests through the configured SDK client with its scoped bearer and pinned API version ([test](../../../integrations/polar/checkout_test.go#L147))
-      - [x] Require the client and merchant organization, and mount nothing else until a section is set ([test](../../../integrations/polar/checkout_test.go#L625))
-      - [x] `client` ([test](../../../integrations/polar/checkout_test.go#L147))
-        - [x] Send checkout requests with the configured SDK, scoped bearer and pinned API version ([test](../../../integrations/polar/checkout_test.go#L147))
+    - [x] Configure the client, merchant and the checkout, portal and webhook sections, refusing a section without the ledger or checkout without products and a success URL ([test](../../../integrations/polar/checkout_test.go#L639))
+    - [x] Required Options ([test](../../../integrations/polar/checkout_test.go#L639))
+      - [x] Send provider requests through the configured SDK client with its scoped bearer and pinned API version ([test](../../../integrations/polar/checkout_test.go#L148))
+      - [x] Require the client and merchant organization, and mount nothing else until a section is set ([test](../../../integrations/polar/checkout_test.go#L639))
+      - [x] `client` ([test](../../../integrations/polar/checkout_test.go#L148))
+        - [x] Send checkout requests with the configured SDK, scoped bearer and pinned API version ([test](../../../integrations/polar/checkout_test.go#L148))
     - [x] Optional Options ([test](../../../integrations/polar/customer_test.go#L27))
       - [x] Configure sign-up customers and their parameters as optional sections ([test](../../../integrations/polar/customer_test.go#L27))
       - [x] `createCustomerOnSignUp` ([test](../../../integrations/polar/customer_test.go#L109))
@@ -40,10 +41,11 @@
     - [x] Customers ([test](../../../integrations/polar/customer_test.go#L109))
       - [x] Identify a new customer by the account ID so no mapping table is needed ([test](../../../integrations/polar/customer_test.go#L109))
   - [ ] Checkout Plugin
-    - [x] Recover a lost checkout response from a signed delivery and retain the owner binding after restart ([test](../../../integrations/polar/checkout_test.go#L425))
-    - [x] Reconcile an existing checkout by ID without creating another checkout or fabricating an event ([test](../../../integrations/polar/checkout_test.go#L475))
-    - [x] Allow one sender across competing sessions and withhold the hosted checkout after session revocation ([test](../../../integrations/polar/checkout_test.go#L519))
+    - [x] Recover a lost checkout response from a signed delivery and retain the owner binding after restart ([test](../../../integrations/polar/checkout_test.go#L439))
+    - [x] Reconcile an existing checkout by ID without creating another checkout or fabricating an event ([test](../../../integrations/polar/checkout_test.go#L489))
+    - [x] Allow one sender across competing sessions and withhold the hosted checkout after session revocation ([test](../../../integrations/polar/checkout_test.go#L533))
     - [x] Provision the checkout ledger while the application starts and retain previously claimed webhook deliveries ([test](../../../integrations/polar/schema_test.go#L53))
+    - [x] Offer up to ten distinct configured products in one checkout, let a slug decide the purchase when both are sent, and report the product bought beside every offered one, on three SQL engines ([test](../../../integrations/polar/products_test.go#L23))
     - [ ] Organization Support
   - [ ] Portal Plugin
     - [x] Customer Portal Management ([test](../../../integrations/polar/portal_test.go#L248))
@@ -65,21 +67,21 @@
     - [ ] Event Ingestion
     - [ ] Customer Meters
   - [x] Webhooks Plugin ([test](../../../integrations/polar/webhook_test.go#L153))
-    - [x] Apply an authenticated merchant and customer purchase, verify freshness, and reject redirect or product changes ([test](../../../integrations/polar/checkout_test.go#L407))
-    - [x] Close an expired checkout and preserve completed state when the original creation response arrives late ([test](../../../integrations/polar/checkout_test.go#L484))
+    - [x] Apply an authenticated merchant and customer purchase, verify freshness, and reject redirect or product changes ([test](../../../integrations/polar/checkout_test.go#L421))
+    - [x] Close an expired checkout and preserve completed state when the original creation response arrives late ([test](../../../integrations/polar/checkout_test.go#L498))
     - [x] Run the event handler for every verified delivery and answer its error or panic with 400 so Polar retries, without logging the error text, on three SQL engines ([test](../../../integrations/polar/webhook_test.go#L89))
-    - [x] Run the event handler only after the checkout state has committed, with no ledger transaction open ([test](../../../integrations/polar/checkout_test.go#L277))
+    - [x] Run the event handler only after the checkout state has committed, with no ledger transaction open ([test](../../../integrations/polar/checkout_test.go#L291))
     - [x] Decode every event type of the pinned SDK into its typed field and pass undefined types, other API versions and undecodable data with the body alone ([test](../../../integrations/polar/webhook_test.go#L153))
     - [x] `onPayload` ([test](../../../integrations/polar/webhook_test.go#L333))
       - [x] Pass every verified delivery, untagged checkouts and undefined types included, to one handler with its delivery ID, type, timestamp and body, on three SQL engines ([test](../../../integrations/polar/webhook_test.go#L24))
       - [x] Pass every verified delivery to one handler, with its typed object when the pinned SDK decodes it and with the body alone otherwise ([test](../../../integrations/polar/webhook_test.go#L333))
-    - [x] `onCheckoutCreated` ([test](../../../integrations/polar/checkout_test.go#L287))
-      - [x] Deliver a reserved checkout's creation with its committed purchase, keep the checkout after a handler error and run the handler again on retry, on three SQL engines ([test](../../../integrations/polar/checkout_test.go#L433))
+    - [x] `onCheckoutCreated` ([test](../../../integrations/polar/checkout_test.go#L301))
+      - [x] Deliver a reserved checkout's creation with its committed purchase, keep the checkout after a handler error and run the handler again on retry, on three SQL engines ([test](../../../integrations/polar/checkout_test.go#L447))
       - [x] Pass a merchant checkout this installation did not reserve to the handler without a purchase ([test](../../../integrations/polar/webhook_test.go#L76))
       - [x] Decode an unreserved checkout.created into Checkout without a purchase ([test](../../../integrations/polar/webhook_test.go#L262))
-      - [x] Decode a reserved checkout's deliveries into Checkout alongside the committed purchase, on three SQL engines ([test](../../../integrations/polar/checkout_test.go#L287))
-    - [x] `onCheckoutUpdated` ([test](../../../integrations/polar/checkout_test.go#L459))
-      - [x] Deliver every checkout.updated, stale ones included, with a purchase only when current, apply concurrent copies once and never reopen a checkout, on three SQL engines ([test](../../../integrations/polar/checkout_test.go#L459))
+      - [x] Decode a reserved checkout's deliveries into Checkout alongside the committed purchase, on three SQL engines ([test](../../../integrations/polar/checkout_test.go#L301))
+    - [x] `onCheckoutUpdated` ([test](../../../integrations/polar/checkout_test.go#L473))
+      - [x] Deliver every checkout.updated, stale ones included, with a purchase only when current, apply concurrent copies once and never reopen a checkout, on three SQL engines ([test](../../../integrations/polar/checkout_test.go#L473))
       - [x] Decode an unreserved checkout.updated into Checkout without a purchase ([test](../../../integrations/polar/webhook_test.go#L263))
     - [x] `onOrderCreated` ([test](../../../integrations/polar/webhook_test.go#L265))
       - [x] Decode a OrderCreated delivery into Event.Order and no other typed field ([test](../../../integrations/polar/webhook_test.go#L265))

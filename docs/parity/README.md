@@ -11,7 +11,7 @@
 | No linked test evidence | 1,708 |
 | Not applicable to a Go server | 606 |
 
-The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 8,221 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
+The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 8,223 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
 
 Entries that exist only for JavaScript clients, frameworks or runtimes are listed as not applicable, with the reason, and are left out of the totals. Backlog entries stay open on the roadmap but are not scheduled.
 
@@ -141,4 +141,4 @@ These integrations have independent release cycles.
 | [Creem](plugins/creem.md) | Backlog | 0 | 74 | 0 |
 | [Dodopayments](plugins/dodopayments.md) | Backlog | 0 | 20 | 0 |
 | [Dub](plugins/dub.md) | Backlog | 0 | 15 | 0 |
-| [Polar](plugins/polar.md) | Planned | 100 | 23 | 0 |
+| [Polar](plugins/polar.md) | Planned | 102 | 23 | 0 |

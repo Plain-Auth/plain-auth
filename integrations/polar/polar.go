@@ -9,6 +9,7 @@ import (
 	"errors"
 	"net/url"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -209,45 +210,62 @@ func (s *Service) owner(c auth.EndpointContext) (*auth.SessionResult, error) {
 	return session, nil
 }
 
-func (s *Service) selection(body map[string]any) (id string, redirect bool, err error) {
-	bad := failure(400, "POLAR_INVALID_PRODUCT", "Select one configured product by slug or ID")
+// maxCheckoutProducts bounds the products one checkout offers.
+const maxCheckoutProducts = 10
+
+// selection reads the products a checkout offers: products, a string or up
+// to ten distinct configured product IDs in order, or a slug. When both are
+// sent, as another runtime's client examples send them, the slug decides
+// the purchase and products must still be valid.
+func (s *Service) selection(body map[string]any) (products []string, redirect bool, err error) {
+	bad := failure(400, "POLAR_INVALID_PRODUCT", "Select configured products by slug or ID")
 	redirect = true
+	var slugged string
 	for field, v := range body {
 		switch field {
 		case "slug":
 			slug, _ := v.(string)
-			if id != "" || s.opts.Checkout.Products[slug] == "" {
-				return "", false, bad
+			if s.opts.Checkout.Products[slug] == "" {
+				return nil, false, bad
 			}
-			id = s.opts.Checkout.Products[slug]
+			slugged = s.opts.Checkout.Products[slug]
 		case "products":
-			var product string
+			var listed []string
 			switch v := v.(type) {
 			case string:
-				product = v
+				listed = []string{v}
 			case []any:
-				if len(v) == 1 {
-					product, _ = v[0].(string)
+				for _, entry := range v {
+					id, _ := entry.(string)
+					listed = append(listed, id)
 				}
 			}
-			if id != "" || !s.products[product] {
-				return "", false, bad
+			if len(listed) == 0 || len(listed) > maxCheckoutProducts {
+				return nil, false, bad
 			}
-			id = product
+			for i, id := range listed {
+				if !s.products[id] || slices.Contains(listed[:i], id) {
+					return nil, false, bad
+				}
+			}
+			products = listed
 		case "redirect":
 			var ok bool
 			redirect, ok = v.(bool)
 			if !ok {
-				return "", false, bad
+				return nil, false, bad
 			}
 		default:
-			return "", false, failure(400, "POLAR_INVALID_FIELD", "Unsupported checkout field")
+			return nil, false, failure(400, "POLAR_INVALID_FIELD", "Unsupported checkout field")
 		}
 	}
-	if id == "" {
-		return "", false, bad
+	if slugged != "" {
+		products = []string{slugged}
 	}
-	return id, redirect, nil
+	if len(products) == 0 {
+		return nil, false, bad
+	}
+	return products, redirect, nil
 }
 
 func (s *Service) checkout(c auth.EndpointContext) (any, error) {
@@ -256,7 +274,7 @@ func (s *Service) checkout(c auth.EndpointContext) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	product, redirect, err := s.selection(c.Body)
+	products, redirect, err := s.selection(c.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -275,7 +293,7 @@ func (s *Service) checkout(c auth.EndpointContext) (any, error) {
 	if len(keys) > 1 || len(keys) == 1 && !requestKey.MatchString(keys[0]) {
 		return nil, failure(400, "POLAR_INVALID_REQUEST_KEY", "Invalid Idempotency-Key")
 	}
-	key := "default:" + product
+	key := "default:" + strings.Join(products, ",")
 	if len(keys) == 1 {
 		key = "explicit:" + keys[0]
 	}
@@ -285,7 +303,7 @@ func (s *Service) checkout(c auth.EndpointContext) (any, error) {
 	req := reservation{
 		Slot: hex.EncodeToString(slot[:]), Attempt: uuid.NewString(),
 		Owner: session.User.ID, ContactHash: hex.EncodeToString(contact[:]),
-		Product: product, Merchant: s.opts.OrganizationID, Success: success, Return: back,
+		Product: products[0], Products: products, Merchant: s.opts.OrganizationID, Success: success, Return: back,
 	}
 	row, send, err := s.opts.Ledger.reserve(ctx, req)
 	if err != nil {
@@ -322,7 +340,7 @@ func (s *Service) checkout(c auth.EndpointContext) (any, error) {
 
 func (s *Service) createRemote(ctx context.Context, req reservation, email string) error {
 	payload := components.CheckoutCreate{
-		Products: []string{req.Product}, ExternalCustomerID: &req.Owner, CustomerEmail: &email,
+		Products: req.Products, ExternalCustomerID: &req.Owner, CustomerEmail: &email,
 		SuccessURL: &req.Success, Metadata: map[string]components.CheckoutCreateMetadata{
 			attemptMetadata: components.CreateCheckoutCreateMetadataStr(req.Attempt),
 		},

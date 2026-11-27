@@ -81,7 +81,7 @@ The hook runs for HTTP sign-ups and direct Go calls such as `Auth.SignUpEmail`, 
 
 ## Open a checkout
 
-Post to `/api/auth/checkout` with a configured `slug`, a configured product ID in `products`, or a one-element array in `products`. The server takes the customer’s external ID and verified email from the session, and the redirect destinations from the server configuration. A successful response contains `url` and `redirect`. The optional boolean `redirect` defaults to true.
+Post to `/api/auth/checkout` with a configured `slug`, or with `products`: a configured product ID, or an array of up to ten distinct configured product IDs, which the checkout offers in that order so the customer chooses among them, as in another runtime. When both are sent, as another runtime's client examples send them, the slug decides the purchase and `products` must still be valid. Anything else answers 400 `POLAR_INVALID_PRODUCT`. The server takes the customer’s external ID and verified email from the session, and the redirect destinations from the server configuration. A successful response contains `url` and `redirect`. The optional boolean `redirect` defaults to true.
 
 ```js
 // Persist this ID with the purchase action when retries must survive a page reload.
@@ -99,9 +99,11 @@ async function checkout() {
 }
 ```
 
-Reuse the same `Idempotency-Key` for every retry of a purchase. Each owner has an independent key space. A changed product, contact email or callback configuration conflicts with the original reservation. Without a key, the integration uses a stable owner/product reservation. Supply a fresh explicit key for a deliberate subsequent purchase after the earlier checkout has completed, failed or expired.
+Reuse the same `Idempotency-Key` for every retry of a purchase. Each owner has an independent key space. A changed product list, contact email or callback configuration conflicts with the original reservation. Without a key, the integration uses a stable reservation for the owner and the ordered product list. Supply a fresh explicit key for a deliberate subsequent purchase after the earlier checkout has completed, failed or expired.
 
 Plain Auth commits the reservation before asking Polar to create a checkout. Only one request sends that POST, including across processes. A lost response returns `409 POLAR_CHECKOUT_PENDING`. A verified checkout event can complete the reservation. An operator who knows the checkout UUID can also call `billing.ReconcileCheckout(ctx, checkoutID)`. This reads Polar’s checkout and validates the merchant, customer, product, destinations and server-generated attempt metadata. The original owner can then retry the same request to obtain an open checkout’s URL. If a process dies before sending the request, a pending reservation may have no remote counterpart. Confirm its absence with the merchant before starting a new purchase. Digests and reservation records survive restart.
+
+A checkout that offered several products records the one bought: Polar may list the offered products in another order, a confirmed or succeeded event that offered several must name the product bought or it answers 409 so Polar retries, and `Purchase.ProductID` is that product, or the only one, while `Purchase.ProductIDs` lists every offered product in request order. The ledger keeps the list in a `products` column; `OpenLedger` adds it, with its default, to a table that already holds rows, and a row written before reads as its single product. Run `authctl migrate --plugins polar` or let the first upgraded node add it; nodes on an earlier release refuse a several-product delivery with 409 until they are upgraded, and Polar retries. [Several product tests](../integrations/polar/products_test.go)
 
 ## Receive verified deliveries
 

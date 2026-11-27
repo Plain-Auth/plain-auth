@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -44,6 +46,13 @@ func OpenLedger(ctx context.Context, db *sql.DB, dialect string) (*Ledger, error
 		if _, err := exec(ctx, ddl); err != nil {
 			return nil, err
 		}
+		var conn ledgerConn = db
+		if tx != nil {
+			conn = tx
+		}
+		if err := addMissingColumns(ctx, conn, table, dialect); err != nil {
+			return nil, err
+		}
 	}
 	if tx != nil {
 		if err := tx.Commit(); err != nil {
@@ -53,20 +62,76 @@ func OpenLedger(ctx context.Context, db *sql.DB, dialect string) (*Ledger, error
 	return l, nil
 }
 
+type ledgerConn interface {
+	ExecContext(context.Context, string, ...any) (sql.Result, error)
+	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
+}
+
+// addMissingColumns upgrades a ledger table in place: it adds each missing
+// column that has a default, so tables with rows accept it, and refuses
+// any other missing column. On MySQL, whose DDL runs outside a transaction,
+// a column another node added first is accepted.
+func addMissingColumns(ctx context.Context, conn ledgerConn, table polarledger.Table, dialect string) error {
+	existing := func() (map[string]bool, error) {
+		rows, err := conn.QueryContext(ctx, "SELECT * FROM "+table.Name+" WHERE 1=0")
+		if err != nil {
+			return nil, err
+		}
+		defer rows.Close()
+		names, err := rows.Columns()
+		found := make(map[string]bool, len(names))
+		for _, name := range names {
+			found[strings.ToLower(name)] = true
+		}
+		return found, err
+	}
+	have, err := existing()
+	if err != nil {
+		return err
+	}
+	for _, column := range table.Columns {
+		name, _, _ := strings.Cut(column, " ")
+		name = strings.Trim(name, "`\"")
+		if have[name] {
+			continue
+		}
+		if !strings.Contains(column, " default ") {
+			return fmt.Errorf("polar: ledger table %s lacks column %s; run authctl migrate --plugins polar", table.Name, name)
+		}
+		if _, err := conn.ExecContext(ctx, "ALTER TABLE "+table.Name+" ADD COLUMN "+column); err != nil {
+			if dialect != "mysql" {
+				return err
+			}
+			if have, rerr := existing(); rerr != nil || !have[name] {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 type reservation struct {
 	Slot, Attempt      string
 	Owner, ContactHash string
-	Product, Merchant  string
-	Success, Return    string
-	ID, URL, Status    string
-	Expires, Changed   int64
+	// Product is the first offered product, kept for rows written before
+	// several products were offered; Products lists every one in order.
+	Product, Merchant string
+	Products          []string
+	Success, Return   string
+	ID, URL, Status   string
+	Expires, Changed  int64
 }
 
-const columns = "slot,attempt,owner_id,contact_hash,product,merchant,success_url,return_url,COALESCE(checkout_id,''),hosted_url,status,expires_ms,changed_us"
+const columns = "slot,attempt,owner_id,contact_hash,product,products,merchant,success_url,return_url,COALESCE(checkout_id,''),hosted_url,status,expires_ms,changed_us"
 
 func scan(r *sql.Row) (reservation, error) {
 	var v reservation
-	err := r.Scan(&v.Slot, &v.Attempt, &v.Owner, &v.ContactHash, &v.Product, &v.Merchant, &v.Success, &v.Return, &v.ID, &v.URL, &v.Status, &v.Expires, &v.Changed)
+	var products string
+	err := r.Scan(&v.Slot, &v.Attempt, &v.Owner, &v.ContactHash, &v.Product, &products, &v.Merchant, &v.Success, &v.Return, &v.ID, &v.URL, &v.Status, &v.Expires, &v.Changed)
+	v.Products = strings.Split(products, ",")
+	if products == "" {
+		v.Products = []string{v.Product}
+	}
 	return v, err
 }
 
@@ -100,13 +165,13 @@ func (l *Ledger) read(ctx context.Context, slot string) (reservation, error) {
 }
 
 func (l *Ledger) reserve(ctx context.Context, v reservation) (reservation, bool, error) {
-	q := `INSERT INTO plainauth_polar_checkout (slot,attempt,owner_id,contact_hash,product,merchant,success_url,return_url,hosted_url,status,expires_ms,changed_us) VALUES (?,?,?,?,?,?,?,?,'','pending',0,0)`
-	_, err := l.db.ExecContext(ctx, l.bind(q+l.ignore("slot")), v.Slot, v.Attempt, v.Owner, v.ContactHash, v.Product, v.Merchant, v.Success, v.Return)
+	q := `INSERT INTO plainauth_polar_checkout (slot,attempt,owner_id,contact_hash,product,products,merchant,success_url,return_url,hosted_url,status,expires_ms,changed_us) VALUES (?,?,?,?,?,?,?,?,?,'','pending',0,0)`
+	_, err := l.db.ExecContext(ctx, l.bind(q+l.ignore("slot")), v.Slot, v.Attempt, v.Owner, v.ContactHash, v.Products[0], strings.Join(v.Products, ","), v.Merchant, v.Success, v.Return)
 	if err != nil {
 		return v, false, err
 	}
 	row, err := l.read(ctx, v.Slot)
-	if err == nil && (row.Owner != v.Owner || row.ContactHash != v.ContactHash || row.Product != v.Product || row.Merchant != v.Merchant || row.Success != v.Success || row.Return != v.Return) {
+	if err == nil && (row.Owner != v.Owner || row.ContactHash != v.ContactHash || !slices.Equal(row.Products, v.Products) || row.Merchant != v.Merchant || row.Success != v.Success || row.Return != v.Return) {
 		return v, false, conflict()
 	}
 	return row, err == nil && row.Attempt == v.Attempt, err

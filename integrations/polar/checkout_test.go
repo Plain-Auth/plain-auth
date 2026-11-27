@@ -130,6 +130,7 @@ type provider struct {
 	mu       sync.Mutex
 	calls    int
 	latest   map[string]any
+	sent     []string
 	lost     bool
 	snapshot func()
 }
@@ -157,12 +158,25 @@ func (p *provider) create(r *http.Request) (*http.Response, error) {
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
 		return nil, err
 	}
-	if len(in.Products) != 1 || in.Owner == "" || !strings.HasSuffix(in.Email, "@example.test") || in.Metadata[attemptMetadata] == "" {
+	if len(in.Products) == 0 || in.Owner == "" || !strings.HasSuffix(in.Email, "@example.test") || in.Metadata[attemptMetadata] == "" {
 		return nil, errors.New("missing bound purchase")
 	}
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	id := uuid.NewString()
-	raw := map[string]any{"id": id, "status": "open", "organization_id": merchant, "external_customer_id": in.Owner, "products": []map[string]string{{"id": in.Products[0]}}, "product_id": in.Products[0], "success_url": in.Success, "return_url": in.Return, "url": hosted + "/" + id, "expires_at": now.Add(time.Hour), "created_at": now, "metadata": in.Metadata, "client_secret": "internal-sdk-only"}
+	// Polar lists the offered products in its own order and selects none
+	// until the customer chooses among several.
+	var offered []map[string]string
+	for i := len(in.Products) - 1; i >= 0; i-- {
+		offered = append(offered, map[string]string{"id": in.Products[i]})
+	}
+	selected := ""
+	if len(in.Products) == 1 {
+		selected = in.Products[0]
+	}
+	raw := map[string]any{"id": id, "status": "open", "organization_id": merchant, "external_customer_id": in.Owner, "products": offered, "product_id": selected, "success_url": in.Success, "return_url": in.Return, "url": hosted + "/" + id, "expires_at": now.Add(time.Hour), "created_at": now, "metadata": in.Metadata, "client_secret": "internal-sdk-only"}
+	p.mu.Lock()
+	p.sent = in.Products
+	p.mu.Unlock()
 	p.mu.Lock()
 	p.calls++
 	p.latest = raw

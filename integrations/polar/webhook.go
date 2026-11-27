@@ -9,6 +9,7 @@ import (
 	"errors"
 	"io"
 	"net/url"
+	"slices"
 	"strings"
 	"time"
 
@@ -59,7 +60,11 @@ type Event struct {
 // deliveries can carry the same state, and a retry has no Purchase once a
 // newer state has been recorded: fulfil once per CheckoutID and Status.
 type Purchase struct {
+	// ProductID is the selected product: the customer's choice, or the only
+	// product of a checkout that offered one. ProductIDs lists every product
+	// the checkout offered, in request order.
 	CheckoutID, OwnerID, ProductID, Status string
+	ProductIDs                             []string
 	// Changed orders the checkout's states: Polar's modified_at, or
 	// created_at for a checkout Polar has not modified. Purchases can arrive
 	// out of order: apply one only when Changed is newer than the one you
@@ -253,11 +258,15 @@ func (s *Service) checkoutDelivery(ctx context.Context, id, kind, version string
 	}
 	key := sha256.Sum256([]byte(s.opts.OrganizationID + "\x00" + id))
 	hash := sha256.Sum256(raw)
-	current, err := s.apply(ctx, v, &delivery{key: hex.EncodeToString(key[:]), hash: hex.EncodeToString(hash[:])})
+	row, current, err := s.applyRow(ctx, v, &delivery{key: hex.EncodeToString(key[:]), hash: hex.EncodeToString(hash[:])})
 	if err != nil || !current {
 		return nil, err
 	}
-	return &Purchase{CheckoutID: v.ID, OwnerID: v.Owner, ProductID: v.Products[0].ID, Status: v.Status, Changed: v.changed()}, nil
+	selected := v.Product
+	if selected == "" && len(row.Products) == 1 {
+		selected = row.Products[0]
+	}
+	return &Purchase{CheckoutID: v.ID, OwnerID: v.Owner, ProductID: selected, ProductIDs: slices.Clone(row.Products), Status: v.Status, Changed: v.changed()}, nil
 }
 
 // changed is the ledger's ordering key for a snapshot.
@@ -286,24 +295,31 @@ func successMatches(expected, actual, id string) bool {
 // duplicate delivery is checked against the reservation as its first copy
 // was, and changes nothing.
 func (s *Service) apply(ctx context.Context, v checkoutSnapshot, d *delivery) (bool, error) {
-	if !canonicalID(v.ID) || !canonicalID(v.Attempt) || v.Merchant != s.opts.OrganizationID || len(v.Products) != 1 || !s.hosted(v.URL) || v.Created.IsZero() || v.Expires.IsZero() ||
+	_, current, err := s.applyRow(ctx, v, d)
+	return current, err
+}
+
+// applyRow is apply that also returns the reservation it checked.
+func (s *Service) applyRow(ctx context.Context, v checkoutSnapshot, d *delivery) (reservation, bool, error) {
+	var none reservation
+	if !canonicalID(v.ID) || !canonicalID(v.Attempt) || v.Merchant != s.opts.OrganizationID || len(v.Products) == 0 || len(v.Products) > maxCheckoutProducts || !s.hosted(v.URL) || v.Created.IsZero() || v.Expires.IsZero() ||
 		v.Status != "open" && v.Status != "confirmed" && !terminal(v.Status) {
-		return false, conflict()
+		return none, false, conflict()
 	}
-	product := v.Products[0].ID
-	if v.Product != "" && v.Product != product {
-		return false, conflict()
+	offered := make([]string, len(v.Products))
+	for i, p := range v.Products {
+		offered[i] = p.ID
 	}
 	l := s.opts.Ledger
 	tx, err := l.db.BeginTx(ctx, nil)
 	if err != nil {
-		return false, err
+		return none, false, err
 	}
 	defer tx.Rollback()
 	fresh := true
 	if d != nil {
 		if fresh, err = l.claimDelivery(ctx, tx, d); err != nil {
-			return false, err
+			return none, false, err
 		}
 	}
 	q := "SELECT " + columns + " FROM plainauth_polar_checkout WHERE attempt=?"
@@ -312,14 +328,18 @@ func (s *Service) apply(ctx context.Context, v checkoutSnapshot, d *delivery) (b
 	}
 	row, err := scan(tx.QueryRowContext(ctx, l.bind(q), v.Attempt))
 	if errors.Is(err, sql.ErrNoRows) {
-		return false, conflict()
+		return none, false, conflict()
 	}
 	if err != nil {
-		return false, err
+		return none, false, err
 	}
-	if row.Owner != v.Owner || row.Merchant != v.Merchant || row.Product != product || !successMatches(row.Success, v.Success, v.ID) || row.Return != v.Return ||
-		row.ID != "" && (row.ID != v.ID || row.URL != v.URL) {
-		return false, conflict()
+	// Polar may list the offered products in another order. A paid
+	// checkout that offered several must name the one bought, so
+	// fulfilment always knows it.
+	if row.Owner != v.Owner || row.Merchant != v.Merchant || !sameProducts(row.Products, offered) || v.Product != "" && !slices.Contains(row.Products, v.Product) ||
+		len(row.Products) > 1 && v.Product == "" && (v.Status == "confirmed" || v.Status == "succeeded") ||
+		!successMatches(row.Success, v.Success, v.ID) || row.Return != v.Return || row.ID != "" && (row.ID != v.ID || row.URL != v.URL) {
+		return none, false, conflict()
 	}
 	change := v.changed()
 	// Once checkout ends, a delayed snapshot cannot reopen it. Notification ordering is local to the checkout.
@@ -327,12 +347,25 @@ func (s *Service) apply(ctx context.Context, v checkoutSnapshot, d *delivery) (b
 	if fresh && !stale {
 		q = `UPDATE plainauth_polar_checkout SET checkout_id=?,hosted_url=?,status=?,expires_ms=?,changed_us=? WHERE slot=?`
 		if _, err = tx.ExecContext(ctx, l.bind(q), v.ID, v.URL, v.Status, v.Expires.UnixMilli(), change.UnixMicro(), row.Slot); err != nil {
-			return false, err
+			return none, false, err
 		}
 		row.ID, row.Status, row.Changed = v.ID, v.Status, change.UnixMicro()
 	}
 	if err := tx.Commit(); err != nil {
-		return false, err
+		return none, false, err
 	}
-	return row.ID == v.ID && row.Status == v.Status && row.Changed == change.UnixMicro(), nil
+	return row, row.ID == v.ID && row.Status == v.Status && row.Changed == change.UnixMicro(), nil
+}
+
+// sameProducts compares two product lists as sets of distinct IDs.
+func sameProducts(reserved, offered []string) bool {
+	if len(reserved) != len(offered) {
+		return false
+	}
+	for i, id := range offered {
+		if !slices.Contains(reserved, id) || slices.Contains(offered[:i], id) {
+			return false
+		}
+	}
+	return true
 }
