@@ -16,12 +16,14 @@
       - [x] Verify raw-body and time-bound delivery signatures for current and legacy merchant secrets ([test](../../../integrations/polar/checkout_test.go#L495))
     - [ ] Reference System to associate purchases with organizations
   - [ ] Preparation
+    - [x] Authenticate provider calls with the merchant's organization access token through the configured SDK client ([test](../../../integrations/polar/checkout_test.go#L147))
     - [ ] Configuring Auth Server
       - [x] Reject guests and delegated billing sessions even when the serving node omits the guest plugin ([test](../../../integrations/polar/checkout_test.go#L346))
       - [x] Reject a verified guest on a checkout-only node when a PostgreSQL search path resolves the auth table from another schema ([test](../../../integrations/polar/checkout_test.go#L500))
     - [ ] Configuring Auth Client
   - [ ] Configuration Options
     - [ ] Required Options
+      - [x] Send provider requests through the configured SDK client with its scoped bearer and pinned API version ([test](../../../integrations/polar/checkout_test.go#L147))
       - [x] `client` ([test](../../../integrations/polar/checkout_test.go#L147))
         - [x] Send checkout requests with the configured SDK, scoped bearer and pinned API version ([test](../../../integrations/polar/checkout_test.go#L147))
     - [ ] Optional Options
@@ -35,14 +37,16 @@
     - [x] Provision the checkout ledger while the application starts and retain previously claimed webhook deliveries ([test](../../../integrations/polar/schema_test.go#L53))
     - [ ] Organization Support
   - [ ] Portal Plugin
-    - [ ] Customer Portal Management
+    - [x] Customer Portal Management ([test](../../../integrations/polar/portal_test.go#L246))
       - [x] Open by GET or POST, preserve the theme and redirect preference, and validate the hosted path and token ([test](../../../integrations/polar/portal_test.go#L246))
       - [x] Open a separate customer’s portal using its signed bearer session ([test](../../../integrations/polar/portal_test.go#L252))
       - [x] Withhold credentials and billing data when the caller’s session is revoked during a provider request ([test](../../../integrations/polar/portal_test.go#L327))
+      - [x] Open the signed-in customer's hosted portal by GET or POST and return its expiring, customer-bound link with the redirect preference ([test](../../../integrations/polar/portal_test.go#L246))
     - [ ] Customer State
       - [x] Read the individual customer’s subscriptions with product IDs, granted benefits and meter balances while withholding merchant metadata ([test](../../../integrations/polar/portal_test.go#L264))
       - [x] Return empty arrays for a customer without subscriptions, grants or meters ([test](../../../integrations/polar/portal_test.go#L275))
       - [x] Reject customer selectors and delegated, unverified or guest sessions before calling the provider ([test](../../../integrations/polar/portal_test.go#L222))
+      - [x] Return the signed-in customer's state with subscriptions, granted benefits and meter balances while withholding merchant metadata ([test](../../../integrations/polar/portal_test.go#L264))
     - [ ] Benefits, Orders & Subscriptions
       - [ ] Benefits
       - [ ] Orders

@@ -995,6 +995,11 @@
       "label": "Upgrade existing PostgreSQL and MySQL schemas with combined team, billing and factor profiles",
       "test": "adapters/sqlstore/profiles_test.go",
       "marker": "func TestServerPluginSchemaUpgrade("
+    },
+    {
+      "label": "Generate the subscription, user and organization billing columns identical to another runtime's migrations on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "the CLI emits the pinned plugin schema across exhaustive base combinations"
     }
   ],
   "docs/content/docs/plugins/2fa.mdx#L312": [
@@ -1783,6 +1788,11 @@
       "label": "Open a billing portal for the authenticated customer and enforce its owner and return URL",
       "test": "plugins/stripe/portal_test.go",
       "marker": "func TestUserBillingPortal("
+    },
+    {
+      "label": "Create a Stripe portal session for the signed-in customer and return its URL through the browser client on both runtimes",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "assert.equal(portalCall.path, \"/v1/billing_portal/sessions\");"
     }
   ],
   "core/signInSocial": [
@@ -10721,6 +10731,11 @@
       "label": "Recheck membership and active organization around Stripe responses, recover checkout under a different administrator, and refuse ambiguous customer ownership on three SQL engines",
       "test": "adapters/sqlstore/stripe_organization_test.go",
       "marker": "func TestOrganizationBillingIsolation("
+    },
+    {
+      "label": "Buy five organization seats by passing the organization customer type through the browser client while the member's default personal list stays empty",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "const purchase = checked(await owner.subscription.upgrade({ ...selector, plan: \"basic\", seats: 5, disableRedirect: true }));"
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L955": [
@@ -10740,6 +10755,12 @@
       "label": "Apply signed checkout and renewal events to the organization and list its updated price through the browser client",
       "test": "conformance/stripe-organization-fixture.mjs",
       "marker": "await deliver(\"evt_org_renew\""
+    },
+    {
+      "label": "Bill an organization as its own named Stripe customer, apply signed checkout and renewal events to it and keep members' personal lists empty through the browser client",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "await deliver(\"evt_org_renew\", \"customer.subscription.updated\", remote.state.subscription);",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L689": [
@@ -11634,6 +11655,11 @@
       "label": "Propose one seat when quantity is omitted and keep all five existing seats until the customer confirms",
       "test": "conformance/stripe-lifecycle-fixture.mjs",
       "marker": "opening a checkout review must not reduce five seats to one"
+    },
+    {
+      "label": "Send the requested seat count as the Checkout quantity, default an omitted count to one and reject negative, fractional, oversized or string counts on three SQL engines",
+      "test": "adapters/sqlstore/subscriptions_test.go",
+      "marker": "for _, seats := range []any{-2, 1.5, 2147483648, \"4\"} {"
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L549": [
@@ -11731,6 +11757,11 @@
       "label": "Charge a single yearly item at the organization member count and synchronize that same item after a member joins or leaves",
       "test": "conformance/stripe-organization-fixture.mjs",
       "marker": "[[\"price_basic_annual\", 2]]"
+    },
+    {
+      "label": "Send an organization's requested seat count to Stripe as the Checkout quantity after the billing policy admits its owner and refuses an outsider, on both runtimes",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "assert.equal(remote.state.checkout.line_items.data[0].quantity, 5);"
     }
   ],
   "plugin/sso/POST /sign-in/sso": [
@@ -12028,6 +12059,11 @@
       "label": "Count organization members for a monthly licensed checkout and ignore the caller’s seat override",
       "test": "conformance/stripe-organization-fixture.mjs",
       "marker": "assert.equal(remote.state.checkout.line_items.data[0].quantity, 2)"
+    },
+    {
+      "label": "Buy an explicit organization seat quantity or bill each member automatically, and resize the Stripe seat item as members join and leave, on both runtimes",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "export async function organizationBilling("
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L881/`prorationBehavior`": [
@@ -12159,6 +12195,11 @@
       "label": "Charge a single yearly item at the organization member count and synchronize that same item after a member joins or leaves",
       "test": "conformance/stripe-organization-fixture.mjs",
       "marker": "[[\"price_basic_annual\", 2]]"
+    },
+    {
+      "label": "Send the configured annual price for an annual checkout, keep it on retries from a second server and list that annual price for the yearly subscription on three SQL engines",
+      "test": "adapters/sqlstore/subscriptions_test.go",
+      "marker": "t.Fatalf(\"unexpected active subscriptions: %+v %v\", rows, err)"
     }
   ],
   "plugin/sso/POST /sso/request-domain-verification": [
@@ -13306,6 +13347,12 @@
       "label": "Withhold credentials and billing data when the caller’s session is revoked during a provider request",
       "test": "integrations/polar/portal_test.go",
       "marker": "revoked session received portal credentials or state"
+    },
+    {
+      "label": "Open the signed-in customer's hosted portal by GET or POST and return its expiring, customer-bound link with the redirect preference",
+      "test": "integrations/polar/portal_test.go",
+      "marker": "t.Fatal(\"invalid private portal handoff\")",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/polar.mdx#L253": [
@@ -13323,6 +13370,11 @@
       "label": "Reject customer selectors and delegated, unverified or guest sessions before calling the provider",
       "test": "integrations/polar/portal_test.go",
       "marker": "untrusted personal billing request reached the provider"
+    },
+    {
+      "label": "Return the signed-in customer's state with subscriptions, granted benefits and meter balances while withholding merchant metadata",
+      "test": "integrations/polar/portal_test.go",
+      "marker": "t.Fatal(\"owner-scoped subscription, benefit and meter summary leaked or lost data\")"
     }
   ],
   "docs/content/docs/reference/options.mdx#L324/`onPasswordReset`": [
@@ -50674,6 +50726,532 @@
       "test": "adapters/sqlstore/oauth_mcp_cimd_test.go",
       "marker": "func TestMCPMetadataDocumentClients(",
       "complete": true
+    }
+  ],
+  "plugin-symbol/stripe/Subscription": [
+    {
+      "label": "Record the plan, reference, status, trial, billing period, interval, seats, cancellation, schedule and end dates from signed subscription events on three SQL engines",
+      "test": "adapters/sqlstore/stripe_lifecycle_test.go",
+      "marker": "func TestStripeSubscriptionReconciliation("
+    }
+  ],
+  "plugin-symbol/stripe/StripeOptions/stripeClient": [
+    {
+      "label": "Send every portal, cancellation, restoration and schedule-release request through the caller-supplied Stripe SDK client on three SQL engines",
+      "test": "adapters/sqlstore/stripe_management_test.go",
+      "marker": "remote := sdk.NewClient(\"sk_test_local\", sdk.WithBackends(backends))"
+    }
+  ],
+  "plugin-symbol/stripe/StripeOptions/onEvent": [
+    {
+      "label": "Pass each verified webhook event with its original payload to the application callback, skip invalid deliveries and return STRIPE_WEBHOOK_ERROR when the callback fails",
+      "test": "plugins/stripe/stripe_test.go",
+      "marker": "func TestSignedWebhookDelivery("
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx": [
+    {
+      "label": "Run subscription listing, checkout validation, plan changes, cancellation, restoration, the billing portal and signed renewals through the browser client on both runtimes",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "export async function billingLifecycle("
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L9": [
+    {
+      "label": "Exercise plan pricing, signed lifecycle webhooks, subscription listing and plan upgrades through the browser client on both runtimes",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "export async function billingLifecycle("
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L12/Manage subscription plans and pricing": [
+    {
+      "label": "Resolve a plan name case-insensitively to its configured annual Stripe price and send only that server-owned price to Checkout on three SQL engines",
+      "test": "adapters/sqlstore/subscriptions_test.go",
+      "marker": "checkout retry or configured price was incorrect"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L13/Process subscription lifecycle events (creation, updates, cancellations)": [
+    {
+      "label": "Apply signed subscription creation, update and deletion events, including Dashboard-created subscriptions, renewals, plan changes and cancellations, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_lifecycle_test.go",
+      "marker": "func TestStripeSubscriptionReconciliation(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L14/Handle Stripe webhooks securely with signature verification": [
+    {
+      "label": "Reject empty bodies and missing, tampered or expired Stripe signatures before any processing and accept a correctly signed event",
+      "test": "plugins/stripe/stripe_test.go",
+      "marker": "send(payload, stale.Header, 400, \"FAILED_TO_CONSTRUCT_STRIPE_EVENT\")"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L15/Expose subscription data to your application": [
+    {
+      "label": "List the owner's current plan, price ID, status, billing interval, seats and period dates after a signed renewal through the browser client on both runtimes",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "const renewed = await list(owner, ownerID, ownerSub.id);"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L16/Support for trial periods and subscription upgrades": [
+    {
+      "label": "Grant the configured trial on a new personal or organization checkout, withhold it after earlier trial history and record the trial window from the signed completion on both runtimes",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "export async function trialEligibility("
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L18/Flexible reference system to associate subscriptions with users or organizations": [
+    {
+      "label": "Store and list an organization's subscription under the organization reference while the purchaser's personal list stays empty, on both runtimes",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "assert.equal(rows[0].referenceId, group.id);"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L225/`POST /subscription/upgrade`": [
+    {
+      "label": "Start a Stripe Checkout from a plan, annual price, seat count, callback URLs and disabled redirect, and retry it on a second server, on three SQL engines",
+      "test": "adapters/sqlstore/subscriptions_test.go",
+      "marker": "func TestSubscriptionCheckout("
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L231/Parameter `plan`": [
+    {
+      "label": "Resolve a case-insensitive plan name to its configured price and reject an unknown plan or a caller-supplied price before contacting Stripe, on three SQL engines",
+      "test": "adapters/sqlstore/subscriptions_test.go",
+      "marker": "check(400, first, \"upgrade\", map[string]any{\"plan\": \"absent\"}, cookie)"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L235/Parameter `annual` (optional)": [
+    {
+      "label": "Reject annual billing for a plan without an annual price and price monthly or annual changes from the configured IDs through the browser client on both runtimes",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "const unavailablePrice = await owner.subscription.upgrade({ plan: \"basic\", annual: true });"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L243/Parameter `subscriptionId` (optional)": [
+    {
+      "label": "Change the named subscription or the owner's only subscription through a confirmation page and reject another user's subscription ID, on both runtimes",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "for (const [annual, selection, expectedPrice] of [[false, {}, teamPrice], [true, own, annualTeamPrice]]) {"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L264/Parameter `successUrl`": [
+    {
+      "label": "Send Stripe the auth mount’s confirmation URL carrying the resolved success page, and reject an untrusted success page before contacting Stripe, on three SQL engines",
+      "test": "adapters/sqlstore/subscriptions_test.go",
+      "marker": "callbackURL=https%3A%2F%2Fbilling.example%2Fsuccess"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L268/Parameter `cancelUrl`": [
+    {
+      "label": "Send the resolved cancel page as the Checkout cancel URL and reject an untrusted cancel page before contacting Stripe, on three SQL engines",
+      "test": "adapters/sqlstore/subscriptions_test.go",
+      "marker": "r.Form.Get(\"cancel_url\") != \"https://billing.example/cancel\"",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L272/Parameter `returnUrl` (optional)": [
+    {
+      "label": "Send the trusted return page to the plan confirmation portal and its post-confirmation redirect, default it to the site root and reject a foreign page, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_plan_change_test.go",
+      "marker": "\"flow_data[after_completion][redirect][return_url]\": {origin + \"/billing/done\"}"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L276/Parameter `disableRedirect`": [
+    {
+      "label": "Report redirect false when an upgrade disables it and true when the option is omitted, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_plan_change_test.go",
+      "marker": "t.Fatal(\"trialing plan confirmation or default return\", page, err)"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L281/Parameter `scheduleAtPeriodEnd` (optional)": [
+    {
+      "label": "Schedule the requested annual price at the current period boundary with no proration, answer with the return page instead of a hosted link and keep the current price listed, on both runtimes",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "assert.deepEqual(deferred, { url: returnUrl, redirect: false });"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L366/`GET /subscription/list`": [
+    {
+      "label": "List the owner’s trialing subscription with its configured annual price ID, current seats and period end, and nothing for another account, on three SQL engines",
+      "test": "adapters/sqlstore/subscriptions_test.go",
+      "marker": "t.Fatalf(\"unexpected active subscriptions: %+v %v\", rows, err)"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L376/Parameter `customerType` (optional)": [
+    {
+      "label": "List the active organization’s subscription when the browser client selects the organization customer type, while the personal list stays empty, on both runtimes",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "const list = async () => ok(await buyer.subscription.list({ query: { customerType: \"organization\" } }))[0];"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L417/`POST /subscription/cancel`": [
+    {
+      "label": "Open Stripe’s cancellation flow for the signed-in owner’s subscription with the trusted return page and return its link without a redirect, on both runtimes",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "assert.deepEqual(ok(await owner.subscription.cancel(cancel)), { url: \"https://billing.example.test/cancel\", redirect: false });"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L423/Parameter `referenceId` (optional)": [
+    {
+      "label": "Open the cancellation page for the organization named by referenceId, refuse a personal subscription under that reference and recheck the member’s role while Stripe responds, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_organization_management_test.go",
+      "marker": "t.Fatal(\"organization cancellation target\", page, err)"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L427/Parameter `customerType` (optional)": [
+    {
+      "label": "Open the organization’s cancellation page when the browser client selects the organization customer type, after refusing a non-member, on both runtimes",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "assert.deepEqual(ok(await buyer.subscription.cancel(options)), { url: \"https://billing.example.test/cancel\", redirect: false });"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L435/Parameter `returnUrl`": [
+    {
+      "label": "Send the trusted return page to Stripe’s cancellation portal, require the field and reject a foreign page before contacting Stripe, on both runtimes",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "assert.equal(cancelCall.form.get(\"return_url\"), returnUrl);"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L449/`cancelAtPeriodEnd`": [
+    {
+      "label": "List a period-end cancellation only after Stripe’s signed update confirms it and clear it after restoring, on both runtimes",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "assert.equal((await list(owner, ownerID, ownerSub.id)).cancelAtPeriodEnd, true);"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L450/`cancelAt`": [
+    {
+      "label": "List the scheduled cancellation time from Stripe’s signed update and clear it after restoring, on both runtimes",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "assert.equal(Date.parse((await list(owner, ownerID, ownerSub.id)).cancelAt), ownerSub.cancel_at * 1000);",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L451/`canceledAt`": [
+    {
+      "label": "Record the cancellation time from a signed deletion and keep it when a later update arrives, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_lifecycle_test.go",
+      "marker": "row.CanceledAt.Unix() != 5000"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L452/`endedAt`": [
+    {
+      "label": "Record the end time from a signed deletion and keep it when a later update arrives, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_lifecycle_test.go",
+      "marker": "row.EndedAt.Unix() != 5000"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L453/`status`": [
+    {
+      "label": "Keep a pending cancellation active, move the subscription to canceled on Stripe’s deletion event and refuse to reactivate it from a later update, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_lifecycle_test.go",
+      "marker": "t.Fatal(\"terminal lifecycle state regressed\", row)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L462/`POST /subscription/restore`": [
+    {
+      "label": "Return Stripe’s unmodified subscription object after the signed-in owner restores a dated cancellation, on both runtimes",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "assert.deepEqual(ok(await owner.subscription.restore(own)), ownerSub);"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L468/Parameter `referenceId` (optional)": [
+    {
+      "label": "Restore a cancellation for the organization named by referenceId when the member’s role permits restoring, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_organization_management_test.go",
+      "marker": "t.Fatal(\"restore role could not clear cancellation\", err)"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L472/Parameter `customerType` (optional)": [
+    {
+      "label": "Clear an organization’s period-end cancellation when the browser client selects the organization customer type, on both runtimes",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "assert.equal(ok(await buyer.subscription.restore(explicit)).cancel_at_period_end, false);"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L492/`POST /subscription/billing-portal`": [
+    {
+      "label": "Require a session on the portal endpoint and reject foreign references and invalid customer types without contacting Stripe, on both runtimes",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "[\"body\", (client, fields) => client.subscription.billingPortal({ ...portal, ...fields })],"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L499/Parameter `locale` (optional)": [
+    {
+      "label": "Pass the requested locale to the Stripe portal session and reject a non-string locale, on both runtimes",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "assert.equal(portalCall.form.get(\"locale\"), \"en\");"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L503/Parameter `referenceId` (optional)": [
+    {
+      "label": "Reject another user's personal reference ID on the portal and every other billing endpoint without contacting Stripe, on both runtimes",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "[() => request(other, { referenceId: ownerID }), 400, \"REFERENCE_ID_NOT_ALLOWED\", \"Reference id is not allowed\"],"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L507/Parameter `customerType` (optional)": [
+    {
+      "label": "Open the organization customer's portal for customerType organization and refuse a non-member, on both runtimes",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "assert.equal(checked(await owner.subscription.billingPortal({ ...explicit, returnUrl: \"/billing\", disableRedirect: true })).url, \"https://billing.example.test/cus_org\");"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L511/Parameter `returnUrl` (optional)": [
+    {
+      "label": "Send the trusted return URL to the Stripe portal session and reject a foreign return URL with INVALID_CALLBACK_URL, on both runtimes",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "assert.equal(portalCall.form.get(\"return_url\"), returnUrl);"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L516/Parameter `disableRedirect` (optional)": [
+    {
+      "label": "Return redirect false when a portal request disables redirection, on both runtimes",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "assert.deepEqual(ok(await owner.subscription.billingPortal(portal)), { url: \"https://billing.example.test/portal\", redirect: false });"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L590/`checkout.session.completed`": [
+    {
+      "label": "Activate a reserved organization subscription from a signed Checkout completion with its customer, subscription ID, price and current seat count, on both runtimes",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "await deliver(\"evt_checkout_org\", \"checkout.session.completed\", remote.state.checkout);"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L591/`customer.subscription.created`": [
+    {
+      "label": "Create the local subscription once for a Dashboard-created subscription of a mapped customer and ignore its redelivery, on both runtimes",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "assert.equal(ok(await client.subscription.list())[0].referenceId, user.id);"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L614": [
+    {
+      "label": "Run the creation, cancellation, update and deletion hooks for signed subscription events before the general event callback, without repeating creation or cancellation on redelivery, on both runtimes",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "export async function subscriptionLifecycleCallbacks("
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L674": [
+    {
+      "label": "Add the optional user customer column with the subscription profiles, matching another runtime's migrations on three SQL dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "the CLI emits the pinned plugin schema across exhaustive base combinations"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L680/`stripeUserTableFields.stripeCustomerId`": [
+    {
+      "label": "Generate the optional user Stripe customer column identical to another runtime's migrations on three SQL dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "the CLI emits the pinned plugin schema across exhaustive base combinations"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L704": [
+    {
+      "label": "Generate the subscription table with every billing column identical to another runtime's migrations on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "the CLI emits the pinned plugin schema across exhaustive base combinations"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L710/`stripeSubscriptionTableFields.id`": [
+    {
+      "label": "Generate the subscription ID as the table's text primary key, matching another runtime's migrations on three SQL dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "the CLI emits the pinned plugin schema across exhaustive base combinations",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L716/`stripeSubscriptionTableFields.plan`": [
+    {
+      "label": "Store the configured plan name on the subscription and switch it when a signed renewal changes the price, on both runtimes",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "assert.equal(renewed.plan, \"team\");"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L721/`stripeSubscriptionTableFields.referenceId`": [
+    {
+      "label": "Record the user or organization as the subscription reference and allow a new subscription for a reference that already has a canceled one, on both runtimes",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "export async function trialEligibility("
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L728/`stripeSubscriptionTableFields.stripeCustomerId`": [
+    {
+      "label": "Record the billing customer's Stripe ID on the subscription after a signed Checkout completion, on both runtimes",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "assert.equal(rows[0].stripeCustomerId, \"cus_org\");",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L734/`stripeSubscriptionTableFields.stripeSubscriptionId`": [
+    {
+      "label": "Record the Stripe subscription ID on the organization subscription after a signed Checkout completion, on both runtimes",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "assert.equal(rows[0].stripeSubscriptionId, \"sub_org\");"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L740/`stripeSubscriptionTableFields.status`": [
+    {
+      "label": "Store a new checkout reservation as incomplete and list it only after the signed completion records the provider status, on three SQL engines",
+      "test": "adapters/sqlstore/subscriptions_test.go",
+      "marker": "\"status\"='incomplete' AND \"stripeCustomerId\"='cus_local'",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L746/`stripeSubscriptionTableFields.periodStart`": [
+    {
+      "label": "Store the subscription item's current period start from a signed renewal, on both runtimes",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "assert.equal(Date.parse(renewed.periodStart), item.current_period_start * 1000);"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L752/`stripeSubscriptionTableFields.periodEnd`": [
+    {
+      "label": "Store the subscription item's current period end from a signed renewal, on both runtimes",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "assert.equal(Date.parse(renewed.periodEnd), item.current_period_end * 1000);"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L758/`stripeSubscriptionTableFields.cancelAtPeriodEnd`": [
+    {
+      "label": "Report a period-end cancellation from a signed update and clear it after restoration through the browser client on both runtimes",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "assert.equal((await list(owner, ownerID, ownerSub.id)).cancelAtPeriodEnd, true);"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L773/`stripeSubscriptionTableFields.canceledAt`": [
+    {
+      "label": "Store the provider's cancellation time after a signed deletion and keep it when a late update arrives on three SQL engines",
+      "test": "adapters/sqlstore/stripe_lifecycle_test.go",
+      "marker": "if row = read(remote); row.Status != \"canceled\" || row.CanceledAt.Unix() != 5000 || row.EndedAt.Unix() != 5000 || row.ScheduleID != nil {"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L787/`stripeSubscriptionTableFields.seats`": [
+    {
+      "label": "List the seat count from a signed quantity change through the browser client on both runtimes",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "assert.equal((await list(owner, ownerID, ownerSub.id)).seats, 5);"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L793/`stripeSubscriptionTableFields.trialStart`": [
+    {
+      "label": "Record a signed trial and list its start and end fourteen days apart through the public billing client on both runtimes",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "if (!priorTrial) assert.equal(Date.parse(row.trialEnd) - Date.parse(row.trialStart), 14 * 86400000);"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L799/`stripeSubscriptionTableFields.trialEnd`": [
+    {
+      "label": "Store the provider's trial end for a new Dashboard trial and keep it after the subscription becomes active on three SQL engines",
+      "test": "adapters/sqlstore/stripe_lifecycle_test.go",
+      "marker": "if row.ReferenceID != owner.User.ID || row.Plan != \"basic\" || row.Status != \"trialing\" || row.TrialStart == nil || row.TrialEnd.Unix() != 1900 || row.PeriodEnd.Unix() != 2000 || *row.Seats != 3 {"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L805/`stripeSubscriptionTableFields.billingInterval`": [
+    {
+      "label": "List a monthly interval after renewal and a yearly interval after the scheduled annual phase starts, through the browser client on both runtimes",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "assert.equal(annual.billingInterval, \"year\");"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L812/`stripeSubscriptionTableFields.stripeScheduleId`": [
+    {
+      "label": "Expose the pending schedule ID after a period-end plan change and clear it after release through the browser client on both runtimes",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "assert.equal(future.stripeScheduleId, \"sched_change\");"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L844/`stripeClient`": [
+    {
+      "label": "Send customer, price, Checkout and subscription requests through the configured Stripe client on three SQL engines",
+      "test": "adapters/sqlstore/subscriptions_test.go",
+      "marker": "plugin := billing.New(billing.Options{WebhookSecret: secret, Subscriptions: &billing.SubscriptionOptions{Client: sdk.NewClient(\"sk_test_local\", sdk.WithBackends(backends)), Plans: []billing.Plan{{Name: \"Pro\", PriceID: \"price_month\", AnnualPriceID: \"price_year\"}}}})"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L845/`stripeWebhookSecret`": [
+    {
+      "label": "Accept only deliveries signed with the configured secret and reject missing, altered and stale signatures before any callback runs",
+      "test": "plugins/stripe/stripe_test.go",
+      "marker": "func TestSignedWebhookDelivery(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L849/`onEvent`": [
+    {
+      "label": "Pass each verified event with its raw object to the event callback, keep invalid deliveries away from it and answer a callback error with STRIPE_WEBHOOK_ERROR",
+      "test": "plugins/stripe/stripe_test.go",
+      "marker": "func TestSignedWebhookDelivery(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L850/`subscription`": [
+    {
+      "label": "Mount checkout, listing and signed webhook reconciliation for configured subscription plans on three SQL engines",
+      "test": "adapters/sqlstore/subscriptions_test.go",
+      "marker": "func TestSubscriptionCheckout(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L851/`organization`": [
+    {
+      "label": "Create the selected organization's own Stripe customer and bill its checkout to it through the browser client on both runtimes",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "assert.deepEqual(remote.state.customer.metadata, { organizationId: group.id, customerType: \"organization\" });"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L859/`plans`": [
+    {
+      "label": "Select a configured plan by name for monthly and annual Checkout and refuse an unknown plan on three SQL engines",
+      "test": "adapters/sqlstore/subscriptions_test.go",
+      "marker": "check(400, first, \"upgrade\", map[string]any{\"plan\": \"absent\"}, cookie)"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L860/`requireEmailVerification`": [
+    {
+      "label": "Refuse Checkout for an unverified owner when required and continue once the email is verified on three SQL engines",
+      "test": "adapters/sqlstore/stripe_management_test.go",
+      "marker": "mustCode(err, 400, \"EMAIL_VERIFICATION_REQUIRED\")"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L873/`name`": [
+    {
+      "label": "Match a configured mixed-case plan name case-insensitively when starting Checkout on three SQL engines",
+      "test": "adapters/sqlstore/subscriptions_test.go",
+      "marker": "body := map[string]any{\"plan\": \"PRO\", \"seats\": quantity, \"annual\": true, \"successUrl\": \"/success\", \"cancelUrl\": \"/cancel\", \"disableRedirect\": true}"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L874/`priceId`": [
+    {
+      "label": "Send the plan's configured monthly price to Checkout and refuse a client-supplied price on three SQL engines",
+      "test": "adapters/sqlstore/subscriptions_test.go",
+      "marker": "if activePrice != \"price_month\" || customerRequests != 1 {"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L1091/How it works:": [
+    {
+      "label": "Deny a new trial after an earlier subscription on another plan recorded a trial start or end, while paid or abandoned history stays eligible, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_trial_test.go",
+      "marker": "{\"priorstart\", created, nil, \"canceled\", \"\"},"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L1098/Example scenario:": [
+    {
+      "label": "Charge a later plan immediately, with no trial and an active status, after a canceled subscription to another plan used its trial, through the browser client",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "assert.equal(row.status, priorTrial ? \"active\" : \"trialing\");"
+    }
+  ],
+  "docs/content/docs/plugins/polar.mdx#L30": [
+    {
+      "label": "Authenticate provider calls with the merchant's organization access token through the configured SDK client",
+      "test": "integrations/polar/checkout_test.go",
+      "marker": "return nil, errors.New(\"incorrect SDK request\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/polar.mdx#L148": [
+    {
+      "label": "Send provider requests through the configured SDK client with its scoped bearer and pinned API version",
+      "test": "integrations/polar/checkout_test.go",
+      "marker": "return nil, errors.New(\"incorrect SDK request\")"
     }
   ]
 }

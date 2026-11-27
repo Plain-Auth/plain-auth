@@ -100,6 +100,7 @@
   - [ ] `CheckoutSessionLineItem`
   - [ ] `StripePlan`
   - [ ] `Subscription`
+    - [x] Record the plan, reference, status, trial, billing period, interval, seats, cancellation, schedule and end dates from signed subscription events on three SQL engines ([test](../../../adapters/sqlstore/stripe_lifecycle_test.go#L21))
   - [ ] `SubscriptionOptions`
     - [ ] `plans`
     - [ ] `requireEmailVerification`
@@ -123,6 +124,7 @@
     - [ ] `getCheckoutSessionParams`
   - [ ] `StripeOptions`
     - [ ] `stripeClient`
+      - [x] Send every portal, cancellation, restoration and schedule-release request through the caller-supplied Stripe SDK client on three SQL engines ([test](../../../adapters/sqlstore/stripe_management_test.go#L92))
     - [ ] `stripeWebhookSecret`
     - [ ] `createCustomerOnSignUp`
     - [ ] `onCustomerCreate`
@@ -130,24 +132,34 @@
     - [ ] `subscription`
     - [ ] `organization`
     - [ ] `onEvent`
+      - [x] Pass each verified webhook event with its original payload to the application callback, skip invalid deliveries and return STRIPE_WEBHOOK_ERROR when the callback fails ([test](../../../plugins/stripe/stripe_test.go#L19))
     - [ ] `schema`
 
 ## Stripe
 
 - [ ] Stripe
+  - [x] Run subscription listing, checkout validation, plan changes, cancellation, restoration, the billing portal and signed renewals through the browser client on both runtimes ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L397))
   - [ ] Features
+    - [x] Exercise plan pricing, signed lifecycle webhooks, subscription listing and plan upgrades through the browser client on both runtimes ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L397))
     - [ ] Create Stripe Customers automatically when users sign up
     - [ ] Manage subscription plans and pricing
-    - [ ] Process subscription lifecycle events (creation, updates, cancellations)
+      - [x] Resolve a plan name case-insensitively to its configured annual Stripe price and send only that server-owned price to Checkout on three SQL engines ([test](../../../adapters/sqlstore/subscriptions_test.go#L211))
+    - [x] Process subscription lifecycle events (creation, updates, cancellations) ([test](../../../adapters/sqlstore/stripe_lifecycle_test.go#L21))
+      - [x] Apply signed subscription creation, update and deletion events, including Dashboard-created subscriptions, renewals, plan changes and cancellations, on three SQL engines ([test](../../../adapters/sqlstore/stripe_lifecycle_test.go#L21))
     - [ ] Handle Stripe webhooks securely with signature verification
+      - [x] Reject empty bodies and missing, tampered or expired Stripe signatures before any processing and accept a correctly signed event ([test](../../../plugins/stripe/stripe_test.go#L63))
     - [ ] Expose subscription data to your application
+      - [x] List the owner's current plan, price ID, status, billing interval, seats and period dates after a signed renewal through the browser client on both runtimes ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L362))
     - [ ] Support for trial periods and subscription upgrades
+      - [x] Grant the configured trial on a new personal or organization checkout, withhold it after earlier trial history and record the trial window from the signed completion on both runtimes ([test](../../../conformance/stripe-organization-fixture.mjs#L361))
     - [x] Automatic trial abuse prevention ([test](../../../conformance/stripe-organization-fixture.mjs#L392))
       - [x] Offer the configured trial only for a new personal or organization billing reference with no trial history across plans ([test](../../../conformance/stripe-organization-fixture.mjs#L392))
       - [x] Preserve the granted trial and provider idempotency key after lost responses and across replicas ([test](../../../adapters/sqlstore/stripe_trial_test.go#L81))
     - [ ] Flexible reference system to associate subscriptions with users or organizations
+      - [x] Store and list an organization's subscription under the organization reference while the purchaser's personal list stays empty, on both runtimes ([test](../../../conformance/stripe-organization-fixture.mjs#L157))
     - [ ] Team subscription support with seats management
       - [x] Count organization members for a monthly licensed checkout and ignore the caller’s seat override ([test](../../../conformance/stripe-organization-fixture.mjs#L190))
+      - [x] Buy an explicit organization seat quantity or bill each member automatically, and resize the Stripe seat item as members join and leave, on both runtimes ([test](../../../conformance/stripe-organization-fixture.mjs#L98))
   - [ ] Usage
     - [ ] Customer Management
       - [x] Bind or reuse the authenticated account’s customer and roll back conflicting customer mappings ([test](../../../adapters/sqlstore/subscriptions_test.go#L301))
@@ -157,10 +169,14 @@
         - [x] Reserve an owner-scoped checkout, send the configured recurring price and return the same checkout on retries ([test](../../../adapters/sqlstore/subscriptions_test.go#L211))
         - [x] Reuse an existing Stripe customer when starting a monthly subscription ([test](../../../adapters/sqlstore/subscriptions_test.go#L348))
         - [ ] `POST /subscription/upgrade`
+          - [x] Start a Stripe Checkout from a plan, annual price, seat count, callback URLs and disabled redirect, and retry it on a second server, on three SQL engines ([test](../../../adapters/sqlstore/subscriptions_test.go#L31))
           - [ ] Parameter `plan`
+            - [x] Resolve a case-insensitive plan name to its configured price and reject an unknown plan or a caller-supplied price before contacting Stripe, on three SQL engines ([test](../../../adapters/sqlstore/subscriptions_test.go#L179))
           - [ ] Parameter `annual` (optional)
+            - [x] Reject annual billing for a plan without an annual price and price monthly or annual changes from the configured IDs through the browser client on both runtimes ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L247))
           - [ ] Parameter `referenceId` (optional)
           - [ ] Parameter `subscriptionId` (optional)
+            - [x] Change the named subscription or the owner's only subscription through a confirmation page and reject another user's subscription ID, on both runtimes ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L270))
           - [ ] Parameter `metadata` (optional)
           - [ ] Parameter `customerType` (optional)
           - [ ] Parameter `seats` (optional)
@@ -168,12 +184,18 @@
             - [x] Validate a multi-seat receipt before activating the subscription on all three SQL engines ([test](../../../adapters/sqlstore/subscriptions_test.go#L245))
             - [x] Verify a five-seat organization purchase and read the eight seats already active when the webhook arrives ([test](../../../conformance/stripe-organization-fixture.mjs#L158))
             - [x] Propose one seat when quantity is omitted and keep all five existing seats until the customer confirms ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L265))
+            - [x] Send the requested seat count as the Checkout quantity, default an omitted count to one and reject negative, fractional, oversized or string counts on three SQL engines ([test](../../../adapters/sqlstore/subscriptions_test.go#L183))
           - [ ] Parameter `locale` (optional)
           - [ ] Parameter `successUrl`
-          - [ ] Parameter `cancelUrl`
+            - [x] Send Stripe the auth mount’s confirmation URL carrying the resolved success page, and reject an untrusted success page before contacting Stripe, on three SQL engines ([test](../../../adapters/sqlstore/subscriptions_test.go#L85))
+          - [x] Parameter `cancelUrl` ([test](../../../adapters/sqlstore/subscriptions_test.go#L85))
+            - [x] Send the resolved cancel page as the Checkout cancel URL and reject an untrusted cancel page before contacting Stripe, on three SQL engines ([test](../../../adapters/sqlstore/subscriptions_test.go#L85))
           - [ ] Parameter `returnUrl` (optional)
+            - [x] Send the trusted return page to the plan confirmation portal and its post-confirmation redirect, default it to the site root and reject a foreign page, on three SQL engines ([test](../../../adapters/sqlstore/stripe_plan_change_test.go#L189))
           - [ ] Parameter `disableRedirect`
+            - [x] Report redirect false when an upgrade disables it and true when the option is omitted, on three SQL engines ([test](../../../adapters/sqlstore/stripe_plan_change_test.go#L262))
           - [ ] Parameter `scheduleAtPeriodEnd` (optional)
+            - [x] Schedule the requested annual price at the current period boundary with no proration, answer with the return page instead of a hosted link and keep the current price listed, on both runtimes ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L295))
         - [ ] Simple Example:
       - [ ] Switching Plans
         - [x] Open monthly and annual confirmation pages for the owner’s existing subscription and preserve its price until Stripe confirms ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L270))
@@ -190,23 +212,34 @@
       - [ ] Listing Active Subscriptions
         - [x] List only the authenticated owner’s active or trialing plans and configured price IDs ([test](../../../adapters/sqlstore/subscriptions_test.go#L261))
         - [ ] `GET /subscription/list`
+          - [x] List the owner’s trialing subscription with its configured annual price ID, current seats and period end, and nothing for another account, on three SQL engines ([test](../../../adapters/sqlstore/subscriptions_test.go#L258))
           - [ ] Parameter `referenceId` (optional)
           - [ ] Parameter `customerType` (optional)
+            - [x] List the active organization’s subscription when the browser client selects the organization customer type, while the personal list stays empty, on both runtimes ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L444))
       - [ ] Canceling a Subscription
         - [x] Open a cancellation page scoped to the signed-in customer and selected subscription ([test](../../../adapters/sqlstore/stripe_management_test.go#L158))
         - [x] Confirm an organization’s cancellation through Stripe and reconcile it with a signed update on both runtimes ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L443))
         - [x] Recheck organization membership before disclosing cancellation and plan confirmation links or changing a future phase ([test](../../../adapters/sqlstore/stripe_organization_management_test.go#L23))
         - [ ] `POST /subscription/cancel`
+          - [x] Open Stripe’s cancellation flow for the signed-in owner’s subscription with the trusted return page and return its link without a redirect, on both runtimes ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L318))
           - [ ] Parameter `referenceId` (optional)
+            - [x] Open the cancellation page for the organization named by referenceId, refuse a personal subscription under that reference and recheck the member’s role while Stripe responds, on three SQL engines ([test](../../../adapters/sqlstore/stripe_organization_management_test.go#L123))
           - [ ] Parameter `customerType` (optional)
+            - [x] Open the organization’s cancellation page when the browser client selects the organization customer type, after refusing a non-member, on both runtimes ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L438))
           - [ ] Parameter `subscriptionId` (optional)
           - [ ] Parameter `returnUrl`
+            - [x] Send the trusted return page to Stripe’s cancellation portal, require the field and reject a foreign page before contacting Stripe, on both runtimes ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L322))
         - [ ] Understanding Cancellation States
         - [ ] `cancelAtPeriodEnd`
-        - [ ] `cancelAt`
+          - [x] List a period-end cancellation only after Stripe’s signed update confirms it and clear it after restoring, on both runtimes ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L329))
+        - [x] `cancelAt` ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L340))
+          - [x] List the scheduled cancellation time from Stripe’s signed update and clear it after restoring, on both runtimes ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L340))
         - [ ] `canceledAt`
+          - [x] Record the cancellation time from a signed deletion and keep it when a later update arrives, on three SQL engines ([test](../../../adapters/sqlstore/stripe_lifecycle_test.go#L269))
         - [ ] `endedAt`
-        - [ ] `status`
+          - [x] Record the end time from a signed deletion and keep it when a later update arrives, on three SQL engines ([test](../../../adapters/sqlstore/stripe_lifecycle_test.go#L269))
+        - [x] `status` ([test](../../../adapters/sqlstore/stripe_lifecycle_test.go#L270))
+          - [x] Keep a pending cancellation active, move the subscription to canceled on Stripe’s deletion event and refuse to reactivate it from a later update, on three SQL engines ([test](../../../adapters/sqlstore/stripe_lifecycle_test.go#L270))
       - [ ] Restoring a Subscription
         - [x] Clear an end-of-period cancellation through the native client on all three SQL engines ([test](../../../adapters/sqlstore/stripe_management_test.go#L171))
         - [x] Clear an explicit cancellation date and synchronize the resulting provider state ([test](../../../adapters/sqlstore/stripe_management_test.go#L178))
@@ -214,19 +247,29 @@
         - [x] Restore an organization’s dated or period-end cancellation on three SQL engines ([test](../../../adapters/sqlstore/stripe_organization_management_test.go#L152))
         - [x] Refuse to release an organization schedule when the caller loses restore permission during Stripe’s response ([test](../../../adapters/sqlstore/stripe_organization_management_test.go#L194))
         - [ ] `POST /subscription/restore`
+          - [x] Return Stripe’s unmodified subscription object after the signed-in owner restores a dated cancellation, on both runtimes ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L341))
           - [ ] Parameter `referenceId` (optional)
+            - [x] Restore a cancellation for the organization named by referenceId when the member’s role permits restoring, on three SQL engines ([test](../../../adapters/sqlstore/stripe_organization_management_test.go#L146))
           - [ ] Parameter `customerType` (optional)
+            - [x] Clear an organization’s period-end cancellation when the browser client selects the organization customer type, on both runtimes ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L446))
           - [ ] Parameter `subscriptionId` (optional)
         - [ ] Pending cancellation
         - [ ] Pending plan change
       - [ ] Creating Billing Portal Sessions
         - [x] Open a billing portal for the authenticated customer and enforce its owner and return URL ([test](../../../plugins/stripe/portal_test.go#L27))
+        - [x] Create a Stripe portal session for the signed-in customer and return its URL through the browser client on both runtimes ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L313))
         - [ ] `POST /subscription/billing-portal`
+          - [x] Require a session on the portal endpoint and reject foreign references and invalid customer types without contacting Stripe, on both runtimes ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L205))
           - [ ] Parameter `locale` (optional)
+            - [x] Pass the requested locale to the Stripe portal session and reject a non-string locale, on both runtimes ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L316))
           - [ ] Parameter `referenceId` (optional)
+            - [x] Reject another user's personal reference ID on the portal and every other billing endpoint without contacting Stripe, on both runtimes ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L215))
           - [ ] Parameter `customerType` (optional)
+            - [x] Open the organization customer's portal for customerType organization and refuse a non-member, on both runtimes ([test](../../../conformance/stripe-organization-fixture.mjs#L162))
           - [ ] Parameter `returnUrl` (optional)
+            - [x] Send the trusted return URL to the Stripe portal session and reject a foreign return URL with INVALID_CALLBACK_URL, on both runtimes ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L315))
           - [ ] Parameter `disableRedirect` (optional)
+            - [x] Return redirect false when a portal request disables redirection, on both runtimes ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L311))
     - [ ] Reference System
       - [ ] Team Subscriptions with Seats
         - [x] Reserve an explicit seat quantity, reject a conflicting retry and preserve single-seat reservations from earlier releases ([test](../../../adapters/sqlstore/subscriptions_test.go#L295))
@@ -248,16 +291,20 @@
         - [x] Reject a monthly base paired with yearly seats before creating a Checkout Session ([test](../../../adapters/sqlstore/stripe_seats_test.go#L252))
         - [x] Resolve a historical organization subscription’s missing billing interval from Stripe before the worker prepares a seat update ([test](../../../adapters/sqlstore/stripe_seats_test.go#L426))
         - [x] Charge a single yearly item at the organization member count and synchronize that same item after a member joins or leaves ([test](../../../conformance/stripe-organization-fixture.mjs#L184))
+        - [x] Send an organization's requested seat count to Stripe as the Checkout quantity after the billing policy admits its owner and refuses an outsider, on both runtimes ([test](../../../conformance/stripe-organization-fixture.mjs#L152))
     - [ ] Webhook Handling
       - [x] Verify the webhook signature and dispatch a local event to the application callback ([test](../../../plugins/stripe/stripe_test.go#L19))
       - [x] Reconcile signed checkout completion and expiration and preserve the new attempt after replaying an older event ([test](../../../adapters/sqlstore/subscriptions_test.go#L334))
       - [x] Synchronize customer-mapped Dashboard subscriptions, trial and payment status, renewal, price and cancellation state on three SQL engines ([test](../../../adapters/sqlstore/stripe_lifecycle_test.go#L21))
       - [x] Keep the latest provider state when same-second subscription events race across replicas ([test](../../../adapters/sqlstore/stripe_lifecycle_test.go#L232))
       - [ ] `checkout.session.completed`
+        - [x] Activate a reserved organization subscription from a signed Checkout completion with its customer, subscription ID, price and current seat count, on both runtimes ([test](../../../conformance/stripe-organization-fixture.mjs#L154))
       - [ ] `customer.subscription.created`
+        - [x] Create the local subscription once for a Dashboard-created subscription of a mapped customer and ignore its redelivery, on both runtimes ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L552))
       - [ ] `customer.subscription.updated`
       - [ ] `customer.subscription.deleted`
     - [ ] Subscription Lifecycle Hooks
+      - [x] Run the creation, cancellation, update and deletion hooks for signed subscription events before the general event callback, without repeating creation or cancellation on redelivery, on both runtimes ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L508))
     - [x] Trial Periods ([test](../../../adapters/sqlstore/stripe_trial_callbacks_test.go#L21))
       - [x] Offer the configured trial only for a new personal or organization billing reference with no trial history across plans ([test](../../../conformance/stripe-organization-fixture.mjs#L392))
       - [x] Record the signed trial and expose its start, end and status through the public billing client ([test](../../../conformance/stripe-organization-fixture.mjs#L403))
@@ -265,44 +312,70 @@
   - [ ] Schema
     - [x] Generate and migrate the subscriptions schema and customer ID field ([test](../../../conformance/schema.test.mjs#L129))
     - [x] Upgrade existing PostgreSQL and MySQL schemas with combined team, billing and factor profiles ([test](../../../adapters/sqlstore/profiles_test.go#L14))
+    - [x] Generate the subscription, user and organization billing columns identical to another runtime's migrations on SQLite, PostgreSQL and MySQL ([test](../../../conformance/schema.test.mjs#L106))
     - [ ] User
+      - [x] Add the optional user customer column with the subscription profiles, matching another runtime's migrations on three SQL dialects ([test](../../../conformance/schema.test.mjs#L106))
       - [ ] `stripeUserTableFields.stripeCustomerId`
+        - [x] Generate the optional user Stripe customer column identical to another runtime's migrations on three SQL dialects ([test](../../../conformance/schema.test.mjs#L106))
     - [ ] Organization
       - [x] Generate the optional organization customer column with organization and subscription tables on three SQL dialects ([test](../../../conformance/schema.test.mjs#L190))
       - [ ] `stripeOrganizationTableFields.stripeCustomerId`
     - [ ] Subscription
-      - [ ] `stripeSubscriptionTableFields.id`
+      - [x] Generate the subscription table with every billing column identical to another runtime's migrations on SQLite, PostgreSQL and MySQL ([test](../../../conformance/schema.test.mjs#L106))
+      - [x] `stripeSubscriptionTableFields.id` ([test](../../../conformance/schema.test.mjs#L106))
+        - [x] Generate the subscription ID as the table's text primary key, matching another runtime's migrations on three SQL dialects ([test](../../../conformance/schema.test.mjs#L106))
       - [ ] `stripeSubscriptionTableFields.plan`
+        - [x] Store the configured plan name on the subscription and switch it when a signed renewal changes the price, on both runtimes ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L363))
       - [ ] `stripeSubscriptionTableFields.referenceId`
-      - [ ] `stripeSubscriptionTableFields.stripeCustomerId`
+        - [x] Record the user or organization as the subscription reference and allow a new subscription for a reference that already has a canceled one, on both runtimes ([test](../../../conformance/stripe-organization-fixture.mjs#L361))
+      - [x] `stripeSubscriptionTableFields.stripeCustomerId` ([test](../../../conformance/stripe-organization-fixture.mjs#L159))
+        - [x] Record the billing customer's Stripe ID on the subscription after a signed Checkout completion, on both runtimes ([test](../../../conformance/stripe-organization-fixture.mjs#L159))
       - [ ] `stripeSubscriptionTableFields.stripeSubscriptionId`
-      - [ ] `stripeSubscriptionTableFields.status`
+        - [x] Record the Stripe subscription ID on the organization subscription after a signed Checkout completion, on both runtimes ([test](../../../conformance/stripe-organization-fixture.mjs#L160))
+      - [x] `stripeSubscriptionTableFields.status` ([test](../../../adapters/sqlstore/subscriptions_test.go#L221))
+        - [x] Store a new checkout reservation as incomplete and list it only after the signed completion records the provider status, on three SQL engines ([test](../../../adapters/sqlstore/subscriptions_test.go#L221))
       - [ ] `stripeSubscriptionTableFields.periodStart`
+        - [x] Store the subscription item's current period start from a signed renewal, on both runtimes ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L368))
       - [ ] `stripeSubscriptionTableFields.periodEnd`
+        - [x] Store the subscription item's current period end from a signed renewal, on both runtimes ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L369))
       - [ ] `stripeSubscriptionTableFields.cancelAtPeriodEnd`
+        - [x] Report a period-end cancellation from a signed update and clear it after restoration through the browser client on both runtimes ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L329))
       - [ ] `stripeSubscriptionTableFields.cancelAt`
       - [ ] `stripeSubscriptionTableFields.canceledAt`
+        - [x] Store the provider's cancellation time after a signed deletion and keep it when a late update arrives on three SQL engines ([test](../../../adapters/sqlstore/stripe_lifecycle_test.go#L269))
       - [ ] `stripeSubscriptionTableFields.endedAt`
       - [ ] `stripeSubscriptionTableFields.seats`
+        - [x] List the seat count from a signed quantity change through the browser client on both runtimes ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L262))
       - [ ] `stripeSubscriptionTableFields.trialStart`
+        - [x] Record a signed trial and list its start and end fourteen days apart through the public billing client on both runtimes ([test](../../../conformance/stripe-organization-fixture.mjs#L403))
       - [ ] `stripeSubscriptionTableFields.trialEnd`
+        - [x] Store the provider's trial end for a new Dashboard trial and keep it after the subscription becomes active on three SQL engines ([test](../../../adapters/sqlstore/stripe_lifecycle_test.go#L173))
       - [ ] `stripeSubscriptionTableFields.billingInterval`
+        - [x] List a monthly interval after renewal and a yearly interval after the scheduled annual phase starts, through the browser client on both runtimes ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L392))
       - [ ] `stripeSubscriptionTableFields.stripeScheduleId`
+        - [x] Expose the pending schedule ID after a period-end plan change and clear it after release through the browser client on both runtimes ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L308))
     - [ ] Customizing the Schema
   - [ ] Options
     - [ ] `stripeClient`
+      - [x] Send customer, price, Checkout and subscription requests through the configured Stripe client on three SQL engines ([test](../../../adapters/sqlstore/subscriptions_test.go#L123))
     - [ ] `stripeWebhookSecret`
+      - [x] Accept only deliveries signed with the configured secret and reject missing, altered and stale signatures before any callback runs ([test](../../../plugins/stripe/stripe_test.go#L19))
     - [ ] `createCustomerOnSignUp`
     - [ ] `onCustomerCreate`
     - [ ] `getCustomerCreateParams`
     - [ ] `onEvent`
+      - [x] Pass each verified event with its raw object to the event callback, keep invalid deliveries away from it and answer a callback error with STRIPE_WEBHOOK_ERROR ([test](../../../plugins/stripe/stripe_test.go#L19))
     - [ ] `subscription`
+      - [x] Mount checkout, listing and signed webhook reconciliation for configured subscription plans on three SQL engines ([test](../../../adapters/sqlstore/subscriptions_test.go#L31))
     - [ ] `organization`
+      - [x] Create the selected organization's own Stripe customer and bill its checkout to it through the browser client on both runtimes ([test](../../../conformance/stripe-organization-fixture.mjs#L137))
     - [ ] `schema`
     - [ ] Subscription Options
       - [ ] `enabled`
       - [ ] `plans`
+        - [x] Select a configured plan by name for monthly and annual Checkout and refuse an unknown plan on three SQL engines ([test](../../../adapters/sqlstore/subscriptions_test.go#L179))
       - [ ] `requireEmailVerification`
+        - [x] Refuse Checkout for an unverified owner when required and continue once the email is verified on three SQL engines ([test](../../../adapters/sqlstore/stripe_management_test.go#L139))
       - [ ] `authorizeReference`
       - [ ] `getCheckoutSessionParams`
       - [x] `onSubscriptionComplete` ([test](../../../conformance/stripe-organization-fixture.mjs#L351))
@@ -322,11 +395,14 @@
         - [x] Preserve the organization’s local subscription identity across concurrent signed deletion deliveries ([test](../../../adapters/sqlstore/stripe_lifecycle_callbacks_test.go#L169))
       - [ ] Plan Configuration
         - [ ] `name`
+          - [x] Match a configured mixed-case plan name case-insensitively when starting Checkout on three SQL engines ([test](../../../adapters/sqlstore/subscriptions_test.go#L164))
         - [ ] `priceId`
+          - [x] Send the plan's configured monthly price to Checkout and refuse a client-supplied price on three SQL engines ([test](../../../adapters/sqlstore/subscriptions_test.go#L347))
         - [ ] `lookupKey`
         - [ ] `annualDiscountPriceId`
           - [x] Pair an annual base and a separate yearly member price through the public client and retain annual terms after membership changes ([test](../../../conformance/stripe-organization-fixture.mjs#L186))
           - [x] Charge a single yearly item at the organization member count and synchronize that same item after a member joins or leaves ([test](../../../conformance/stripe-organization-fixture.mjs#L184))
+          - [x] Send the configured annual price for an annual checkout, keep it on retries from a second server and list that annual price for the yearly subscription on three SQL engines ([test](../../../adapters/sqlstore/subscriptions_test.go#L258))
         - [ ] `annualDiscountLookupKey`
         - [ ] `limits`
         - [ ] `group`
@@ -369,12 +445,14 @@
   - [ ] Advanced Usage
     - [ ] Using with Organizations
       - [x] Apply signed checkout and renewal events to the organization and list its updated price through the browser client ([test](../../../conformance/stripe-organization-fixture.mjs#L165))
+      - [x] Bill an organization as its own named Stripe customer, apply signed checkout and renewal events to it and keep members' personal lists empty through the browser client ([test](../../../conformance/stripe-organization-fixture.mjs#L165))
       - [ ] When Organization Customer is enabled:
       - [ ] Enabling Organization Customer
         - [x] Generate the optional organization customer column with organization and subscription tables on three SQL dialects ([test](../../../conformance/schema.test.mjs#L190))
       - [ ] Creating Organization Subscriptions
         - [x] Use the active or selected organization for single-seat checkout and keep its Stripe customer separate from personal accounts ([test](../../../conformance/stripe-organization-fixture.mjs#L134))
         - [x] Recheck membership and active organization around Stripe responses, recover checkout under a different administrator, and refuse ambiguous customer ownership on three SQL engines ([test](../../../adapters/sqlstore/stripe_organization_test.go#L24))
+        - [x] Buy five organization seats by passing the organization customer type through the browser client while the member's default personal list stays empty ([test](../../../conformance/stripe-organization-fixture.mjs#L134))
       - [ ] Authorization
         - [x] Recheck membership and active organization around Stripe responses, recover checkout under a different administrator, and refuse ambiguous customer ownership on three SQL engines ([test](../../../adapters/sqlstore/stripe_organization_test.go#L24))
         - [x] Recheck organization membership before disclosing cancellation and plan confirmation links or changing a future phase ([test](../../../adapters/sqlstore/stripe_organization_management_test.go#L23))
@@ -387,4 +465,6 @@
       - [x] Offer the configured trial only for a new personal or organization billing reference with no trial history across plans ([test](../../../conformance/stripe-organization-fixture.mjs#L392))
       - [x] Preserve the granted trial and provider idempotency key after lost responses and across replicas ([test](../../../adapters/sqlstore/stripe_trial_test.go#L81))
       - [ ] How it works:
+        - [x] Deny a new trial after an earlier subscription on another plan recorded a trial start or end, while paid or abandoned history stays eligible, on three SQL engines ([test](../../../adapters/sqlstore/stripe_trial_test.go#L51))
       - [ ] Example scenario:
+        - [x] Charge a later plan immediately, with no trial and an active status, after a canceled subscription to another plan used its trial, through the browser client ([test](../../../conformance/stripe-organization-fixture.mjs#L402))

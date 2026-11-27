@@ -2,16 +2,16 @@
 
 ## Verification progress
 
-**3,039 of 6,419 inventory entries are fully verified (47.3%).**
+**3,047 of 6,419 inventory entries are fully verified (47.5%).**
 
 | Inventory status | Entries |
 | --- | ---: |
-| Fully verified | 3,039 |
-| Partially verified | 1,523 |
-| No linked test evidence | 1,857 |
+| Fully verified | 3,047 |
+| Partially verified | 1,585 |
+| No linked test evidence | 1,787 |
 | Not applicable to a Go server | 606 |
 
-The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 7,961 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
+The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 8,045 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
 
 Entries that exist only for JavaScript clients, frameworks or runtimes are listed as not applicable, with the reason, and are left out of the totals. Backlog entries stay open on the roadmap but are not scheduled.
 
@@ -123,7 +123,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [SCIM provisioning](plugins/scim.md) | 701 | 43 | 6 |
 | [Sign in with Ethereum](plugins/siwe.md) | 122 | 7 | 0 |
 | [Single sign-on](plugins/sso.md) | 990 | 75 | 10 |
-| [Stripe](plugins/stripe.md) | 206 | 175 | 0 |
+| [Stripe](plugins/stripe.md) | 293 | 168 | 0 |
 | [Test utils](plugins/test-utils.md) | 86 | 10 | 1 |
 | [Username](plugins/username.md) | 126 | 23 | 2 |
 
@@ -141,4 +141,4 @@ These integrations have independent release cycles.
 | [Creem](plugins/creem.md) | Backlog | 0 | 74 | 0 |
 | [Dodopayments](plugins/dodopayments.md) | Backlog | 0 | 20 | 0 |
 | [Dub](plugins/dub.md) | Backlog | 0 | 15 | 0 |
-| [Polar](plugins/polar.md) | Planned | 21 | 57 | 0 |
+| [Polar](plugins/polar.md) | Planned | 26 | 56 | 0 |
