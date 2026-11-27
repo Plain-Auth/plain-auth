@@ -32,6 +32,9 @@ func New(opts Options) authn.Plugin {
 		Method: http.MethodPost, Path: "/stripe/webhook", RawBody: true,
 		Handler: func(ctx authn.EndpointContext) (any, error) {
 			r := ctx.Request
+			// The body is read under the request limit before the signature
+			// is checked, so a large body answers 413 even when unsigned,
+			// where another runtime checks the signature first.
 			payload, err := io.ReadAll(r.Body)
 			var tooLarge *http.MaxBytesError
 			if errors.As(err, &tooLarge) {
@@ -56,6 +59,9 @@ func New(opts Options) authn.Plugin {
 			// A reconciliation failure answers 500 STRIPE_WEBHOOK_ERROR, where
 			// another runtime answers its 400 "Stripe webhook error": a store
 			// failure is the server's, and Stripe retries a 5xx delivery.
+			// A connected account's event, or one in another account's
+			// context, carries that account's customer IDs, so it only reaches
+			// OnEvent.
 			if subs != nil && event.Account == "" && event.Context == "" {
 				if subs.organization != nil {
 					var err error
@@ -101,6 +107,8 @@ func New(opts Options) authn.Plugin {
 			if configErr != nil {
 				return configErr
 			}
+			// Billing without a signing secret fails at startup, where another
+			// runtime fails each delivery.
 			if opts.WebhookSecret == "" {
 				return errors.New("stripe: subscription checkout requires a webhook signing secret")
 			}

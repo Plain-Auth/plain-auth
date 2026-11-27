@@ -2,8 +2,10 @@ package sqlstore
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -103,7 +105,14 @@ func TestStripeSubscriptionReconciliation(t *testing.T) {
 				return stripeJSON(200, marshal(snap)), nil
 			})
 			backend := sdk.NewBackendsWithConfig(&sdk.BackendConfig{HTTPClient: &http.Client{Transport: transport}, MaxNetworkRetries: sdk.Int64(0)})
-			plug := billing.New(billing.Options{WebhookSecret: secret, Subscriptions: &billing.SubscriptionOptions{Client: sdk.NewClient("sk_test_local", sdk.WithBackends(backend)), Plans: []billing.Plan{{Name: "basic", PriceID: "price_base"}, {Name: "pro", PriceID: "price_pro", AnnualPriceID: "price_year"}}}})
+			var seenMu sync.Mutex
+			var seen []sdk.Event
+			plug := billing.New(billing.Options{WebhookSecret: secret, OnEvent: func(_ context.Context, e sdk.Event) error {
+				seenMu.Lock()
+				defer seenMu.Unlock()
+				seen = append(seen, e)
+				return nil
+			}, Subscriptions: &billing.SubscriptionOptions{Client: sdk.NewClient("sk_test_local", sdk.WithBackends(backend)), Plans: []billing.Plan{{Name: "basic", PriceID: "price_base"}, {Name: "pro", PriceID: "price_pro", AnnualPriceID: "price_year"}}}})
 			newAuth := func(s *Store) *auth.Auth {
 				t.Helper()
 				off := false
@@ -124,8 +133,12 @@ func TestStripeSubscriptionReconciliation(t *testing.T) {
 			}
 			owner, foreign := signup("owner"), signup("foreign")
 			exec(`UPDATE "user" SET "stripeCustomerId"=? WHERE "id"=?`, customer, owner.User.ID)
-			deliver := func(a *auth.Auth, id, kind string, created int64, obj map[string]any, signed bool) int {
-				raw, _ := json.Marshal(map[string]any{"id": id, "object": "event", "api_version": sdk.APIVersion, "created": created, "type": kind, "data": map[string]any{"object": obj}})
+			deliver := func(a *auth.Auth, id, kind string, created int64, obj map[string]any, signed bool, envelope ...map[string]any) int {
+				event := map[string]any{"id": id, "object": "event", "api_version": sdk.APIVersion, "created": created, "type": kind, "data": map[string]any{"object": obj}}
+				for _, extra := range envelope {
+					maps.Copy(event, extra)
+				}
+				raw, _ := json.Marshal(event)
 				req := httptest.NewRequest("POST", "https://bill.example/api/auth/stripe/webhook", bytes.NewReader(raw))
 				req.Header.Set("Content-Type", "application/json")
 				if signed {
@@ -203,6 +216,33 @@ func TestStripeSubscriptionReconciliation(t *testing.T) {
 			if row = read(remote); row.Plan != "basic" || row.Status != "active" || *row.CancelAtPeriodEnd || row.CancelAt != nil || row.ScheduleID != nil {
 				t.Fatal("restore failed", row)
 			}
+			// A connected account's event, or one in another account's context,
+			// reaches OnEvent without reading or changing the platform's
+			// subscription, although a reconciliation would now change it.
+			y := x
+			y.status, y.price = "past_due", "price_pro"
+			set(y)
+			mu.Lock()
+			connectedBefore := requests
+			mu.Unlock()
+			for id, envelope := range map[string]map[string]any{"evt_connected": {"account": "acct_connected"}, "evt_context": {"context": "ctx_platform"}} {
+				if got := deliver(b, id, updated, 6, marshal(y), true, envelope); got != 200 {
+					t.Fatal("a connected account event was refused", id, got)
+				}
+			}
+			mu.Lock()
+			after := requests
+			mu.Unlock()
+			seenMu.Lock()
+			accounts := map[string]string{}
+			for _, e := range seen {
+				accounts[e.ID] = e.Account + e.Context
+			}
+			seenMu.Unlock()
+			if row = read(remote); after != connectedBefore || row.Status != "active" || row.Plan != "basic" || accounts["evt_connected"] != "acct_connected" || accounts["evt_context"] != "ctx_platform" {
+				t.Fatal("connected account event changed platform billing", after-connectedBefore, row.Status, row.Plan, accounts)
+			}
+			set(x)
 			// An older provider GET, already inflight on another replica, must
 			// not overwrite a newer snapshot in the same Stripe event second.
 			x.status = "past_due"

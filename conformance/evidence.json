@@ -3757,6 +3757,16 @@
       "label": "Claim trial conversion and expiration once across replicas and preserve general webhook delivery after callback failures",
       "test": "adapters/sqlstore/stripe_trial_callbacks_test.go",
       "marker": "func TestStripePlanTrialCallbacks("
+    },
+    {
+      "label": "Answer a missing signing secret with HTTP 500, a body over 1 MiB with 413 before the signature check, and another secret's signature with 400, before calling the application",
+      "test": "plugins/stripe/stripe_test.go",
+      "marker": "t.Fatal(\"rejected deliveries reached the application callback\", callbacks)"
+    },
+    {
+      "label": "Pass a connected-account or account-context event to OnEvent without reading or changing the platform subscription on three SQL engines",
+      "test": "adapters/sqlstore/stripe_lifecycle_test.go",
+      "marker": "t.Fatal(\"connected account event changed platform billing\""
     }
   ],
   "plugin-symbol/captcha/captcha": [
@@ -51194,6 +51204,11 @@
       "label": "Accept only deliveries signed with the configured secret and reject missing, altered and stale signatures before any callback runs",
       "test": "plugins/stripe/stripe_test.go",
       "marker": "func TestSignedWebhookDelivery(t *testing.T) {"
+    },
+    {
+      "label": "Refuse subscription billing without a signing secret at startup and answer a delivery with HTTP 500 without one",
+      "test": "plugins/stripe/stripe_test.go",
+      "marker": "t.Fatal(\"subscriptions started without a webhook signing secret\", err)"
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L849/`onEvent`": [
@@ -51364,6 +51379,18 @@
       "label": "Bill the organization's own Stripe customer, named after it, when customerType is organization, on both runtimes",
       "test": "conformance/stripe-organization-fixture.mjs",
       "marker": "const purchase = checked(await owner.subscription.upgrade("
+    }
+  ],
+  "plugin-symbol/stripe/StripeOptions/stripeWebhookSecret": [
+    {
+      "label": "Refuse subscription billing without a signing secret at startup",
+      "test": "plugins/stripe/stripe_test.go",
+      "marker": "t.Fatal(\"subscriptions started without a webhook signing secret\", err)"
+    },
+    {
+      "label": "Answer a delivery with HTTP 500 when no signing secret is configured, and reject another secret's signature, before calling the application",
+      "test": "plugins/stripe/stripe_test.go",
+      "marker": "t.Fatal(\"rejected deliveries reached the application callback\", callbacks)"
     }
   ]
 }

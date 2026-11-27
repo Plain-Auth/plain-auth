@@ -57,7 +57,7 @@ opts.Plugins = append(opts.Plugins, authstripe.New(authstripe.Options{
 }))
 ```
 
-Point the Stripe endpoint at `POST /api/auth/stripe/webhook`. Supply the endpoint's signing secret. The plugin verifies the original request bytes and timestamp with Stripe's Go SDK and calls your function after successful verification. Stripe retries deliveries, so use the event ID for idempotency. Your handler's error produces an unsuccessful response so the event can be retried.
+Point the Stripe endpoint at `POST /api/auth/stripe/webhook`. Supply the endpoint's signing secret. The plugin verifies the original request bytes and timestamp with Stripe's Go SDK and calls your function after successful verification. Stripe retries deliveries, so use the event ID for idempotency. Your handler's error answers 400 `STRIPE_WEBHOOK_ERROR` so the event can be retried. Without a signing secret, a webhook-only setup answers each delivery with 500 `STRIPE_WEBHOOK_SECRET_NOT_FOUND`, as another runtime does, while subscription billing refuses to start, where another runtime fails each delivery. The body is read under a 1 MiB limit before the signature is checked, so a larger body answers 413 `PAYLOAD_TOO_LARGE` even when unsigned; another runtime checks the signature first and sets no limit. A failure to store a verified event answers 500, so monitoring sees a server fault, where another runtime answers 400; Stripe retries either. [Webhook tests](../plugins/stripe/stripe_test.go)
 
 Run `go test ./plugins/stripe` to exercise signed deliveries locally. The [Stripe checklist](parity/plugins/stripe.md) tracks subscription, checkout, billing portal, and customer-management behavior separately.
 

@@ -77,8 +77,8 @@
     - [x] Recheck membership and active organization around Stripe responses, recover checkout under a different administrator, and refuse ambiguous customer ownership on three SQL engines ([test](../../../adapters/sqlstore/stripe_organization_test.go#L26))
   - [ ] `POST /stripe/webhook`
     - [x] Reject foreign or unsigned checkout receipts and apply completion once ([test](../../../adapters/sqlstore/subscriptions_test.go#L251))
-    - [x] Deduplicate signed subscription events and preserve terminal cancellations after delayed updates ([test](../../../adapters/sqlstore/stripe_lifecycle_test.go#L270))
-    - [x] Bind the original Checkout reservation when a lifecycle webhook arrives before completion ([test](../../../adapters/sqlstore/stripe_lifecycle_test.go#L312))
+    - [x] Deduplicate signed subscription events and preserve terminal cancellations after delayed updates ([test](../../../adapters/sqlstore/stripe_lifecycle_test.go#L310))
+    - [x] Bind the original Checkout reservation when a lifecycle webhook arrives before completion ([test](../../../adapters/sqlstore/stripe_lifecycle_test.go#L352))
     - [x] Apply signed checkout and renewal events to the organization and list its updated price through the browser client ([test](../../../conformance/stripe-organization-fixture.mjs#L165))
     - [x] Confirm an organization’s cancellation through Stripe and reconcile it with a signed update on both runtimes ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L443))
     - [x] Schedule a single-seat annual organization plan and reconcile its signed phase transition through the browser client ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L465))
@@ -93,6 +93,8 @@
     - [x] Call a fresh pending-cancellation observer before the update hook and continue to the general event hook after a host failure ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L563))
     - [x] Verify the signed Checkout callback for personal and organization subscriptions even when subscription creation arrived first ([test](../../../conformance/stripe-organization-fixture.mjs#L343))
     - [x] Claim trial conversion and expiration once across replicas and preserve general webhook delivery after callback failures ([test](../../../adapters/sqlstore/stripe_trial_callbacks_test.go#L21))
+    - [x] Answer a missing signing secret with HTTP 500, a body over 1 MiB with 413 before the signature check, and another secret's signature with 400, before calling the application ([test](../../../plugins/stripe/stripe_test.go#L84))
+    - [x] Pass a connected-account or account-context event to OnEvent without reading or changing the platform subscription on three SQL engines ([test](../../../adapters/sqlstore/stripe_lifecycle_test.go#L243))
   - [ ] `AuthorizeReferenceAction`
   - [ ] `CustomerType`
     - [x] Reject customer types other than user and organization on every billing route and refuse organizations when organization billing is off, matching the other runtime ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L212))
@@ -103,7 +105,7 @@
   - [ ] `CheckoutSessionLineItem`
   - [ ] `StripePlan`
   - [ ] `Subscription`
-    - [x] Record the plan, reference, status, trial, billing period, interval, seats, cancellation, schedule and end dates from signed subscription events on three SQL engines ([test](../../../adapters/sqlstore/stripe_lifecycle_test.go#L21))
+    - [x] Record the plan, reference, status, trial, billing period, interval, seats, cancellation, schedule and end dates from signed subscription events on three SQL engines ([test](../../../adapters/sqlstore/stripe_lifecycle_test.go#L23))
   - [ ] `SubscriptionOptions`
     - [ ] `plans`
     - [ ] `requireEmailVerification`
@@ -129,13 +131,15 @@
     - [ ] `stripeClient`
       - [x] Send every portal, cancellation, restoration and schedule-release request through the caller-supplied Stripe SDK client on three SQL engines ([test](../../../adapters/sqlstore/stripe_management_test.go#L92))
     - [ ] `stripeWebhookSecret`
+      - [x] Refuse subscription billing without a signing secret at startup ([test](../../../plugins/stripe/stripe_test.go#L99))
+      - [x] Answer a delivery with HTTP 500 when no signing secret is configured, and reject another secret's signature, before calling the application ([test](../../../plugins/stripe/stripe_test.go#L84))
     - [ ] `createCustomerOnSignUp`
     - [ ] `onCustomerCreate`
     - [ ] `getCustomerCreateParams`
     - [ ] `subscription`
     - [ ] `organization`
     - [ ] `onEvent`
-      - [x] Pass each verified webhook event with its original payload to the application callback, skip invalid deliveries and return STRIPE_WEBHOOK_ERROR when the callback fails ([test](../../../plugins/stripe/stripe_test.go#L19))
+      - [x] Pass each verified webhook event with its original payload to the application callback, skip invalid deliveries and return STRIPE_WEBHOOK_ERROR when the callback fails ([test](../../../plugins/stripe/stripe_test.go#L21))
     - [ ] `schema`
 
 ## Stripe
@@ -147,10 +151,10 @@
     - [ ] Create Stripe Customers automatically when users sign up
     - [ ] Manage subscription plans and pricing
       - [x] Resolve a plan name case-insensitively to its configured annual Stripe price and send only that server-owned price to Checkout on three SQL engines ([test](../../../adapters/sqlstore/subscriptions_test.go#L208))
-    - [x] Process subscription lifecycle events (creation, updates, cancellations) ([test](../../../adapters/sqlstore/stripe_lifecycle_test.go#L21))
-      - [x] Apply signed subscription creation, update and deletion events, including Dashboard-created subscriptions, renewals, plan changes and cancellations, on three SQL engines ([test](../../../adapters/sqlstore/stripe_lifecycle_test.go#L21))
+    - [x] Process subscription lifecycle events (creation, updates, cancellations) ([test](../../../adapters/sqlstore/stripe_lifecycle_test.go#L23))
+      - [x] Apply signed subscription creation, update and deletion events, including Dashboard-created subscriptions, renewals, plan changes and cancellations, on three SQL engines ([test](../../../adapters/sqlstore/stripe_lifecycle_test.go#L23))
     - [ ] Handle Stripe webhooks securely with signature verification
-      - [x] Reject empty bodies and missing, tampered or expired Stripe signatures before any processing and accept a correctly signed event ([test](../../../plugins/stripe/stripe_test.go#L63))
+      - [x] Reject empty bodies and missing, tampered or expired Stripe signatures before any processing and accept a correctly signed event ([test](../../../plugins/stripe/stripe_test.go#L69))
     - [ ] Expose subscription data to your application
       - [x] List the owner's current plan, price ID, status, billing interval, seats and period dates after a signed renewal through the browser client on both runtimes ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L362))
     - [ ] Support for trial periods and subscription upgrades
@@ -243,11 +247,11 @@
         - [x] `cancelAt` ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L340))
           - [x] List the scheduled cancellation time from Stripe’s signed update and clear it after restoring, on both runtimes ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L340))
         - [ ] `canceledAt`
-          - [x] Record the cancellation time from a signed deletion and keep it when a later update arrives, on three SQL engines ([test](../../../adapters/sqlstore/stripe_lifecycle_test.go#L269))
+          - [x] Record the cancellation time from a signed deletion and keep it when a later update arrives, on three SQL engines ([test](../../../adapters/sqlstore/stripe_lifecycle_test.go#L309))
         - [ ] `endedAt`
-          - [x] Record the end time from a signed deletion and keep it when a later update arrives, on three SQL engines ([test](../../../adapters/sqlstore/stripe_lifecycle_test.go#L269))
-        - [x] `status` ([test](../../../adapters/sqlstore/stripe_lifecycle_test.go#L270))
-          - [x] Keep a pending cancellation active, move the subscription to canceled on Stripe’s deletion event and refuse to reactivate it from a later update, on three SQL engines ([test](../../../adapters/sqlstore/stripe_lifecycle_test.go#L270))
+          - [x] Record the end time from a signed deletion and keep it when a later update arrives, on three SQL engines ([test](../../../adapters/sqlstore/stripe_lifecycle_test.go#L309))
+        - [x] `status` ([test](../../../adapters/sqlstore/stripe_lifecycle_test.go#L310))
+          - [x] Keep a pending cancellation active, move the subscription to canceled on Stripe’s deletion event and refuse to reactivate it from a later update, on three SQL engines ([test](../../../adapters/sqlstore/stripe_lifecycle_test.go#L310))
       - [ ] Restoring a Subscription
         - [x] Clear an end-of-period cancellation through the native client on all three SQL engines ([test](../../../adapters/sqlstore/stripe_management_test.go#L171))
         - [x] Clear an explicit cancellation date and synchronize the resulting provider state ([test](../../../adapters/sqlstore/stripe_management_test.go#L178))
@@ -301,10 +305,10 @@
         - [x] Charge a single yearly item at the organization member count and synchronize that same item after a member joins or leaves ([test](../../../conformance/stripe-organization-fixture.mjs#L184))
         - [x] Send an organization's requested seat count to Stripe as the Checkout quantity after the billing policy admits its owner and refuses an outsider, on both runtimes ([test](../../../conformance/stripe-organization-fixture.mjs#L152))
     - [ ] Webhook Handling
-      - [x] Verify the webhook signature and dispatch a local event to the application callback ([test](../../../plugins/stripe/stripe_test.go#L19))
+      - [x] Verify the webhook signature and dispatch a local event to the application callback ([test](../../../plugins/stripe/stripe_test.go#L21))
       - [x] Reconcile signed checkout completion and expiration and preserve the new attempt after replaying an older event ([test](../../../adapters/sqlstore/subscriptions_test.go#L331))
-      - [x] Synchronize customer-mapped Dashboard subscriptions, trial and payment status, renewal, price and cancellation state on three SQL engines ([test](../../../adapters/sqlstore/stripe_lifecycle_test.go#L21))
-      - [x] Keep the latest provider state when same-second subscription events race across replicas ([test](../../../adapters/sqlstore/stripe_lifecycle_test.go#L232))
+      - [x] Synchronize customer-mapped Dashboard subscriptions, trial and payment status, renewal, price and cancellation state on three SQL engines ([test](../../../adapters/sqlstore/stripe_lifecycle_test.go#L23))
+      - [x] Keep the latest provider state when same-second subscription events race across replicas ([test](../../../adapters/sqlstore/stripe_lifecycle_test.go#L272))
       - [x] Accept an early signed subscription creation for a pending Checkout, reconcile repeated Checkout completions from the retrieved subscription and call the general event callback after each, on both runtimes ([test](../../../conformance/stripe-organization-fixture.mjs#L289))
       - [x] Create a subscription from a signed creation outside Checkout, apply signed updates and its deletion, and call the general event callback after each, on both runtimes ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L508))
       - [ ] `checkout.session.completed`
@@ -315,7 +319,7 @@
         - [x] Apply a signed update's plan, price, interval, seat count, billing period, period-end and dated cancellation and schedule to the local subscription on both runtimes ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L361))
         - [x] Store a signed update's past_due status and drop it from the active list on both runtimes ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L502))
       - [ ] `customer.subscription.deleted`
-        - [x] Mark a signed deletion canceled and keep it canceled after a later update on three SQL engines ([test](../../../adapters/sqlstore/stripe_lifecycle_test.go#L270))
+        - [x] Mark a signed deletion canceled and keep it canceled after a later update on three SQL engines ([test](../../../adapters/sqlstore/stripe_lifecycle_test.go#L310))
     - [ ] Subscription Lifecycle Hooks
       - [x] Run the creation, cancellation, update and deletion hooks for signed subscription events before the general event callback, without repeating creation or cancellation on redelivery, on both runtimes ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L508))
     - [x] Trial Periods ([test](../../../adapters/sqlstore/stripe_trial_callbacks_test.go#L21))
@@ -355,15 +359,15 @@
         - [x] Report a period-end cancellation from a signed update and clear it after restoration through the browser client on both runtimes ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L329))
       - [ ] `stripeSubscriptionTableFields.cancelAt`
       - [ ] `stripeSubscriptionTableFields.canceledAt`
-        - [x] Store the provider's cancellation time after a signed deletion and keep it when a late update arrives on three SQL engines ([test](../../../adapters/sqlstore/stripe_lifecycle_test.go#L269))
+        - [x] Store the provider's cancellation time after a signed deletion and keep it when a late update arrives on three SQL engines ([test](../../../adapters/sqlstore/stripe_lifecycle_test.go#L309))
       - [ ] `stripeSubscriptionTableFields.endedAt`
-        - [x] Keep the end time from a signed deletion when a later update arrives on three SQL engines ([test](../../../adapters/sqlstore/stripe_lifecycle_test.go#L269))
+        - [x] Keep the end time from a signed deletion when a later update arrives on three SQL engines ([test](../../../adapters/sqlstore/stripe_lifecycle_test.go#L309))
       - [ ] `stripeSubscriptionTableFields.seats`
         - [x] List the seat count from a signed quantity change through the browser client on both runtimes ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L262))
       - [ ] `stripeSubscriptionTableFields.trialStart`
         - [x] Record a signed trial and list its start and end fourteen days apart through the public billing client on both runtimes ([test](../../../conformance/stripe-organization-fixture.mjs#L403))
       - [ ] `stripeSubscriptionTableFields.trialEnd`
-        - [x] Store the provider's trial end for a new Dashboard trial and keep it after the subscription becomes active on three SQL engines ([test](../../../adapters/sqlstore/stripe_lifecycle_test.go#L173))
+        - [x] Store the provider's trial end for a new Dashboard trial and keep it after the subscription becomes active on three SQL engines ([test](../../../adapters/sqlstore/stripe_lifecycle_test.go#L186))
       - [ ] `stripeSubscriptionTableFields.billingInterval`
         - [x] List a monthly interval after renewal and a yearly interval after the scheduled annual phase starts, through the browser client on both runtimes ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L392))
       - [ ] `stripeSubscriptionTableFields.stripeScheduleId`
@@ -373,12 +377,13 @@
     - [ ] `stripeClient`
       - [x] Send customer, price, Checkout and subscription requests through the configured Stripe client on three SQL engines ([test](../../../adapters/sqlstore/subscriptions_test.go#L120))
     - [ ] `stripeWebhookSecret`
-      - [x] Accept only deliveries signed with the configured secret and reject missing, altered and stale signatures before any callback runs ([test](../../../plugins/stripe/stripe_test.go#L19))
+      - [x] Accept only deliveries signed with the configured secret and reject missing, altered and stale signatures before any callback runs ([test](../../../plugins/stripe/stripe_test.go#L21))
+      - [x] Refuse subscription billing without a signing secret at startup and answer a delivery with HTTP 500 without one ([test](../../../plugins/stripe/stripe_test.go#L99))
     - [ ] `createCustomerOnSignUp`
     - [ ] `onCustomerCreate`
     - [ ] `getCustomerCreateParams`
     - [ ] `onEvent`
-      - [x] Pass each verified event with its raw object to the event callback, keep invalid deliveries away from it and answer a callback error with STRIPE_WEBHOOK_ERROR ([test](../../../plugins/stripe/stripe_test.go#L19))
+      - [x] Pass each verified event with its raw object to the event callback, keep invalid deliveries away from it and answer a callback error with STRIPE_WEBHOOK_ERROR ([test](../../../plugins/stripe/stripe_test.go#L21))
     - [ ] `subscription`
       - [x] Mount checkout, listing and signed webhook reconciliation for configured subscription plans on three SQL engines ([test](../../../adapters/sqlstore/subscriptions_test.go#L32))
     - [ ] `organization`
