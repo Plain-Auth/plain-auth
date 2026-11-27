@@ -2,6 +2,24 @@
 
 The `plugins/mcp` package protects a Model Context Protocol server with the OAuth provider's access tokens, as another runtime's MCP package does. [Protect your API](oauth-resource-server.md) · [Feature checklist](parity/plugins/mcp.md)
 
+## Protect an MCP route
+
+When the MCP server runs in the same process as the auth instance, `mcp.RequireAuth` protects it with the instance's own tokens, as another runtime's `requireMcpAuth` does:
+
+```go
+handler, err := mcp.RequireAuth(auth, store, mcpServer, mcp.AuthOptions{RequiredScopes: []string{"mcp:read"}})
+mux.Handle("/api/auth/mcp", handler)
+```
+
+- `Resource` defaults to the instance's public URL, base path included, which the provider names as the default resource, so a request without a token is pointed at `/.well-known/oauth-protected-resource/api/auth`. A resource must follow the rules below.
+- `Issuer` defaults to the issuer the instance signs with, where another runtime uses its base URL, so a custom JWT issuer needs no override.
+- Keys are read in process, even with `/jwks` in `DisabledPaths`, or from the jwt plugin's `RemoteJWKSURL`; `JWKSURL` fetches them over HTTP instead.
+- Tokens must carry `azp`, so a session JWT signed with the same keys fails, and `typ` must be `at+jwt`.
+- `DPoP.ReplayStore` defaults to `store` when it can hold proofs, such as the SQL store, so a proof is spent once across every instance on the database; the store is passed because the instance does not expose its own.
+- `OnError` defaults to logging through the instance and answering 500. An instance without a public URL, such as one with a dynamic base URL, is refused here; use `NewProtectedHandler` with explicit options.
+
+The route's claims and step-up work as below. [RequireAuth tests](../plugins/mcp/require_auth_test.go) · [Shared replay test](../adapters/sqlstore/oauth_mcp_test.go)
+
 ## Protect a remote MCP server
 
 When the MCP server runs apart from the authorization server, wrap its HTTP handler with `mcp.NewProtectedHandler`:

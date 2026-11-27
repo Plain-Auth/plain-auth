@@ -49640,5 +49640,82 @@
       "marker": "export async function compareMcpHandler(",
       "complete": true
     }
+  ],
+  "plugin-symbol/mcp/requireMcpAuth": [
+    {
+      "label": "Protect an MCP route with the local instance's tokens, defaulting the resource and issuer, reading keys in process, requiring azp, and applying scopes; the issuer default and construction-time refusal are documented deviations",
+      "test": "plugins/mcp/require_auth_test.go",
+      "marker": "func TestRequireAuth(",
+      "complete": true
+    },
+    {
+      "label": "Spend a DPoP proof once across two instances on one database through the default replay store, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_mcp_test.go",
+      "marker": "func TestRequireAuthSharedReplay("
+    }
+  ],
+  "plugin-symbol/mcp/RequireMcpAuthOptions": [
+    {
+      "label": "Configure the guard's resource, issuer, JWKS URL, scopes and DPoP, each optional",
+      "test": "plugins/mcp/require_auth_test.go",
+      "marker": "func TestRequireAuth(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/mcp/RequireMcpAuthOptions/resource": [
+    {
+      "label": "Default the resource to the public URL with its base path, accept an explicit one and refuse a URN or query",
+      "test": "plugins/mcp/require_auth_test.go",
+      "marker": "func TestRequireAuth(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/mcp/RequireMcpAuthOptions/issuer": [
+    {
+      "label": "Default the issuer to the one the instance signs with, a custom JWT issuer included",
+      "test": "plugins/mcp/require_auth_test.go",
+      "marker": "func TestRequireAuth(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/mcp/RequireMcpAuthOptions/jwksUrl": [
+    {
+      "label": "Fetch keys from an explicit JWKS URL instead of reading them in process",
+      "test": "plugins/mcp/require_auth_test.go",
+      "marker": "t.Fatal(\"an explicit JWKS URL was not fetched\", w.Code, hits.Load())",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/mcp/RequireMcpAuthOptions/challengeScopes": [
+    {
+      "label": "Advertise challenge scopes, defaulting to the required ones",
+      "test": "plugins/mcp/require_auth_test.go",
+      "marker": "t.Fatal(\"the challenge hint was not used\", w.Header())",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/mcp/RequireMcpAuthOptions/requiredScopes": [
+    {
+      "label": "Answer a token missing a required scope with 403",
+      "test": "plugins/mcp/require_auth_test.go",
+      "marker": "t.Fatal(\"a missing required scope was accepted\", w.Code)",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/mcp/RequireMcpAuthOptions/dpop": [
+    {
+      "label": "Default the DPoP replay store to the instance's database, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_mcp_test.go",
+      "marker": "func TestRequireAuthSharedReplay(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/mcp.mdx#L179": [
+    {
+      "label": "Protect an MCP route in the same process with the instance's own tokens",
+      "test": "plugins/mcp/require_auth_test.go",
+      "marker": "func TestRequireAuth(",
+      "complete": true
+    }
   ]
 }

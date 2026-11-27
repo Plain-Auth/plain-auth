@@ -103,14 +103,23 @@
     - [ ] `dpop`
   - [ ] `mcp`
   - [ ] `RequireMcpAuthOptions`
-    - [ ] `resource`
-    - [ ] `issuer`
-    - [ ] `jwksUrl`
-    - [ ] `challengeScopes`
-    - [ ] `requiredScopes`
+    - [x] Configure the guard's resource, issuer, JWKS URL, scopes and DPoP, each optional ([test](../../../plugins/mcp/require_auth_test.go#L63))
+    - [x] `resource` ([test](../../../plugins/mcp/require_auth_test.go#L63))
+      - [x] Default the resource to the public URL with its base path, accept an explicit one and refuse a URN or query ([test](../../../plugins/mcp/require_auth_test.go#L63))
+    - [x] `issuer` ([test](../../../plugins/mcp/require_auth_test.go#L63))
+      - [x] Default the issuer to the one the instance signs with, a custom JWT issuer included ([test](../../../plugins/mcp/require_auth_test.go#L63))
+    - [x] `jwksUrl` ([test](../../../plugins/mcp/require_auth_test.go#L135))
+      - [x] Fetch keys from an explicit JWKS URL instead of reading them in process ([test](../../../plugins/mcp/require_auth_test.go#L135))
+    - [x] `challengeScopes` ([test](../../../plugins/mcp/require_auth_test.go#L107))
+      - [x] Advertise challenge scopes, defaulting to the required ones ([test](../../../plugins/mcp/require_auth_test.go#L107))
+    - [x] `requiredScopes` ([test](../../../plugins/mcp/require_auth_test.go#L101))
+      - [x] Answer a token missing a required scope with 403 ([test](../../../plugins/mcp/require_auth_test.go#L101))
     - [ ] `isScopeSatisfied`
-    - [ ] `dpop`
-  - [ ] `requireMcpAuth`
+    - [x] `dpop` ([test](../../../adapters/sqlstore/oauth_mcp_test.go#L22))
+      - [x] Default the DPoP replay store to the instance's database, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_mcp_test.go#L22))
+  - [x] `requireMcpAuth` ([test](../../../plugins/mcp/require_auth_test.go#L63))
+    - [x] Protect an MCP route with the local instance's tokens, defaulting the resource and issuer, reading keys in process, requiring azp, and applying scopes; the issuer default and construction-time refusal are documented deviations ([test](../../../plugins/mcp/require_auth_test.go#L63))
+    - [x] Spend a DPoP proof once across two instances on one database through the default replay store, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_mcp_test.go#L22))
 
 ## MCP
 
@@ -126,7 +135,8 @@
     - [ ] Add device authorization for your own CLI
     - [ ] Protected Resource Metadata
     - [ ] Optional DCR fallback
-    - [ ] Protecting an MCP Route
+    - [x] Protecting an MCP Route ([test](../../../plugins/mcp/require_auth_test.go#L63))
+      - [x] Protect an MCP route in the same process with the instance's own tokens ([test](../../../plugins/mcp/require_auth_test.go#L63))
   - [ ] Configuration
     - [ ] `mcpPluginOptionsType.loginPage`
     - [ ] `mcpPluginOptionsType.consentPage`
