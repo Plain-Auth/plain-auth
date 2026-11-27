@@ -84,6 +84,7 @@ func registrationFixtureOptions() op.Options {
 	if mode == "" || mode == "disabled" {
 		return opts
 	}
+	opts.Authorization.AllowPublicClientPrelogin = true
 	opts.ImmutableClientIDs = []string{"operator-managed"}
 	opts.ClientPrivileges = func(_ context.Context, a op.ClientAccess) (bool, error) { return a.Headers.Get("X-Deny") == "", nil }
 	opts.PairwiseSecret = strings.Repeat("p", 32)

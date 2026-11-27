@@ -78,7 +78,10 @@ func (opts Options) exchangeRefreshGrant(c auth.EndpointContext, in tokenRequest
 		if err != nil {
 			return DelegatedAccessRecord{}, err
 		}
-		ttl := opts.Tokens.scopeLifetime(opts.Tokens.AccessLifetime, scopes)
+		ttl, err := opts.Tokens.scopeLifetime(opts.Tokens.AccessLifetime, scopes, now)
+		if err != nil {
+			return DelegatedAccessRecord{}, err
+		}
 		result.MachineToken = machineResponse("", "", scopes, now, ttl)
 		record := DelegatedAccessRecord{MachineTokenRecord: MachineTokenRecord{Scopes: scopes, IssuedAt: now, ExpiresAt: now.Add(ttl)}}
 		if slices.Contains(scopes, "openid") {

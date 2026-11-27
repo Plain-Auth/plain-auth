@@ -241,6 +241,44 @@ func (opts Options) ownsClient(ctx context.Context, access RegistrationAccess, c
 	return active == ref, err
 }
 
+// publicClientPrelogin serves a client's public fields to a login page
+// before any session exists, for a signed query naming that client, as
+// another runtime's prelogin route does. As there, a present signed query
+// is verified first, then the body's types, then the option, then the
+// query's client.
+func (opts Options) publicClientPrelogin(c auth.EndpointContext) (any, error) {
+	c.ResponseHeader.Set("Cache-Control", "no-store")
+	c.ResponseHeader.Set("Pragma", "no-cache")
+	if err := checkBodyQuery(c); err != nil {
+		return nil, err
+	}
+	if err := checkBodyTypes(c.Body, bodyField{"client_id", "string", true}, bodyField{"oauth_query", "string", false}); err != nil {
+		return nil, err
+	}
+	if !opts.Authorization.AllowPublicClientPrelogin {
+		return nil, auth.StatusOnlyError(http.StatusBadRequest)
+	}
+	raw, _ := c.Body["oauth_query"].(string)
+	q, err := c.Auth.VerifyOAuthQuery(raw)
+	if err != nil {
+		return nil, &auth.OAuthError{Status: 401, Code: "invalid_signature", Description: "invalid or expired oauth query"}
+	}
+	id := c.Body["client_id"].(string)
+	if q.Get("client_id") != id {
+		return nil, &auth.OAuthError{Status: 401, Code: "invalid_client", Description: "client_id does not match the signed oauth_query"}
+	}
+	store, ok := c.Store().(ClientDirectoryStore)
+	if !ok {
+		return nil, &auth.APIError{Status: 501, Code: "OAUTH_CLIENT_DIRECTORY_UNAVAILABLE", Message: "The configured store does not support OAuth client lookup"}
+	}
+	client, err := store.PublicOAuthClient(c.Request.Context(), id)
+	if errors.Is(err, ErrClientNotFound) {
+		return nil, &auth.OAuthError{Status: 404, Code: "not_found", Description: "client not found"}
+	}
+	client.RedirectURIs = []string{}
+	return client, err
+}
+
 func (opts Options) clientEndpoint(action string) auth.Endpoint {
 	return auth.Endpoint{Method: http.MethodGet, Path: "/oauth2/" + action, Handler: func(c auth.EndpointContext) (any, error) {
 		ctx := c.Request.Context()

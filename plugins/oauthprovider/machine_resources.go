@@ -43,7 +43,11 @@ type machineResourcePolicy struct {
 }
 
 func (opts TokenOptions) machineResourcePolicy(client MachineClient, scopes, identifiers []string, rows map[string]MachineResource) (machineResourcePolicy, error) {
-	p := machineResourcePolicy{scopes: scopes, lifetime: opts.machineLifetime(scopes), bound: client.RequireDPoP}
+	lifetime, err := opts.machineLifetime(scopes, time.Now())
+	if err != nil {
+		return machineResourcePolicy{}, err
+	}
+	p := machineResourcePolicy{scopes: scopes, lifetime: lifetime, bound: client.RequireDPoP}
 	var unlinked []string
 	for _, id := range identifiers {
 		row, ok := rows[id]

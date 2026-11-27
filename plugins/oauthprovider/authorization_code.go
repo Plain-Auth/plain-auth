@@ -232,7 +232,10 @@ func (opts Options) redeemAuthorizationCode(c auth.EndpointContext, in tokenRequ
 		if err != nil {
 			return DelegatedAccessRecord{}, registrationProblem(400, "invalid_grant", "malformed authorization claims")
 		}
-		lifetime := opts.Tokens.scopeLifetime(opts.Tokens.AccessLifetime, scopes)
+		lifetime, err := opts.Tokens.scopeLifetime(opts.Tokens.AccessLifetime, scopes, now)
+		if err != nil {
+			return DelegatedAccessRecord{}, err
+		}
 		result.MachineToken = machineResponse(issued, "", scopes, now, lifetime)
 		record := DelegatedAccessRecord{
 			MachineTokenRecord: MachineTokenRecord{StoredToken: stored, Scopes: scopes, IssuedAt: now, ExpiresAt: now.Add(lifetime)},

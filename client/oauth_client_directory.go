@@ -30,6 +30,14 @@ func (c *Client) PublicOAuthClient(ctx context.Context, id string) (oauthprovide
 	return result, err
 }
 
+// PublicOAuthClientPrelogin reads a client's public fields without a session,
+// for the signed query of the login or consent page naming that client.
+func (c *Client) PublicOAuthClientPrelogin(ctx context.Context, id, signedQuery string) (oauthprovider.PublicClient, error) {
+	var result oauthprovider.PublicClient
+	err := c.Do(ctx, http.MethodPost, "/oauth2/public-client-prelogin", map[string]string{"client_id": id, "oauth_query": signedQuery}, &result)
+	return result, err
+}
+
 // RotateOAuthClientSecret replaces a shared credential and returns its new value once.
 func (c *Client) RotateOAuthClientSecret(ctx context.Context, id string) (oauthprovider.RotatedClient, error) {
 	var result oauthprovider.RotatedClient

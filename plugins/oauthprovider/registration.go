@@ -112,6 +112,11 @@ type RegistrationOptions struct {
 	// RateLimit applies to registration and defaults to 5 per minute. An
 	// empty rule uses the host's global limit.
 	RateLimit *auth.RateLimitRule
+	// SecretLifetime sets client_secret_expires_at in a registration response
+	// that issues a secret, counted from client_id_issued_at in whole
+	// seconds. Zero reports a secret that never expires. The value is
+	// informational: it is not stored and the secret keeps authenticating.
+	SecretLifetime time.Duration
 }
 
 type Options struct {
@@ -219,6 +224,9 @@ func New(opts Options) (auth.Plugin, error) {
 		v := *r.RequirePKCE
 		r.RequirePKCE = &v
 	}
+	if r.SecretLifetime < 0 || r.SecretLifetime%time.Second != 0 {
+		return auth.Plugin{}, errors.New("oauthprovider: registration secret lifetime must be zero or a positive whole number of seconds")
+	}
 	if r.GenerateClientID == nil {
 		r.GenerateClientID = randomClientCredential
 	}
@@ -264,6 +272,7 @@ func New(opts Options) (auth.Plugin, error) {
 	for _, action := range []string{"get-client", "get-clients", "public-client"} {
 		p.Endpoints = append(p.Endpoints, opts.clientEndpoint(action))
 	}
+	p.Endpoints = append(p.Endpoints, auth.Endpoint{Method: http.MethodPost, Path: "/oauth2/public-client-prelogin", Handler: opts.publicClientPrelogin})
 	p.Endpoints = append(p.Endpoints, auth.Endpoint{Method: http.MethodPost, Path: "/oauth2/client/rotate-secret", Handler: opts.rotateClientSecret})
 	p.Endpoints = append(p.Endpoints, auth.Endpoint{Method: http.MethodPost, Path: keyRotationPath, Handler: opts.rotateClientKeys,
 		RateLimit: tokenRouteLimit(opts.Assertions.KeyRotationRateLimit, 5), OpenAPI: json.RawMessage(keyRotationOperation)})
@@ -381,7 +390,14 @@ func (opts Options) register(c auth.EndpointContext) (any, error) {
 		if err != nil {
 			return nil, err
 		}
-		result.SecretExpiresAt = new(int64)
+		// Another runtime also accepts a fixed instant; a duration from
+		// registration is enough here, as one instant would expire every
+		// later registration at once.
+		expires := int64(0)
+		if r.SecretLifetime > 0 {
+			expires = result.IssuedAt + int64(r.SecretLifetime/time.Second)
+		}
+		result.SecretExpiresAt = &expires
 	}
 	if err = c.Store().(RegistrationStore).CreateRegisteredClient(ctx, row); err != nil {
 		return nil, err

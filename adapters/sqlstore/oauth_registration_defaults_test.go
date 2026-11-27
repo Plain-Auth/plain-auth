@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	auth "github.com/Plain-Org/plain-auth"
 	"github.com/Plain-Org/plain-auth/client"
@@ -68,6 +69,13 @@ func TestDefaultOAuthRegistration(t *testing.T) {
 			if !letters.MatchString(app.ClientID) || !letters.MatchString(app.ClientSecret) || app.Scope != "openid reports" || !slices.Equal(scopes, []string{"openid", "reports"}) {
 				t.Fatal("a default registration did not take the issuer's scopes and 32-letter credentials", app.ClientID, app.Scope, scopes)
 			}
+			if app.SecretExpiresAt == nil || *app.SecretExpiresAt != 0 {
+				t.Fatal("a default secret did not report that it never expires", app.SecretExpiresAt)
+			}
+			public, err := owner.RegisterOAuthClient(ctx, op.RegistrationMetadata{RedirectURIs: m.RedirectURIs, TokenEndpointAuthMethod: "none"})
+			if err != nil || public.ClientSecret != "" || public.SecretExpiresAt != nil {
+				t.Fatal("a public registration reported a secret expiry", public.SecretExpiresAt, err)
+			}
 			bearer, err := sdk(plain).WithBearerToken("anyone")
 			must(err)
 			ownerless, err := bearer.RegisterOAuthClient(ctx, m)
@@ -85,13 +93,18 @@ func TestDefaultOAuthRegistration(t *testing.T) {
 				t.Fatal("an initial access token's reference was not attached to the client alone", tenant.UserID, tenant.ReferenceID, storedUser, storedReference)
 			}
 			generated := host(op.RegistrationOptions{Enabled: true, GenerateClientID: func() (string, error) { return "configured-client-id", nil },
-				GenerateClientSecret: func() (string, error) { return "rotated-by-generator", nil }})
+				GenerateClientSecret: func() (string, error) { return "rotated-by-generator", nil }, SecretLifetime: 30 * 24 * time.Hour})
 			rotator := sdk(generated)
 			_, err = rotator.SignInEmail(ctx, client.SignInRequest{Email: "owner@defaults.test", Password: "safe local test password"})
 			must(err)
 			configured, err := rotator.RegisterOAuthClient(ctx, m)
 			if err != nil || configured.ClientID != "configured-client-id" || configured.ClientSecret != "rotated-by-generator" {
 				t.Fatal("registration did not use the configured ID and secret generators", configured.ClientID, configured.ClientSecret, err)
+			}
+			// The configured secret lifetime is reported from the issue time;
+			// it is informational, so the stored client keeps no expiry.
+			if configured.SecretExpiresAt == nil || *configured.SecretExpiresAt != configured.IssuedAt+30*24*3600 {
+				t.Fatal("the configured secret lifetime was not reported", configured.IssuedAt, configured.SecretExpiresAt)
 			}
 			rotated, err := rotator.RotateOAuthClientSecret(ctx, app.ClientID)
 			if err != nil || rotated.ClientSecret != "rotated-by-generator" {

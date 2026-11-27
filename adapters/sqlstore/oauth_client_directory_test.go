@@ -1,14 +1,17 @@
 package sqlstore
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	auth "github.com/Plain-Org/plain-auth"
 	"github.com/Plain-Org/plain-auth/client"
@@ -46,6 +49,7 @@ func TestOAuthClientDirectory(t *testing.T) {
 			const origin = "https://directory.example.test"
 			var rejectReference bool
 			p, err := op.New(op.Options{Registration: op.RegistrationOptions{Enabled: true},
+				Authorization: op.BrowserAuthorizationOptions{AllowPublicClientPrelogin: true},
 				ClientReference: func(_ context.Context, a op.RegistrationAccess) (string, error) {
 					if rejectReference {
 						return "", errors.New("tenant lookup failed")
@@ -111,6 +115,56 @@ func TestOAuthClientDirectory(t *testing.T) {
 			if show.ClientID != owned.ClientID || show.RedirectURIs == nil || len(show.RedirectURIs) != 0 || !slices.Equal(show.Contacts, m.Contacts) {
 				t.Fatal("public projection exposed a redirect or lost contacts")
 			}
+			// A login page reads the same public fields without a session,
+			// for a signed query naming the client.
+			sign := func(id string, expires time.Time) string {
+				return h.SignOAuthQuery(url.Values{"client_id": {id}}, expires)
+			}
+			signed := sign(owned.ClientID, time.Now().Add(time.Minute))
+			guest, err := client.New(origin, &http.Client{Transport: guestTransport{h}})
+			must(err)
+			before, err := guest.PublicOAuthClientPrelogin(ctx, owned.ClientID, signed)
+			if err != nil || before.ClientID != owned.ClientID || before.RedirectURIs == nil || len(before.RedirectURIs) != 0 || !slices.Equal(before.Contacts, m.Contacts) {
+				t.Fatal("a login page could not read the public client fields", before, err)
+			}
+			prelogin := func(host *auth.Auth, body map[string]any) *httptest.ResponseRecorder {
+				t.Helper()
+				raw, err := json.Marshal(body)
+				must(err)
+				r := httptest.NewRequest("POST", origin+"/api/auth/oauth2/public-client-prelogin", bytes.NewReader(raw))
+				r.Header.Set("Content-Type", "application/json")
+				r.Header.Set("Origin", origin)
+				w := httptest.NewRecorder()
+				host.ServeHTTP(w, r)
+				return w
+			}
+			if w := prelogin(h, map[string]any{"client_id": owned.ClientID, "oauth_query": signed}); w.Code != 200 || w.Header().Get("Set-Cookie") != "" || w.Header().Get("Cache-Control") != "no-store" {
+				t.Fatal("a prelogin read set a cookie or allowed caching", w.Code, w.Header())
+			}
+			// As in another runtime, a present signed query is verified first,
+			// then the body's types, then the option, then the query's client.
+			closedPlugin, err := op.New(op.Options{Registration: op.RegistrationOptions{Enabled: true}})
+			must(err)
+			closed, err := auth.New(auth.Options{Store: store, Secret: strings.Repeat("s", 40), BaseURL: origin, RateLimit: &off, Plugins: []auth.Plugin{closedPlugin}})
+			must(err)
+			for _, tc := range []struct {
+				host   *auth.Auth
+				body   map[string]any
+				status int
+				want   string
+			}{
+				{h, map[string]any{"client_id": owned.ClientID, "oauth_query": signed + "&scope=altered"}, 400, `"error":"invalid_signature"`},
+				{h, map[string]any{"client_id": owned.ClientID, "oauth_query": sign(owned.ClientID, time.Now().Add(-time.Minute))}, 400, `"error":"invalid_signature"`},
+				{h, map[string]any{"client_id": 5, "oauth_query": signed}, 400, `"message":"[body.client_id] Invalid input: expected string, received number"`},
+				{closed, map[string]any{"client_id": owned.ClientID, "oauth_query": signed}, 400, ""},
+				{h, map[string]any{"client_id": owned.ClientID}, 401, `"error":"invalid_signature"`},
+				{h, map[string]any{"client_id": owned.ClientID, "oauth_query": sign(shared.ClientID, time.Now().Add(time.Minute))}, 401, `"error":"invalid_client","error_description":"client_id does not match the signed oauth_query"`},
+			} {
+				w := prelogin(tc.host, tc.body)
+				if w.Code != tc.status || !strings.Contains(w.Body.String(), tc.want) || tc.want == "" && w.Body.Len() != 0 {
+					t.Fatal("a prelogin read was not refused in another runtime's order", tc.body, w.Code, w.Body.String())
+				}
+			}
 			getIDs := func(c *client.Client) []string {
 				t.Helper()
 				entries, err := c.OAuthClients(ctx)
@@ -149,6 +203,9 @@ func TestOAuthClientDirectory(t *testing.T) {
 			exec(`UPDATE "oauthClient" SET "disabled"=? WHERE "clientId"=?`, true, shared.ClientID)
 			_, err = other.PublicOAuthClient(ctx, shared.ClientID)
 			wantError(err, 404, "not_found")
+			if w := prelogin(h, map[string]any{"client_id": shared.ClientID, "oauth_query": sign(shared.ClientID, time.Now().Add(time.Minute))}); w.Code != 404 || !strings.Contains(w.Body.String(), `"error":"not_found"`) {
+				t.Fatal("a prelogin read exposed a disabled client", w.Code, w.Body.String())
+			}
 			hidden, err := variant.OAuthClient(ctx, shared.ClientID)
 			must(err)
 			if hidden.Disabled == nil || !*hidden.Disabled {

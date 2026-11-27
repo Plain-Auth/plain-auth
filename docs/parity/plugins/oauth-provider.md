@@ -10,11 +10,11 @@
     - [x] Publish the issuer serialized as a WHATWG URL without its query, fragment and one trailing slash, and accept both the published and the configured spelling in the token issuer check ([test](../../../oauth_issuer_test.go#L22))
     - [x] Publish discovery for an issuer with a query and trailing slash at its normalized paths ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L115))
     - [x] Sign machine access tokens with the published issuer when the configured issuer has a trailing slash, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_machine_resources_test.go#L127))
-  - [x] `PublicClientJwksValidationResult` ([test](../../../plugins/oauthprovider/registration_test.go#L157))
-    - [x] Return a validation error for unsupported algorithms and private key members ([test](../../../plugins/oauthprovider/registration_test.go#L101))
-    - [x] Refuse each invalid public key set with invalid_client_metadata and the description naming its reason ([test](../../../plugins/oauthprovider/registration_test.go#L157))
-  - [x] `validatePublicClientJwks` ([test](../../../plugins/oauthprovider/registration_test.go#L101))
-    - [x] Validate public RSA, EC and Ed25519 keys and compatible signing algorithms and reject private key material ([test](../../../plugins/oauthprovider/registration_test.go#L101))
+  - [x] `PublicClientJwksValidationResult` ([test](../../../plugins/oauthprovider/registration_test.go#L171))
+    - [x] Return a validation error for unsupported algorithms and private key members ([test](../../../plugins/oauthprovider/registration_test.go#L115))
+    - [x] Refuse each invalid public key set with invalid_client_metadata and the description naming its reason ([test](../../../plugins/oauthprovider/registration_test.go#L171))
+  - [x] `validatePublicClientJwks` ([test](../../../plugins/oauthprovider/registration_test.go#L115))
+    - [x] Validate public RSA, EC and Ed25519 keys and compatible signing algorithms and reject private key material ([test](../../../plugins/oauthprovider/registration_test.go#L115))
   - [ ] `isForbiddenCimdClientMetadataField`
   - [ ] `oauthProviderResourceClient`
     - [x] Derive protected-resource discovery from a local auth mount and issuer or from standalone configuration ([test](../../../conformance/resource-discovery.mjs#L7))
@@ -40,7 +40,9 @@
     - [x] Serve the OpenID document as JSON with the default cache rule, or with the configured headers ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L284))
   - [ ] `oidcServerMetadata`
     - [x] Start from a custom issuer URL, discover the endpoints, complete PKCE sign-in and verify the ID token, access-token hash and UserInfo subject using an independent Go client ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L23))
-  - [ ] `publicSessionMiddleware`
+  - [x] `publicSessionMiddleware` ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L165))
+    - [x] Serve a client's public fields without a session for a signed query naming it, verify a present query first, refuse without the option, without a query or for another client, hide a disabled client and never cache or set a cookie, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L165))
+    - [x] Read the client's public fields from the login page's signed query and refuse another client, an altered query and a missing one, on both runtimes ([test](../../../conformance/oauth-browser-login.mjs#L52))
   - [ ] `OAuthEndpointErrorResult`
   - [ ] `OAuthEndpointRedirectContext`
   - [ ] `OAuthErrorCode`
@@ -76,11 +78,11 @@
     - [x] An accepted consent runs the code's verification create hooks; a declined code still records the consent and spends the prompt ([test](../../../adapters/sqlstore/oauth_code_hooks_test.go#L290))
     - [x] Verify a present signed query, then the decision's body types with every mismatch listed, then the browser session, leaving the prompt usable, on both runtimes ([test](../../../conformance/oauth-browser-authorization.mjs#L76))
   - [ ] `POST /oauth2/continue`
-    - [x] Use the signed signup page query and the new browser session to complete the account-creation step ([test](../../../conformance/oauth-browser-login.mjs#L91))
+    - [x] Use the signed signup page query and the new browser session to complete the account-creation step ([test](../../../conformance/oauth-browser-login.mjs#L107))
     - [x] Resume the signed chooser with the selected browser account and preserve forced consent without repeating selection ([test](../../../conformance/oauth-account-selection.mjs#L44))
     - [x] Re-evaluate the account on a signed created continuation and exchange its code only after the host records completion ([test](../../../conformance/oauth-signup-policy.mjs#L79))
     - [x] Resume after the user activates a membership and distinguish an explicit continuation from a cookie reissued by an organization switch ([test](../../../conformance/oauth-post-login.mjs#L99))
-    - [x] Refuse a continuation without a true step flag with Missing parameters before its query, on both runtimes ([test](../../../conformance/oauth-browser-login.mjs#L88))
+    - [x] Refuse a continuation without a true step flag with Missing parameters before its query, on both runtimes ([test](../../../conformance/oauth-browser-login.mjs#L104))
     - [x] Pick the first true flag in the order selected, created and postLogin, accept only a query signed for that step's page, and resume a created step from the login page without prompt=create, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_browser_login_test.go#L157))
   - [ ] `POST /oauth2/token`
     - [x] Issue opaque bearer tokens with Basic or form authentication and verify their scope, expiry, introspection and revocation at an independent server ([test](../../../conformance/oauth-machine-tokens.mjs#L64))
@@ -119,14 +121,14 @@
     - [x] Revoke refresh tokens transactionally and isolate a replayed family by client and user during simultaneous requests on three SQL engines ([test](../../../adapters/sqlstore/oauth_revocation_test.go#L153))
     - [x] Recognize independently signed live access tokens and check every resource audience before reporting unsupported token type ([test](../../../conformance/oauth-revocation.mjs#L94))
     - [x] Authenticate issuance, introspection and revocation with independently signed assertions and reject replay across issuers ([test](../../../conformance/oauth-client-assertions.mjs#L5))
-    - [x] Limit revocation to 30 requests a minute by default and take a configured rule ([test](../../../plugins/oauthprovider/machine_token_test.go#L191))
+    - [x] Limit revocation to 30 requests a minute by default and take a configured rule ([test](../../../plugins/oauthprovider/machine_token_test.go#L192))
   - [x] `GET / POST /oauth2/userinfo` ([test](../../../conformance/oauth-userinfo.mjs#L40))
     - [x] Read scoped profile claims over GET and form POST and match the subject of an independently issued ID token for signed and opaque grants ([test](../../../conformance/oauth-userinfo.mjs#L40))
     - [x] Apply standard, extension and operator claim precedence, preserve the pairwise subject and propagate hook failures on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_userinfo_test.go#L21))
   - [ ] `GET / POST /oauth2/end-session`
   - [ ] `POST /oauth2/end-session/confirm`
   - [ ] `POST /oauth2/register`
-    - [x] Register public and confidential clients and exchange both a shared secret and an ES256 assertion at an independent issuer ([test](../../../conformance/oauth-registration.mjs#L446))
+    - [x] Register public and confidential clients and exchange both a shared secret and an ES256 assertion at an independent issuer ([test](../../../conformance/oauth-registration.mjs#L447))
     - [x] Commit the client and its resource links atomically across concurrent registrations on three SQL engines ([test](../../../adapters/sqlstore/oauth_registration_test.go#L23))
   - [x] `DEFAULT_OAUTH_SCOPES` ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L234))
     - [x] Advertise openid, profile, email and offline_access when no scopes are configured ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L234))
@@ -134,24 +136,26 @@
   - [ ] `oauthProvider`
   - [ ] `POST /admin/oauth2/create-client` (server API only)
   - [ ] `POST /oauth2/create-client`
-  - [x] `GET /oauth2/get-client` ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L170))
+  - [x] `GET /oauth2/get-client` ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L227))
     - [x] Read locally registered owner metadata and omit internal fields and the shared secret ([test](../../../conformance/oauth-client-directory.mjs#L117))
-    - [x] Enforce account-owner sessions, exact tenant IDs and current ownership on three SQL engines ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L20))
-    - [x] Refuse every user a client without an owner with 401, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L170))
+    - [x] Enforce account-owner sessions, exact tenant IDs and current ownership on three SQL engines ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L23))
+    - [x] Refuse every user a client without an owner with 401, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L227))
   - [x] `GET /oauth2/public-client` ([test](../../../conformance/oauth-client-directory.mjs#L154))
     - [x] Expose only display metadata for an enabled local registration to a signed-in user ([test](../../../conformance/oauth-client-directory.mjs#L131))
     - [x] Require a session, return only display fields and treat disabled, unknown or discovered registrations as not found ([test](../../../conformance/oauth-client-directory.mjs#L154))
-  - [ ] `POST /oauth2/public-client-prelogin`
+  - [x] `POST /oauth2/public-client-prelogin` ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L165))
+    - [x] Serve a client's public fields without a session for a signed query naming it, verify a present query first, refuse without the option, without a query or for another client, hide a disabled client and never cache or set a cookie, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L165))
+    - [x] Read the client's public fields from the login page's signed query and refuse another client, an altered query and a missing one, on both runtimes ([test](../../../conformance/oauth-browser-login.mjs#L52))
   - [x] `GET /oauth2/get-clients` ([test](../../../conformance/oauth-client-directory.mjs#L129))
     - [x] List personally or tenant-owned registrations with filtered metadata and return an empty list for a new owner ([test](../../../conformance/oauth-client-directory.mjs#L129))
-    - [x] Honor personal ownership on mixed records even when listing a tenant ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L137))
+    - [x] Honor personal ownership on mixed records even when listing a tenant ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L191))
   - [ ] `PATCH /admin/oauth2/update-client` (server API only)
-    - [x] Grant, narrow and revoke machine access from server code and verify the changed scope ceiling at an independent issuer ([test](../../../conformance/oauth-registration.mjs#L411))
+    - [x] Grant, narrow and revoke machine access from server code and verify the changed scope ceiling at an independent issuer ([test](../../../conformance/oauth-registration.mjs#L412))
     - [x] Require separate update and machine-scope privileges and reject user-delegated scopes, public clients and impersonation sessions on three SQL engines ([test](../../../adapters/sqlstore/oauth_client_scopes_test.go#L132))
     - [x] Reject an ownership or authentication-method change during authorization without overwriting the existing grant ([test](../../../adapters/sqlstore/oauth_client_scopes_test.go#L157))
   - [ ] `POST /oauth2/update-client`
   - [x] `POST /oauth2/client/rotate-secret` ([test](../../../adapters/sqlstore/oauth_secret_rotation_test.go#L171))
-    - [x] Replace a shared secret for its owner and immediately authenticate only the replacement at an independent issuer ([test](../../../conformance/oauth-registration.mjs#L490))
+    - [x] Replace a shared secret for its owner and immediately authenticate only the replacement at an independent issuer ([test](../../../conformance/oauth-registration.mjs#L491))
     - [x] Recheck the owner and credential type after host callbacks and roll back when the updated record cannot be returned ([test](../../../adapters/sqlstore/oauth_secret_rotation_test.go#L178))
     - [x] Serialize rotations by two application instances and persist exactly one of the issued credentials ([test](../../../adapters/sqlstore/oauth_secret_rotation_test.go#L223))
     - [x] Refuse to rotate a client without an owner with 401 and keep its secret, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_secret_rotation_test.go#L171))
@@ -162,32 +166,34 @@
     - [x] Delete personally owned or tenant-owned registrations with an empty success response and enforce the session, privilege and immutable-client rules ([test](../../../conformance/oauth-client-directory.mjs#L188))
     - [x] Remove the client’s stored tokens, consents and resource links atomically across three SQL engines and preserve other applications ([test](../../../adapters/sqlstore/oauth_client_deletion_test.go#L88))
     - [x] Recheck current ownership after tenant resolution and serialize deletion across independent database connections ([test](../../../adapters/sqlstore/oauth_client_deletion_test.go#L126))
-    - [x] Stop new token exchanges at an independent issuer after deleting a previously working machine client ([test](../../../conformance/oauth-registration.mjs#L502))
+    - [x] Stop new token exchanges at an independent issuer after deleting a previously working machine client ([test](../../../conformance/oauth-registration.mjs#L503))
     - [x] Refuse to delete a client without an owner with 401 and keep it, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_deletion_test.go#L102))
   - [ ] `adminCreateOAuthClient`
   - [ ] `createOAuthClient`
-  - [x] `getOAuthClient` ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L170))
+  - [x] `getOAuthClient` ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L227))
     - [x] Read locally registered owner metadata and omit internal fields and the shared secret ([test](../../../conformance/oauth-client-directory.mjs#L117))
-    - [x] Refuse every user a client without an owner with 401, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L170))
+    - [x] Refuse every user a client without an owner with 401, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L227))
   - [x] `getOAuthClientPublic` ([test](../../../conformance/oauth-client-directory.mjs#L154))
     - [x] Expose only display metadata for an enabled local registration to a signed-in user ([test](../../../conformance/oauth-client-directory.mjs#L131))
     - [x] Require a session, return only display fields and treat disabled, unknown or discovered registrations as not found ([test](../../../conformance/oauth-client-directory.mjs#L154))
-  - [ ] `getOAuthClientPublicPrelogin`
+  - [x] `getOAuthClientPublicPrelogin` ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L165))
+    - [x] Serve a client's public fields without a session for a signed query naming it, verify a present query first, refuse without the option, without a query or for another client, hide a disabled client and never cache or set a cookie, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L165))
+    - [x] Read the client's public fields from the login page's signed query and refuse another client, an altered query and a missing one, on both runtimes ([test](../../../conformance/oauth-browser-login.mjs#L52))
   - [x] `getOAuthClients` ([test](../../../conformance/oauth-client-directory.mjs#L129))
     - [x] List personally or tenant-owned registrations with filtered metadata and return an empty list for a new owner ([test](../../../conformance/oauth-client-directory.mjs#L129))
   - [ ] `adminUpdateOAuthClient`
-    - [x] Grant, narrow and revoke machine access from server code and verify the changed scope ceiling at an independent issuer ([test](../../../conformance/oauth-registration.mjs#L411))
+    - [x] Grant, narrow and revoke machine access from server code and verify the changed scope ceiling at an independent issuer ([test](../../../conformance/oauth-registration.mjs#L412))
     - [x] Require separate update and machine-scope privileges and reject user-delegated scopes, public clients and impersonation sessions on three SQL engines ([test](../../../adapters/sqlstore/oauth_client_scopes_test.go#L132))
   - [ ] `updateOAuthClient`
   - [x] `rotateClientSecret` ([test](../../../adapters/sqlstore/oauth_secret_rotation_test.go#L171))
-    - [x] Replace a shared secret for its owner and immediately authenticate only the replacement at an independent issuer ([test](../../../conformance/oauth-registration.mjs#L490))
+    - [x] Replace a shared secret for its owner and immediately authenticate only the replacement at an independent issuer ([test](../../../conformance/oauth-registration.mjs#L491))
     - [x] Refuse to rotate a client without an owner with 401 and keep its secret, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_secret_rotation_test.go#L171))
   - [x] `rotateClientKeys` ([test](../../../conformance/oauth-key-rotation.mjs#L5))
     - [x] Rotate without a user session, overlap old and new keys, and confirm their acceptance and retirement at an independent issuer ([test](../../../conformance/oauth-key-rotation.mjs#L5))
     - [x] Serialize competing replacements, roll back the replay identifier on write failure, and allow an unchanged signed retry on three SQL engines ([test](../../../adapters/sqlstore/oauth_key_rotation_test.go#L43))
   - [x] `deleteOAuthClient` ([test](../../../adapters/sqlstore/oauth_client_deletion_test.go#L102))
     - [x] Delete personally owned or tenant-owned registrations with an empty success response and enforce the session, privilege and immutable-client rules ([test](../../../conformance/oauth-client-directory.mjs#L188))
-    - [x] Stop new token exchanges at an independent issuer after deleting a previously working machine client ([test](../../../conformance/oauth-registration.mjs#L502))
+    - [x] Stop new token exchanges at an independent issuer after deleting a previously working machine client ([test](../../../conformance/oauth-registration.mjs#L503))
     - [x] Refuse to delete a client without an owner with 401 and keep it, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_deletion_test.go#L102))
   - [x] `GET /oauth2/get-consent` ([test](../../../conformance/oauth-consent.mjs#L55))
     - [x] Read a single grant through an authenticated session and retain the resource and claim lists ([test](../../../conformance/oauth-consent.mjs#L55))
@@ -249,8 +255,8 @@
   - [ ] `getOAuthProviderApi`
   - [ ] `StoreTokenType`
   - [ ] `Scope`
-  - [x] `OAuthClientRegistrationResponse` ([test](../../../conformance/oauth-registration.mjs#L215))
-    - [x] Name no resources in a registration response for a client without linked resources, on both runtimes ([test](../../../conformance/oauth-registration.mjs#L215))
+  - [x] `OAuthClientRegistrationResponse` ([test](../../../conformance/oauth-registration.mjs#L216))
+    - [x] Name no resources in a registration response for a client without linked resources, on both runtimes ([test](../../../conformance/oauth-registration.mjs#L216))
   - [ ] `OAuthClientAdministrativeResponse`
   - [ ] `Prompt`
   - [ ] `AuthorizePrompt`
@@ -272,9 +278,9 @@
   - [ ] `OAuthClaimExtensionInput`
   - [ ] `OAuthUserInfoExtensionInput`
   - [ ] `OAuthProviderExtension`
-  - [x] `InitialAccessTokenAuthorization` ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L85))
-    - [x] Register a client without an owner when the initial access token's authorization names nobody, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L76))
-    - [x] Register a client without an owner when the initial access token's authorization names nobody, and attach only the named reference otherwise, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L85))
+  - [x] `InitialAccessTokenAuthorization` ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L93))
+    - [x] Register a client without an owner when the initial access token's authorization names nobody, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L84))
+    - [x] Register a client without an owner when the initial access token's authorization names nobody, and attach only the named reference otherwise, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L93))
   - [ ] `OAuthOptions`
     - [ ] `schema`
     - [x] `scopes` ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L234))
@@ -286,7 +292,7 @@
       - [x] Apply host callback policy after validating transport and reject policy errors before redirecting ([test](../../../adapters/sqlstore/oauth_browser_authorization_test.go#L179))
       - [x] Check only the HTTPS policy before the host callback, never call it for a callback with credentials, a fragment or a script scheme, let it accept callbacks the registration rules would refuse, and fail closed on an error, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_redirect_transport_test.go#L126))
     - [ ] `allowInsecureRedirectUri`
-      - [x] Apply the HTTP redirect exception while enforcing native loopback address restrictions ([test](../../../plugins/oauthprovider/registration_test.go#L14))
+      - [x] Apply the HTTP redirect exception while enforcing native loopback address restrictions ([test](../../../plugins/oauthprovider/registration_test.go#L15))
       - [x] Authorize an HTTP web callback on an approved host on its exact registered port, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_redirect_transport_test.go#L104))
     - [ ] `resources`
       - [x] Load string and object declarations and retry unfinished rows after a migration ([test](../../../adapters/sqlstore/oauth_resource_seed_test.go#L209))
@@ -302,7 +308,7 @@
     - [ ] `enforcePerClientResources`
       - [x] Require links to every machine-token audience and recheck concurrent unlink, scope, binding and signing policy changes on three engines ([test](../../../adapters/sqlstore/oauth_machine_resources_test.go#L30))
     - [ ] `clientRegistrationDefaultResources`
-      - [x] Link the configured default resources once per dynamic registration ([test](../../../conformance/oauth-registration.mjs#L144))
+      - [x] Link the configured default resources once per dynamic registration ([test](../../../conformance/oauth-registration.mjs#L145))
     - [ ] `clientRegistrationAllowedResources`
       - [x] Accept explicitly allowed resources and roll back a request for a disallowed, disabled or missing target ([test](../../../adapters/sqlstore/oauth_registration_test.go#L130))
     - [x] `identifierValidator` ([test](../../../adapters/sqlstore/oauth_resource_seed_test.go#L169))
@@ -312,19 +318,19 @@
       - [x] Authorize every registry action before looking up resources or grants ([test](../../../conformance/resource-registry.mjs#L102))
       - [x] Provide the session, caller, action, headers and target to the Go privilege callback ([test](../../../adapters/sqlstore/oauth_resources_test.go#L195))
     - [ ] `cachedTrustedClients`
-      - [x] Keep an operator-managed credential immutable from the owner endpoint ([test](../../../conformance/oauth-registration.mjs#L469))
+      - [x] Keep an operator-managed credential immutable from the owner endpoint ([test](../../../conformance/oauth-registration.mjs#L470))
     - [ ] `accessTokenExpiresIn`
       - [x] Apply the configured delegated lifetime for a successful headless public-client exchange on all SQL engines ([test](../../../adapters/sqlstore/oauth_authorization_code_test.go#L114))
-      - [x] Default the access token lifetime to an hour ([test](../../../plugins/oauthprovider/machine_token_test.go#L111))
+      - [x] Default the access token lifetime to an hour ([test](../../../plugins/oauthprovider/machine_token_test.go#L112))
     - [x] `m2mAccessTokenExpiresIn` ([test](../../../conformance/oauth-resource-machine-tokens.mjs#L89))
       - [x] Apply the machine token lifetime and shortest applicable scope lifetime to the response and persisted expiry ([test](../../../conformance/oauth-machine-tokens.mjs#L68))
-      - [x] Default to a one-hour machine lifetime and 20 token requests per minute ([test](../../../plugins/oauthprovider/machine_token_test.go#L31))
+      - [x] Default to a one-hour machine lifetime and 20 token requests per minute ([test](../../../plugins/oauthprovider/machine_token_test.go#L32))
       - [x] Apply the machine grant lifetime together with scope and resource ceilings for signed and opaque grants ([test](../../../conformance/oauth-resource-machine-tokens.mjs#L89))
     - [x] `idTokenExpiresIn` ([test](../../../conformance/oauth-id-tokens.mjs#L77))
       - [x] Apply the ten-hour default or configured whole-second lifetime to signed ID tokens on code and refresh exchanges ([test](../../../conformance/oauth-id-tokens.mjs#L77))
     - [x] `refreshTokenExpiresIn` ([test](../../../conformance/oauth-authorization-code.mjs#L109))
       - [x] Set the offline refresh lifetime independently of the scope-limited access token and retain the original authentication time ([test](../../../adapters/sqlstore/oauth_offline_code_test.go#L148))
-      - [x] Restart the configured refresh lifetime on rotation and preserve original authentication time, session and authorization code ([test](../../../adapters/sqlstore/oauth_refresh_grant_test.go#L172))
+      - [x] Restart the configured refresh lifetime on rotation and preserve original authentication time, session and authorization code ([test](../../../adapters/sqlstore/oauth_refresh_grant_test.go#L188))
       - [x] Default offline refresh tokens to a thirty-day lifetime in both runtimes ([test](../../../conformance/oauth-authorization-code.mjs#L109))
     - [ ] `refreshTokenReuseInterval`
     - [x] `codeExpiresIn` ([test](../../../conformance/oauth-browser-authorization.mjs#L130))
@@ -332,54 +338,60 @@
       - [x] Expire a pending consent request before approval and accept a fresh prompt on another issuer process ([test](../../../adapters/sqlstore/oauth_browser_consent_test.go#L169))
       - [x] The code's verification record expires with the stored code ([test](../../../adapters/sqlstore/oauth_code_hooks_test.go#L31))
       - [x] Default authorization codes to a ten-minute lifetime in both runtimes ([test](../../../conformance/oauth-browser-authorization.mjs#L130))
-    - [ ] `scopeExpirations`
+    - [x] `scopeExpirations` ([test](../../../plugins/oauthprovider/machine_token_test.go#L216))
       - [x] Apply the machine token lifetime and shortest applicable scope lifetime to the response and persisted expiry ([test](../../../conformance/oauth-machine-tokens.mjs#L68))
       - [x] Apply the shortest lifetime from the original machine scopes and every requested API, including scopes dropped at issuance ([test](../../../conformance/oauth-resource-machine-tokens.mjs#L89))
       - [x] Limit an opaque delegated token to its approved scope's lifetime ([test](../../../conformance/oauth-authorization-code.mjs#L26))
+      - [x] Cap a token at the shortest of its base lifetime, each scope's relative lifetime and the whole seconds left until each scope's instant, and refuse a scope whose instant has passed with invalid_scope, a documented deviation ([test](../../../plugins/oauthprovider/machine_token_test.go#L216))
+      - [x] Apply the shortest scope lifetime to a refreshed access token and refuse a refresh for a scope whose instant has passed without spending the grant, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_refresh_grant_test.go#L172))
     - [x] `assertionMaxLifetime` ([test](../../../plugins/oauthprovider/client_assertion_test.go#L25))
       - [x] Apply the configured lifetime and skew to expiry, not-before and issued-at claims, including exact boundaries ([test](../../../plugins/oauthprovider/client_assertion_test.go#L25))
     - [x] `assertionClockTolerance` ([test](../../../plugins/oauthprovider/client_assertion_test.go#L25))
       - [x] Apply the configured lifetime and skew to expiry, not-before and issued-at claims, including exact boundaries ([test](../../../plugins/oauthprovider/client_assertion_test.go#L25))
     - [x] `allowClientKeyRotation` ([test](../../../plugins/oauthprovider/key_rotation_test.go#L14))
       - [x] Reject rotation by default and require atomic single-use assertion storage at startup when enabled ([test](../../../plugins/oauthprovider/key_rotation_test.go#L14))
-      - [x] Return access_denied when a client requests rotation from an issuer that has kept the default ([test](../../../conformance/oauth-registration.mjs#L104))
-    - [ ] `allowPublicClientPrelogin`
-    - [x] `allowUnauthenticatedClientRegistration` ([test](../../../conformance/oauth-registration.mjs#L171))
-      - [x] Allow open registration while reserving the machine grant for authenticated callers ([test](../../../conformance/oauth-registration.mjs#L171))
-    - [x] `allowDynamicClientRegistration` ([test](../../../conformance/oauth-registration.mjs#L99))
-      - [x] Reject dynamic registrations until the host enables them ([test](../../../conformance/oauth-registration.mjs#L99))
-    - [x] `validateInitialAccessToken` ([test](../../../conformance/oauth-registration.mjs#L166))
-      - [x] Check initial bearer tokens, preserve session precedence and return challenges or callback failures ([test](../../../conformance/oauth-registration.mjs#L166))
+      - [x] Return access_denied when a client requests rotation from an issuer that has kept the default ([test](../../../conformance/oauth-registration.mjs#L105))
+    - [x] `allowPublicClientPrelogin` ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L165))
+      - [x] Serve a client's public fields without a session for a signed query naming it, verify a present query first, refuse without the option, without a query or for another client, hide a disabled client and never cache or set a cookie, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L165))
+      - [x] Read the client's public fields from the login page's signed query and refuse another client, an altered query and a missing one, on both runtimes ([test](../../../conformance/oauth-browser-login.mjs#L52))
+    - [x] `allowUnauthenticatedClientRegistration` ([test](../../../conformance/oauth-registration.mjs#L172))
+      - [x] Allow open registration while reserving the machine grant for authenticated callers ([test](../../../conformance/oauth-registration.mjs#L172))
+    - [x] `allowDynamicClientRegistration` ([test](../../../conformance/oauth-registration.mjs#L100))
+      - [x] Reject dynamic registrations until the host enables them ([test](../../../conformance/oauth-registration.mjs#L100))
+    - [x] `validateInitialAccessToken` ([test](../../../conformance/oauth-registration.mjs#L167))
+      - [x] Check initial bearer tokens, preserve session precedence and return challenges or callback failures ([test](../../../conformance/oauth-registration.mjs#L167))
     - [ ] `extensions`
-    - [x] `clientRegistrationDefaultScopes` ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L69))
-      - [x] Apply the host registration ceiling even when a client requests a narrower subset ([test](../../../conformance/oauth-registration.mjs#L220))
-      - [x] Give a registration without scope options the issuer's scopes, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L69))
+    - [x] `clientRegistrationDefaultScopes` ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L70))
+      - [x] Apply the host registration ceiling even when a client requests a narrower subset ([test](../../../conformance/oauth-registration.mjs#L221))
+      - [x] Give a registration without scope options the issuer's scopes, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L70))
     - [x] `clientRegistrationAllowedScopes` ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L245))
-      - [x] Persist the allowed registration scopes and reject a scope outside that set ([test](../../../conformance/oauth-registration.mjs#L246))
+      - [x] Persist the allowed registration scopes and reject a scope outside that set ([test](../../../conformance/oauth-registration.mjs#L247))
       - [x] Refuse a registration scope outside the configured scopes when the plugin is built ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L245))
-    - [x] `clientRegistrationRequirePKCE` ([test](../../../conformance/oauth-registration.mjs#L260))
-      - [x] Allow a confidential registration to relax PKCE while retaining the public client requirement ([test](../../../conformance/oauth-registration.mjs#L260))
-    - [x] `clientRegistrationDefaultApplicationType` ([test](../../../conformance/oauth-registration.mjs#L257))
-      - [x] Infer native redirects and apply the web default to HTTPS applications ([test](../../../conformance/oauth-registration.mjs#L257))
-    - [ ] `clientRegistrationClientSecretExpiration`
-    - [x] `clientReference` ([test](../../../conformance/oauth-registration.mjs#L212))
+    - [x] `clientRegistrationRequirePKCE` ([test](../../../conformance/oauth-registration.mjs#L261))
+      - [x] Allow a confidential registration to relax PKCE while retaining the public client requirement ([test](../../../conformance/oauth-registration.mjs#L261))
+    - [x] `clientRegistrationDefaultApplicationType` ([test](../../../conformance/oauth-registration.mjs#L258))
+      - [x] Infer native redirects and apply the web default to HTTPS applications ([test](../../../conformance/oauth-registration.mjs#L258))
+    - [x] `clientRegistrationClientSecretExpiration` ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L107))
+      - [x] Report a never-expiring secret by default, the configured lifetime from the issue time when set, and no expiry for a public client, on SQLite, PostgreSQL and MySQL; a fixed instant is a documented deviation ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L107))
+      - [x] Refuse a negative or fractional secret lifetime ([test](../../../plugins/oauthprovider/registration_test.go#L81))
+    - [x] `clientReference` ([test](../../../conformance/oauth-registration.mjs#L213))
       - [x] Record a trusted tenant reference and omit the personal owner when a reference is assigned ([test](../../../adapters/sqlstore/oauth_registration_test.go#L96))
-      - [x] Resolve tenant membership for shared registrations and keep owner lookups independent of tenant callback failures ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L143))
-      - [x] Keep the signed-in account as the owner when no tenant is assigned ([test](../../../conformance/oauth-registration.mjs#L212))
+      - [x] Resolve tenant membership for shared registrations and keep owner lookups independent of tenant callback failures ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L197))
+      - [x] Keep the signed-in account as the owner when no tenant is assigned ([test](../../../conformance/oauth-registration.mjs#L213))
     - [ ] `clientPrivileges`
-      - [x] Check the host create privilege for a signed-in registration ([test](../../../conformance/oauth-registration.mjs#L249))
+      - [x] Check the host create privilege for a signed-in registration ([test](../../../conformance/oauth-registration.mjs#L250))
       - [x] Apply the host privilege hook to authenticated create, read and list actions before checking ownership ([test](../../../conformance/oauth-client-directory.mjs#L98))
-      - [x] Enforce the rotate privilege on the authenticated session before replacing a tenant credential ([test](../../../conformance/oauth-registration.mjs#L466))
+      - [x] Enforce the rotate privilege on the authenticated session before replacing a tenant credential ([test](../../../conformance/oauth-registration.mjs#L467))
     - [x] `grantTypes` ([test](../../../adapters/sqlstore/oauth_grant_refusal_test.go#L84))
-      - [x] Register only the mutually supported requested grant types ([test](../../../conformance/oauth-registration.mjs#L216))
+      - [x] Register only the mutually supported requested grant types ([test](../../../conformance/oauth-registration.mjs#L217))
       - [x] Refuse refresh_token without authorization_code when the plugin is built ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L245))
       - [x] Refuse a grant outside GrantTypes with unsupported_grant_type, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_grant_refusal_test.go#L84))
-    - [x] `loginPage` ([test](../../../conformance/oauth-browser-login.mjs#L69))
-      - [x] Open the configured host page for signed-out and forced login and return an error for silent requests ([test](../../../conformance/oauth-browser-login.mjs#L69))
+    - [x] `loginPage` ([test](../../../conformance/oauth-browser-login.mjs#L85))
+      - [x] Open the configured host page for signed-out and forced login and return an error for silent requests ([test](../../../conformance/oauth-browser-login.mjs#L85))
     - [x] `consentPage` ([test](../../../conformance/oauth-browser-authorization.mjs#L57))
       - [x] Redirect a signed-in user to the configured page for a missing approval or an explicit consent prompt ([test](../../../conformance/oauth-browser-authorization.mjs#L57))
     - [x] `signup` ([test](../../../conformance/oauth-signup-policy.mjs#L53))
-      - [x] Create an account on the configured signup page and continue the signed request into consent ([test](../../../conformance/oauth-browser-login.mjs#L81))
+      - [x] Create an account on the configured signup page and continue the signed request into consent ([test](../../../conformance/oauth-browser-login.mjs#L97))
       - [x] Recheck saved onboarding, choose the default or a custom page, return silent errors and issue a code after completion ([test](../../../conformance/oauth-signup-policy.mjs#L53))
       - [x] Fall back to the login page or a dynamic URL, deny untrusted pages and host errors, and persist a deferred approval only once ([test](../../../adapters/sqlstore/oauth_signup_step_test.go#L17))
     - [x] `selectAccount` ([test](../../../adapters/sqlstore/oauth_account_selection_test.go#L18))
@@ -417,16 +429,16 @@
       - [x] Advertise exactly the configured UserInfo claims ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L237))
       - [x] Advertise exactly the configured scopes and client authentication methods, in order, in both discovery documents, and the configured claims in the OpenID document ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L282))
     - [x] `prefix` ([test](../../../conformance/oauth-authorization-code.mjs#L27))
-      - [x] Return prefixed shared credentials accepted by an independent issuer ([test](../../../conformance/oauth-registration.mjs#L239))
+      - [x] Return prefixed shared credentials accepted by an independent issuer ([test](../../../conformance/oauth-registration.mjs#L240))
       - [x] Generate and hash the raw refresh token, encode it for its session, then apply the public prefix ([test](../../../adapters/sqlstore/oauth_offline_code_test.go#L139))
       - [x] Return prefixed opaque access tokens that introspection accepts while storing only the unprefixed digest ([test](../../../conformance/oauth-authorization-code.mjs#L27))
-    - [x] `generateClientId` ([test](../../../conformance/oauth-registration.mjs#L120))
+    - [x] `generateClientId` ([test](../../../conformance/oauth-registration.mjs#L121))
       - [x] Use the configured ID generator and keep a single complete registration after a collision ([test](../../../adapters/sqlstore/oauth_registration_test.go#L164))
-      - [x] Default to 32-letter client IDs in both runtimes ([test](../../../conformance/oauth-registration.mjs#L120))
-    - [x] `generateClientSecret` ([test](../../../conformance/oauth-registration.mjs#L239))
+      - [x] Default to 32-letter client IDs in both runtimes ([test](../../../conformance/oauth-registration.mjs#L121))
+    - [x] `generateClientSecret` ([test](../../../conformance/oauth-registration.mjs#L240))
       - [x] Issue the generated secret and store its digest on all SQL engines ([test](../../../adapters/sqlstore/oauth_registration_test.go#L96))
       - [x] Reuse the configured generator for rotation and reject an ineffective repeated digest ([test](../../../adapters/sqlstore/oauth_secret_rotation_test.go#L122))
-      - [x] Default to 32-letter client secrets in both runtimes ([test](../../../conformance/oauth-registration.mjs#L239))
+      - [x] Default to 32-letter client secrets in both runtimes ([test](../../../conformance/oauth-registration.mjs#L240))
     - [x] `generateOpaqueAccessToken` ([test](../../../conformance/oauth-machine-tokens.mjs#L55))
       - [x] Use a host token generator, credential verifier and digest function without storing cleartext tokens ([test](../../../adapters/sqlstore/oauth_machine_token_test.go#L121))
       - [x] Default to 32-letter opaque access tokens in both runtimes ([test](../../../conformance/oauth-machine-tokens.mjs#L55))
@@ -435,8 +447,8 @@
       - [x] Default to 32-letter refresh tokens in both runtimes ([test](../../../conformance/oauth-authorization-code.mjs#L82))
     - [ ] `disableJwtPlugin`
       - [x] Issue signed or opaque machine tokens for several registered APIs and verify them with an independent issuer ([test](../../../conformance/oauth-resource-machine-tokens.mjs#L28))
-    - [x] `rateLimit` ([test](../../../plugins/oauthprovider/machine_token_test.go#L207))
-      - [x] Give token 20, authorize 30, introspect 100, revoke 30, register 5, key rotation 5 and userinfo 60 requests a minute by default, replace a default with a configured rule and leave the host's global limit for an empty rule on every route ([test](../../../plugins/oauthprovider/machine_token_test.go#L207))
+    - [x] `rateLimit` ([test](../../../plugins/oauthprovider/machine_token_test.go#L208))
+      - [x] Give token 20, authorize 30, introspect 100, revoke 30, register 5, key rotation 5 and userinfo 60 requests a minute by default, replace a default with a configured rule and leave the host's global limit for an empty rule on every route ([test](../../../plugins/oauthprovider/machine_token_test.go#L208))
     - [ ] `pairwiseSecret`
       - [x] Derive pairwise refresh subjects from the first redirect host with normalized international names, IPv6 literals and non-default ports ([test](../../../plugins/oauthprovider/pairwise_subject_test.go#L10))
       - [x] Keep a stored pairwise account identifier private if the required secret is missing ([test](../../../adapters/sqlstore/oauth_refresh_introspection_test.go#L123))
@@ -461,7 +473,7 @@
   - [ ] `OAuthRefreshToken`
   - [ ] `OAuthConsent`
   - [ ] `OAuthClient`
-    - [x] Represent owner metadata, display data, extension values and optional fields in the Go SDK ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L107))
+    - [x] Represent owner metadata, display data, extension values and optional fields in the Go SDK ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L111))
   - [x] `ResourceServerMetadata` ([test](../../../conformance/resource-discovery.mjs#L28))
     - [x] Compare every resource metadata field, including identity, algorithms, scopes, localized names and boolean overrides ([test](../../../conformance/resource-discovery.mjs#L28))
   - [ ] `AuthMethod`
@@ -479,14 +491,14 @@
   - [ ] `ResourceUriSchema`
     - [x] Validate absolute URI and URN audience identifiers and reject fragments, unsafe schemes and malformed escapes ([test](../../../plugins/oauthprovider/resource_test.go#L11))
   - [ ] `ClientRegistrationRequest`
-    - [x] Apply application metadata while keeping ownership, credentials and privilege fields under server control ([test](../../../conformance/oauth-registration.mjs#L211))
+    - [x] Apply application metadata while keeping ownership, credentials and privilege fields under server control ([test](../../../conformance/oauth-registration.mjs#L212))
   - [ ] `consumeClientAssertion`
   - [x] `verifyOAuthQueryParams` ([test](../../../oauth_signed_query_test.go#L11))
     - [x] Verify browser form signatures, repeated fields, UTF-16 ordering, signature alphabets, rotation and the expiration boundary ([test](../../../oauth_signed_query_test.go#L11))
     - [x] Validate the form in an independently implemented OAuth provider before presenting the user’s choice ([test](../../../conformance/oauth-browser-authorization.mjs#L61))
   - [ ] `getLocalJwksSource`
-  - [x] `parseBearerToken` ([test](../../../conformance/oauth-registration.mjs#L160))
-    - [x] Refuse a Bearer header with extra parts with invalid_request, read a lowercase scheme, and treat another scheme as no initial access token, on both runtimes ([test](../../../conformance/oauth-registration.mjs#L160))
+  - [x] `parseBearerToken` ([test](../../../conformance/oauth-registration.mjs#L161))
+    - [x] Refuse a Bearer header with extra parts with invalid_request, read a lowercase scheme, and treat another scheme as no initial access token, on both runtimes ([test](../../../conformance/oauth-registration.mjs#L161))
   - [ ] `getOAuthProviderPlugin`
   - [ ] `getJwtPlugin`
   - [ ] `getJwksSource`
@@ -504,10 +516,10 @@
   - [ ] `mergeDiscoveryMetadata`
   - [ ] `decryptStoredClientSecret`
   - [ ] `storeClientSecret`
-  - [x] `storeToken` ([test](../../../plugins/oauthprovider/machine_token_test.go#L164))
-    - [x] Store access tokens, refresh tokens and codes as their SHA-256 base64url digest by default, and through each kind's own hash function only ([test](../../../plugins/oauthprovider/machine_token_test.go#L164))
-  - [x] `getStoredToken` ([test](../../../plugins/oauthprovider/machine_token_test.go#L143))
-    - [x] Derive the same digest for lookup as for storage, by default and through each kind's hash function ([test](../../../plugins/oauthprovider/machine_token_test.go#L143))
+  - [x] `storeToken` ([test](../../../plugins/oauthprovider/machine_token_test.go#L165))
+    - [x] Store access tokens, refresh tokens and codes as their SHA-256 base64url digest by default, and through each kind's own hash function only ([test](../../../plugins/oauthprovider/machine_token_test.go#L165))
+  - [x] `getStoredToken` ([test](../../../plugins/oauthprovider/machine_token_test.go#L144))
+    - [x] Derive the same digest for lookup as for storage, by default and through each kind's hash function ([test](../../../plugins/oauthprovider/machine_token_test.go#L144))
   - [ ] `ClientAuthenticationField`
   - [x] `normalizeClientAuthenticationParameters` ([test](../../../conformance/oauth-machine-tokens.mjs#L104))
     - [x] Refuse a secret with an assertion, in the body or with a Basic header, as two client authentication methods, on both runtimes ([test](../../../conformance/oauth-machine-tokens.mjs#L104))
@@ -528,17 +540,17 @@
     - [x] Match an explicit organization or a personal grant among more than 100 references, preferring NULL to the legacy empty string ([test](../../../adapters/sqlstore/oauth_post_login_test.go#L227))
   - [ ] `searchParamsToQuery`
   - [ ] `isSessionFreshForSignedQuery`
-  - [x] `removePromptFromQuery` ([test](../../../conformance/oauth-browser-login.mjs#L57))
-    - [x] Remove a satisfied prompt value and delete the parameter when none remain ([test](../../../conformance/oauth-browser-login.mjs#L57))
-  - [x] `removeMaxAgeFromQuery` ([test](../../../conformance/oauth-browser-login.mjs#L56))
-    - [x] Remove max_age from the continued request after a fresh sign-in ([test](../../../conformance/oauth-browser-login.mjs#L56))
+  - [x] `removePromptFromQuery` ([test](../../../conformance/oauth-browser-login.mjs#L73))
+    - [x] Remove a satisfied prompt value and delete the parameter when none remain ([test](../../../conformance/oauth-browser-login.mjs#L73))
+  - [x] `removeMaxAgeFromQuery` ([test](../../../conformance/oauth-browser-login.mjs#L72))
+    - [x] Remove max_age from the continued request after a fresh sign-in ([test](../../../conformance/oauth-browser-login.mjs#L72))
   - [x] `isPKCERequired` ([test](../../../plugins/oauthprovider/authorization_code_test.go#L15))
     - [x] Resolve public and confidential client PKCE requirements, including offline scopes, OIDC nonces and explicit registration policy ([test](../../../plugins/oauthprovider/authorization_code_test.go#L15))
-  - [x] `isRedirectUriTransportAllowed` ([test](../../../plugins/oauthprovider/registration_test.go#L81))
-    - [x] Accept every scheme but http, http on a loopback host for a client that is not web or when the host approves it, and never http with credentials or an unparsable URL ([test](../../../plugins/oauthprovider/registration_test.go#L81))
+  - [x] `isRedirectUriTransportAllowed` ([test](../../../plugins/oauthprovider/registration_test.go#L95))
+    - [x] Accept every scheme but http, http on a loopback host for a client that is not web or when the host approves it, and never http with credentials or an unparsable URL ([test](../../../plugins/oauthprovider/registration_test.go#L95))
     - [x] Send a callback that fails the HTTPS policy to the error page with invalid_request and the insecure redirect message, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_redirect_transport_test.go#L110))
-  - [x] `isInsecureRedirectUriAllowed` ([test](../../../plugins/oauthprovider/registration_test.go#L74))
-    - [x] Refuse an HTTP callback with credentials even on an approved host, and accept an approved HTTP web callback ([test](../../../plugins/oauthprovider/registration_test.go#L74))
+  - [x] `isInsecureRedirectUriAllowed` ([test](../../../plugins/oauthprovider/registration_test.go#L75))
+    - [x] Refuse an HTTP callback with credentials even on an approved host, and accept an approved HTTP web callback ([test](../../../plugins/oauthprovider/registration_test.go#L75))
   - [ ] `getAuthEndpointUrl`
   - [ ] `isLocalCapacityRefusal`
   - [ ] `isTransientAbort`
@@ -549,8 +561,8 @@
 
 - [ ] Clients and registration
   - [ ] Client types
-    - [x] Public or confidential ([test](../../../conformance/oauth-registration.mjs#L258))
-      - [x] Register a public client without a secret and confidential clients that use a shared secret or a signed assertion ([test](../../../conformance/oauth-registration.mjs#L258))
+    - [x] Public or confidential ([test](../../../conformance/oauth-registration.mjs#L259))
+      - [x] Register a public client without a secret and confidential clients that use a shared secret or a signed assertion ([test](../../../conformance/oauth-registration.mjs#L259))
     - [ ] `application_type`
   - [ ] Manage clients
     - [ ] `POST /oauth2/create-client`
@@ -565,14 +577,16 @@
     - [x] `getOAuthClientPublic` ([test](../../../conformance/oauth-client-directory.mjs#L141))
       - [x] Expose only display metadata for an enabled local registration to a signed-in user ([test](../../../conformance/oauth-client-directory.mjs#L131))
       - [x] Return display fields to any signed-in user, require a session and hide disabled or unknown registrations behind 404 ([test](../../../conformance/oauth-client-directory.mjs#L141))
-    - [ ] `getOAuthClientPublicPrelogin`
+    - [x] `getOAuthClientPublicPrelogin` ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L165))
+      - [x] Serve a client's public fields without a session for a signed query naming it, verify a present query first, refuse without the option, without a query or for another client, hide a disabled client and never cache or set a cookie, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L165))
+      - [x] Read the client's public fields from the login page's signed query and refuse another client, an altered query and a missing one, on both runtimes ([test](../../../conformance/oauth-browser-login.mjs#L52))
     - [x] `getOAuthClients` ([test](../../../conformance/oauth-client-directory.mjs#L129))
       - [x] List personally or tenant-owned registrations with filtered metadata and return an empty list for a new owner ([test](../../../conformance/oauth-client-directory.mjs#L129))
     - [ ] `updateOAuthClient`
     - [ ] `adminUpdateOAuthClient`
-      - [x] Grant, narrow and revoke machine access from server code and verify the changed scope ceiling at an independent issuer ([test](../../../conformance/oauth-registration.mjs#L411))
-    - [x] `rotateClientSecret` ([test](../../../conformance/oauth-registration.mjs#L490))
-      - [x] Replace a shared secret for its owner and immediately authenticate only the replacement at an independent issuer ([test](../../../conformance/oauth-registration.mjs#L490))
+      - [x] Grant, narrow and revoke machine access from server code and verify the changed scope ceiling at an independent issuer ([test](../../../conformance/oauth-registration.mjs#L412))
+    - [x] `rotateClientSecret` ([test](../../../conformance/oauth-registration.mjs#L491))
+      - [x] Replace a shared secret for its owner and immediately authenticate only the replacement at an independent issuer ([test](../../../conformance/oauth-registration.mjs#L491))
     - [x] `deleteOAuthClient` ([test](../../../conformance/oauth-client-directory.mjs#L188))
       - [x] Delete personally owned or tenant-owned registrations with an empty success response and enforce the session, privilege and immutable-client rules ([test](../../../conformance/oauth-client-directory.mjs#L188))
     - [ ] Restricted fields
@@ -580,37 +594,39 @@
       - [ ] `enable_end_session`
       - [ ] `require_pkce`
       - [ ] `client_credentials_scopes`
-        - [x] Grant, narrow and revoke machine access from server code and verify the changed scope ceiling at an independent issuer ([test](../../../conformance/oauth-registration.mjs#L411))
+        - [x] Grant, narrow and revoke machine access from server code and verify the changed scope ceiling at an independent issuer ([test](../../../conformance/oauth-registration.mjs#L412))
       - [ ] `resources`
       - [ ] `disabled`
       - [ ] `metadata`
     - [ ] Client credentials scopes
-      - [x] Grant, narrow and revoke machine access from server code and verify the changed scope ceiling at an independent issuer ([test](../../../conformance/oauth-registration.mjs#L411))
+      - [x] Grant, narrow and revoke machine access from server code and verify the changed scope ceiling at an independent issuer ([test](../../../conformance/oauth-registration.mjs#L412))
       - [x] Require separate update and machine-scope privileges and reject user-delegated scopes, public clients and impersonation sessions on three SQL engines ([test](../../../adapters/sqlstore/oauth_client_scopes_test.go#L132))
   - [ ] Dynamic client registration
-    - [x] Register public and confidential clients and exchange both a shared secret and an ES256 assertion at an independent issuer ([test](../../../conformance/oauth-registration.mjs#L446))
-    - [x] `clientRegistrationDefaultScopes` ([test](../../../conformance/oauth-registration.mjs#L220))
-      - [x] Apply the host registration ceiling even when a client requests a narrower subset ([test](../../../conformance/oauth-registration.mjs#L220))
-    - [x] `clientRegistrationAllowedScopes` ([test](../../../conformance/oauth-registration.mjs#L246))
-      - [x] Persist the allowed registration scopes and reject a scope outside that set ([test](../../../conformance/oauth-registration.mjs#L246))
-    - [ ] `clientRegistrationClientSecretExpiration`
-    - [x] `clientRegistrationRequirePKCE` ([test](../../../conformance/oauth-registration.mjs#L260))
-      - [x] Allow a confidential registration to relax PKCE while retaining the public client requirement ([test](../../../conformance/oauth-registration.mjs#L260))
-    - [x] `clientRegistrationDefaultApplicationType` ([test](../../../conformance/oauth-registration.mjs#L257))
-      - [x] Infer native redirects and apply the web default to HTTPS applications ([test](../../../conformance/oauth-registration.mjs#L257))
+    - [x] Register public and confidential clients and exchange both a shared secret and an ES256 assertion at an independent issuer ([test](../../../conformance/oauth-registration.mjs#L447))
+    - [x] `clientRegistrationDefaultScopes` ([test](../../../conformance/oauth-registration.mjs#L221))
+      - [x] Apply the host registration ceiling even when a client requests a narrower subset ([test](../../../conformance/oauth-registration.mjs#L221))
+    - [x] `clientRegistrationAllowedScopes` ([test](../../../conformance/oauth-registration.mjs#L247))
+      - [x] Persist the allowed registration scopes and reject a scope outside that set ([test](../../../conformance/oauth-registration.mjs#L247))
+    - [x] `clientRegistrationClientSecretExpiration` ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L107))
+      - [x] Report a never-expiring secret by default, the configured lifetime from the issue time when set, and no expiry for a public client, on SQLite, PostgreSQL and MySQL; a fixed instant is a documented deviation ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L107))
+      - [x] Return client_secret_expires_at 0 for an issued secret and omit it for a public client, on both runtimes ([test](../../../conformance/oauth-registration.mjs#L219))
+    - [x] `clientRegistrationRequirePKCE` ([test](../../../conformance/oauth-registration.mjs#L261))
+      - [x] Allow a confidential registration to relax PKCE while retaining the public client requirement ([test](../../../conformance/oauth-registration.mjs#L261))
+    - [x] `clientRegistrationDefaultApplicationType` ([test](../../../conformance/oauth-registration.mjs#L258))
+      - [x] Infer native redirects and apply the web default to HTTPS applications ([test](../../../conformance/oauth-registration.mjs#L258))
     - [ ] Resources for registered clients
       - [x] Link allowed resources in the same transaction as the new dynamic client ([test](../../../adapters/sqlstore/oauth_registration_test.go#L105))
-    - [x] Redirect URI forms ([test](../../../plugins/oauthprovider/registration_test.go#L31))
-      - [x] Exercise HTTPS web, native private scheme and exact HTTP loopback redirects ([test](../../../plugins/oauthprovider/registration_test.go#L14))
-      - [x] Accept loopback and custom-scheme callbacks for native clients only ([test](../../../plugins/oauthprovider/registration_test.go#L31))
-      - [x] HTTPS on a non-loopback host ([test](../../../plugins/oauthprovider/registration_test.go#L24))
-        - [x] Accept HTTPS redirects on non-loopback hosts for web and native clients ([test](../../../plugins/oauthprovider/registration_test.go#L24))
-      - [x] HTTP loopback, any port (RFC 8252 §7.3) ([test](../../../plugins/oauthprovider/registration_test.go#L31))
-        - [x] Accept an HTTP loopback callback on any port for a native client and refuse it for a web client ([test](../../../plugins/oauthprovider/registration_test.go#L31))
-      - [x] Reverse-domain private-use scheme (RFC 8252 §7.1) ([test](../../../conformance/oauth-registration.mjs#L286))
-        - [x] Register a reverse-domain private-use redirect for a native client and reject it for a web client ([test](../../../conformance/oauth-registration.mjs#L286))
-      - [x] Custom scheme with a host and a path ([test](../../../plugins/oauthprovider/registration_test.go#L33))
-        - [x] Accept a custom scheme with a host and path for a native client and refuse it for a web client ([test](../../../plugins/oauthprovider/registration_test.go#L33))
+    - [x] Redirect URI forms ([test](../../../plugins/oauthprovider/registration_test.go#L32))
+      - [x] Exercise HTTPS web, native private scheme and exact HTTP loopback redirects ([test](../../../plugins/oauthprovider/registration_test.go#L15))
+      - [x] Accept loopback and custom-scheme callbacks for native clients only ([test](../../../plugins/oauthprovider/registration_test.go#L32))
+      - [x] HTTPS on a non-loopback host ([test](../../../plugins/oauthprovider/registration_test.go#L25))
+        - [x] Accept HTTPS redirects on non-loopback hosts for web and native clients ([test](../../../plugins/oauthprovider/registration_test.go#L25))
+      - [x] HTTP loopback, any port (RFC 8252 §7.3) ([test](../../../plugins/oauthprovider/registration_test.go#L32))
+        - [x] Accept an HTTP loopback callback on any port for a native client and refuse it for a web client ([test](../../../plugins/oauthprovider/registration_test.go#L32))
+      - [x] Reverse-domain private-use scheme (RFC 8252 §7.1) ([test](../../../conformance/oauth-registration.mjs#L287))
+        - [x] Register a reverse-domain private-use redirect for a native client and reject it for a web client ([test](../../../conformance/oauth-registration.mjs#L287))
+      - [x] Custom scheme with a host and a path ([test](../../../plugins/oauthprovider/registration_test.go#L34))
+        - [x] Accept a custom scheme with a host and path for a native client and refuse it for a web client ([test](../../../plugins/oauthprovider/registration_test.go#L34))
   - [ ] Custom redirect URI validation
     - [x] Match a web callback exactly and a native loopback callback on any port of the same host name, check only the HTTPS policy before the host callback, and send refusals to the error page, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_redirect_transport_test.go#L23))
   - [ ] HTTP redirect URIs
@@ -672,8 +688,8 @@
   - [ ] Run your first flow
     - [ ] Register the API and a client
     - [ ] Send the user to the authorize endpoint
-    - [x] Sign in and consent ([test](../../../conformance/oauth-browser-login.mjs#L62))
-      - [x] Sign in on the login page, approve on the consent page and return the code with state and issuer to the callback ([test](../../../conformance/oauth-browser-login.mjs#L62))
+    - [x] Sign in and consent ([test](../../../conformance/oauth-browser-login.mjs#L78))
+      - [x] Sign in on the login page, approve on the consent page and return the code with state and issuer to the callback ([test](../../../conformance/oauth-browser-login.mjs#L78))
     - [ ] Exchange the code for tokens
     - [x] Check the token ([test](../../../conformance/oauth-userinfo.mjs#L71))
       - [x] Call UserInfo with a bearer access token from a code flow and receive the user's subject and name ([test](../../../conformance/oauth-userinfo.mjs#L71))
@@ -740,7 +756,7 @@
       - [x] Visit a host consent page, verify the signed query independently, deny a first request or exchange a code approved for fewer scopes ([test](../../../conformance/oauth-browser-authorization.mjs#L57))
       - [x] Consume a decision once across two servers, isolate sessions and tenants, and roll back consent when code storage fails ([test](../../../adapters/sqlstore/oauth_browser_consent_test.go#L25))
     - [x] `POST /oauth2/continue` ([test](../../../adapters/sqlstore/oauth_browser_login_test.go#L140))
-      - [x] Use the signed signup page query and the new browser session to complete the account-creation step ([test](../../../conformance/oauth-browser-login.mjs#L91))
+      - [x] Use the signed signup page query and the new browser session to complete the account-creation step ([test](../../../conformance/oauth-browser-login.mjs#L107))
       - [x] Resume the signed chooser with the selected browser account and preserve forced consent without repeating selection ([test](../../../conformance/oauth-account-selection.mjs#L44))
       - [x] Re-evaluate the account on a signed created continuation and exchange its code only after the host records completion ([test](../../../conformance/oauth-signup-policy.mjs#L79))
       - [x] Resume after the user activates a membership and distinguish an explicit continuation from a cookie reissued by an organization switch ([test](../../../conformance/oauth-post-login.mjs#L99))
@@ -769,23 +785,25 @@
     - [ ] `GET / POST /oauth2/end-session`
     - [ ] `POST /oauth2/end-session/confirm`
     - [ ] `POST /oauth2/register`
-      - [x] Register public and confidential clients and exchange both a shared secret and an ES256 assertion at an independent issuer ([test](../../../conformance/oauth-registration.mjs#L446))
+      - [x] Register public and confidential clients and exchange both a shared secret and an ES256 assertion at an independent issuer ([test](../../../conformance/oauth-registration.mjs#L447))
     - [ ] `POST /admin/oauth2/create-client` (server API only)
     - [ ] `PATCH /admin/oauth2/update-client` (server API only)
-      - [x] Grant, narrow and revoke machine access from server code and verify the changed scope ceiling at an independent issuer ([test](../../../conformance/oauth-registration.mjs#L411))
+      - [x] Grant, narrow and revoke machine access from server code and verify the changed scope ceiling at an independent issuer ([test](../../../conformance/oauth-registration.mjs#L412))
     - [ ] `POST /oauth2/create-client`
     - [ ] `GET /oauth2/get-client`
       - [x] Read locally registered owner metadata and omit internal fields and the shared secret ([test](../../../conformance/oauth-client-directory.mjs#L117))
     - [x] `GET /oauth2/public-client` ([test](../../../conformance/oauth-client-directory.mjs#L130))
       - [x] Expose only display metadata for an enabled local registration to a signed-in user ([test](../../../conformance/oauth-client-directory.mjs#L131))
       - [x] Show only display metadata to any signed-in user and hide disabled, unknown or unresolved registrations ([test](../../../conformance/oauth-client-directory.mjs#L130))
-    - [ ] `POST /oauth2/public-client-prelogin`
+    - [x] `POST /oauth2/public-client-prelogin` ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L165))
+      - [x] Serve a client's public fields without a session for a signed query naming it, verify a present query first, refuse without the option, without a query or for another client, hide a disabled client and never cache or set a cookie, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L165))
+      - [x] Read the client's public fields from the login page's signed query and refuse another client, an altered query and a missing one, on both runtimes ([test](../../../conformance/oauth-browser-login.mjs#L52))
     - [x] `GET /oauth2/get-clients` ([test](../../../conformance/oauth-client-directory.mjs#L129))
       - [x] List personally or tenant-owned registrations with filtered metadata and return an empty list for a new owner ([test](../../../conformance/oauth-client-directory.mjs#L129))
     - [ ] `POST /oauth2/update-client`
-    - [x] `POST /oauth2/client/rotate-secret` ([test](../../../conformance/oauth-registration.mjs#L451))
-      - [x] Replace a shared secret for its owner and immediately authenticate only the replacement at an independent issuer ([test](../../../conformance/oauth-registration.mjs#L490))
-      - [x] Rotate personal and tenant shared secrets and refuse signed-out, foreign, denied, unknown, operator-managed, key-based and public clients ([test](../../../conformance/oauth-registration.mjs#L451))
+    - [x] `POST /oauth2/client/rotate-secret` ([test](../../../conformance/oauth-registration.mjs#L452))
+      - [x] Replace a shared secret for its owner and immediately authenticate only the replacement at an independent issuer ([test](../../../conformance/oauth-registration.mjs#L491))
+      - [x] Rotate personal and tenant shared secrets and refuse signed-out, foreign, denied, unknown, operator-managed, key-based and public clients ([test](../../../conformance/oauth-registration.mjs#L452))
     - [x] `POST /oauth2/client/rotate-keys` ([test](../../../conformance/oauth-key-rotation.mjs#L5))
       - [x] Rotate without a user session, overlap old and new keys, and confirm their acceptance and retirement at an independent issuer ([test](../../../conformance/oauth-key-rotation.mjs#L5))
       - [x] Serialize competing replacements, roll back the replay identifier on write failure, and allow an unchanged signed retry on three SQL engines ([test](../../../adapters/sqlstore/oauth_key_rotation_test.go#L43))
@@ -821,12 +839,12 @@
     - [x] `invalid_grant` ([test](../../../conformance/oauth-authorization-code.mjs#L45))
       - [x] Refuse a code redeemed with another client's credentials and a refresh token that belongs to another client or has expired with invalid_grant, on both runtimes ([test](../../../conformance/oauth-authorization-code.mjs#L45))
       - [x] Refuse an expired authorization code with invalid_grant, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_authorization_code_test.go#L143))
-      - [x] Refuse an unknown refresh token with invalid_grant, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_refresh_grant_test.go#L127))
+      - [x] Refuse an unknown refresh token with invalid_grant, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_refresh_grant_test.go#L135))
     - [x] `invalid_user` ([test](../../../adapters/sqlstore/oauth_authorization_code_test.go#L141))
       - [x] Refuse a code whose approving user no longer exists with invalid_user ([test](../../../adapters/sqlstore/oauth_authorization_code_test.go#L141))
     - [ ] `unauthorized_client`
       - [x] Refuse client credentials to a client without that grant, a public client and a client without client-credentials scopes with unauthorized_client, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_grant_refusal_test.go#L76))
-      - [x] Refuse a refresh exchange for a client without that grant with unauthorized_client, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_refresh_grant_test.go#L137))
+      - [x] Refuse a refresh exchange for a client without that grant with unauthorized_client, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_refresh_grant_test.go#L145))
     - [x] `unsupported_grant_type` ([test](../../../adapters/sqlstore/oauth_grant_refusal_test.go#L84))
       - [x] Refuse a grant the issuer does not offer with unsupported_grant_type, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_grant_refusal_test.go#L84))
     - [ ] `invalid_scope`
@@ -838,10 +856,10 @@
       - [x] Share the default 30-request allowance across GET and POST, apply a custom rule or inherit the host limit ([test](../../../adapters/sqlstore/oauth_browser_authorization_test.go#L208))
     - [x] `introspect` ([test](../../../adapters/sqlstore/oauth_introspection_test.go#L142))
       - [x] Enforce the default introspection limit, a route override or the host's global rule ([test](../../../adapters/sqlstore/oauth_introspection_test.go#L142))
-      - [x] Apply a 100-request, one-minute default to the form endpoint ([test](../../../plugins/oauthprovider/machine_token_test.go#L62))
+      - [x] Apply a 100-request, one-minute default to the form endpoint ([test](../../../plugins/oauthprovider/machine_token_test.go#L63))
     - [x] `revoke` ([test](../../../adapters/sqlstore/oauth_introspection_test.go#L150))
       - [x] Enforce 30 revocation requests per minute per IP, a host override or the global fallback ([test](../../../adapters/sqlstore/oauth_introspection_test.go#L150))
-      - [x] Expose POST, form media type and the default one-minute limit on the revocation route ([test](../../../plugins/oauthprovider/machine_token_test.go#L66))
+      - [x] Expose POST, form media type and the default one-minute limit on the revocation route ([test](../../../plugins/oauthprovider/machine_token_test.go#L67))
     - [x] `register` ([test](../../../adapters/sqlstore/oauth_registration_test.go#L170))
       - [x] Enforce the five-per-minute route limit and honor a host override ([test](../../../adapters/sqlstore/oauth_registration_test.go#L170))
     - [x] `rotateClientKeys` ([test](../../../adapters/sqlstore/oauth_introspection_test.go#L154))
@@ -945,7 +963,7 @@
         - [x] Verify a signed page query before applying a decision and reject altered authorization parameters ([test](../../../conformance/oauth-browser-authorization.mjs#L95))
         - [x] Refuse a consent decision without oauth_query with 400 invalid_request missing oauth query, on both runtimes ([test](../../../conformance/oauth-browser-authorization.mjs#L72))
   - [x] Sign-up account screen ([test](../../../conformance/oauth-signup-policy.mjs#L53))
-    - [x] Create an account on the configured signup page and continue the signed request into consent ([test](../../../conformance/oauth-browser-login.mjs#L81))
+    - [x] Create an account on the configured signup page and continue the signed request into consent ([test](../../../conformance/oauth-browser-login.mjs#L97))
     - [x] Recheck saved onboarding, choose the default or a custom page, return silent errors and issue a code after completion ([test](../../../conformance/oauth-signup-policy.mjs#L53))
     - [x] Fall back to the login page or a dynamic URL, deny untrusted pages and host errors, and persist a deferred approval only once ([test](../../../adapters/sqlstore/oauth_signup_step_test.go#L17))
   - [x] Select account screen ([test](../../../adapters/sqlstore/oauth_account_selection_test.go#L85))
@@ -955,18 +973,18 @@
     - [x] Recheck live organization selection on continuation, require consent for each organization and redeem a token carrying its reference ([test](../../../conformance/oauth-post-login.mjs#L90))
     - [x] Validate a signed selector before updating the team and keep an outstanding approval in its original organization ([test](../../../adapters/sqlstore/oauth_post_login_test.go#L129))
   - [x] Continue endpoint ([test](../../../adapters/sqlstore/oauth_browser_login_test.go#L140))
-    - [x] Use the signed signup page query and the new browser session to complete the account-creation step ([test](../../../conformance/oauth-browser-login.mjs#L91))
+    - [x] Use the signed signup page query and the new browser session to complete the account-creation step ([test](../../../conformance/oauth-browser-login.mjs#L107))
     - [x] Resume the signed chooser with the selected browser account and preserve forced consent without repeating selection ([test](../../../conformance/oauth-account-selection.mjs#L44))
     - [x] Re-evaluate the account on a signed created continuation and exchange its code only after the host records completion ([test](../../../conformance/oauth-signup-policy.mjs#L79))
     - [x] Resume after the user activates a membership and distinguish an explicit continuation from a cookie reissued by an organization switch ([test](../../../conformance/oauth-post-login.mjs#L99))
     - [x] Refuse a continuation with created true and no signed query with 400 invalid_request, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_browser_login_test.go#L140))
     - [x] `POST /oauth2/continue` ([test](../../../adapters/sqlstore/oauth_browser_login_test.go#L128))
-      - [x] Use the signed signup page query and the new browser session to complete the account-creation step ([test](../../../conformance/oauth-browser-login.mjs#L91))
+      - [x] Use the signed signup page query and the new browser session to complete the account-creation step ([test](../../../conformance/oauth-browser-login.mjs#L107))
       - [x] Resume the signed chooser with the selected browser account and preserve forced consent without repeating selection ([test](../../../conformance/oauth-account-selection.mjs#L44))
       - [x] Re-evaluate the account on a signed created continuation and exchange its code only after the host records completion ([test](../../../conformance/oauth-signup-policy.mjs#L79))
       - [x] Resume after the user activates a membership and distinguish an explicit continuation from a cookie reissued by an organization switch ([test](../../../conformance/oauth-post-login.mjs#L99))
       - [x] Verify a present signed query first, then the continuation's body types with every mismatch listed, then the browser session with 401, then the completed step and signed query with 400, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_browser_login_test.go#L128))
-      - [x] Refuse a continuation without a true step flag with Missing parameters before its query, on both runtimes ([test](../../../conformance/oauth-browser-login.mjs#L88))
+      - [x] Refuse a continuation without a true step flag with Missing parameters before its query, on both runtimes ([test](../../../conformance/oauth-browser-login.mjs#L104))
       - [x] Pick the first true flag in the order selected, created and postLogin, accept only a query signed for that step's page, and resume a created step from the login page without prompt=create, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_browser_login_test.go#L157))
       - [x] Parameter `selected` (optional) ([test](../../../conformance/oauth-account-selection.mjs#L87))
         - [x] Continue the account choice with selected=true after an explicit prompt or a host policy, including a required second consent ([test](../../../conformance/oauth-account-selection.mjs#L87))
@@ -976,7 +994,7 @@
       - [x] Parameter `postLogin` (optional) ([test](../../../conformance/oauth-post-login.mjs#L126))
         - [x] Use the signed post-login query and active session to verify a choice before continuing, and require a new session to pass its own check ([test](../../../conformance/oauth-post-login.mjs#L126))
       - [x] Parameter `oauth_query` (optional) ([test](../../../conformance/oauth-account-selection.mjs#L58))
-        - [x] Use the signed signup page query and the new browser session to complete the account-creation step ([test](../../../conformance/oauth-browser-login.mjs#L91))
+        - [x] Use the signed signup page query and the new browser session to complete the account-creation step ([test](../../../conformance/oauth-browser-login.mjs#L107))
         - [x] Resume the signed chooser with the selected browser account and preserve forced consent without repeating selection ([test](../../../conformance/oauth-account-selection.mjs#L44))
         - [x] Resume after the user activates a membership and distinguish an explicit continuation from a cookie reissued by an organization switch ([test](../../../conformance/oauth-post-login.mjs#L99))
         - [x] Reject a continuation whose signed query was altered ([test](../../../conformance/oauth-account-selection.mjs#L58))
@@ -1011,7 +1029,7 @@
       - [x] Allow one concurrent use across independent SQL connections and recheck the registered key before issuing a token ([test](../../../adapters/sqlstore/oauth_client_assertion_test.go#L30))
     - [ ] `none`
   - [ ] Scopes
-    - [x] Reject client scopes withdrawn during token generation and leave the existing grant available for retry ([test](../../../adapters/sqlstore/oauth_refresh_grant_test.go#L145))
+    - [x] Reject client scopes withdrawn during token generation and leave the existing grant available for retry ([test](../../../adapters/sqlstore/oauth_refresh_grant_test.go#L153))
     - [x] `openid` ([test](../../../conformance/oauth-userinfo.mjs#L87))
       - [x] Return signed ID tokens with a client-specific subject for OpenID scopes on untargeted grants and omit them when the scope is dropped ([test](../../../conformance/oauth-id-tokens.mjs#L155))
       - [x] Return only the subject at UserInfo for an openid-only token ([test](../../../conformance/oauth-userinfo.mjs#L87))
@@ -1074,16 +1092,16 @@
         - [x] Remove an existing client grant and permit a subsequent fresh link ([test](../../../conformance/resource-registry.mjs#L89))
   - [ ] Lifetimes
     - [ ] `accessTokenExpiresIn`
-      - [x] Default the access token lifetime to an hour ([test](../../../plugins/oauthprovider/machine_token_test.go#L111))
+      - [x] Default the access token lifetime to an hour ([test](../../../plugins/oauthprovider/machine_token_test.go#L112))
       - [x] Give a code exchange the configured access token lifetime, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_authorization_code_test.go#L114))
     - [x] `m2mAccessTokenExpiresIn` ([test](../../../conformance/oauth-machine-tokens.mjs#L68))
       - [x] Apply the machine token lifetime and shortest applicable scope lifetime to the response and persisted expiry ([test](../../../conformance/oauth-machine-tokens.mjs#L68))
-      - [x] Default to a one-hour machine lifetime and 20 token requests per minute ([test](../../../plugins/oauthprovider/machine_token_test.go#L31))
+      - [x] Default to a one-hour machine lifetime and 20 token requests per minute ([test](../../../plugins/oauthprovider/machine_token_test.go#L32))
     - [x] `idTokenExpiresIn` ([test](../../../conformance/oauth-id-tokens.mjs#L77))
       - [x] Apply the ten-hour default or configured whole-second lifetime to signed ID tokens on code and refresh exchanges ([test](../../../conformance/oauth-id-tokens.mjs#L77))
     - [x] `refreshTokenExpiresIn` ([test](../../../conformance/oauth-authorization-code.mjs#L109))
       - [x] Set the offline refresh lifetime independently of the scope-limited access token and retain the original authentication time ([test](../../../adapters/sqlstore/oauth_offline_code_test.go#L148))
-      - [x] Restart the configured refresh lifetime on rotation and preserve original authentication time, session and authorization code ([test](../../../adapters/sqlstore/oauth_refresh_grant_test.go#L172))
+      - [x] Restart the configured refresh lifetime on rotation and preserve original authentication time, session and authorization code ([test](../../../adapters/sqlstore/oauth_refresh_grant_test.go#L188))
       - [x] Default the refresh token lifetime to 30 days on an offline code exchange ([test](../../../conformance/oauth-authorization-code.mjs#L109))
     - [x] `codeExpiresIn` ([test](../../../adapters/sqlstore/oauth_browser_authorization_test.go#L151))
       - [x] Expire authorization codes after the configured whole-second lifetime on all three SQL engines ([test](../../../adapters/sqlstore/oauth_browser_authorization_test.go#L151))
@@ -1118,6 +1136,6 @@
   - [ ] Without the JWT plugin
   - [ ] Storage
     - [ ] `storeClientSecret`
-    - [x] `storeTokens` ([test](../../../plugins/oauthprovider/machine_token_test.go#L164))
-      - [x] Store tokens as their SHA-256 base64url digest by default and through configured hash functions ([test](../../../plugins/oauthprovider/machine_token_test.go#L164))
+    - [x] `storeTokens` ([test](../../../plugins/oauthprovider/machine_token_test.go#L165))
+      - [x] Store tokens as their SHA-256 base64url digest by default and through configured hash functions ([test](../../../plugins/oauthprovider/machine_token_test.go#L165))
   - [ ] Device code grant

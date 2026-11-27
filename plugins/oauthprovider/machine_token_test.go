@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	auth "github.com/Plain-Org/plain-auth"
 	"net/http"
 	"regexp"
@@ -206,5 +207,29 @@ func TestEndpointRateLimitDefaults(t *testing.T) {
 		if rule, ok := got[path]; !ok || rule != nil {
 			t.Fatal("an empty rate limit did not leave the host's global limit", path, rule, ok)
 		}
+	}
+}
+
+// A token lives for the shortest of its base lifetime, each scope's
+// relative lifetime and the whole seconds left until each scope's instant,
+// and a scope whose instant has passed refuses issuance.
+func TestScopeExpiry(t *testing.T) {
+	now := time.Unix(1_800_000_000, 0)
+	opts := TokenOptions{ScopeLifetimes: map[string]time.Duration{"reports": 10 * time.Minute},
+		ScopeExpiresAt: map[string]time.Time{"audit": now.Add(90*time.Second + 500*time.Millisecond), "retired": now, "later": now.Add(48 * time.Hour)}}
+	for _, tc := range []struct {
+		scopes []string
+		want   time.Duration
+	}{
+		{[]string{"read"}, time.Hour}, {[]string{"reports"}, 10 * time.Minute}, {[]string{"later"}, time.Hour},
+		{[]string{"reports", "audit"}, 90 * time.Second}, {[]string{"audit", "later"}, 90 * time.Second},
+	} {
+		if got, err := opts.scopeLifetime(time.Hour, tc.scopes, now); err != nil || got != tc.want {
+			t.Errorf("scopes %v lived %s, %v", tc.scopes, got, err)
+		}
+	}
+	var problem *auth.OAuthError
+	if _, err := opts.scopeLifetime(time.Hour, []string{"read", "retired"}, now); !errors.As(err, &problem) || problem.Code != "invalid_scope" || problem.Description != "scope retired has expired" {
+		t.Fatal("an expired scope did not refuse issuance", err)
 	}
 }

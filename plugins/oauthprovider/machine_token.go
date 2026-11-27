@@ -32,9 +32,12 @@ type TokenOptions struct {
 	// The default is unpadded base64url of its SHA-256 digest.
 	HashAuthorizationCode func(context.Context, string) (string, error)
 	ScopeLifetimes        map[string]time.Duration
-	OpaquePrefix          string
-	GenerateOpaqueToken   func(context.Context) (string, error)
-	HashOpaqueToken       func(context.Context, string) (string, error)
+	// ScopeExpiresAt caps a token carrying the scope at that instant. A
+	// request for a scope whose instant has passed answers invalid_scope.
+	ScopeExpiresAt      map[string]time.Time
+	OpaquePrefix        string
+	GenerateOpaqueToken func(context.Context) (string, error)
+	HashOpaqueToken     func(context.Context, string) (string, error)
 	// RateLimit applies to the token endpoint and defaults to 20 per minute.
 	// An empty rule uses the host's global limit.
 	RateLimit *auth.RateLimitRule
@@ -85,6 +88,7 @@ func (opts *TokenOptions) defaults() error {
 		return errors.New("oauthprovider: access token lifetime must be a positive whole number of seconds")
 	}
 	opts.ScopeLifetimes = maps.Clone(opts.ScopeLifetimes)
+	opts.ScopeExpiresAt = maps.Clone(opts.ScopeExpiresAt)
 	for _, ttl := range opts.ScopeLifetimes {
 		if ttl < time.Second || ttl%time.Second != 0 {
 			return errors.New("oauthprovider: scope lifetime must be a positive whole number of seconds")
@@ -313,17 +317,28 @@ func (opts TokenOptions) newOpaqueToken(ctx context.Context) (issued, stored str
 	return opts.OpaquePrefix + raw, stored, err
 }
 
-func (opts TokenOptions) machineLifetime(scopes []string) time.Duration {
-	return opts.scopeLifetime(opts.MachineLifetime, scopes)
+func (opts TokenOptions) machineLifetime(scopes []string, now time.Time) (time.Duration, error) {
+	return opts.scopeLifetime(opts.MachineLifetime, scopes, now)
 }
 
-func (opts TokenOptions) scopeLifetime(lifetime time.Duration, scopes []string) time.Duration {
+// scopeLifetime is the shortest of the base lifetime, each scope's relative
+// lifetime and the whole seconds left until each scope's instant. A scope
+// whose instant has passed refuses issuance, where another runtime mints a
+// token that has already expired.
+func (opts TokenOptions) scopeLifetime(lifetime time.Duration, scopes []string, now time.Time) (time.Duration, error) {
 	for _, scope := range scopes {
 		if limit, ok := opts.ScopeLifetimes[scope]; ok && limit < lifetime {
 			lifetime = limit
 		}
+		if at, ok := opts.ScopeExpiresAt[scope]; ok {
+			left := time.Duration(at.Unix()-now.Unix()) * time.Second
+			if left <= 0 {
+				return 0, registrationProblem(400, "invalid_scope", "scope "+scope+" has expired")
+			}
+			lifetime = min(lifetime, left)
+		}
 	}
-	return lifetime
+	return lifetime, nil
 }
 
 func machineResponse(issued, thumbprint string, scopes []string, now time.Time, lifetime time.Duration) MachineToken {
@@ -366,8 +381,11 @@ func (opts Options) issueMachineToken(c auth.EndpointContext, store MachineToken
 		if current.RequireDPoP && thumbprint == "" {
 			return MachineTokenRecord{}, proofError("DPoP proof header is required")
 		}
-		lifetime := opts.Tokens.machineLifetime(scopes)
 		now := time.Now().UTC().Truncate(time.Second)
+		lifetime, err := opts.Tokens.machineLifetime(scopes, now)
+		if err != nil {
+			return MachineTokenRecord{}, err
+		}
 		result = machineResponse(issued, thumbprint, scopes, now, lifetime)
 		return MachineTokenRecord{StoredToken: stored, Scopes: scopes, IssuedAt: now, ExpiresAt: now.Add(lifetime)}, nil
 	}

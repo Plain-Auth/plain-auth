@@ -52,6 +52,12 @@ const app = await response.json()
 document.querySelector("#application-name").textContent = app.client_name ?? app.client_id
 ```
 
+## Show the application on the login page
+
+A login page runs before any session exists. Set `Authorization.AllowPublicClientPrelogin` to serve `POST /oauth2/public-client-prelogin`, which takes `{"client_id": "…", "oauth_query": "<signed query>"}` and returns the same public fields with an empty `redirect_uris`. Send the signed query exactly as the issuer sent it to the page, without page-local parameters. Either the login or the consent page's query works, and in Go `sdk.PublicOAuthClientPrelogin(ctx, id, fields.Encode())` calls it.
+
+As in another runtime, a present signed query is verified first (400 `invalid_signature` when altered or expired), then the body's types (400 `VALIDATION_ERROR`). Without the option the route answers 400 with no body. A missing query answers 401 `invalid_signature`, and a query for another client 401 `invalid_client` `client_id does not match the signed oauth_query`. A disabled or unknown client answers 404 `not_found`. The response is never cached and sets no cookie. Anyone who can start an authorization request can read a client's public fields this way, contacts included. [Prelogin tests](../adapters/sqlstore/oauth_client_directory_test.go) · [Cross-runtime test](../conformance/oauth-browser-login.mjs)
+
 ## Delete an application
 
 Call `signedIn.DeleteOAuthClient(ctx, clientID)` from Go. From a browser, send the client ID to the auth mount using the owner's session.

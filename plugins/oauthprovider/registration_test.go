@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"slices"
 	"testing"
+	"time"
 
 	auth "github.com/Plain-Org/plain-auth"
 	"github.com/Plain-Org/plain-auth/adapters/memory"
@@ -72,6 +73,19 @@ func TestRegistrationRedirectPolicy(t *testing.T) {
 	}
 	if err := local.validateRedirect("http://user@localhost:3000/cb", "web"); err == nil {
 		t.Fatal("an approved HTTP web callback with credentials was accepted")
+	}
+}
+
+// A registration secret lifetime is zero or a positive whole number of
+// seconds.
+func TestRegistrationSecretLifetime(t *testing.T) {
+	for _, lifetime := range []time.Duration{-time.Second, 1500 * time.Millisecond} {
+		if _, err := New(Options{Registration: RegistrationOptions{Enabled: true, SecretLifetime: lifetime}}); err == nil {
+			t.Error("an invalid secret lifetime was accepted", lifetime)
+		}
+	}
+	if _, err := New(Options{Registration: RegistrationOptions{Enabled: true, SecretLifetime: time.Hour}}); err != nil {
+		t.Fatal(err)
 	}
 }
 

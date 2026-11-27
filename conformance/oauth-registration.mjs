@@ -35,6 +35,7 @@ function options(mode) {
         && session.userId === user.id && scopes.length === 1 && scopes[0] === "reports",
     } }),
     consentPage: "/consent",
+    allowPublicClientPrelogin: true,
     allowDynamicClientRegistration: true,
     cachedTrustedClients: new Set(["operator-managed"]),
     clientReference: ({ user }) => (user.email === "tenant-rotation@registration.test" ? "workspace" : undefined),

@@ -51,6 +51,11 @@ type BrowserAuthorizationOptions struct {
 	// scheme. Returning an error rejects the redirect.
 	ValidateRedirectURI func(ctx context.Context, requested string, registered []string, defaultMatch bool) (bool, error)
 	RateLimit           *auth.RateLimitRule
+	// AllowPublicClientPrelogin serves POST /oauth2/public-client-prelogin to
+	// login pages without a session. The signed oauth_query must name the
+	// requested client, and its public fields, contacts included, become
+	// readable by anyone who can start an authorization request.
+	AllowPublicClientPrelogin bool
 	// RequireOpenID refuses an authorization request whose scope parameter
 	// omits openid with invalid_scope; the client's default scopes do not
 	// count. Scopes must include openid.

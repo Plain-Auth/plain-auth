@@ -47,6 +47,22 @@ export async function exerciseBrowserLogin({ server, db, created, cookie, reques
   const invalid = await request("sign-up/email", { ...body, oauth_query: altered.toString() });
   assert.equal(invalid.status, 400);
   assert.equal((await invalid.json()).error, "invalid_signature");
+  // The login page reads the client's public fields with its signed query,
+  // before any session exists.
+  const shown = await request("oauth2/public-client-prelogin", { client_id: app.client_id, oauth_query: q });
+  assert.equal(shown.status, 200);
+  const fields = await shown.json();
+  assert.equal(fields.client_id, app.client_id);
+  assert.deepEqual(fields.redirect_uris, []);
+  const mismatched = await request("oauth2/public-client-prelogin", { client_id: "another-client", oauth_query: q });
+  assert.equal(mismatched.status, 401);
+  assert.deepEqual(await mismatched.json(), { error: "invalid_client", error_description: "client_id does not match the signed oauth_query" });
+  const forged = await request("oauth2/public-client-prelogin", { client_id: app.client_id, oauth_query: altered.toString() });
+  assert.equal(forged.status, 400);
+  assert.equal((await forged.json()).error, "invalid_signature");
+  const unsigned = await request("oauth2/public-client-prelogin", { client_id: app.client_id });
+  assert.equal(unsigned.status, 401);
+  assert.equal((await unsigned.json()).error, "invalid_signature");
   assert.equal(db.prepare("SELECT count(*) AS n FROM user WHERE email=?").get(credentials.email).n, 0);
   const signup = await request("sign-up/email", { ...body, oauth_query: q });
   const ownerCookie = cookies(signup);

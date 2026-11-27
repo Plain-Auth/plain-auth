@@ -308,7 +308,7 @@ With the `oauth2.Config` above, pass the verifier saved for this callback to `Ex
 token, err := cfg.Exchange(ctx, code, oauth2.VerifierOption(verifier))
 ```
 
-The JSON response includes `access_token`, `token_type`, `scope`, `expires_in` and `expires_at`. The access token lifetime defaults to one hour. Configure `Tokens.AccessLifetime` and use `Tokens.ScopeLifetimes` to shorten the lifetime for particular scopes. The body is served with `Cache-Control: no-store`. [Token introspection](machine-tokens.md#inspect-a-delegated-token-as-a-resource-server)
+The JSON response includes `access_token`, `token_type`, `scope`, `expires_in` and `expires_at`. The access token lifetime defaults to one hour. Configure `Tokens.AccessLifetime` and use `Tokens.ScopeLifetimes` to shorten the lifetime for particular scopes, or `Tokens.ScopeExpiresAt` to cap them at an instant. A token lives for the shortest of these, in whole seconds, on code and refresh exchanges alike. A scope whose instant has passed answers 400 `invalid_scope` `scope <name> has expired` and leaves the grant usable, where another runtime issues a token that has already expired. The body is served with `Cache-Control: no-store`. [Token introspection](machine-tokens.md#inspect-a-delegated-token-as-a-resource-server)
 
 ## Receive and verify an OpenID Connect ID token
 

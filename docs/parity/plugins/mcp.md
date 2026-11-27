@@ -63,8 +63,8 @@
     - [ ] `postLogin`
     - [ ] `formatRefreshToken`
     - [ ] `storeClientSecret`
-    - [x] `storeTokens` ([test](../../../plugins/oauthprovider/machine_token_test.go#L164))
-      - [x] Store each token kind through its own configured hash function ([test](../../../plugins/oauthprovider/machine_token_test.go#L164))
+    - [x] `storeTokens` ([test](../../../plugins/oauthprovider/machine_token_test.go#L165))
+      - [x] Store each token kind through its own configured hash function ([test](../../../plugins/oauthprovider/machine_token_test.go#L165))
     - [ ] `customUserInfoClaims`
     - [ ] `customIdTokenClaims`
     - [ ] `customAccessTokenClaims`
@@ -72,22 +72,22 @@
     - [ ] `advertisedMetadata`
       - [x] Advertise exactly the configured scopes and client authentication methods, in order, in both discovery documents, and the configured claims in the OpenID document ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L282))
     - [ ] `prefix`
-    - [x] `generateClientId` ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L94))
-      - [x] Generate a default client ID of 32 ASCII letters ([test](../../../plugins/oauthprovider/machine_token_test.go#L123))
-      - [x] Register a client with a 32-letter client ID by default, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L69))
-      - [x] Register clients with 32-letter IDs and secrets by default and with the configured ID and secret generators, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L94))
+    - [x] `generateClientId` ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L102))
+      - [x] Generate a default client ID of 32 ASCII letters ([test](../../../plugins/oauthprovider/machine_token_test.go#L124))
+      - [x] Register a client with a 32-letter client ID by default, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L70))
+      - [x] Register clients with 32-letter IDs and secrets by default and with the configured ID and secret generators, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L102))
       - [x] Use the configured ID generator and keep a single complete registration after a collision ([test](../../../adapters/sqlstore/oauth_registration_test.go#L164))
-    - [x] `generateClientSecret` ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L94))
-      - [x] Issue a 32-letter client secret by default and rotate through a configured secret generator, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L98))
-      - [x] Register clients with 32-letter IDs and secrets by default and with the configured ID and secret generators, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L94))
+    - [x] `generateClientSecret` ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L102))
+      - [x] Issue a 32-letter client secret by default and rotate through a configured secret generator, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L111))
+      - [x] Register clients with 32-letter IDs and secrets by default and with the configured ID and secret generators, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L102))
       - [x] Issue the generated secret and store its digest on all SQL engines ([test](../../../adapters/sqlstore/oauth_registration_test.go#L96))
-    - [x] `generateOpaqueAccessToken` ([test](../../../plugins/oauthprovider/machine_token_test.go#L155))
-      - [x] Generate a default opaque access token of 32 letters and use a configured generator instead ([test](../../../plugins/oauthprovider/machine_token_test.go#L155))
+    - [x] `generateOpaqueAccessToken` ([test](../../../plugins/oauthprovider/machine_token_test.go#L156))
+      - [x] Generate a default opaque access token of 32 letters and use a configured generator instead ([test](../../../plugins/oauthprovider/machine_token_test.go#L156))
     - [ ] `generateRefreshToken`
-      - [x] Generate a default refresh token of 32 letters and use a configured generator instead ([test](../../../plugins/oauthprovider/machine_token_test.go#L158))
+      - [x] Generate a default refresh token of 32 letters and use a configured generator instead ([test](../../../plugins/oauthprovider/machine_token_test.go#L159))
     - [ ] `disableJwtPlugin`
-    - [x] `rateLimit` ([test](../../../plugins/oauthprovider/machine_token_test.go#L207))
-      - [x] Give token 20, authorize 30, introspect 100, revoke 30, register 5, key rotation 5 and userinfo 60 requests a minute by default, replace a default with a configured rule and leave the host's global limit for an empty rule on every route ([test](../../../plugins/oauthprovider/machine_token_test.go#L207))
+    - [x] `rateLimit` ([test](../../../plugins/oauthprovider/machine_token_test.go#L208))
+      - [x] Give token 20, authorize 30, introspect 100, revoke 30, register 5, key rotation 5 and userinfo 60 requests a minute by default, replace a default with a configured rule and leave the host's global limit for an empty rule on every route ([test](../../../plugins/oauthprovider/machine_token_test.go#L208))
     - [ ] `pairwiseSecret`
     - [ ] `requestUriResolver`
     - [ ] `dpop`
@@ -108,8 +108,8 @@
   - [ ] Endpoints
     - [ ] Authorization
     - [ ] Token
-    - [x] Dynamic registration (when explicitly enabled) ([test](../../../conformance/oauth-registration.mjs#L99))
-      - [x] Reject dynamic registrations until the host enables them ([test](../../../conformance/oauth-registration.mjs#L99))
+    - [x] Dynamic registration (when explicitly enabled) ([test](../../../conformance/oauth-registration.mjs#L100))
+      - [x] Reject dynamic registrations until the host enables them ([test](../../../conformance/oauth-registration.mjs#L100))
     - [x] UserInfo ([test](../../../conformance/oauth-userinfo.mjs#L40))
       - [x] Read scoped profile claims over GET and form POST and match the subject of an independently issued ID token for signed and opaque grants ([test](../../../conformance/oauth-userinfo.mjs#L40))
   - [ ] Usage
@@ -125,16 +125,16 @@
       - [x] Advertise the four default scopes when none are configured ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L234))
     - [ ] `mcpOauthOptionsType.resources`
     - [ ] `mcpOauthOptionsType.accessTokenExpiresIn`
-      - [x] Default the access token lifetime to an hour ([test](../../../plugins/oauthprovider/machine_token_test.go#L111))
+      - [x] Default the access token lifetime to an hour ([test](../../../plugins/oauthprovider/machine_token_test.go#L112))
       - [x] Give a code exchange the configured access token lifetime, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_authorization_code_test.go#L114))
     - [x] `mcpOauthOptionsType.idTokenExpiresIn` ([test](../../../conformance/oauth-id-tokens.mjs#L77))
       - [x] Apply the ten-hour default or configured whole-second lifetime to signed ID tokens on code and refresh exchanges ([test](../../../conformance/oauth-id-tokens.mjs#L77))
     - [ ] `mcpOauthOptionsType.refreshTokenExpiresIn`
-      - [x] Default the refresh token lifetime to thirty days ([test](../../../plugins/oauthprovider/machine_token_test.go#L111))
+      - [x] Default the refresh token lifetime to thirty days ([test](../../../plugins/oauthprovider/machine_token_test.go#L112))
       - [x] Give an offline code exchange a thirty-day refresh token by default, on both runtimes ([test](../../../conformance/oauth-authorization-code.mjs#L109))
       - [x] Apply a configured refresh token lifetime to an offline grant, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_offline_code_test.go#L148))
-      - [x] Apply a configured refresh token lifetime to each rotated refresh token, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_refresh_grant_test.go#L172))
+      - [x] Apply a configured refresh token lifetime to each rotated refresh token, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_refresh_grant_test.go#L188))
     - [ ] `mcpOauthOptionsType.refreshTokenReuseInterval`
     - [ ] `mcpOauthOptionsType.codeExpiresIn`
-      - [x] Default the authorization code lifetime to ten minutes ([test](../../../plugins/oauthprovider/machine_token_test.go#L111))
+      - [x] Default the authorization code lifetime to ten minutes ([test](../../../plugins/oauthprovider/machine_token_test.go#L112))
   - [ ] Remote MCP Server

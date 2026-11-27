@@ -66,8 +66,9 @@ func TestRefreshGrantExchange(t *testing.T) {
 			seed("initial", "app", "app")
 			var beforeEncode func(context.Context) error
 			var collide bool
-			plugin, err := op.New(op.Options{Tokens: op.TokenOptions{
+			tokens := op.TokenOptions{
 				AccessLifetime: time.Minute, RefreshLifetime: 17 * time.Minute, RefreshPrefix: "rt_",
+				ScopeLifetimes:   map[string]time.Duration{"reports": 45 * time.Second},
 				HashRefreshToken: func(_ context.Context, raw string) (string, error) { return "db/" + raw, nil },
 				GenerateOpaqueToken: func(context.Context) (string, error) {
 					if collide {
@@ -90,16 +91,23 @@ func TestRefreshGrantExchange(t *testing.T) {
 					}
 					return sid + "." + raw, nil
 				},
-			}})
+			}
+			plugin, err := op.New(op.Options{Tokens: tokens})
+			must(err)
+			// The same tokens with a scope whose instant has passed.
+			lapsed := tokens
+			lapsed.ScopeExpiresAt = map[string]time.Time{"reports": now.Add(-time.Second)}
+			lapsedPlugin, err := op.New(op.Options{Tokens: lapsed})
 			must(err)
 			const origin = "https://issuer.example.test"
-			host := func(store *Store) *auth.Auth {
+			hostWith := func(store *Store, p auth.Plugin) *auth.Auth {
 				t.Helper()
 				off := false
-				h, err := auth.New(auth.Options{BaseURL: origin, Secret: strings.Repeat("s", 40), RateLimit: &off, Store: store, Plugins: []auth.Plugin{plugin}})
+				h, err := auth.New(auth.Options{BaseURL: origin, Secret: strings.Repeat("s", 40), RateLimit: &off, Store: store, Plugins: []auth.Plugin{p}})
 				must(err)
 				return h
 			}
+			host := func(store *Store) *auth.Auth { return hostWith(store, plugin) }
 			first, second := host(s), host(peer)
 			call := func(h *auth.Auth, client, token string) *httptest.ResponseRecorder {
 				form := url.Values{"client_id": {client}, "grant_type": {"refresh_token"}, "refresh_token": {token}}
@@ -149,12 +157,20 @@ func TestRefreshGrantExchange(t *testing.T) {
 			// the parent and inserting its replacement inside the transaction.
 			collide = true
 			seed("preexisting", "app", "app")
-			expect("app", "rt_browser.preexisting", 200, "")
+			// A refreshed access token honors the shortest scope lifetime.
+			if fresh := expect("app", "rt_browser.preexisting", 200, ""); fresh.ExpiresIn != 45 {
+				t.Fatal("a refreshed access token ignored its scope lifetime", fresh.ExpiresIn)
+			}
 			expect("app", original, 500, "")
 			if count(`SELECT COUNT(*) FROM "oauthRefreshToken" WHERE "authorizationCodeId"='code/initial' AND "revoked" IS NULL`) != 1 || count(`SELECT COUNT(*) FROM "oauthRefreshToken" WHERE "authorizationCodeId"='code/initial'`) != 1 {
 				t.Fatal("failed rotation changed the parent or left a replacement")
 			}
 			collide = false
+			// A scope whose instant has passed refuses the exchange and leaves
+			// the grant usable.
+			if out := call(hostWith(s, lapsedPlugin), "app", original); out.Code != 400 || !strings.Contains(out.Body.String(), `"error_description":"scope reports has expired"`) {
+				t.Fatal("an expired scope did not refuse the refresh exchange", out.Code, out.Body.String())
+			}
 			server := httptest.NewServer(first)
 			t.Cleanup(server.Close)
 			cfg := oauth2.Config{ClientID: "app", Endpoint: oauth2.Endpoint{TokenURL: server.URL + "/api/auth/oauth2/token", AuthStyle: oauth2.AuthStyleInParams}}

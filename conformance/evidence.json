@@ -17591,6 +17591,17 @@
       "label": "Limit an opaque delegated token to its approved scope's lifetime",
       "test": "conformance/oauth-authorization-code.mjs",
       "marker": "assert.equal(token.expires_in, 90)"
+    },
+    {
+      "label": "Cap a token at the shortest of its base lifetime, each scope's relative lifetime and the whole seconds left until each scope's instant, and refuse a scope whose instant has passed with invalid_scope, a documented deviation",
+      "test": "plugins/oauthprovider/machine_token_test.go",
+      "marker": "func TestScopeExpiry(",
+      "complete": true
+    },
+    {
+      "label": "Apply the shortest scope lifetime to a refreshed access token and refuse a refresh for a scope whose instant has passed without spending the grant, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_refresh_grant_test.go",
+      "marker": "t.Fatal(\"an expired scope did not refuse the refresh exchange\", out.Code, out.Body.String())"
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/generateOpaqueAccessToken": [
@@ -48558,6 +48569,110 @@
       "label": "Refuse the option without openid in the issuer's scopes and ignore the client's default scopes",
       "test": "plugins/oauthprovider/browser_authorization_test.go",
       "marker": "func TestRequireOpenIDAtAuthorization("
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/clientRegistrationClientSecretExpiration": [
+    {
+      "label": "Report a never-expiring secret by default, the configured lifetime from the issue time when set, and no expiry for a public client, on SQLite, PostgreSQL and MySQL; a fixed instant is a documented deviation",
+      "test": "adapters/sqlstore/oauth_registration_defaults_test.go",
+      "marker": "t.Fatal(\"the configured secret lifetime was not reported\"",
+      "complete": true
+    },
+    {
+      "label": "Refuse a negative or fractional secret lifetime",
+      "test": "plugins/oauthprovider/registration_test.go",
+      "marker": "func TestRegistrationSecretLifetime("
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/clients.mdx#L158/`clientRegistrationClientSecretExpiration`": [
+    {
+      "label": "Report a never-expiring secret by default, the configured lifetime from the issue time when set, and no expiry for a public client, on SQLite, PostgreSQL and MySQL; a fixed instant is a documented deviation",
+      "test": "adapters/sqlstore/oauth_registration_defaults_test.go",
+      "marker": "t.Fatal(\"the configured secret lifetime was not reported\"",
+      "complete": true
+    },
+    {
+      "label": "Return client_secret_expires_at 0 for an issued secret and omit it for a public client, on both runtimes",
+      "test": "conformance/oauth-registration.mjs",
+      "marker": "assert.equal(app.client_secret_expires_at, 0);"
+    }
+  ],
+  "plugin-symbol/oauth-provider/publicSessionMiddleware": [
+    {
+      "label": "Serve a client's public fields without a session for a signed query naming it, verify a present query first, refuse without the option, without a query or for another client, hide a disabled client and never cache or set a cookie, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_client_directory_test.go",
+      "marker": "t.Fatal(\"a prelogin read was not refused in another runtime's order\", tc.body, w.Code, w.Body.String())",
+      "complete": true
+    },
+    {
+      "label": "Read the client's public fields from the login page's signed query and refuse another client, an altered query and a missing one, on both runtimes",
+      "test": "conformance/oauth-browser-login.mjs",
+      "marker": "const shown = await request(\"oauth2/public-client-prelogin\", { client_id: app.client_id, oauth_query: q });"
+    }
+  ],
+  "plugin/oauth-provider/POST /oauth2/public-client-prelogin": [
+    {
+      "label": "Serve a client's public fields without a session for a signed query naming it, verify a present query first, refuse without the option, without a query or for another client, hide a disabled client and never cache or set a cookie, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_client_directory_test.go",
+      "marker": "t.Fatal(\"a prelogin read was not refused in another runtime's order\", tc.body, w.Code, w.Body.String())",
+      "complete": true
+    },
+    {
+      "label": "Read the client's public fields from the login page's signed query and refuse another client, an altered query and a missing one, on both runtimes",
+      "test": "conformance/oauth-browser-login.mjs",
+      "marker": "const shown = await request(\"oauth2/public-client-prelogin\", { client_id: app.client_id, oauth_query: q });"
+    }
+  ],
+  "plugin-symbol/oauth-provider/getOAuthClientPublicPrelogin": [
+    {
+      "label": "Serve a client's public fields without a session for a signed query naming it, verify a present query first, refuse without the option, without a query or for another client, hide a disabled client and never cache or set a cookie, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_client_directory_test.go",
+      "marker": "t.Fatal(\"a prelogin read was not refused in another runtime's order\", tc.body, w.Code, w.Body.String())",
+      "complete": true
+    },
+    {
+      "label": "Read the client's public fields from the login page's signed query and refuse another client, an altered query and a missing one, on both runtimes",
+      "test": "conformance/oauth-browser-login.mjs",
+      "marker": "const shown = await request(\"oauth2/public-client-prelogin\", { client_id: app.client_id, oauth_query: q });"
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/allowPublicClientPrelogin": [
+    {
+      "label": "Serve a client's public fields without a session for a signed query naming it, verify a present query first, refuse without the option, without a query or for another client, hide a disabled client and never cache or set a cookie, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_client_directory_test.go",
+      "marker": "t.Fatal(\"a prelogin read was not refused in another runtime's order\", tc.body, w.Code, w.Body.String())",
+      "complete": true
+    },
+    {
+      "label": "Read the client's public fields from the login page's signed query and refuse another client, an altered query and a missing one, on both runtimes",
+      "test": "conformance/oauth-browser-login.mjs",
+      "marker": "const shown = await request(\"oauth2/public-client-prelogin\", { client_id: app.client_id, oauth_query: q });"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/clients.mdx#L60/`getOAuthClientPublicPrelogin`": [
+    {
+      "label": "Serve a client's public fields without a session for a signed query naming it, verify a present query first, refuse without the option, without a query or for another client, hide a disabled client and never cache or set a cookie, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_client_directory_test.go",
+      "marker": "t.Fatal(\"a prelogin read was not refused in another runtime's order\", tc.body, w.Code, w.Body.String())",
+      "complete": true
+    },
+    {
+      "label": "Read the client's public fields from the login page's signed query and refuse another client, an altered query and a missing one, on both runtimes",
+      "test": "conformance/oauth-browser-login.mjs",
+      "marker": "const shown = await request(\"oauth2/public-client-prelogin\", { client_id: app.client_id, oauth_query: q });"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L333/`POST /oauth2/public-client-prelogin`": [
+    {
+      "label": "Serve a client's public fields without a session for a signed query naming it, verify a present query first, refuse without the option, without a query or for another client, hide a disabled client and never cache or set a cookie, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_client_directory_test.go",
+      "marker": "t.Fatal(\"a prelogin read was not refused in another runtime's order\", tc.body, w.Code, w.Body.String())",
+      "complete": true
+    },
+    {
+      "label": "Read the client's public fields from the login page's signed query and refuse another client, an altered query and a missing one, on both runtimes",
+      "test": "conformance/oauth-browser-login.mjs",
+      "marker": "const shown = await request(\"oauth2/public-client-prelogin\", { client_id: app.client_id, oauth_query: q });"
     }
   ]
 }
