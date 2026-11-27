@@ -49786,5 +49786,207 @@
       "marker": "func TestMCPRegistrationLinksResource(",
       "complete": true
     }
+  ],
+  "plugin-symbol/mcp/McpOptions/enforcePerClientResources": [
+    {
+      "label": "Forward enforcePerClientResources to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check",
+      "test": "plugins/mcp/forward_test.go",
+      "marker": "func TestProviderOptionsForwarded(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/mcp/McpOptions/m2mAccessTokenExpiresIn": [
+    {
+      "label": "Forward m2mAccessTokenExpiresIn to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check",
+      "test": "plugins/mcp/forward_test.go",
+      "marker": "func TestProviderOptionsForwarded(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/mcp/McpOptions/idTokenExpiresIn": [
+    {
+      "label": "Forward idTokenExpiresIn to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check",
+      "test": "plugins/mcp/forward_test.go",
+      "marker": "func TestProviderOptionsForwarded(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/mcp/McpOptions/refreshTokenExpiresIn": [
+    {
+      "label": "Forward refreshTokenExpiresIn to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check",
+      "test": "plugins/mcp/forward_test.go",
+      "marker": "func TestProviderOptionsForwarded(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/mcp/McpOptions/codeExpiresIn": [
+    {
+      "label": "Forward codeExpiresIn to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check",
+      "test": "plugins/mcp/forward_test.go",
+      "marker": "func TestProviderOptionsForwarded(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/mcp/McpOptions/scopeExpirations": [
+    {
+      "label": "Forward scopeExpirations to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check",
+      "test": "plugins/mcp/forward_test.go",
+      "marker": "func TestProviderOptionsForwarded(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/mcp/McpOptions/assertionMaxLifetime": [
+    {
+      "label": "Forward assertionMaxLifetime to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check",
+      "test": "plugins/mcp/forward_test.go",
+      "marker": "func TestProviderOptionsForwarded(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/mcp/McpOptions/assertionClockTolerance": [
+    {
+      "label": "Forward assertionClockTolerance to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check",
+      "test": "plugins/mcp/forward_test.go",
+      "marker": "func TestProviderOptionsForwarded(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/mcp/McpOptions/allowClientKeyRotation": [
+    {
+      "label": "Forward allowClientKeyRotation to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check",
+      "test": "plugins/mcp/forward_test.go",
+      "marker": "func TestProviderOptionsForwarded(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/mcp/McpOptions/validateInitialAccessToken": [
+    {
+      "label": "Forward validateInitialAccessToken to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check",
+      "test": "plugins/mcp/forward_test.go",
+      "marker": "func TestProviderOptionsForwarded(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/mcp/McpOptions/clientRegistrationDefaultScopes": [
+    {
+      "label": "Forward clientRegistrationDefaultScopes to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check",
+      "test": "plugins/mcp/forward_test.go",
+      "marker": "func TestProviderOptionsForwarded(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/mcp/McpOptions/clientRegistrationAllowedScopes": [
+    {
+      "label": "Forward clientRegistrationAllowedScopes to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check",
+      "test": "plugins/mcp/forward_test.go",
+      "marker": "func TestProviderOptionsForwarded(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/mcp/McpOptions/clientRegistrationRequirePKCE": [
+    {
+      "label": "Forward clientRegistrationRequirePKCE to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check",
+      "test": "plugins/mcp/forward_test.go",
+      "marker": "func TestProviderOptionsForwarded(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/mcp/McpOptions/clientReference": [
+    {
+      "label": "Forward clientReference to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check",
+      "test": "plugins/mcp/forward_test.go",
+      "marker": "func TestProviderOptionsForwarded(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/mcp/McpOptions/grantTypes": [
+    {
+      "label": "Forward grantTypes to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check",
+      "test": "plugins/mcp/forward_test.go",
+      "marker": "func TestProviderOptionsForwarded(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/mcp/McpOptions/loginPage": [
+    {
+      "label": "Forward loginPage to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check",
+      "test": "plugins/mcp/forward_test.go",
+      "marker": "func TestProviderOptionsForwarded(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/mcp/McpOptions/consentPage": [
+    {
+      "label": "Forward consentPage to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check",
+      "test": "plugins/mcp/forward_test.go",
+      "marker": "func TestProviderOptionsForwarded(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/mcp/McpOptions/resourceSeedMode": [
+    {
+      "label": "Forward resourceSeedMode to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check",
+      "test": "plugins/mcp/forward_test.go",
+      "marker": "func TestProviderOptionsForwarded(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/mcp/McpOptions/resourceSeedScope": [
+    {
+      "label": "Forward resourceSeedScope to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check",
+      "test": "plugins/mcp/forward_test.go",
+      "marker": "func TestProviderOptionsForwarded(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/mcp/McpOptions/identifierValidator": [
+    {
+      "label": "Forward identifierValidator to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check",
+      "test": "plugins/mcp/forward_test.go",
+      "marker": "func TestProviderOptionsForwarded(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/mcp/McpOptions/validateRedirectUri": [
+    {
+      "label": "Forward validateRedirectUri to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check",
+      "test": "plugins/mcp/forward_test.go",
+      "marker": "func TestProviderOptionsForwarded("
+    }
+  ],
+  "plugin-symbol/mcp/McpOptions/allowInsecureRedirectUri": [
+    {
+      "label": "Forward allowInsecureRedirectUri to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check",
+      "test": "plugins/mcp/forward_test.go",
+      "marker": "func TestProviderOptionsForwarded("
+    }
+  ],
+  "plugin-symbol/mcp/McpOptions/clientRegistrationAllowedResources": [
+    {
+      "label": "Forward clientRegistrationAllowedResources to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check",
+      "test": "plugins/mcp/forward_test.go",
+      "marker": "func TestProviderOptionsForwarded("
+    }
+  ],
+  "plugin-symbol/mcp/McpOptions/accessTokenExpiresIn": [
+    {
+      "label": "Forward accessTokenExpiresIn to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check",
+      "test": "plugins/mcp/forward_test.go",
+      "marker": "func TestProviderOptionsForwarded("
+    }
+  ],
+  "plugin-symbol/mcp/McpOptions/clientPrivileges": [
+    {
+      "label": "Forward clientPrivileges to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check",
+      "test": "plugins/mcp/forward_test.go",
+      "marker": "func TestProviderOptionsForwarded("
+    }
+  ],
+  "plugin-symbol/mcp/McpOptions/resourcePrivileges": [
+    {
+      "label": "Forward resourcePrivileges to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check",
+      "test": "plugins/mcp/forward_test.go",
+      "marker": "func TestProviderOptionsForwarded("
+    }
   ]
 }
