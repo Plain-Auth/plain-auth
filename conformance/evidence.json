@@ -50487,7 +50487,7 @@
   ],
   "plugin-symbol/cimd/CimdOptions/isMetadataDocumentUrlAllowed": [
     {
-      "label": "Ask the host's URL policy once inside the shared fetch with the starting request's context values: a refusal or an error makes no request, spends one fetch start, paces the client and answers every sharing request, the error as is",
+      "label": "Refuse a client ID URL the host's policy refuses with the request's own context before any fetch or fetch budget, returning the policy's own error as is and recording nothing for a request that ended during the check",
       "test": "plugins/cimd/resolver_test.go",
       "marker": "func TestResolverURLPolicy(",
       "complete": true
@@ -50495,7 +50495,7 @@
   ],
   "docs/content/docs/plugins/cimd.mdx#L159/`cimdOptionsType.isMetadataDocumentUrlAllowed`": [
     {
-      "label": "Ask the host's URL policy once inside the shared fetch with the starting request's context values: a refusal or an error makes no request, spends one fetch start, paces the client and answers every sharing request, the error as is",
+      "label": "Refuse a client ID URL the host's policy refuses with the request's own context before any fetch or fetch budget, returning the policy's own error as is and recording nothing for a request that ended during the check",
       "test": "plugins/cimd/resolver_test.go",
       "marker": "func TestResolverURLPolicy(",
       "complete": true

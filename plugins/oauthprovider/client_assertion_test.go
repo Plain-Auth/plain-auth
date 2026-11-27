@@ -377,9 +377,48 @@ func TestDiscoveredClientKeys(t *testing.T) {
 		}
 	}
 	fetches := discovered.Load()
-	if err := key("cimd", uri); err != nil || discovered.Load() != fetches {
-		t.Fatal("stale keys were refetched within a minute", err)
+	warned := strings.Count(logs.String(), "because refreshing them failed")
+	if err := key("cimd", uri); err != nil || discovered.Load() != fetches || strings.Count(logs.String(), "because refreshing them failed") != warned+1 {
+		t.Fatal("stale keys were refetched within a minute, or answered without a warning", err)
 	}
+	// The minute without refetches never outlasts the bound the keys
+	// answered under.
+	retry := func() (time.Time, time.Time, time.Time) {
+		cache.mu.Lock()
+		defer cache.mu.Unlock()
+		set := cache.sets["cimd:"+uri]
+		return set.retry, set.fetched, set.transient
+	}
+	age(9*time.Minute + 59*time.Second)
+	if err := key("cimd", uri); err != nil {
+		t.Fatal(err)
+	}
+	if until, fetched, _ := retry(); until.After(fetched.Add(10 * time.Minute)) {
+		t.Fatal("keys answered past twice their lifetime without a refetch")
+	}
+	age(time.Hour - time.Second)
+	if err := key("cimd", uri); err != nil {
+		t.Fatal(err)
+	}
+	if until, fetched, _ := retry(); until.After(fetched.Add(time.Hour)) {
+		t.Fatal("keys answered past the stale bound without a refetch")
+	}
+	age(30 * time.Minute)
+	if err := key("cimd", uri); err != nil {
+		t.Fatal(err)
+	}
+	capacity = true
+	age(30 * time.Minute)
+	cache.mu.Lock()
+	cache.sets["cimd:"+uri].transient = time.Now().Add(-4*time.Minute - 59*time.Second)
+	cache.mu.Unlock()
+	if err := key("cimd", uri); err != nil {
+		t.Fatal(err)
+	}
+	if until, _, transient := retry(); until.After(transient.Add(5 * time.Minute)) {
+		t.Fatal("a capacity refusal answered past five minutes from the transient failure")
+	}
+	capacity = false
 	// A refusal at a local limit keeps the keys within five minutes of a
 	// transient failure, and keeps them cached after.
 	capacity = true
@@ -483,16 +522,17 @@ func TestDiscoveredClientKeys(t *testing.T) {
 }
 
 // abortedLookup is a lookup a deadline ended, as a discovery's transport
-// reports one, with no Timeout method of its own.
+// reports one.
 type abortedLookup struct{ err error }
 
-func (e abortedLookup) Error() string { return "lookup aborted: " + e.err.Error() }
-func (e abortedLookup) Unwrap() error { return e.err }
+func (e abortedLookup) Error() string   { return "lookup aborted: " + e.err.Error() }
+func (e abortedLookup) Unwrap() []error { return []error{e.err, ErrLookupAborted} }
 
-// Key fetches are bounded by a deadline and classify their failures: a
-// timeout or a closed connection may pass on retry, a lookup the deadline
-// ended or a TLS failure retrieved nothing, a capacity refusal says nothing,
-// and a refused response is terminal.
+// Key fetches are bounded by a deadline and classify their failures: the
+// deadline, however the transport wraps it, or a closed connection may pass
+// on retry, a lookup the transport reports aborted or a TLS failure
+// retrieved nothing, a capacity refusal says nothing, and a refused response
+// is terminal.
 func TestKeyFetchFailures(t *testing.T) {
 	defer func(d time.Duration) { keyFetchTimeout = d }(keyFetchTimeout)
 	keyFetchTimeout = 50 * time.Millisecond
@@ -501,6 +541,10 @@ func TestKeyFetchFailures(t *testing.T) {
 		want keyFailure
 	}{
 		"timeout": {func(r *http.Request) (*http.Response, error) { <-r.Context().Done(); return nil, r.Context().Err() }, keyTransient},
+		"wrapped": {func(r *http.Request) (*http.Response, error) {
+			<-r.Context().Done()
+			return nil, fmt.Errorf("jwks: %w", r.Context().Err())
+		}, keyTransient},
 		"lookup": {func(r *http.Request) (*http.Response, error) {
 			<-r.Context().Done()
 			return nil, abortedLookup{r.Context().Err()}

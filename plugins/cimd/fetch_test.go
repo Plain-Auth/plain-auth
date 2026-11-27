@@ -56,15 +56,18 @@ func TestFetchDocument(t *testing.T) {
 	// returned as is.
 	refuse := Options{AllowMetadataURL: func(context.Context, string) (bool, error) { return false, nil }}
 	var problem *auth.OAuthError
-	if err := refuse.allowURL(t.Context(), id); !errors.As(err, &problem) || problem.Description != "client_id URL is not permitted by the server's fetch policy" {
+	if err := refuse.checkURL(t.Context(), id); !errors.As(err, &problem) || problem.Description != "client_id URL is not permitted by the server's fetch policy" {
 		t.Fatal("wrong refusal", err)
 	}
 	hookErr := errors.New("policy down")
-	if err := (Options{AllowMetadataURL: func(context.Context, string) (bool, error) { return true, hookErr }}).allowURL(t.Context(), id); !errors.Is(err, hookErr) {
+	if err := (Options{AllowMetadataURL: func(context.Context, string) (bool, error) { return true, hookErr }}).checkURL(t.Context(), id); !errors.Is(err, hookErr) {
 		t.Fatal("a policy error was not returned as is", err)
 	}
-	if err := opts.allowURL(t.Context(), id); err != nil {
+	if err := opts.checkURL(t.Context(), id); err != nil {
 		t.Fatal("no policy refused a URL", err)
+	}
+	if err := opts.checkURL(t.Context(), "http://app.example.test/c"); !errors.As(err, &problem) || problem.Description != "client_id URL must use HTTPS" {
+		t.Fatal("an invalid URL was not refused", err)
 	}
 	// Failures and their kinds.
 	cases := map[string]struct {
@@ -110,11 +113,11 @@ func TestFetchDocument(t *testing.T) {
 		"5KB with BOM": {func(*http.Request) (*http.Response, error) {
 			return answer(200, "application/json", "\xEF\xBB\xBF"+valid+strings.Repeat(" ", 5<<10-len(valid)-2)), nil
 		}, "", terminalFailure, 400, "Metadata document exceeds 5KB size limit"},
-		"two media lines": {func(*http.Request) (*http.Response, error) {
-			r := answer(200, "application/json", valid)
-			r.Header.Add("Content-Type", "text/html")
+		"first media line": {func(*http.Request) (*http.Response, error) {
+			r := answer(200, "text/html", valid)
+			r.Header.Add("Content-Type", "application/json")
 			return r, nil
-		}, "", terminalFailure, 400, `Metadata document must be JSON (got Content-Type "application/json, text/html")`},
+		}, "", terminalFailure, 400, `Metadata document must be JSON (got Content-Type "text/html")`},
 		"invalid document": {func(*http.Request) (*http.Response, error) {
 			return answer(200, "application/json", `{"client_id":"x"}`), nil
 		}, "", terminalFailure, 400, `client_id "x" does not match the metadata document URL`},
@@ -134,15 +137,22 @@ func TestFetchDocument(t *testing.T) {
 	if _, err := opts.fetchDocument(t.Context(), client, id, "", "", logger); err != nil {
 		t.Fatal("a document with a byte order mark was refused", err)
 	}
-	// Repeated caching headers read as their lines joined.
+	// Repeated list headers read as their lines joined, the others by their
+	// first line.
 	respond = func(*http.Request) (*http.Response, error) {
 		r := answer(200, "application/json", valid)
 		r.Header["Cache-Control"] = []string{"public, max-age=3600", "no-store"}
 		r.Header["Vary"] = []string{"Accept-Encoding", "*"}
+		r.Header["Expires"] = []string{"Tue, 01 Dec 2026 00:00:00 GMT", "0"}
+		r.Header["Age"] = []string{"10", "20"}
+		r.Header["Etag"] = []string{`"a"`, `"b"`}
+		r.Header.Add("Content-Type", "text/html")
 		return r, nil
 	}
-	if got, err := opts.fetchDocument(t.Context(), client, id, "", "", logger); err != nil || got.headers.CacheControl != "public, max-age=3600, no-store" || got.headers.Vary != "Accept-Encoding, *" {
-		t.Fatal("repeated caching headers were not joined", err, got.headers)
+	got, err = opts.fetchDocument(t.Context(), client, id, "", "", logger)
+	if err != nil || got.headers.CacheControl != "public, max-age=3600, no-store" || got.headers.Vary != "Accept-Encoding, *" ||
+		got.headers.Expires != "Tue, 01 Dec 2026 00:00:00 GMT" || got.headers.Age != "10" || got.headers.ETag != `"a"` {
+		t.Fatal("repeated headers were not read as another runtime reads them", err, got.headers)
 	}
 	// Accepted media types, a conditional 304 and warnings.
 	for _, media := range []string{"application/json;charset=utf-8", "application/client+json", "APPLICATION/JSON"} {

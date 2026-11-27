@@ -23,9 +23,10 @@ type Options struct {
 	OriginBoundFields []string
 	// AllowMetadataURL may refuse a client ID URL before it is fetched; false
 	// refuses it with invalid_client and an error is returned as is. It runs
-	// once per shared fetch, after the fetch budget admits it, with the
-	// context values of the request that started the fetch but not its
-	// cancellation, and every request sharing the fetch gets its answer.
+	// with the request's own context before the request joins or starts a
+	// fetch, so before any fetch budget is spent; a fresh cached document,
+	// or a stored client standing in after a transient failure, answers
+	// without it.
 	AllowMetadataURL func(ctx context.Context, clientIDURL string) (bool, error)
 	// MetadataRevalidationInterval caps how long a document is fresh and
 	// stands in when its response gives no lifetime; 60 minutes by default.

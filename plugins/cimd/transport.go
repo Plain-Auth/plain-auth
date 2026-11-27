@@ -23,11 +23,12 @@ func (e capacityError) Error() string { return string(e) }
 func (capacityError) Unwrap() error   { return oauthprovider.ErrFetchCapacity }
 
 // lookupAborted is a lookup the request's context ended, which says nothing
-// about the host, so it is never a transient failure.
+// about the host, so it is never a transient failure; it wraps the
+// context's error and the provider's ErrLookupAborted.
 type lookupAborted struct{ err error }
 
-func (e lookupAborted) Error() string { return "metadata DNS lookup aborted: " + e.err.Error() }
-func (e lookupAborted) Unwrap() error { return e.err }
+func (e lookupAborted) Error() string   { return "metadata DNS lookup aborted: " + e.err.Error() }
+func (e lookupAborted) Unwrap() []error { return []error{e.err, oauthprovider.ErrLookupAborted} }
 
 var (
 	errLookupLimit error = capacityError("metadata DNS lookup limit exceeded")

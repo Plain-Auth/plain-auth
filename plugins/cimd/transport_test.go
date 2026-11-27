@@ -13,6 +13,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/Plain-Org/plain-auth/plugins/oauthprovider"
 )
 
 // pinnedServer is a TLS server the fake dialer reaches for every address
@@ -177,8 +179,8 @@ func TestTransportLookupLimit(t *testing.T) {
 		ctx, cancel := context.WithTimeout(t.Context(), 10*time.Millisecond)
 		r, _ := http.NewRequestWithContext(ctx, http.MethodGet, "https://example.com/c", nil)
 		var aborted lookupAborted
-		if _, err := tr.RoundTrip(r); !errors.Is(err, context.DeadlineExceeded) || !errors.As(err, &aborted) {
-			t.Fatal("a stalled lookup did not stop on cancel as an aborted lookup", err)
+		if _, err := tr.RoundTrip(r); !errors.Is(err, context.DeadlineExceeded) || !errors.As(err, &aborted) || !errors.Is(err, oauthprovider.ErrLookupAborted) {
+			t.Fatal("a stalled lookup did not stop on cancel as an aborted lookup the provider sees", err)
 		}
 		cancel()
 	}

@@ -128,6 +128,11 @@ func (opts Options) discoverRequestClient(c auth.EndpointContext, clientID strin
 // transient failure.
 var ErrFetchCapacity = errors.New("oauthprovider: fetch refused at a local capacity limit")
 
+// ErrLookupAborted is wrapped by a discovery transport's error for a host
+// lookup its request's deadline ended, which says nothing about the host:
+// it is not counted as a transient failure.
+var ErrLookupAborted = errors.New("oauthprovider: host lookup aborted")
+
 // UnresolvedClientError is a store's answer for a read that reached a
 // client a discovery owns, through a token or a consent, that the request
 // has not resolved. The provider resolves the client outside the store's

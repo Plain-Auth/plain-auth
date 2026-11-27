@@ -112,6 +112,15 @@ type cachedClientKeys struct {
 	// response stopped a discovery's stale answers until a fetch succeeds.
 	transient time.Time
 	terminal  bool
+	// reason is the failure the set last answered through.
+	reason string
+}
+
+func minTime(a, b time.Time) time.Time {
+	if b.Before(a) {
+		return b
+	}
+	return a
 }
 
 // keyFailure classifies a failed key fetch: a transient failure may pass on
@@ -135,6 +144,11 @@ type keySource struct {
 	http               *http.Client
 	stale              time.Duration
 	logger             *slog.Logger
+}
+
+// warnStale logs an answer from cached keys past twice their lifetime.
+func (src keySource) warnStale(ctx context.Context, reason string) {
+	src.logger.WarnContext(ctx, "oauth-provider is verifying client "+src.clientID+" with cached keys from "+src.uri+" because refreshing them failed: "+reason)
 }
 
 type keyFetch struct {
@@ -227,6 +241,10 @@ func (cache *clientKeyCache) load(ctx context.Context, src keySource, previous *
 		cache.mu.Lock()
 		cached := cache.sets[src.key]
 		if cached != nil && cached != previous && !cached.fetched.Before(after) && (time.Since(cached.fetched) < clientKeysTTL || time.Now().Before(cached.retry)) {
+			// Each stale answer is logged, as another runtime logs it.
+			if time.Since(cached.fetched) >= 2*clientKeysTTL {
+				src.warnStale(ctx, cached.reason)
+			}
 			cache.mu.Unlock()
 			return cached, nil
 		}
@@ -285,10 +303,16 @@ func (cache *clientKeyCache) refresh(ctx context.Context, src keySource, f *keyF
 		}
 		age := now.Sub(old.fetched)
 		stale := !old.terminal && age < src.stale
+		// The set answers without a refetch for a minute, but never past
+		// the bound it answered under.
+		var until time.Time
 		switch {
 		case !invalid && age < 2*clientKeysTTL:
-		case stale && kind == keyTransient, stale && kind == keyCapacity && now.Sub(old.transient) <= 5*time.Minute:
-			src.logger.WarnContext(ctx, "oauth-provider is verifying client "+src.clientID+" with cached keys from "+src.uri+" because refreshing them failed: "+err.Error())
+			until = old.fetched.Add(2 * clientKeysTTL)
+		case stale && kind == keyTransient:
+			until = old.fetched.Add(src.stale)
+		case stale && kind == keyCapacity && now.Sub(old.transient) <= 5*time.Minute:
+			until = minTime(old.fetched.Add(src.stale), old.transient.Add(5*time.Minute))
 		default:
 			if kind == keyTerminal {
 				delete(cache.sets, src.key)
@@ -296,7 +320,10 @@ func (cache *clientKeyCache) refresh(ctx context.Context, src keySource, f *keyF
 			f.err = err
 			return
 		}
-		old.retry = now.Add(time.Minute)
+		if age >= 2*clientKeysTTL {
+			src.warnStale(ctx, err.Error())
+		}
+		old.retry, old.reason = minTime(now.Add(time.Minute), until), err.Error()
 		f.value = old
 		return
 	}
@@ -333,10 +360,10 @@ func (cache *clientKeyCache) fetch(ctx context.Context, src keySource) (assertio
 
 // fetchKeySet reads a JWKS document in five seconds: status 200, a JSON
 // media type and at most 64 KiB. A failure is transient for a 500, 502, 503
-// or 504 answer, a timeout or a connection failure, a capacity refusal when
-// the transport wraps ErrFetchCapacity, a transport failure for another one
-// that retrieved nothing, such as a lookup the deadline ended, and terminal
-// for a response it refuses.
+// or 504 answer, the deadline or a connection failure, a capacity refusal
+// when the transport wraps ErrFetchCapacity, a transport failure for another
+// one that retrieved nothing, such as a lookup the transport reports with
+// ErrLookupAborted, and terminal for a response it refuses.
 func fetchKeySet(ctx context.Context, client *http.Client, uri string) ([]byte, keyFailure, error) {
 	ctx, cancel := context.WithTimeout(ctx, keyFetchTimeout)
 	defer cancel()
@@ -345,11 +372,15 @@ func fetchKeySet(ctx context.Context, client *http.Client, uri string) ([]byte, 
 		return nil, keyTerminal, errFetchKeys
 	}
 	req.Header.Set("Accept", "application/jwk-set+json, application/json")
+	// The deadline decides a timeout, whatever shape the transport gives
+	// its error, unless the transport reports a lookup it ended.
 	classify := func(err error) keyFailure {
 		switch {
 		case errors.Is(err, ErrFetchCapacity):
 			return keyCapacity
-		case publicnet.Transient(err):
+		case errors.Is(err, ErrLookupAborted):
+			return keyTransport
+		case errors.Is(ctx.Err(), context.DeadlineExceeded) || publicnet.Transient(err):
 			return keyTransient
 		}
 		return keyTransport

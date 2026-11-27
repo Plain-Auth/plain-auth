@@ -11,6 +11,10 @@ import (
 func TestFreshness(t *testing.T) {
 	now := time.Date(2026, 11, 27, 12, 0, 0, 0, time.UTC)
 	date := func(d time.Duration) string { return now.Add(d).Format(http.TimeFormat) }
+	// zoned writes an RFC 1123 date in a zone hours from UTC, by its name.
+	zoned := func(d time.Duration, hours int, name string) string {
+		return now.Add(d).In(time.FixedZone("", hours*3600)).Format("Mon, 02 Jan 2006 15:04:05") + " " + name
+	}
 	for name, tc := range map[string]struct {
 		h         cacheHeaders
 		interval  time.Duration
@@ -48,6 +52,9 @@ func TestFreshness(t *testing.T) {
 		"utc expires":            {cacheHeaders{Expires: now.Add(5 * time.Minute).Format(time.RFC1123), Date: date(0)}, time.Hour, true, 5 * time.Minute},
 		"numeric zone expires":   {cacheHeaders{Expires: now.Add(5 * time.Minute).In(time.FixedZone("", 3600)).Format(time.RFC1123Z), Date: date(0)}, time.Hour, true, 5 * time.Minute},
 		"iso expires":            {cacheHeaders{Expires: now.Add(5 * time.Minute).Format(time.RFC3339), Date: date(0)}, time.Hour, true, 5 * time.Minute},
+		"est expires":            {cacheHeaders{Expires: zoned(5*time.Minute, -5, "EST"), Date: date(0)}, time.Hour, true, 5 * time.Minute},
+		"pdt date":               {cacheHeaders{CacheControl: "max-age=600", Date: zoned(-200*time.Second, -7, "PDT")}, time.Hour, true, 400 * time.Second},
+		"unknown zone expires":   {cacheHeaders{Expires: zoned(5*time.Minute, 1, "CET"), Date: date(0)}, time.Hour, true, 0},
 	} {
 		cacheable, expires := freshness(tc.h, tc.interval, now)
 		if cacheable != tc.cacheable || (cacheable && expires.Sub(now) != tc.lifetime) {

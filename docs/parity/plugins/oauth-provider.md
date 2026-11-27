@@ -565,8 +565,8 @@
     - [x] Validate absolute URI and URN audience identifiers and reject fragments, unsafe schemes and malformed escapes ([test](../../../plugins/oauthprovider/resource_test.go#L11))
   - [ ] `ClientRegistrationRequest`
     - [x] Apply application metadata while keeping ownership, credentials and privilege fields under server control ([test](../../../conformance/oauth-registration.mjs#L207))
-  - [x] `consumeClientAssertion` ([test](../../../plugins/oauthprovider/client_assertion_test.go#L592))
-    - [x] Check a verified assertion payload's audience, exp, iat, nbf and jti with the provider's lifetime and clock tolerance, spend the jti once per namespace with private_key_jwt's digest, and refuse without a replay store ([test](../../../plugins/oauthprovider/client_assertion_test.go#L592))
+  - [x] `consumeClientAssertion` ([test](../../../plugins/oauthprovider/client_assertion_test.go#L636))
+    - [x] Check a verified assertion payload's audience, exp, iat, nbf and jti with the provider's lifetime and clock tolerance, spend the jti once per namespace with private_key_jwt's digest, and refuse without a replay store ([test](../../../plugins/oauthprovider/client_assertion_test.go#L636))
     - [x] Spend a strategy's assertion jti once across token requests and store pools on one database, per client namespace, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_extension_auth_test.go#L168))
   - [x] `verifyOAuthQueryParams` ([test](../../../oauth_signed_query_test.go#L11))
     - [x] Verify browser form signatures, repeated fields, UTF-16 ordering, signature alphabets, rotation and the expiration boundary ([test](../../../oauth_signed_query_test.go#L11))

@@ -171,16 +171,28 @@ func mergeHeaders(previous, revalidated cacheHeaders) cacheHeaders {
 		pick(revalidated.Date, previous.Date), pick(revalidated.Age, previous.Age), pick(revalidated.ETag, previous.ETag), pick(revalidated.LastModified, previous.LastModified)}
 }
 
-// parseDate reads an HTTP date, also in the RFC 1123 forms with a zone name
-// or a numeric zone and in RFC 3339, which another runtime's date parser
-// accepts too.
+// zoneHours are the zone names another runtime's date parser reads in an
+// RFC 1123 date, as hours from UTC.
+var zoneHours = map[string]int{"UT": 0, "UTC": 0, "GMT": 0, "Z": 0, "EST": -5, "EDT": -4, "CST": -6, "CDT": -5, "MST": -7, "MDT": -6, "PST": -8, "PDT": -7}
+
+// parseDate reads an HTTP date, also in RFC 1123 with a numeric zone or a
+// zone name in zoneHours, and in RFC 3339, which another runtime's date
+// parser accepts too. Other zone names do not parse, so the host's own time
+// zone never decides.
 func parseDate(value string) (time.Time, bool) {
 	if t, err := http.ParseTime(value); err == nil {
 		return t, true
 	}
-	for _, layout := range []string{time.RFC1123, time.RFC1123Z, time.RFC3339} {
+	for _, layout := range []string{time.RFC1123Z, time.RFC3339} {
 		if t, err := time.Parse(layout, value); err == nil {
 			return t, true
+		}
+	}
+	if i := strings.LastIndexByte(value, ' '); i > 0 {
+		if hours, ok := zoneHours[value[i+1:]]; ok {
+			if t, err := time.ParseInLocation("Mon, 02 Jan 2006 15:04:05", value[:i], time.UTC); err == nil {
+				return t.Add(-time.Duration(hours) * time.Hour), true
+			}
 		}
 	}
 	return time.Time{}, false

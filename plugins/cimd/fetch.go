@@ -81,18 +81,23 @@ type policyError struct{ err error }
 func (e policyError) Error() string { return e.err.Error() }
 func (e policyError) Unwrap() error { return e.err }
 
-// allowURL asks the host's URL policy inside the shared fetch, before the
-// request, as another runtime does: false refuses the URL and an error is
-// returned as is.
-func (o Options) allowURL(ctx context.Context, clientIDURL string) error {
+// checkURL refuses a client ID URL before it joins or starts a fetch: one
+// that is not a valid metadata document URL, or one the host refuses. A
+// request that ended during the host's check records nothing.
+func (o Options) checkURL(ctx context.Context, clientIDURL string) error {
+	if err := ValidateClientIDURL(clientIDURL); err != nil {
+		return fetchFailure(terminalFailure, err.Error())
+	}
 	if o.AllowMetadataURL == nil {
 		return nil
 	}
 	allowed, err := o.AllowMetadataURL(ctx, clientIDURL)
-	if err != nil {
+	switch {
+	case err != nil && ctx.Err() != nil:
+		return err
+	case err != nil:
 		return policyError{err}
-	}
-	if !allowed {
+	case !allowed:
 		return fetchFailure(terminalFailure, "client_id URL is not permitted by the server's fetch policy")
 	}
 	return nil
@@ -136,10 +141,11 @@ func (o Options) fetchDocument(ctx context.Context, client *http.Client, clientI
 		return fetchedDocument{}, fetchFailure(transportFailure, networkFailure)
 	}
 	defer res.Body.Close()
-	// A repeated header reads as its lines joined, as fetch's Headers.get
-	// does.
-	get := func(name string) string { return strings.Join(res.Header.Values(name), ", ") }
-	headers := cacheHeaders{get("Cache-Control"), get("Vary"), get("Expires"), get("Date"), get("Age"), get("ETag"), get("Last-Modified")}
+	// Repeated list headers read as their lines joined; for the others the
+	// first line counts, as another runtime's Node transport reads them.
+	joined := func(name string) string { return strings.Join(res.Header.Values(name), ", ") }
+	headers := cacheHeaders{joined("Cache-Control"), joined("Vary"), res.Header.Get("Expires"), joined("Date"), res.Header.Get("Age"),
+		res.Header.Get("ETag"), res.Header.Get("Last-Modified")}
 	if res.StatusCode == http.StatusNotModified {
 		if etag == "" && lastModified == "" {
 			return fetchedDocument{}, fetchFailure(terminalFailure, "Metadata document returned 304 without a conditional validator")
@@ -154,7 +160,7 @@ func (o Options) fetchDocument(ctx context.Context, client *http.Client, clientI
 		}
 		return fetchedDocument{}, fetchFailure(kind, "Metadata document fetch returned HTTP "+strconv.Itoa(res.StatusCode))
 	}
-	if media := get("Content-Type"); !jsonMedia.MatchString(media) {
+	if media := res.Header.Get("Content-Type"); !jsonMedia.MatchString(media) {
 		if media == "" {
 			media = "(none)"
 		}
