@@ -62,7 +62,11 @@ func (s *Store) ReserveStripePlanChange(ctx context.Context, token string, want 
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return err
 		}
-		if err == nil && schedule.End > now.Unix() {
+		// A schedule reservation not yet bound may still create a schedule
+		// under its key, which Stripe honors for a day. A bound one's
+		// schedule is refused by the caller while Stripe shows it attached,
+		// and is otherwise released.
+		if err == nil && schedule.Schedule == "" && schedule.End > now.Unix() && now.Before(time.Unix(schedule.Created, 0).Add(24*time.Hour)) {
 			return billing.ErrPendingSchedule
 		}
 		key, identifier := stripeRecordID("plan-change", want.Subscription), stripeOwnerKey(ctx, "sync", want.Owner)

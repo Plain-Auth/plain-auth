@@ -17,6 +17,9 @@ type ScheduleChange struct {
 }
 
 type SubscriptionScheduleStore interface {
+	// ReserveStripeSchedule must also return ErrPendingSchedule while a
+	// PlanChangeStore holds a direct change for the subscription started
+	// within PlanChangeHold, which may still reach Stripe.
 	ReserveStripeSchedule(ctx context.Context, token string, want ScheduleChange, attached string, now time.Time) (ScheduleChange, error)
 	BindStripeSchedule(ctx context.Context, token string, change ScheduleChange, schedule string, now time.Time) error
 	ForgetStripeSchedule(ctx context.Context, owner, token, subscription, schedule string, now time.Time) error

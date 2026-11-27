@@ -124,7 +124,7 @@
   - [ ] `CheckoutSessionLineItem`
     - [x] Accept configured line items with optional fixed quantities and refuse duplicates, shared prices, out-of-range quantities and membership plans at startup ([test](../../../plugins/stripe/plans_test.go#L216))
   - [ ] `StripePlan`
-    - [x] Follow a plan's line items and add-ons when an existing subscription changes plan, keeping a shared add-on ([test](../../../adapters/sqlstore/stripe_plan_items_test.go#L421))
+    - [x] Follow a plan's line items and add-ons when an existing subscription changes plan, keeping a shared add-on ([test](../../../adapters/sqlstore/stripe_plan_items_test.go#L442))
   - [ ] `Subscription`
     - [x] Record the plan, reference, status, trial, billing period, interval, seats, cancellation, schedule and end dates from signed subscription events on three SQL engines ([test](../../../adapters/sqlstore/stripe_lifecycle_test.go#L23))
   - [ ] `SubscriptionOptions`
@@ -259,8 +259,10 @@
         - [x] Schedule a single-seat annual organization plan and reconcile its signed phase transition through the browser client ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L506))
         - [x] Open a hosted confirmation for a quantity-only change and suppress the link if the existing quantity changes concurrently ([test](../../../adapters/sqlstore/stripe_plan_change_test.go#L225))
         - [x] Propose one seat when quantity is omitted and keep all five existing seats until the customer confirms ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L286))
-        - [x] Change a subscription with several items directly under one idempotency key, so a retry on another server after a lost response sends nothing more ([test](../../../adapters/sqlstore/stripe_plan_items_test.go#L487))
-        - [x] Let only one of two concurrent direct plan changes reach Stripe, and block schedules while a change is open ([test](../../../adapters/sqlstore/stripe_plan_items_test.go#L514))
+        - [x] Succeed on another server after an applied direct change lost its response, without a second update ([test](../../../adapters/sqlstore/stripe_plan_items_test.go#L508))
+        - [x] Let only one of two concurrent direct changes to different targets reach Stripe ([test](../../../adapters/sqlstore/stripe_plan_items_test.go#L564))
+        - [x] Resend a direct change lost before Stripe under the same idempotency key and items from another server ([test](../../../adapters/sqlstore/stripe_plan_items_test.go#L608))
+        - [x] Refuse a new schedule while a direct change may still reach Stripe, and a direct change during an unbound schedule reservation ([test](../../../adapters/sqlstore/stripe_plan_items_test.go#L602))
       - [ ] Scheduling Plan Changes at Period End
         - [x] Schedule a configured annual price at the current period boundary with no proration and observe the signed transition through the browser client ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L427))
         - [x] Recover lost create, update and release responses, reject competing destinations and preserve custom phases on three SQL engines ([test](../../../adapters/sqlstore/stripe_schedules_test.go#L181))
@@ -526,18 +528,18 @@
           - [x] Charge a single yearly item at the organization member count and synchronize that same item after a member joins or leaves ([test](../../../conformance/stripe-organization-fixture.mjs#L217))
           - [x] Refuse a membership plan without an organization policy or a seat-capable store at startup ([test](../../../adapters/sqlstore/stripe_options_test.go#L247))
           - [x] Keep a personal checkout of a membership plan at the caller's base price and quantity while an organization is active, on three SQL engines ([test](../../../adapters/sqlstore/stripe_options_test.go#L331))
-        - [x] `prorationBehavior` ([test](../../../adapters/sqlstore/stripe_plan_items_test.go#L427))
+        - [x] `prorationBehavior` ([test](../../../adapters/sqlstore/stripe_plan_items_test.go#L448))
           - [x] Update the existing Stripe item when an invitation is accepted or a member is removed, using default proration ([test](../../../conformance/stripe-organization-fixture.mjs#L244))
           - [x] Configure monthly seat proration and reject unknown behavior or an unsupported plan shape ([test](../../../plugins/stripe/seats_test.go#L9))
           - [x] Refuse an unknown proration behavior on licensed, metered add-on and membership plans at startup ([test](../../../plugins/stripe/plans_test.go#L41))
           - [x] Report the configured proration behavior of licensed, metered add-on and membership plans, or create_prorations when unset ([test](../../../plugins/stripe/plans_internal_test.go#L12))
-          - [x] Send each plan's proration, always_invoice and none included, on a direct plan change, on three SQL engines ([test](../../../adapters/sqlstore/stripe_plan_items_test.go#L427))
+          - [x] Send each plan's proration, always_invoice and none included, on a direct plan change, on three SQL engines ([test](../../../adapters/sqlstore/stripe_plan_items_test.go#L448))
         - [ ] `lineItems`
           - [x] Configure up to 19 separate metered add-ons, validate price roles and isolate the installed plan from later host mutations ([test](../../../plugins/stripe/metered_addons_test.go#L11))
           - [x] Validate the add-on price intervals and retain the original price IDs and ordering across a configuration change ([test](../../../adapters/sqlstore/stripe_addons_test.go#L164))
           - [x] Keep personal and organization billing separate through a licensed purchase with two metered additions on three SQL engines ([test](../../../adapters/sqlstore/stripe_addons_test.go#L250))
           - [x] Send a plan's fixed and metered line items after the base in Checkout, keep them across retries, check receipts exactly and unmap a subscription missing an item, on three SQL engines ([test](../../../adapters/sqlstore/stripe_line_items_test.go#L104))
-          - [x] Change a subscription to, from and between plans with line items in one direct update that follows the configured items and quantities ([test](../../../adapters/sqlstore/stripe_plan_items_test.go#L347))
+          - [x] Change a subscription to, from and between plans with line items in one direct update that follows the configured items and quantities ([test](../../../adapters/sqlstore/stripe_plan_items_test.go#L368))
           - [x] Send the same direct item update and proration as another runtime when switching to a plan with a metered line item ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L652))
         - [x] `freeTrial` ([test](../../../adapters/sqlstore/stripe_trial_callbacks_test.go#L21))
           - [x] Offer the configured trial only for a new personal or organization billing reference with no trial history across plans ([test](../../../conformance/stripe-organization-fixture.mjs#L425))

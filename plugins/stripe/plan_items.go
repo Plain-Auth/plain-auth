@@ -71,9 +71,11 @@ type PlanChangeStore interface {
 	// ReserveStripePlanChange returns the stored change when SameRequest
 	// holds and it is younger than PlanChangeReuse, refreshing Started. It
 	// returns ErrPendingSchedule while a different change was sent within
-	// PlanChangeHold or a scheduled change for the subscription has not
-	// reached its end, and otherwise stores want under a new ID with
-	// Created and Started set to now.
+	// PlanChangeHold, or while a schedule reservation not yet bound to a
+	// Stripe schedule is younger than a day and before its end, and
+	// otherwise stores want under a new ID with Created and Started set to
+	// now. The plugin reads the subscription again after reserving, so a
+	// bound schedule still attached is refused there.
 	ReserveStripePlanChange(ctx context.Context, token string, want PlanChange, now time.Time) (PlanChange, error)
 	// ReleaseStripePlanChange removes the stored change for which Targets
 	// holds, and reports whether one did.
@@ -181,10 +183,12 @@ func (b basket) changeTo(t CheckoutAttempt, quantity int64) []PlanChangeItem {
 }
 
 // updatePlanItems changes a subscription's items directly. Another runtime
-// opens a portal confirmation, which Stripe refuses for a subscription with
-// several items, and writes the plan and seats itself. Here the change is
-// reserved with a durable idempotency key, so a retry never updates or
-// prorates twice, and the row is synchronized from Stripe afterwards.
+// does so only when the plans' line items differ, and otherwise opens a
+// portal confirmation, which Stripe refuses for a subscription with several
+// items; it also writes the plan and seats itself. Here every change to or
+// from several items is direct, the change is reserved with a durable
+// idempotency key, so a retry never updates or prorates twice, and the row
+// is synchronized from Stripe afterwards.
 func (s *subscriptions) updatePlanItems(c auth.EndpointContext, selection billingSelection, local Subscription, sub *sdk.Subscription, b basket, to Plan, t CheckoutAttempt, quantity int64, returnURL string) (any, error) {
 	store, ok := c.Store().(PlanChangeStore)
 	if !ok {
@@ -198,6 +202,19 @@ func (s *subscriptions) updatePlanItems(c auth.EndpointContext, selection billin
 	change, err := store.ReserveStripePlanChange(ctx, token, want, time.Now().UTC())
 	if err != nil {
 		return nil, err
+	}
+	// A schedule attached since the subscription was read blocks the change.
+	// The reservation now keeps a new schedule from starting, and is kept,
+	// so a retry once the schedule is resolved reuses its key.
+	fresh, err := s.client.V1Subscriptions.Retrieve(ctx, sub.ID, nil)
+	if err != nil {
+		return nil, providerManagementError(err)
+	}
+	if fresh == nil || fresh.ID != sub.ID {
+		return nil, ErrCheckoutReconcile
+	}
+	if fresh.Schedule != nil || fresh.PendingUpdate != nil {
+		return nil, ErrPendingSchedule
 	}
 	params := &sdk.SubscriptionUpdateParams{ProrationBehavior: sdk.String(change.Proration)}
 	for _, item := range change.Items {
@@ -222,10 +239,13 @@ func (s *subscriptions) updatePlanItems(c auth.EndpointContext, selection billin
 	cancel()
 	if err != nil {
 		// Stripe refused the update, so nothing changed and another target
-		// may proceed at once. Any other failure may have applied it: the
-		// reservation keeps the key for a retry.
+		// may proceed at once. Stripe also replays a server error under its
+		// key, so that key is dropped too; a retry reads the subscription
+		// again, so an update that did apply is never sent twice. Any other
+		// failure may still reach Stripe: the reservation keeps the key for a
+		// retry.
 		var api *sdk.Error
-		if errors.As(err, &api) && (api.HTTPStatusCode == 400 || api.HTTPStatusCode == 402 || api.HTTPStatusCode == 404) {
+		if errors.As(err, &api) && (api.HTTPStatusCode == 400 || api.HTTPStatusCode == 402 || api.HTTPStatusCode == 404 || api.HTTPStatusCode >= 500) {
 			if _, err := store.ReleaseStripePlanChange(ctx, token, change, time.Now().UTC()); err != nil {
 				return nil, err
 			}

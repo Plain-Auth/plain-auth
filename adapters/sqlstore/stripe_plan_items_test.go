@@ -34,6 +34,9 @@ type itemsProvider struct {
 	portals []url.Values
 	answers map[string]string
 	calls   int
+	// status and schedule are the subscription's; getHook runs on each read.
+	status, schedule string
+	getHook          func()
 	// mode is "" to apply, "lostAfter" to apply and lose the response,
 	// "lostBefore" to fail before Stripe, "refuse" for a coded 400, or
 	// "ignore" to answer without applying.
@@ -72,8 +75,16 @@ func (p *itemsProvider) subscription() map[string]any {
 		v["price"] = p.price(item["price"].(string))
 		data = append(data, v)
 	}
-	return map[string]any{"object": "subscription", "id": "sub_items", "customer": "cus_items", "status": "active", "metadata": map[string]string{},
+	status := p.status
+	if status == "" {
+		status = "active"
+	}
+	sub := map[string]any{"object": "subscription", "id": "sub_items", "customer": "cus_items", "status": status, "metadata": map[string]string{},
 		"items": map[string]any{"object": "list", "has_more": false, "data": data}}
+	if p.schedule != "" {
+		sub["schedule"] = p.schedule
+	}
+	return sub
 }
 
 func (p *itemsProvider) set(prices ...any) {
@@ -135,6 +146,9 @@ func (p *itemsProvider) handle(r *http.Request) (*http.Response, error) {
 	case r.Method == "GET" && r.URL.Path == "/v1/subscriptions/sub_items":
 		p.mu.Lock()
 		defer p.mu.Unlock()
+		if p.getHook != nil {
+			p.getHook()
+		}
 		return stripeJSON(200, p.subscription()), nil
 	case r.Method == "GET" && strings.HasPrefix(r.URL.Path, "/v1/prices/"):
 		return stripeJSON(200, p.price(strings.TrimPrefix(r.URL.Path, "/v1/prices/"))), nil
@@ -155,12 +169,19 @@ func (p *itemsProvider) handle(r *http.Request) (*http.Response, error) {
 		p.mu.Lock()
 		defer p.mu.Unlock()
 		if answer, ok := p.answers[key]; ok {
+			// Stripe replays a server error under its key.
+			if answer == "server-error" {
+				return stripeJSON(500, map[string]any{"error": map[string]string{"type": "api_error", "message": "Server error"}}), nil
+			}
 			if answer != r.PostForm.Encode() {
 				return stripeJSON(400, map[string]any{"error": map[string]string{"type": "idempotency_error", "message": "Keys for idempotent requests can only be used with the same parameters"}}), nil
 			}
 			return stripeJSON(200, p.subscription()), nil
 		}
 		switch mode {
+		case "server":
+			p.answers[key] = "server-error"
+			return stripeJSON(500, map[string]any{"error": map[string]string{"type": "api_error", "message": "Server error"}}), nil
 		case "ignore":
 			return stripeJSON(200, p.subscription()), nil
 		case "lostBefore":
@@ -491,6 +512,35 @@ func TestDirectSubscriptionPlanChanges(t *testing.T) {
 			if plan, _, _ := row(); plan != "nothing" {
 				t.Fatal("the retry did not synchronize the row", plan)
 			}
+			// The same holds while trialing.
+			remote.mu.Lock()
+			remote.status = "trialing"
+			remote.mu.Unlock()
+			deliver()
+			remote.mode = "lostAfter"
+			status, out = call(a, "always", nil)
+			refused(status, out, 502, "STRIPE_SUBSCRIPTION_UNAVAILABLE", "a lost trialing response")
+			remote.mode = ""
+			updates, _ = counts()
+			status, out = call(b, "always", nil)
+			ok(status, out, "a trialing retry after an applied update")
+			if now, _ := counts(); now != updates || record() {
+				t.Fatal("a trialing applied update was sent again or kept its reservation")
+			}
+			remote.mu.Lock()
+			remote.status = ""
+			remote.mu.Unlock()
+			deliver()
+			// Stripe replays a server error under its key, so a retry sends a new one.
+			remote.mode = "server"
+			status, out = call(a, "nothing", nil)
+			refused(status, out, 502, "STRIPE_SUBSCRIPTION_UNAVAILABLE", "a Stripe server error")
+			remote.mode = ""
+			_, failedKey := last()
+			status, out = call(a, "nothing", nil)
+			if _, key := last(); status != 200 || key == failedKey {
+				t.Fatal("a retry after a Stripe server error reused its key", status, out)
+			}
 
 			// Concurrent different targets: one update, the other waits.
 			entered, release := make(chan struct{}), make(chan struct{})
@@ -587,8 +637,9 @@ func TestDirectSubscriptionPlanChanges(t *testing.T) {
 			remote.mu.Lock()
 			base = remote.items[0]["id"].(string)
 			remote.mu.Unlock()
-			if _, err := store.ReserveStripeSchedule(ctx, token, billing.ScheduleChange{Owner: owner, Customer: "cus_items", LocalID: localID, Subscription: "sub_items", Item: base,
-				Current: "price_basic", Target: "price_pro2", CurrentPlan: "basic", CurrentInterval: "month", Start: start.Unix(), End: end.Unix()}, "", time.Now()); err != nil {
+			pending, err := store.ReserveStripeSchedule(ctx, token, billing.ScheduleChange{Owner: owner, Customer: "cus_items", LocalID: localID, Subscription: "sub_items", Item: base,
+				Current: "price_basic", Target: "price_pro2", CurrentPlan: "basic", CurrentInterval: "month", Start: start.Unix(), End: end.Unix()}, "", time.Now())
+			if err != nil {
 				t.Fatal(err)
 			}
 			updates, _ = counts()
@@ -597,9 +648,49 @@ func TestDirectSubscriptionPlanChanges(t *testing.T) {
 			if now, _ := counts(); now != updates {
 				t.Fatal("a change during a schedule reached Stripe")
 			}
-			if _, err := store.db.ExecContext(ctx, store.bind(`DELETE FROM "verification" WHERE "id"=?`), stripeRecordID("schedule-change", "sub_items")); err != nil {
+			// Bound to a schedule Stripe no longer shows, it blocks nothing.
+			if err := store.BindStripeSchedule(ctx, token, pending, "sub_sched_released", time.Now()); err != nil {
 				t.Fatal(err)
 			}
+			status, out = call(a, "adda", nil)
+			ok(status, out, "a change after a released schedule")
+			// Unbound but older than a day, its key can no longer create one.
+			scheduleID := stripeRecordID("schedule-change", "sub_items")
+			var stored string
+			if err := store.db.QueryRowContext(ctx, store.bind(`SELECT "value" FROM "verification" WHERE "id"=?`), scheduleID).Scan(&stored); err != nil {
+				t.Fatal(err)
+			}
+			var schedule map[string]any
+			json.Unmarshal([]byte(stored), &schedule)
+			schedule["Schedule"], schedule["Created"] = "", schedule["Created"].(float64)-(25*time.Hour).Seconds()
+			aged, _ := json.Marshal(schedule)
+			if _, err := store.db.ExecContext(ctx, store.bind(`UPDATE "verification" SET "value"=? WHERE "id"=?`), string(aged), scheduleID); err != nil {
+				t.Fatal(err)
+			}
+			status, out = call(a, "addb", nil)
+			ok(status, out, "a change after a day-old unbound schedule")
+			if _, err := store.db.ExecContext(ctx, store.bind(`DELETE FROM "verification" WHERE "id"=?`), scheduleID); err != nil {
+				t.Fatal(err)
+			}
+			// A schedule attached after the subscription was read is caught
+			// before the update is sent.
+			reads := 0
+			remote.mu.Lock()
+			remote.getHook = func() {
+				if reads++; reads == 2 {
+					remote.schedule = "sub_sched_late"
+				}
+			}
+			remote.mu.Unlock()
+			updates, _ = counts()
+			status, out = call(a, "platform", nil)
+			refused(status, out, 409, "SUBSCRIPTION_PENDING_CHANGE", "a change raced a new schedule")
+			if now, _ := counts(); now != updates {
+				t.Fatal("a change raced a new schedule to Stripe")
+			}
+			remote.mu.Lock()
+			remote.getHook, remote.schedule = nil, ""
+			remote.mu.Unlock()
 
 			// A session revoked during the update: 401; after the signed
 			// update, a retry with a new session succeeds with no update.

@@ -85,10 +85,11 @@ func (s *subscriptions) changePlan(c auth.EndpointContext, selection billingSele
 		return nil, errUnsupportedScheduledSeats
 	}
 	sourcePrice, sourceQuantity = b.plan, b.seats
-	if sub.Status == sdk.SubscriptionStatusActive && b.plan.plan == to.Name && b.base.Price.ID == target && (b.metered || b.base.Quantity == quantity) &&
+	if b.plan.plan == to.Name && b.base.Price.ID == target && (b.metered || b.base.Quantity == quantity) &&
 		(b.base.CurrentPeriodEnd == 0 || b.base.CurrentPeriodEnd > time.Now().Unix()) {
 		// A direct change that reached Stripe while its response was lost
-		// is complete: its retry succeeds without a second update.
+		// is complete, active or trialing: its retry succeeds without a
+		// second update.
 		if store, ok := c.Store().(PlanChangeStore); ok {
 			done, err := store.ReleaseStripePlanChange(ctx, selection.session.Session.Token, PlanChange{Owner: selection.reference, Subscription: sub.ID, Plan: to.Name, Interval: interval, Quantity: quantity}, time.Now().UTC())
 			if err != nil {
@@ -99,7 +100,9 @@ func (s *subscriptions) changePlan(c auth.EndpointContext, selection billingSele
 				return map[string]any{"url": returnURL, "redirect": !disable}, nil
 			}
 		}
-		return nil, errAlreadySubscribed
+		if sub.Status == sdk.SubscriptionStatusActive {
+			return nil, errAlreadySubscribed
+		}
 	}
 	t := CheckoutAttempt{Price: target, Interval: interval, Seats: quantity, MeteredPriceIDs: slices.Clone(to.MeteredPriceIDs), LineItems: slices.Clone(to.LineItems)}
 	if err := s.prepareCheckoutPrices(ctx, &t); err != nil {

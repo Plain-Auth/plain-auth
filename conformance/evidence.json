@@ -9682,14 +9682,24 @@
       "marker": "opening a checkout review must not reduce five seats to one"
     },
     {
-      "label": "Change a subscription with several items directly under one idempotency key, so a retry on another server after a lost response sends nothing more",
+      "label": "Succeed on another server after an applied direct change lost its response, without a second update",
       "test": "adapters/sqlstore/stripe_plan_items_test.go",
       "marker": "\"a retry after an applied update\""
     },
     {
-      "label": "Let only one of two concurrent direct plan changes reach Stripe, and block schedules while a change is open",
+      "label": "Let only one of two concurrent direct changes to different targets reach Stripe",
       "test": "adapters/sqlstore/stripe_plan_items_test.go",
       "marker": "concurrent targets sent more than one update"
+    },
+    {
+      "label": "Resend a direct change lost before Stripe under the same idempotency key and items from another server",
+      "test": "adapters/sqlstore/stripe_plan_items_test.go",
+      "marker": "the retry changed its key or form"
+    },
+    {
+      "label": "Refuse a new schedule while a direct change may still reach Stripe, and a direct change during an unbound schedule reservation",
+      "test": "adapters/sqlstore/stripe_plan_items_test.go",
+      "marker": "\"a schedule during an open change\""
     }
   ],
   "plugin-symbol/generic-oauth/gumroad": [
