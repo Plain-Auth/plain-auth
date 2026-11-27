@@ -324,7 +324,7 @@ Each row tracks the behavior exposed by a published entry point. The Go implemen
     - [x] Retry the original monthly or annual metered purchase across replicas using the native Go client and three SQL engines ([test](../../adapters/sqlstore/stripe_metered_test.go#L130))
     - [x] Leave the database free of an ambiguous purchase if the provider cannot identify the price’s billing mode ([test](../../adapters/sqlstore/stripe_metered_test.go#L118))
     - [x] Buy a licensed base and two fixed metered add-ons for a personal or organization account, sending a quantity only for the base ([test](../../conformance/stripe-organization-fixture.mjs#L289))
-    - [x] Replay the exact original add-on basket after a lost Checkout response on independent SQL connections ([test](../../adapters/sqlstore/stripe_addons_test.go#L158))
+    - [x] Replay the exact original add-on basket after a lost Checkout response on independent SQL connections ([test](../../adapters/sqlstore/stripe_addons_test.go#L168))
     - [x] Offer the configured trial only for a new personal or organization billing reference with no trial history across plans ([test](../../conformance/stripe-organization-fixture.mjs#L425))
     - [x] Reuse a verified user's email-matched Stripe customer that no other user owns, through search or a list by email, otherwise create one with the user's email, name and metadata, on three SQL engines ([test](../../adapters/sqlstore/stripe_customer_lookup_test.go#L25))
     - [x] Release a purchase Stripe definitively refused, deleting its unsent row, without asking the policy, and keep one after idempotency or lock failures for a retry with the same key, on three SQL engines ([test](../../adapters/sqlstore/stripe_checkout_release_test.go#L149))

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"slices"
 	"strings"
 	"testing"
@@ -24,6 +25,8 @@ type addonProvider struct {
 	interval, receiptPrice, activePrice      string
 	key, form                                string
 	reads, creates, checkoutLists, itemLists int
+	// updates holds each direct subscription update form, which Stripe refuses.
+	updates []url.Values
 }
 
 func (p *addonProvider) price(id string) map[string]any {
@@ -43,6 +46,13 @@ func (p *addonProvider) handle(f *returnFixture, r *http.Request) (*http.Respons
 	if id, found := strings.CutPrefix(r.URL.Path, "/v1/prices/"); found {
 		p.reads++
 		return stripeJSON(200, p.price(id)), nil
+	}
+	if r.Method == "POST" && r.URL.Path == "/v1/subscriptions/sub_owner" {
+		if err := r.ParseForm(); err != nil {
+			return nil, err
+		}
+		p.updates = append(p.updates, r.PostForm)
+		return stripeJSON(400, map[string]any{"error": map[string]string{"type": "invalid_request_error", "code": "subscription_update_refused", "message": "Refused"}}), nil
 	}
 	if r.Method == "POST" && r.URL.Path == "/v1/checkout/sessions" {
 		if err := r.ParseForm(); err != nil {
@@ -172,10 +182,13 @@ func TestStripeMeteredAddons(t *testing.T) {
 			if err != nil || len(rows) != 1 || rows[0].ReferenceID != owner.User.ID || rows[0].PriceID != "price_base" || rows[0].Seats == nil || *rows[0].Seats != 8 || rows[0].PeriodEnd == nil || rows[0].PeriodEnd.Unix() != 5678 {
 				t.Fatalf("verified add-ons did not bind exactly the current licensed base: %+v %v", rows, err)
 			}
+			// A seat change on an add-on plan updates the base item directly,
+			// leaving the add-ons, and answers Stripe's refusal.
 			_, err = second.Upgrade(t.Context(), in)
 			var api *auth.APIError
-			if !errors.As(err, &api) || api.Code != "UNSUPPORTED_SUBSCRIPTION_ITEM" {
-				t.Fatalf("existing add-on purchase was offered an incomplete plan switch: %v", err)
+			want := url.Values{"items[0][id]": {"si_base"}, "items[0][price]": {"price_base"}, "items[0][quantity]": {"4"}, "proration_behavior": {"create_prorations"}}
+			if !errors.As(err, &api) || api.Code != "subscription_update_refused" || len(remote.updates) != 1 || remote.updates[0].Encode() != want.Encode() {
+				t.Fatalf("an add-on seat change was not sent as one base update: %v %v", err, remote.updates)
 			}
 			remote.activePrice = "price_substituted"
 			if got := signedAddonUpdate(t, f, "customer.subscription.updated", "evt_replaced"); got != 200 || f.state(owner.User.ID) != "unmapped" {

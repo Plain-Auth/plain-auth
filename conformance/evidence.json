@@ -9680,6 +9680,16 @@
       "label": "Propose one seat when quantity is omitted and keep all five existing seats until the customer confirms",
       "test": "conformance/stripe-lifecycle-fixture.mjs",
       "marker": "opening a checkout review must not reduce five seats to one"
+    },
+    {
+      "label": "Change a subscription with several items directly under one idempotency key, so a retry on another server after a lost response sends nothing more",
+      "test": "adapters/sqlstore/stripe_plan_items_test.go",
+      "marker": "\"a retry after an applied update\""
+    },
+    {
+      "label": "Let only one of two concurrent direct plan changes reach Stripe, and block schedules while a change is open",
+      "test": "adapters/sqlstore/stripe_plan_items_test.go",
+      "marker": "concurrent targets sent more than one update"
     }
   ],
   "plugin-symbol/generic-oauth/gumroad": [
@@ -12218,6 +12228,12 @@
       "label": "Report the configured proration behavior of licensed, metered add-on and membership plans, or create_prorations when unset",
       "test": "plugins/stripe/plans_internal_test.go",
       "marker": "func TestPlanProrationDefaults(t *testing.T) {"
+    },
+    {
+      "label": "Send each plan's proration, always_invoice and none included, on a direct plan change, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_plan_items_test.go",
+      "marker": "\"always_invoice was not sent\"",
+      "complete": true
     }
   ],
   "plugin/sso/POST /sso/delete-provider": [
@@ -14014,6 +14030,11 @@
       "label": "Send a plan's fixed and metered line items after the base in Checkout, keep them across retries, check receipts exactly and unmap a subscription missing an item, on three SQL engines",
       "test": "adapters/sqlstore/stripe_line_items_test.go",
       "marker": "func TestStripeCheckoutLineItems(t *testing.T) {"
+    },
+    {
+      "label": "Change a subscription to, from and between plans with line items in one direct update that follows the configured items and quantities",
+      "test": "adapters/sqlstore/stripe_plan_items_test.go",
+      "marker": "the line item change was not sent exactly"
     }
   ],
   "docs/content/docs/reference/options.mdx#L282/`autoSignInAfterVerification`": [
@@ -52485,6 +52506,13 @@
       "label": "Non-members and denied members cannot list an organization's subscriptions, and no request reaches Polar",
       "test": "integrations/polar/organization_test.go",
       "marker": "a refused reference list reached Polar"
+    }
+  ],
+  "plugin-symbol/stripe/StripePlan": [
+    {
+      "label": "Follow a plan's line items and add-ons when an existing subscription changes plan, keeping a shared add-on",
+      "test": "adapters/sqlstore/stripe_plan_items_test.go",
+      "marker": "the shared meter was not kept"
     }
   ]
 }

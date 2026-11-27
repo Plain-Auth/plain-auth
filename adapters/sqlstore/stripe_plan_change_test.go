@@ -235,7 +235,7 @@ func TestHostedSubscriptionPlanChanges(t *testing.T) {
 				{"pending", 409, "SUBSCRIPTION_PENDING_CHANGE"}, {"cancel", 409, "SUBSCRIPTION_PENDING_CHANGE"}, {"schedule", 409, "SUBSCRIPTION_PENDING_CHANGE"},
 				{"paused", 409, "SUBSCRIPTION_PENDING_CHANGE"}, {"foreign", 409, "CHECKOUT_RECONCILIATION_REQUIRED"}, {"multiple", 409, "UNSUPPORTED_SUBSCRIPTION_ITEM"},
 				{"paginated", 409, "UNSUPPORTED_SUBSCRIPTION_ITEM"}, {"unmapped", 409, "UNSUPPORTED_SUBSCRIPTION_ITEM"},
-				{"metered", 409, "UNSUPPORTED_SUBSCRIPTION_ITEM"}, {"interval", 409, "UNSUPPORTED_SUBSCRIPTION_ITEM"}, {"archived", 409, "UNSUPPORTED_SUBSCRIPTION_ITEM"},
+				{"interval", 409, "UNSUPPORTED_SUBSCRIPTION_ITEM"}, {"archived", 409, "UNSUPPORTED_SUBSCRIPTION_ITEM"},
 				{"wrongPortal", 502, "UNABLE_TO_CREATE_BILLING_PORTAL"}, {"decline", 400, "billing_portal_feature_not_enabled"},
 			} {
 				t.Run(tc.mode, func(t *testing.T) {
@@ -253,6 +253,15 @@ func TestHostedSubscriptionPlanChanges(t *testing.T) {
 						t.Fatal("ineligible subscription reached portal")
 					}
 				})
+			}
+			// A metered target confirms without a quantity.
+			exec(`UPDATE "subscription" SET "status"='active',"plan"='pro',"billingInterval"='month',"cancelAtPeriodEnd"=?,"stripeScheduleId"=NULL WHERE "id"='local_owner'`, false)
+			provider.mu.Lock()
+			provider.mode = "metered"
+			provider.mu.Unlock()
+			page, err = buyer.Upgrade(ctx, request)
+			if err != nil || page.URL == "" || provider.form.Get("flow_data[subscription_update_confirm][items][0][price]") == "" || provider.form.Has("flow_data[subscription_update_confirm][items][0][quantity]") {
+				t.Fatal("a metered target was not confirmed without a quantity", page, err, provider.form)
 			}
 			provider.mu.Lock()
 			provider.mode = "trial"

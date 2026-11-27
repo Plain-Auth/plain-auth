@@ -2,7 +2,7 @@ package stripe
 
 import (
 	"context"
-	"math"
+	"slices"
 	"time"
 
 	auth "github.com/Plain-Org/plain-auth"
@@ -13,20 +13,19 @@ var (
 	errAlreadySubscribed         = billingError(400, "ALREADY_SUBSCRIBED_PLAN", "You're already subscribed to this plan")
 	ErrPendingSchedule           = billingError(409, "SUBSCRIPTION_PENDING_CHANGE", "Resolve the pending subscription change before switching plans")
 	errUnsupportedScheduledSeats = billingError(409, "UNSUPPORTED_SCHEDULE_QUANTITY", "Scheduled changes require one seat")
-	errUnsupportedItem           = billingError(409, "UNSUPPORTED_SUBSCRIPTION_ITEM", "Plan changes require one configured licensed recurring item")
+	errUnsupportedItem           = billingError(409, "UNSUPPORTED_SUBSCRIPTION_ITEM", "Plan changes require the subscription's configured recurring items")
 )
 
-// changePlan opens the customer confirmation page. The authoritative price only
-// changes when Stripe confirms it and the subscription is reconciled.
+// changePlan opens the customer confirmation page for a single-item
+// subscription, and otherwise changes the items directly. The
+// authoritative price only changes when Stripe confirms it and the
+// subscription is reconciled.
 func (s *subscriptions) changePlan(c auth.EndpointContext, selection billingSelection, local Subscription, to Plan, interval, target, returnURL string, quantity int64) (any, error) {
 	_, ok := c.Store().(SubscriptionManagementStore)
 	if !ok || local.SubscriptionID == nil {
 		return nil, ErrExistingSubscription
 	}
 	from := s.plans[local.Plan]
-	if len(from.extras()) > 0 || len(to.extras()) > 0 {
-		return nil, errUnsupportedItem
-	}
 	if selection.organization {
 		if from.SeatPriceID != "" || to.SeatPriceID != "" {
 			current := from.PriceID
@@ -72,30 +71,56 @@ func (s *subscriptions) changePlan(c auth.EndpointContext, selection billingSele
 	if (!scheduled && sub.Schedule != nil) || sub.PendingUpdate != nil || sub.CancelAtPeriodEnd || sub.CancelAt != 0 || sub.PauseCollection != nil {
 		return nil, ErrPendingSchedule
 	}
-	if sub.Items == nil || sub.Items.HasMore || len(sub.Items.Data) != 1 {
+	b, ok := s.currentBasket(sub, selection.organization)
+	if !ok {
 		return nil, errUnsupportedItem
 	}
-	item := sub.Items.Data[0]
-	if item == nil || item.ID == "" || item.Quantity < 1 || item.Quantity > math.MaxInt32 || !s.licensedPrice(item.Price) {
+	// A scheduled change rewrites one licensed item, as the schedule flow
+	// verifies a single-item phase. Another runtime also rewrites line
+	// items into the scheduled phase.
+	if scheduled && (b.metered || len(b.extras) > 0 || len(to.extras()) > 0) {
 		return nil, errUnsupportedItem
 	}
-	if scheduled && item.Quantity != 1 {
+	if scheduled && b.base.Quantity != 1 {
 		return nil, errUnsupportedScheduledSeats
 	}
-	sourcePrice, _ = s.priceOf(item.Price)
-	sourceQuantity = item.Quantity
-	if sub.Status == sdk.SubscriptionStatusActive && item.Price.ID == target && item.Quantity == quantity && (item.CurrentPeriodEnd == 0 || item.CurrentPeriodEnd > time.Now().Unix()) {
+	sourcePrice, sourceQuantity = b.plan, b.seats
+	if sub.Status == sdk.SubscriptionStatusActive && b.plan.plan == to.Name && b.base.Price.ID == target && (b.metered || b.base.Quantity == quantity) &&
+		(b.base.CurrentPeriodEnd == 0 || b.base.CurrentPeriodEnd > time.Now().Unix()) {
+		// A direct change that reached Stripe while its response was lost
+		// is complete: its retry succeeds without a second update.
+		if store, ok := c.Store().(PlanChangeStore); ok {
+			done, err := store.ReleaseStripePlanChange(ctx, selection.session.Session.Token, PlanChange{Owner: selection.reference, Subscription: sub.ID, Plan: to.Name, Interval: interval, Quantity: quantity}, time.Now().UTC())
+			if err != nil {
+				return nil, err
+			}
+			if done {
+				disable, _ := c.Body["disableRedirect"].(bool)
+				return map[string]any{"url": returnURL, "redirect": !disable}, nil
+			}
+		}
 		return nil, errAlreadySubscribed
 	}
-	if err := s.verifyPriceInterval(ctx, target, interval); err != nil {
+	t := CheckoutAttempt{Price: target, Interval: interval, Seats: quantity, MeteredPriceIDs: slices.Clone(to.MeteredPriceIDs), LineItems: slices.Clone(to.LineItems)}
+	if err := s.prepareCheckoutPrices(ctx, &t); err != nil {
 		return nil, err
+	}
+	if scheduled && t.Metered {
+		return nil, errUnsupportedItem
 	}
 	if _, err := checkOwner(); err != nil {
 		return nil, err
 	}
 
 	if scheduled {
-		return s.scheduleChange(c, selection, local, sub, item, target, returnURL)
+		return s.scheduleChange(c, selection, local, sub, b.base, target, returnURL)
+	}
+	if len(b.extras) > 0 || t.hasExtras() {
+		return s.updatePlanItems(c, selection, local, sub, b, to, t, quantity, returnURL)
+	}
+	confirm := &sdk.BillingPortalSessionCreateFlowDataSubscriptionUpdateConfirmItemParams{ID: sdk.String(b.base.ID), Price: sdk.String(target)}
+	if !t.Metered {
+		confirm.Quantity = sdk.Int64(quantity)
 	}
 	params := &sdk.BillingPortalSessionCreateParams{
 		Customer: sdk.String(sub.Customer.ID), ReturnURL: sdk.String(returnURL),
@@ -106,9 +131,7 @@ func (s *subscriptions) changePlan(c auth.EndpointContext, selection billingSele
 			},
 			SubscriptionUpdateConfirm: &sdk.BillingPortalSessionCreateFlowDataSubscriptionUpdateConfirmParams{
 				Subscription: sdk.String(sub.ID),
-				Items: []*sdk.BillingPortalSessionCreateFlowDataSubscriptionUpdateConfirmItemParams{
-					{ID: sdk.String(item.ID), Price: sdk.String(target), Quantity: sdk.Int64(quantity)},
-				},
+				Items:        []*sdk.BillingPortalSessionCreateFlowDataSubscriptionUpdateConfirmItemParams{confirm},
 			},
 		},
 	}

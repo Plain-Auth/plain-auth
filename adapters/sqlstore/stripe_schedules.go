@@ -36,6 +36,13 @@ func (s *Store) ReserveStripeSchedule(ctx context.Context, token string, want bi
 		if err := s.scheduleOwner(ctx, tx, want, attached); err != nil {
 			return err
 		}
+		// A direct plan change that may still reach Stripe blocks a schedule.
+		if open, err := s.openPlanChange(ctx, tx, want.Owner, want.Subscription, now); err != nil || open {
+			if err == nil {
+				err = billing.ErrPendingSchedule
+			}
+			return err
+		}
 		record, err := s.scheduleRecord(ctx, tx, want.Owner, want.Subscription)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return err
