@@ -87,6 +87,8 @@ func (s *Store) revokeIDPLogout(ctx context.Context, req sso.SAMLIDPLogout, brow
 		return false, err
 	}
 	defer tx.Rollback()
+	ends := s.trackSessionEnds(ctx, tx)
+	defer ends.close()
 	gate := auth.VerificationGateFrom(ctx)
 	gate.Attempt() // an attempt RevokeSAMLIDPSessions retries asks afresh
 	records, _, err := s.matchingSAMLReceipts(ctx, tx, req, now)
@@ -183,7 +185,7 @@ func (s *Store) revokeIDPLogout(ctx context.Context, req sso.SAMLIDPLogout, brow
 	if !req.ValidAt(atCommit) || !p.SAML.MetadataValidAt(atCommit) {
 		return false, sso.ErrSAMLLogoutRequest
 	}
-	if err = tx.Commit(); err != nil {
+	if err = ends.commit(); err != nil {
 		return false, err
 	}
 	return cleared, nil

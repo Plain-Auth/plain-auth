@@ -153,6 +153,8 @@ func (s *Store) completeMagicLink(ctx context.Context, key, newID string, sessio
 		return user, false, err
 	}
 	defer tx.Rollback()
+	ends := s.trackSessionEnds(ctx, tx)
+	defer ends.close()
 	auth.LoginPlanFrom(ctx).Attempt()
 	id, rec, _, err := s.readMagicLink(ctx, tx, key, session.CreatedAt, true)
 	if err != nil {
@@ -171,7 +173,7 @@ func (s *Store) completeMagicLink(ctx context.Context, key, newID string, sessio
 		if err := auth.LoginPlanFrom(ctx).Commit(); err != nil {
 			return auth.User{}, false, err
 		}
-		if err := tx.Commit(); err != nil {
+		if err := ends.commit(); err != nil {
 			return auth.User{}, false, err
 		}
 		return auth.User{}, false, reason
@@ -216,7 +218,7 @@ func (s *Store) completeMagicLink(ctx context.Context, key, newID string, sessio
 	if err := auth.LoginPlanFrom(ctx).Commit(); err != nil {
 		return user, false, err
 	}
-	return user, created, tx.Commit()
+	return user, created, ends.commit()
 }
 
 // Remove standing access created before this mailbox was proven. The caller

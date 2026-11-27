@@ -158,6 +158,8 @@ func (s *Store) ChangeCredentialForSession(ctx context.Context, userID, oldHash,
 		return err
 	}
 	defer tx.Rollback()
+	ends := s.trackSessionEnds(ctx, tx)
+	defer ends.close()
 	if err = s.lockAccount(ctx, tx, userID); err != nil {
 		return err
 	}
@@ -195,7 +197,7 @@ func (s *Store) ChangeCredentialForSession(ctx context.Context, userID, oldHash,
 			return err
 		}
 	}
-	return tx.Commit()
+	return ends.commit()
 }
 
 func (s *Store) SavePasswordResetToken(ctx context.Context, t authn.PasswordResetToken) error {
@@ -239,6 +241,8 @@ func (s *Store) finishPasswordReset(ctx context.Context, token, newHash string, 
 		return err
 	}
 	defer tx.Rollback()
+	ends := s.trackSessionEnds(ctx, tx)
+	defer ends.close()
 	t, err := s.findPasswordResetToken(ctx, tx, token, now)
 	if err != nil {
 		return err
@@ -266,7 +270,7 @@ func (s *Store) finishPasswordReset(ctx context.Context, token, newHash string, 
 	if err = s.replaceResetCredential(ctx, tx, t.UserID, newHash, now, revoke); err != nil {
 		return err
 	}
-	return tx.Commit()
+	return ends.commit()
 }
 
 func (s *Store) replaceResetCredential(ctx context.Context, tx *sql.Tx, id, newHash string, now time.Time, revoke bool) error {

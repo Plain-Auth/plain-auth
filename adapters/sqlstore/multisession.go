@@ -93,13 +93,15 @@ func (s *Store) deleteDeviceSessions(ctx context.Context, tokens []string) error
 		return err
 	}
 	defer tx.Rollback()
+	ends := s.trackSessionEnds(ctx, tx)
+	defer ends.close()
 	for chunk := range slices.Chunk(tokens, 400) {
 		params, args := s.deviceTokenParameters(chunk)
 		if _, err := s.deleteSessionsTx(ctx, tx, `"token" IN (`+params+`)`, args...); err != nil {
 			return err
 		}
 	}
-	return tx.Commit()
+	return ends.commit()
 }
 
 func (s *Store) RevokeDeviceSession(ctx context.Context, active, target string, now time.Time) error {
@@ -119,6 +121,8 @@ func (s *Store) revokeDeviceSession(ctx context.Context, active, target string, 
 		return err
 	}
 	defer tx.Rollback()
+	ends := s.trackSessionEnds(ctx, tx)
+	defer ends.close()
 	p, arg := s.deviceTokenParameters([]string{active})
 	var owner string
 	err = tx.QueryRowContext(ctx, s.readForUpdate(`SELECT "userId" FROM "session" WHERE "token"=`+p+` AND "expiresAt">?`), arg[0], s.date(now)).Scan(&owner)
@@ -132,5 +136,5 @@ func (s *Store) revokeDeviceSession(ctx context.Context, active, target string, 
 	if err != nil {
 		return err
 	}
-	return tx.Commit()
+	return ends.commit()
 }

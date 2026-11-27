@@ -187,6 +187,20 @@ Hooks never run inside a database transaction, so they may read and write throug
 | Password sign-in with the two-factor plugin, for an account without a second factor or with a trusted device | | Create | | 401 `FAILED_TO_CREATE_SESSION` |
 | `/two-factor/verify-totp`, `/verify-otp` and `/verify-backup-code`; `POST /device/token`; the sign-in after an email link with `AutoSignInAfterVerification` | | Create | | 500 `FAILED_TO_CREATE_SESSION` |
 
+### Observe ended sessions
+
+`Plugin.OnSessionsEnded` hears about every session the store ends, whatever ends it: a sign-out, a password change or reset, a revocation, a ban, an account deletion, SCIM deactivation or SAML logout. Each report lists the sessions one committed transaction ended, with their user and the OAuth clients that held access or refresh tokens on them, revoked or not. It runs after the commit and outside the transaction, once per transaction, with the request's context; a rolled-back transaction reports nothing, and a panic is logged. Observers run in plugin order.
+
+```go
+audit := plainauth.Plugin{ID: "audit", OnSessionsEnded: func(ctx context.Context, e plainauth.SessionsEnded) {
+    for _, s := range e.Sessions {
+        log.Printf("session %s of %s ended; OAuth clients %v", s.ID, s.UserID, s.OAuthClients)
+    }
+}}
+```
+
+The store must implement `plainauth.SessionEndReporter`, as the SQL adapter does; with another store the observer is never called. Another runtime observes this through its session delete hooks. Here the store reports instead, so sessions ended inside a store's own transactions, such as a password reset or a SCIM deactivation, are reported too. The OAuth provider uses this for back-channel logout. [Report tests](../adapters/sqlstore/session_end_report_test.go)
+
 ### Sign-ins the store decides
 
 From the browser social sign-in row on, the store decides inside its transaction whether the sign-in creates a user and who owns the session. The user hooks run only when it creates one; a returning user runs only the session hooks. The session hooks receive the session with the owner the store chose. A social sign-in that requires a verified email stores the new user without a session, and runs only the user hooks.

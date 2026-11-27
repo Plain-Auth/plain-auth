@@ -113,6 +113,8 @@ func (s *Store) StartSAMLLogout(ctx context.Context, actor sso.Actor, identity s
 		return err
 	}
 	defer tx.Rollback()
+	ends := s.trackSessionEnds(ctx, tx)
+	defer ends.close()
 	rec, expires, p, err := s.lockedSAMLSession(ctx, tx, actor, pending.ProviderID, pending.Reference, now)
 	if err != nil {
 		return err
@@ -164,7 +166,7 @@ func (s *Store) StartSAMLLogout(ctx context.Context, actor sso.Actor, identity s
 	if n != 1 {
 		return sso.ErrSAMLLogoutSession
 	}
-	return tx.Commit()
+	return ends.commit()
 }
 
 func (s *Store) ConsumeSAMLLogout(ctx context.Context, proof sso.SAMLLogoutRequest, now time.Time) (string, error) {

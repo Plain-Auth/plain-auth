@@ -159,7 +159,7 @@ func (s *Store) beginSCIMTransaction(ctx context.Context, domain string, write b
 			}
 		}
 		// SQLite connections use BEGIN IMMEDIATE.
-		return tx, &transactionEnd{tx: tx}, nil
+		return tx, &transactionEnd{tx: tx, ends: s.trackSessionEnds(ctx, tx)}, nil
 	}
 	const name = "SHA2(CONCAT(DATABASE(), '/plainauth/scim-projection/', ?), 256)"
 	busy := &scim.Error{Status: 503, Detail: "The provisioning domain is busy. Retry the request."}

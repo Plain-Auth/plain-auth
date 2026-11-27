@@ -121,6 +121,8 @@ func (s *Store) WithTwoFactor(ctx context.Context, sub auth.FactorSubject, decid
 		return err
 	}
 	defer tx.Rollback()
+	ends := s.trackSessionEnds(ctx, tx)
+	defer ends.close()
 	auth.LoginPlanFrom(ctx).Attempt()
 	owner := sub.UserID
 	var q, key string
@@ -232,7 +234,7 @@ func (s *Store) WithTwoFactor(ctx context.Context, sub auth.FactorSubject, decid
 	if err := auth.LoginPlanFrom(ctx).Commit(); err != nil {
 		return err
 	}
-	return tx.Commit()
+	return ends.commit()
 }
 
 var _ auth.FactorRecordReporter = (*Store)(nil)

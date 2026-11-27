@@ -59,6 +59,7 @@ Plain Auth detects optional interfaces with type assertions on `Options.Store`. 
 | Social sign-in | `OAuthIdentityStore`, and `OAuthFlowStore` unless the state lives in a cookie |
 | `SecondaryStorage` | `SessionMirrorStore` |
 | `DisableVerificationCleanup` | `VerificationCleanupStore` |
+| `Plugin.OnSessionsEnded`, and back-channel logout in the OAuth provider | `SessionEndReporter`: report every ended session after its transaction commits |
 | Plugins such as phone, username, magic link, email codes or JWT | the interface each plugin's guide names; the JWT plugin can keep its keys in `jwt.Options.KeyStore` instead |
 
 Plugins that take their own store, such as organizations, the OAuth provider, SSO, SCIM, passkeys, wallet sign-in, billing and API keys, check it the same way. The store that `AccountFieldStore.WithAccountFields` returns, and with the admin plugin the value `WithAdminConfig` returns, replace `Options.Store`, so each must implement every interface yours does: return a configured copy of your own type. `AdminOptions.BannedUserMessageFunc` and `Auth.AdminUserHasPermission` also need `plainauth.AdminUserReader`, which reads one account with its role and ban fields, and a ban refusal should be a `*plainauth.BannedUserError` naming the account.

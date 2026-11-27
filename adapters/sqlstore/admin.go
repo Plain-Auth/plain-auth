@@ -228,6 +228,8 @@ func (s *Store) runAdminTransaction(ctx context.Context, token, target string, n
 		return err
 	}
 	defer tx.Rollback()
+	ends := s.trackSessionEnds(ctx, tx)
+	defer ends.close()
 	denied := &authn.APIError{Status: 401, Code: "UNAUTHORIZED", Message: "Unauthorized"}
 	p, _ := s.deviceTokenParameters([]string{token})
 	var actor string
@@ -274,7 +276,7 @@ func (s *Store) runAdminTransaction(ctx context.Context, token, target string, n
 	if err = fn(&adminTX{s: s, ctx: ctx, tx: tx, now: now}, authn.SessionResult{Session: ss.Session, User: u}); err != nil {
 		return err
 	}
-	return tx.Commit()
+	return ends.commit()
 }
 func (t *adminTX) User(id string) (authn.User, error) {
 	var u authn.User

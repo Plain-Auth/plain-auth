@@ -142,6 +142,8 @@ func (s *Store) DeleteAccount(ctx context.Context, userID, sessionToken, expecte
 		return err
 	}
 	defer tx.Rollback()
+	ends := s.trackSessionEnds(ctx, tx)
+	defer ends.close()
 	if err := s.lockActiveAccount(ctx, tx, userID, sessionToken, now); err != nil {
 		return err
 	}
@@ -170,7 +172,7 @@ func (s *Store) DeleteAccount(ctx context.Context, userID, sessionToken, expecte
 	if err := s.deleteAccountRows(ctx, tx, userID); err != nil {
 		return err
 	}
-	return tx.Commit()
+	return ends.commit()
 }
 
 // DeleteFixtureUser removes the supplied user and its dependent records in a test database.
@@ -180,6 +182,8 @@ func (s *Store) DeleteFixtureUser(ctx context.Context, id string) error {
 		return err
 	}
 	defer tx.Rollback()
+	ends := s.trackSessionEnds(ctx, tx)
+	defer ends.close()
 	if err = s.lockAccount(ctx, tx, id); errors.Is(err, authn.ErrNotFound) {
 		return nil
 	} else if err != nil {
@@ -188,7 +192,7 @@ func (s *Store) DeleteFixtureUser(ctx context.Context, id string) error {
 	if err = s.deleteAccountRows(ctx, tx, id); err != nil {
 		return err
 	}
-	return tx.Commit()
+	return ends.commit()
 }
 
 func (s *Store) deleteAccountRows(ctx context.Context, tx *sql.Tx, userID string) error {

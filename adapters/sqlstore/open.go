@@ -39,6 +39,7 @@ type Store struct {
 	scimPolicies             map[string]scim.Projection
 	adminSchema              *atomic.Bool
 	mirror                   *atomic.Pointer[sessionMirror]
+	ends                     *sessionEndReports
 	apiKeyLedgerReady        *atomic.Bool
 	dpopNextSweep            *atomic.Int64
 	codesNextSweep           *atomic.Int64
@@ -132,7 +133,7 @@ func connectDB(ctx context.Context, dialect, dsn string, create bool) (*Store, e
 	if err != nil {
 		return nil, err
 	}
-	return &Store{db: db, dialect: name, adminSchema: new(atomic.Bool), mirror: new(atomic.Pointer[sessionMirror]), apiKeyLedgerReady: new(atomic.Bool), dpopNextSweep: new(atomic.Int64), codesNextSweep: new(atomic.Int64), cleanup: new(atomic.Int32)}, nil
+	return &Store{db: db, dialect: name, adminSchema: new(atomic.Bool), mirror: new(atomic.Pointer[sessionMirror]), ends: new(sessionEndReports), apiKeyLedgerReady: new(atomic.Bool), dpopNextSweep: new(atomic.Int64), codesNextSweep: new(atomic.Int64), cleanup: new(atomic.Int32)}, nil
 }
 
 func openSQLite(path string, create bool) (*sql.DB, error) {

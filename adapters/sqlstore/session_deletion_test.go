@@ -76,12 +76,14 @@ func TestSessionDeletionRevokesOAuthGrants(t *testing.T) {
 			// A failed enclosing operation must preserve both the session and its grants.
 			tx, err := core.db.BeginTx(ctx, nil)
 			must(err)
+			ends := core.trackSessionEnds(ctx, tx)
 			n, err := core.deleteSessionsTx(ctx, tx, `"id"=?`, "first")
 			must(err)
 			if n != 1 {
 				t.Fatal("unexpected deletion count", n)
 			}
 			must(tx.Rollback())
+			ends.close()
 			must(core.DeleteUserSession(ctx, "different-owner", "first-token"))
 			must(core.DeleteExpiredSession(ctx, "first-token", now))
 			state(at, "access", "first", false, false)

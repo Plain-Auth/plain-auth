@@ -66,6 +66,8 @@ type transactionEnd struct {
 	tx      *sql.Tx
 	done    bool
 	release func(error)
+	// ends reports the sessions the transaction ended once it commits.
+	ends *sessionEnds
 }
 
 func (end *transactionEnd) finish(action func() error) error {
@@ -79,8 +81,16 @@ func (end *transactionEnd) finish(action func() error) error {
 	}
 	return err
 }
-func (end *transactionEnd) commit() error { return end.finish(end.tx.Commit) }
-func (end *transactionEnd) rollback()     { _ = end.finish(end.tx.Rollback) }
+func (end *transactionEnd) commit() error {
+	err := end.finish(end.tx.Commit)
+	end.ends.finish(err == nil)
+	return err
+}
+
+func (end *transactionEnd) rollback() {
+	_ = end.finish(end.tx.Rollback)
+	end.ends.close()
+}
 
 // beginTransactionWithMySQLLock reserves the named lock through the physical
 // commit or rollback on MySQL. Other engines use their ordinary transaction.
@@ -91,7 +101,7 @@ func (s *Store) beginTransactionWithMySQLLock(ctx context.Context, opts *sql.TxO
 		if err != nil {
 			return nil, nil, err
 		}
-		return tx, &transactionEnd{tx: tx}, nil
+		return tx, &transactionEnd{tx: tx, ends: s.trackSessionEnds(ctx, tx)}, nil
 	}
 	lock, err := s.acquireMySQLNamedLock(ctx, nameSQL, waitSeconds, busy, args...)
 	if err != nil {
@@ -102,5 +112,5 @@ func (s *Store) beginTransactionWithMySQLLock(ctx context.Context, opts *sql.TxO
 		lock.discard()
 		return nil, nil, err
 	}
-	return tx, &transactionEnd{tx: tx, release: lock.release}, nil
+	return tx, &transactionEnd{tx: tx, release: lock.release, ends: s.trackSessionEnds(ctx, tx)}, nil
 }

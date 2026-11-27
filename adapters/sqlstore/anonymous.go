@@ -88,6 +88,8 @@ func (s *Store) DeleteAnonymous(ctx context.Context, id, token string, now time.
 		return err
 	}
 	defer tx.Rollback()
+	ends := s.trackSessionEnds(ctx, tx)
+	defer ends.close()
 	src, err := s.anonymousActor(ctx, tx, token, now)
 	if err != nil {
 		return err
@@ -104,7 +106,7 @@ func (s *Store) DeleteAnonymous(ctx context.Context, id, token string, now time.
 	if err = s.deleteAccountRows(ctx, tx, id); err != nil {
 		return err
 	}
-	return tx.Commit()
+	return ends.commit()
 }
 func (s *Store) LinkAnonymous(ctx context.Context, source, target string, now time.Time, retain bool, callback func(context.Context, authn.AnonymousLink) error) error {
 	tx, err := s.beginMembershipChange(ctx)
@@ -112,6 +114,8 @@ func (s *Store) LinkAnonymous(ctx context.Context, source, target string, now ti
 		return err
 	}
 	defer tx.Rollback()
+	ends := s.trackSessionEnds(ctx, tx)
+	defer ends.close()
 	src, err := s.anonymousActor(ctx, tx, source, now)
 	if errors.Is(err, authn.ErrNotFound) {
 		return nil
@@ -157,5 +161,5 @@ func (s *Store) LinkAnonymous(ctx context.Context, source, target string, now ti
 			return err
 		}
 	}
-	return tx.Commit()
+	return ends.commit()
 }

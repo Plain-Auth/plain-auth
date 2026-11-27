@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"slices"
 	"time"
+
+	authn "github.com/Plain-Org/plain-auth"
 )
 
 func (s *Store) deleteSessions(ctx context.Context, where string, args ...any) error {
@@ -14,10 +16,12 @@ func (s *Store) deleteSessions(ctx context.Context, where string, args ...any) e
 		return err
 	}
 	defer tx.Rollback()
+	ends := s.trackSessionEnds(ctx, tx)
+	defer ends.close()
 	if _, err := s.deleteSessionsTx(ctx, tx, where, args...); err != nil {
 		return err
 	}
-	return tx.Commit()
+	return ends.commit()
 }
 
 // deleteSessionsTx ends the sessions matching where: it deletes their rows,
@@ -52,9 +56,13 @@ func sessionEnded(expiresAt time.Time) bool {
 // With preserve, rows that already ended are left as they are; the choice
 // reads no clock, so a session close to its natural expiry still ends.
 func (s *Store) endSessionsTx(ctx context.Context, tx *sql.Tx, preserve bool, where string, args ...any) (int64, error) {
-	query := `SELECT "id","token","expiresAt" FROM "session" WHERE ` + where
+	ends, err := s.sessionEndsFor(tx)
+	if err != nil {
+		return 0, err
+	}
+	query := `SELECT "id","userId","token","expiresAt" FROM "session" WHERE ` + where
 	if preserve {
-		query = `SELECT "id","token","expiresAt" FROM "session" WHERE (` + where + `) AND "expiresAt">?`
+		query = `SELECT "id","userId","token","expiresAt" FROM "session" WHERE (` + where + `) AND "expiresAt">?`
 		args = append(slices.Clip(args), s.date(endedSessionExpiry))
 	}
 	rows, err := tx.QueryContext(ctx, s.readForUpdate(query+` ORDER BY "id"`), args...)
@@ -62,10 +70,13 @@ func (s *Store) endSessionsTx(ctx context.Context, tx *sql.Tx, preserve bool, wh
 		return 0, err
 	}
 	var ids, tokens []string
+	// owners maps each live session to its user; a row kept after its
+	// session ended was reported then.
+	owners := make(map[string]string)
 	for rows.Next() {
-		var id, token string
+		var id, user, token string
 		var expires time.Time
-		if err := rows.Scan(&id, &token, &expires); err != nil {
+		if err := rows.Scan(&id, &user, &token, &expires); err != nil {
 			rows.Close()
 			return 0, err
 		}
@@ -73,6 +84,7 @@ func (s *Store) endSessionsTx(ctx context.Context, tx *sql.Tx, preserve bool, wh
 		// An ended session's copy went when it ended.
 		if !sessionEnded(expires) {
 			tokens = append(tokens, token)
+			owners[id] = user
 		}
 	}
 	if err := rows.Close(); err != nil {
@@ -94,6 +106,12 @@ func (s *Store) endSessionsTx(ctx context.Context, tx *sql.Tx, preserve bool, wh
 	var ended int64
 	for batch := range slices.Chunk(ids, 400) {
 		params, values := s.deviceTokenParameters(batch)
+		var clients map[string][]string
+		if installed && ends != nil {
+			if clients, err = s.sessionClients(ctx, tx, params, values); err != nil {
+				return 0, err
+			}
+		}
 		if installed {
 			if err := s.revokeSessionGrants(ctx, tx, params, values, now); err != nil {
 				return 0, err
@@ -113,6 +131,15 @@ func (s *Store) endSessionsTx(ctx context.Context, tx *sql.Tx, preserve bool, wh
 			return 0, err
 		}
 		ended += n
+		if ends == nil {
+			continue
+		}
+		for _, id := range batch {
+			if user, live := owners[id]; live {
+				slices.Sort(clients[id])
+				ends.sessions = append(ends.sessions, authn.EndedSession{ID: id, UserID: user, OAuthClients: clients[id]})
+			}
+		}
 	}
 	return ended, nil
 }
