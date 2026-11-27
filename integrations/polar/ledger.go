@@ -166,7 +166,14 @@ func (l *Ledger) read(ctx context.Context, slot string) (reservation, error) {
 
 func (l *Ledger) reserve(ctx context.Context, v reservation) (reservation, bool, error) {
 	q := `INSERT INTO plainauth_polar_checkout (slot,attempt,owner_id,contact_hash,product,products,merchant,success_url,return_url,hosted_url,status,expires_ms,changed_us) VALUES (?,?,?,?,?,?,?,?,?,'','pending',0,0)`
-	_, err := l.db.ExecContext(ctx, l.bind(q+l.ignore("slot")), v.Slot, v.Attempt, v.Owner, v.ContactHash, v.Products[0], strings.Join(v.Products, ","), v.Merchant, v.Success, v.Return)
+	// A reservation offering several products stores the nil UUID as its
+	// single product, which no request can name, so a node on an earlier
+	// release, which compares only that column, refuses to reuse it.
+	single := v.Products[0]
+	if len(v.Products) > 1 {
+		single = uuid.Nil.String()
+	}
+	_, err := l.db.ExecContext(ctx, l.bind(q+l.ignore("slot")), v.Slot, v.Attempt, v.Owner, v.ContactHash, single, strings.Join(v.Products, ","), v.Merchant, v.Success, v.Return)
 	if err != nil {
 		return v, false, err
 	}

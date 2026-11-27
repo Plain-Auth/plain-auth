@@ -2,11 +2,13 @@ package polar
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 	"time"
 
 	auth "github.com/Plain-Org/plain-auth"
+	"github.com/polarsource/polar-go/models/apierrors"
 	"github.com/polarsource/polar-go/models/components"
 	"github.com/polarsource/polar-go/models/operations"
 	"github.com/polarsource/polar-go/retry"
@@ -60,6 +62,12 @@ func (s *Service) customerOnSignUp(ctx context.Context, row auth.UserRecord, c *
 	}
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), signUpCustomerTimeout)
 	defer cancel()
+	// A panic, in the SDK's decoder or a host transport, never fails the sign-up.
+	defer func() {
+		if recover() != nil {
+			log.ErrorContext(ctx, "polar: the customer hook for a new account panicked", "user_id", row.ID)
+		}
+	}()
 	var params CustomerParams
 	if s.opts.SignUpCustomer.Params != nil {
 		var err error
@@ -77,6 +85,13 @@ func (s *Service) customerOnSignUp(ctx context.Context, row auth.UserRecord, c *
 		operations.WithRetries(retry.Config{Strategy: "none"}),
 		operations.WithSetHeaders(map[string]string{"Polar-Version": apiVersion}),
 	)
+	var refused *apierrors.HTTPValidationError
+	if errors.As(err, &refused) {
+		// Polar keeps a customer's email unique, so an address another
+		// customer holds, such as one an earlier account gave up, is refused.
+		log.WarnContext(ctx, "polar: Polar refused the customer for a new account, such as for an email another customer holds", "user_id", row.ID)
+		return nil
+	}
 	if err != nil {
 		log.WarnContext(ctx, "polar: could not create the customer for a new account", "user_id", row.ID)
 		return nil

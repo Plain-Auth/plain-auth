@@ -32,7 +32,7 @@ func TestSignUpCustomer(t *testing.T) {
 	status := 201
 	external := ""
 	block := make(chan struct{})
-	slow := false
+	slow, panics := false, false
 	client := polargo.New(polargo.WithSecurity("fixture"), polargo.WithClient(transport(func(r *http.Request) (*http.Response, error) {
 		if r.Method != "POST" || r.URL.Path != "/v1/customers/" {
 			return nil, errors.New("unexpected Polar call " + r.Method + " " + r.URL.Path)
@@ -42,8 +42,11 @@ func TestSignUpCustomer(t *testing.T) {
 		json.Unmarshal(raw, &body)
 		mu.Lock()
 		created, versions = append(created, body), append(versions, r.Header.Get("Polar-Version"))
-		code, id, wait := status, external, slow
+		code, id, wait, explodes := status, external, slow, panics
 		mu.Unlock()
+		if explodes {
+			panic("transport panic detail")
+		}
 		if wait {
 			select {
 			case <-block:
@@ -53,6 +56,9 @@ func TestSignUpCustomer(t *testing.T) {
 		}
 		if id == "" {
 			id, _ = body["external_id"].(string)
+		}
+		if code == 422 {
+			return &http.Response{StatusCode: 422, Header: http.Header{"Content-Type": {"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"detail":[{"loc":["body","email"],"msg":"provider detail","type":"value_error"}]}`)), Request: r}, nil
 		}
 		if code != 201 {
 			return &http.Response{StatusCode: code, Header: http.Header{"Content-Type": {"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"detail":"provider detail"}`)), Request: r}, nil
@@ -155,6 +161,15 @@ func TestSignUpCustomer(t *testing.T) {
 	mu.Unlock()
 	signUp("verified outage")
 	mu.Lock()
+	status = 422
+	mu.Unlock()
+	signUp("verified taken")
+	mu.Lock()
+	status, panics = 201, true
+	mu.Unlock()
+	signUp("verified panicking transport")
+	mu.Lock()
+	panics = false
 	status, external = 201, "someone-else"
 	mu.Unlock()
 	signUp("verified mismatch")
@@ -173,12 +188,12 @@ func TestSignUpCustomer(t *testing.T) {
 	logMu.Lock()
 	out := logs.String()
 	logMu.Unlock()
-	for _, want := range []string{"SignUpCustomer.Params failed", "could not create the customer", "unexpected customer"} {
+	for _, want := range []string{"SignUpCustomer.Params failed", "could not create the customer", "unexpected customer", "refused the customer", "customer hook for a new account panicked"} {
 		if !strings.Contains(out, want) {
 			t.Error("a failure was not logged", want)
 		}
 	}
-	if strings.Contains(out, "provider detail") || strings.Contains(out, "host detail") || strings.Contains(out, "host panic detail") || strings.Contains(out, "@example.test") {
+	if strings.Contains(out, "provider detail") || strings.Contains(out, "host detail") || strings.Contains(out, "panic detail") || strings.Contains(out, "@example.test") {
 		t.Fatal("a log line carried provider, host or account text", out)
 	}
 }

@@ -87,6 +87,12 @@ func TestMultiProductCheckout(t *testing.T) {
 				t.Fatal("two products were not offered in order", w.Code, w.Body.String(), sent())
 			}
 			multi := mock.saved()
+			// A reservation offering several stores the nil UUID as its single
+			// product, so an earlier release never reuses it for one product.
+			var single string
+			if err := db.QueryRowContext(ctx, ledger.bind("SELECT product FROM plainauth_polar_checkout WHERE products=?"), pro+","+team).Scan(&single); err != nil || single != "00000000-0000-0000-0000-000000000000" {
+				t.Fatal("a several-product reservation stored a product an earlier release could match", single, err)
+			}
 			if code := buy("", `{"products":["`+pro+`","`+team+`"]}`); code != 200 || mock.count() != 1 {
 				t.Fatal("a retry did not reuse the purchase", code, mock.count())
 			}
