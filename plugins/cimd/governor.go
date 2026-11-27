@@ -152,10 +152,24 @@ func (g *governor) settle(clientID string, state *originState, outcome fetchOutc
 	// A failure paces the client from when it settles. A success leaves
 	// nothing to clear: acquire dropped the expired record, and concurrent
 	// fetches of one client share a single fetch.
-	if outcome == fetchFailed && g.policy.MinimumFetchInterval > 0 {
-		if _, ok := g.paced[clientID]; ok || len(g.paced) < g.entries || g.evictPaced(now) {
-			g.paced[clientID] = now.Add(g.policy.MinimumFetchInterval)
-		}
+	if outcome == fetchFailed {
+		g.paceLocked(clientID, now)
+	}
+}
+
+// pace makes a client wait the interval, as after a failed fetch.
+func (g *governor) pace(clientID string, now time.Time) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.paceLocked(clientID, now)
+}
+
+func (g *governor) paceLocked(clientID string, now time.Time) {
+	if g.policy.MinimumFetchInterval <= 0 {
+		return
+	}
+	if _, ok := g.paced[clientID]; ok || len(g.paced) < g.entries || g.evictPaced(now) {
+		g.paced[clientID] = now.Add(g.policy.MinimumFetchInterval)
 	}
 }
 

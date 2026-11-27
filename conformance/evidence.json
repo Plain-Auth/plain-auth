@@ -50462,5 +50462,153 @@
       "test": "plugins/cimd/fetch_test.go",
       "marker": "func TestFetchDocument("
     }
+  ],
+  "plugin-symbol/cimd/createCimdClientDiscovery": [
+    {
+      "label": "Discover clients from metadata documents through the OAuth provider's endpoints: authorize, consent, PKCE code exchange, UserInfo, refresh, same-origin keys and refetched fields, never a local client, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_cimd_test.go",
+      "marker": "func TestCIMDClients(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/cimd/CimdClientCreatedEvent": [
+    {
+      "label": "Report a newly stored client with its document and request headers",
+      "test": "plugins/cimd/resolver_test.go",
+      "marker": "func TestResolverNotifications(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/cimd/CimdClientRefreshedEvent": [
+    {
+      "label": "Report a replaced client with the previous one, its document and request headers",
+      "test": "plugins/cimd/resolver_test.go",
+      "marker": "func TestResolverNotifications(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/cimd/CimdOptions/fetchClientMetadataResource": [
+    {
+      "label": "Fetch documents and the resources their clients publish through the configured transport, the pinned one by default",
+      "test": "adapters/sqlstore/oauth_cimd_test.go",
+      "marker": "func TestCIMDClients(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/cimd/CimdOptions/metadataRevalidationInterval": [
+    {
+      "label": "Cap a document's freshness at the revalidation interval, sixty minutes by default, and revalidate on every resolution when negative",
+      "test": "plugins/cimd/cache_test.go",
+      "marker": "func TestFreshness(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/cimd/CimdOptions/metadataFetchPolicy": [
+    {
+      "label": "Spend the fetch budget once per shared fetch and none on a fresh hit, pacing a client after a failed save",
+      "test": "plugins/cimd/resolver_test.go",
+      "marker": "func TestResolverSharesFetches(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/cimd/CimdOptions/maxCacheEntries": [
+    {
+      "label": "Keep at most the configured documents, a thousand by default, dropping the least recently used, and refuse a negative size",
+      "test": "plugins/cimd/cache_test.go",
+      "marker": "func TestDocumentCache(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/cimd/CimdOptions/isCrossOriginJwksUriAllowed": [
+    {
+      "label": "Pass the cross-origin jwks_uri hook to the provider's discovery",
+      "test": "plugins/cimd/resolver_test.go",
+      "marker": "func TestResolverNotifications("
+    }
+  ],
+  "plugin-symbol/cimd/CimdOptions/onClientCreated": [
+    {
+      "label": "Notify after a new client is stored, logging a callback error without undoing the save",
+      "test": "plugins/cimd/resolver_test.go",
+      "marker": "func TestResolverNotifications(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/cimd/CimdOptions/onClientRefreshed": [
+    {
+      "label": "Notify after a stored client is replaced with the previous client, logging a callback error",
+      "test": "plugins/cimd/resolver_test.go",
+      "marker": "func TestResolverNotifications(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/cimd.mdx#L129/`cimdOptionsType.metadataRevalidationInterval`": [
+    {
+      "label": "Cap freshness at the revalidation interval and revalidate expired documents only on the next resolution",
+      "test": "plugins/cimd/resolver_test.go",
+      "marker": "func TestResolverCache(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/cimd.mdx#L140/`cimdOptionsType.maxCacheEntries`": [
+    {
+      "label": "Keep at most the configured documents, dropping the least recently used",
+      "test": "plugins/cimd/cache_test.go",
+      "marker": "func TestDocumentCache(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/cimd.mdx#L146/`cimdOptionsType.metadataFetchPolicy`": [
+    {
+      "label": "Refuse excess fetches at once and pace a client after a failure",
+      "test": "plugins/cimd/governor_test.go",
+      "marker": "func TestGovernorLimits(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/cimd.mdx#L165/`cimdOptionsType.isCrossOriginJwksUriAllowed`": [
+    {
+      "label": "Pass the cross-origin jwks_uri hook to the provider's discovery",
+      "test": "plugins/cimd/resolver_test.go",
+      "marker": "func TestResolverNotifications("
+    }
+  ],
+  "docs/content/docs/plugins/cimd.mdx#L171/`cimdOptionsType.onClientCreated`": [
+    {
+      "label": "Notify after a new client is stored",
+      "test": "plugins/cimd/resolver_test.go",
+      "marker": "func TestResolverNotifications(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/cimd.mdx#L175/`cimdOptionsType.onClientRefreshed`": [
+    {
+      "label": "Notify after a stored client is replaced",
+      "test": "plugins/cimd/resolver_test.go",
+      "marker": "func TestResolverNotifications(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/cimd.mdx#L216": [
+    {
+      "label": "Accept a discovered client's jwks_uri on its own origin, fetched through the discovery, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_cimd_test.go",
+      "marker": "// A private_key_jwt client's keys on its own origin authenticate."
+    }
+  ],
+  "docs/content/docs/plugins/cimd.mdx#L246": [
+    {
+      "label": "Store discovered clients with their discovery ID, never take over a local client, replace document fields on a refetch and keep server-owned settings, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_cimd_test.go",
+      "marker": "// A refetched document replaces its fields and keeps the server-owned ones."
+    }
+  ],
+  "docs/content/docs/plugins/cimd.mdx#L297": [
+    {
+      "label": "Install the discovery on the provider through an extension, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_cimd_test.go",
+      "marker": "func TestCIMDClients(",
+      "complete": true
+    }
   ]
 }

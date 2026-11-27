@@ -34,3 +34,23 @@ A public host is a public IP address or a dotted DNS name that is not loopback, 
 `cimd.Options` configures the discovery. `Transport` fetches documents and the resources their clients publish; nil uses `NewTransport`. `Profile` and `OriginBoundFields` pass to `ValidateMetadata`. `AllowMetadataURL` may refuse a client ID URL with invalid_client `client_id URL is not permitted by the server's fetch policy`; an error it returns is the request's. A URL is checked with `ValidateClientIDURL` and `AllowMetadataURL` with the request's own context before any fetch budget is spent, where another runtime checks it inside the permitted fetch, so host code never runs inside a fetch other requests share and a refused URL makes no request.
 
 A document is fetched with `Accept: application/json`, and with `If-None-Match` and `If-Modified-Since` only from a document validated before, within five seconds for headers and body, as another runtime does. Each failure answers invalid_client with the other runtime's description: a network failure or a blocked redirect, a timeout, a 304 without a validator, any status but 200 and 304, a media type other than JSON or `application/*+json`, a declared or read body over 5 KB, invalid JSON, or a document `ValidateMetadata` refuses. A 500, 502, 503 or 504 answer, a timeout or a connection failure is transient and may pass on retry; a transport's lookup limit answers 429 `temporarily_unavailable`; anything else is terminal. Each validation warning is logged. [Fetch tests](../plugins/cimd/fetch_test.go)
+
+## Discover clients
+
+`cimd.NewClientDiscovery` returns the client discovery for metadata documents, as another runtime's `createCimdClientDiscovery` does. Install it on the OAuth provider through an [extension](oauth-extensions.md#resolve-clients-through-a-discovery):
+
+```go
+discovery, err := cimd.NewClientDiscovery(cimd.Options{})
+provider, err := oauthprovider.New(oauthprovider.Options{
+    Extensions: []oauthprovider.Extension{{ClientDiscoveries: []oauthprovider.ClientDiscovery{discovery}}},
+    // ...
+})
+```
+
+Its ID is `cimd`, stored on every client it saves, it handles every `https` client ID, and it publishes `client_id_metadata_document_supported`. Each discovery owns its cache, validators and fetch budgets. A client the provider stores locally is never fetched, so a managed or registered client whose ID begins with `https://` cannot be taken over.
+
+A validated document is cached by HTTP shared-cache rules, under `MetadataRevalidationInterval`, 60 minutes by default, which caps its lifetime and stands in for a missing one; a negative value revalidates on every resolution. `s-maxage` wins over `max-age`, which wins over `Expires`, `Age` and `Date` shorten the lifetime, and `no-store`, `private` and `Vary: *` keep a document out of the cache, while `no-cache` caches it already expired. An expired document is revalidated with its `ETag` and `Last-Modified` the next time the client resolves, never in the background, and a 304 reuses it. At most `MaxCacheEntries` documents are kept, 1000 by default, the least recently used dropped first.
+
+Concurrent resolutions of one client share one fetch, which spends the fetch budget once; a fresh cached document spends none. Each resolution then stores the document through the provider's registration rules with its own context, so none waits for another's save, and a save that fails drops its cached document and paces the client. A cached document the stored client already matches answers without a save. Another runtime also bounds how long a request waits to join a fetch and retires fetches a request abandoned, because some runtimes end a request's I/O; here a fetch runs in its own goroutine under its five-second deadline and always settles.
+
+After a save, `OnClientCreated` runs for a new client and `OnClientRefreshed` for a replaced one, with the stored client, the previous one, the document and the request headers; an error is logged and never undoes the save. A refresh replaces the fields the document owns, clearing those it no longer lists, keeps a stored `subject_type` it omits, and never touches the server-owned settings. [Resolver tests](../plugins/cimd/resolver_test.go) · [End-to-end tests](../adapters/sqlstore/oauth_cimd_test.go)

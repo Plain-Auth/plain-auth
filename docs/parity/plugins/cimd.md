@@ -5,28 +5,38 @@
 ## Interfaces
 
 - [ ] Client ID metadata documents endpoints, types and options
-  - [ ] `createCimdClientDiscovery`
+  - [x] `createCimdClientDiscovery` ([test](../../../adapters/sqlstore/oauth_cimd_test.go#L63))
+    - [x] Discover clients from metadata documents through the OAuth provider's endpoints: authorize, consent, PKCE code exchange, UserInfo, refresh, same-origin keys and refetched fields, never a local client, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_cimd_test.go#L63))
   - [ ] `cimd`
   - [ ] `fetchClientMetadataResource`
     - [x] Fetch metadata resources over HTTPS GET and HEAD only, pinning the vetted public addresses of one lookup, returning redirects unfollowed, refusing upgrades and bounding concurrent lookups ([test](../../../plugins/cimd/transport_test.go#L55))
-  - [ ] `CimdClientCreatedEvent`
-  - [ ] `CimdClientRefreshedEvent`
+  - [x] `CimdClientCreatedEvent` ([test](../../../plugins/cimd/resolver_test.go#L206))
+    - [x] Report a newly stored client with its document and request headers ([test](../../../plugins/cimd/resolver_test.go#L206))
+  - [x] `CimdClientRefreshedEvent` ([test](../../../plugins/cimd/resolver_test.go#L206))
+    - [x] Report a replaced client with the previous one, its document and request headers ([test](../../../plugins/cimd/resolver_test.go#L206))
   - [x] `CimdMetadataFetchPolicy` ([test](../../../plugins/cimd/governor_test.go#L69))
     - [x] Pace a client after a failed fetch and bound fetches in flight and per minute, globally and per origin, with their defaults, refusing at once with 429 temporarily_unavailable ([test](../../../plugins/cimd/governor_test.go#L69))
   - [ ] `CimdMetadataProfile`
   - [ ] `CimdOptions`
-    - [ ] `fetchClientMetadataResource`
+    - [x] `fetchClientMetadataResource` ([test](../../../adapters/sqlstore/oauth_cimd_test.go#L63))
+      - [x] Fetch documents and the resources their clients publish through the configured transport, the pinned one by default ([test](../../../adapters/sqlstore/oauth_cimd_test.go#L63))
     - [ ] `metadataProfile`
-    - [ ] `metadataRevalidationInterval`
+    - [x] `metadataRevalidationInterval` ([test](../../../plugins/cimd/cache_test.go#L11))
+      - [x] Cap a document's freshness at the revalidation interval, sixty minutes by default, and revalidate on every resolution when negative ([test](../../../plugins/cimd/cache_test.go#L11))
     - [ ] `metadataStaleIfError`
-    - [ ] `metadataFetchPolicy`
-    - [ ] `maxCacheEntries`
+    - [x] `metadataFetchPolicy` ([test](../../../plugins/cimd/resolver_test.go#L76))
+      - [x] Spend the fetch budget once per shared fetch and none on a fresh hit, pacing a client after a failed save ([test](../../../plugins/cimd/resolver_test.go#L76))
+    - [x] `maxCacheEntries` ([test](../../../plugins/cimd/cache_test.go#L52))
+      - [x] Keep at most the configured documents, a thousand by default, dropping the least recently used, and refuse a negative size ([test](../../../plugins/cimd/cache_test.go#L52))
     - [ ] `originBoundFields`
     - [x] `isMetadataDocumentUrlAllowed` ([test](../../../plugins/cimd/fetch_test.go#L53))
       - [x] Refuse a client ID URL the host's policy refuses before any request, returning the policy's own error as is ([test](../../../plugins/cimd/fetch_test.go#L53))
     - [ ] `isCrossOriginJwksUriAllowed`
-    - [ ] `onClientCreated`
-    - [ ] `onClientRefreshed`
+      - [x] Pass the cross-origin jwks_uri hook to the provider's discovery ([test](../../../plugins/cimd/resolver_test.go#L206))
+    - [x] `onClientCreated` ([test](../../../plugins/cimd/resolver_test.go#L206))
+      - [x] Notify after a new client is stored, logging a callback error without undoing the save ([test](../../../plugins/cimd/resolver_test.go#L206))
+    - [x] `onClientRefreshed` ([test](../../../plugins/cimd/resolver_test.go#L206))
+      - [x] Notify after a stored client is replaced with the previous client, logging a callback error ([test](../../../plugins/cimd/resolver_test.go#L206))
   - [x] `CimdMetadataValidationOptions` ([test](../../../plugins/cimd/validate_test.go#L65))
     - [x] Configure origin-bound members and the protocol profile of document validation ([test](../../../plugins/cimd/validate_test.go#L65))
     - [x] `originBoundFields` ([test](../../../plugins/cimd/validate_test.go#L129))
@@ -50,23 +60,32 @@
     - [ ] `cimdOptionsType.fetchClientMetadataResource`
       - [x] Fetch documents through the configured transport, the pinned one by default ([test](../../../plugins/cimd/fetch_test.go#L38))
     - [ ] `cimdOptionsType.metadataProfile`
-    - [ ] `cimdOptionsType.metadataRevalidationInterval`
+    - [x] `cimdOptionsType.metadataRevalidationInterval` ([test](../../../plugins/cimd/resolver_test.go#L118))
+      - [x] Cap freshness at the revalidation interval and revalidate expired documents only on the next resolution ([test](../../../plugins/cimd/resolver_test.go#L118))
     - [ ] `cimdOptionsType.metadataStaleIfError`
-    - [ ] `cimdOptionsType.maxCacheEntries`
-    - [ ] `cimdOptionsType.metadataFetchPolicy`
+    - [x] `cimdOptionsType.maxCacheEntries` ([test](../../../plugins/cimd/cache_test.go#L52))
+      - [x] Keep at most the configured documents, dropping the least recently used ([test](../../../plugins/cimd/cache_test.go#L52))
+    - [x] `cimdOptionsType.metadataFetchPolicy` ([test](../../../plugins/cimd/governor_test.go#L69))
+      - [x] Refuse excess fetches at once and pace a client after a failure ([test](../../../plugins/cimd/governor_test.go#L69))
     - [ ] `cimdOptionsType.originBoundFields`
     - [x] `cimdOptionsType.isMetadataDocumentUrlAllowed` ([test](../../../plugins/cimd/fetch_test.go#L53))
       - [x] Refuse a client ID URL the host's policy refuses before any request ([test](../../../plugins/cimd/fetch_test.go#L53))
     - [ ] `cimdOptionsType.isCrossOriginJwksUriAllowed`
-    - [ ] `cimdOptionsType.onClientCreated`
-    - [ ] `cimdOptionsType.onClientRefreshed`
+      - [x] Pass the cross-origin jwks_uri hook to the provider's discovery ([test](../../../plugins/cimd/resolver_test.go#L206))
+    - [x] `cimdOptionsType.onClientCreated` ([test](../../../plugins/cimd/resolver_test.go#L206))
+      - [x] Notify after a new client is stored ([test](../../../plugins/cimd/resolver_test.go#L206))
+    - [x] `cimdOptionsType.onClientRefreshed` ([test](../../../plugins/cimd/resolver_test.go#L206))
+      - [x] Notify after a stored client is replaced ([test](../../../plugins/cimd/resolver_test.go#L206))
     - [x] Origin-bound fields ([test](../../../plugins/cimd/validate_test.go#L129))
       - [x] Bind only post_logout_redirect_uris by default, leaving informative URIs unbound but credential-free HTTP(S) on public hosts ([test](../../../plugins/cimd/validate_test.go#L129))
   - [ ] Draft-02 validation
     - [x] Require client_id to equal the URL exactly, refuse unsafe client ID URLs with warnings for a root path and a query, and leave client_name and redirect_uris optional outside the MCP profile ([test](../../../plugins/cimd/validate_test.go#L65))
   - [ ] Key set origin
+    - [x] Accept a discovered client's jwks_uri on its own origin, fetched through the discovery, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_cimd_test.go#L162))
   - [ ] Persistence and refresh
+    - [x] Store discovered clients with their discovery ID, never take over a local client, replace document fields on a refetch and keep server-owned settings, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_cimd_test.go#L151))
     - [ ] Transient refresh failures
   - [ ] Security boundary
     - [x] Fetch a document within five seconds, at most 5 KB of JSON or application/*+json, refusing redirects and classifying each failure ([test](../../../plugins/cimd/fetch_test.go#L38))
-  - [ ] Explicit discovery composition
+  - [x] Explicit discovery composition ([test](../../../adapters/sqlstore/oauth_cimd_test.go#L63))
+    - [x] Install the discovery on the provider through an extension, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_cimd_test.go#L63))
