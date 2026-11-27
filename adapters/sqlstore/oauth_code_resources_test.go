@@ -20,7 +20,8 @@ import (
 // requested ones, which the code must have authorized, or the code's;
 // each must still be configured, enabled and linked; allowed scopes narrow
 // the grant and the resources' lifetimes cap the tokens; and a refused
-// redemption leaves the code usable.
+// redemption leaves the code usable. Refresh exchanges keep the family's
+// resources and apply the same policy, from rotation.
 func TestAuthorizationCodeResources(t *testing.T) {
 	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
 		t.Run(dialect, func(t *testing.T) {
@@ -142,6 +143,52 @@ func TestAuthorizationCodeResources(t *testing.T) {
 			if status != 200 || !sameJSON(stored("oauthAccessToken", "resources", body["access_token"].(string)), `["urn:audit"]`) ||
 				!sameJSON(stored("oauthRefreshToken", "resources", body["refresh_token"].(string)), `["urn:reports","urn:audit"]`) {
 				t.Fatal("a requested subset was not applied", status, body)
+			}
+			family := body["refresh_token"].(string)
+			// A refresh exchange keeps the family's resources and policy.
+			rotate := func(token string, resources ...string) (int, map[string]any) {
+				t.Helper()
+				form := url.Values{"grant_type": {"refresh_token"}, "client_id": {"app"}, "client_secret": {secret}, "refresh_token": {token}, "resource": resources}
+				req := httptest.NewRequest("POST", origin+"/api/auth/oauth2/token", strings.NewReader(form.Encode()))
+				req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+				out := httptest.NewRecorder()
+				h.ServeHTTP(out, req)
+				var reply map[string]any
+				must(json.Unmarshal(out.Body.Bytes(), &reply))
+				return out.Code, reply
+			}
+			status, body = rotate(refresh)
+			if status != 200 || body["scope"] != "openid reports offline_access" || body["expires_in"] != float64(120) ||
+				!sameJSON(stored("oauthAccessToken", "resources", body["access_token"].(string)), `["urn:reports"]`) ||
+				!sameJSON(stored("oauthRefreshToken", "resources", body["refresh_token"].(string)), `["urn:reports"]`) {
+				t.Fatal("a refresh did not keep the family's resources and policy", status, body)
+			}
+			digest = sha256.Sum256([]byte(body["refresh_token"].(string)))
+			must(s.db.QueryRowContext(ctx, s.bind(`SELECT "expiresAt" FROM "oauthRefreshToken" WHERE "token"=?`), base64.RawURLEncoding.EncodeToString(digest[:])).Scan(&refreshExpires))
+			if d := time.Until(refreshExpires); d < 580*time.Second || d > 610*time.Second {
+				t.Fatal("the rotated refresh token was not capped by the resource from rotation", d)
+			}
+			// A resource outside the family is refused and the parent stays usable.
+			if status, reply := rotate(family, "urn:loose"); status != 400 || reply["error"] != "invalid_target" || reply["error_description"] != "requested resource invalid" {
+				t.Fatal("a resource outside the family was accepted", status, reply)
+			}
+			// A requested subset narrows the access token; the rotated token
+			// keeps the family, and a resource without a lifetime gives the
+			// default one.
+			status, body = rotate(family, "urn:audit")
+			if status != 200 || body["expires_in"] != float64(3600) || !sameJSON(stored("oauthAccessToken", "resources", body["access_token"].(string)), `["urn:audit"]`) ||
+				!sameJSON(stored("oauthRefreshToken", "resources", body["refresh_token"].(string)), `["urn:reports","urn:audit"]`) {
+				t.Fatal("a refresh subset was not applied", status, body)
+			}
+			family = body["refresh_token"].(string)
+			// A disabled resource refuses the refresh and keeps the parent.
+			write(`UPDATE "oauthResource" SET "disabled"=? WHERE "identifier"='urn:reports'`, true)
+			if status, reply := rotate(family); status != 400 || reply["error"] != "invalid_target" {
+				t.Fatal("a disabled resource did not refuse the refresh", status, reply)
+			}
+			write(`UPDATE "oauthResource" SET "disabled"=? WHERE "identifier"='urn:reports'`, false)
+			if status, reply := rotate(family); status != 200 {
+				t.Fatal("a refused refresh spent the parent", status, reply)
 			}
 			// A resource the code did not authorize, a disabled or an unlinked
 			// one is refused, and the code stays usable.

@@ -133,7 +133,7 @@
       - [x] Default the refresh token lifetime to thirty days ([test](../../../plugins/oauthprovider/machine_token_test.go#L112))
       - [x] Give an offline code exchange a thirty-day refresh token by default, on both runtimes ([test](../../../conformance/oauth-authorization-code.mjs#L109))
       - [x] Apply a configured refresh token lifetime to an offline grant, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_offline_code_test.go#L148))
-      - [x] Apply a configured refresh token lifetime to each rotated refresh token, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_refresh_grant_test.go#L188))
+      - [x] Apply a configured refresh token lifetime to each rotated refresh token, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_refresh_grant_test.go#L189))
     - [ ] `mcpOauthOptionsType.refreshTokenReuseInterval`
     - [ ] `mcpOauthOptionsType.codeExpiresIn`
       - [x] Default the authorization code lifetime to ten minutes ([test](../../../plugins/oauthprovider/machine_token_test.go#L112))

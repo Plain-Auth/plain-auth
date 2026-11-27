@@ -137,7 +137,8 @@ func TestRefreshGrantExchange(t *testing.T) {
 			write(`UPDATE "oauthRefreshToken" SET "expiresAt"=? WHERE "id"='initial'`, s.date(now))
 			expect("app", original, 400, "invalid_grant")
 			write(`UPDATE "oauthRefreshToken" SET "expiresAt"=?, "resources"=? WHERE "id"='initial'`, s.date(now.Add(time.Hour)), `["https://api.example.test"]`)
-			expect("app", original, 501, "server_error")
+			// The family's resource is not registered, so the exchange is refused.
+			expect("app", original, 400, "invalid_target")
 			write(`UPDATE "oauthRefreshToken" SET "resources"=NULL,"confirmation"=? WHERE "id"='initial'`, `{"jkt":"bound"}`)
 			expect("app", original, 400, "invalid_dpop_proof")
 			write(`UPDATE "oauthRefreshToken" SET "confirmation"=NULL WHERE "id"='initial'`)

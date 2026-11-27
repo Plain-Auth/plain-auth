@@ -324,8 +324,10 @@
       - [x] Cancel a waiting caller without interrupting another startup ([test](../../../plugins/oauthprovider/resource_seed_test.go#L12))
       - [x] Retry rejected entries when a second manager supplies a different validator ([test](../../../adapters/sqlstore/oauth_resource_seed_test.go#L169))
     - [ ] `cachedResources`
-    - [ ] `enforcePerClientResources`
+    - [x] `enforcePerClientResources` ([test](../../../adapters/sqlstore/oauth_code_resources_test.go#L213))
       - [x] Require links to every machine-token audience and recheck concurrent unlink, scope, binding and signing policy changes on three engines ([test](../../../adapters/sqlstore/oauth_machine_resources_test.go#L30))
+      - [x] Refuse a resource not linked to the client at authorize, at the code exchange and at refresh unless AllowUnlinkedResources is set, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_code_resources_test.go#L213))
+      - [x] Refuse an unlinked resource at authorize and admit it with AllowUnlinkedResources ([test](../../../adapters/sqlstore/oauth_browser_resources_test.go#L24))
     - [ ] `clientRegistrationDefaultResources`
       - [x] Link the configured default resources once per dynamic registration ([test](../../../conformance/oauth-registration.mjs#L140))
       - [x] Refuse an undeclared default registration resource when the provider is built ([test](../../../adapters/sqlstore/oauth_provider_seed_test.go#L36))
@@ -351,7 +353,7 @@
       - [x] Apply the ten-hour default or configured whole-second lifetime to signed ID tokens on code and refresh exchanges ([test](../../../conformance/oauth-id-tokens.mjs#L77))
     - [x] `refreshTokenExpiresIn` ([test](../../../conformance/oauth-authorization-code.mjs#L109))
       - [x] Set the offline refresh lifetime independently of the scope-limited access token and retain the original authentication time ([test](../../../adapters/sqlstore/oauth_offline_code_test.go#L148))
-      - [x] Restart the configured refresh lifetime on rotation and preserve original authentication time, session and authorization code ([test](../../../adapters/sqlstore/oauth_refresh_grant_test.go#L188))
+      - [x] Restart the configured refresh lifetime on rotation and preserve original authentication time, session and authorization code ([test](../../../adapters/sqlstore/oauth_refresh_grant_test.go#L189))
       - [x] Default offline refresh tokens to a thirty-day lifetime in both runtimes ([test](../../../conformance/oauth-authorization-code.mjs#L109))
     - [ ] `refreshTokenReuseInterval`
     - [x] `codeExpiresIn` ([test](../../../conformance/oauth-browser-authorization.mjs#L130))
@@ -364,7 +366,7 @@
       - [x] Apply the shortest lifetime from the original machine scopes and every requested API, including scopes dropped at issuance ([test](../../../conformance/oauth-resource-machine-tokens.mjs#L89))
       - [x] Limit an opaque delegated token to its approved scope's lifetime ([test](../../../conformance/oauth-authorization-code.mjs#L26))
       - [x] Cap a token at the shortest of its base lifetime, each scope's relative lifetime and the whole seconds left until each scope's instant, and refuse a scope whose instant has passed with invalid_scope, a documented deviation ([test](../../../plugins/oauthprovider/machine_token_test.go#L216))
-      - [x] Apply the shortest scope lifetime to a refreshed access token and refuse a refresh for a scope whose instant has passed without spending the grant, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_refresh_grant_test.go#L172))
+      - [x] Apply the shortest scope lifetime to a refreshed access token and refuse a refresh for a scope whose instant has passed without spending the grant, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_refresh_grant_test.go#L173))
     - [x] `assertionMaxLifetime` ([test](../../../plugins/oauthprovider/client_assertion_test.go#L25))
       - [x] Apply the configured lifetime and skew to expiry, not-before and issued-at claims, including exact boundaries ([test](../../../plugins/oauthprovider/client_assertion_test.go#L25))
     - [x] `assertionClockTolerance` ([test](../../../plugins/oauthprovider/client_assertion_test.go#L25))
@@ -496,8 +498,8 @@
     - [x] Accept identifier strings and full policy objects, including signing, lifetimes, scopes, claims, metadata and flags ([test](../../../conformance/resource-seeds.mjs#L37))
   - [ ] `OAuthClientResource`
   - [ ] `StoredAuthorizationQuery`
-  - [x] `VerificationValue` ([test](../../../adapters/sqlstore/oauth_code_resources_test.go#L175))
-    - [x] Write a code's resources in its top-level resource list and read them back at redemption, falling back to a legacy query.resource, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_code_resources_test.go#L175))
+  - [x] `VerificationValue` ([test](../../../adapters/sqlstore/oauth_code_resources_test.go#L222))
+    - [x] Write a code's resources in its top-level resource list and read them back at redemption, falling back to a legacy query.resource, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_code_resources_test.go#L222))
     - [x] Carry the resources through the signed consent page into the code value ([test](../../../adapters/sqlstore/oauth_browser_resources_test.go#L24))
   - [ ] `SchemaClient`
   - [ ] `OAuthOpaqueAccessToken`
@@ -727,7 +729,8 @@
     - [ ] Redirect URIs
     - [ ] Client authentication
     - [ ] Client registration
-    - [ ] Resource indicators
+    - [x] Resource indicators ([test](../../../adapters/sqlstore/oauth_code_resources_test.go#L25))
+      - [x] Accept resource indicators at authorize, the code exchange, refresh and client credentials, for linked resources only by default, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_code_resources_test.go#L25))
     - [ ] Access tokens
     - [ ] Sender-constrained tokens
     - [x] Introspection and revocation ([test](../../../conformance/oauth-client-assertions.mjs#L48))
@@ -744,7 +747,7 @@
   - [ ] Run your first flow
     - [ ] Register the API and a client
     - [ ] Send the user to the authorize endpoint
-      - [x] Accept a resource at authorize and redeem the code into a token for it, with the resource's scopes and lifetimes, on SQLite, PostgreSQL and MySQL; the token is opaque so far ([test](../../../adapters/sqlstore/oauth_code_resources_test.go#L24))
+      - [x] Accept a resource at authorize and redeem the code into a token for it, with the resource's scopes and lifetimes, on SQLite, PostgreSQL and MySQL; the token is opaque so far ([test](../../../adapters/sqlstore/oauth_code_resources_test.go#L25))
     - [x] Sign in and consent ([test](../../../conformance/oauth-browser-login.mjs#L78))
       - [x] Sign in on the login page, approve on the consent page and return the code with state and issuer to the callback ([test](../../../conformance/oauth-browser-login.mjs#L78))
     - [ ] Exchange the code for tokens
@@ -914,11 +917,12 @@
       - [x] Refuse a code whose approving user no longer exists with invalid_user ([test](../../../adapters/sqlstore/oauth_authorization_code_test.go#L141))
     - [ ] `unauthorized_client`
       - [x] Refuse client credentials to a client without that grant, a public client and a client without client-credentials scopes with unauthorized_client, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_grant_refusal_test.go#L76))
-      - [x] Refuse a refresh exchange for a client without that grant with unauthorized_client, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_refresh_grant_test.go#L145))
+      - [x] Refuse a refresh exchange for a client without that grant with unauthorized_client, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_refresh_grant_test.go#L146))
     - [x] `unsupported_grant_type` ([test](../../../adapters/sqlstore/oauth_grant_refusal_test.go#L84))
       - [x] Refuse a grant the issuer does not offer with unsupported_grant_type, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_grant_refusal_test.go#L84))
     - [ ] `invalid_scope`
-    - [ ] `invalid_target`
+    - [x] `invalid_target` ([test](../../../adapters/sqlstore/oauth_code_resources_test.go#L25))
+      - [x] Answer 400 invalid_target for an unknown, disabled or unlinked resource, and for one the code or refresh family did not authorize, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_code_resources_test.go#L25))
     - [ ] `invalid_dpop_proof`
   - [ ] Rate limits
     - [ ] `token`
@@ -1100,7 +1104,7 @@
       - [x] Allow one concurrent use across independent SQL connections and recheck the registered key before issuing a token ([test](../../../adapters/sqlstore/oauth_client_assertion_test.go#L30))
     - [ ] `none`
   - [ ] Scopes
-    - [x] Reject client scopes withdrawn during token generation and leave the existing grant available for retry ([test](../../../adapters/sqlstore/oauth_refresh_grant_test.go#L153))
+    - [x] Reject client scopes withdrawn during token generation and leave the existing grant available for retry ([test](../../../adapters/sqlstore/oauth_refresh_grant_test.go#L154))
     - [x] `openid` ([test](../../../conformance/oauth-userinfo.mjs#L87))
       - [x] Return signed ID tokens with a client-specific subject for OpenID scopes on untargeted grants and omit them when the scope is dropped ([test](../../../conformance/oauth-id-tokens.mjs#L155))
       - [x] Return only the subject at UserInfo for an openid-only token ([test](../../../conformance/oauth-userinfo.mjs#L87))
@@ -1112,6 +1116,7 @@
       - [x] Return a refresh token only when offline_access is granted on the code exchange ([test](../../../conformance/oauth-authorization-code.mjs#L80))
       - [x] Issue a refresh token on a code exchange for a client registered without grant types, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_offline_code_test.go#L137))
   - [ ] Resources
+    - [x] Issue delegated tokens for registered resources, which introspection names as aud, on SQLite, PostgreSQL and MySQL; signed resource tokens for delegated grants are not built yet ([test](../../../adapters/sqlstore/oauth_code_resources_test.go#L25))
     - [x] `name` ([test](../../../conformance/resource-seeds.mjs#L53))
       - [x] Persist and return the configured display name across restarts ([test](../../../conformance/resource-seeds.mjs#L53))
     - [x] `allowedScopes` ([test](../../../conformance/oauth-resource-machine-tokens.mjs#L88))
@@ -1121,8 +1126,9 @@
     - [ ] `accessTokenTtl`
       - [x] Persist and reset the accessTokenTtl policy through startup configuration ([test](../../../conformance/resource-seeds.mjs#L54))
       - [x] Apply the shortest lifetime from the original machine scopes and every requested API, including scopes dropped at issuance ([test](../../../conformance/oauth-resource-machine-tokens.mjs#L89))
-    - [ ] `refreshTokenTtl`
+    - [x] `refreshTokenTtl` ([test](../../../adapters/sqlstore/oauth_code_resources_test.go#L169))
       - [x] Persist and reset the refreshTokenTtl policy through startup configuration ([test](../../../conformance/resource-seeds.mjs#L55))
+      - [x] Cap the refresh token at the shortest resource refresh lifetime at the code exchange and from each rotation, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_code_resources_test.go#L169))
     - [ ] `signingAlgorithm`
       - [x] Persist and reset the signingAlgorithm policy through startup configuration ([test](../../../conformance/resource-seeds.mjs#L56))
       - [x] Reject conflicting resource pins and verify the selected key on a machine access token ([test](../../../conformance/oauth-resource-machine-tokens.mjs#L124))
@@ -1162,6 +1168,7 @@
       - [x] `adminUnlinkClientResource` ([test](../../../conformance/resource-registry.mjs#L89))
         - [x] Remove an existing client grant and permit a subsequent fresh link ([test](../../../conformance/resource-registry.mjs#L89))
   - [ ] Lifetimes
+    - [x] Cap access and refresh lifetimes by the resources' lifetimes, defaulting to the provider's, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_code_resources_test.go#L25))
     - [ ] `accessTokenExpiresIn`
       - [x] Default the access token lifetime to an hour ([test](../../../plugins/oauthprovider/machine_token_test.go#L112))
       - [x] Give a code exchange the configured access token lifetime, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_authorization_code_test.go#L114))
@@ -1172,7 +1179,7 @@
       - [x] Apply the ten-hour default or configured whole-second lifetime to signed ID tokens on code and refresh exchanges ([test](../../../conformance/oauth-id-tokens.mjs#L77))
     - [x] `refreshTokenExpiresIn` ([test](../../../conformance/oauth-authorization-code.mjs#L109))
       - [x] Set the offline refresh lifetime independently of the scope-limited access token and retain the original authentication time ([test](../../../adapters/sqlstore/oauth_offline_code_test.go#L148))
-      - [x] Restart the configured refresh lifetime on rotation and preserve original authentication time, session and authorization code ([test](../../../adapters/sqlstore/oauth_refresh_grant_test.go#L188))
+      - [x] Restart the configured refresh lifetime on rotation and preserve original authentication time, session and authorization code ([test](../../../adapters/sqlstore/oauth_refresh_grant_test.go#L189))
       - [x] Default the refresh token lifetime to 30 days on an offline code exchange ([test](../../../conformance/oauth-authorization-code.mjs#L109))
     - [x] `codeExpiresIn` ([test](../../../adapters/sqlstore/oauth_browser_authorization_test.go#L151))
       - [x] Expire authorization codes after the configured whole-second lifetime on all three SQL engines ([test](../../../adapters/sqlstore/oauth_browser_authorization_test.go#L151))

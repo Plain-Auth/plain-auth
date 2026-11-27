@@ -16472,6 +16472,12 @@
       "label": "Persist and reset the refreshTokenTtl policy through startup configuration",
       "test": "conformance/resource-seeds.mjs",
       "marker": "assert.equal(first.refreshTokenTtl,"
+    },
+    {
+      "label": "Cap the refresh token at the shortest resource refresh lifetime at the code exchange and from each rotation, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_code_resources_test.go",
+      "marker": "t.Fatal(\"the rotated refresh token was not capped by the resource from rotation\", d)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/oauth-provider/tokens.mdx#L68/`allowedScopes`": [
@@ -18422,6 +18428,17 @@
       "label": "Require links to every machine-token audience and recheck concurrent unlink, scope, binding and signing policy changes on three engines",
       "test": "adapters/sqlstore/oauth_machine_resources_test.go",
       "marker": "func TestMachineResourceIssuance("
+    },
+    {
+      "label": "Refuse a resource not linked to the client at authorize, at the code exchange and at refresh unless AllowUnlinkedResources is set, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_code_resources_test.go",
+      "marker": "refused(code(\"reports\", map[string]any{\"resource\": []string{\"urn:loose\"}}))",
+      "complete": true
+    },
+    {
+      "label": "Refuse an unlinked resource at authorize and admit it with AllowUnlinkedResources",
+      "test": "adapters/sqlstore/oauth_browser_resources_test.go",
+      "marker": "func TestBrowserAuthorizationResources("
     }
   ],
   "plugin/oauth-provider/GET /.well-known/oauth-authorization-server": [
@@ -49146,6 +49163,36 @@
   "docs/content/docs/plugins/oauth-provider/index.mdx#L193": [
     {
       "label": "Accept a resource at authorize and redeem the code into a token for it, with the resource's scopes and lifetimes, on SQLite, PostgreSQL and MySQL; the token is opaque so far",
+      "test": "adapters/sqlstore/oauth_code_resources_test.go",
+      "marker": "func TestAuthorizationCodeResources("
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/index.mdx#L24/Resource indicators": [
+    {
+      "label": "Accept resource indicators at authorize, the code exchange, refresh and client credentials, for linked resources only by default, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_code_resources_test.go",
+      "marker": "func TestAuthorizationCodeResources(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L383/`invalid_target`": [
+    {
+      "label": "Answer 400 invalid_target for an unknown, disabled or unlinked resource, and for one the code or refresh family did not authorize, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_code_resources_test.go",
+      "marker": "func TestAuthorizationCodeResources(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/tokens.mdx#L42": [
+    {
+      "label": "Issue delegated tokens for registered resources, which introspection names as aud, on SQLite, PostgreSQL and MySQL; signed resource tokens for delegated grants are not built yet",
+      "test": "adapters/sqlstore/oauth_code_resources_test.go",
+      "marker": "func TestAuthorizationCodeResources("
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/tokens.mdx#L118": [
+    {
+      "label": "Cap access and refresh lifetimes by the resources' lifetimes, defaulting to the provider's, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_code_resources_test.go",
       "marker": "func TestAuthorizationCodeResources("
     }

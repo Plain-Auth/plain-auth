@@ -72,6 +72,10 @@ func (opts Options) exchangeRefreshGrant(c auth.EndpointContext, in tokenRequest
 	}
 	var access string
 	now := time.Now().UTC().Truncate(time.Second)
+	// policy holds the resources' policy rows once read; needed names the
+	// resources prepare asked for.
+	var policy *codeResources
+	var needed []string
 	openidStore, supportsOpenID := store.(OpenIDGrantStore)
 	prepare := func(client AuthorizationCodeClient, grant RefreshGrant) (DelegatedAccessRecord, error) {
 		scopes, err := grant.scopesForRefresh(client, in)
@@ -82,8 +86,36 @@ func (opts Options) exchangeRefreshGrant(c auth.EndpointContext, in tokenRequest
 		if err != nil {
 			return DelegatedAccessRecord{}, err
 		}
+		effective, kept, err := grant.refreshResources(in.resources)
+		if err != nil {
+			return DelegatedAccessRecord{}, err
+		}
+		refreshLifetime := opts.Tokens.RefreshLifetime
+		if len(effective) > 0 {
+			// The UserInfo URL is an implicit audience, not a registered resource.
+			userInfo := c.Auth.PublicURL() + "/oauth2/userinfo"
+			ids := slices.DeleteFunc(slices.Clone(effective), func(id string) bool { return id == userInfo })
+			if policy == nil || !slices.Equal(policy.ids, ids) {
+				needed = ids
+				return DelegatedAccessRecord{}, errResourcePolicyNeeded
+			}
+			granted, err := opts.Tokens.resourcePolicy(client.ClientID, false, scopes, ids, policy.rows, ttl)
+			if err != nil {
+				return DelegatedAccessRecord{}, err
+			}
+			if granted.bound {
+				if in.proof == "" {
+					return DelegatedAccessRecord{}, proofError("DPoP proof header is required")
+				}
+				return DelegatedAccessRecord{}, registrationProblem(501, "server_error", "sender-bound refresh issuance is unavailable")
+			}
+			scopes, ttl, refreshLifetime = granted.scopes, granted.lifetime, granted.refreshLifetime(refreshLifetime)
+		}
+		if err := grant.sessionBound(scopes); err != nil {
+			return DelegatedAccessRecord{}, err
+		}
 		result.MachineToken = machineResponse("", "", scopes, now, ttl)
-		record := DelegatedAccessRecord{MachineTokenRecord: MachineTokenRecord{Scopes: scopes, IssuedAt: now, ExpiresAt: now.Add(ttl)}}
+		record := DelegatedAccessRecord{MachineTokenRecord: MachineTokenRecord{Scopes: scopes, IssuedAt: now, ExpiresAt: now.Add(ttl)}, Resources: effective}
 		if slices.Contains(scopes, "openid") && (!opts.DisableJWTPlugin || in.secret != "") {
 			if !opts.canIssueIDToken(c) {
 				return DelegatedAccessRecord{}, registrationProblem(501, "server_error", "ID token issuance is unavailable")
@@ -101,7 +133,9 @@ func (opts Options) exchangeRefreshGrant(c auth.EndpointContext, in tokenRequest
 			}
 		}
 		if slices.Contains(grant.Scopes, "offline_access") {
-			record.Refresh = &InitialRefreshGrant{ExpiresAt: now.Add(opts.Tokens.RefreshLifetime)}
+			// The rotated token keeps the family's resources, and its
+			// lifetime counts from rotation.
+			record.Refresh = &InitialRefreshGrant{ExpiresAt: now.Add(refreshLifetime), Resources: kept}
 		}
 		if opts.Tokens.CustomTokenResponseFields != nil && record.IDTokenUserFields == nil {
 			record.IDTokenUserFields = c.TrustedUserFields()
@@ -128,19 +162,34 @@ func (opts Options) exchangeRefreshGrant(c auth.EndpointContext, in tokenRequest
 		}
 		return keys, err
 	}
-	if supportsOpenID {
-		err = openidStore.ExchangeOpenIDRefresh(ctx, in.id, digest, checkClient, prepare, func(grant DelegatedTokenIssue) (RefreshGrantDigests, error) {
-			if err := responseFields(grant); err != nil {
-				return RefreshGrantDigests{}, err
-			}
-			keys, err := issue(grant.SessionID, grant.Refresh)
-			if err == nil && grant.IDToken.Subject != "" {
-				result.IDToken, err = opts.Tokens.signIDToken(c, in.id, access, grant.IDToken, now, opts.idTokenSecret(in), opts.idTokenContributors("refresh_token"))
-			}
-			return keys, err
-		})
-	} else {
-		err = store.ExchangeRefreshGrant(ctx, in.id, digest, checkClient, prepare, issue)
+	for range 3 {
+		if supportsOpenID {
+			err = openidStore.ExchangeOpenIDRefresh(ctx, in.id, digest, checkClient, prepare, func(grant DelegatedTokenIssue) (RefreshGrantDigests, error) {
+				if err := responseFields(grant); err != nil {
+					return RefreshGrantDigests{}, err
+				}
+				keys, err := issue(grant.SessionID, grant.Refresh)
+				if err == nil && grant.IDToken.Subject != "" {
+					result.IDToken, err = opts.Tokens.signIDToken(c, in.id, access, grant.IDToken, now, opts.idTokenSecret(in), opts.idTokenContributors("refresh_token"))
+				}
+				return keys, err
+			})
+		} else {
+			err = store.ExchangeRefreshGrant(ctx, in.id, digest, checkClient, prepare, issue)
+		}
+		if !errors.Is(err, errResourcePolicyNeeded) {
+			break
+		}
+		// Read outside the exchange's transaction, as another runtime reads
+		// them; the next exchange uses this policy.
+		read, readErr := opts.readCodeResources(c, in.id, needed)
+		if readErr != nil {
+			return DelegatedToken{}, readErr
+		}
+		policy = &read
+	}
+	if errors.Is(err, errResourcePolicyNeeded) {
+		err = registrationProblem(400, "invalid_request", "resource policy changed during issuance, retry the request")
 	}
 	if errors.Is(err, ErrInvalidRefreshToken) {
 		err = registrationProblem(400, "invalid_grant", "invalid refresh token")
@@ -168,17 +217,41 @@ func (grant RefreshGrant) scopesForRefresh(client AuthorizationCodeClient, in to
 			return nil, registrationProblem(400, "invalid_scope", "client does not allow scope "+scope)
 		}
 	}
-	if !grant.SessionLive && (grant.SessionID != "" || grant.AuthorizationCodeID != "") && !slices.Contains(scopes, "offline_access") {
-		return nil, ErrInvalidRefreshToken
-	}
 	if grant.SenderBound || in.proof != "" || client.RequireDPoP {
 		if in.proof == "" {
 			return nil, proofError("sender proof is required")
 		}
 		return nil, registrationProblem(501, "server_error", "sender-bound refresh issuance is unavailable")
 	}
-	if len(grant.Resources) > 0 || len(in.resources) > 0 {
-		return nil, registrationProblem(501, "server_error", "resource-targeted refresh issuance is unavailable")
-	}
 	return scopes, nil
+}
+
+// sessionBound refuses a grant whose session ended unless the scopes it
+// issues keep offline_access, checked after resources narrow them.
+func (grant RefreshGrant) sessionBound(scopes []string) error {
+	if !grant.SessionLive && (grant.SessionID != "" || grant.AuthorizationCodeID != "") && !slices.Contains(scopes, "offline_access") {
+		return ErrInvalidRefreshToken
+	}
+	return nil
+}
+
+// refreshResources returns the token's resources, the requested ones or
+// else the family's, and the resources a rotated refresh token keeps. A
+// requested resource outside the family's is refused, as in another runtime.
+func (grant RefreshGrant) refreshResources(requested []string) (effective, kept []string, err error) {
+	effective, kept = grant.Resources, grant.Resources
+	if len(requested) > 0 {
+		if len(grant.Resources) > 0 {
+			for _, id := range requested {
+				if !slices.Contains(grant.Resources, id) {
+					return nil, nil, registrationProblem(400, "invalid_target", "requested resource invalid")
+				}
+			}
+		}
+		effective = distinct(requested)
+		if len(kept) == 0 {
+			kept = effective
+		}
+	}
+	return effective, kept, nil
 }
