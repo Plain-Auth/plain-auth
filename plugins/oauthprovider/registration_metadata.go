@@ -117,10 +117,30 @@ func fieldProblem(key, msg string) error {
 	}
 }
 
-func (o Options) prepareMetadata(host *auth.Auth, m *RegistrationMetadata, authorized bool) error {
+// registrationKind says who is creating a client: an open or an
+// authenticated dynamic registration, or a signed-in owner through
+// /oauth2/create-client.
+type registrationKind int
+
+const (
+	openRegistration registrationKind = iota
+	authenticatedRegistration
+	managedClient
+)
+
+func (o Options) prepareMetadata(host *auth.Auth, m *RegistrationMetadata, kind registrationKind) error {
 	r := o.Registration
+	authorized := kind != openRegistration
 	if m.GrantTypes == nil {
 		m.GrantTypes = []string{"authorization_code"}
+	} else if kind == managedClient {
+		// A managed client asks only for grants the issuer supports, as in
+		// another runtime; nothing is dropped.
+		for _, grant := range m.GrantTypes {
+			if !slices.Contains(o.GrantTypes, grant) {
+				return metadataProblem("unsupported grant_type " + grant)
+			}
+		}
 	} else {
 		requested := m.GrantTypes
 		m.GrantTypes = slices.DeleteFunc(slices.Clone(requested), func(v string) bool { return !slices.Contains(o.GrantTypes, v) })
@@ -151,6 +171,9 @@ func (o Options) prepareMetadata(host *auth.Auth, m *RegistrationMetadata, autho
 	}
 	if m.ApplicationType == "" {
 		m.ApplicationType = r.DefaultApplicationType
+		if kind == managedClient {
+			m.ApplicationType = "web"
+		}
 	}
 	if m.ApplicationType == "infer" {
 		m.ApplicationType = "web"
@@ -210,8 +233,12 @@ func (o Options) prepareMetadata(host *auth.Auth, m *RegistrationMetadata, autho
 			first = h
 		}
 	}
+	allowed := r.AllowedScopes
+	if kind == managedClient {
+		allowed = o.Scopes
+	}
 	for _, scope := range strings.Split(m.Scope, " ") {
-		if scope != "" && !slices.Contains(r.AllowedScopes, scope) {
+		if scope != "" && !slices.Contains(allowed, scope) {
 			return registrationProblem(400, "invalid_scope", "cannot request scope "+scope)
 		}
 	}
@@ -237,12 +264,16 @@ func (o Options) prepareMetadata(host *auth.Auth, m *RegistrationMetadata, autho
 		}
 	}
 	for _, id := range m.Resources {
-		if !slices.Contains(r.AllowedResources, id) {
+		if kind != managedClient && !slices.Contains(r.AllowedResources, id) {
 			return registrationProblem(400, "invalid_target", "requested resource "+id+" is not allowed for client registration")
 		}
 	}
 	m.Resources = distinct(slices.Concat(r.DefaultResources, m.Resources))
-	m.Scope = strings.Join(r.AllowedScopes, " ")
+	// A managed client keeps the scopes it asked for; a dynamic registration
+	// takes the registration ceiling.
+	if kind != managedClient {
+		m.Scope = strings.Join(r.AllowedScopes, " ")
+	}
 	return nil
 }
 

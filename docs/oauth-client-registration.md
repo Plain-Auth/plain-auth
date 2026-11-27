@@ -1,5 +1,7 @@
 # Register an OAuth client
 
+Signed-in users can also [create applications](oauth-client-directory.md#create-an-application) without dynamic registration.
+
 Enable dynamic registration when other applications need to obtain their own OAuth client IDs from your service. A signed-in user can register a web or native application. A host-defined initial access token can authorize a registration without a browser session. Open registration is optional.
 
 ## Enable registration

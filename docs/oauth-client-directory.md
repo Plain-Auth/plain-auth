@@ -52,6 +52,17 @@ const app = await response.json()
 document.querySelector("#application-name").textContent = app.client_name ?? app.client_id
 ```
 
+## Create an application
+
+A signed-in user can create an application with `POST /oauth2/create-client`, or `sdk.CreateOAuthClient(ctx, metadata)`, whether or not dynamic registration is enabled. It takes the registration fields and answers 201 with the client and, for `client_secret_basic` (the default) or `client_secret_post`, its secret once. As in another runtime:
+
+- every requested grant must be one the issuer supports (`invalid_client_metadata` `unsupported grant_type X`), and `client_credentials` is allowed;
+- `scope` is checked against the issuer's `Scopes` and kept as asked; a client created without one may request every configured scope;
+- `application_type` defaults to `web`, and the registration ceiling, `Registration.RequirePKCE` and `SecretLifetime` do not apply;
+- `skip_consent`, `subject_type` and `resources` are dropped rather than refused, and `Registration.DefaultResources` are still linked.
+
+The session must be the account owner's; the `create` privilege and `Registration.MayCreate` decide, and a refusal answers 401 with no body. The client belongs to the active tenant from `ClientReference`, or else to the user. By default any signed-in user can create applications, so restrict `create` with `ClientPrivileges` or `MayCreate`. [Creation tests](../adapters/sqlstore/oauth_client_creation_test.go)
+
 ## Show the application on the login page
 
 A login page runs before any session exists. Set `Authorization.AllowPublicClientPrelogin` to serve `POST /oauth2/public-client-prelogin`, which takes `{"client_id": "…", "oauth_query": "<signed query>"}` and returns the same public fields with an empty `redirect_uris`. Send the signed query exactly as the issuer sent it to the page, without page-local parameters. Either the login or the consent page's query works, and in Go `sdk.PublicOAuthClientPrelogin(ctx, id, fields.Encode())` calls it.

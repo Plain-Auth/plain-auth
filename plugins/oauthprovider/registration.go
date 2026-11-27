@@ -382,6 +382,7 @@ func New(opts Options) (auth.Plugin, error) {
 		p.Endpoints = append(p.Endpoints, opts.clientEndpoint(action))
 	}
 	p.Endpoints = append(p.Endpoints, auth.Endpoint{Method: http.MethodPost, Path: "/oauth2/public-client-prelogin", Handler: opts.publicClientPrelogin})
+	p.Endpoints = append(p.Endpoints, auth.Endpoint{Method: http.MethodPost, Path: "/oauth2/create-client", SuccessStatus: 201, Handler: opts.createClient})
 	p.Endpoints = append(p.Endpoints, auth.Endpoint{Method: http.MethodPost, Path: "/oauth2/client/rotate-secret", Handler: opts.rotateClientSecret})
 	p.Endpoints = append(p.Endpoints, auth.Endpoint{Method: http.MethodPost, Path: keyRotationPath, Handler: opts.rotateClientKeys,
 		RateLimit: tokenRouteLimit(opts.Assertions.KeyRotationRateLimit, 5), OpenAPI: json.RawMessage(keyRotationOperation)})
@@ -477,46 +478,61 @@ func (opts Options) register(c auth.EndpointContext) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err = opts.prepareMetadata(c.Auth, &m, authenticated); err != nil {
+	kind := openRegistration
+	if authenticated {
+		kind = authenticatedRegistration
+	}
+	if err = opts.prepareMetadata(c.Auth, &m, kind); err != nil {
 		return nil, err
 	}
+	return opts.persistClient(c, m, owner, reference, r.AllowedScopes, true)
+}
+
+// persistClient issues a client's ID and secret and stores it. A dynamic
+// registration applies the registration PKCE setting and secret lifetime.
+func (opts Options) persistClient(c auth.EndpointContext, m RegistrationMetadata, owner, reference string, scopes []string, dynamic bool) (RegisteredClient, error) {
+	r := opts.Registration
 	// The resources a client links to must exist, so an unfinished seed of
 	// the declared ones is retried first.
 	if len(m.Resources) > 0 {
 		if err := opts.seedResources(c); err != nil {
-			return nil, err
+			return RegisteredClient{}, err
 		}
 	}
 	ctx := c.Request.Context()
 	id, err := r.GenerateClientID()
 	if err != nil {
-		return nil, err
+		return RegisteredClient{}, err
 	}
 	if id == "" {
-		return nil, errors.New("oauthprovider: empty generated client ID")
+		return RegisteredClient{}, errors.New("oauthprovider: empty generated client ID")
 	}
-	row := ClientRegistrationRecord{ID: rand.Text(), ClientID: id, UserID: owner, ReferenceID: reference, Scopes: r.AllowedScopes, Metadata: m, CreatedAt: time.Now().UTC().Truncate(time.Second)}
+	row := ClientRegistrationRecord{ID: rand.Text(), ClientID: id, UserID: owner, ReferenceID: reference, Scopes: scopes, Metadata: m, CreatedAt: time.Now().UTC().Truncate(time.Second)}
 	result := RegisteredClient{RegistrationMetadata: m, ClientID: id, UserID: owner, ReferenceID: reference, IssuedAt: row.CreatedAt.Unix()}
-	if r.RequirePKCE != nil && !*r.RequirePKCE && m.TokenEndpointAuthMethod != "none" {
+	if dynamic && r.RequirePKCE != nil && !*r.RequirePKCE && m.TokenEndpointAuthMethod != "none" {
 		row.RequirePKCE = r.RequirePKCE
 		result.RequirePKCE = r.RequirePKCE
 	}
 	if m.TokenEndpointAuthMethod == "client_secret_basic" || m.TokenEndpointAuthMethod == "client_secret_post" {
 		result.ClientSecret, row.StoredSecret, err = r.issueSecret(ctx, c.Auth, id)
 		if err != nil {
-			return nil, err
+			return RegisteredClient{}, err
 		}
 		// Another runtime also accepts a fixed instant; a duration from
 		// registration is enough here, as one instant would expire every
 		// later registration at once.
 		expires := int64(0)
-		if r.SecretLifetime > 0 {
+		if dynamic && r.SecretLifetime > 0 {
 			expires = result.IssuedAt + int64(r.SecretLifetime/time.Second)
 		}
 		result.SecretExpiresAt = &expires
 	}
-	if err = c.Store().(RegistrationStore).CreateRegisteredClient(ctx, row); err != nil {
-		return nil, err
+	store, ok := c.Store().(RegistrationStore)
+	if !ok {
+		return RegisteredClient{}, &auth.APIError{Status: 501, Code: "OAUTH_CLIENT_CREATION_UNAVAILABLE", Message: "The configured store does not support OAuth client creation"}
+	}
+	if err = store.CreateRegisteredClient(ctx, row); err != nil {
+		return RegisteredClient{}, err
 	}
 	return result, nil
 }

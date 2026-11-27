@@ -48800,5 +48800,68 @@
       "test": "adapters/sqlstore/oauth_secret_id_token_test.go",
       "marker": "t.Fatal(\"extension ID token claims were not added only where allowed\", claims)"
     }
+  ],
+  "plugin/oauth-provider/POST /oauth2/create-client": [
+    {
+      "label": "Create a client for a signed-in owner with dynamic registration disabled, bound by the issuer's grants and scopes, without the registration ceiling or PKCE setting, dropping owner-only fields and refusing anonymous or denied callers, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_client_creation_test.go",
+      "marker": "func TestOAuthClientCreation("
+    }
+  ],
+  "plugin-symbol/oauth-provider/createOAuthClient": [
+    {
+      "label": "Create a client for a signed-in owner with dynamic registration disabled, bound by the issuer's grants and scopes, without the registration ceiling or PKCE setting, dropping owner-only fields and refusing anonymous or denied callers, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_client_creation_test.go",
+      "marker": "func TestOAuthClientCreation("
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/clients.mdx#L23/`POST /oauth2/create-client`": [
+    {
+      "label": "Create a client for a signed-in owner with dynamic registration disabled, bound by the issuer's grants and scopes, without the registration ceiling or PKCE setting, dropping owner-only fields and refusing anonymous or denied callers, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_client_creation_test.go",
+      "marker": "func TestOAuthClientCreation("
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L330/`POST /oauth2/create-client`": [
+    {
+      "label": "Create a client for a signed-in owner with dynamic registration disabled, bound by the issuer's grants and scopes, without the registration ceiling or PKCE setting, dropping owner-only fields and refusing anonymous or denied callers, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_client_creation_test.go",
+      "marker": "func TestOAuthClientCreation("
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/clients.mdx#L29/Parameter `redirect_uris` (optional)": [
+    {
+      "label": "Create a client through /oauth2/create-client with this field, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_client_creation_test.go",
+      "marker": "func TestOAuthClientCreation("
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/clients.mdx#L33/Parameter `client_name` (optional)": [
+    {
+      "label": "Create a client through /oauth2/create-client with this field, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_client_creation_test.go",
+      "marker": "func TestOAuthClientCreation("
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/clients.mdx#L37/Parameter `token_endpoint_auth_method` (optional)": [
+    {
+      "label": "Create a client through /oauth2/create-client with this field, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_client_creation_test.go",
+      "marker": "func TestOAuthClientCreation("
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/clients.mdx#L41/Parameter `application_type` (optional)": [
+    {
+      "label": "Create a client through /oauth2/create-client with this field, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_client_creation_test.go",
+      "marker": "func TestOAuthClientCreation("
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/clients.mdx#L45/Parameter `scope` (optional)": [
+    {
+      "label": "Create a client through /oauth2/create-client with this field, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_client_creation_test.go",
+      "marker": "func TestOAuthClientCreation("
+    }
   ]
 }

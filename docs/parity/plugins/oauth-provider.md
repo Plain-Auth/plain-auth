@@ -136,6 +136,7 @@
   - [ ] `oauthProvider`
   - [ ] `POST /admin/oauth2/create-client` (server API only)
   - [ ] `POST /oauth2/create-client`
+    - [x] Create a client for a signed-in owner with dynamic registration disabled, bound by the issuer's grants and scopes, without the registration ceiling or PKCE setting, dropping owner-only fields and refusing anonymous or denied callers, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_creation_test.go#L24))
   - [x] `GET /oauth2/get-client` ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L233))
     - [x] Read locally registered owner metadata and omit internal fields and the shared secret ([test](../../../conformance/oauth-client-directory.mjs#L117))
     - [x] Enforce account-owner sessions, exact tenant IDs and current ownership on three SQL engines ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L23))
@@ -170,6 +171,7 @@
     - [x] Refuse to delete a client without an owner with 401 and keep it, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_deletion_test.go#L102))
   - [ ] `adminCreateOAuthClient`
   - [ ] `createOAuthClient`
+    - [x] Create a client for a signed-in owner with dynamic registration disabled, bound by the issuer's grants and scopes, without the registration ceiling or PKCE setting, dropping owner-only fields and refusing anonymous or denied callers, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_creation_test.go#L24))
   - [x] `getOAuthClient` ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L233))
     - [x] Read locally registered owner metadata and omit internal fields and the shared secret ([test](../../../conformance/oauth-client-directory.mjs#L117))
     - [x] Refuse every user a client without an owner with 401, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L233))
@@ -583,11 +585,17 @@
     - [ ] `application_type`
   - [ ] Manage clients
     - [ ] `POST /oauth2/create-client`
+      - [x] Create a client for a signed-in owner with dynamic registration disabled, bound by the issuer's grants and scopes, without the registration ceiling or PKCE setting, dropping owner-only fields and refusing anonymous or denied callers, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_creation_test.go#L24))
       - [ ] Parameter `redirect_uris` (optional)
+        - [x] Create a client through /oauth2/create-client with this field, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_creation_test.go#L24))
       - [ ] Parameter `client_name` (optional)
+        - [x] Create a client through /oauth2/create-client with this field, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_creation_test.go#L24))
       - [ ] Parameter `token_endpoint_auth_method` (optional)
+        - [x] Create a client through /oauth2/create-client with this field, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_creation_test.go#L24))
       - [ ] Parameter `application_type` (optional)
+        - [x] Create a client through /oauth2/create-client with this field, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_creation_test.go#L24))
       - [ ] Parameter `scope` (optional)
+        - [x] Create a client through /oauth2/create-client with this field, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_creation_test.go#L24))
     - [x] `getOAuthClient` ([test](../../../conformance/oauth-client-directory.mjs#L146))
       - [x] Read locally registered owner metadata and omit internal fields and the shared secret ([test](../../../conformance/oauth-client-directory.mjs#L117))
       - [x] Read a personally or tenant-owned registration and refuse a missing session, another owner or a denied read ([test](../../../conformance/oauth-client-directory.mjs#L146))
@@ -807,6 +815,7 @@
     - [ ] `PATCH /admin/oauth2/update-client` (server API only)
       - [x] Grant, narrow and revoke machine access from server code and verify the changed scope ceiling at an independent issuer ([test](../../../conformance/oauth-registration.mjs#L407))
     - [ ] `POST /oauth2/create-client`
+      - [x] Create a client for a signed-in owner with dynamic registration disabled, bound by the issuer's grants and scopes, without the registration ceiling or PKCE setting, dropping owner-only fields and refusing anonymous or denied callers, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_creation_test.go#L24))
     - [ ] `GET /oauth2/get-client`
       - [x] Read locally registered owner metadata and omit internal fields and the shared secret ([test](../../../conformance/oauth-client-directory.mjs#L117))
     - [x] `GET /oauth2/public-client` ([test](../../../conformance/oauth-client-directory.mjs#L130))

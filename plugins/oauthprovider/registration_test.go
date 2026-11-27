@@ -214,7 +214,7 @@ func TestRegistrationMetadataPolicy(t *testing.T) {
 	}
 	options := Options{GrantTypes: []string{"client_credentials"}, PairwiseSecret: "a-long-test-secret-for-pairwise-claims", Registration: RegistrationOptions{DefaultApplicationType: "web", AllowedScopes: []string{"email", "reports"}}}
 	m := RegistrationMetadata{GrantTypes: []string{"authorization_code", "client_credentials", "other"}, ResponseTypes: []string{"code"}}
-	if err := options.prepareMetadata(host, &m, true); err != nil {
+	if err := options.prepareMetadata(host, &m, authenticatedRegistration); err != nil {
 		t.Fatal(err)
 	}
 	if !slices.Equal(m.GrantTypes, []string{"client_credentials"}) || m.ResponseTypes != nil || m.RedirectURIs == nil {
@@ -230,7 +230,7 @@ func TestRegistrationMetadataPolicy(t *testing.T) {
 		{[]string{"app://example.test/cb"}, false},
 	} {
 		m := RegistrationMetadata{RedirectURIs: pair.uris, ApplicationType: "native", SubjectType: "pairwise"}
-		if err := options.prepareMetadata(host, &m, true); (err == nil) != pair.valid {
+		if err := options.prepareMetadata(host, &m, authenticatedRegistration); (err == nil) != pair.valid {
 			t.Errorf("pairwise %v: %v", pair.uris, err)
 		}
 	}
