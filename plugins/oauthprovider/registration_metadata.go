@@ -152,7 +152,9 @@ func (o Options) prepareMetadata(host *auth.Auth, m *RegistrationMetadata, kind 
 	switch m.TokenEndpointAuthMethod {
 	case "none", "client_secret_basic", "client_secret_post", "private_key_jwt":
 	default:
-		return metadataProblem("unsupported token_endpoint_auth_method " + m.TokenEndpointAuthMethod)
+		if !slices.Contains(o.extensionAuthMethods(), m.TokenEndpointAuthMethod) {
+			return metadataProblem("unsupported token_endpoint_auth_method " + m.TokenEndpointAuthMethod)
+		}
 	}
 	code := slices.Contains(m.GrantTypes, "authorization_code")
 	if code && len(m.RedirectURIs) == 0 {

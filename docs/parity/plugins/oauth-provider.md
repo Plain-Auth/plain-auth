@@ -288,7 +288,9 @@
   - [ ] `OAuthExtensionGrantHandler`
   - [ ] `OAuthClientAuthenticationInput`
   - [ ] `OAuthClientAuthenticationResult`
-  - [ ] `OAuthClientAuthenticationStrategy`
+  - [x] `OAuthClientAuthenticationStrategy` ([test](../../../adapters/sqlstore/oauth_extension_auth_test.go#L28))
+    - [x] Authenticate clients registered for an extension method with its strategy at the token, introspection and revocation endpoints, with each endpoint as the audience, before any store call, on SQLite, PostgreSQL and MySQL; requiring a matching form client_id is a documented deviation ([test](../../../adapters/sqlstore/oauth_extension_auth_test.go#L28))
+    - [x] Refuse reserved, empty or repeated extension methods, a missing Authenticate, and relative, jwt-bearer, empty or repeated assertion types ([test](../../../plugins/oauthprovider/extension_auth_test.go#L13))
   - [x] `OAuthMetadataExtensionInput` ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L294))
     - [x] Pass each served discovery document's type and assembled fields to an extension, add its fields without replacing the provider's, keep the first extension's value for a shared field with a warning, and fail the host for a field that cannot be encoded; the static input is a documented deviation ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L294))
     - [x] Add an extension's discovery field to the OpenID configuration without replacing the issuer or token endpoint, on both runtimes ([test](../../../conformance/oauth-extensions.mjs#L12))
@@ -574,6 +576,7 @@
   - [ ] `ExtractedCredentials`
   - [ ] `destructureCredentials`
   - [ ] `extractClientCredentials`
+    - [x] Route a client assertion of an extension type to its strategy and keep the pairing, repetition and one-method rules, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_extension_auth_test.go#L28))
   - [x] `parsePrompt` ([test](../../../plugins/oauthprovider/browser_authorization_test.go#L80))
     - [x] Accept each supported prompt and drop repeats and extra spaces from a prompt list ([test](../../../plugins/oauthprovider/browser_authorization_test.go#L80))
   - [ ] `resolveSubjectIdentifier`
@@ -733,7 +736,8 @@
       - [x] Resolve public and confidential client PKCE requirements, including offline scopes, OIDC nonces and explicit registration policy ([test](../../../plugins/oauthprovider/authorization_code_test.go#L15))
       - [x] Sign in and register a public client, then obtain a code by GET or form POST and redeem it at either issuer with S256 PKCE ([test](../../../conformance/oauth-browser-authorization.mjs#L5))
     - [ ] Redirect URIs
-    - [ ] Client authentication
+    - [x] Client authentication ([test](../../../adapters/sqlstore/oauth_extension_auth_test.go#L28))
+      - [x] Authenticate with client_secret_basic, client_secret_post, private_key_jwt, none and extension assertion methods, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_extension_auth_test.go#L28))
     - [ ] Client registration
     - [x] Resource indicators ([test](../../../adapters/sqlstore/oauth_code_resources_test.go#L27))
       - [x] Accept resource indicators at authorize, the code exchange, refresh and client credentials, for linked resources only by default, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_code_resources_test.go#L27))

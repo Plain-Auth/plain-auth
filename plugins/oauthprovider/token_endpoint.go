@@ -3,6 +3,7 @@ package oauthprovider
 import (
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -19,6 +20,12 @@ type tokenRequest struct {
 	scopes, resources  []string
 	proof              string
 	assertion          *clientAssertion
+	// extension is an assertion an extension strategy checks; proven marks
+	// a client it proved, with the confirmation it returned.
+	extension    *ClientAuthenticationInput
+	strategy     ClientAuthenticationStrategy
+	proven       bool
+	confirmation *Confirmation
 }
 
 const tokenFormType = "application/x-www-form-urlencoded"
@@ -70,7 +77,7 @@ func (opts Options) token(c auth.EndpointContext) (any, error) {
 	if !slices.Contains(opts.GrantTypes, grant) || (grant != "client_credentials" && grant != "authorization_code" && grant != "refresh_token") {
 		return nil, registrationProblem(400, "unsupported_grant_type", "unsupported grant_type "+grant)
 	}
-	in, challenge, err := parseTokenCredentials(form, c.Request.Header.Values("Authorization"))
+	in, challenge, err := opts.readCredentials(c, form, "/oauth2/token")
 	if err != nil {
 		return nil, tokenEndpointError(c.ResponseHeader, challenge, err)
 	}
@@ -186,7 +193,40 @@ func isHexDigit(b byte) bool {
 
 var authScheme = regexp.MustCompile("^[!#$%&'*+.^_`|~0-9A-Za-z-]+$")
 
-func parseTokenCredentials(form url.Values, headers []string) (tokenRequest, string, error) {
+// readCredentials parses the client's credentials and runs an extension
+// strategy for an extension assertion, before any store call, with the
+// public URL of endpoint as the expected audience.
+func (opts Options) readCredentials(c auth.EndpointContext, form url.Values, endpoint string) (tokenRequest, string, error) {
+	in, challenge, err := parseTokenCredentials(form, c.Request.Header.Values("Authorization"), opts.clientAuthStrategy)
+	if err != nil || in.extension == nil {
+		return in, challenge, err
+	}
+	input := *in.extension
+	input.ExpectedAudience = c.Auth.PublicURL() + endpoint
+	input.Header = c.Request.Header.Clone()
+	result, err := in.strategy.Authenticate(c.Request.Context(), input)
+	if err != nil {
+		var problem *auth.OAuthError
+		if errors.As(err, &problem) {
+			return in, challenge, err
+		}
+		return in, challenge, fmt.Errorf("oauthprovider: client authentication strategy: %w", err)
+	}
+	if result.ClientID == "" {
+		return in, challenge, invalidClient("client assertion did not identify a client")
+	}
+	// A form client_id must name the proven client, as with
+	// private_key_jwt, where another runtime takes the strategy's value.
+	if input.ClientID != "" && input.ClientID != result.ClientID {
+		return in, challenge, invalidClient("client_id does not match the client assertion")
+	}
+	in.id, in.proven, in.confirmation = result.ClientID, true, result.Confirmation
+	return in, challenge, nil
+}
+
+// parseTokenCredentials reads the client's credentials. strategy finds an
+// extension method for a client_assertion_type, or reports none.
+func parseTokenCredentials(form url.Values, headers []string, strategy func(string) (string, ClientAuthenticationStrategy, bool)) (tokenRequest, string, error) {
 	var in tokenRequest
 	fields := make(map[string]string, 4)
 	for _, key := range []string{"client_id", "client_secret", "client_assertion", "client_assertion_type"} {
@@ -215,6 +255,13 @@ func parseTokenCredentials(form url.Values, headers []string) (tokenRequest, str
 	if assertion {
 		if fields["client_assertion"] == "" || fields["client_assertion_type"] == "" {
 			return in, "", invalidClient("client_assertion and client_assertion_type must both be provided")
+		}
+		if strategy != nil {
+			if method, s, ok := strategy(fields["client_assertion_type"]); ok {
+				in.method, in.strategy = method, s
+				in.extension = &ClientAuthenticationInput{Assertion: fields["client_assertion"], AssertionType: fields["client_assertion_type"], ClientID: fields["client_id"]}
+				return in, "", nil
+			}
 		}
 		a, err := parseClientAssertion(fields["client_assertion_type"], fields["client_assertion"], fields["client_id"])
 		if err != nil {

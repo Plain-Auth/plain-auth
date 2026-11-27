@@ -25,7 +25,7 @@ type IssuerMetadataOptions struct {
 	Headers          http.Header
 }
 
-func (o *IssuerMetadataOptions) prepare(scopes []string) error {
+func (o *IssuerMetadataOptions) prepare(scopes, extensionMethods []string) error {
 	for _, scope := range o.Scopes {
 		if !slices.Contains(scopes, scope) {
 			return fmt.Errorf("oauthprovider: advertised scope %q is not configured", scope)
@@ -35,7 +35,7 @@ func (o *IssuerMetadataOptions) prepare(scopes []string) error {
 		return errors.New("oauthprovider: advertised token authentication methods cannot be empty")
 	}
 	for i, method := range o.TokenAuthMethods {
-		if method != "none" && method != "client_secret_basic" && method != "client_secret_post" && method != "private_key_jwt" {
+		if method != "none" && method != "client_secret_basic" && method != "client_secret_post" && method != "private_key_jwt" && !slices.Contains(extensionMethods, method) {
 			return fmt.Errorf("oauthprovider: unsupported token authentication method %q", method)
 		}
 		if slices.Contains(o.TokenAuthMethods[:i], method) {
@@ -187,6 +187,9 @@ func (opts Options) issuerDocuments(a *auth.Auth, store auth.Store) (map[string]
 			algorithms = append(algorithms, string(alg))
 		}
 	}
+	// Extension methods are advertised after the built-in ones, as in
+	// another runtime.
+	methods = append(methods, opts.extensionAuthMethods()...)
 	tokenMethods := opts.Metadata.TokenAuthMethods
 	if tokenMethods == nil {
 		tokenMethods = methods

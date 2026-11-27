@@ -37,7 +37,7 @@ const introspectionOperation = `{
 }`
 
 func (opts Options) introspect(c auth.EndpointContext) (any, error) {
-	req, err := readTokenAction(c, true)
+	req, err := opts.readTokenAction(c, "/oauth2/introspect", true)
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +109,7 @@ type tokenAction struct {
 	challenge, token, hint string
 }
 
-func readTokenAction(c auth.EndpointContext, requireSecret bool) (tokenAction, error) {
+func (opts Options) readTokenAction(c auth.EndpointContext, endpoint string, requireSecret bool) (tokenAction, error) {
 	c.ResponseHeader.Set("Cache-Control", "no-store")
 	c.ResponseHeader.Set("Pragma", "no-cache")
 	form, err := readTokenForm(c.Request)
@@ -120,11 +120,11 @@ func readTokenAction(c auth.EndpointContext, requireSecret bool) (tokenAction, e
 	if len(tokens) == 0 {
 		return tokenAction{}, registrationProblem(400, "invalid_request", "token is required")
 	}
-	in, challenge, err := parseTokenCredentials(form, c.Request.Header.Values("Authorization"))
+	in, challenge, err := opts.readCredentials(c, form, endpoint)
 	if err != nil {
 		return tokenAction{}, tokenEndpointError(c.ResponseHeader, challenge, err)
 	}
-	if in.id == "" || (requireSecret && in.secret == "" && in.assertion == nil) {
+	if in.id == "" || (requireSecret && in.secret == "" && in.assertion == nil && !in.proven) {
 		return tokenAction{}, tokenEndpointError(c.ResponseHeader, "Basic", invalidClient("missing required credentials"))
 	}
 	raw := tokens[len(tokens)-1]

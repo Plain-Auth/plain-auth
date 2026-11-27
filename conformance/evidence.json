@@ -49318,5 +49318,33 @@
       "marker": "func TestRefreshReuseInterval(",
       "complete": true
     }
+  ],
+  "plugin-symbol/oauth-provider/OAuthClientAuthenticationStrategy": [
+    {
+      "label": "Authenticate clients registered for an extension method with its strategy at the token, introspection and revocation endpoints, with each endpoint as the audience, before any store call, on SQLite, PostgreSQL and MySQL; requiring a matching form client_id is a documented deviation",
+      "test": "adapters/sqlstore/oauth_extension_auth_test.go",
+      "marker": "func TestExtensionClientAuthentication(",
+      "complete": true
+    },
+    {
+      "label": "Refuse reserved, empty or repeated extension methods, a missing Authenticate, and relative, jwt-bearer, empty or repeated assertion types",
+      "test": "plugins/oauthprovider/extension_auth_test.go",
+      "marker": "func TestExtensionClientAuthenticationOptions("
+    }
+  ],
+  "plugin-symbol/oauth-provider/extractClientCredentials": [
+    {
+      "label": "Route a client assertion of an extension type to its strategy and keep the pairing, repetition and one-method rules, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_extension_auth_test.go",
+      "marker": "func TestExtensionClientAuthentication("
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/index.mdx#L22/Client authentication": [
+    {
+      "label": "Authenticate with client_secret_basic, client_secret_post, private_key_jwt, none and extension assertion methods, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_extension_auth_test.go",
+      "marker": "func TestExtensionClientAuthentication(",
+      "complete": true
+    }
   ]
 }

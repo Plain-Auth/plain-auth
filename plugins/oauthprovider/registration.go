@@ -266,7 +266,10 @@ func New(opts Options) (auth.Plugin, error) {
 	if opts.Authorization.RequireOpenID && !slices.Contains(opts.Scopes, "openid") {
 		return auth.Plugin{}, errors.New("oauthprovider: RequireOpenID requires openid in Scopes")
 	}
-	if err := opts.Metadata.prepare(opts.Scopes); err != nil {
+	if err := opts.checkClientAuthentication(); err != nil {
+		return auth.Plugin{}, err
+	}
+	if err := opts.Metadata.prepare(opts.Scopes, opts.extensionAuthMethods()); err != nil {
 		return auth.Plugin{}, err
 	}
 	if err := opts.Assertions.defaults(); err != nil {

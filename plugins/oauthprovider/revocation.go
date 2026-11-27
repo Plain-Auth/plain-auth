@@ -41,7 +41,7 @@ const revocationOperation = `{
 }`
 
 func (opts Options) revoke(c auth.EndpointContext) (any, error) {
-	req, err := readTokenAction(c, false)
+	req, err := opts.readTokenAction(c, "/oauth2/revoke", false)
 	if err != nil {
 		return nil, err
 	}

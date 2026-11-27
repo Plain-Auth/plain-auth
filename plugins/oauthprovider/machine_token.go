@@ -358,6 +358,10 @@ func (opts Options) authenticateClient(c auth.EndpointContext, store MachineClie
 	if err := in.checkMethod(first); err != nil {
 		return MachineClient{}, err
 	}
+	// An extension strategy has already proven the client.
+	if in.proven {
+		return first, nil
+	}
 	if in.assertion != nil {
 		err := opts.verifyClientAssertion(c, store, in, first, endpoint)
 		return first, err
