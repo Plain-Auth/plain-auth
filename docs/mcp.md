@@ -16,7 +16,7 @@ provider, err := mcp.New(mcp.Options{
 })
 ```
 
-The resource is added to the provider's `Resources`, unless declared there already with a policy, and to `Registration.DefaultResources`, so registered clients are linked to it; the caller's options are not changed. `Tokens.RefreshReuseInterval` defaults to 30 seconds, as another runtime's MCP plugin defaults it, so a client that lost a refresh response can retry and get the same one; a negative value turns the window off, where another runtime uses 0, since a zero duration means unset in Go. Every other provider option reaches the provider unchanged, which a reflection test checks field by field, so an option the provider gains later is forwarded too. [Forwarding test](../plugins/mcp/forward_test.go) The plugin serves the RFC 9728 protected resource metadata at `/.well-known/oauth-protected-resource` and at that path plus the resource's path, such as `/.well-known/oauth-protected-resource/mcp`: the resource, the provider's issuer, `bearer_methods_supported: ["header"]`, the DPoP signing algorithms, `dpop_bound_access_tokens_required` when the declared resource requires DPoP, and the scopes from `Metadata.Scopes` or `Scopes` without `openid`, `profile`, `email`, `phone`, `address` and `offline_access`, which belong to the authorization server. Other methods than GET and HEAD get 405. The document is built once when the host starts, where another runtime builds it on each request. The plugin is the OAuth provider, so it cannot be combined with a second one. [Plugin tests](../plugins/mcp/plugin_test.go)
+The resource is added to the provider's `Resources`, unless declared there already with a policy, and to `Registration.DefaultResources`, so registered clients are linked to it; the caller's options are not changed. `Tokens.RefreshReuseInterval` defaults to 30 seconds, as another runtime's MCP plugin defaults it, so a client that lost a refresh response can retry and get the same one; a negative value turns the window off, where another runtime uses 0, since a zero duration means unset in Go. Every other provider option reaches the provider unchanged, which a reflection test checks field by field, so an option the provider gains later is forwarded too. [Forwarding test](../plugins/mcp/forward_test.go) The plugin serves the RFC 9728 protected resource metadata at `/.well-known/oauth-protected-resource` and at that path plus the resource's path, such as `/.well-known/oauth-protected-resource/mcp`: the resource, the provider's issuer, `bearer_methods_supported: ["header"]`, the DPoP signing algorithms, `dpop_bound_access_tokens_required` when the declared resource requires DPoP, and the scopes from `Metadata.Scopes` or `Scopes` without `openid`, `profile`, `email`, `phone`, `address` and `offline_access`, which belong to the authorization server; with none left, `scopes_supported` is left out. Other methods than GET and HEAD get 405. The document is built once when the host starts, where another runtime builds it on each request. The plugin is the OAuth provider, so it cannot be combined with a second one. [Plugin tests](../plugins/mcp/plugin_test.go)
 
 Client registration stays off unless you enable it. For older MCP clients that need dynamic registration, set `Registration.Enabled`, `Registration.AllowUnauthenticated` and `Registration.DefaultApplicationType: "infer"`: a client registered without the `resources` extension is still linked to the MCP resource, and one with loopback callbacks is registered as `native`. Unauthenticated registration lets anyone register a client with a name and logo they choose, so also set `Registration.DefaultScopes`. The provider seeds the declared resource when the host first uses it.
 
@@ -38,16 +38,19 @@ An MCP client authorizes with `resource` set to the MCP resource and PKCE, then 
 When the MCP server runs in the same process as the auth instance, `mcp.RequireAuth` protects it with the instance's own tokens, as another runtime's `requireMcpAuth` does:
 
 ```go
-handler, err := mcp.RequireAuth(auth, store, mcpServer, mcp.AuthOptions{RequiredScopes: []string{"mcp:read"}})
-mux.Handle("/api/auth/mcp", handler)
+handler, err := mcp.RequireAuth(auth, store, mcpServer, mcp.AuthOptions{
+    Resource:       "https://api.example.com/mcp",
+    RequiredScopes: []string{"mcp:read"},
+})
+mux.Handle("/mcp", handler)
 ```
 
-- `Resource` defaults to the instance's public URL, base path included, which the provider names as the default resource, so a request without a token is pointed at `/.well-known/oauth-protected-resource/api/auth`. A resource must follow the rules below.
+- Pass the `Resource` that `mcp.New` names. Without it the guard expects the instance's public URL, base path included, as another runtime's `requireMcpAuth` expects its base URL, so a token issued for the MCP resource fails with `invalid_token` and a request without a token is pointed at `/.well-known/oauth-protected-resource/api/auth`. A resource must follow the rules below.
 - `Issuer` defaults to the issuer the instance signs with, where another runtime uses its base URL, so a custom JWT issuer needs no override.
 - Keys are read in process, even with `/jwks` in `DisabledPaths`, or from the jwt plugin's `RemoteJWKSURL`; `JWKSURL` fetches them over HTTP instead.
 - Tokens must carry `azp`, so a session JWT signed with the same keys fails, and `typ` must be `at+jwt`.
 - `DPoP.ReplayStore` defaults to `store` when it can hold proofs, such as the SQL store, so a proof is spent once across every instance on the database; the store is passed because the instance does not expose its own.
-- `OnError` defaults to logging through the instance and answering 500. An instance without a public URL, such as one with a dynamic base URL, is refused here; use `NewProtectedHandler` with explicit options.
+- `OnError` defaults to logging through the instance and answering 500. Without `Resource`, an instance without a public URL, such as one with a dynamic base URL, is refused here; use `NewProtectedHandler` with explicit options.
 
 The route's claims and step-up work as below. [RequireAuth tests](../plugins/mcp/require_auth_test.go) · [Shared replay test](../adapters/sqlstore/oauth_mcp_test.go)
 

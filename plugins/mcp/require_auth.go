@@ -3,6 +3,7 @@ package mcp
 import (
 	"errors"
 	"net/http"
+	"net/url"
 
 	auth "github.com/Plain-Org/plain-auth"
 	"github.com/Plain-Org/plain-auth/plugins/oauthprovider"
@@ -10,8 +11,10 @@ import (
 
 // AuthOptions configures RequireAuth. Every field is optional.
 type AuthOptions struct {
-	// Resource is the MCP resource URL; it defaults to the auth instance's
-	// public URL, which the provider names as the default resource.
+	// Resource is the MCP resource URL. It defaults to the auth instance's
+	// public URL, as another runtime's requireMcpAuth defaults to its base
+	// URL; tokens issued for an MCP resource name that resource instead, so
+	// pass the one mcp.New names.
 	Resource string
 	// Issuer defaults to the issuer the instance signs with.
 	Issuer string
@@ -45,10 +48,12 @@ func RequireAuth(a *auth.Auth, store auth.Store, next http.Handler, opts AuthOpt
 	}
 	resource := opts.Resource
 	if resource == "" {
+		// Without a base URL, such as with a dynamic one, the public URL is
+		// only the base path.
 		resource = a.PublicURL()
-	}
-	if resource == "" {
-		return nil, errors.New("mcp: RequireAuth needs a public URL; for dynamic base URLs use NewProtectedHandler with explicit options")
+		if u, err := url.Parse(resource); err != nil || u.Host == "" {
+			return nil, errors.New("mcp: RequireAuth needs a public URL; for dynamic base URLs use NewProtectedHandler with explicit options")
+		}
 	}
 	dpop := opts.DPoP
 	if shared, ok := store.(oauthprovider.DPoPReplayStore); ok && dpop.ReplayStore == nil {

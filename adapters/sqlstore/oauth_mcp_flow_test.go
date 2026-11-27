@@ -19,8 +19,9 @@ import (
 	"github.com/Plain-Org/plain-auth/schema"
 )
 
-// The MCP composition end to end: authorize refuses unknown and unlinked
-// resources; a code for the MCP resource exchanges
+// The MCP composition end to end: the plugin seeds and publishes its
+// resource; authorize refuses unknown and unlinked resources; a code for
+// the MCP resource exchanges
 // into a signed access token bound to it, which RequireAuth accepts and
 // answers with 403 when a scope is missing until a consented step-up adds
 // it; a refresh keeps the resource;
@@ -53,8 +54,7 @@ func TestMCPResourceFlow(t *testing.T) {
 			write(`INSERT INTO "oauthClient" ("id","clientId","applicationType","redirectUris","scopes","tokenEndpointAuthMethod","skipConsent") VALUES ('app','app','native',?,?,'none',?)`,
 				`["http://127.0.0.1:41234/cb"]`, `["openid","offline_access","mcp:read","mcp:write"]`, false)
 			const unlinked = "https://mcp.example.test/other"
-			write(`INSERT INTO "oauthResource" ("id","identifier","name") VALUES ('mcp',?,'MCP'),('other',?,'Other')`, resource, unlinked)
-			write(`INSERT INTO "oauthClientResource" ("id","resourceId","clientId") VALUES ('link',?,'app')`, resource)
+			write(`INSERT INTO "oauthResource" ("id","identifier","name") VALUES ('other',?,'Other')`, unlinked)
 			write(`INSERT INTO "oauthConsent" ("id","clientId","userId","scopes","resources","createdAt","updatedAt") VALUES ('approval','app','owner',?,?,?,?)`,
 				`["openid","offline_access","mcp:read"]`, `["`+resource+`"]`, s.date(now), s.date(now))
 			provider, err := mcp.New(mcp.Options{Options: oauthprovider.Options{Scopes: []string{"openid", "offline_access", "mcp:read", "mcp:write"},
@@ -97,11 +97,25 @@ func TestMCPResourceFlow(t *testing.T) {
 				return got.Get("code")
 			}
 			// Unknown and unlinked resources are refused at authorize.
-			for _, target := range []string{"https://unknown.example.test/mcp", unlinked} {
+			for _, target := range []string{"https://unknown.example.test/mcp", unlinked, resource} {
 				if got := authorize("openid mcp:read", "", target); got.Get("error") != "invalid_target" || got.Has("code") {
 					t.Fatal("a resource outside the client was accepted", target, got)
 				}
 			}
+			// The plugin seeded the MCP resource on the first request, and its
+			// metadata names it; the client is then linked to it.
+			var seeded int
+			must(s.db.QueryRowContext(ctx, s.bind(`SELECT COUNT(*) FROM "oauthResource" WHERE "identifier"=?`), resource).Scan(&seeded))
+			if seeded != 1 {
+				t.Fatal("the plugin did not seed the MCP resource", seeded)
+			}
+			metadata := httptest.NewRecorder()
+			h.ServeHTTP(metadata, httptest.NewRequest("GET", origin+"/.well-known/oauth-protected-resource/mcp", nil))
+			var published map[string]any
+			if metadata.Code != 200 || json.Unmarshal(metadata.Body.Bytes(), &published) != nil || published["resource"] != resource {
+				t.Fatal("the protected resource metadata did not name the resource", metadata.Code, metadata.Body.String())
+			}
+			write(`INSERT INTO "oauthClientResource" ("id","resourceId","clientId") VALUES ('link',?,'app')`, resource)
 			post := func(form url.Values, proof string) map[string]any {
 				t.Helper()
 				req := httptest.NewRequest("POST", tokenURL, strings.NewReader(form.Encode()))

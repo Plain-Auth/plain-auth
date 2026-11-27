@@ -49658,6 +49658,11 @@
       "label": "Spend a DPoP proof once across two instances on one database through the default replay store, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_mcp_test.go",
       "marker": "func TestRequireAuthSharedReplay("
+    },
+    {
+      "label": "Refuse opaque tokens, name missing scopes in the challenge, and refuse an instance without a public URL at setup unless the resource is given",
+      "test": "plugins/mcp/require_auth_test.go",
+      "marker": "func TestRequireAuthOptions("
     }
   ],
   "plugin-symbol/mcp/RequireMcpAuthOptions": [
@@ -49666,6 +49671,11 @@
       "test": "plugins/mcp/require_auth_test.go",
       "marker": "func TestRequireAuth(",
       "complete": true
+    },
+    {
+      "label": "Apply an explicit issuer, replay store and proof algorithms, and refuse an instance without a public URL unless the resource is given",
+      "test": "plugins/mcp/require_auth_test.go",
+      "marker": "func TestRequireAuthOptions("
     }
   ],
   "plugin-symbol/mcp/RequireMcpAuthOptions/resource": [
@@ -49680,7 +49690,12 @@
     {
       "label": "Default the issuer to the one the instance signs with, a custom JWT issuer included",
       "test": "plugins/mcp/require_auth_test.go",
-      "marker": "func TestRequireAuth(",
+      "marker": "func TestRequireAuth("
+    },
+    {
+      "label": "Replace the default issuer with an explicit one, refusing tokens from the default issuer, and default it to the one the instance signs with otherwise",
+      "test": "plugins/mcp/require_auth_test.go",
+      "marker": "explicit := guard(mcp.AuthOptions{Issuer: other})",
       "complete": true
     }
   ],
@@ -49704,7 +49719,12 @@
     {
       "label": "Answer a token missing a required scope with 403",
       "test": "plugins/mcp/require_auth_test.go",
-      "marker": "t.Fatal(\"a missing required scope was accepted\", w.Code)",
+      "marker": "t.Fatal(\"a missing required scope was accepted\", w.Code)"
+    },
+    {
+      "label": "Answer a token missing a required scope with a 403 insufficient_scope challenge naming the scope",
+      "test": "plugins/mcp/require_auth_test.go",
+      "marker": "// A missing scope is named in the challenge.",
       "complete": true
     }
   ],
@@ -49712,7 +49732,12 @@
     {
       "label": "Default the DPoP replay store to the instance's database, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_mcp_test.go",
-      "marker": "func TestRequireAuthSharedReplay(",
+      "marker": "func TestRequireAuthSharedReplay("
+    },
+    {
+      "label": "Keep an explicit DPoP replay store and advertise the configured proof algorithms in the DPoP challenge",
+      "test": "plugins/mcp/require_auth_test.go",
+      "marker": "dpop := guard(mcp.AuthOptions{DPoP: oauthprovider.DPoPOptions{ReplayStore: custom, SigningAlgorithms: []string{\"EdDSA\"}}})",
       "complete": true
     }
   ],
@@ -49722,6 +49747,11 @@
       "test": "plugins/mcp/require_auth_test.go",
       "marker": "func TestRequireAuth(",
       "complete": true
+    },
+    {
+      "label": "Accept DPoP-bound tokens with a proof, refuse opaque tokens and name missing scopes in the challenge",
+      "test": "plugins/mcp/require_auth_test.go",
+      "marker": "func TestRequireAuthOptions("
     }
   ],
   "plugin-symbol/mcp/McpOptions/resource": [
@@ -49744,24 +49774,26 @@
     {
       "label": "Serve the MCP resource's protected resource metadata with the provider's issuer, bearer method, DPoP algorithms and requirement and resource scopes, answering GET and HEAD and refusing other methods",
       "test": "plugins/mcp/plugin_test.go",
-      "marker": "func TestMCPPlugin(",
-      "complete": true
+      "marker": "func TestMCPPlugin("
+    },
+    {
+      "label": "Link a dynamically registered client to the host's default resources and the MCP resource, appended once",
+      "test": "plugins/mcp/plugin_test.go",
+      "marker": "if !slices.Equal(registered.Resources, []string{\"urn:host\", resource})"
     }
   ],
   "plugin-symbol/mcp/McpOptions/clientRegistrationDefaultResources": [
     {
       "label": "Append the MCP resource to the default registration resources once, keeping the host's, so a client registered without resources is linked to it",
       "test": "plugins/mcp/plugin_test.go",
-      "marker": "func TestMCPRegistrationLinksResource(",
-      "complete": true
+      "marker": "func TestMCPRegistrationLinksResource("
     }
   ],
   "plugin-symbol/mcp/McpOptions/resources": [
     {
-      "label": "Declare the MCP resource on the provider unless it is declared already, keeping the caller's options",
+      "label": "Declare the MCP resource on the provider after the host's resources unless it is declared already, without changing the caller's options",
       "test": "plugins/mcp/plugin_test.go",
-      "marker": "func TestMCPPlugin(",
-      "complete": true
+      "marker": "func TestMCPPlugin("
     }
   ],
   "plugin-symbol/mcp/McpOptions/allowDynamicClientRegistration": [
@@ -49807,8 +49839,7 @@
     {
       "label": "Link a dynamically registered client to the MCP resource without a resources field",
       "test": "plugins/mcp/plugin_test.go",
-      "marker": "func TestMCPRegistrationLinksResource(",
-      "complete": true
+      "marker": "func TestMCPRegistrationLinksResource("
     }
   ],
   "plugin-symbol/mcp/McpOptions/enforcePerClientResources": [
@@ -49963,14 +49994,6 @@
       "complete": true
     }
   ],
-  "plugin-symbol/mcp/McpOptions/identifierValidator": [
-    {
-      "label": "Forward identifierValidator to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check",
-      "test": "plugins/mcp/forward_test.go",
-      "marker": "func TestProviderOptionsForwarded(",
-      "complete": true
-    }
-  ],
   "plugin-symbol/mcp/McpOptions/validateRedirectUri": [
     {
       "label": "Forward validateRedirectUri to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check",
@@ -50047,7 +50070,7 @@
   ],
   "docs/content/docs/plugins/mcp.mdx#L299/`mcpPluginOptionsType.resource`": [
     {
-      "label": "Bind code-flow access tokens to the configured resource as their audience, which the guard for that resource accepts, on SQLite, PostgreSQL and MySQL",
+      "label": "Seed and publish the configured resource and bind code-flow access tokens to it as their audience, which the guard for that resource accepts, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_mcp_flow_test.go",
       "marker": "func TestMCPResourceFlow(",
       "complete": true
@@ -50064,8 +50087,7 @@
     {
       "label": "Bind an MCP code-flow token to the client's DPoP key and require the DPoP scheme and a proof spent once across the database at the guard, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_mcp_flow_test.go",
-      "marker": "// A DPoP-bound code gives a token the guard accepts only with a proof.",
-      "complete": true
+      "marker": "// A DPoP-bound code gives a token the guard accepts only with a proof."
     }
   ],
   "docs/content/docs/plugins/mcp.mdx#L87": [

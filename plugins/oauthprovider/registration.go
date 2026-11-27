@@ -186,7 +186,9 @@ type Options struct {
 }
 
 // seedResources applies the declared resources once through the request's
-// store, retrying a seed that has not finished.
+// store, retrying a seed that has not finished. Declared identifiers follow
+// the standard rule: the provider takes no identifier validator, where
+// another runtime's provider does; a ResourceManager takes one.
 func (opts Options) seedResources(c auth.EndpointContext) error {
 	if opts.resourceSeeds == nil {
 		return nil

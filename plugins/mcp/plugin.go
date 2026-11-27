@@ -100,6 +100,10 @@ func resourceMetadata(a *auth.Auth, provider oauthprovider.Options, resource str
 		scopes = provider.Scopes
 	}
 	scopes = slices.DeleteFunc(slices.Clone(scopes), func(scope string) bool { return slices.Contains(authorizationServerScopes, scope) })
+	// No resource scope leaves scopes_supported out, as another runtime does.
+	if len(scopes) == 0 {
+		scopes = nil
+	}
 	doc := oauthprovider.ResourceMetadata{Resource: resource, AuthorizationServers: []string{a.OAuthIssuer()}, BearerMethodsSupported: []string{"header"},
 		DPoPSigningAlgorithms: provider.DPoP.SigningAlgorithms, ScopesSupported: scopes}
 	for _, d := range provider.Resources {

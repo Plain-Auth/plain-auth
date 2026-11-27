@@ -29,18 +29,23 @@ func TestMCPPlugin(t *testing.T) {
 	}
 	t.Cleanup(func() { store.Close() })
 	const resource = "https://api.example.test/mcp"
-	opts := oauthprovider.Options{Scopes: []string{"openid", "profile", "mcp:read", "mcp:write", "offline_access"},
-		Authorization: oauthprovider.BrowserAuthorizationOptions{LoginPage: "/login", ConsentPage: "/consent"},
-		Resources: []oauthprovider.ResourceDefinition{{Identifier: "urn:other"},
-			{Identifier: resource, Policy: oauthprovider.ResourcePatch{DPoPBoundAccessTokensRequired: oauthprovider.Set(true)}}}}
-	opts.DPoP.SigningAlgorithms = []string{"ES256"}
-	opts.Registration.DefaultResources = []string{"urn:other"}
-	original := opts
+	// build returns a fresh copy each time, so a change New makes through
+	// shared memory shows against a second copy.
+	build := func() oauthprovider.Options {
+		opts := oauthprovider.Options{Scopes: []string{"openid", "profile", "mcp:read", "mcp:write", "offline_access"},
+			Authorization: oauthprovider.BrowserAuthorizationOptions{LoginPage: "/login", ConsentPage: "/consent"},
+			Resources: []oauthprovider.ResourceDefinition{{Identifier: "urn:other"},
+				{Identifier: resource, Policy: oauthprovider.ResourcePatch{DPoPBoundAccessTokensRequired: oauthprovider.Set(true)}}}}
+		opts.DPoP.SigningAlgorithms = []string{"ES256"}
+		opts.Registration.DefaultResources = []string{"urn:other"}
+		return opts
+	}
+	opts := build()
 	plugin, err := mcp.New(mcp.Options{Options: opts, Resource: resource})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(opts, original) || len(opts.Resources) != 2 || len(opts.Registration.DefaultResources) != 1 {
+	if !reflect.DeepEqual(opts, build()) {
 		t.Fatal("the caller's options were changed")
 	}
 	keys, err := auth.NewJWT(auth.JWTOptions{})
@@ -78,6 +83,22 @@ func TestMCPPlugin(t *testing.T) {
 	if !slices.Contains(a.WellKnownPaths(), "/.well-known/oauth-protected-resource/mcp") {
 		t.Fatal("the resource path was not served", a.WellKnownPaths())
 	}
+	// With only authorization server scopes, scopes_supported is left out.
+	narrow := build()
+	narrow.Scopes = []string{"openid", "profile", "email", "offline_access"}
+	narrowPlugin, err := mcp.New(mcp.Options{Options: narrow, Resource: resource})
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := auth.New(auth.Options{Store: store, BaseURL: "https://auth.example.test", Secret: strings.Repeat("p", 32), Plugins: []auth.Plugin{keys, narrowPlugin}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	w := httptest.NewRecorder()
+	b.ServeHTTP(w, httptest.NewRequest("GET", "https://auth.example.test/.well-known/oauth-protected-resource", nil))
+	if w.Code != 200 || strings.Contains(w.Body.String(), "scopes_supported") {
+		t.Fatal("empty resource scopes were published", w.Code, w.Body.String())
+	}
 	// An undeclared resource is declared and becomes a default resource,
 	// which the provider accepts only once it is declared.
 	plain := oauthprovider.Options{Scopes: []string{"mcp:read"}, Authorization: oauthprovider.BrowserAuthorizationOptions{LoginPage: "/login", ConsentPage: "/consent"}}
@@ -92,7 +113,8 @@ func TestMCPPlugin(t *testing.T) {
 }
 
 // With open registration, a client registered without resources is linked
-// to the MCP resource, which the provider declares and seeds.
+// to the host's default resources and to the MCP resource, which the
+// provider declares and seeds.
 func TestMCPRegistrationLinksResource(t *testing.T) {
 	ctx := t.Context()
 	store, err := sqlstore.OpenWithOptions(ctx, "sqlite", ":memory:", []string{"oauth-provider"}, schema.Options{})
@@ -101,8 +123,10 @@ func TestMCPRegistrationLinksResource(t *testing.T) {
 	}
 	t.Cleanup(func() { store.Close() })
 	const resource = "https://api.example.test/mcp"
-	opts := oauthprovider.Options{Scopes: []string{"mcp:read"}, Authorization: oauthprovider.BrowserAuthorizationOptions{LoginPage: "/login", ConsentPage: "/consent"}}
+	opts := oauthprovider.Options{Scopes: []string{"mcp:read"}, Authorization: oauthprovider.BrowserAuthorizationOptions{LoginPage: "/login", ConsentPage: "/consent"},
+		Resources: []oauthprovider.ResourceDefinition{{Identifier: "urn:host"}}}
 	opts.Registration.Enabled, opts.Registration.AllowUnauthenticated, opts.Registration.DefaultApplicationType = true, true, "infer"
+	opts.Registration.DefaultResources = []string{"urn:host"}
 	plugin, err := mcp.New(mcp.Options{Options: opts, Resource: resource})
 	if err != nil {
 		t.Fatal(err)
@@ -121,7 +145,7 @@ func TestMCPRegistrationLinksResource(t *testing.T) {
 	if w.Code != 200 && w.Code != 201 || json.Unmarshal(w.Body.Bytes(), &registered) != nil {
 		t.Fatal("open registration failed", w.Code, w.Body.String())
 	}
-	if !slices.Equal(registered.Resources, []string{resource}) || registered.ApplicationType != "native" {
+	if !slices.Equal(registered.Resources, []string{"urn:host", resource}) || registered.ApplicationType != "native" {
 		t.Fatal("the registered client was not linked to the MCP resource", registered.Resources, registered.ApplicationType)
 	}
 }
