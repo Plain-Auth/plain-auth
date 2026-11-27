@@ -427,7 +427,8 @@
       - [x] Use the current user, registered client metadata and narrowed scopes without invoking the hook for an exchange that drops OpenID ([test](../../../conformance/oauth-id-tokens.mjs#L141))
       - [x] Retry after callback failure and recheck the profile and metadata on three databases, including hidden fields and active-plugin isolation ([test](../../../adapters/sqlstore/oauth_id_token_test.go#L182))
     - [ ] `customAccessTokenClaims`
-    - [ ] `customTokenResponseFields`
+    - [x] `customTokenResponseFields` ([test](../../../adapters/sqlstore/oauth_token_response_test.go#L27))
+      - [x] Merge host fields under the standard fields of code, refresh and client_credentials responses, pass the account, client metadata and code value, run outside the grant transaction even without a refresh token, and leave the code or refresh token usable when it fails, on SQLite, PostgreSQL and MySQL; the scope recheck is a documented deviation ([test](../../../adapters/sqlstore/oauth_token_response_test.go#L27))
     - [ ] `advertisedMetadata`
       - [x] Preserve configured discovery scope and authentication method order independently of introspection and revocation ([test](../../../conformance/oauth-issuer-metadata.mjs#L65))
       - [x] Reject unknown scopes, unsupported machine authentication, duplicate methods and an explicitly empty method list ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L17))
@@ -1139,6 +1140,7 @@
   - [ ] Custom claims
     - [ ] Client-specific access token claims
     - [ ] Custom token response fields
+      - [x] Merge host fields under the standard fields of code, refresh and client_credentials responses, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_token_response_test.go#L27))
   - [ ] Revocation
     - [x] Handle stored access and refresh tokens, linked access tokens, self-contained JWTs and repeated requests ([test](../../../conformance/oauth-revocation.mjs#L71))
     - [x] Opaque access token ([test](../../../adapters/sqlstore/oauth_revocation_test.go#L130))

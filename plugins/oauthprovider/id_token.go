@@ -45,6 +45,9 @@ type DelegatedTokenIssue struct {
 	SessionID string
 	Refresh   bool
 	IDToken   IDTokenGrant
+	// Deferred asks for the issue phase even without a refresh or ID token,
+	// for host response fields.
+	Deferred bool
 }
 
 // OpenIDGrantStore performs signing outside the grant transaction, then

@@ -128,12 +128,12 @@ func (s *Store) redeemCode(ctx context.Context, clientID, identifier string, che
 	} else if !ok {
 		return op.ErrAuthorizationCodeInvalid // a declined spend keeps the code and revokes nothing
 	}
-	issue := op.DelegatedTokenIssue{SessionID: record.SessionID, Refresh: record.Refresh != nil, IDToken: record.IDToken}
+	issue := op.DelegatedTokenIssue{SessionID: record.SessionID, Refresh: record.Refresh != nil, IDToken: record.IDToken, Deferred: record.Deferred}
 	if pending != nil && pending.prepared {
 		if pending.issue != issue {
 			return op.ErrAuthorizationCodeInvalid
 		}
-	} else if issue.Refresh || issue.IDToken.Subject != "" {
+	} else if issue.Refresh || issue.IDToken.Subject != "" || issue.Deferred {
 		if pending == nil {
 			return errors.New("sqlstore: grant requires deferred token issuance")
 		}

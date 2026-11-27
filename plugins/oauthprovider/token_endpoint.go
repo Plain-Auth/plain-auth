@@ -84,11 +84,17 @@ func (opts Options) token(c auth.EndpointContext) (any, error) {
 	in.proof = c.Request.Header.Get("DPoP")
 	if grant == "refresh_token" {
 		token, err := opts.exchangeRefreshGrant(c, in, form)
-		return token, tokenEndpointError(c.ResponseHeader, challenge, err)
+		if err != nil {
+			return token, tokenEndpointError(c.ResponseHeader, challenge, err)
+		}
+		return tokenBody(token, token.fields)
 	}
 	if grant == "authorization_code" {
 		token, err := opts.redeemAuthorizationCode(c, in, form)
-		return token, tokenEndpointError(c.ResponseHeader, challenge, err)
+		if err != nil {
+			return token, tokenEndpointError(c.ResponseHeader, challenge, err)
+		}
+		return tokenBody(token, token.fields)
 	}
 	store, ok := c.Store().(MachineTokenStore)
 	if !ok {
@@ -102,7 +108,10 @@ func (opts Options) token(c auth.EndpointContext) (any, error) {
 		return nil, proofError("DPoP proof header must not be repeated")
 	}
 	token, err := opts.issueMachineToken(c, store, in, first)
-	return token, tokenEndpointError(c.ResponseHeader, challenge, err)
+	if err != nil {
+		return token, tokenEndpointError(c.ResponseHeader, challenge, err)
+	}
+	return tokenBody(token, token.fields)
 }
 
 func tokenEndpointError(headers http.Header, challenge string, err error) error {

@@ -48758,5 +48758,20 @@
       "test": "adapters/sqlstore/oauth_secret_id_token_test.go",
       "marker": "func TestSecretSignedIDTokens("
     }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/customTokenResponseFields": [
+    {
+      "label": "Merge host fields under the standard fields of code, refresh and client_credentials responses, pass the account, client metadata and code value, run outside the grant transaction even without a refresh token, and leave the code or refresh token usable when it fails, on SQLite, PostgreSQL and MySQL; the scope recheck is a documented deviation",
+      "test": "adapters/sqlstore/oauth_token_response_test.go",
+      "marker": "func TestTokenResponseFields(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/tokens.mdx#L260": [
+    {
+      "label": "Merge host fields under the standard fields of code, refresh and client_credentials responses, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_token_response_test.go",
+      "marker": "func TestTokenResponseFields("
+    }
   ]
 }

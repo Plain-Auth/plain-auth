@@ -32,6 +32,9 @@ type DelegatedAccessRecord struct {
 	// Non-nil requests a trusted claims snapshot from the store, even for an
 	// application with no additional user columns.
 	IDTokenUserFields map[string]auth.UserField
+	// Deferred asks the store to run its issue phase, outside the grant
+	// transaction, even without a refresh or ID token.
+	Deferred bool
 }
 
 // InitialRefreshGrant holds the expiry and original authentication time of a
@@ -218,7 +221,9 @@ func (opts Options) redeemAuthorizationCode(c auth.EndpointContext, in tokenRequ
 	offlineStore, canIssueRefresh := store.(OfflineAuthorizationCodeStore)
 	now := time.Now().UTC().Truncate(time.Second)
 	openidStore, supportsOpenID := store.(OpenIDGrantStore)
+	var codeValue json.RawMessage
 	prepare := func(client AuthorizationCodeClient, value json.RawMessage) (DelegatedAccessRecord, error) {
+		codeValue = slices.Clone(value)
 		var code storedAuthorizationCode
 		if err := json.Unmarshal(value, &code); err != nil || code.Type != "authorization_code" || code.Query.ClientID == "" ||
 			(code.Query.ResponseType != "" && code.Query.ResponseType != "code") {
@@ -259,6 +264,14 @@ func (opts Options) redeemAuthorizationCode(c auth.EndpointContext, in tokenRequ
 				return DelegatedAccessRecord{}, err
 			}
 		}
+		// Host response fields run in the issue phase, from a claims
+		// snapshot of the account.
+		if opts.Tokens.CustomTokenResponseFields != nil {
+			record.Deferred = true
+			if record.IDTokenUserFields == nil {
+				record.IDTokenUserFields = c.TrustedUserFields()
+			}
+		}
 		if slices.Contains(scopes, "offline_access") {
 			if !canIssueRefresh {
 				return DelegatedAccessRecord{}, &auth.APIError{Status: 501, Code: "OAUTH_REFRESH_STORE_UNAVAILABLE", Message: "The configured store does not support offline grants"}
@@ -275,7 +288,17 @@ func (opts Options) redeemAuthorizationCode(c auth.EndpointContext, in tokenRequ
 		result.RefreshToken = wire
 		return digest, err
 	}
+	var fields map[string]any
 	issueOpenID := func(grant DelegatedTokenIssue) (string, error) {
+		if opts.Tokens.CustomTokenResponseFields != nil {
+			input, err := claimsResponseInput("authorization_code", grant.IDToken.ClaimsInput, codeValue)
+			if err != nil {
+				return "", err
+			}
+			if fields, err = opts.Tokens.responseFields(ctx, input); err != nil {
+				return "", err
+			}
+		}
 		if grant.IDToken.Subject != "" {
 			token, err := opts.Tokens.signIDToken(c, in.id, issued, grant.IDToken, now, opts.idTokenSecret(in))
 			if err != nil {
@@ -322,6 +345,7 @@ func (opts Options) redeemAuthorizationCode(c auth.EndpointContext, in tokenRequ
 	if err != nil {
 		return DelegatedToken{}, err
 	}
+	result.fields = fields
 	return result, nil
 }
 

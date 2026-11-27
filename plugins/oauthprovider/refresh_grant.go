@@ -103,7 +103,21 @@ func (opts Options) exchangeRefreshGrant(c auth.EndpointContext, in tokenRequest
 		if slices.Contains(grant.Scopes, "offline_access") {
 			record.Refresh = &InitialRefreshGrant{ExpiresAt: now.Add(opts.Tokens.RefreshLifetime)}
 		}
+		if opts.Tokens.CustomTokenResponseFields != nil && record.IDTokenUserFields == nil {
+			record.IDTokenUserFields = c.TrustedUserFields()
+		}
 		return record, nil
+	}
+	var fields map[string]any
+	responseFields := func(grant DelegatedTokenIssue) error {
+		if opts.Tokens.CustomTokenResponseFields == nil {
+			return nil
+		}
+		input, err := claimsResponseInput("refresh_token", grant.IDToken.ClaimsInput, nil)
+		if err == nil {
+			fields, err = opts.Tokens.responseFields(ctx, input)
+		}
+		return err
 	}
 	issue := func(sid string, rotate bool) (RefreshGrantDigests, error) {
 		var keys RefreshGrantDigests
@@ -116,6 +130,9 @@ func (opts Options) exchangeRefreshGrant(c auth.EndpointContext, in tokenRequest
 	}
 	if supportsOpenID {
 		err = openidStore.ExchangeOpenIDRefresh(ctx, in.id, digest, checkClient, prepare, func(grant DelegatedTokenIssue) (RefreshGrantDigests, error) {
+			if err := responseFields(grant); err != nil {
+				return RefreshGrantDigests{}, err
+			}
 			keys, err := issue(grant.SessionID, grant.Refresh)
 			if err == nil && grant.IDToken.Subject != "" {
 				result.IDToken, err = opts.Tokens.signIDToken(c, in.id, access, grant.IDToken, now, opts.idTokenSecret(in))
@@ -132,6 +149,7 @@ func (opts Options) exchangeRefreshGrant(c auth.EndpointContext, in tokenRequest
 		return DelegatedToken{}, err
 	}
 	result.AccessToken = access
+	result.fields = fields
 	return result, nil
 }
 

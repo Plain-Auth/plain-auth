@@ -1,6 +1,7 @@
 package oauthprovider
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"crypto/subtle"
@@ -34,10 +35,14 @@ type TokenOptions struct {
 	ScopeLifetimes        map[string]time.Duration
 	// ScopeExpiresAt caps a token carrying the scope at that instant. A
 	// request for a scope whose instant has passed answers invalid_scope.
-	ScopeExpiresAt      map[string]time.Time
-	OpaquePrefix        string
-	GenerateOpaqueToken func(context.Context) (string, error)
-	HashOpaqueToken     func(context.Context, string) (string, error)
+	ScopeExpiresAt map[string]time.Time
+	// CustomTokenResponseFields adds fields to code, refresh and
+	// client_credentials responses. The standard response fields are never
+	// taken from it.
+	CustomTokenResponseFields TokenResponseFieldsFunc
+	OpaquePrefix              string
+	GenerateOpaqueToken       func(context.Context) (string, error)
+	HashOpaqueToken           func(context.Context, string) (string, error)
 	// RateLimit applies to the token endpoint and defaults to 20 per minute.
 	// An empty rule uses the host's global limit.
 	RateLimit *auth.RateLimitRule
@@ -157,6 +162,73 @@ type MachineToken struct {
 	ExpiresIn   int64  `json:"expires_in"`
 	ExpiresAt   int64  `json:"expires_at"`
 	Scope       string `json:"scope"`
+	// fields holds CustomTokenResponseFields' additions to the response.
+	fields map[string]any
+}
+
+// TokenResponseInput describes one token exchange to CustomTokenResponseFields.
+type TokenResponseInput struct {
+	GrantType string
+	// User and UserFields describe the account of a code or refresh
+	// exchange; they are nil for client_credentials.
+	User       *auth.User
+	UserFields map[string]json.RawMessage
+	Scopes     []string
+	// Metadata is the registered client's metadata object.
+	Metadata map[string]json.RawMessage
+	// VerificationValue is the stored authorization code value of a code
+	// exchange.
+	VerificationValue json.RawMessage
+}
+
+// TokenResponseFieldsFunc adds fields to a token response. It runs once per
+// exchange, outside store transactions and before any token is stored; an
+// error fails the exchange and leaves the code or refresh token usable.
+type TokenResponseFieldsFunc func(context.Context, TokenResponseInput) (map[string]any, error)
+
+// standardTokenFields are never taken from CustomTokenResponseFields, even
+// when the response omits them, as in another runtime.
+var standardTokenFields = []string{"access_token", "token_type", "expires_in", "expires_at", "refresh_token", "scope", "id_token"}
+
+// tokenBody merges host fields under a token response's own fields.
+func tokenBody(token any, fields map[string]any) (any, error) {
+	if len(fields) == 0 {
+		return token, nil
+	}
+	raw, err := json.Marshal(token)
+	if err != nil {
+		return nil, err
+	}
+	d := json.NewDecoder(bytes.NewReader(raw))
+	d.UseNumber()
+	var body map[string]any
+	if err := d.Decode(&body); err != nil {
+		return nil, err
+	}
+	for name, value := range fields {
+		if _, present := body[name]; !present && !slices.Contains(standardTokenFields, name) {
+			body[name] = value
+		}
+	}
+	return body, nil
+}
+
+// responseFields runs CustomTokenResponseFields, or returns nil without one.
+func (opts TokenOptions) responseFields(ctx context.Context, in TokenResponseInput) (map[string]any, error) {
+	if opts.CustomTokenResponseFields == nil {
+		return nil, nil
+	}
+	return opts.CustomTokenResponseFields(ctx, in)
+}
+
+// claimsResponseInput reads a code or refresh exchange's account from the
+// store's claims snapshot.
+func claimsResponseInput(grantType, snapshot string, value json.RawMessage) (TokenResponseInput, error) {
+	var claims IDTokenClaimsInput
+	if err := json.Unmarshal([]byte(snapshot), &claims); err != nil || claims.User.ID == "" {
+		return TokenResponseInput{}, errors.New("oauthprovider: missing token response input")
+	}
+	return TokenResponseInput{GrantType: grantType, User: &claims.User, UserFields: claims.UserFields, Scopes: claims.Scopes, Metadata: claims.Metadata, VerificationValue: value}, nil
 }
 
 func tokenDigest(raw string) string {
@@ -365,11 +437,25 @@ func machineResponse(issued, thumbprint string, scopes []string, now time.Time, 
 }
 
 func (opts Options) issueMachineToken(c auth.EndpointContext, store MachineTokenStore, in tokenRequest, first MachineClient) (MachineToken, error) {
-	if _, err := in.authorizedScopes(first); err != nil {
+	firstScopes, err := in.authorizedScopes(first)
+	if err != nil {
 		return MachineToken{}, err
 	}
 	if len(in.resources) != 0 {
 		return opts.issueResourceMachineToken(c, store, in, first)
+	}
+	// Host fields are resolved before any token is stored, from the scopes
+	// of the first read; the locked read must grant the same scopes, where
+	// another runtime does not read the client twice.
+	fields, err := opts.Tokens.responseFields(c.Request.Context(), TokenResponseInput{GrantType: "client_credentials", Scopes: firstScopes, Metadata: first.Metadata})
+	if err != nil {
+		return MachineToken{}, err
+	}
+	sameScopes := func(scopes []string) error {
+		if opts.Tokens.CustomTokenResponseFields != nil && !slices.Equal(scopes, firstScopes) {
+			return registrationProblem(400, "invalid_request", "client scopes changed during issuance, retry the request")
+		}
+		return nil
 	}
 	boundStore, canBind := store.(DPoPMachineTokenStore)
 	if in.proof != "" && !canBind {
@@ -393,6 +479,9 @@ func (opts Options) issueMachineToken(c auth.EndpointContext, store MachineToken
 		if err != nil {
 			return MachineTokenRecord{}, err
 		}
+		if err := sameScopes(scopes); err != nil {
+			return MachineTokenRecord{}, err
+		}
 		if current.RequireDPoP && thumbprint == "" {
 			return MachineTokenRecord{}, proofError("DPoP proof header is required")
 		}
@@ -412,5 +501,6 @@ func (opts Options) issueMachineToken(c auth.EndpointContext, store MachineToken
 	if err != nil {
 		return MachineToken{}, err
 	}
+	result.fields = fields
 	return result, nil
 }

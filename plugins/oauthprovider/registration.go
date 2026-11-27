@@ -332,6 +332,9 @@ func New(opts Options) (auth.Plugin, error) {
 		if _, ok := s.(RegistrationStore); r.Enabled && !ok {
 			return errors.New("oauthprovider: registration requires a RegistrationStore")
 		}
+		if _, ok := s.(OpenIDGrantStore); opts.Tokens.CustomTokenResponseFields != nil && slices.Contains(opts.GrantTypes, "authorization_code") && !ok {
+			return errors.New("oauthprovider: token response fields require an OpenIDGrantStore")
+		}
 		if seeds := opts.resourceSeeds; seeds != nil {
 			if _, ok := s.(ResourceStore); !ok {
 				return errors.New("oauthprovider: declared resources require a ResourceStore")

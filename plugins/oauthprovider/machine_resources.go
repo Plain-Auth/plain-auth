@@ -144,6 +144,12 @@ func (opts Options) issueResourceMachineToken(c auth.EndpointContext, store Mach
 	if err != nil {
 		return MachineToken{}, err
 	}
+	// Host fields are resolved from the first read's issued scopes, before
+	// the token is signed or stored.
+	fields, err := opts.Tokens.responseFields(ctx, TokenResponseInput{GrantType: "client_credentials", Scopes: policy.scopes, Metadata: first.Metadata})
+	if err != nil {
+		return MachineToken{}, err
+	}
 	thumb, err := opts.machineThumbprint(c, in, policy.bound)
 	if err != nil {
 		return MachineToken{}, err
@@ -186,7 +192,9 @@ func (opts Options) issueResourceMachineToken(c auth.EndpointContext, store Mach
 	if err != nil {
 		return MachineToken{}, err
 	}
-	return machineResponse(issued, thumb, policy.scopes, now, policy.lifetime), nil
+	token := machineResponse(issued, thumb, policy.scopes, now, policy.lifetime)
+	token.fields = fields
+	return token, nil
 }
 
 func (p machineResourcePolicy) sign(c auth.EndpointContext, client string, audiences []string, thumb string, now time.Time) (string, error) {
