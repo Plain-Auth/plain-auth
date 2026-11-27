@@ -508,6 +508,14 @@ func (a *Auth) writeAuthError(w http.ResponseWriter, r *http.Request, err error)
 		w.WriteHeader(status.statusOnlyCode())
 		return
 	}
+	var page *HTMLError
+	if errors.As(err, &page) && page.Status >= 400 && page.Status <= 599 {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.WriteHeader(page.Status)
+		_, _ = io.WriteString(w, string(page.Page))
+		return
+	}
 	var oauthErr *OAuthError
 	if errors.As(err, &oauthErr) && oauthErr.Status >= 400 && oauthErr.Status <= 599 {
 		writeAuthJSON(w, oauthErr.Status, oauthErr)

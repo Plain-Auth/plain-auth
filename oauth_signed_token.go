@@ -71,6 +71,57 @@ func (c EndpointContext) OAuthJWTPayload(token string) (claims map[string]any, r
 	return claims, true, nil
 }
 
+// OAuthIDTokenHint verifies an ID token this server signed for its OAuth
+// issuer and returns its claims without checking exp or nbf, because
+// RP-Initiated Logout accepts an expired ID token as a hint. Any other token
+// returns nil claims, including one typed as an access or logout token,
+// which another runtime would accept; an error reports a key store failure.
+func (c EndpointContext) OAuthIDTokenHint(token string) (map[string]any, error) {
+	a := c.Auth
+	if a.serviceJWT == nil {
+		return nil, nil
+	}
+	signed, unencoded, err := parseOAuthJWS(token, a.serviceJWT.verificationAlgorithms())
+	if err != nil || unencoded {
+		return nil, nil
+	}
+	header := signed.Signatures[0].Header
+	if typ, _ := header.ExtraHeaders[jose.HeaderType].(string); typedNonIDToken(typ) {
+		return nil, nil
+	}
+	key, err := a.jwtVerificationKey(c.Request.Context(), a.now(), header)
+	if errors.Is(err, ErrInvalidJWT) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	payload, err := signed.Verify(key)
+	if err != nil || !utf8.Valid(payload) {
+		return nil, nil
+	}
+	var claims map[string]any
+	decoder := json.NewDecoder(bytes.NewReader(payload))
+	decoder.UseNumber()
+	if decoder.Decode(&claims) != nil || claims == nil {
+		return nil, nil
+	}
+	if issuer, _ := claims["iss"].(string); !a.oauthIssuerAccepted(issuer) {
+		return nil, nil
+	}
+	return claims, nil
+}
+
+// typedNonIDToken reports a JWS type that marks an access or logout token,
+// so neither can stand in for an ID token.
+func typedNonIDToken(typ string) bool {
+	switch strings.TrimPrefix(strings.ToLower(typ), "application/") {
+	case "at+jwt", "logout+jwt":
+		return true
+	}
+	return false
+}
+
 func parseOAuthJWS(token string, algorithms []jose.SignatureAlgorithm) (*jose.JSONWebSignature, bool, error) {
 	signed, err := jose.ParseSignedCompact(token, algorithms)
 	if err == nil && signed.Signatures[0].Header.ExtraHeaders["b64"] != false {

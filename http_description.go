@@ -10,6 +10,16 @@ import (
 // HTMLPage is trusted HTML returned by an endpoint. Escape all dynamic text before constructing it.
 type HTMLPage string
 
+// HTMLError answers an endpoint call with a trusted page and an error
+// status, such as the page a browser shows for a refused request. Headers
+// the endpoint set, such as a Content-Security-Policy, are kept.
+type HTMLError struct {
+	Status int
+	Page   HTMLPage
+}
+
+func (e *HTMLError) Error() string { return http.StatusText(e.Status) }
+
 // XMLDocument is an XML representation encoded by a trusted plugin, served
 // with a sandboxing Content-Security-Policy.
 type XMLDocument []byte

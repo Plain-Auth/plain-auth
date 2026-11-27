@@ -41,6 +41,8 @@ opts.Plugins = []plainauth.Plugin{profile}
 
 The handler is then available at `GET /api/auth/profile`. `c.Session()` returns the caller's session, or nil when the request is not authenticated. Endpoint handlers run concurrently. Synchronize state they share or persist it in a transactional store. See the [plugin API](../plugins.go) and [registration tests](../conformance/goapi/plugins_test.go). A plugin that keeps its own single-use records can run the verification hooks around them with `EndpointContext.CreateVerification` and `SpendVerification`, or, when its store decides a record inside a transaction, with `EndpointContext.GateVerifications`; see [verification hooks](hooks.md#verification-hooks).
 
+A handler that returns a `*plainauth.HTMLError` answers with its trusted page and error status, keeping the headers the handler set, and the error still reaches `OnAPIError`. `EndpointContext.EndSession(token)` ends a session as sign-out does, running the session delete hooks, and expires the browser's cookies when it is the browser's own session. `EndpointContext.OAuthIDTokenHint(token)` verifies an ID token this server signed for its OAuth issuer, even an expired one, and returns its claims; a token typed as an access or logout token gets nil, where another runtime accepts any token signed with its keys, so neither can stand in for an ID token. The OAuth provider's logout endpoint uses all three. [Tests](../conformance/goapi/end_session_test.go)
+
 ## Receive Stripe webhooks
 
 Import `github.com/Plain-Org/plain-auth/plugins/stripe` as `authstripe` and the official `github.com/stripe/stripe-go/v87` as `stripesdk`.
