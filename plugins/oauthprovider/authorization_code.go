@@ -39,6 +39,9 @@ type DelegatedAccessRecord struct {
 	Resources []string
 	// Thumbprint is the DPoP key both issued tokens are bound to, or "".
 	Thumbprint string
+	// ReplayUntil, set on a rotation with a reuse interval, is when the
+	// rotated token stops replaying its sealed response.
+	ReplayUntil time.Time
 }
 
 // InitialRefreshGrant holds the expiry and original authentication time of a
@@ -57,6 +60,8 @@ type DelegatedToken struct {
 	MachineToken
 	RefreshToken string `json:"refresh_token,omitempty"`
 	IDToken      string `json:"id_token,omitempty"`
+	// replay is a stored response sent again inside the reuse interval.
+	replay map[string]any
 }
 
 // AuthorizationCodeClient contains the current policy for delegated issuance.

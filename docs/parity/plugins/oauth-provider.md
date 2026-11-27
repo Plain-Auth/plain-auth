@@ -356,7 +356,8 @@
       - [x] Set the offline refresh lifetime independently of the scope-limited access token and retain the original authentication time ([test](../../../adapters/sqlstore/oauth_offline_code_test.go#L148))
       - [x] Restart the configured refresh lifetime on rotation and preserve original authentication time, session and authorization code ([test](../../../adapters/sqlstore/oauth_refresh_grant_test.go#L189))
       - [x] Default offline refresh tokens to a thirty-day lifetime in both runtimes ([test](../../../conformance/oauth-authorization-code.mjs#L109))
-    - [ ] `refreshTokenReuseInterval`
+    - [x] `refreshTokenReuseInterval` ([test](../../../adapters/sqlstore/oauth_refresh_replay_test.go#L25))
+      - [x] Replay a rotation's sealed response to an identical retry inside the interval, refuse other retries keeping the family, and end the family after the interval or without one, on SQLite, PostgreSQL and MySQL; storing the record with the rotation is a documented deviation ([test](../../../adapters/sqlstore/oauth_refresh_replay_test.go#L25))
     - [x] `codeExpiresIn` ([test](../../../conformance/oauth-browser-authorization.mjs#L130))
       - [x] Apply a custom lifetime and code digest and redeem the stored browser grant on a second server ([test](../../../adapters/sqlstore/oauth_browser_authorization_test.go#L151))
       - [x] Expire a pending consent request before approval and accept a fresh prompt on another issuer process ([test](../../../adapters/sqlstore/oauth_browser_consent_test.go#L169))
@@ -507,7 +508,8 @@
   - [ ] `SchemaClient`
   - [x] `OAuthOpaqueAccessToken` ([test](../../../adapters/sqlstore/oauth_dpop_grants_test.go#L182))
     - [x] Store a delegated opaque token's resources and DPoP confirmation, which introspection names as aud and cnf, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_dpop_grants_test.go#L182))
-  - [ ] `OAuthRefreshToken`
+  - [x] `OAuthRefreshToken` ([test](../../../adapters/sqlstore/oauth_refresh_replay_test.go#L112))
+    - [x] Store a refresh token's resources, DPoP confirmation and sealed rotation response with its replay expiry, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_refresh_replay_test.go#L112))
   - [x] `OAuthConsent` ([test](../../../adapters/sqlstore/oauth_browser_resources_test.go#L151))
     - [x] Record the approved resources on a consent, keep them when an approval names none, and require them to cover every requested resource, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_browser_resources_test.go#L151))
   - [ ] `OAuthClient`
@@ -806,7 +808,8 @@
     - [ ] Scopes and claims
     - [ ] Clients and registration
     - [ ] Resources
-    - [ ] Tokens
+    - [x] Tokens ([test](../../../adapters/sqlstore/oauth_refresh_replay_test.go#L25))
+      - [x] Configure the refresh reuse interval, with the provider's lifetimes, DPoP, HS256 ID tokens and pushed requests covered by their tests, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_refresh_replay_test.go#L25))
     - [ ] Storage and generation
     - [ ] Other
   - [ ] Endpoints
@@ -836,7 +839,7 @@
       - [x] Re-evaluate the account on a signed created continuation and exchange its code only after the host records completion ([test](../../../conformance/oauth-signup-policy.mjs#L79))
       - [x] Resume after the user activates a membership and distinguish an explicit continuation from a cookie reissued by an organization switch ([test](../../../conformance/oauth-post-login.mjs#L99))
       - [x] Refuse a signed-in continuation without a completed step or a signed query with 400 invalid_request, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_browser_login_test.go#L140))
-    - [ ] `POST /oauth2/token`
+    - [x] `POST /oauth2/token` ([test](../../../adapters/sqlstore/oauth_refresh_replay_test.go#L25))
       - [x] Issue opaque bearer tokens with Basic or form authentication and verify their scope, expiry, introspection and revocation at an independent server ([test](../../../conformance/oauth-machine-tokens.mjs#L64))
       - [x] Issue signed or opaque machine tokens for several registered APIs and verify them with an independent issuer ([test](../../../conformance/oauth-resource-machine-tokens.mjs#L28))
       - [x] Require links to every machine-token audience and recheck concurrent unlink, scope, binding and signing policy changes on three engines ([test](../../../adapters/sqlstore/oauth_machine_resources_test.go#L30))
@@ -844,6 +847,7 @@
       - [x] Roll back failed token inserts and serialize simultaneous redemptions across independent SQL connections on all three databases ([test](../../../adapters/sqlstore/oauth_authorization_code_test.go#L22))
       - [x] Issue an offline token pair, rotate the refresh token at an independent issuer after session expiry and remove the rotated tokens on code replay ([test](../../../conformance/oauth-authorization-code.mjs#L67))
       - [x] Rotate an independently issued refresh token, narrow its scopes, renew offline access after session expiry and invalidate reused grants ([test](../../../conformance/oauth-refresh-grant.mjs#L5))
+      - [x] Exchange codes and refresh tokens for resources, with DPoP binding and a refresh reuse interval, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_refresh_replay_test.go#L25))
     - [ ] `POST /oauth2/introspect`
       - [x] Inspect a machine token issued independently, verify its exact claims, and report it inactive after revocation ([test](../../../conformance/oauth-introspection.mjs#L32))
       - [x] Inspect a refresh token issued by an independent authorization-code exchange and compare expiry, issuer, binding, subject and session across runtimes ([test](../../../conformance/oauth-refresh-introspection.mjs#L6))
@@ -1196,12 +1200,13 @@
       - [x] Check the default ten-minute lifetime on a code issued to a registered browser client ([test](../../../conformance/oauth-browser-authorization.mjs#L130))
     - [x] `assertionMaxLifetime` ([test](../../../plugins/oauthprovider/client_assertion_test.go#L25))
       - [x] Apply the configured lifetime and skew to expiry, not-before and issued-at claims, including exact boundaries ([test](../../../plugins/oauthprovider/client_assertion_test.go#L25))
-  - [ ] Refresh tokens
+  - [x] Refresh tokens ([test](../../../adapters/sqlstore/oauth_refresh_replay_test.go#L25))
     - [x] Apply offline and session-bound grants across session expiry, deletion and revocation while preserving the issuing application’s ownership ([test](../../../conformance/oauth-refresh-introspection.mjs#L44))
     - [x] Issue an offline token pair, rotate the refresh token at an independent issuer after session expiry and remove the rotated tokens on code replay ([test](../../../conformance/oauth-authorization-code.mjs#L67))
     - [x] Commit both tokens and consume the code together, retry after insert failures and isolate simultaneous redemptions on all three databases ([test](../../../adapters/sqlstore/oauth_offline_code_test.go#L21))
     - [x] Rotate an independently issued refresh token, narrow its scopes, renew offline access after session expiry and invalidate reused grants ([test](../../../conformance/oauth-refresh-grant.mjs#L5))
     - [x] Exchange refresh tokens through the Go OAuth client and verify atomic replacement, callback failures and concurrent reuse on all three engines ([test](../../../adapters/sqlstore/oauth_refresh_grant_test.go#L21))
+    - [x] Replay a rotation's response to an identical retry inside the reuse interval, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_refresh_replay_test.go#L25))
   - [ ] PKCE
     - [x] Exchange a browser-issued S256 code, verify the delegated access token with an independent issuer and isolate replay cleanup to that code ([test](../../../conformance/oauth-authorization-code.mjs#L5))
     - [x] Resolve public and confidential client PKCE requirements, including offline scopes, OIDC nonces and explicit registration policy ([test](../../../plugins/oauthprovider/authorization_code_test.go#L15))

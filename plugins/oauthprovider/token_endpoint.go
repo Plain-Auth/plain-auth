@@ -87,6 +87,9 @@ func (opts Options) token(c auth.EndpointContext) (any, error) {
 		if err != nil {
 			return token, tokenEndpointError(c.ResponseHeader, challenge, err)
 		}
+		if token.replay != nil {
+			return token.replay, nil
+		}
 		return tokenBody(token, token.fields)
 	}
 	if grant == "authorization_code" {

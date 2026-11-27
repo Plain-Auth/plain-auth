@@ -57,7 +57,13 @@ type TokenOptions struct {
 	RevocationRateLimit *auth.RateLimitRule
 	RefreshPrefix       string
 	// RefreshLifetime defaults to 30 days and is independent of the access token lifetime.
-	RefreshLifetime      time.Duration
+	RefreshLifetime time.Duration
+	// RefreshReuseInterval lets a client retry a refresh exchange whose
+	// answer it lost: within this many whole seconds of a rotation, the
+	// rotated refresh token presented again with the same scopes, resources
+	// and DPoP key gets the same response. Zero, the default, treats any
+	// reuse as replay and ends the family.
+	RefreshReuseInterval time.Duration
 	GenerateRefreshToken func(context.Context) (string, error)
 	// EncodeRefreshToken formats an issued refresh credential for its session.
 	// The configured prefix is added after encoding. Supply a corresponding decoder.
@@ -80,6 +86,9 @@ func (opts *TokenOptions) defaults() error {
 	}
 	if opts.RefreshLifetime < time.Second || opts.RefreshLifetime%time.Second != 0 {
 		return errors.New("oauthprovider: refresh token lifetime must be a positive whole number of seconds")
+	}
+	if opts.RefreshReuseInterval < 0 || opts.RefreshReuseInterval%time.Second != 0 {
+		return errors.New("oauthprovider: refresh reuse interval must be zero or a positive whole number of seconds")
 	}
 	if opts.EncodeRefreshToken != nil && opts.DecodeRefreshToken == nil {
 		return errors.New("oauthprovider: a refresh token encoder requires a matching decoder")

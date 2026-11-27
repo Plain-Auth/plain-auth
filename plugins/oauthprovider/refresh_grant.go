@@ -1,9 +1,12 @@
 package oauthprovider
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"net/url"
+	"reflect"
 	"slices"
 	"time"
 
@@ -24,7 +27,45 @@ type RefreshGrant struct {
 
 // RefreshGrantDigests contains only the storage keys of the credentials issued
 // for a refresh exchange. Refresh is empty for an access-only exchange.
-type RefreshGrantDigests struct{ Access, Refresh string }
+// Replay, with a reuse interval, is the sealed response the store keeps on
+// the rotated parent until the record's ReplayUntil.
+type RefreshGrantDigests struct{ Access, Refresh, Replay string }
+
+// RefreshReplay is what a store returns when a rotated refresh token is
+// presented again inside its reuse interval: the response sealed at
+// rotation, which the issuer opens and sends again for an identical request.
+type RefreshReplay struct{ Response string }
+
+func (*RefreshReplay) Error() string {
+	return "oauthprovider: refresh token reused inside its interval"
+}
+
+// refreshReplay is the sealed request and response of a rotation.
+type refreshReplay struct {
+	Request  refreshReplayRequest `json:"request"`
+	Response map[string]any       `json:"response"`
+}
+
+type refreshReplayRequest struct {
+	Scopes       []string          `json:"effectiveScopes"`
+	Resources    []string          `json:"requestedResources,omitempty"`
+	Confirmation map[string]string `json:"confirmation,omitempty"`
+}
+
+func newReplayRequest(scopes, resources []string, thumb string) refreshReplayRequest {
+	r := refreshReplayRequest{Scopes: slices.Sorted(slices.Values(distinct(scopes)))}
+	if len(resources) > 0 {
+		r.Resources = slices.Sorted(slices.Values(distinct(resources)))
+	}
+	if thumb != "" {
+		r.Confirmation = map[string]string{"jkt": thumb}
+	}
+	return r
+}
+
+// refreshReplayPurpose binds a sealed response to the refresh token it
+// rotated.
+func refreshReplayPurpose(digest string) string { return "oauth-refresh-replay:" + digest }
 
 // RefreshGrantStore authenticates the current registration before reading the
 // grant, rejects expired or foreign credentials and serializes reuse handling.
@@ -89,6 +130,8 @@ func (opts Options) exchangeRefreshGrant(c auth.EndpointContext, in tokenRequest
 	// issue phase instead of stored, for the grant's user and live session.
 	var signing *delegatedSigning
 	var signingUser, signingSID string
+	// replayRequest is the exchange's request as a reuse retry compares it.
+	var replayRequest refreshReplayRequest
 	openidStore, supportsOpenID := store.(OpenIDGrantStore)
 	prepare := func(client AuthorizationCodeClient, grant RefreshGrant) (DelegatedAccessRecord, error) {
 		signing, signingUser, signingSID = nil, grant.UserID, ""
@@ -156,7 +199,11 @@ func (opts Options) exchangeRefreshGrant(c auth.EndpointContext, in tokenRequest
 			// The rotated token keeps the family's resources, and its
 			// lifetime counts from rotation.
 			record.Refresh = &InitialRefreshGrant{ExpiresAt: now.Add(refreshLifetime), Resources: kept}
+			if opts.Tokens.RefreshReuseInterval > 0 {
+				record.ReplayUntil = now.Add(opts.Tokens.RefreshReuseInterval)
+			}
 		}
+		replayRequest = newReplayRequest(scopes, effective, thumb)
 		if (opts.Tokens.CustomTokenResponseFields != nil || signing != nil && opts.contributesAccessClaims()) && record.IDTokenUserFields == nil {
 			record.IDTokenUserFields = c.TrustedUserFields()
 		}
@@ -199,6 +246,11 @@ func (opts Options) exchangeRefreshGrant(c auth.EndpointContext, in tokenRequest
 				if err == nil && grant.IDToken.Subject != "" {
 					result.IDToken, err = opts.Tokens.signIDToken(c, in.id, access, grant.IDToken, now, opts.idTokenSecret(in), opts.idTokenContributors("refresh_token"))
 				}
+				// With a reuse interval, the whole response is sealed for the
+				// rotated parent, with the request a retry must repeat.
+				if err == nil && grant.Refresh && opts.Tokens.RefreshReuseInterval > 0 {
+					keys.Replay, err = opts.sealRefreshReplay(c, digest, replayRequest, result, access, fields)
+				}
 				return keys, err
 			})
 		} else {
@@ -217,6 +269,10 @@ func (opts Options) exchangeRefreshGrant(c auth.EndpointContext, in tokenRequest
 	}
 	if errors.Is(err, errResourcePolicyNeeded) {
 		err = registrationProblem(400, "invalid_request", "resource policy changed during issuance, retry the request")
+	}
+	var reuse *RefreshReplay
+	if errors.As(err, &reuse) {
+		return opts.openRefreshReplay(c, digest, replayRequest, reuse.Response)
 	}
 	if errors.Is(err, ErrInvalidRefreshToken) {
 		err = registrationProblem(400, "invalid_grant", "invalid refresh token")
@@ -281,4 +337,54 @@ func (grant RefreshGrant) refreshResources(requested []string) (effective, kept 
 		}
 	}
 	return effective, kept, nil
+}
+
+// sealRefreshReplay encrypts the response a rotation sends, bound to the
+// rotated refresh token.
+func (opts Options) sealRefreshReplay(c auth.EndpointContext, digest string, request refreshReplayRequest, result DelegatedToken, access string, fields map[string]any) (string, error) {
+	result.AccessToken = access
+	body, err := tokenBody(result, fields)
+	if err != nil {
+		return "", err
+	}
+	raw, err := json.Marshal(body)
+	if err != nil {
+		return "", err
+	}
+	var response map[string]any
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.UseNumber()
+	if err := decoder.Decode(&response); err != nil {
+		return "", err
+	}
+	sealed, err := json.Marshal(refreshReplay{Request: request, Response: response})
+	if err != nil {
+		return "", err
+	}
+	return c.Auth.EncryptRecord(refreshReplayPurpose(digest), sealed)
+}
+
+// openRefreshReplay sends the sealed response again when the retry repeats
+// the rotation's scopes, resources and DPoP key, with expires_in counted
+// again from now, as another runtime does. Any other reuse inside the
+// interval, or a record that does not open, answers invalid_grant and keeps
+// the family.
+func (opts Options) openRefreshReplay(c auth.EndpointContext, digest string, request refreshReplayRequest, sealed string) (DelegatedToken, error) {
+	invalid := registrationProblem(400, "invalid_grant", "invalid refresh token")
+	raw, err := c.Auth.DecryptRecord(refreshReplayPurpose(digest), sealed)
+	if err != nil {
+		return DelegatedToken{}, invalid
+	}
+	var replay refreshReplay
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.UseNumber()
+	if decoder.Decode(&replay) != nil || replay.Response == nil || !reflect.DeepEqual(replay.Request, request) {
+		return DelegatedToken{}, invalid
+	}
+	if expires, ok := replay.Response["expires_at"].(json.Number); ok {
+		if at, err := expires.Int64(); err == nil {
+			replay.Response["expires_in"] = max(0, at-time.Now().Unix())
+		}
+	}
+	return DelegatedToken{replay: replay.Response}, nil
 }

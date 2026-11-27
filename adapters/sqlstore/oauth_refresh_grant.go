@@ -79,6 +79,11 @@ func (s *Store) exchangeRefresh(ctx context.Context, clientID, digest string, ch
 			if err := tx.Commit(); err != nil {
 				return err
 			}
+			return op.ErrInvalidRefreshToken
+		}
+		// Inside the interval the issuer may send the sealed response again.
+		if parent.replay != nil && *parent.replay != "" {
+			return &op.RefreshReplay{Response: *parent.replay}
 		}
 		return op.ErrInvalidRefreshToken
 	}
@@ -100,7 +105,13 @@ func (s *Store) exchangeRefresh(ctx context.Context, clientID, digest string, ch
 	if record.Refresh != nil {
 		record.Refresh.AuthTime = parent.authTime
 		stamp := s.date(record.IssuedAt)
-		res, err := tx.ExecContext(ctx, s.bind(`UPDATE "oauthRefreshToken" SET "revoked"=?, "rotatedAt"=? WHERE "id"=`+s.exactSQLValue("?")+` AND "revoked" IS NULL`), stamp, stamp, parent.id)
+		// A reuse interval keeps the sealed response with the rotation, in
+		// the same write, so no interval opens without its record.
+		var replayUntil, replay any
+		if !record.ReplayUntil.IsZero() && pending.keys.Replay != "" {
+			replayUntil, replay = s.date(record.ReplayUntil), pending.keys.Replay
+		}
+		res, err := tx.ExecContext(ctx, s.bind(`UPDATE "oauthRefreshToken" SET "revoked"=?, "rotatedAt"=?, "rotationReplayExpiresAt"=?, "rotationReplayResponse"=? WHERE "id"=`+s.exactSQLValue("?")+` AND "revoked" IS NULL`), stamp, stamp, replayUntil, replay, parent.id)
 		if err != nil {
 			return err
 		}
@@ -130,6 +141,9 @@ type refreshParent struct {
 	code, session, reference                  *string
 	authTime, revoked, rotatedAt, replayUntil *time.Time
 	claims                                    []string
+	// replay is the response sealed at rotation, for a retry inside the
+	// reuse interval.
+	replay *string
 }
 
 func (s *Store) readRefreshParent(ctx context.Context, tx *sql.Tx, clientID, digest string) (refreshParent, error) {
@@ -137,8 +151,8 @@ func (s *Store) readRefreshParent(ctx context.Context, tx *sql.Tx, clientID, dig
 	var expires time.Time
 	var scopes, resources, claims, confirmation []byte
 	param := s.exactSQLValue("?")
-	query := `SELECT "id","userId","sessionId","authorizationCodeId","referenceId","authTime","revoked","rotatedAt","rotationReplayExpiresAt","expiresAt","scopes","resources","requestedUserInfoClaims","confirmation" FROM "oauthRefreshToken" WHERE "clientId"=` + param + ` AND "token"=` + param
-	err := tx.QueryRowContext(ctx, s.readForUpdate(query), clientID, digest).Scan(&parent.id, &parent.UserID, &parent.session, &parent.code, &parent.reference, &parent.authTime, &parent.revoked, &parent.rotatedAt, &parent.replayUntil, &expires, &scopes, &resources, &claims, &confirmation)
+	query := `SELECT "id","userId","sessionId","authorizationCodeId","referenceId","authTime","revoked","rotatedAt","rotationReplayExpiresAt","expiresAt","scopes","resources","requestedUserInfoClaims","confirmation","rotationReplayResponse" FROM "oauthRefreshToken" WHERE "clientId"=` + param + ` AND "token"=` + param
+	err := tx.QueryRowContext(ctx, s.readForUpdate(query), clientID, digest).Scan(&parent.id, &parent.UserID, &parent.session, &parent.code, &parent.reference, &parent.authTime, &parent.revoked, &parent.rotatedAt, &parent.replayUntil, &expires, &scopes, &resources, &claims, &confirmation, &parent.replay)
 	if errors.Is(err, sql.ErrNoRows) {
 		return parent, op.ErrInvalidRefreshToken
 	}

@@ -17612,6 +17612,12 @@
       "label": "Rotate an independently issued refresh token, narrow its scopes, renew offline access after session expiry and invalidate reused grants",
       "test": "conformance/oauth-refresh-grant.mjs",
       "marker": "export async function exerciseRefreshGrant("
+    },
+    {
+      "label": "Exchange codes and refresh tokens for resources, with DPoP binding and a refresh reuse interval, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_refresh_replay_test.go",
+      "marker": "func TestRefreshReuseInterval(",
+      "complete": true
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/m2mAccessTokenExpiresIn": [
@@ -18201,6 +18207,12 @@
       "label": "Exchange refresh tokens through the Go OAuth client and verify atomic replacement, callback failures and concurrent reuse on all three engines",
       "test": "adapters/sqlstore/oauth_refresh_grant_test.go",
       "marker": "func TestRefreshGrantExchange("
+    },
+    {
+      "label": "Replay a rotation's response to an identical retry inside the reuse interval, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_refresh_replay_test.go",
+      "marker": "func TestRefreshReuseInterval(",
+      "complete": true
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/pairwiseSecret": [
@@ -49284,6 +49296,30 @@
       "label": "Answer invalid_dpop_proof for a missing proof or a proof by another key at the code and refresh exchanges, keeping the code or parent, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_dpop_grants_test.go",
       "marker": "func TestDPoPBoundDelegatedGrants(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/refreshTokenReuseInterval": [
+    {
+      "label": "Replay a rotation's sealed response to an identical retry inside the interval, refuse other retries keeping the family, and end the family after the interval or without one, on SQLite, PostgreSQL and MySQL; storing the record with the rotation is a documented deviation",
+      "test": "adapters/sqlstore/oauth_refresh_replay_test.go",
+      "marker": "func TestRefreshReuseInterval(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthRefreshToken": [
+    {
+      "label": "Store a refresh token's resources, DPoP confirmation and sealed rotation response with its replay expiry, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_refresh_replay_test.go",
+      "marker": "t.Fatal(\"an identical retry did not get the same response\", status, again, first)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L220": [
+    {
+      "label": "Configure the refresh reuse interval, with the provider's lifetimes, DPoP, HS256 ID tokens and pushed requests covered by their tests, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_refresh_replay_test.go",
+      "marker": "func TestRefreshReuseInterval(",
       "complete": true
     }
   ]
