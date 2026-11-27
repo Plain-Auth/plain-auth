@@ -46,17 +46,56 @@ The example requires a verified email before starting Checkout or changing a pla
   "seats": 5,
   "successUrl": "/billing/success",
   "cancelUrl": "/billing",
+  "locale": "en",
   "disableRedirect": true
 }
 ```
 
-The response provides the Checkout Session `id`, the hosted `url` and a `redirect` preference. Use the returned URL to open Checkout. Both callback URLs must resolve to an allowed application origin. The return handler can confirm a completed Checkout Session with Stripe before sending the customer to your page. Signed webhooks also confirm Checkout and keep the subscription current afterward.
+`locale` sets Checkout's display language, as another runtime does; omit it, or send an empty string, to let Checkout use the browser's language. In Go, set `stripeclient.Checkout.Locale`. The locale is stored with the purchase, so a retry of a pending purchase reopens it with its stored locale, without comparing the new one; one longer than 35 bytes answers 400, since no Stripe locale comes close. A plan change ignores it, as in another runtime. Checkout also saves the buyer's address, and a person's name, onto the existing customer. An unknown request field answers 400 `UNSUPPORTED_CHECKOUT_OPTION`, where another runtime drops it, so a misspelled field is never silently ignored. [Locale tests](../adapters/sqlstore/stripe_checkout_release_test.go)
+
+The response is Stripe's Checkout Session, with its `id` and hosted `url`, plus a `redirect` preference, as in another runtime. A retry of a pending purchase reads the session from Stripe again and answers its current state, or only `id`, `url` and `redirect` when that read fails; nothing from Stripe is stored. In Go, `stripeclient.HostedPage.Session` holds the session. Use the returned URL to open Checkout. Both callback URLs must resolve to an allowed application origin. The return handler can confirm a completed Checkout Session with Stripe before sending the customer to your page. Signed webhooks also confirm Checkout and keep the subscription current afterward.
 
 For a licensed plan with manually selected quantities, pass a whole-number `seats` value or set `stripeclient.Checkout.Seats` in Go. Omission or zero selects one seat. Values above 2,147,483,647, fractions and negative quantities return HTTP 400. The SQL store records the chosen quantity with the checkout. Retrying with a different quantity while that purchase is pending returns HTTP 409. The SQL adapters verify the completed Checkout Session’s original line-item price and quantity against the reservation, then store the subscription’s current terms. If a customer buys five seats and changes to eight before either webhook arrives, the list shows eight. Historical single-seat reservations retain the checks supported by their saved data. [Seat quantity and retry tests](../adapters/sqlstore/subscriptions_test.go)
 
 A purchase whose stored reservation would exceed 56 KiB, such as one with very long callback URLs, answers HTTP 400 `CHECKOUT_TOO_LARGE` before any row is written or Stripe is asked to create anything, so the reservation fits every supported store's column, although Stripe might accept such URLs. An existing local Stripe customer is reused. For a user without one with a verified email, the server searches Stripe for that email's customer, excluding organization customers, with a list by email when search is unavailable, and reuses the first match whose `userId` metadata is empty or the user's, as another runtime does. Otherwise it creates a customer with the user's email, name and server-owned metadata, and persists the association. Unlike another runtime, an unverified email is not looked up, so a lookup outage cannot block that purchase; and a new customer is created when the match is held elsewhere. As in another runtime, the creation sends no idempotency key of its own, since Stripe replays a key's first answer, an error included, for a day. Two identical purchases at once settle on the first customer bound, and the other request deletes the customer it created; a response lost after Stripe created a customer can leave it unbound, which a later search for a verified email finds once Stripe indexes it. A match another account, personal or organization, already holds is not shared. [Customer lookup tests](../adapters/sqlstore/stripe_customer_lookup_test.go) The SQL store serializes reservations per owner and releases its lock before contacting Stripe. Identical requests reuse the local subscription, Stripe idempotency key and cached Checkout Session. A different purchase returns HTTP 409 while that checkout is pending. [Stripe idempotent requests](https://docs.stripe.com/api/idempotent_requests)
 
 A checkout expires after 23 hours. Its signed expiration event releases the reservation. If an outcome remains ambiguous, the server keeps the reservation and returns `CHECKOUT_RECONCILIATION_REQUIRED`. Inspect the matching Stripe Checkout Session and redeliver its completion or expiration event before starting a replacement. For a reservation that never reached Stripe, verify the absence of the remote checkout before clearing the incomplete reservation administratively.
+
+## Customize the Checkout Session
+
+Set `CheckoutSessionParams` to add Stripe Checkout Session parameters to a new purchase, as another runtime's `getCheckoutSessionParams` does:
+
+```go
+subscriptions := &stripeplugin.SubscriptionOptions{
+    Client: stripeClient,
+    Plans:  plans,
+    CheckoutSessionParams: func(ctx context.Context, in stripeplugin.CheckoutSessionInput) (*stripesdk.CheckoutSessionCreateParams, error) {
+        return &stripesdk.CheckoutSessionCreateParams{
+            AllowPromotionCodes: stripesdk.Bool(true),
+            TaxIDCollection:     &stripesdk.CheckoutSessionCreateTaxIDCollectionParams{Enabled: stripesdk.Bool(true)},
+            Metadata:            map[string]string{"planType": "business"},
+        }, nil
+    },
+}
+```
+
+The plugin keeps its own mode, customer, success and cancel URLs, client reference, line items, expiry, hosted page settings, trial and idempotency key, whatever the hook returns, so a recovered session always matches the reservation; host metadata merges beneath the plugin's keys (`userId`, `referenceId`, `subscriptionId`, `checkoutAttemptId`, `customerType`, `organizationId`), which signed webhooks trust. A request's `locale` wins over the hook's, and the hook's `CustomerUpdate` replaces the default.
+
+The hook differs from another runtime's in these ways, for simplicity and identical retries:
+
+- It runs once per new purchase, before the purchase is reserved and outside any store transaction, so its input has no local subscription ID, no trial decision, and `Seats` 0 for a membership plan. A retry of a pending purchase reuses the stored result, and of concurrent first requests, the first stored result wins. Another runtime calls it on every upgrade.
+- A returned idempotency key is ignored; a connected account, request headers or extra values answer 500, since a stored reservation cannot replay them.
+- The stored parameters are limited to 16 KiB, and a larger result answers 500.
+
+Return a `*plainauth.APIError` to refuse the purchase with that status and code; any other error answers 500 and is logged without its text. Nothing is reserved in either case. A Stripe refusal of the parameters releases the purchase as any refusal does. The parameters are stored with the reservation until it finishes, so configure the hook only after every replica runs a release that stores them. [Checkout parameter tests](../adapters/sqlstore/stripe_checkout_release_test.go)
+
+### Collect tax IDs
+
+Return `TaxIDCollection: &stripesdk.CheckoutSessionCreateTaxIDCollectionParams{Enabled: stripesdk.Bool(true)}`. For an organization purchase, also return `CustomerUpdate` with `Name: stripesdk.String("auto")` so Stripe can save the business name, as in another runtime.
+
+### Calculate tax automatically
+
+Return `AutomaticTax: &stripesdk.CheckoutSessionCreateAutomaticTaxParams{Enabled: stripesdk.Bool(true)}`. It needs Stripe Tax configured in your account.
 
 ## Offer a free trial
 

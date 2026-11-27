@@ -3627,6 +3627,21 @@
       "label": "Refuse a reservation too large for every SQL store before any row or Stripe write, and store one just under the limit intact, on three SQL engines",
       "test": "adapters/sqlstore/stripe_checkout_release_test.go",
       "marker": "func TestCheckoutReservationSize("
+    },
+    {
+      "label": "Send the requested locale and default customer updates to Checkout, and refuse invalid locales and unknown fields before Stripe, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_checkout_release_test.go",
+      "marker": "func TestCheckoutLocale("
+    },
+    {
+      "label": "Answer Stripe's Checkout Session with a redirect preference, read it again on a pending retry without a second creation, and store nothing from Stripe, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_checkout_release_test.go",
+      "marker": "func TestCheckoutSessionResponse("
+    },
+    {
+      "label": "Answer the same Checkout Session plus redirect through the browser client on both runtimes",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "assert.deepEqual(purchase, { ...JSON.parse(JSON.stringify(remote.state.checkout)), redirect: false });"
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L221": [
@@ -3639,6 +3654,16 @@
       "label": "Reuse an existing Stripe customer when starting a monthly subscription",
       "test": "adapters/sqlstore/subscriptions_test.go",
       "marker": "monthly checkout failed to reuse the linked customer"
+    },
+    {
+      "label": "Accept a Checkout locale and refuse unknown request fields before Stripe, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_checkout_release_test.go",
+      "marker": "func TestCheckoutLocale("
+    },
+    {
+      "label": "Answer the same Checkout Session plus redirect through the browser client on both runtimes",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "assert.deepEqual(purchase, { ...JSON.parse(JSON.stringify(remote.state.checkout)), redirect: false });"
     }
   ],
   "plugin/stripe/GET /subscription/list": [
@@ -51727,6 +51752,84 @@
       "label": "Accept a plan group as an application label alongside its limits",
       "test": "plugins/stripe/plans_test.go",
       "marker": "func TestPlanMetadataConfiguration("
+    }
+  ],
+  "plugin-symbol/stripe/CheckoutSessionLocale": [
+    {
+      "label": "Send the requested Checkout locale, keep the stored one on a retry, omit an empty one and refuse a non-string or over-long one before Stripe, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_checkout_release_test.go",
+      "marker": "func TestCheckoutLocale(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L260/Parameter `locale` (optional)": [
+    {
+      "label": "Send the requested Checkout locale, keep the stored one on a retry, omit an empty one and refuse a non-string or over-long one before Stripe, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_checkout_release_test.go",
+      "marker": "func TestCheckoutLocale(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L286/Simple Example:": [
+    {
+      "label": "Accept the documented upgrade request with a locale for a person and an organization, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_checkout_release_test.go",
+      "marker": "func TestCheckoutLocale("
+    },
+    {
+      "label": "Create a Checkout Session and answer it with a redirect preference, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_checkout_release_test.go",
+      "marker": "func TestCheckoutSessionResponse("
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L1049": [
+    {
+      "label": "Let Checkout save the buyer's address, and a person's name, onto the existing customer by default, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_checkout_release_test.go",
+      "marker": "func TestCheckoutLocale("
+    },
+    {
+      "label": "Collect tax IDs through the host's Checkout parameters, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_checkout_release_test.go",
+      "marker": "func TestCheckoutSessionParams(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L1068": [
+    {
+      "label": "Let Checkout save the buyer's address, and a person's name, onto the existing customer by default, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_checkout_release_test.go",
+      "marker": "func TestCheckoutLocale("
+    },
+    {
+      "label": "Enable automatic tax through the host's Checkout parameters, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_checkout_release_test.go",
+      "marker": "func TestCheckoutSessionParams(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/stripe/SubscriptionOptions/getCheckoutSessionParams": [
+    {
+      "label": "Send the host's Checkout parameters to a new purchase once, beneath the plugin's owned fields and metadata keys, reuse them on a retry, and reserve nothing when the hook refuses or fails, for personal and organization purchases on three SQL engines",
+      "test": "adapters/sqlstore/stripe_checkout_release_test.go",
+      "marker": "func TestCheckoutSessionParams(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L862/`getCheckoutSessionParams`": [
+    {
+      "label": "Send the host's Checkout parameters to a new purchase once, beneath the plugin's owned fields and metadata keys, reuse them on a retry, and reserve nothing when the hook refuses or fails, for personal and organization purchases on three SQL engines",
+      "test": "adapters/sqlstore/stripe_checkout_release_test.go",
+      "marker": "func TestCheckoutSessionParams(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L1019": [
+    {
+      "label": "Send the host's Checkout parameters to a new purchase once, beneath the plugin's owned fields and metadata keys, reuse them on a retry, and reserve nothing when the hook refuses or fails, for personal and organization purchases on three SQL engines",
+      "test": "adapters/sqlstore/stripe_checkout_release_test.go",
+      "marker": "func TestCheckoutSessionParams(",
+      "complete": true
     }
   ]
 }

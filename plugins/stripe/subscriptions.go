@@ -91,6 +91,17 @@ type SubscriptionOptions struct {
 	Plans  []Plan
 	// RequireEmailVerification restricts starting Checkout to a verified owner.
 	RequireEmailVerification bool
+	// CheckoutSessionParams adds Stripe Checkout Session parameters, such as
+	// tax ID collection, automatic tax or promotion codes, to a new purchase.
+	// It runs once per new purchase, before the purchase is reserved and
+	// outside any store transaction; retries of a pending purchase reuse the
+	// stored result, and of concurrent first requests the first stored
+	// result wins. The plugin keeps its mode, customer, URLs, line items,
+	// expiry, trial and idempotency key, and its metadata keys win. Return a
+	// *plainauth.APIError to refuse the purchase with that status. Configure
+	// it only after every replica runs a release that stores Checkout
+	// parameters.
+	CheckoutSessionParams func(context.Context, CheckoutSessionInput) (*sdk.CheckoutSessionCreateParams, error)
 	// OnSubscriptionUpdate runs after a signed subscription update commits.
 	OnSubscriptionUpdate   func(context.Context, SubscriptionUpdate) error
 	OnSubscriptionCreated  func(context.Context, SubscriptionCreated) error
@@ -142,6 +153,14 @@ type CheckoutAttempt struct {
 	// RetainCompletion keeps the settled checkout binding for signed callbacks.
 	RetainCompletion bool  `json:"retainCompletion,omitempty"`
 	SettledAt        int64 `json:"settledAt,omitempty"`
+	// CheckoutParams holds the host's Checkout parameters fixed when the
+	// purchase was reserved, so every attempt sends an identical request. A
+	// replica on an earlier release drops it when it edits the reservation.
+	CheckoutParams json.RawMessage `json:"checkoutParams,omitempty"`
+	// Locale is the Checkout display language the client asked for; empty
+	// lets Checkout use the browser's. A retry of the purchase reopens it
+	// with the stored locale.
+	Locale string `json:"locale,omitempty"`
 	// ReturnURL holds the provider success URL issued for this reservation.
 	// Older reservations use their stored SuccessURL directly.
 	ReturnURL                                                                                                     string
@@ -198,6 +217,7 @@ var (
 type subscriptionPrice struct{ plan, interval string }
 
 type subscriptions struct {
+	checkoutParams                              func(context.Context, CheckoutSessionInput) (*sdk.CheckoutSessionCreateParams, error)
 	organization                                *OrganizationOptions
 	prices                                      map[string]subscriptionPrice
 	client                                      *sdk.Client
@@ -219,7 +239,7 @@ func configureSubscriptions(o *SubscriptionOptions) (*subscriptions, error) {
 	if o.Client == nil || len(o.Plans) == 0 {
 		return nil, errors.New("stripe: subscriptions require a client and plans")
 	}
-	s := &subscriptions{client: o.Client, plans: map[string]Plan{}, requireEmailVerification: o.RequireEmailVerification, onUpdate: o.OnSubscriptionUpdate, onCreated: o.OnSubscriptionCreated, onCancel: o.OnSubscriptionCancel, onDeleted: o.OnSubscriptionDeleted, onComplete: o.OnSubscriptionComplete}
+	s := &subscriptions{client: o.Client, plans: map[string]Plan{}, requireEmailVerification: o.RequireEmailVerification, onUpdate: o.OnSubscriptionUpdate, onCreated: o.OnSubscriptionCreated, onCancel: o.OnSubscriptionCancel, onDeleted: o.OnSubscriptionDeleted, onComplete: o.OnSubscriptionComplete, checkoutParams: o.CheckoutSessionParams}
 	s.prices = make(map[string]subscriptionPrice)
 	for _, p := range o.Plans {
 		if p.FreeTrial != nil {
@@ -308,10 +328,18 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 	}
 	for key := range c.Body {
 		switch key {
-		case "plan", "successUrl", "cancelUrl", "returnUrl", "referenceId", "subscriptionId", "customerType", "annual", "disableRedirect", "scheduleAtPeriodEnd", "seats":
+		case "plan", "successUrl", "cancelUrl", "returnUrl", "referenceId", "subscriptionId", "customerType", "annual", "disableRedirect", "scheduleAtPeriodEnd", "seats", "locale":
 		default:
+			// An unknown key is refused, where another runtime strips it, so a
+			// caller never silently loses a field it believes it set.
 			return nil, billingError(400, "UNSUPPORTED_CHECKOUT_OPTION", "Unsupported checkout option")
 		}
+	}
+	// The locale is stored with the purchase before Stripe sees it, so one
+	// longer than any Stripe locale is refused; an empty one is absent.
+	locale, _ := c.Body["locale"].(string)
+	if len(locale) > 35 {
+		return nil, billingError(400, "VALIDATION_ERROR", "[body.locale] Invalid input")
 	}
 	success, _ := c.Body["successUrl"].(string)
 	success, err = c.CallbackURL(success)
@@ -374,7 +402,7 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 	}
 	ctx := c.Request.Context()
 	store := c.Store().(SubscriptionStore)
-	want := CheckoutAttempt{CheckPrice: true, RetainCompletion: s.onComplete != nil || p.FreeTrial != nil && p.FreeTrial.OnTrialStart != nil, MeteredPriceIDs: slices.Clone(p.MeteredPriceIDs), AutomaticSeats: automatic, Seats: quantity, Owner: selection.reference, Plan: p.Name, Interval: interval, Price: price, SuccessURL: success, CancelURL: cancel}
+	want := CheckoutAttempt{Locale: locale, CheckPrice: true, RetainCompletion: s.onComplete != nil || p.FreeTrial != nil && p.FreeTrial.OnTrialStart != nil, MeteredPriceIDs: slices.Clone(p.MeteredPriceIDs), AutomaticSeats: automatic, Seats: quantity, Owner: selection.reference, Plan: p.Name, Interval: interval, Price: price, SuccessURL: success, CancelURL: cancel}
 	if automatic && p.SeatPriceID != price {
 		want.SeatPrice = p.SeatPriceID
 	}
@@ -401,6 +429,17 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 	if errors.Is(err, ErrCheckoutPriceCheck) {
 		if err := s.prepareCheckoutPrices(ctx, &want); err != nil {
 			return nil, err
+		}
+		// A new purchase asks the host for its Checkout parameters once,
+		// before it is reserved; a retry reuses the stored result.
+		if s.checkoutParams != nil {
+			input := CheckoutSessionInput{User: ss.User, Session: ss.Session, Plan: p.clone(), ReferenceID: selection.reference, Organization: selection.organization, Interval: interval, Request: c.RequestMetadata()}
+			if !automatic {
+				input.Seats = quantity
+			}
+			if want.CheckoutParams, err = s.hostCheckoutParams(c, input); err != nil {
+				return nil, err
+			}
 		}
 		if _, supported := store.(SubscriptionLifecycleStore); (want.Metered || len(want.MeteredPriceIDs) > 0) && !supported {
 			return nil, billingError(409, "METERED_CHECKOUT_UNAVAILABLE", "Metered checkout requires subscription lifecycle storage")
@@ -436,6 +475,7 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 		}
 		a.Customer = customer
 	}
+	var body []byte
 	if a.CheckoutID == "" {
 		meta := map[string]string{"userId": a.creator(), "referenceId": a.Owner, "subscriptionId": a.LocalSubscription, "checkoutAttemptId": a.ID}
 		if selection.organization {
@@ -446,21 +486,10 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 		if a.ReturnURL != "" {
 			providerSuccess = a.ReturnURL
 		}
-		params := &sdk.CheckoutSessionCreateParams{
-			Mode:              sdk.String("subscription"),
-			Customer:          sdk.String(a.Customer),
-			ClientReferenceID: sdk.String(a.Owner),
-			SuccessURL:        sdk.String(providerSuccess),
-			CancelURL:         sdk.String(a.CancelURL),
-			ExpiresAt:         sdk.Int64(a.Expires),
-			LineItems:         a.checkoutLines(),
-			Metadata:          meta,
-			SubscriptionData:  &sdk.CheckoutSessionCreateSubscriptionDataParams{Metadata: meta},
+		params, err := a.checkoutSessionParams(meta, providerSuccess)
+		if err != nil {
+			return nil, err
 		}
-		if a.TrialDays > 0 {
-			params.SubscriptionData.TrialPeriodDays = sdk.Int64(a.TrialDays)
-		}
-		params.SetIdempotencyKey("auth-checkout-" + a.ID)
 		if selection.organization {
 			current, err := c.Store().(OrganizationBillingStore).StripeOrganizationAccount(ctx, ss.Session.Token, time.Now())
 			if err != nil {
@@ -493,6 +522,11 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 			return nil, err
 		}
 		a.CheckoutID, a.CheckoutURL = checkout.ID, checkout.URL
+		if checkout.LastResponse != nil {
+			body = checkout.LastResponse.RawJSON
+		}
+	} else {
+		body = s.pendingCheckoutBody(ctx, a.CheckoutID)
 	}
 	if selection.organization {
 		now, err := c.Store().(OrganizationBillingStore).StripeOrganizationAccount(ctx, ss.Session.Token, time.Now())
@@ -504,7 +538,30 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 		}
 	}
 	disable, _ := c.Body["disableRedirect"].(bool)
-	return map[string]any{"id": a.CheckoutID, "url": a.CheckoutURL, "redirect": !disable}, nil
+	return checkoutResponse(body, a, !disable), nil
+}
+
+// pendingCheckoutBody reads a pending purchase's Checkout Session again, so
+// a retry answers its current state; nothing from Stripe is stored. A
+// failed read answers nil.
+func (s *subscriptions) pendingCheckoutBody(ctx context.Context, id string) []byte {
+	session, err := s.client.V1CheckoutSessions.Retrieve(ctx, id, nil)
+	if err != nil || session == nil || session.ID != id || session.LastResponse == nil {
+		return nil
+	}
+	return session.LastResponse.RawJSON
+}
+
+// checkoutResponse answers Stripe's Checkout Session with a redirect
+// preference, as another runtime does, or the stored ID and URL when the
+// session could not be read.
+func checkoutResponse(body []byte, a CheckoutAttempt, redirect bool) any {
+	var out map[string]json.RawMessage
+	if len(body) == 0 || json.Unmarshal(body, &out) != nil || out == nil {
+		return map[string]any{"id": a.CheckoutID, "url": a.CheckoutURL, "redirect": redirect}
+	}
+	out["redirect"], _ = json.Marshal(redirect)
+	return out
 }
 
 func (s *subscriptions) handleCheckoutEvent(c auth.EndpointContext, event sdk.Event) error {

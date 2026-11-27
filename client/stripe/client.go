@@ -4,6 +4,7 @@ package stripe
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/url"
 
@@ -26,12 +27,19 @@ type Checkout struct {
 	SuccessURL          string `json:"successUrl,omitempty"`
 	CancelURL           string `json:"cancelUrl,omitempty"`
 	DisableRedirect     bool   `json:"disableRedirect,omitempty"`
+	// Locale is the Checkout display language, such as "ko"; empty lets
+	// Checkout use the browser's.
+	Locale string `json:"locale,omitempty"`
 }
 
 type HostedPage struct {
 	ID       string `json:"id,omitempty"`
 	URL      string `json:"url"`
 	Redirect bool   `json:"redirect"`
+	// Session is the Checkout Session a new purchase answers, read again
+	// for a pending purchase; nil when the server could not read it or the
+	// page is not a Checkout.
+	Session *sdk.CheckoutSession `json:"-"`
 }
 
 type Cancellation struct {
@@ -51,9 +59,21 @@ type Portal struct {
 }
 
 func (c Client) Upgrade(ctx context.Context, in Checkout) (HostedPage, error) {
+	var raw json.RawMessage
+	if err := c.Auth.Do(ctx, http.MethodPost, "/subscription/upgrade", in, &raw); err != nil {
+		return HostedPage{}, err
+	}
 	var page HostedPage
-	err := c.Auth.Do(ctx, http.MethodPost, "/subscription/upgrade", in, &page)
-	return page, err
+	if err := json.Unmarshal(raw, &page); err != nil {
+		return page, err
+	}
+	// A new purchase answers Stripe's Checkout Session; a plan change
+	// answers only a URL.
+	var session sdk.CheckoutSession
+	if json.Unmarshal(raw, &session) == nil && session.Object == "checkout.session" {
+		page.Session = &session
+	}
+	return page, nil
 }
 
 func (c Client) List(ctx context.Context) ([]billing.Subscription, error) {

@@ -139,6 +139,7 @@ export async function organizationBilling(t, { reference, goFixture, instrument 
     const purchase = checked(await owner.subscription.upgrade({ ...selector, plan: "basic", seats: 5, disableRedirect: true }));
     assert.equal(purchase.url, "https://checkout.example.test/org");
     assert.equal(purchase.redirect, false);
+    assert.deepEqual(purchase, { ...JSON.parse(JSON.stringify(remote.state.checkout)), redirect: false });
     assert.deepEqual(remote.state.customer.metadata, { organizationId: group.id, customerType: "organization" });
     assert.equal(remote.state.customer.name, group.name);
     assert.equal(remote.state.checkout.client_reference_id, group.id);

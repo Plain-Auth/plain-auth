@@ -31,6 +31,7 @@ var (
 		{"plan", "string", true}, {"annual", "boolean", false}, referenceField, subscriptionField,
 		customerTypeField, {"successUrl", "string", false}, {"cancelUrl", "string", false},
 		{"returnUrl", "string", false}, {"seats", "number", false}, redirectField, {"scheduleAtPeriodEnd", "boolean", false},
+		{"locale", "locale", false},
 	}
 )
 

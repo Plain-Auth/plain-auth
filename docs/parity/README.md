@@ -2,16 +2,16 @@
 
 ## Verification progress
 
-**3,068 of 6,419 inventory entries are fully verified (47.8%).**
+**3,075 of 6,419 inventory entries are fully verified (47.9%).**
 
 | Inventory status | Entries |
 | --- | ---: |
-| Fully verified | 3,068 |
-| Partially verified | 1,590 |
-| No linked test evidence | 1,761 |
+| Fully verified | 3,075 |
+| Partially verified | 1,591 |
+| No linked test evidence | 1,753 |
 | Not applicable to a Go server | 606 |
 
-The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 8,128 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
+The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 8,147 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
 
 Entries that exist only for JavaScript clients, frameworks or runtimes are listed as not applicable, with the reason, and are left out of the totals. Backlog entries stay open on the roadmap but are not scheduled.
 
@@ -75,7 +75,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 
 | Checklist | Checked | Open | Not applicable |
 | --- | ---: | ---: | ---: |
-| [Published package interfaces](packages.md) | 114 | 116 | 43 |
+| [Published package interfaces](packages.md) | 117 | 116 | 43 |
 | [Native Go client, routers and databases](go.md) | 51 | 3 | 0 |
 | [Core API, sign-in providers and CLI](runtime.md) | 559 | 104 | 32 |
 | [Database adapters](adapters.md) | 82 | 49 | 163 |
@@ -123,7 +123,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [SCIM provisioning](plugins/scim.md) | 701 | 43 | 6 |
 | [Sign in with Ethereum](plugins/siwe.md) | 122 | 7 | 0 |
 | [Single sign-on](plugins/sso.md) | 990 | 75 | 10 |
-| [Stripe](plugins/stripe.md) | 393 | 147 | 0 |
+| [Stripe](plugins/stripe.md) | 416 | 140 | 0 |
 | [Test utils](plugins/test-utils.md) | 86 | 10 | 1 |
 | [Username](plugins/username.md) | 126 | 23 | 2 |
 
