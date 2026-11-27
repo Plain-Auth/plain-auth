@@ -16918,6 +16918,12 @@
       "label": "Refuse refresh_token without authorization_code when the plugin is built",
       "test": "plugins/oauthprovider/openid_metadata_test.go",
       "marker": "t.Fatal(\"an unusable provider configuration was accepted\", name)"
+    },
+    {
+      "label": "Refuse a grant outside GrantTypes with unsupported_grant_type, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_grant_refusal_test.go",
+      "marker": "t.Fatal(\"a grant the issuer does not offer was not refused with unsupported_grant_type\", status, code)",
+      "complete": true
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/allowInsecureRedirectUri": [
@@ -47824,6 +47830,22 @@
       "label": "Default the authorization code lifetime to ten minutes",
       "test": "plugins/oauthprovider/machine_token_test.go",
       "marker": "t.Fatal(\"an unset lifetime did not take its default\"",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L380/`unauthorized_client`": [
+    {
+      "label": "Refuse client credentials to a client without that grant, a public client and a client without client-credentials scopes with unauthorized_client, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_grant_refusal_test.go",
+      "marker": "t.Fatal(\"a client credentials request was not refused with unauthorized_client\", id, status, code)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L381/`unsupported_grant_type`": [
+    {
+      "label": "Refuse a grant the issuer does not offer with unsupported_grant_type, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_grant_refusal_test.go",
+      "marker": "t.Fatal(\"a grant the issuer does not offer was not refused with unsupported_grant_type\", status, code)",
       "complete": true
     }
   ]

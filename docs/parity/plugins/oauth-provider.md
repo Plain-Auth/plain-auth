@@ -347,9 +347,10 @@
       - [x] Check the host create privilege for a signed-in registration ([test](../../../conformance/oauth-registration.mjs#L243))
       - [x] Apply the host privilege hook to authenticated create, read and list actions before checking ownership ([test](../../../conformance/oauth-client-directory.mjs#L98))
       - [x] Enforce the rotate privilege on the authenticated session before replacing a tenant credential ([test](../../../conformance/oauth-registration.mjs#L460))
-    - [ ] `grantTypes`
+    - [x] `grantTypes` ([test](../../../adapters/sqlstore/oauth_grant_refusal_test.go#L82))
       - [x] Register only the mutually supported requested grant types ([test](../../../conformance/oauth-registration.mjs#L210))
       - [x] Refuse refresh_token without authorization_code when the plugin is built ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L245))
+      - [x] Refuse a grant outside GrantTypes with unsupported_grant_type, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_grant_refusal_test.go#L82))
     - [x] `loginPage` ([test](../../../conformance/oauth-browser-login.mjs#L64))
       - [x] Open the configured host page for signed-out and forced login and return an error for silent requests ([test](../../../conformance/oauth-browser-login.mjs#L64))
     - [x] `consentPage` ([test](../../../conformance/oauth-browser-authorization.mjs#L57))
@@ -761,8 +762,10 @@
     - [ ] `invalid_client`
     - [ ] `invalid_grant`
     - [ ] `invalid_user`
-    - [ ] `unauthorized_client`
-    - [ ] `unsupported_grant_type`
+    - [x] `unauthorized_client` ([test](../../../adapters/sqlstore/oauth_grant_refusal_test.go#L74))
+      - [x] Refuse client credentials to a client without that grant, a public client and a client without client-credentials scopes with unauthorized_client, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_grant_refusal_test.go#L74))
+    - [x] `unsupported_grant_type` ([test](../../../adapters/sqlstore/oauth_grant_refusal_test.go#L82))
+      - [x] Refuse a grant the issuer does not offer with unsupported_grant_type, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_grant_refusal_test.go#L82))
     - [ ] `invalid_scope`
     - [ ] `invalid_target`
     - [ ] `invalid_dpop_proof`
