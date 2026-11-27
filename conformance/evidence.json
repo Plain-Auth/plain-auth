@@ -18059,6 +18059,11 @@
       "label": "Allow one concurrent use across independent SQL connections and recheck the registered key before issuing a token",
       "test": "adapters/sqlstore/oauth_client_assertion_test.go",
       "marker": "func TestOAuthClientAssertionAcrossPools("
+    },
+    {
+      "label": "Keep a cached remote key set verifying for ten minutes after the last success through any refetch failure but an invalid key set, refetching at most once a minute, and extend it for a discovery's transient failures",
+      "test": "plugins/oauthprovider/client_assertion_test.go",
+      "marker": "// Within twice the lifetime, any failure but an invalid key set leaves"
     }
   ],
   "docs/content/docs/plugins/oauth-provider/tokens.mdx#L16/`private_key_jwt`": [
@@ -50332,6 +50337,14 @@
       "label": "Resolve a client through the provider: a local row as is, a discovered one through its own discovery and hidden when that is gone, at every endpoint and behind tokens and consents, on SQLite, PostgreSQL and MySQL; no trusted-client cache precedes the read, as a documented deviation",
       "test": "adapters/sqlstore/oauth_client_discovery_test.go",
       "marker": "func TestClientDiscoveryLookups(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/ClientMetadataResourceFetch": [
+    {
+      "label": "Fetch a discovered client's remote keys through its discovery's transport, cached apart from managed clients' at the same URL, and refuse without a transport",
+      "test": "plugins/oauthprovider/client_assertion_test.go",
+      "marker": "func TestDiscoveredClientKeys(",
       "complete": true
     }
   ]

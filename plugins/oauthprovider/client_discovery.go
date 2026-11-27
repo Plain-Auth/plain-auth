@@ -29,6 +29,15 @@ type ClientDiscovery struct {
 	// transaction; false or an error refuses the jwks_uri, and an error is
 	// logged.
 	AllowCrossOriginJWKSURI func(ctx context.Context, clientID, jwksURI string) (bool, error)
+	// Transport fetches resources the discovery's clients publish, such as
+	// their jwks_uri; without one their remote keys cannot be read.
+	Transport http.RoundTripper
+	// JWKSStaleIfError keeps a client's cached keys verifying through
+	// transient fetch failures, a 500, 502, 503 or 504 answer, a timeout or a
+	// connection failure, up to this long after the last success and at most
+	// 24 hours. Any failure but an invalid key set already keeps them for
+	// twice the key set's five-minute lifetime.
+	JWKSStaleIfError time.Duration
 	// Metadata adds fields to the issuer's discovery documents, such as
 	// client_id_metadata_document_supported. A later discovery's field wins
 	// over an earlier one's; the provider's own fields always win.

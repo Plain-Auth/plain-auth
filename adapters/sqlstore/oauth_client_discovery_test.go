@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -28,8 +29,10 @@ type stubDiscovery struct {
 	calls atomic.Int32
 	mode  atomic.Value
 	// keys is the JWK set of a client ID naming keys.example.test, which
-	// authenticates with private_key_jwt.
-	keys string
+	// authenticates with private_key_jwt, inline, and of one naming
+	// remote.example.test, through its jwks_uri.
+	keys    string
+	fetches atomic.Int32
 }
 
 func (d *stubDiscovery) discovery(id string) op.ClientDiscovery {
@@ -48,6 +51,9 @@ func (d *stubDiscovery) discovery(id string) op.ClientDiscovery {
 			if strings.Contains(req.ClientID, "keys.example.test") {
 				raw = `{"client_id":"` + req.ClientID + `","grant_types":["client_credentials"],"token_endpoint_auth_method":"private_key_jwt","jwks":` + d.keys + `}`
 			}
+			if strings.Contains(req.ClientID, "remote.example.test") {
+				raw = `{"client_id":"` + req.ClientID + `","grant_types":["client_credentials"],"token_endpoint_auth_method":"private_key_jwt","jwks_uri":"https://remote.example.test/jwks"}`
+			}
 			doc, err := op.ParseClientMetadataDocument([]byte(raw))
 			if err != nil {
 				return nil, err
@@ -57,8 +63,17 @@ func (d *stubDiscovery) discovery(id string) op.ClientDiscovery {
 				return nil, err
 			}
 			return &result.Client, nil
-		}, Metadata: map[string]any{"client_id_metadata_document_supported": true}}
+		}, Metadata: map[string]any{"client_id_metadata_document_supported": true},
+		// The transport serves the keys of the clients' jwks_uri.
+		Transport: roundTrip(func(r *http.Request) (*http.Response, error) {
+			d.fetches.Add(1)
+			return &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": {"application/json"}}, Body: io.NopCloser(strings.NewReader(d.keys))}, nil
+		})}
 }
+
+type roundTrip func(*http.Request) (*http.Response, error)
+
+func (f roundTrip) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
 
 // Client discoveries resolve unknown client IDs at authorize, the directory,
 // prelogin and the provider API of an extension grant, a stored client
@@ -300,6 +315,17 @@ func TestClientDiscoveryLookups(t *testing.T) {
 			must(err)
 			if status, body := post(h, "/oauth2/introspect", url.Values{"client_assertion": {assertion}, "client_assertion_type": {op.ClientAssertionType}, "token": {"unknown"}}); status != 200 || body["active"] != false {
 				t.Fatal("a discovered client could not introspect", status, body)
+			}
+			// A client's jwks_uri on its own origin is read through the discovery.
+			const remote = "https://remote.example.test/client.json"
+			claims, err = json.Marshal(map[string]any{"iss": remote, "sub": remote, "aud": base + "/api/auth", "exp": time.Now().Unix() + 60, "jti": "introspect-2"})
+			must(err)
+			signed, err = signer.Sign(claims)
+			must(err)
+			remoteAssertion, err := signed.CompactSerialize()
+			must(err)
+			if status, body := post(h, "/oauth2/introspect", url.Values{"client_assertion": {remoteAssertion}, "client_assertion_type": {op.ClientAssertionType}, "token": {"unknown"}}); status != 200 || first.fetches.Load() != 1 {
+				t.Fatal("a discovered client's remote keys were not read through its discovery", status, body, first.fetches.Load())
 			}
 			// An owner cannot delete a discovered client, its keys are rotated
 			// where it publishes them, an admin sets its machine scopes without

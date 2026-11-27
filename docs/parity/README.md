@@ -2,16 +2,16 @@
 
 ## Verification progress
 
-**3,010 of 6,419 inventory entries are fully verified (46.9%).**
+**3,011 of 6,419 inventory entries are fully verified (46.9%).**
 
 | Inventory status | Entries |
 | --- | ---: |
-| Fully verified | 3,010 |
+| Fully verified | 3,011 |
 | Partially verified | 1,509 |
-| No linked test evidence | 1,900 |
+| No linked test evidence | 1,899 |
 | Not applicable to a Go server | 606 |
 
-The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 7,915 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
+The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 7,917 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
 
 Entries that exist only for JavaScript clients, frameworks or runtimes are listed as not applicable, with the reason, and are left out of the totals. Backlog entries stay open on the roadmap but are not scheduled.
 
@@ -112,7 +112,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Model Context Protocol](plugins/mcp.md) | 183 | 40 | 0 |
 | [Multi session](plugins/multi-session.md) | 64 | 2 | 0 |
 | [OAuth popup](plugins/oauth-popup.md) | 56 | 5 | 0 |
-| [OAuth provider](plugins/oauth-provider.md) | 1032 | 233 | 0 |
+| [OAuth provider](plugins/oauth-provider.md) | 1035 | 232 | 0 |
 | [OAuth proxy](plugins/oauth-proxy.md) | 27 | 5 | 1 |
 | [One tap](plugins/one-tap.md) | 78 | 9 | 0 |
 | [One time token](plugins/one-time-token.md) | 76 | 0 | 0 |

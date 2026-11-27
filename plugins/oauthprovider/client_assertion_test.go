@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -190,7 +191,7 @@ func TestRemoteAssertionKeyRotation(t *testing.T) {
 			return nil, errors.New("unexpected outbound request")
 		}
 		return &http.Response{StatusCode: status, Header: http.Header{"Content-Type": {media}}, Body: io.NopCloser(strings.NewReader(document)), ContentLength: -1}, nil
-	}))
+	}), nil)
 	key := func(uri, kid string) error {
 		_, err := cache.verificationKey(c, MachineClient{JWKSURI: uri}, jose.Header{KeyID: kid, Algorithm: "EdDSA"})
 		return err
@@ -216,37 +217,190 @@ func TestRemoteAssertionKeyRotation(t *testing.T) {
 	age := func(d time.Duration) {
 		cache.mu.Lock()
 		defer cache.mu.Unlock()
-		cache.sets[uri].fetched = time.Now().Add(-d)
+		cache.sets["managed:"+uri].fetched = time.Now().Add(-d)
+		cache.sets["managed:"+uri].retry = time.Time{}
 	}
 	age(6 * time.Minute)
 	status = 503
 	if err := key(uri, "new"); err != nil {
 		t.Fatal("cached key on transient failure", err)
 	}
+	// While the set answers after a failure, refetches wait a minute.
+	before := calls.Load()
+	if err := key(uri, "new"); err != nil || calls.Load() != before {
+		t.Fatal("a failed refresh was retried at once", err, calls.Load()-before)
+	}
 	age(11 * time.Minute)
 	if err := key(uri, "new"); err == nil {
 		t.Fatal("used a key beyond the stale limit")
 	}
+	// Within twice the lifetime, any failure but an invalid key set leaves
+	// the cached set answering.
 	for _, tc := range []struct {
 		status      int
 		media, data string
+		invalid     bool
 	}{
-		{410, "application/json", old}, {302, "application/json", old}, {200, "text/plain", old},
-		{200, "application/json", `{"keys":[]}`}, {200, "application/json", strings.Repeat(" ", maxClientKeyBytes) + old},
+		{410, "application/json", old, false}, {302, "application/json", old, false}, {200, "text/plain", old, false},
+		{200, "application/json", `{"keys":[]}`, true}, {200, "application/json", strings.Repeat(" ", 70<<10) + old, false},
 	} {
+		cache.mu.Lock()
+		delete(cache.sets, "managed:"+uri)
+		cache.mu.Unlock()
 		status, media, document = 200, "application/json", old
 		if err := key(uri, "old"); err != nil {
 			t.Fatal(err)
 		}
 		age(6 * time.Minute)
 		status, media, document = tc.status, tc.media, tc.data
-		if err := key(uri, "old"); err == nil {
-			t.Fatal("served keys after a terminal or malformed response")
+		if err := key(uri, "old"); (err == nil) == tc.invalid {
+			t.Fatal("the cached set answered wrongly after a failed refresh", tc.status, tc.media, tc.invalid, err)
+		}
+		if !tc.invalid {
+			// Beyond twice the lifetime only a discovery's stale bound keeps it.
+			age(11 * time.Minute)
+			if err := key(uri, "old"); err == nil {
+				t.Fatal("served keys beyond twice their lifetime", tc.status)
+			}
 		}
 		status = 503
 		if err := key(uri, "old"); err == nil {
 			t.Fatal("resurrected discarded keys")
 		}
+	}
+}
+
+// A discovered client's keys are cached apart from a managed client's at the
+// same URI and fetched through its discovery's transport; they may live on
+// the client ID's origin or where the discovery allows; a discovery without
+// a transport refuses; and its JWKSStaleIfError keeps cached keys through
+// transient failures beyond twice their lifetime, with a warning, until a
+// terminal failure.
+func TestDiscoveredClientKeys(t *testing.T) {
+	const id = "https://app.example.test/client.json"
+	const uri = "https://app.example.test/jwks"
+	var logs strings.Builder
+	host, err := auth.New(auth.Options{Store: memory.New(), BaseURL: "https://auth.example.test", Secret: strings.Repeat("s", 40), TrustedOrigins: []string{"https://trusted.example.test"},
+		Logger: slog.New(slog.NewTextHandler(&logs, nil))})
+	if err != nil {
+		t.Fatal(err)
+	}
+	pub, _, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := json.Marshal(jose.JSONWebKeySet{Keys: []jose.JSONWebKey{{Key: pub, KeyID: "k", Algorithm: "EdDSA"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	status := 200
+	var managed, discovered atomic.Int32
+	serve := func(counter *atomic.Int32) assertionTransport {
+		return func(r *http.Request) (*http.Response, error) {
+			counter.Add(1)
+			return &http.Response{StatusCode: status, Header: http.Header{"Content-Type": {"application/json"}}, Body: io.NopCloser(strings.NewReader(string(raw)))}, nil
+		}
+	}
+	allow := map[string]bool{"https://cdn.example.test/allowed": true, "https://10.0.0.1/allowed": true}
+	d := &ClientDiscovery{ID: "cimd", Transport: serve(&discovered), JWKSStaleIfError: time.Hour, AllowCrossOriginJWKSURI: func(_ context.Context, _, jwksURI string) (bool, error) {
+		if strings.Contains(jwksURI, "broken") {
+			return false, errors.New("hook down")
+		}
+		return allow[jwksURI], nil
+	}}
+	bare := &ClientDiscovery{ID: "bare"}
+	cache := newClientKeyCache(serve(&managed), []*ClientDiscovery{d, bare})
+	request := func(discovery string) auth.EndpointContext {
+		r := httptest.NewRequest(http.MethodPost, "https://auth.example.test/api/auth/oauth2/token", nil)
+		if discovery != "" {
+			r = r.WithContext(withResolvedDiscovery(r.Context(), id, discovery))
+		}
+		return auth.EndpointContext{Auth: host, Request: r}
+	}
+	key := func(discovery, jwksURI string) error {
+		_, err := cache.verificationKey(request(discovery), MachineClient{ClientID: id, JWKSURI: jwksURI}, jose.Header{KeyID: "k", Algorithm: "EdDSA"})
+		return err
+	}
+	const trusted = "https://trusted.example.test/jwks"
+	if err := key("cimd", trusted); err != nil || discovered.Load() != 1 || managed.Load() != 0 {
+		t.Fatal("a discovered client's keys were not fetched through its discovery", err, discovered.Load(), managed.Load())
+	}
+	if err := key("", trusted); err != nil || managed.Load() != 1 {
+		t.Fatal("a managed client shared the discovered client's keys", err, managed.Load())
+	}
+	// On its client ID's origin, a discovered client's jwks_uri needs no trust.
+	if err := key("cimd", uri); err != nil || discovered.Load() != 2 {
+		t.Fatal("a same-origin jwks_uri was refused", err)
+	}
+	if err := key("", uri); err == nil {
+		t.Fatal("a managed client's untrusted jwks_uri was accepted")
+	}
+	// The jwks_uri rule.
+	if err := key("cimd", "https://cdn.example.test/allowed"); err != nil {
+		t.Fatal("an allowed cross-origin jwks_uri was refused", err)
+	}
+	for _, refused := range []string{"https://cdn.example.test/denied", "https://cdn.example.test/broken", "https://10.0.0.1/allowed"} {
+		var oauthErr *auth.OAuthError
+		if err := key("cimd", refused); !errors.As(err, &oauthErr) || oauthErr.Description != "client jwks_uri is not trusted" {
+			t.Fatal("an untrusted jwks_uri was accepted", refused, err)
+		}
+	}
+	if !strings.Contains(logs.String(), "AllowCrossOriginJWKSURI failed") {
+		t.Fatal("the hook failure was not logged", logs.String())
+	}
+	var oauthErr *auth.OAuthError
+	if err := key("bare", uri); !errors.As(err, &oauthErr) || oauthErr.Description != "client discovery does not provide a metadata resource transport" {
+		t.Fatal("a discovery without a transport fetched keys", err)
+	}
+	// Beyond twice the lifetime, a transient failure within the stale bound
+	// keeps the keys, with a warning; a terminal one drops them.
+	age := func(d time.Duration) {
+		cache.mu.Lock()
+		defer cache.mu.Unlock()
+		cache.sets["cimd:"+uri].fetched = time.Now().Add(-d)
+		cache.sets["cimd:"+uri].retry = time.Time{}
+	}
+	for _, transient := range []int{500, 502, 504, 503} {
+		age(30 * time.Minute)
+		status = transient
+		if err := key("cimd", uri); err != nil || !strings.Contains(logs.String(), "is verifying client "+id+" with cached keys from "+uri+" because refreshing them failed") {
+			t.Fatal("a discovery's stale bound did not keep the keys", transient, err, logs.String())
+		}
+	}
+	fetches := discovered.Load()
+	if err := key("cimd", uri); err != nil || discovered.Load() != fetches {
+		t.Fatal("stale keys were refetched within a minute", err)
+	}
+	age(2 * time.Hour)
+	if err := key("cimd", uri); err == nil {
+		t.Fatal("keys were served beyond the stale bound")
+	}
+	status = 200
+	if err := key("cimd", uri); err != nil {
+		t.Fatal(err)
+	}
+	for _, terminal := range []int{404, 501} {
+		status = 200
+		if err := key("cimd", uri); err != nil {
+			t.Fatal(err)
+		}
+		age(30 * time.Minute)
+		status = terminal
+		if err := key("cimd", uri); err == nil {
+			t.Fatal("a terminal failure served stale keys", terminal)
+		}
+		status = 503
+		if err := key("cimd", uri); err == nil {
+			t.Fatal("stale keys returned after a terminal failure", terminal)
+		}
+	}
+	// The stale bound is never negative and at most a day.
+	never := func(string) bool { return false }
+	resolve := func(context.Context, DiscoveryRequest) (*DiscoveredClient, error) { return nil, nil }
+	bounded := Options{Extensions: []Extension{{ClientDiscoveries: []ClientDiscovery{{ID: "low", Matches: never, Resolve: resolve, JWKSStaleIfError: -time.Hour},
+		{ID: "high", Matches: never, Resolve: resolve, JWKSStaleIfError: 48 * time.Hour}}}}}
+	if err := bounded.collectDiscoveries(); err != nil || bounded.discoveries[0].JWKSStaleIfError != 0 || bounded.discoveries[1].JWKSStaleIfError != 24*time.Hour {
+		t.Fatal("the stale bound was not clamped", err)
 	}
 }
 
@@ -271,15 +425,16 @@ func TestClientKeyFetchSharesRequestsAndRespectsCancellation(t *testing.T) {
 			return nil, r.Context().Err()
 		}
 		return &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": {"application/json"}}, Body: io.NopCloser(strings.NewReader(string(raw)))}, nil
-	}))
+	}), nil)
 	const uri = "https://keys.example.test/public"
+	src := keySource{key: uri, uri: uri, http: cache.http, logger: slog.Default()}
 	ctx, cancel := context.WithCancel(t.Context())
 	first := make(chan error, 1)
-	go func() { _, err := cache.load(ctx, uri, nil, time.Time{}); first <- err }()
+	go func() { _, err := cache.load(ctx, src, nil, time.Time{}); first <- err }()
 	<-started
 	results := make(chan error, 8)
 	for range 8 {
-		go func() { _, err := cache.load(t.Context(), uri, nil, time.Time{}); results <- err }()
+		go func() { _, err := cache.load(t.Context(), src, nil, time.Time{}); results <- err }()
 	}
 	cancel()
 	if err := <-first; !errors.Is(err, context.Canceled) {

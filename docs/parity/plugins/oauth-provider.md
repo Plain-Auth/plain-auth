@@ -286,7 +286,8 @@
     - [x] Create a client from server code with consent skipping, end session, PKCE, machine scopes and metadata, approve machine scopes and requested resource links separately, link default resources and always return the machine scopes, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_admin_test.go#L25))
   - [ ] `Prompt`
   - [ ] `AuthorizePrompt`
-  - [ ] `ClientMetadataResourceFetch`
+  - [x] `ClientMetadataResourceFetch` ([test](../../../plugins/oauthprovider/client_assertion_test.go#L279))
+    - [x] Fetch a discovered client's remote keys through its discovery's transport, cached apart from managed clients' at the same URL, and refuse without a transport ([test](../../../plugins/oauthprovider/client_assertion_test.go#L279))
   - [ ] `ClientDiscovery`
   - [x] `OAuthAuthenticatedClient` ([test](../../../adapters/sqlstore/oauth_extension_grant_test.go#L138))
     - [x] Return the authenticated client's ID, registration, method and strategy confirmation from AuthenticateClient, refusing missing, wrong or unauthorized credentials, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_extension_grant_test.go#L138))
@@ -323,7 +324,7 @@
     - [x] Add an extension's ID token claims only where the token has none and never as protocol or standard profile claims, pass the account and grant type for code and refresh exchanges, and add its UserInfo claims under the standard ones, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_secret_id_token_test.go#L137))
   - [ ] `OAuthUserInfoExtensionInput`
   - [ ] `OAuthProviderExtension`
-    - [x] Carry client discoveries on a provider extension, consulted in extension order with the first match winning, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_discovery_test.go#L70))
+    - [x] Carry client discoveries on a provider extension, consulted in extension order with the first match winning, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_discovery_test.go#L85))
   - [x] `InitialAccessTokenAuthorization` ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L93))
     - [x] Register a client without an owner when the initial access token's authorization names nobody, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L84))
     - [x] Register a client without an owner when the initial access token's authorization names nobody, and attach only the named reference otherwise, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L93))
@@ -397,10 +398,10 @@
       - [x] Limit an opaque delegated token to its approved scope's lifetime ([test](../../../conformance/oauth-authorization-code.mjs#L26))
       - [x] Cap a token at the shortest of its base lifetime, each scope's relative lifetime and the whole seconds left until each scope's instant, and refuse a scope whose instant has passed with invalid_scope, a documented deviation ([test](../../../plugins/oauthprovider/machine_token_test.go#L216))
       - [x] Apply the shortest scope lifetime to a refreshed access token and refuse a refresh for a scope whose instant has passed without spending the grant, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_refresh_grant_test.go#L173))
-    - [x] `assertionMaxLifetime` ([test](../../../plugins/oauthprovider/client_assertion_test.go#L28))
-      - [x] Apply the configured lifetime and skew to expiry, not-before and issued-at claims, including exact boundaries ([test](../../../plugins/oauthprovider/client_assertion_test.go#L28))
-    - [x] `assertionClockTolerance` ([test](../../../plugins/oauthprovider/client_assertion_test.go#L28))
-      - [x] Apply the configured lifetime and skew to expiry, not-before and issued-at claims, including exact boundaries ([test](../../../plugins/oauthprovider/client_assertion_test.go#L28))
+    - [x] `assertionMaxLifetime` ([test](../../../plugins/oauthprovider/client_assertion_test.go#L29))
+      - [x] Apply the configured lifetime and skew to expiry, not-before and issued-at claims, including exact boundaries ([test](../../../plugins/oauthprovider/client_assertion_test.go#L29))
+    - [x] `assertionClockTolerance` ([test](../../../plugins/oauthprovider/client_assertion_test.go#L29))
+      - [x] Apply the configured lifetime and skew to expiry, not-before and issued-at claims, including exact boundaries ([test](../../../plugins/oauthprovider/client_assertion_test.go#L29))
     - [x] `allowClientKeyRotation` ([test](../../../plugins/oauthprovider/key_rotation_test.go#L14))
       - [x] Reject rotation by default and require atomic single-use assertion storage at startup when enabled ([test](../../../plugins/oauthprovider/key_rotation_test.go#L14))
       - [x] Return access_denied when a client requests rotation from an issuer that has kept the default ([test](../../../conformance/oauth-registration.mjs#L105))
@@ -564,8 +565,8 @@
     - [x] Validate absolute URI and URN audience identifiers and reject fragments, unsafe schemes and malformed escapes ([test](../../../plugins/oauthprovider/resource_test.go#L11))
   - [ ] `ClientRegistrationRequest`
     - [x] Apply application metadata while keeping ownership, credentials and privilege fields under server control ([test](../../../conformance/oauth-registration.mjs#L207))
-  - [x] `consumeClientAssertion` ([test](../../../plugins/oauthprovider/client_assertion_test.go#L314))
-    - [x] Check a verified assertion payload's audience, exp, iat, nbf and jti with the provider's lifetime and clock tolerance, spend the jti once per namespace with private_key_jwt's digest, and refuse without a replay store ([test](../../../plugins/oauthprovider/client_assertion_test.go#L314))
+  - [x] `consumeClientAssertion` ([test](../../../plugins/oauthprovider/client_assertion_test.go#L469))
+    - [x] Check a verified assertion payload's audience, exp, iat, nbf and jti with the provider's lifetime and clock tolerance, spend the jti once per namespace with private_key_jwt's digest, and refuse without a replay store ([test](../../../plugins/oauthprovider/client_assertion_test.go#L469))
     - [x] Spend a strategy's assertion jti once across token requests and store pools on one database, per client namespace, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_extension_auth_test.go#L168))
   - [x] `verifyOAuthQueryParams` ([test](../../../oauth_signed_query_test.go#L11))
     - [x] Verify browser form signatures, repeated fields, UTF-16 ordering, signature alphabets, rotation and the expiration boundary ([test](../../../oauth_signed_query_test.go#L11))
@@ -586,8 +587,8 @@
   - [ ] `toAudienceClaim`
   - [ ] `assertNotTrustedClient`
     - [x] Refuse deletion, secret rotation and a scope update of an operator-managed client with 400 invalid_client and keep it unchanged, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_immutable_clients_test.go#L50))
-  - [x] `getClient` ([test](../../../adapters/sqlstore/oauth_client_discovery_test.go#L70))
-    - [x] Resolve a client through the provider: a local row as is, a discovered one through its own discovery and hidden when that is gone, at every endpoint and behind tokens and consents, on SQLite, PostgreSQL and MySQL; no trusted-client cache precedes the read, as a documented deviation ([test](../../../adapters/sqlstore/oauth_client_discovery_test.go#L70))
+  - [x] `getClient` ([test](../../../adapters/sqlstore/oauth_client_discovery_test.go#L85))
+    - [x] Resolve a client through the provider: a local row as is, a discovered one through its own discovery and hidden when that is gone, at every endpoint and behind tokens and consents, on SQLite, PostgreSQL and MySQL; no trusted-client cache precedes the read, as a documented deviation ([test](../../../adapters/sqlstore/oauth_client_discovery_test.go#L85))
   - [x] `mergeDiscoveryMetadata` ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L382))
     - [x] Merge client discoveries' discovery fields in order under the provider's, a later discovery winning, keeping every field the provider declares except the metadata document flag, which an extension cannot replace ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L382))
   - [ ] `decryptStoredClientSecret`
@@ -729,23 +730,24 @@
     - [x] Apply the same HTTPS rule alone at authorize, with AllowHTTPRedirect ([test](../../../plugins/oauthprovider/registration_test.go#L127))
   - [ ] Private key JWT
     - [x] Authenticate issuance, introspection and revocation with independently signed assertions and reject replay across issuers ([test](../../../conformance/oauth-client-assertions.mjs#L5))
-    - [x] Verify signatures with all ten asymmetric signing algorithms and enforce registered key restrictions ([test](../../../plugins/oauthprovider/client_assertion_test.go#L83))
-    - [x] Refresh a registered remote key set after rotation and enforce trust, media type, size and stale-key limits ([test](../../../plugins/oauthprovider/client_assertion_test.go#L165))
+    - [x] Verify signatures with all ten asymmetric signing algorithms and enforce registered key restrictions ([test](../../../plugins/oauthprovider/client_assertion_test.go#L84))
+    - [x] Refresh a registered remote key set after rotation and enforce trust, media type, size and stale-key limits ([test](../../../plugins/oauthprovider/client_assertion_test.go#L166))
     - [x] Allow one concurrent use across independent SQL connections and recheck the registered key before issuing a token ([test](../../../adapters/sqlstore/oauth_client_assertion_test.go#L30))
+    - [x] Keep a cached remote key set verifying for ten minutes after the last success through any refetch failure but an invalid key set, refetching at most once a minute, and extend it for a discovery's transient failures ([test](../../../plugins/oauthprovider/client_assertion_test.go#L237))
     - [x] `iss` ([test](../../../conformance/oauth-client-assertions.mjs#L51))
       - [x] Require the registered client as issuer ([test](../../../conformance/oauth-client-assertions.mjs#L51))
     - [x] `sub` ([test](../../../conformance/oauth-client-assertions.mjs#L51))
       - [x] Require a signed subject equal to the registered client, even when issuer identifies the key ([test](../../../conformance/oauth-client-assertions.mjs#L51))
     - [x] `aud` ([test](../../../conformance/oauth-client-assertions.mjs#L46))
       - [x] Accept the issuer or receiving endpoint and reject an assertion addressed to a different endpoint ([test](../../../conformance/oauth-client-assertions.mjs#L46))
-    - [x] `exp` ([test](../../../plugins/oauthprovider/client_assertion_test.go#L28))
-      - [x] Enforce expiry and the maximum remaining lifetime with bounded clock skew ([test](../../../plugins/oauthprovider/client_assertion_test.go#L28))
-    - [x] `nbf` ([test](../../../plugins/oauthprovider/client_assertion_test.go#L28))
-      - [x] Enforce the not-before claim using the configured clock tolerance ([test](../../../plugins/oauthprovider/client_assertion_test.go#L28))
+    - [x] `exp` ([test](../../../plugins/oauthprovider/client_assertion_test.go#L29))
+      - [x] Enforce expiry and the maximum remaining lifetime with bounded clock skew ([test](../../../plugins/oauthprovider/client_assertion_test.go#L29))
+    - [x] `nbf` ([test](../../../plugins/oauthprovider/client_assertion_test.go#L29))
+      - [x] Enforce the not-before claim using the configured clock tolerance ([test](../../../plugins/oauthprovider/client_assertion_test.go#L29))
     - [x] `jti` ([test](../../../adapters/sqlstore/oauth_client_assertion_test.go#L30))
       - [x] Require a unique signed identifier and reject simultaneous reuse across connections on all three engines ([test](../../../adapters/sqlstore/oauth_client_assertion_test.go#L30))
-    - [x] `iat` ([test](../../../plugins/oauthprovider/client_assertion_test.go#L28))
-      - [x] Limit the age of an optional issued-at claim including the configured tolerance ([test](../../../plugins/oauthprovider/client_assertion_test.go#L28))
+    - [x] `iat` ([test](../../../plugins/oauthprovider/client_assertion_test.go#L29))
+      - [x] Limit the age of an optional issued-at claim including the configured tolerance ([test](../../../plugins/oauthprovider/client_assertion_test.go#L29))
     - [x] Rotating client keys ([test](../../../conformance/oauth-key-rotation.mjs#L5))
       - [x] Rotate without a user session, overlap old and new keys, and confirm their acceptance and retirement at an independent issuer ([test](../../../conformance/oauth-key-rotation.mjs#L5))
       - [x] Serialize competing replacements, roll back the replay identifier on write failure, and allow an unchanged signed retry on three SQL engines ([test](../../../adapters/sqlstore/oauth_key_rotation_test.go#L43))
@@ -995,7 +997,7 @@
     - [x] `userinfo` ([test](../../../adapters/sqlstore/oauth_introspection_test.go#L146))
       - [x] Share the default 60-request limit, explicit limits and the host global limit on the UserInfo route ([test](../../../adapters/sqlstore/oauth_introspection_test.go#L146))
   - [ ] Provider extensions
-    - [x] Resolve discovered clients by their stored discovery ID, failing closed when it is removed, and only add discovery fields the provider does not own, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_discovery_test.go#L386))
+    - [x] Resolve discovered clients by their stored discovery ID, failing closed when it is removed, and only add discovery fields the provider does not own, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_discovery_test.go#L412))
     - [ ] `authorization`
     - [ ] `url`
     - [ ] `replayStore`
@@ -1163,8 +1165,8 @@
       - [x] Authenticate a client_secret_post client from body credentials and reject a wrong body secret ([test](../../../conformance/oauth-machine-tokens.mjs#L93))
     - [x] `private_key_jwt` ([test](../../../conformance/oauth-client-assertions.mjs#L5))
       - [x] Authenticate issuance, introspection and revocation with independently signed assertions and reject replay across issuers ([test](../../../conformance/oauth-client-assertions.mjs#L5))
-      - [x] Verify signatures with all ten asymmetric signing algorithms and enforce registered key restrictions ([test](../../../plugins/oauthprovider/client_assertion_test.go#L83))
-      - [x] Refresh a registered remote key set after rotation and enforce trust, media type, size and stale-key limits ([test](../../../plugins/oauthprovider/client_assertion_test.go#L165))
+      - [x] Verify signatures with all ten asymmetric signing algorithms and enforce registered key restrictions ([test](../../../plugins/oauthprovider/client_assertion_test.go#L84))
+      - [x] Refresh a registered remote key set after rotation and enforce trust, media type, size and stale-key limits ([test](../../../plugins/oauthprovider/client_assertion_test.go#L166))
       - [x] Allow one concurrent use across independent SQL connections and recheck the registered key before issuing a token ([test](../../../adapters/sqlstore/oauth_client_assertion_test.go#L30))
     - [ ] `none`
   - [ ] Scopes
@@ -1249,8 +1251,8 @@
     - [x] `codeExpiresIn` ([test](../../../adapters/sqlstore/oauth_browser_authorization_test.go#L151))
       - [x] Expire authorization codes after the configured whole-second lifetime on all three SQL engines ([test](../../../adapters/sqlstore/oauth_browser_authorization_test.go#L151))
       - [x] Check the default ten-minute lifetime on a code issued to a registered browser client ([test](../../../conformance/oauth-browser-authorization.mjs#L130))
-    - [x] `assertionMaxLifetime` ([test](../../../plugins/oauthprovider/client_assertion_test.go#L28))
-      - [x] Apply the configured lifetime and skew to expiry, not-before and issued-at claims, including exact boundaries ([test](../../../plugins/oauthprovider/client_assertion_test.go#L28))
+    - [x] `assertionMaxLifetime` ([test](../../../plugins/oauthprovider/client_assertion_test.go#L29))
+      - [x] Apply the configured lifetime and skew to expiry, not-before and issued-at claims, including exact boundaries ([test](../../../plugins/oauthprovider/client_assertion_test.go#L29))
   - [x] Refresh tokens ([test](../../../adapters/sqlstore/oauth_refresh_replay_test.go#L26))
     - [x] Apply offline and session-bound grants across session expiry, deletion and revocation while preserving the issuing application’s ownership ([test](../../../conformance/oauth-refresh-introspection.mjs#L44))
     - [x] Issue an offline token pair, rotate the refresh token at an independent issuer after session expiry and remove the rotated tokens on code replay ([test](../../../conformance/oauth-authorization-code.mjs#L67))

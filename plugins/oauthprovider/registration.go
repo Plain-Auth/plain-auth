@@ -285,7 +285,7 @@ func New(opts Options) (auth.Plugin, error) {
 	if err := opts.Assertions.defaults(); err != nil {
 		return auth.Plugin{}, err
 	}
-	opts.assertionKeys = newClientKeyCache(opts.Assertions.JWKSTransport)
+	opts.assertionKeys = newClientKeyCache(opts.Assertions.JWKSTransport, opts.discoveries)
 	proofs, err := NewDPoPVerifier(opts.DPoP)
 	if err != nil {
 		return auth.Plugin{}, err

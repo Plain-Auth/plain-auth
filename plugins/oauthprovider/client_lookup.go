@@ -7,6 +7,7 @@ import (
 	"maps"
 	"net/http"
 	"slices"
+	"time"
 
 	auth "github.com/Plain-Org/plain-auth"
 )
@@ -50,6 +51,7 @@ func (opts *Options) collectDiscoveries() error {
 			}
 			seen[d.ID] = true
 			d.Metadata = maps.Clone(d.Metadata)
+			d.JWKSStaleIfError = min(max(d.JWKSStaleIfError, 0), 24*time.Hour)
 			opts.discoveries = append(opts.discoveries, &d)
 		}
 	}
