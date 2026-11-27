@@ -34,7 +34,8 @@
     - [ ] `schema`
     - [x] `scopes` ([test](../../../plugins/mcp/plugin_test.go#L24))
       - [x] Advertise the provider's scopes in the resource metadata without the authorization server's own ([test](../../../plugins/mcp/plugin_test.go#L24))
-    - [ ] `requireOpenId`
+    - [x] `requireOpenId` ([test](../../../plugins/mcp/forward_test.go#L98))
+      - [x] Forward requireOpenId to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check ([test](../../../plugins/mcp/forward_test.go#L98))
     - [ ] `validateRedirectUri`
       - [x] Forward validateRedirectUri to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check ([test](../../../plugins/mcp/forward_test.go#L98))
     - [ ] `allowInsecureRedirectUri`
@@ -57,6 +58,7 @@
     - [ ] `resourcePrivileges`
       - [x] Forward resourcePrivileges to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check ([test](../../../plugins/mcp/forward_test.go#L98))
     - [ ] `cachedTrustedClients`
+      - [x] Forward the operator-managed client list, ImmutableClientIDs, to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check ([test](../../../plugins/mcp/forward_test.go#L98))
     - [ ] `accessTokenExpiresIn`
       - [x] Forward accessTokenExpiresIn to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check ([test](../../../plugins/mcp/forward_test.go#L98))
     - [x] `m2mAccessTokenExpiresIn` ([test](../../../plugins/mcp/forward_test.go#L98))
@@ -75,23 +77,29 @@
       - [x] Forward assertionClockTolerance to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check ([test](../../../plugins/mcp/forward_test.go#L98))
     - [x] `allowClientKeyRotation` ([test](../../../plugins/mcp/forward_test.go#L98))
       - [x] Forward allowClientKeyRotation to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check ([test](../../../plugins/mcp/forward_test.go#L98))
-    - [ ] `allowPublicClientPrelogin`
-    - [ ] `allowUnauthenticatedClientRegistration`
+    - [x] `allowPublicClientPrelogin` ([test](../../../plugins/mcp/forward_test.go#L98))
+      - [x] Forward allowPublicClientPrelogin to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check ([test](../../../plugins/mcp/forward_test.go#L98))
+    - [x] `allowUnauthenticatedClientRegistration` ([test](../../../plugins/mcp/forward_test.go#L98))
       - [x] Register an MCP client without a session when unauthenticated registration is allowed ([test](../../../plugins/mcp/plugin_test.go#L96))
-    - [ ] `allowDynamicClientRegistration`
+      - [x] Forward allowUnauthenticatedClientRegistration to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check ([test](../../../plugins/mcp/forward_test.go#L98))
+    - [x] `allowDynamicClientRegistration` ([test](../../../plugins/mcp/forward_test.go#L98))
       - [x] Register MCP clients when dynamic registration is enabled ([test](../../../plugins/mcp/plugin_test.go#L96))
+      - [x] Forward allowDynamicClientRegistration to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check ([test](../../../plugins/mcp/forward_test.go#L98))
     - [x] `validateInitialAccessToken` ([test](../../../plugins/mcp/forward_test.go#L98))
       - [x] Forward validateInitialAccessToken to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check ([test](../../../plugins/mcp/forward_test.go#L98))
     - [ ] `extensions`
+      - [x] Forward extensions to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check ([test](../../../plugins/mcp/forward_test.go#L98))
     - [x] `clientRegistrationDefaultScopes` ([test](../../../plugins/mcp/forward_test.go#L98))
       - [x] Forward clientRegistrationDefaultScopes to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check ([test](../../../plugins/mcp/forward_test.go#L98))
     - [x] `clientRegistrationAllowedScopes` ([test](../../../plugins/mcp/forward_test.go#L98))
       - [x] Forward clientRegistrationAllowedScopes to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check ([test](../../../plugins/mcp/forward_test.go#L98))
     - [x] `clientRegistrationRequirePKCE` ([test](../../../plugins/mcp/forward_test.go#L98))
       - [x] Forward clientRegistrationRequirePKCE to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check ([test](../../../plugins/mcp/forward_test.go#L98))
-    - [ ] `clientRegistrationDefaultApplicationType`
+    - [x] `clientRegistrationDefaultApplicationType` ([test](../../../plugins/mcp/forward_test.go#L98))
       - [x] Register a loopback-callback MCP client as native with the infer default ([test](../../../plugins/mcp/plugin_test.go#L96))
-    - [ ] `clientRegistrationClientSecretExpiration`
+      - [x] Forward clientRegistrationDefaultApplicationType to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check ([test](../../../plugins/mcp/forward_test.go#L98))
+    - [x] `clientRegistrationClientSecretExpiration` ([test](../../../plugins/mcp/forward_test.go#L98))
+      - [x] Forward clientRegistrationClientSecretExpiration to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check ([test](../../../plugins/mcp/forward_test.go#L98))
     - [x] `clientReference` ([test](../../../plugins/mcp/forward_test.go#L98))
       - [x] Forward clientReference to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check ([test](../../../plugins/mcp/forward_test.go#L98))
     - [ ] `clientPrivileges`
@@ -102,20 +110,30 @@
       - [x] Forward loginPage to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check ([test](../../../plugins/mcp/forward_test.go#L98))
     - [x] `consentPage` ([test](../../../plugins/mcp/forward_test.go#L98))
       - [x] Forward consentPage to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check ([test](../../../plugins/mcp/forward_test.go#L98))
-    - [ ] `signup`
-    - [ ] `selectAccount`
-    - [ ] `postLogin`
-    - [ ] `formatRefreshToken`
+    - [x] `signup` ([test](../../../plugins/mcp/forward_test.go#L98))
+      - [x] Forward signup to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check ([test](../../../plugins/mcp/forward_test.go#L98))
+    - [x] `selectAccount` ([test](../../../plugins/mcp/forward_test.go#L98))
+      - [x] Forward selectAccount to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check ([test](../../../plugins/mcp/forward_test.go#L98))
+    - [x] `postLogin` ([test](../../../plugins/mcp/forward_test.go#L98))
+      - [x] Forward postLogin to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check ([test](../../../plugins/mcp/forward_test.go#L98))
+    - [x] `formatRefreshToken` ([test](../../../plugins/mcp/forward_test.go#L98))
+      - [x] Forward formatRefreshToken to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check ([test](../../../plugins/mcp/forward_test.go#L98))
     - [ ] `storeClientSecret`
+      - [x] Forward storeClientSecret to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check ([test](../../../plugins/mcp/forward_test.go#L98))
     - [x] `storeTokens` ([test](../../../plugins/oauthprovider/machine_token_test.go#L165))
       - [x] Store each token kind through its own configured hash function ([test](../../../plugins/oauthprovider/machine_token_test.go#L165))
-    - [ ] `customUserInfoClaims`
-    - [ ] `customIdTokenClaims`
+    - [x] `customUserInfoClaims` ([test](../../../plugins/mcp/forward_test.go#L98))
+      - [x] Forward customUserInfoClaims to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check ([test](../../../plugins/mcp/forward_test.go#L98))
+    - [x] `customIdTokenClaims` ([test](../../../plugins/mcp/forward_test.go#L98))
+      - [x] Forward customIdTokenClaims to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check ([test](../../../plugins/mcp/forward_test.go#L98))
     - [ ] `customAccessTokenClaims`
-    - [ ] `customTokenResponseFields`
+      - [x] Forward customAccessTokenClaims to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check ([test](../../../plugins/mcp/forward_test.go#L98))
+    - [x] `customTokenResponseFields` ([test](../../../plugins/mcp/forward_test.go#L98))
+      - [x] Forward customTokenResponseFields to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check ([test](../../../plugins/mcp/forward_test.go#L98))
     - [ ] `advertisedMetadata`
       - [x] Advertise exactly the configured scopes and client authentication methods, in order, in both discovery documents, and the configured claims in the OpenID document ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L282))
-    - [ ] `prefix`
+    - [x] `prefix` ([test](../../../plugins/mcp/forward_test.go#L98))
+      - [x] Forward prefix to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check ([test](../../../plugins/mcp/forward_test.go#L98))
     - [x] `generateClientId` ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L102))
       - [x] Generate a default client ID of 32 ASCII letters ([test](../../../plugins/oauthprovider/machine_token_test.go#L124))
       - [x] Register a client with a 32-letter client ID by default, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L70))
@@ -127,13 +145,17 @@
       - [x] Issue the generated secret and store its digest on all SQL engines ([test](../../../adapters/sqlstore/oauth_registration_test.go#L103))
     - [x] `generateOpaqueAccessToken` ([test](../../../plugins/oauthprovider/machine_token_test.go#L156))
       - [x] Generate a default opaque access token of 32 letters and use a configured generator instead ([test](../../../plugins/oauthprovider/machine_token_test.go#L156))
-    - [ ] `generateRefreshToken`
+    - [x] `generateRefreshToken` ([test](../../../plugins/mcp/forward_test.go#L98))
       - [x] Generate a default refresh token of 32 letters and use a configured generator instead ([test](../../../plugins/oauthprovider/machine_token_test.go#L159))
+      - [x] Forward generateRefreshToken to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check ([test](../../../plugins/mcp/forward_test.go#L98))
     - [ ] `disableJwtPlugin`
+      - [x] Forward disableJwtPlugin to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check ([test](../../../plugins/mcp/forward_test.go#L98))
     - [x] `rateLimit` ([test](../../../plugins/oauthprovider/machine_token_test.go#L208))
       - [x] Give token 20, authorize 30, introspect 100, revoke 30, register 5, key rotation 5 and userinfo 60 requests a minute by default, replace a default with a configured rule and leave the host's global limit for an empty rule on every route ([test](../../../plugins/oauthprovider/machine_token_test.go#L208))
     - [ ] `pairwiseSecret`
-    - [ ] `requestUriResolver`
+      - [x] Forward pairwiseSecret to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check ([test](../../../plugins/mcp/forward_test.go#L98))
+    - [x] `requestUriResolver` ([test](../../../plugins/mcp/forward_test.go#L98))
+      - [x] Forward requestUriResolver to the OAuth provider unchanged, as every provider option is, proven by a field-by-field reflection check ([test](../../../plugins/mcp/forward_test.go#L98))
     - [x] `dpop` ([test](../../../adapters/sqlstore/oauth_mcp_flow_test.go#L193))
       - [x] Bind an MCP code-flow token to the client's DPoP key and require the DPoP scheme and a proof spent once across the database at the guard, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_mcp_flow_test.go#L193))
   - [ ] `mcp`
