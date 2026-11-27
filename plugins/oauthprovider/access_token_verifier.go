@@ -40,6 +40,11 @@ type AccessTokenVerifierOptions struct {
 	Transport http.RoundTripper
 	// Remote introspects every token at the issuer after the local check.
 	Remote *RemoteVerification
+	// Auth, an auth instance in the same process, supplies defaults: the
+	// issuer it signs with, its keys read in process, or its RemoteJWKSURL,
+	// and its introspection endpoint for Remote. Audience is never
+	// defaulted.
+	Auth *auth.Auth
 	// DPoP checks the proofs of DPoP-bound tokens at VerifyRequest. Its
 	// replay store defaults to memory for this verifier; share a SQL or
 	// Redis store across the API's instances.
@@ -62,6 +67,23 @@ type AccessTokenVerifier struct {
 // and accepts a token without exp, since otherwise a session JWT with the
 // same issuer and audience would pass (safety).
 func NewAccessTokenVerifier(opts AccessTokenVerifierOptions) (*AccessTokenVerifier, error) {
+	if r := opts.Remote; r != nil {
+		copied := *r
+		opts.Remote = &copied
+	}
+	// local reads the instance's own keys in process.
+	local := opts.Auth != nil && opts.JWKSURL == "" && opts.Auth.LocalJWKS()
+	if a := opts.Auth; a != nil {
+		if opts.Issuer == "" {
+			opts.Issuer = a.OAuthIssuer()
+		}
+		if opts.JWKSURL == "" && !local && a.JWTSigningAlgorithm() != "" {
+			opts.JWKSURL = a.PublicJWKSURL()
+		}
+		if opts.Remote != nil && opts.Remote.IntrospectionURL == "" {
+			opts.Remote.IntrospectionURL = a.PublicURL() + "/oauth2/introspect"
+		}
+	}
 	if opts.Issuer == "" {
 		return nil, errors.New("oauthprovider: access token verifier needs an issuer")
 	}
@@ -69,18 +91,14 @@ func NewAccessTokenVerifier(opts AccessTokenVerifierOptions) (*AccessTokenVerifi
 	if len(opts.Audience) == 0 {
 		return nil, errors.New("oauthprovider: access token verifier needs an audience")
 	}
-	if opts.JWKSURL == "" && opts.Remote == nil {
-		return nil, errors.New("oauthprovider: access token verifier needs a JWKS URL or remote verification")
+	if opts.JWKSURL == "" && !local && opts.Remote == nil {
+		return nil, errors.New("oauthprovider: access token verifier needs a JWKS URL, an auth instance with local keys, or remote verification")
 	}
 	if opts.JWKSURL != "" && !secureURL(opts.JWKSURL) {
 		return nil, errors.New("oauthprovider: access token verifier needs an HTTPS JWKS URL, or HTTP on loopback")
 	}
-	if r := opts.Remote; r != nil {
-		if !secureURL(r.IntrospectionURL) || r.ClientID == "" || r.ClientSecret == "" {
-			return nil, errors.New("oauthprovider: remote verification needs an HTTPS introspection URL, or HTTP on loopback, and the API's client credentials")
-		}
-		copied := *r
-		opts.Remote = &copied
+	if r := opts.Remote; r != nil && (!secureURL(r.IntrospectionURL) || r.ClientID == "" || r.ClientSecret == "") {
+		return nil, errors.New("oauthprovider: remote verification needs an HTTPS introspection URL, or HTTP on loopback, and the API's client credentials")
 	}
 	if opts.Type == "" {
 		opts.Type = "at+jwt"
@@ -94,7 +112,10 @@ func NewAccessTokenVerifier(opts AccessTokenVerifierOptions) (*AccessTokenVerifi
 		return nil, err
 	}
 	v := &AccessTokenVerifier{opts: opts, proofs: proofs, now: time.Now, http: newIntrospectionClient(opts.Transport)}
-	if opts.JWKSURL != "" {
+	switch {
+	case local:
+		v.keys = newResourceKeys("", opts.Auth.PublicJWKS, nil)
+	case opts.JWKSURL != "":
 		v.keys = newResourceKeys(opts.JWKSURL, nil, opts.Transport)
 	}
 	return v, nil

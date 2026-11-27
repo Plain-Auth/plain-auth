@@ -21,6 +21,20 @@ Build one verifier per API and share it across routes; it caches the issuer's ke
 
 `typ` defaults to `at+jwt` and `exp` is required, where another runtime checks the type only when asked and accepts a token without `exp`: otherwise a session JWT signed with the same key would pass whenever its `iss` and `aud` match. `RequiredClaims: []string{"azp"}` additionally rejects any JWT not issued to an OAuth client. A DPoP-bound token, one whose `cnf` names a `jkt`, is refused with `invalid_token`, since only the request can prove the client holds the key: use `VerifyRequest`.
 
+## An API in the same process
+
+Pass the auth instance as `Auth` when the API runs beside it, as another runtime's resource client does. `Issuer` defaults to the issuer the instance signs with, its configured JWT issuer or else its public auth URL. With the jwt plugin keeping its own keys, the verifier reads them in process, with no request to `/jwks`, under the same caching windows, so a rotated key is seen once the refetch window passes; `Auth.LocalJWKS` reports this case. With a `RemoteJWKSURL`, keys are fetched from it. `Remote.IntrospectionURL` defaults to the instance's `/oauth2/introspect`. Without the jwt plugin and without `Remote`, `NewAccessTokenVerifier` refuses, since opaque tokens need introspection.
+
+```go
+verifier, err := oauthprovider.NewAccessTokenVerifier(oauthprovider.AccessTokenVerifierOptions{
+    Auth:           auth,
+    Audience:       []string{"https://api.example.com"},
+    RequiredClaims: []string{"azp"},
+})
+```
+
+`Audience` is never defaulted, where another runtime defaults it to the auth base URL: a token must name your API, so a session JWT for the auth server itself cannot pass. [Defaults test](../conformance/goapi/resource_verifier_test.go) · [Three-database test](../adapters/sqlstore/oauth_resource_verifier_test.go)
+
 ## Verify a request
 
 `VerifyRequest` checks a request rather than a raw token, as another runtime's `verifyAccessTokenRequest` does, and is the entry point to use when clients may send DPoP-bound tokens:

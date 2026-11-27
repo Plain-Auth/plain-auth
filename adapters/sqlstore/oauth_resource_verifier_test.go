@@ -145,3 +145,69 @@ func TestResourceVerifierIntrospection(t *testing.T) {
 		})
 	}
 }
+
+// A verifier built from the local auth instance checks a signed resource
+// token from the client credentials grant in process, and with Remote only
+// given the API's credentials it introspects at the instance's endpoint, on
+// SQLite, PostgreSQL and MySQL.
+func TestResourceVerifierLocalInstance(t *testing.T) {
+	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
+		t.Run(dialect, func(t *testing.T) {
+			ctx := t.Context()
+			must := func(err error) {
+				t.Helper()
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			s, err := OpenWithOptions(ctx, dialect, organizationTestDSN(t, dialect), []string{"oauth-provider", "jwt"}, schema.Options{})
+			must(err)
+			t.Cleanup(func() { s.Close() })
+			write := func(q string, args ...any) {
+				t.Helper()
+				_, err := s.db.ExecContext(ctx, s.bind(q), args...)
+				must(err)
+			}
+			secret := "local-verifier-secret"
+			digest := sha256.Sum256([]byte(secret))
+			for id, grants := range map[string]string{"app": `["client_credentials"]`, "api": `[]`} {
+				write(`INSERT INTO "oauthClient" ("id","clientId","clientSecret","tokenEndpointAuthMethod","redirectUris","grantTypes","clientCredentialsScopes") VALUES (?,?,?,'client_secret_post','[]',?,?)`,
+					id, id, base64.RawURLEncoding.EncodeToString(digest[:]), grants, `["reports"]`)
+			}
+			write(`INSERT INTO "oauthResource" ("id","identifier","name") VALUES ('api','urn:api','API')`)
+			for _, id := range []string{"app", "api"} {
+				write(`INSERT INTO "oauthClientResource" ("id","resourceId","clientId") VALUES (?,'urn:api',?)`, "link-"+id, id)
+			}
+			p, err := op.New(op.Options{Scopes: []string{"reports"}})
+			must(err)
+			signing, err := auth.NewJWT(auth.JWTOptions{Issuer: "https://issuer.example.test"})
+			must(err)
+			const origin = "https://local.example.test"
+			off := false
+			h, err := auth.New(auth.Options{BaseURL: origin, Secret: strings.Repeat("l", 40), Store: s, Plugins: []auth.Plugin{p, signing}, RateLimit: &off})
+			must(err)
+			form := url.Values{"grant_type": {"client_credentials"}, "client_id": {"app"}, "client_secret": {secret}, "scope": {"reports"}, "resource": {"urn:api"}}
+			req := httptest.NewRequest("POST", origin+"/api/auth/oauth2/token", strings.NewReader(form.Encode()))
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			out := httptest.NewRecorder()
+			h.ServeHTTP(out, req)
+			var body map[string]any
+			must(json.Unmarshal(out.Body.Bytes(), &body))
+			token, _ := body["access_token"].(string)
+			if out.Code != 200 || strings.Count(token, ".") != 2 {
+				t.Fatal("the resource token was not signed", out.Code, body)
+			}
+			local, err := op.NewAccessTokenVerifier(op.AccessTokenVerifierOptions{Auth: h, Audience: []string{"urn:api"}, RequiredClaims: []string{"azp"}})
+			must(err)
+			if claims, err := local.VerifyBearer(ctx, token, "reports"); err != nil || claims["client_id"] != "app" {
+				t.Fatal("the signed token did not verify in process", claims, err)
+			}
+			remote, err := op.NewAccessTokenVerifier(op.AccessTokenVerifierOptions{Auth: h, Audience: []string{"urn:api"}, Transport: guestTransport{h},
+				Remote: &op.RemoteVerification{ClientID: "api", ClientSecret: secret}})
+			must(err)
+			if claims, err := remote.VerifyBearer(ctx, token, "reports"); err != nil || claims["active"] != true {
+				t.Fatal("the token was not introspected at the instance's endpoint", claims, err)
+			}
+		})
+	}
+}

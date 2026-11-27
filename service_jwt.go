@@ -202,6 +202,13 @@ func (a *Auth) JWTSigningAlgorithm() string {
 	return a.serviceJWT.Algorithm
 }
 
+// LocalJWKS reports whether the jwt plugin is enabled and keeps its keys in
+// this instance, so a resource server in the same process can read them
+// without a request: it has no RemoteJWKSURL.
+func (a *Auth) LocalJWKS() bool {
+	return a.serviceJWT != nil && a.serviceJWT.RemoteJWKSURL == ""
+}
+
 // PublicJWKSURL returns RemoteJWKSURL when set, otherwise the served key-set
 // endpoint, or an empty string when that path is disabled.
 func (a *Auth) PublicJWKSURL() string {
