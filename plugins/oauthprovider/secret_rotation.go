@@ -81,7 +81,7 @@ func (opts Options) rotateClientSecret(c auth.EndpointContext) (any, error) {
 		return nil, rotationUnavailable()
 	}
 	user, ref := client.ownerIDs()
-	issued, stored, err := opts.Registration.issueSecret(ctx)
+	issued, stored, err := opts.Registration.issueSecret(ctx, c.Auth, id)
 	if err != nil {
 		return nil, err
 	}

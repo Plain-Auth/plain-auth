@@ -103,8 +103,16 @@ type RegistrationOptions struct {
 	GenerateClientID, GenerateClientSecret func() (string, error)
 	StoreSecret                            func(context.Context, string) (string, error)
 	// VerifySecret compares an unprefixed issued secret with its stored representation.
-	// Supply this when StoreSecret uses a random salt or encryption.
-	VerifySecret         func(ctx context.Context, raw, stored string) (bool, error)
+	// Supply this when StoreSecret uses a random salt.
+	VerifySecret func(ctx context.Context, raw, stored string) (bool, error)
+	// DecryptSecret pairs with a StoreSecret that encrypts: it returns the
+	// unprefixed secret for a stored value, which is then compared in
+	// constant time.
+	DecryptSecret func(ctx context.Context, stored string) (string, error)
+	// SecretStorage is "hashed", the default, which stores a digest, or
+	// "encrypted", which seals the secret with the auth secret, bound to the
+	// client ID, so the issuer can read it back. StoreSecret replaces both.
+	SecretStorage        string
 	ValidateInitialToken func(context.Context, string, http.Header, RegistrationMetadata) (*InitialAuthorization, error)
 	MayCreate            func(context.Context, RegistrationAccess) (bool, error)
 	ClientReference      func(context.Context, RegistrationAccess) (string, error)
@@ -270,6 +278,16 @@ func New(opts Options) (auth.Plugin, error) {
 	if r.RequirePKCE != nil {
 		v := *r.RequirePKCE
 		r.RequirePKCE = &v
+	}
+	switch {
+	case r.SecretStorage != "" && r.SecretStorage != "hashed" && r.SecretStorage != "encrypted":
+		return auth.Plugin{}, fmt.Errorf("oauthprovider: unknown client secret storage %q", r.SecretStorage)
+	case r.StoreSecret != nil && r.SecretStorage == "encrypted":
+		return auth.Plugin{}, errors.New("oauthprovider: StoreSecret replaces the encrypted secret storage")
+	case r.DecryptSecret != nil && r.StoreSecret == nil:
+		return auth.Plugin{}, errors.New("oauthprovider: DecryptSecret requires StoreSecret")
+	case r.DecryptSecret != nil && r.VerifySecret != nil:
+		return auth.Plugin{}, errors.New("oauthprovider: use DecryptSecret or VerifySecret, not both")
 	}
 	if r.SecretLifetime < 0 || r.SecretLifetime%time.Second != 0 {
 		return auth.Plugin{}, errors.New("oauthprovider: registration secret lifetime must be zero or a positive whole number of seconds")
@@ -459,7 +477,7 @@ func (opts Options) register(c auth.EndpointContext) (any, error) {
 		result.RequirePKCE = r.RequirePKCE
 	}
 	if m.TokenEndpointAuthMethod == "client_secret_basic" || m.TokenEndpointAuthMethod == "client_secret_post" {
-		result.ClientSecret, row.StoredSecret, err = r.issueSecret(ctx)
+		result.ClientSecret, row.StoredSecret, err = r.issueSecret(ctx, c.Auth, id)
 		if err != nil {
 			return nil, err
 		}
@@ -478,7 +496,11 @@ func (opts Options) register(c auth.EndpointContext) (any, error) {
 	return result, nil
 }
 
-func (r RegistrationOptions) issueSecret(ctx context.Context) (issued, stored string, err error) {
+// clientSecretPurpose binds an encrypted secret to its client, so a stored
+// value copied to another client does not open.
+const clientSecretPurpose = "oauth-client-secret/"
+
+func (r RegistrationOptions) issueSecret(ctx context.Context, a *auth.Auth, clientID string) (issued, stored string, err error) {
 	secret, err := r.GenerateClientSecret()
 	if err != nil {
 		return "", "", err
@@ -486,7 +508,8 @@ func (r RegistrationOptions) issueSecret(ctx context.Context) (issued, stored st
 	if secret == "" {
 		return "", "", errors.New("oauthprovider: empty generated client secret")
 	}
-	if r.StoreSecret != nil {
+	switch {
+	case r.StoreSecret != nil:
 		stored, err = r.StoreSecret(ctx, secret)
 		if err != nil {
 			return "", "", err
@@ -494,7 +517,12 @@ func (r RegistrationOptions) issueSecret(ctx context.Context) (issued, stored st
 		if stored == "" {
 			return "", "", errors.New("oauthprovider: empty stored client secret")
 		}
-	} else {
+	case r.SecretStorage == "encrypted":
+		stored, err = a.EncryptRecord(clientSecretPurpose+clientID, []byte(secret))
+		if err != nil {
+			return "", "", err
+		}
+	default:
 		stored = tokenDigest(secret)
 	}
 	return r.SecretPrefix + secret, stored, nil

@@ -10,11 +10,11 @@
     - [x] Publish the issuer with an ASCII lowercase host, a canonical IP literal, no default or empty port and resolved dot segments, without its query, fragment and one trailing slash, and accept both the published and the configured spelling in the token issuer check; IPv4 shorthand is a documented deviation ([test](../../../oauth_issuer_test.go#L25))
     - [x] Publish discovery for an issuer with a query and trailing slash at its normalized paths ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L115))
     - [x] Sign machine access tokens with the published issuer when the configured issuer has a trailing slash, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_machine_resources_test.go#L127))
-  - [x] `PublicClientJwksValidationResult` ([test](../../../plugins/oauthprovider/registration_test.go#L173))
-    - [x] Return a validation error for unsupported algorithms and private key members ([test](../../../plugins/oauthprovider/registration_test.go#L117))
-    - [x] Refuse each invalid public key set with invalid_client_metadata and the description naming its reason ([test](../../../plugins/oauthprovider/registration_test.go#L173))
-  - [x] `validatePublicClientJwks` ([test](../../../plugins/oauthprovider/registration_test.go#L117))
-    - [x] Validate public RSA, EC and Ed25519 keys and compatible signing algorithms and reject private key material ([test](../../../plugins/oauthprovider/registration_test.go#L117))
+  - [x] `PublicClientJwksValidationResult` ([test](../../../plugins/oauthprovider/registration_test.go#L197))
+    - [x] Return a validation error for unsupported algorithms and private key members ([test](../../../plugins/oauthprovider/registration_test.go#L141))
+    - [x] Refuse each invalid public key set with invalid_client_metadata and the description naming its reason ([test](../../../plugins/oauthprovider/registration_test.go#L197))
+  - [x] `validatePublicClientJwks` ([test](../../../plugins/oauthprovider/registration_test.go#L141))
+    - [x] Validate public RSA, EC and Ed25519 keys and compatible signing algorithms and reject private key material ([test](../../../plugins/oauthprovider/registration_test.go#L141))
   - [ ] `isForbiddenCimdClientMetadataField`
   - [ ] `oauthProviderResourceClient`
     - [x] Derive protected-resource discovery from a local auth mount and issuer or from standalone configuration ([test](../../../conformance/resource-discovery.mjs#L7))
@@ -292,7 +292,7 @@
       - [x] Apply host callback policy after validating transport and reject policy errors before redirecting ([test](../../../adapters/sqlstore/oauth_browser_authorization_test.go#L179))
       - [x] Check the redirect syntax and HTTPS policy before the host callback, never call it for credentials, let its answer replace the registered match in both directions, send later errors to a callback only it accepted, and fail closed on an error, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_redirect_transport_test.go#L134))
     - [ ] `allowInsecureRedirectUri`
-      - [x] Apply the HTTP redirect exception while enforcing native loopback address restrictions ([test](../../../plugins/oauthprovider/registration_test.go#L15))
+      - [x] Apply the HTTP redirect exception while enforcing native loopback address restrictions ([test](../../../plugins/oauthprovider/registration_test.go#L16))
       - [x] Authorize an HTTP web callback on an approved host on its exact registered port, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_redirect_transport_test.go#L105))
     - [ ] `resources`
       - [x] Load string and object declarations and retry unfinished rows after a migration ([test](../../../adapters/sqlstore/oauth_resource_seed_test.go#L209))
@@ -377,7 +377,7 @@
       - [x] Infer native redirects and apply the web default to HTTPS applications ([test](../../../conformance/oauth-registration.mjs#L253))
     - [x] `clientRegistrationClientSecretExpiration` ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L107))
       - [x] Report a never-expiring secret by default, the configured lifetime from the issue time when set, and no expiry for a public client, on SQLite, PostgreSQL and MySQL; a fixed instant is a documented deviation ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L107))
-      - [x] Refuse a negative or fractional secret lifetime ([test](../../../plugins/oauthprovider/registration_test.go#L81))
+      - [x] Refuse a negative or fractional secret lifetime ([test](../../../plugins/oauthprovider/registration_test.go#L82))
     - [x] `clientReference` ([test](../../../conformance/oauth-registration.mjs#L208))
       - [x] Record a trusted tenant reference and omit the personal owner when a reference is assigned ([test](../../../adapters/sqlstore/oauth_registration_test.go#L103))
       - [x] Resolve tenant membership for shared registrations and keep owner lookups independent of tenant callback failures ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L197))
@@ -410,6 +410,8 @@
     - [ ] `storeClientSecret`
       - [x] Pass the unprefixed secret to a custom storage function and persist its result ([test](../../../adapters/sqlstore/oauth_registration_test.go#L223))
       - [x] Reuse the host storage function and retain the active credential when it fails ([test](../../../adapters/sqlstore/oauth_secret_rotation_test.go#L122))
+      - [x] Seal client secrets for their client in encrypted mode, authenticate them exactly, refuse a value copied to another client, reseal on rotation and use a host encrypt and decrypt pair, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_secret_storage_test.go#L21))
+      - [x] Refuse an unknown storage mode and mismatched custom storage functions ([test](../../../plugins/oauthprovider/registration_test.go#L95))
     - [x] `storeTokens` ([test](../../../conformance/oauth-authorization-code.mjs#L59))
       - [x] Use a host token generator, credential verifier and digest function without storing cleartext tokens ([test](../../../adapters/sqlstore/oauth_machine_token_test.go#L121))
       - [x] Check opaque access-token precedence, custom refresh prefixes, decoder and digest failures, expiry and concurrent credential changes on three SQL engines ([test](../../../adapters/sqlstore/oauth_refresh_introspection_test.go#L20))
@@ -522,6 +524,8 @@
   - [ ] `mergeDiscoveryMetadata`
   - [ ] `decryptStoredClientSecret`
   - [ ] `storeClientSecret`
+    - [x] Seal client secrets for their client in encrypted mode, authenticate them exactly, refuse a value copied to another client, reseal on rotation and use a host encrypt and decrypt pair, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_secret_storage_test.go#L21))
+    - [x] Refuse an unknown storage mode and mismatched custom storage functions ([test](../../../plugins/oauthprovider/registration_test.go#L95))
   - [x] `storeToken` ([test](../../../plugins/oauthprovider/machine_token_test.go#L165))
     - [x] Store access tokens, refresh tokens and codes as their SHA-256 base64url digest by default, and through each kind's own hash function only ([test](../../../plugins/oauthprovider/machine_token_test.go#L165))
   - [x] `getStoredToken` ([test](../../../plugins/oauthprovider/machine_token_test.go#L144))
@@ -552,11 +556,11 @@
     - [x] Remove max_age from the continued request after a fresh sign-in ([test](../../../conformance/oauth-browser-login.mjs#L72))
   - [x] `isPKCERequired` ([test](../../../plugins/oauthprovider/authorization_code_test.go#L15))
     - [x] Resolve public and confidential client PKCE requirements, including offline scopes, OIDC nonces and explicit registration policy ([test](../../../plugins/oauthprovider/authorization_code_test.go#L15))
-  - [x] `isRedirectUriTransportAllowed` ([test](../../../plugins/oauthprovider/registration_test.go#L95))
-    - [x] Accept every scheme but http and http on a loopback host for a client that is not web, otherwise http only when the host approves a URL without credentials, and refuse an unparsable or relative URL ([test](../../../plugins/oauthprovider/registration_test.go#L95))
+  - [x] `isRedirectUriTransportAllowed` ([test](../../../plugins/oauthprovider/registration_test.go#L119))
+    - [x] Accept every scheme but http and http on a loopback host for a client that is not web, otherwise http only when the host approves a URL without credentials, and refuse an unparsable or relative URL ([test](../../../plugins/oauthprovider/registration_test.go#L119))
     - [x] Send a callback that fails the HTTPS policy to the error page with invalid_request and the insecure redirect message, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_redirect_transport_test.go#L111))
-  - [x] `isInsecureRedirectUriAllowed` ([test](../../../plugins/oauthprovider/registration_test.go#L75))
-    - [x] Refuse an HTTP callback with credentials even on an approved host, and accept an approved HTTP web callback ([test](../../../plugins/oauthprovider/registration_test.go#L75))
+  - [x] `isInsecureRedirectUriAllowed` ([test](../../../plugins/oauthprovider/registration_test.go#L76))
+    - [x] Refuse an HTTP callback with credentials even on an approved host, and accept an approved HTTP web callback ([test](../../../plugins/oauthprovider/registration_test.go#L76))
   - [ ] `getAuthEndpointUrl`
   - [ ] `isLocalCapacityRefusal`
   - [ ] `isTransientAbort`
@@ -622,17 +626,17 @@
       - [x] Infer native redirects and apply the web default to HTTPS applications ([test](../../../conformance/oauth-registration.mjs#L253))
     - [ ] Resources for registered clients
       - [x] Link allowed resources in the same transaction as the new dynamic client ([test](../../../adapters/sqlstore/oauth_registration_test.go#L112))
-    - [x] Redirect URI forms ([test](../../../plugins/oauthprovider/registration_test.go#L32))
-      - [x] Exercise HTTPS web, native private scheme and exact HTTP loopback redirects ([test](../../../plugins/oauthprovider/registration_test.go#L15))
-      - [x] Accept loopback and custom-scheme callbacks for native clients only ([test](../../../plugins/oauthprovider/registration_test.go#L32))
-      - [x] HTTPS on a non-loopback host ([test](../../../plugins/oauthprovider/registration_test.go#L25))
-        - [x] Accept HTTPS redirects on non-loopback hosts for web and native clients ([test](../../../plugins/oauthprovider/registration_test.go#L25))
-      - [x] HTTP loopback, any port (RFC 8252 §7.3) ([test](../../../plugins/oauthprovider/registration_test.go#L32))
-        - [x] Accept an HTTP loopback callback on any port for a native client and refuse it for a web client ([test](../../../plugins/oauthprovider/registration_test.go#L32))
+    - [x] Redirect URI forms ([test](../../../plugins/oauthprovider/registration_test.go#L33))
+      - [x] Exercise HTTPS web, native private scheme and exact HTTP loopback redirects ([test](../../../plugins/oauthprovider/registration_test.go#L16))
+      - [x] Accept loopback and custom-scheme callbacks for native clients only ([test](../../../plugins/oauthprovider/registration_test.go#L33))
+      - [x] HTTPS on a non-loopback host ([test](../../../plugins/oauthprovider/registration_test.go#L26))
+        - [x] Accept HTTPS redirects on non-loopback hosts for web and native clients ([test](../../../plugins/oauthprovider/registration_test.go#L26))
+      - [x] HTTP loopback, any port (RFC 8252 §7.3) ([test](../../../plugins/oauthprovider/registration_test.go#L33))
+        - [x] Accept an HTTP loopback callback on any port for a native client and refuse it for a web client ([test](../../../plugins/oauthprovider/registration_test.go#L33))
       - [x] Reverse-domain private-use scheme (RFC 8252 §7.1) ([test](../../../conformance/oauth-registration.mjs#L282))
         - [x] Register a reverse-domain private-use redirect for a native client and reject it for a web client ([test](../../../conformance/oauth-registration.mjs#L282))
-      - [x] Custom scheme with a host and a path ([test](../../../plugins/oauthprovider/registration_test.go#L34))
-        - [x] Accept a custom scheme with a host and path for a native client and refuse it for a web client ([test](../../../plugins/oauthprovider/registration_test.go#L34))
+      - [x] Custom scheme with a host and a path ([test](../../../plugins/oauthprovider/registration_test.go#L35))
+        - [x] Accept a custom scheme with a host and path for a native client and refuse it for a web client ([test](../../../plugins/oauthprovider/registration_test.go#L35))
   - [ ] Custom redirect URI validation
     - [x] Match a web callback exactly and a native loopback callback on any port of the same host name, check only the HTTPS policy before the host callback, and send refusals to the error page, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_redirect_transport_test.go#L23))
   - [ ] HTTP redirect URIs
@@ -1142,6 +1146,8 @@
   - [ ] Without the JWT plugin
   - [ ] Storage
     - [ ] `storeClientSecret`
+      - [x] Seal client secrets for their client in encrypted mode, authenticate them exactly, refuse a value copied to another client, reseal on rotation and use a host encrypt and decrypt pair, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_secret_storage_test.go#L21))
+      - [x] Refuse an unknown storage mode and mismatched custom storage functions ([test](../../../plugins/oauthprovider/registration_test.go#L95))
     - [x] `storeTokens` ([test](../../../plugins/oauthprovider/machine_token_test.go#L165))
       - [x] Store tokens as their SHA-256 base64url digest by default and through configured hash functions ([test](../../../plugins/oauthprovider/machine_token_test.go#L165))
   - [ ] Device code grant

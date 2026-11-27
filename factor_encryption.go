@@ -23,6 +23,22 @@ func recordKey(secret string) []byte {
 	return mac.Sum(nil)
 }
 
+// EncryptRecord seals plaintext for storage with the active versioned
+// secret, bound to purpose: DecryptRecord opens it only with the same
+// purpose. Plugins use it for values they must read back, such as an
+// encrypted OAuth client secret. The envelope is this library's own, so
+// another runtime cannot read it.
+func (a *Auth) EncryptRecord(purpose string, plaintext []byte) (string, error) {
+	return a.sealRecord(purpose, plaintext)
+}
+
+// DecryptRecord opens a record EncryptRecord sealed for purpose, with any
+// configured secret version. It fails for another purpose, a retired key
+// that is no longer configured or a damaged record.
+func (a *Auth) DecryptRecord(purpose, record string) ([]byte, error) {
+	return a.openRecord(purpose, record)
+}
+
 func (a *Auth) sealRecord(purpose string, raw []byte) (string, error) {
 	return sealSecretRecord(a.encryptionSecrets()[0], purpose, raw)
 }

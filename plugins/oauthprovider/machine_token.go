@@ -168,25 +168,40 @@ func invalidClient(description string) error {
 	return registrationProblem(400, "invalid_client", description)
 }
 
-func (r RegistrationOptions) checkSecret(ctx context.Context, issued, stored string) (bool, error) {
+func (r RegistrationOptions) checkSecret(ctx context.Context, a *auth.Auth, clientID, issued, stored string) (bool, error) {
 	raw, ok := strings.CutPrefix(issued, r.SecretPrefix)
 	if !ok || raw == "" || stored == "" {
 		return false, nil
 	}
-	if r.VerifySecret != nil {
+	var expected string
+	switch {
+	case r.VerifySecret != nil:
 		return r.VerifySecret(ctx, raw, stored)
-	}
-	var encoded string
-	if r.StoreSecret != nil {
-		var err error
-		encoded, err = r.StoreSecret(ctx, raw)
+	case r.DecryptSecret != nil:
+		plain, err := r.DecryptSecret(ctx, stored)
 		if err != nil {
 			return false, err
 		}
-	} else {
-		encoded = tokenDigest(raw)
+		expected = plain
+		stored = raw
+	case r.StoreSecret != nil:
+		encoded, err := r.StoreSecret(ctx, raw)
+		if err != nil {
+			return false, err
+		}
+		expected = encoded
+	case r.SecretStorage == "encrypted":
+		// A digest stored before the mode changed, or a value sealed for
+		// another client, does not open and fails like a wrong secret.
+		plain, err := a.DecryptRecord(clientSecretPurpose+clientID, stored)
+		if err != nil {
+			return false, nil
+		}
+		expected, stored = string(plain), raw
+	default:
+		expected = tokenDigest(raw)
 	}
-	return subtle.ConstantTimeCompare([]byte(encoded), []byte(stored)) == 1, nil
+	return subtle.ConstantTimeCompare([]byte(expected), []byte(stored)) == 1, nil
 }
 
 func (in tokenRequest) checkMethod(client MachineClient) error {
@@ -250,7 +265,7 @@ func (opts Options) authenticateClient(c auth.EndpointContext, store MachineClie
 		return first, err
 	}
 	if in.method != "none" {
-		ok, err := opts.Registration.checkSecret(ctx, in.secret, first.StoredSecret)
+		ok, err := opts.Registration.checkSecret(ctx, c.Auth, in.id, in.secret, first.StoredSecret)
 		if err != nil {
 			return MachineClient{}, err
 		}

@@ -16999,6 +16999,16 @@
       "label": "Reuse the host storage function and retain the active credential when it fails",
       "test": "adapters/sqlstore/oauth_secret_rotation_test.go",
       "marker": "failed generation changed an active credential"
+    },
+    {
+      "label": "Seal client secrets for their client in encrypted mode, authenticate them exactly, refuse a value copied to another client, reseal on rotation and use a host encrypt and decrypt pair, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_secret_storage_test.go",
+      "marker": "func TestEncryptedClientSecrets("
+    },
+    {
+      "label": "Refuse an unknown storage mode and mismatched custom storage functions",
+      "test": "plugins/oauthprovider/registration_test.go",
+      "marker": "func TestRegistrationSecretStorageOptions("
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/prefix": [
@@ -48705,6 +48715,30 @@
       "label": "Carry a resolved pushed request to the login page and refuse an unknown URI or a missing client on the error page, on both runtimes",
       "test": "conformance/oauth-request-uri.mjs",
       "marker": "const login = await authorize({ client_id: app.client_id, request_uri: \"urn:par:good\", state: \"url\", scope: \"reports\" });"
+    }
+  ],
+  "plugin-symbol/oauth-provider/storeClientSecret": [
+    {
+      "label": "Seal client secrets for their client in encrypted mode, authenticate them exactly, refuse a value copied to another client, reseal on rotation and use a host encrypt and decrypt pair, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_secret_storage_test.go",
+      "marker": "func TestEncryptedClientSecrets("
+    },
+    {
+      "label": "Refuse an unknown storage mode and mismatched custom storage functions",
+      "test": "plugins/oauthprovider/registration_test.go",
+      "marker": "func TestRegistrationSecretStorageOptions("
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/tokens.mdx#L301/`storeClientSecret`": [
+    {
+      "label": "Seal client secrets for their client in encrypted mode, authenticate them exactly, refuse a value copied to another client, reseal on rotation and use a host encrypt and decrypt pair, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_secret_storage_test.go",
+      "marker": "func TestEncryptedClientSecrets("
+    },
+    {
+      "label": "Refuse an unknown storage mode and mismatched custom storage functions",
+      "test": "plugins/oauthprovider/registration_test.go",
+      "marker": "func TestRegistrationSecretStorageOptions("
     }
   ]
 }

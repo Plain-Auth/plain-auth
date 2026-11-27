@@ -1,6 +1,7 @@
 package oauthprovider
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/url"
@@ -86,6 +87,29 @@ func TestRegistrationSecretLifetime(t *testing.T) {
 	}
 	if _, err := New(Options{Registration: RegistrationOptions{Enabled: true, SecretLifetime: time.Hour}}); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// Secret storage takes a known mode, and a host's decrypt function pairs
+// only with its own StoreSecret.
+func TestRegistrationSecretStorageOptions(t *testing.T) {
+	store := func(context.Context, string) (string, error) { return "stored", nil }
+	decrypt := func(context.Context, string) (string, error) { return "raw", nil }
+	verify := func(context.Context, string, string) (bool, error) { return true, nil }
+	for _, r := range []RegistrationOptions{
+		{SecretStorage: "plain"}, {SecretStorage: "encrypted", StoreSecret: store},
+		{DecryptSecret: decrypt}, {StoreSecret: store, DecryptSecret: decrypt, VerifySecret: verify},
+	} {
+		r.Enabled = true
+		if _, err := New(Options{Registration: r}); err == nil {
+			t.Errorf("secret storage %q with custom functions was accepted", r.SecretStorage)
+		}
+	}
+	for _, r := range []RegistrationOptions{{SecretStorage: "hashed"}, {SecretStorage: "encrypted"}, {StoreSecret: store, DecryptSecret: decrypt}, {StoreSecret: store, VerifySecret: verify}} {
+		r.Enabled = true
+		if _, err := New(Options{Registration: r}); err != nil {
+			t.Error(err)
+		}
 	}
 }
 
