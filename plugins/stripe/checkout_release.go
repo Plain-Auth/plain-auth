@@ -47,10 +47,5 @@ func releaseContext(ctx context.Context, a CheckoutAttempt) context.Context {
 // parameter and request ID, which locate it in Stripe's dashboard, but not
 // Stripe's message.
 func logStripeError(c auth.EndpointContext, message string, err error) {
-	var api *sdk.Error
-	if !errors.As(err, &api) {
-		c.Auth.Logger().ErrorContext(c.Request.Context(), message, "error", err)
-		return
-	}
-	c.Auth.Logger().ErrorContext(c.Request.Context(), message, "status", api.HTTPStatusCode, "type", string(api.Type), "code", string(api.Code), "param", api.Param, "request", api.RequestID)
+	c.Auth.Logger().ErrorContext(c.Request.Context(), message, stripeErrorAttrs(err)...)
 }

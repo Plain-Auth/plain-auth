@@ -51831,5 +51831,66 @@
       "marker": "func TestCheckoutSessionParams(",
       "complete": true
     }
+  ],
+  "plugin-symbol/stripe/StripeOptions/createCustomerOnSignUp": [
+    {
+      "label": "Create or link each new user's Stripe customer after sign-up, from HTTP and Go calls, reusing a verified email's unowned match through search or list, and never failing the sign-up, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_signup_customer_test.go",
+      "marker": "func TestSignUpStripeCustomer(t *testing.T) {",
+      "complete": true
+    },
+    {
+      "label": "Refuse sign-up customer options without a client or the user's customer column at startup, and call Stripe for nothing when sign-up creation is off",
+      "test": "adapters/sqlstore/stripe_signup_customer_test.go",
+      "marker": "func TestUserCustomerOptions(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L846/`createCustomerOnSignUp`": [
+    {
+      "label": "Create or link each new user's Stripe customer after sign-up, from HTTP and Go calls, reusing a verified email's unowned match through search or list, and never failing the sign-up, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_signup_customer_test.go",
+      "marker": "func TestSignUpStripeCustomer(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L11/Create Stripe Customers automatically when users sign up": [
+    {
+      "label": "Store a Stripe customer for every new user, created with the user's email, name and metadata or linked from a verified email's match, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_signup_customer_test.go",
+      "marker": "func TestSignUpStripeCustomer(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/stripe/StripeOptions/onCustomerCreate": [
+    {
+      "label": "Report a created or linked sign-up customer with the user and the endpoint call once it is stored, and keep the link when the callback fails or panics, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_signup_customer_test.go",
+      "marker": "// A failing or panicking OnCustomerCreate is logged; the customer",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L847/`onCustomerCreate`": [
+    {
+      "label": "Report a created or linked sign-up customer with the user and the endpoint call once it is stored, and keep the link when the callback fails or panics, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_signup_customer_test.go",
+      "marker": "// A failing or panicking OnCustomerCreate is logged; the customer",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/stripe/StripeOptions/getCustomerCreateParams": [
+    {
+      "label": "Merge the host's customer parameters beneath the user's email, name and the plugin's metadata keys, and create nothing when the callback fails or names a connected account, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_signup_customer_test.go",
+      "marker": "// The host's parameters are kept beneath the user's email and name",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L848/`getCustomerCreateParams`": [
+    {
+      "label": "Merge the host's customer parameters beneath the user's email, name and the plugin's metadata keys, and create nothing when the callback fails or names a connected account, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_signup_customer_test.go",
+      "marker": "// The host's parameters are kept beneath the user's email and name",
+      "complete": true
+    }
   ]
 }

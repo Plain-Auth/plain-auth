@@ -18,6 +18,9 @@ type Options struct {
 	Organization  *OrganizationOptions
 	Subscriptions *SubscriptionOptions
 	Portal        *PortalOptions
+	// UserCustomers creates users' Stripe customers at sign-up, with or
+	// without Subscriptions.
+	UserCustomers *UserCustomerOptions
 	WebhookSecret string
 	OnEvent       func(context.Context, stripesdk.Event) error
 }
@@ -172,6 +175,22 @@ func New(opts Options) authn.Plugin {
 				authn.Endpoint{Method: http.MethodPost, Path: "/subscription/cancel", Handler: subs.cancel},
 				authn.Endpoint{Method: http.MethodPost, Path: "/subscription/restore", Handler: subs.restore},
 			)
+		}
+	}
+	if opts.UserCustomers != nil {
+		customers := &userCustomers{opts: *opts.UserCustomers}
+		billingCheck := plugin.ValidateStore
+		plugin.ValidateStore = func(store authn.Store) error {
+			if billingCheck != nil {
+				if err := billingCheck(store); err != nil {
+					return err
+				}
+			}
+			return customers.useStore(store)
+		}
+		plugin.StoredUserFields = map[string]authn.UserField{"stripeCustomerId": {Type: authn.FieldString}}
+		if customers.opts.CreateCustomerOnSignUp {
+			plugin.DatabaseHooks.User.Create.After = customers.afterSignUp
 		}
 	}
 	return plugin

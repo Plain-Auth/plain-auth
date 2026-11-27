@@ -1,7 +1,9 @@
 package stripe
 
 import (
+	"context"
 	"errors"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -39,7 +41,7 @@ func (s *subscriptions) bindCustomer(c auth.EndpointContext, store SubscriptionS
 	}
 	if created && errors.Is(err, ErrCheckoutReconcile) {
 		if _, err := s.client.V1Customers.Delete(ctx, customer, nil); err != nil {
-			c.Auth.Logger().WarnContext(ctx, "Stripe customer from a concurrent purchase was not deleted", "customer", customer, "error", err)
+			c.Auth.Logger().WarnContext(ctx, "Stripe customer from a concurrent purchase was not deleted", append([]any{"customer", customer}, stripeErrorAttrs(err)...)...)
 		}
 	}
 	var bound CustomerBoundError
@@ -83,9 +85,9 @@ func (s *subscriptions) checkoutCustomer(c auth.EndpointContext, selection billi
 	// An unverified email is not looked up, so a lookup outage cannot block
 	// the purchase, where another runtime looks it up and discards the match.
 	if ss.User.EmailVerified {
-		match, err := s.findUserCustomer(c, ss.User.Email)
+		match, err := findUserCustomer(ctx, s.client, c.Auth.Logger(), ss.User.Email)
 		if err != nil {
-			c.Auth.Logger().ErrorContext(ctx, "Stripe customer lookup failed", "error", err)
+			c.Auth.Logger().ErrorContext(ctx, "Stripe customer lookup failed", stripeErrorAttrs(err)...)
 			return "", ErrCustomerCreation
 		}
 		if match != nil && (match.Metadata["userId"] == "" || match.Metadata["userId"] == ss.User.ID) {
@@ -127,11 +129,10 @@ func (s *subscriptions) createCustomer(c auth.EndpointContext, params *sdk.Custo
 // findUserCustomer finds the first customer Stripe has for an email that is
 // not an organization's, through search, or a list by email when search is
 // unavailable, as another runtime does.
-func (s *subscriptions) findUserCustomer(c auth.EndpointContext, email string) (*sdk.Customer, error) {
-	ctx := c.Request.Context()
+func findUserCustomer(ctx context.Context, client *sdk.Client, log *slog.Logger, email string) (*sdk.Customer, error) {
 	query := `email:"` + stripeSearchValue(email) + `" AND -metadata["customerType"]:"organization"`
 	var searchErr error
-	for customer, err := range s.client.V1Customers.Search(ctx, &sdk.CustomerSearchParams{SearchParams: sdk.SearchParams{Query: query, Limit: sdk.Int64(1)}}).All(ctx) {
+	for customer, err := range client.V1Customers.Search(ctx, &sdk.CustomerSearchParams{SearchParams: sdk.SearchParams{Query: query, Limit: sdk.Int64(1)}}).All(ctx) {
 		if err != nil {
 			searchErr = err
 			break
@@ -141,8 +142,8 @@ func (s *subscriptions) findUserCustomer(c auth.EndpointContext, email string) (
 	if searchErr == nil || ctx.Err() != nil {
 		return nil, searchErr
 	}
-	c.Auth.Logger().WarnContext(ctx, "Stripe customers.search failed, falling back to customers.list", "error", searchErr)
-	for customer, err := range s.client.V1Customers.List(ctx, &sdk.CustomerListParams{Email: sdk.String(email), ListParams: sdk.ListParams{Limit: sdk.Int64(100)}}).All(ctx) {
+	log.WarnContext(ctx, "Stripe customers.search failed, falling back to customers.list", stripeErrorAttrs(searchErr)...)
+	for customer, err := range client.V1Customers.List(ctx, &sdk.CustomerListParams{Email: sdk.String(email), ListParams: sdk.ListParams{Limit: sdk.Int64(100)}}).All(ctx) {
 		if err != nil {
 			return nil, err
 		}
@@ -151,6 +152,23 @@ func (s *subscriptions) findUserCustomer(c auth.EndpointContext, email string) (
 		}
 	}
 	return nil, nil
+}
+
+// stripeErrorAttrs describes a failed Stripe call for a log line by its
+// Stripe status, type, code and request ID, or by a timeout or transport
+// failure. It leaves out error text, which can carry the request URL and,
+// for a lookup, the email it searched for.
+func stripeErrorAttrs(err error) []any {
+	var api *sdk.Error
+	switch {
+	case errors.As(err, &api):
+		return []any{"status", api.HTTPStatusCode, "type", string(api.Type), "code", string(api.Code), "param", api.Param, "request", api.RequestID}
+	case errors.Is(err, context.DeadlineExceeded):
+		return []any{"reason", "timeout"}
+	case errors.Is(err, context.Canceled):
+		return []any{"reason", "canceled"}
+	}
+	return []any{"reason", "transport"}
 }
 
 // stripeSearchValue escapes a value for a double-quoted Stripe search

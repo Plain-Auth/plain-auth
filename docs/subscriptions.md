@@ -97,6 +97,30 @@ Return `TaxIDCollection: &stripesdk.CheckoutSessionCreateTaxIDCollectionParams{E
 
 Return `AutomaticTax: &stripesdk.CheckoutSessionCreateAutomaticTaxParams{Enabled: stripesdk.Bool(true)}`. It needs Stripe Tax configured in your account.
 
+## Create customers at sign-up
+
+Set `UserCustomers` to give every new user a Stripe customer once the user is stored, with or without `Subscriptions`:
+
+```go
+stripeplugin.New(stripeplugin.Options{
+    UserCustomers: &stripeplugin.UserCustomerOptions{
+        Client:                 stripeClient,
+        CreateCustomerOnSignUp: true,
+        Logger:                 logger, // the logger in plainauth.Options.Logger
+        CustomerCreateParams: func(ctx context.Context, in stripeplugin.NewUserCustomer) (*stripesdk.CustomerCreateParams, error) {
+            return &stripesdk.CustomerCreateParams{Description: stripesdk.String("Signed up on the web")}, nil
+        },
+        OnCustomerCreate: func(ctx context.Context, c stripeplugin.UserCustomerCreated) error {
+            return recordCustomer(ctx, c.User.ID, c.Customer.ID)
+        },
+    },
+})
+```
+
+The customer is stored as the user's `stripeCustomerId`, so the store needs the `stripe-subscriptions` or `stripe-organization` [schema profile](schema.md), which also adds the subscription table; another runtime adds only the user column for this setup. The hook runs for every new user, from HTTP sign-ups and direct Go calls such as `Auth.SignUpEmail`, anonymous users and phone sign-ups with placeholder addresses included, as in another runtime. For a verified email it links the customer Stripe has for that email, found as Checkout finds it, when its `userId` metadata is empty or the user's and no other account holds it. Otherwise, and for an unverified email, which is not looked up, it creates one with the user's email, name and metadata `userId` and `customerType: "user"`.
+
+`CustomerCreateParams` adds parameters to a created customer; the user's email and name and the plugin's metadata keys replace the host's, as another runtime merges them. Parameters that name a connected account, a Stripe context, headers or extra form values create nothing, since Checkout could not use that customer. `OnCustomerCreate` runs once a created or linked customer is stored. Every failure, a panic included, is logged with the user and customer IDs, never the email or error text, and the sign-up still succeeds. A customer is linked only while the user has none and no personal Checkout is pending, where another runtime overwrites the column; a customer the sign-up created but could not link is deleted. Stripe calls are bounded to 30 seconds and finish even if the client disconnects. Pass the Auth's logger in `Logger`, since a direct Go call has no endpoint to log through. The hook is a user create database hook, so New refuses it alongside the admin, passkey and SIWE plugins, whose user creation does not run those hooks yet. Custom stores implement `stripeplugin.UserCustomerStore`. [Sign-up customer tests](../adapters/sqlstore/stripe_signup_customer_test.go)
+
 ## Offer a free trial
 
 Set `FreeTrial` on a plan to offer a positive number of days on a new Checkout. For example, `stripeplugin.Plan{Name: "pro", PriceID: "price_pro", FreeTrial: &stripeplugin.FreeTrial{Days: 14}}` offers two weeks. The client selects the plan by name. The server sends the eligible duration to Stripe as `subscription_data[trial_period_days]`. [Stripe Checkout parameters](https://docs.stripe.com/api/checkout/sessions/create)
