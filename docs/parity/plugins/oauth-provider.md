@@ -15,7 +15,8 @@
     - [x] Refuse each invalid public key set with invalid_client_metadata and the description naming its reason ([test](../../../plugins/oauthprovider/registration_test.go#L205))
   - [x] `validatePublicClientJwks` ([test](../../../plugins/oauthprovider/registration_test.go#L149))
     - [x] Validate public RSA, EC and Ed25519 keys and compatible signing algorithms and reject private key material ([test](../../../plugins/oauthprovider/registration_test.go#L149))
-  - [ ] `isForbiddenCimdClientMetadataField`
+  - [x] `isForbiddenCimdClientMetadataField` ([test](../../../plugins/oauthprovider/client_metadata_document_test.go#L90))
+    - [x] Report the exact, case-sensitive set of 36 server-owned names a client ID metadata document must not carry ([test](../../../plugins/oauthprovider/client_metadata_document_test.go#L90))
   - [x] `oauthProviderResourceClient` ([test](../../../conformance/resource-verifier.mjs#L130))
     - [x] Derive protected-resource discovery from a local auth mount and issuer or from standalone configuration ([test](../../../conformance/resource-discovery.mjs#L7))
     - [x] Protect a route with the resource verifier, answering missing, failed, DPoP-bound and under-scoped requests with the same challenges, expose header and bodies as the other runtime's resource client, and passing verified requests through ([test](../../../conformance/resource-verifier.mjs#L130))
@@ -549,8 +550,10 @@
     - [x] Publish end_session_endpoint and the back-channel logout flags, the fields the OpenID document lacked, and leave the endpoint out for a store that cannot read the hinted session (a documented deviation), on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_end_session_test.go#L173))
   - [ ] `TokenEndpointAuthMethod`
   - [ ] `TokenType`
-  - [ ] `OAuthClientMetadata`
-  - [ ] `oauthClientMetadataSchema`
+  - [x] `OAuthClientMetadata` ([test](../../../plugins/oauthprovider/client_metadata_document_test.go#L15))
+    - [x] Type a client metadata document's registration metadata, client ID, secret and timestamps, and keep every other member raw, writing it back without replacing a typed member ([test](../../../plugins/oauthprovider/client_metadata_document_test.go#L15))
+  - [x] `oauthClientMetadataSchema` ([test](../../../plugins/oauthprovider/client_metadata_document_test.go#L46))
+    - [x] Parse a client metadata document with the registration rules, keeping skip_consent and unknown members as extensions, requiring a nonempty client_id, a string secret and non-negative integer timestamps, and refusing anything but an object ([test](../../../plugins/oauthprovider/client_metadata_document_test.go#L46))
   - [ ] `ResourceUriSchema`
     - [x] Validate absolute URI and URN audience identifiers and reject fragments, unsafe schemes and malformed escapes ([test](../../../plugins/oauthprovider/resource_test.go#L11))
   - [ ] `ClientRegistrationRequest`

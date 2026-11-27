@@ -18,6 +18,13 @@ import (
 // Only exact wire field names cross this boundary. Server-assigned fields and
 // unknown metadata cannot set a client's credentials, ownership or privileges.
 func readRegistration(body map[string]any) (RegistrationMetadata, error) {
+	return readRegistrationFields(body, false)
+}
+
+// readRegistrationFields applies the registration request rules. A metadata
+// document may carry skip_consent as an ordinary member, which the caller
+// keeps or refuses; a registration request may not.
+func readRegistrationFields(body map[string]any, document bool) (RegistrationMetadata, error) {
 	var m RegistrationMetadata
 	value := reflect.ValueOf(&m).Elem()
 	for i := 0; i < value.NumField(); i++ {
@@ -38,7 +45,7 @@ func readRegistration(body map[string]any) (RegistrationMetadata, error) {
 			}
 		}
 	}
-	if _, ok := body["skip_consent"]; ok {
+	if _, ok := body["skip_consent"]; ok && !document {
 		return m, metadataProblem("skip_consent cannot be set during dynamic client registration")
 	}
 	if m.Name != nil && strings.TrimSpace(*m.Name) == "" {

@@ -50213,5 +50213,29 @@
       "test": "plugins/mcp/forward_test.go",
       "marker": "func TestProviderOptionsForwarded("
     }
+  ],
+  "plugin-symbol/oauth-provider/OAuthClientMetadata": [
+    {
+      "label": "Type a client metadata document's registration metadata, client ID, secret and timestamps, and keep every other member raw, writing it back without replacing a typed member",
+      "test": "plugins/oauthprovider/client_metadata_document_test.go",
+      "marker": "func TestParseClientMetadataDocument(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/oauthClientMetadataSchema": [
+    {
+      "label": "Parse a client metadata document with the registration rules, keeping skip_consent and unknown members as extensions, requiring a nonempty client_id, a string secret and non-negative integer timestamps, and refusing anything but an object",
+      "test": "plugins/oauthprovider/client_metadata_document_test.go",
+      "marker": "refused := map[string]struct{ doc, code, description string }{",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/isForbiddenCimdClientMetadataField": [
+    {
+      "label": "Report the exact, case-sensitive set of 36 server-owned names a client ID metadata document must not carry",
+      "test": "plugins/oauthprovider/client_metadata_document_test.go",
+      "marker": "func TestIsForbiddenMetadataDocumentField(",
+      "complete": true
+    }
   ]
 }
