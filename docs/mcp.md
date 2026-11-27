@@ -20,6 +20,23 @@ The resource is added to the provider's `Resources`, unless declared there alrea
 
 Client registration stays off unless you enable it. For older MCP clients that need dynamic registration, set `Registration.Enabled`, `Registration.AllowUnauthenticated` and `Registration.DefaultApplicationType: "infer"`: a client registered without the `resources` extension is still linked to the MCP resource, and one with loopback callbacks is registered as `native`. Unauthenticated registration lets anyone register a client with a name and logo they choose, so also set `Registration.DefaultScopes`. The provider seeds the declared resource when the host first uses it.
 
+## Identify clients by metadata documents
+
+MCP clients identify themselves by [client ID metadata documents](cimd.md). Install the discovery with the MCP profile through the provider's extensions, and leave dynamic registration off:
+
+```go
+discovery, err := cimd.NewClientDiscovery(cimd.Options{Profile: cimd.ProfileMCP20260728})
+provider, err := mcp.New(mcp.Options{
+    Resource: "https://api.example.com/mcp",
+    Options: oauthprovider.Options{
+        Extensions: []oauthprovider.Extension{{ClientDiscoveries: []oauthprovider.ClientDiscovery{discovery}}},
+        // ...
+    },
+})
+```
+
+Discovery then advertises `client_id_metadata_document_supported` and no registration endpoint. A document without `client_name` or `redirect_uris` is refused at authorize; a complete one is stored, linked to the MCP resource like any registered client, and gets tokens the route's guard accepts. [Composition test](../adapters/sqlstore/oauth_mcp_cimd_test.go)
+
 ## Client flow
 
 The plugin serves the provider's endpoints under the auth path:
