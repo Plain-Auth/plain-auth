@@ -1,8 +1,6 @@
 package stripe
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"strings"
 	"time"
@@ -43,7 +41,7 @@ func (s *subscriptions) checkoutCustomer(c auth.EndpointContext, selection billi
 		}
 		if customer == nil {
 			params := &sdk.CustomerCreateParams{Name: sdk.String(a.OrganizationName), Metadata: map[string]string{"organizationId": a.OrganizationID, "customerType": "organization"}}
-			customer = s.createCustomer(c, "organization-customer:"+a.OrganizationID, params)
+			customer = s.createCustomer(c, params)
 		}
 		if customer == nil || customer.ID == "" || customer.Metadata["customerType"] != "organization" || customer.Metadata["organizationId"] != a.OrganizationID {
 			return "", ErrCustomerCreation
@@ -71,21 +69,19 @@ func (s *subscriptions) checkoutCustomer(c auth.EndpointContext, selection billi
 	if ss.User.Name != "" {
 		params.Name = sdk.String(ss.User.Name)
 	}
-	// The key covers the email and name, so a retry after a lost response
-	// reuses the customer and a changed profile creates another instead of
-	// failing; another runtime sends no key.
-	customer := s.createCustomer(c, "customer:"+ss.User.ID+"\x00"+ss.User.Email+"\x00"+ss.User.Name, params)
+	customer := s.createCustomer(c, params)
 	if customer == nil || customer.ID == "" || customer.Metadata["customerType"] != "user" || customer.Metadata["userId"] != a.Owner {
 		return "", ErrCustomerCreation
 	}
 	return customer.ID, store.BindStripeCheckoutCustomer(ctx, a, token, customer.ID, time.Now())
 }
 
-// createCustomer creates a Stripe customer under an idempotency key derived
-// from namespace, logging a failure and returning nil.
-func (s *subscriptions) createCustomer(c auth.EndpointContext, namespace string, params *sdk.CustomerCreateParams) *sdk.Customer {
-	sum := sha256.Sum256([]byte(namespace))
-	params.SetIdempotencyKey("auth-customer-" + hex.EncodeToString(sum[:]))
+// createCustomer creates a Stripe customer, logging a failure and returning
+// nil. It sends no idempotency key of its own, as another runtime sends
+// none: Stripe replays a key's first answer, an error included, for a day,
+// so a fixed key would refuse every retry after a failure. The search that
+// precedes it finds a customer an earlier lost response created.
+func (s *subscriptions) createCustomer(c auth.EndpointContext, params *sdk.CustomerCreateParams) *sdk.Customer {
 	customer, err := s.client.V1Customers.Create(c.Request.Context(), params)
 	if err != nil {
 		c.Auth.Logger().ErrorContext(c.Request.Context(), "Stripe customer creation failed", "error", err)

@@ -299,8 +299,8 @@ Each row tracks the behavior exposed by a published entry point. The Go implemen
 
 - [ ] Stripe billing
   - [ ] Default interface (`.`)
-    - [x] Reserve an owner-scoped checkout, send the configured recurring price and return the same checkout on retries ([test](../../adapters/sqlstore/subscriptions_test.go#L212))
-    - [x] Reuse an existing Stripe customer when starting a monthly subscription ([test](../../adapters/sqlstore/subscriptions_test.go#L349))
+    - [x] Reserve an owner-scoped checkout, send the configured recurring price and return the same checkout on retries ([test](../../adapters/sqlstore/subscriptions_test.go#L208))
+    - [x] Reuse an existing Stripe customer when starting a monthly subscription ([test](../../adapters/sqlstore/subscriptions_test.go#L345))
     - [x] Match the browser client's session, customer-type and foreign-reference errors before contacting Stripe ([test](../../conformance/stripe-lifecycle-fixture.mjs#L211))
     - [x] Reject a missing plan and a subscription owned by another signed-in user ([test](../../conformance/stripe-lifecycle-fixture.mjs#L193))
     - [x] Open monthly and annual confirmation pages for the owner’s existing subscription and preserve its price until Stripe confirms ([test](../../conformance/stripe-lifecycle-fixture.mjs#L270))
@@ -311,7 +311,7 @@ Each row tracks the behavior exposed by a published entry point. The Go implemen
     - [x] Recheck membership and active organization around Stripe responses, recover checkout under a different administrator, and refuse ambiguous customer ownership on three SQL engines ([test](../../adapters/sqlstore/stripe_organization_test.go#L26))
     - [x] Open an annual price confirmation for the selected organization and its existing subscription item ([test](../../adapters/sqlstore/stripe_organization_management_test.go#L167))
     - [x] Schedule a single-seat annual organization plan and reconcile its signed phase transition through the browser client ([test](../../conformance/stripe-lifecycle-fixture.mjs#L465))
-    - [x] Reserve an explicit seat quantity, reject a conflicting retry and preserve single-seat reservations from earlier releases ([test](../../adapters/sqlstore/subscriptions_test.go#L296))
+    - [x] Reserve an explicit seat quantity, reject a conflicting retry and preserve single-seat reservations from earlier releases ([test](../../adapters/sqlstore/subscriptions_test.go#L292))
     - [x] Verify a five-seat organization purchase and read the eight seats already active when the webhook arrives ([test](../../conformance/stripe-organization-fixture.mjs#L158))
     - [x] Open a hosted confirmation for a quantity-only change and suppress the link if the existing quantity changes concurrently ([test](../../adapters/sqlstore/stripe_plan_change_test.go#L225))
     - [x] Propose one seat when quantity is omitted and keep all five existing seats until the customer confirms ([test](../../conformance/stripe-lifecycle-fixture.mjs#L265))
@@ -326,7 +326,7 @@ Each row tracks the behavior exposed by a published entry point. The Go implemen
     - [x] Buy a licensed base and two fixed metered add-ons for a personal or organization account, sending a quantity only for the base ([test](../../conformance/stripe-organization-fixture.mjs#L256))
     - [x] Replay the exact original add-on basket after a lost Checkout response on independent SQL connections ([test](../../adapters/sqlstore/stripe_addons_test.go#L158))
     - [x] Offer the configured trial only for a new personal or organization billing reference with no trial history across plans ([test](../../conformance/stripe-organization-fixture.mjs#L392))
-    - [x] Reuse a verified user's email-matched Stripe customer that no other user owns, through search or a list by email, otherwise create one with the user's email, name and metadata, on three SQL engines ([test](../../adapters/sqlstore/stripe_customer_lookup_test.go#L26))
+    - [x] Reuse a verified user's email-matched Stripe customer that no other user owns, through search or a list by email, otherwise create one with the user's email, name and metadata, on three SQL engines ([test](../../adapters/sqlstore/stripe_customer_lookup_test.go#L24))
   - [ ] Client integration (`./client`)
 
 ## Telemetry

@@ -2,8 +2,6 @@ package sqlstore
 
 import (
 	"bytes"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -42,6 +40,7 @@ func TestCheckoutCustomerLookup(t *testing.T) {
 			var keys []string
 			var checkoutCustomer string
 			var made int
+			var createFails bool
 			searchStatus, listStatus := 200, 200
 			var found, listed []map[string]any
 			transport := localBillingTransport(func(r *http.Request) (*http.Response, error) {
@@ -66,6 +65,10 @@ func TestCheckoutCustomerLookup(t *testing.T) {
 					}
 					return stripeJSON(200, map[string]any{"object": "list", "has_more": false, "data": listed}), nil
 				case r.URL.Path == "/v1/customers" && r.Method == http.MethodPost:
+					if createFails {
+						createFails = false
+						return stripeJSON(500, map[string]any{"error": map[string]string{"type": "api_error", "message": "down"}}), nil
+					}
 					creates = append(creates, r.PostForm)
 					keys = append(keys, r.Header.Get("Idempotency-Key"))
 					made++
@@ -97,6 +100,21 @@ func TestCheckoutCustomerLookup(t *testing.T) {
 				}
 				return *customer
 			}
+			upgrade := func(cookie *http.Cookie) (int, map[string]any) {
+				t.Helper()
+				var src bytes.Buffer
+				json.NewEncoder(&src).Encode(map[string]any{"plan": "basic", "successUrl": "/done", "cancelUrl": "/cancel", "disableRedirect": true})
+				r := httptest.NewRequest(http.MethodPost, origin+"/api/auth/subscription/upgrade", &src)
+				r.Header.Set("Origin", origin)
+				r.Header.Set("Content-Type", "application/json")
+				r.AddCookie(cookie)
+				w := httptest.NewRecorder()
+				a.ServeHTTP(w, r)
+				var out map[string]any
+				json.Unmarshal(w.Body.Bytes(), &out)
+				return w.Code, out
+			}
+			var last *http.Cookie
 			// buy signs a user up, verified or not, and starts a checkout.
 			buy := func(name string, verified bool) (string, int, map[string]any) {
 				t.Helper()
@@ -109,17 +127,9 @@ func TestCheckoutCustomerLookup(t *testing.T) {
 						t.Fatal(err)
 					}
 				}
-				var src bytes.Buffer
-				json.NewEncoder(&src).Encode(map[string]any{"plan": "basic", "successUrl": "/done", "cancelUrl": "/cancel", "disableRedirect": true})
-				r := httptest.NewRequest(http.MethodPost, origin+"/api/auth/subscription/upgrade", &src)
-				r.Header.Set("Origin", origin)
-				r.Header.Set("Content-Type", "application/json")
-				r.AddCookie(a.SessionCookie(hit.Token, true))
-				w := httptest.NewRecorder()
-				a.ServeHTTP(w, r)
-				var out map[string]any
-				json.Unmarshal(w.Body.Bytes(), &out)
-				return hit.User.ID, w.Code, out
+				last = a.SessionCookie(hit.Token, true)
+				status, out := upgrade(last)
+				return hit.User.ID, status, out
 			}
 			reset := func() {
 				mu.Lock()
@@ -142,12 +152,11 @@ func TestCheckoutCustomerLookup(t *testing.T) {
 			reset()
 			found = []map[string]any{{"id": "cus_theirs", "object": "customer", "metadata": map[string]string{"userId": "someone-else"}}}
 			id, status, out = buy("owned", true)
-			sum := sha256.Sum256([]byte("customer:" + id + "\x00owned@example.test\x00owned Buyer"))
 			if status != 200 || len(creates) != 1 || customerOf(id) != "cus_new1" || checkoutCustomer != "cus_new1" {
 				t.Fatal("an owned match was reused", status, out, len(creates))
 			}
 			created := 1
-			if c := creates[0]; c.Get("email") != "owned@example.test" || c.Get("name") != "owned Buyer" || c.Get("metadata[userId]") != id || c.Get("metadata[customerType]") != "user" || keys[0] != "auth-customer-"+hex.EncodeToString(sum[:]) {
+			if c := creates[0]; c.Get("email") != "owned@example.test" || c.Get("name") != "owned Buyer" || c.Get("metadata[userId]") != id || c.Get("metadata[customerType]") != "user" || strings.HasPrefix(keys[0], "auth-customer-") {
 				t.Fatal("the created customer was wrong", c, keys)
 			}
 			// A match another local account holds is not shared.
@@ -180,6 +189,16 @@ func TestCheckoutCustomerLookup(t *testing.T) {
 			id, status, out = buy("listed", true)
 			if status != 200 || len(lists) != 1 || lists[0].Get("email") != "listed@example.test" || lists[0].Get("limit") != "100" || len(creates) != 0 || customerOf(id) != "cus_listed" {
 				t.Fatal("the list fallback did not reuse the person's customer", status, out, lists, len(creates), customerOf(id))
+			}
+			// A failed creation can be retried once Stripe recovers.
+			reset()
+			createFails = true
+			id, status, out = buy("retried", false)
+			if status != 400 || out["code"] != "UNABLE_TO_CREATE_CUSTOMER" || len(creates) != 0 {
+				t.Fatal("a failed creation was not refused", status, out)
+			}
+			if status, out = upgrade(last); status != 200 || len(creates) != 1 || customerOf(id) == "" {
+				t.Fatal("a failed creation could not be retried", status, out, len(creates))
 			}
 			// Both lookups failing for a verified user answer
 			// UNABLE_TO_CREATE_CUSTOMER without a creation or a Checkout.

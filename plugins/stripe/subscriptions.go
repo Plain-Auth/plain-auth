@@ -405,7 +405,13 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 			}
 		}
 		checkout, err := s.client.V1CheckoutSessions.Create(ctx, params)
+		// A failure answers 502 with a fixed message, where another runtime
+		// answers 400 with Stripe's code and message: provider text can
+		// disclose account configuration to the browser, so it is logged.
 		if err != nil || checkout == nil || checkout.ID == "" || checkout.URL == "" {
+			if err != nil {
+				c.Auth.Logger().ErrorContext(ctx, "Stripe checkout creation failed", "error", err)
+			}
 			return nil, billingError(502, "CHECKOUT_CREATION_FAILED", "Stripe checkout creation failed")
 		}
 		if err := store.SaveStripeCheckoutResult(ctx, a, ss.Session.Token, checkout.ID, checkout.URL, time.Now()); err != nil {

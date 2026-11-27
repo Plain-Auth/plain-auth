@@ -51,7 +51,7 @@ func TestSubscriptionCheckout(t *testing.T) {
 			var mu sync.Mutex
 			var owner string
 			var customerRequests, sessionRequests, retrievals int
-			var customerKey, checkoutKey string
+			var checkoutKey string
 			var meta map[string]string
 			expectedCustomer := "cus_local"
 			lostResponse := true
@@ -73,13 +73,9 @@ func TestSubscriptionCheckout(t *testing.T) {
 					priceReads++
 					return stripeJSON(200, map[string]any{"id": "price_year", "active": true, "recurring": map[string]any{"interval": "year", "interval_count": 1, "usage_type": usage}}), nil
 				case "/v1/customers":
-					if key == "" || r.Form.Get("metadata[userId]") != owner || r.Form.Get("metadata[customerType]") != "user" {
+					if r.Form.Get("metadata[userId]") != owner || r.Form.Get("metadata[customerType]") != "user" || r.Form.Get("email") != "owner@example.test" {
 						return nil, fmt.Errorf("incorrect customer association")
 					}
-					if customerKey != "" && customerKey != key {
-						return nil, fmt.Errorf("different customer retry key")
-					}
-					customerKey = key
 					customerRequests++
 					return stripeJSON(200, map[string]any{"id": "cus_local", "object": "customer", "metadata": map[string]string{"userId": owner, "customerType": "user"}}), nil
 				case "/v1/checkout/sessions":
