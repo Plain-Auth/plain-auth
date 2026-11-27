@@ -47848,5 +47848,59 @@
       "marker": "t.Fatal(\"a grant the issuer does not offer was not refused with unsupported_grant_type\", status, code)",
       "complete": true
     }
+  ],
+  "plugin-symbol/oauth-provider/storeToken": [
+    {
+      "label": "Store access tokens, refresh tokens and codes as their SHA-256 base64url digest by default, and through each kind's own hash function only",
+      "test": "plugins/oauthprovider/machine_token_test.go",
+      "marker": "t.Fatal(\"a hash function ran for another token kind\", calls)",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/getStoredToken": [
+    {
+      "label": "Derive the same digest for lookup as for storage, by default and through each kind's hash function",
+      "test": "plugins/oauthprovider/machine_token_test.go",
+      "marker": "t.Fatal(\"an authorization code is not stored as its digest\", code, err)",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/mcp/McpOptions/generateClientId": [
+    {
+      "label": "Generate a default client ID of 32 ASCII letters",
+      "test": "plugins/oauthprovider/machine_token_test.go",
+      "marker": "t.Fatal(\"a default client credential is not 32 letters\", id, err)"
+    }
+  ],
+  "plugin-symbol/mcp/McpOptions/generateOpaqueAccessToken": [
+    {
+      "label": "Generate a default opaque access token of 32 letters and use a configured generator instead",
+      "test": "plugins/oauthprovider/machine_token_test.go",
+      "marker": "t.Fatal(\"a configured access token generator or hash was not used\", issued, stored, err)",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/mcp/McpOptions/generateRefreshToken": [
+    {
+      "label": "Generate a default refresh token of 32 letters and use a configured generator instead",
+      "test": "plugins/oauthprovider/machine_token_test.go",
+      "marker": "t.Fatal(\"a configured refresh token generator or hash was not used\", wire, digest, err)"
+    }
+  ],
+  "plugin-symbol/mcp/McpOptions/storeTokens": [
+    {
+      "label": "Store each token kind through its own configured hash function",
+      "test": "plugins/oauthprovider/machine_token_test.go",
+      "marker": "t.Fatal(\"a hash function ran for another token kind\", calls)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/tokens.mdx#L302/`storeTokens`": [
+    {
+      "label": "Store tokens as their SHA-256 base64url digest by default and through configured hash functions",
+      "test": "plugins/oauthprovider/machine_token_test.go",
+      "marker": "t.Fatal(\"a hash function ran for another token kind\", calls)",
+      "complete": true
+    }
   ]
 }

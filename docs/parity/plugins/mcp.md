@@ -63,7 +63,8 @@
     - [ ] `postLogin`
     - [ ] `formatRefreshToken`
     - [ ] `storeClientSecret`
-    - [ ] `storeTokens`
+    - [x] `storeTokens` ([test](../../../plugins/oauthprovider/machine_token_test.go#L156))
+      - [x] Store each token kind through its own configured hash function ([test](../../../plugins/oauthprovider/machine_token_test.go#L156))
     - [ ] `customUserInfoClaims`
     - [ ] `customIdTokenClaims`
     - [ ] `customAccessTokenClaims`
@@ -71,9 +72,12 @@
     - [ ] `advertisedMetadata`
     - [ ] `prefix`
     - [ ] `generateClientId`
+      - [x] Generate a default client ID of 32 ASCII letters ([test](../../../plugins/oauthprovider/machine_token_test.go#L120))
     - [ ] `generateClientSecret`
-    - [ ] `generateOpaqueAccessToken`
+    - [x] `generateOpaqueAccessToken` ([test](../../../plugins/oauthprovider/machine_token_test.go#L147))
+      - [x] Generate a default opaque access token of 32 letters and use a configured generator instead ([test](../../../plugins/oauthprovider/machine_token_test.go#L147))
     - [ ] `generateRefreshToken`
+      - [x] Generate a default refresh token of 32 letters and use a configured generator instead ([test](../../../plugins/oauthprovider/machine_token_test.go#L150))
     - [ ] `disableJwtPlugin`
     - [ ] `rateLimit`
     - [ ] `pairwiseSecret`
@@ -110,12 +114,12 @@
     - [x] `mcpOauthOptionsType.scopes` ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L234))
       - [x] Advertise the four default scopes when none are configured ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L234))
     - [ ] `mcpOauthOptionsType.resources`
-    - [x] `mcpOauthOptionsType.accessTokenExpiresIn` ([test](../../../plugins/oauthprovider/machine_token_test.go#L106))
-      - [x] Default the access token lifetime to an hour ([test](../../../plugins/oauthprovider/machine_token_test.go#L106))
+    - [x] `mcpOauthOptionsType.accessTokenExpiresIn` ([test](../../../plugins/oauthprovider/machine_token_test.go#L108))
+      - [x] Default the access token lifetime to an hour ([test](../../../plugins/oauthprovider/machine_token_test.go#L108))
     - [ ] `mcpOauthOptionsType.idTokenExpiresIn`
-    - [x] `mcpOauthOptionsType.refreshTokenExpiresIn` ([test](../../../plugins/oauthprovider/machine_token_test.go#L106))
-      - [x] Default the refresh token lifetime to thirty days ([test](../../../plugins/oauthprovider/machine_token_test.go#L106))
+    - [x] `mcpOauthOptionsType.refreshTokenExpiresIn` ([test](../../../plugins/oauthprovider/machine_token_test.go#L108))
+      - [x] Default the refresh token lifetime to thirty days ([test](../../../plugins/oauthprovider/machine_token_test.go#L108))
     - [ ] `mcpOauthOptionsType.refreshTokenReuseInterval`
-    - [x] `mcpOauthOptionsType.codeExpiresIn` ([test](../../../plugins/oauthprovider/machine_token_test.go#L106))
-      - [x] Default the authorization code lifetime to ten minutes ([test](../../../plugins/oauthprovider/machine_token_test.go#L106))
+    - [x] `mcpOauthOptionsType.codeExpiresIn` ([test](../../../plugins/oauthprovider/machine_token_test.go#L108))
+      - [x] Default the authorization code lifetime to ten minutes ([test](../../../plugins/oauthprovider/machine_token_test.go#L108))
   - [ ] Remote MCP Server

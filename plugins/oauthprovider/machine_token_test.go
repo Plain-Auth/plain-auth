@@ -1,8 +1,10 @@
 package oauthprovider
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
+	"regexp"
 	"testing"
 	"time"
 )
@@ -104,5 +106,53 @@ func TestTokenLifetimeDefaults(t *testing.T) {
 	}
 	if tokens.AccessLifetime != time.Hour || tokens.MachineLifetime != time.Hour || tokens.RefreshLifetime != 30*24*time.Hour || tokens.IDTokenLifetime != 10*time.Hour || browser.CodeLifetime != 10*time.Minute {
 		t.Fatal("an unset lifetime did not take its default", tokens.AccessLifetime, tokens.MachineLifetime, tokens.RefreshLifetime, tokens.IDTokenLifetime, browser.CodeLifetime)
+	}
+}
+
+// Default credentials are 32 ASCII letters, a configured generator replaces
+// them, and each token kind is stored as its SHA-256 base64url digest or
+// through its own hash function only.
+func TestTokenGenerationAndStorage(t *testing.T) {
+	ctx := t.Context()
+	letters := regexp.MustCompile(`^[A-Za-z]{32}$`)
+	id, err := randomClientCredential()
+	if err != nil || !letters.MatchString(id) {
+		t.Fatal("a default client credential is not 32 letters", id, err)
+	}
+	var tokens TokenOptions
+	if err := tokens.defaults(); err != nil {
+		t.Fatal(err)
+	}
+	issued, stored, err := tokens.newOpaqueToken(ctx)
+	if err != nil || !letters.MatchString(issued) || stored != tokenDigest(issued) {
+		t.Fatal("a default opaque access token is not 32 letters stored as its digest", issued, stored, err)
+	}
+	wire, digest, err := tokens.issueRefreshToken(ctx, "session")
+	if err != nil || !letters.MatchString(wire) || digest != tokenDigest(wire) {
+		t.Fatal("a default refresh token is not 32 letters stored as its digest", wire, digest, err)
+	}
+	if code, err := tokens.storedAuthorizationCode(ctx, "code"); err != nil || code != tokenDigest("code") {
+		t.Fatal("an authorization code is not stored as its digest", code, err)
+	}
+	calls := map[string]int{}
+	hash := func(kind string) func(context.Context, string) (string, error) {
+		return func(_ context.Context, raw string) (string, error) { calls[kind]++; return kind + ":" + raw, nil }
+	}
+	custom := TokenOptions{HashOpaqueToken: hash("access"), HashRefreshToken: hash("refresh"), HashAuthorizationCode: hash("code"),
+		GenerateOpaqueToken: func(context.Context) (string, error) { return "opaque-value", nil }, GenerateRefreshToken: func(context.Context) (string, error) { return "refresh-value", nil }}
+	if err := custom.defaults(); err != nil {
+		t.Fatal(err)
+	}
+	if issued, stored, err := custom.newOpaqueToken(ctx); err != nil || issued != "opaque-value" || stored != "access:opaque-value" {
+		t.Fatal("a configured access token generator or hash was not used", issued, stored, err)
+	}
+	if wire, digest, err := custom.issueRefreshToken(ctx, "session"); err != nil || wire != "refresh-value" || digest != "refresh:refresh-value" {
+		t.Fatal("a configured refresh token generator or hash was not used", wire, digest, err)
+	}
+	if code, err := custom.storedAuthorizationCode(ctx, "code"); err != nil || code != "code:code" {
+		t.Fatal("a configured code hash was not used", code, err)
+	}
+	if calls["access"] != 1 || calls["refresh"] != 1 || calls["code"] != 1 {
+		t.Fatal("a hash function ran for another token kind", calls)
 	}
 }

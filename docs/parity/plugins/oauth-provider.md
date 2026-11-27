@@ -294,12 +294,12 @@
       - [x] Provide the session, caller, action, headers and target to the Go privilege callback ([test](../../../adapters/sqlstore/oauth_resources_test.go#L195))
     - [ ] `cachedTrustedClients`
       - [x] Keep an operator-managed credential immutable from the owner endpoint ([test](../../../conformance/oauth-registration.mjs#L463))
-    - [x] `accessTokenExpiresIn` ([test](../../../plugins/oauthprovider/machine_token_test.go#L106))
+    - [x] `accessTokenExpiresIn` ([test](../../../plugins/oauthprovider/machine_token_test.go#L108))
       - [x] Apply the configured delegated lifetime for a successful headless public-client exchange on all SQL engines ([test](../../../adapters/sqlstore/oauth_authorization_code_test.go#L114))
-      - [x] Default the access token lifetime to an hour ([test](../../../plugins/oauthprovider/machine_token_test.go#L106))
+      - [x] Default the access token lifetime to an hour ([test](../../../plugins/oauthprovider/machine_token_test.go#L108))
     - [x] `m2mAccessTokenExpiresIn` ([test](../../../conformance/oauth-resource-machine-tokens.mjs#L89))
       - [x] Apply the machine token lifetime and shortest applicable scope lifetime to the response and persisted expiry ([test](../../../conformance/oauth-machine-tokens.mjs#L65))
-      - [x] Default to a one-hour machine lifetime and 20 token requests per minute ([test](../../../plugins/oauthprovider/machine_token_test.go#L26))
+      - [x] Default to a one-hour machine lifetime and 20 token requests per minute ([test](../../../plugins/oauthprovider/machine_token_test.go#L28))
       - [x] Apply the machine grant lifetime together with scope and resource ceilings for signed and opaque grants ([test](../../../conformance/oauth-resource-machine-tokens.mjs#L89))
     - [x] `idTokenExpiresIn` ([test](../../../conformance/oauth-id-tokens.mjs#L77))
       - [x] Apply the ten-hour default or configured whole-second lifetime to signed ID tokens on code and refresh exchanges ([test](../../../conformance/oauth-id-tokens.mjs#L77))
@@ -470,8 +470,10 @@
   - [ ] `mergeDiscoveryMetadata`
   - [ ] `decryptStoredClientSecret`
   - [ ] `storeClientSecret`
-  - [ ] `storeToken`
-  - [ ] `getStoredToken`
+  - [x] `storeToken` ([test](../../../plugins/oauthprovider/machine_token_test.go#L156))
+    - [x] Store access tokens, refresh tokens and codes as their SHA-256 base64url digest by default, and through each kind's own hash function only ([test](../../../plugins/oauthprovider/machine_token_test.go#L156))
+  - [x] `getStoredToken` ([test](../../../plugins/oauthprovider/machine_token_test.go#L135))
+    - [x] Derive the same digest for lookup as for storage, by default and through each kind's hash function ([test](../../../plugins/oauthprovider/machine_token_test.go#L135))
   - [ ] `ClientAuthenticationField`
   - [ ] `normalizeClientAuthenticationParameters`
   - [ ] `challengeHeaders`
@@ -775,10 +777,10 @@
       - [x] Share the default 30-request allowance across GET and POST, apply a custom rule or inherit the host limit ([test](../../../adapters/sqlstore/oauth_browser_authorization_test.go#L206))
     - [x] `introspect` ([test](../../../adapters/sqlstore/oauth_introspection_test.go#L142))
       - [x] Enforce the default introspection limit, a route override or the host's global rule ([test](../../../adapters/sqlstore/oauth_introspection_test.go#L142))
-      - [x] Apply a 100-request, one-minute default to the form endpoint ([test](../../../plugins/oauthprovider/machine_token_test.go#L57))
+      - [x] Apply a 100-request, one-minute default to the form endpoint ([test](../../../plugins/oauthprovider/machine_token_test.go#L59))
     - [x] `revoke` ([test](../../../adapters/sqlstore/oauth_introspection_test.go#L150))
       - [x] Enforce 30 revocation requests per minute per IP, a host override or the global fallback ([test](../../../adapters/sqlstore/oauth_introspection_test.go#L150))
-      - [x] Expose POST, form media type and the default one-minute limit on the revocation route ([test](../../../plugins/oauthprovider/machine_token_test.go#L61))
+      - [x] Expose POST, form media type and the default one-minute limit on the revocation route ([test](../../../plugins/oauthprovider/machine_token_test.go#L63))
     - [x] `register` ([test](../../../adapters/sqlstore/oauth_registration_test.go#L170))
       - [x] Enforce the five-per-minute route limit and honor a host override ([test](../../../adapters/sqlstore/oauth_registration_test.go#L170))
     - [x] `rotateClientKeys` ([test](../../../adapters/sqlstore/oauth_introspection_test.go#L154))
@@ -989,11 +991,11 @@
       - [x] `adminUnlinkClientResource` ([test](../../../conformance/resource-registry.mjs#L89))
         - [x] Remove an existing client grant and permit a subsequent fresh link ([test](../../../conformance/resource-registry.mjs#L89))
   - [ ] Lifetimes
-    - [x] `accessTokenExpiresIn` ([test](../../../plugins/oauthprovider/machine_token_test.go#L106))
-      - [x] Default the access token lifetime to an hour ([test](../../../plugins/oauthprovider/machine_token_test.go#L106))
+    - [x] `accessTokenExpiresIn` ([test](../../../plugins/oauthprovider/machine_token_test.go#L108))
+      - [x] Default the access token lifetime to an hour ([test](../../../plugins/oauthprovider/machine_token_test.go#L108))
     - [x] `m2mAccessTokenExpiresIn` ([test](../../../conformance/oauth-machine-tokens.mjs#L65))
       - [x] Apply the machine token lifetime and shortest applicable scope lifetime to the response and persisted expiry ([test](../../../conformance/oauth-machine-tokens.mjs#L65))
-      - [x] Default to a one-hour machine lifetime and 20 token requests per minute ([test](../../../plugins/oauthprovider/machine_token_test.go#L26))
+      - [x] Default to a one-hour machine lifetime and 20 token requests per minute ([test](../../../plugins/oauthprovider/machine_token_test.go#L28))
     - [x] `idTokenExpiresIn` ([test](../../../conformance/oauth-id-tokens.mjs#L77))
       - [x] Apply the ten-hour default or configured whole-second lifetime to signed ID tokens on code and refresh exchanges ([test](../../../conformance/oauth-id-tokens.mjs#L77))
     - [ ] `refreshTokenExpiresIn`
@@ -1031,5 +1033,6 @@
   - [ ] Without the JWT plugin
   - [ ] Storage
     - [ ] `storeClientSecret`
-    - [ ] `storeTokens`
+    - [x] `storeTokens` ([test](../../../plugins/oauthprovider/machine_token_test.go#L156))
+      - [x] Store tokens as their SHA-256 base64url digest by default and through configured hash functions ([test](../../../plugins/oauthprovider/machine_token_test.go#L156))
   - [ ] Device code grant
