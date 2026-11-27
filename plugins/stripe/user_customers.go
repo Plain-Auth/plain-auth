@@ -31,6 +31,12 @@ type UserCustomerOptions struct {
 	// OnCustomerCreate runs once a sign-up has stored a customer it created
 	// or linked. An error is logged.
 	OnCustomerCreate func(context.Context, UserCustomerCreated) error
+	// SyncEmail copies a user's changed email to their Stripe customer once
+	// the change is stored, as another runtime always does. It is a user
+	// update database hook, so New refuses it alongside the features whose
+	// user updates do not run those hooks yet, such as social sign-in. A
+	// failure is logged and the update still succeeds.
+	SyncEmail bool
 	// Logger receives the sign-up hook's log lines. Nil uses the endpoint's
 	// Auth logger, or slog.Default() for a direct Go call; pass the logger
 	// set in plainauth.Options.Logger to keep them together.
@@ -58,6 +64,9 @@ type UserCustomerCreated struct {
 type UserCustomerStore interface {
 	// CheckStripeCustomerSchema checks for the user's stripeCustomerId column.
 	CheckStripeCustomerSchema(context.Context) error
+	// StripeUserCustomer reads the user's own stored customer, without
+	// fallbacks; empty when the user has none.
+	StripeUserCustomer(ctx context.Context, userID string) (string, error)
 	// LinkStripeUserCustomer stores customer as the user's stripeCustomerId
 	// while the user has none and no personal Checkout reservation, and
 	// reports whether the user's customer is now customer, including when
@@ -103,10 +112,14 @@ func (h *userCustomers) useStore(store auth.Store) error {
 	return nil
 }
 
-func (h *userCustomers) link(ctx context.Context, userID, customer string) (bool, error) {
+func (h *userCustomers) userStore() UserCustomerStore {
 	h.mu.Lock()
-	store := h.store
-	h.mu.Unlock()
+	defer h.mu.Unlock()
+	return h.store
+}
+
+func (h *userCustomers) link(ctx context.Context, userID, customer string) (bool, error) {
+	store := h.userStore()
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), linkTimeout)
 	defer cancel()
 	return store.LinkStripeUserCustomer(ctx, userID, customer)
@@ -135,6 +148,43 @@ func (h *userCustomers) afterSignUp(ctx context.Context, row auth.UserRecord, c 
 		}
 	}()
 	h.signUpCustomer(ctx, log, NewUserCustomer{User: row, Hook: c})
+	return nil
+}
+
+// afterUserUpdate copies a user's email to their Stripe customer when it
+// differs, as another runtime does. It runs once the update is stored,
+// outside any transaction, and never fails it. Log lines carry IDs, never
+// either address.
+func (h *userCustomers) afterUserUpdate(ctx context.Context, row auth.UserRecord, c *auth.HookContext) error {
+	log := h.logger(c)
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), customerCallTimeout)
+	defer cancel()
+	defer func() {
+		if recover() != nil {
+			log.ErrorContext(ctx, "Stripe email sync hook panicked", "user_id", row.ID)
+		}
+	}()
+	id, err := h.userStore().StripeUserCustomer(ctx, row.ID)
+	if err != nil {
+		log.ErrorContext(ctx, "Stripe customer lookup failed", "user_id", row.ID)
+		return nil
+	}
+	if id == "" {
+		return nil
+	}
+	customer, err := h.opts.Client.V1Customers.Retrieve(ctx, id, nil)
+	switch {
+	case err != nil:
+		log.ErrorContext(ctx, "Failed to sync email to Stripe", append([]any{"user_id", row.ID, "customer_id", id}, stripeErrorAttrs(err)...)...)
+	case customer.Deleted:
+		log.WarnContext(ctx, "Stripe customer was deleted", "user_id", row.ID, "customer_id", id)
+	case customer.Email != row.Email:
+		if _, err := h.opts.Client.V1Customers.Update(ctx, id, &sdk.CustomerUpdateParams{Email: sdk.String(row.Email)}); err != nil {
+			log.ErrorContext(ctx, "Failed to sync email to Stripe", append([]any{"user_id", row.ID, "customer_id", id}, stripeErrorAttrs(err)...)...)
+			return nil
+		}
+		log.InfoContext(ctx, "Synced email to Stripe customer", "user_id", row.ID, "customer_id", id)
+	}
 	return nil
 }
 

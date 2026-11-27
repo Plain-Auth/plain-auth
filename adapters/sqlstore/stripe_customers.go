@@ -22,6 +22,18 @@ func (s *Store) CheckStripeCustomerSchema(ctx context.Context) error {
 	return rows.Close()
 }
 
+// StripeUserCustomer reads the user's own stored Stripe customer, empty
+// when the user has none; unlike StripeCustomer it has no subscription
+// fallback, so it needs only the user's column.
+func (s *Store) StripeUserCustomer(ctx context.Context, userID string) (string, error) {
+	var customer sql.NullString
+	err := s.db.QueryRowContext(ctx, s.bind(`SELECT "stripeCustomerId" FROM "user" WHERE "id"=?`), userID).Scan(&customer)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", auth.ErrNotFound
+	}
+	return customer.String, err
+}
+
 // LinkStripeUserCustomer stores customer as the user's Stripe customer
 // while the user has none and no personal Checkout reservation, and reports
 // whether the user's customer is now customer, as it is when a concurrent

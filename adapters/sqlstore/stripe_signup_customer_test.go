@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -20,6 +21,7 @@ import (
 	billing "github.com/Plain-Org/plain-auth/plugins/stripe"
 	"github.com/Plain-Org/plain-auth/schema"
 	sdk "github.com/stripe/stripe-go/v87"
+	"golang.org/x/oauth2"
 )
 
 // A sign-up creates the user's Stripe customer with the user's email, name
@@ -400,5 +402,137 @@ func TestUserCustomerOptions(t *testing.T) {
 	}
 	if _, err := a.SignUpEmail(ctx, plainauth.SignUpInput{Name: "quiet", Email: "quiet@example.test", Password: "local fixture password"}, plainauth.RequestMeta{}); err != nil || calls != 0 {
 		t.Fatal("a sign-up without CreateCustomerOnSignUp called Stripe", err, calls)
+	}
+}
+
+// With SyncEmail, a user's changed email reaches their Stripe customer once
+// stored, an update that keeps it changes nothing, and a deleted or
+// unreachable customer or a user without one leaves the update intact; New
+// refuses it beside a feature whose user updates skip the hooks.
+func TestStripeEmailSync(t *testing.T) {
+	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
+		t.Run(dialect, func(t *testing.T) {
+			ctx := t.Context()
+			ddl, err := schema.Generate(dialect, []string{"stripe-subscriptions"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			store, err := OpenWithSchema(ctx, dialect, organizationTestDSN(t, dialect), ddl)
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { store.Close() })
+			var mu sync.Mutex
+			remoteEmail, deleted, down := "", false, false
+			var updates []string
+			calls := 0
+			transport := localBillingTransport(func(r *http.Request) (*http.Response, error) {
+				mu.Lock()
+				defer mu.Unlock()
+				if err := r.ParseForm(); err != nil {
+					return nil, err
+				}
+				calls++
+				if r.URL.Path != "/v1/customers/cus_sync" {
+					return nil, fmt.Errorf("unexpected Stripe call %s %s", r.Method, r.URL.Path)
+				}
+				if down {
+					return stripeJSON(500, map[string]any{"error": map[string]string{"type": "api_error", "message": "provider detail"}}), nil
+				}
+				if r.Method == "POST" {
+					remoteEmail = r.PostForm.Get("email")
+					updates = append(updates, remoteEmail)
+				}
+				return stripeJSON(200, map[string]any{"id": "cus_sync", "object": "customer", "email": remoteEmail, "deleted": deleted}), nil
+			})
+			remote := sdk.NewClient("sk_test_local", sdk.WithBackends(sdk.NewBackendsWithConfig(&sdk.BackendConfig{HTTPClient: &http.Client{Transport: transport}, MaxNetworkRetries: sdk.Int64(0)})))
+			var logMu sync.Mutex
+			var logs bytes.Buffer
+			syncing := &billing.UserCustomerOptions{Client: remote, SyncEmail: true, Logger: slog.New(slog.NewTextHandler(lockedWriter{&logMu, &logs}, nil))}
+			off := false
+			options := plainauth.Options{Store: store, Secret: strings.Repeat("s", 32), BaseURL: "https://billing.example", EmailAndPassword: true, RateLimit: &off,
+				ChangeEmailEnabled: true, UpdateEmailWithoutVerification: true,
+				Plugins: []plainauth.Plugin{billing.New(billing.Options{UserCustomers: syncing})}}
+			a, err := plainauth.New(options)
+			if err != nil {
+				t.Fatal(err)
+			}
+			users := 0
+			signUp := func(customer string) (plainauth.User, http.Header) {
+				t.Helper()
+				users++
+				hit, err := a.SignUpEmail(ctx, plainauth.SignUpInput{Name: "syncer", Email: fmt.Sprintf("syncer%d@example.test", users), Password: "local fixture password"}, plainauth.RequestMeta{})
+				if err != nil {
+					t.Fatal(err)
+				}
+				if customer != "" {
+					if _, err := store.db.ExecContext(ctx, store.bind(`UPDATE "user" SET "stripeCustomerId"=? WHERE "id"=?`), customer, hit.User.ID); err != nil {
+						t.Fatal(err)
+					}
+				}
+				h := http.Header{}
+				h.Add("Cookie", a.SessionCookie(hit.Token, true).String())
+				return hit.User, h
+			}
+			state := func() (int, []string) {
+				mu.Lock()
+				defer mu.Unlock()
+				return calls, slices.Clone(updates)
+			}
+			logged := func() string {
+				logMu.Lock()
+				defer logMu.Unlock()
+				return logs.String()
+			}
+
+			// A changed email reaches the customer, and its log names no address.
+			user, h := signUp("cus_sync")
+			remoteEmail = user.Email
+			if err := a.ChangeEmail(ctx, h, "changed@example.test", ""); err != nil {
+				t.Fatal(err)
+			}
+			if _, got := state(); len(got) != 1 || got[0] != "changed@example.test" || !strings.Contains(logged(), "Synced email to Stripe customer") || strings.Contains(logged(), "changed@example.test") || strings.Contains(logged(), user.Email) {
+				t.Fatal("the changed email did not reach the customer", got, logged())
+			}
+			// An update that keeps the email reads the customer and changes nothing.
+			name := "renamed"
+			if err := a.UpdateUser(ctx, h, plainauth.ProfileUpdate{Name: &name}); err != nil {
+				t.Fatal(err)
+			}
+			if _, got := state(); len(got) != 1 {
+				t.Fatal("an update that kept the email changed the customer", got)
+			}
+			// A deleted or unreachable customer leaves the update intact.
+			deleted = true
+			if err := a.ChangeEmail(ctx, h, "second@example.test", ""); err != nil {
+				t.Fatal(err)
+			}
+			deleted, down = false, true
+			if err := a.ChangeEmail(ctx, h, "third@example.test", ""); err != nil {
+				t.Fatal(err)
+			}
+			down = false
+			if _, got := state(); len(got) != 1 || !strings.Contains(logged(), "Stripe customer was deleted") || !strings.Contains(logged(), "Failed to sync email to Stripe") || strings.Contains(logged(), "provider detail") {
+				t.Fatal("a deleted or unreachable customer was changed or failed the update", got, logged())
+			}
+			// A user without a customer calls no Stripe API.
+			before, _ := state()
+			_, plain := signUp("")
+			if err := a.ChangeEmail(ctx, plain, "plain@example.test", ""); err != nil {
+				t.Fatal(err)
+			}
+			if after, _ := state(); after != before {
+				t.Fatal("a user without a customer called Stripe", after-before)
+			}
+			// New refuses it beside social sign-in.
+			options.Plugins = []plainauth.Plugin{billing.New(billing.Options{UserCustomers: syncing})}
+			options.SocialProviders = map[string]plainauth.OAuthProvider{"local": {Config: oauth2.Config{ClientID: "local", ClientSecret: "secret", Endpoint: oauth2.Endpoint{AuthURL: "https://idp.example/authorize", TokenURL: "https://idp.example/token"}},
+				Resolve: func(context.Context, *oauth2.Token, string) (plainauth.OAuthProfile, error) {
+					return plainauth.OAuthProfile{}, nil
+				}}}
+			if _, err := plainauth.New(options); err == nil || !strings.Contains(err.Error(), "social sign-in") {
+				t.Fatal("email sync was accepted beside social sign-in", err)
+			}
+		})
 	}
 }

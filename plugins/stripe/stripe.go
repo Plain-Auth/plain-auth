@@ -192,6 +192,9 @@ func New(opts Options) authn.Plugin {
 		if customers.opts.CreateCustomerOnSignUp {
 			plugin.DatabaseHooks.User.Create.After = customers.afterSignUp
 		}
+		if customers.opts.SyncEmail {
+			plugin.DatabaseHooks.User.Update.After = customers.afterUserUpdate
+		}
 	}
 	return plugin
 }
