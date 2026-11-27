@@ -688,6 +688,9 @@ func main() {
 	if config := os.Getenv("CONFORMANCE_RESOURCE_VERIFIER"); config != "" {
 		handler = resourceVerifierFixture(config, handler)
 	}
+	if config := os.Getenv("CONFORMANCE_MCP_HANDLER"); config != "" {
+		handler = mcpHandlerFixture(config, handler)
+	}
 	if discoveryConfig != "" {
 		var config struct {
 			Metadata oauthprovider.ResourceMetadata

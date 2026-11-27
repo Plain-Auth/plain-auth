@@ -1936,6 +1936,11 @@ test("a resource server verifies bearer access tokens as the other runtime does"
   await compareResourceVerifier(t, goFixture);
 });
 
+test("a protected MCP route answers requests as the other runtime's MCP handler does", async t => {
+  const { compareMcpHandler } = await import("./mcp.mjs");
+  await compareMcpHandler(t, goFixture);
+});
+
 test("a resource server introspects access tokens as the other runtime does", async t => {
   const { compareRemoteVerifier } = await import("./resource-verifier.mjs");
   await compareRemoteVerifier(t, goFixture);

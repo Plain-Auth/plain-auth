@@ -49555,5 +49555,90 @@
       "marker": "export async function compareRemoteVerifier(",
       "complete": true
     }
+  ],
+  "plugin-symbol/mcp/createMcpProtectedRequestHandler": [
+    {
+      "label": "Protect an MCP route with the same challenges, expose header, content type and JSON-RPC body as the other runtime's handler for missing, foreign, expired, under-scoped and DPoP-bound tokens, and reach the route with its claims",
+      "test": "conformance/mcp.mjs",
+      "marker": "export async function compareMcpHandler(",
+      "complete": true
+    },
+    {
+      "label": "Answer scope failures and DPoP failures with the other runtime's exact challenges, step up with WriteInsufficientScope in the request's scheme, pass the route's own 403 through, and send outages to OnError",
+      "test": "plugins/mcp/handler_test.go",
+      "marker": "func TestProtectedHandlerRequests("
+    }
+  ],
+  "plugin-symbol/mcp/McpProtectedRequestHandlerOptions": [
+    {
+      "label": "Configure the protected handler with the verifier's options, required and challenge scopes and DPoP, on both runtimes; the route reads claims from the request context as a documented deviation",
+      "test": "conformance/mcp.mjs",
+      "marker": "export async function compareMcpHandler(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/mcp/McpProtectedRequestHandlerOptions/issuer": [
+    {
+      "label": "Refuse a token from another issuer, on both runtimes",
+      "test": "conformance/mcp.mjs",
+      "marker": "export async function compareMcpHandler(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/mcp/McpProtectedRequestHandlerOptions/audience": [
+    {
+      "label": "Require the MCP resource as the audience and validate it as an HTTPS or loopback HTTP URL without credentials, fragment or query",
+      "test": "plugins/mcp/handler_test.go",
+      "marker": "func TestProtectedHandlerResource(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/mcp/McpProtectedRequestHandlerOptions/jwtVerifyOptions": [
+    {
+      "label": "Apply typ and required claims to the token, on both runtimes",
+      "test": "conformance/mcp.mjs",
+      "marker": "export async function compareMcpHandler(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/mcp/McpProtectedRequestHandlerOptions/jwksUrl": [
+    {
+      "label": "Verify tokens against the issuer's JWKS URL, on both runtimes",
+      "test": "conformance/mcp.mjs",
+      "marker": "export async function compareMcpHandler(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/mcp/McpProtectedRequestHandlerOptions/requiredScopes": [
+    {
+      "label": "Answer a token missing a required scope with 403 insufficient_scope, on both runtimes",
+      "test": "conformance/mcp.mjs",
+      "marker": "export async function compareMcpHandler(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/mcp/McpProtectedRequestHandlerOptions/challengeScopes": [
+    {
+      "label": "Advertise the challenge scope hint for requests without a token, on both runtimes",
+      "test": "conformance/mcp.mjs",
+      "marker": "export async function compareMcpHandler(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/mcp/McpProtectedRequestHandlerOptions/dpop": [
+    {
+      "label": "Check DPoP-bound tokens' proofs with the configured algorithms and refuse a replayed proof, on both runtimes",
+      "test": "conformance/mcp.mjs",
+      "marker": "export async function compareMcpHandler(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/mcp.mdx#L349": [
+    {
+      "label": "Protect a remote MCP server with the issuer's keys and answer as the other runtime's handler does",
+      "test": "conformance/mcp.mjs",
+      "marker": "export async function compareMcpHandler(",
+      "complete": true
+    }
   ]
 }

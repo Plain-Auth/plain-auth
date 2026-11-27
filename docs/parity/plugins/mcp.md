@@ -5,17 +5,27 @@
 ## Interfaces
 
 - [ ] Model Context Protocol endpoints, types and options
-  - [ ] `createMcpProtectedRequestHandler`
+  - [x] `createMcpProtectedRequestHandler` ([test](../../../conformance/mcp.mjs#L38))
+    - [x] Protect an MCP route with the same challenges, expose header, content type and JSON-RPC body as the other runtime's handler for missing, foreign, expired, under-scoped and DPoP-bound tokens, and reach the route with its claims ([test](../../../conformance/mcp.mjs#L38))
+    - [x] Answer scope failures and DPoP failures with the other runtime's exact challenges, step up with WriteInsufficientScope in the request's scheme, pass the route's own 403 through, and send outages to OnError ([test](../../../plugins/mcp/handler_test.go#L131))
   - [ ] `McpProtectedRequestHandlerOptions`
-    - [ ] `issuer`
-    - [ ] `audience`
-    - [ ] `jwtVerifyOptions`
-    - [ ] `jwksUrl`
+    - [x] Configure the protected handler with the verifier's options, required and challenge scopes and DPoP, on both runtimes; the route reads claims from the request context as a documented deviation ([test](../../../conformance/mcp.mjs#L38))
+    - [x] `issuer` ([test](../../../conformance/mcp.mjs#L38))
+      - [x] Refuse a token from another issuer, on both runtimes ([test](../../../conformance/mcp.mjs#L38))
+    - [x] `audience` ([test](../../../plugins/mcp/handler_test.go#L211))
+      - [x] Require the MCP resource as the audience and validate it as an HTTPS or loopback HTTP URL without credentials, fragment or query ([test](../../../plugins/mcp/handler_test.go#L211))
+    - [x] `jwtVerifyOptions` ([test](../../../conformance/mcp.mjs#L38))
+      - [x] Apply typ and required claims to the token, on both runtimes ([test](../../../conformance/mcp.mjs#L38))
+    - [x] `jwksUrl` ([test](../../../conformance/mcp.mjs#L38))
+      - [x] Verify tokens against the issuer's JWKS URL, on both runtimes ([test](../../../conformance/mcp.mjs#L38))
     - [ ] `remoteVerify`
-    - [ ] `requiredScopes`
-    - [ ] `challengeScopes`
+    - [x] `requiredScopes` ([test](../../../conformance/mcp.mjs#L38))
+      - [x] Answer a token missing a required scope with 403 insufficient_scope, on both runtimes ([test](../../../conformance/mcp.mjs#L38))
+    - [x] `challengeScopes` ([test](../../../conformance/mcp.mjs#L38))
+      - [x] Advertise the challenge scope hint for requests without a token, on both runtimes ([test](../../../conformance/mcp.mjs#L38))
     - [ ] `isScopeSatisfied`
-    - [ ] `dpop`
+    - [x] `dpop` ([test](../../../conformance/mcp.mjs#L38))
+      - [x] Check DPoP-bound tokens' proofs with the configured algorithms and refuse a replayed proof, on both runtimes ([test](../../../conformance/mcp.mjs#L38))
   - [ ] `McpOptions`
     - [ ] `refreshTokenReuseInterval`
     - [ ] `resource`
@@ -137,4 +147,5 @@
     - [ ] `mcpOauthOptionsType.refreshTokenReuseInterval`
     - [ ] `mcpOauthOptionsType.codeExpiresIn`
       - [x] Default the authorization code lifetime to ten minutes ([test](../../../plugins/oauthprovider/machine_token_test.go#L112))
-  - [ ] Remote MCP Server
+  - [x] Remote MCP Server ([test](../../../conformance/mcp.mjs#L38))
+    - [x] Protect a remote MCP server with the issuer's keys and answer as the other runtime's handler does ([test](../../../conformance/mcp.mjs#L38))
