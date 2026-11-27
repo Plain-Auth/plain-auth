@@ -49741,5 +49741,50 @@
       "marker": "func TestMCPPlugin(",
       "complete": true
     }
+  ],
+  "plugin-symbol/mcp/McpOptions/clientRegistrationDefaultResources": [
+    {
+      "label": "Append the MCP resource to the default registration resources once, keeping the host's, so a client registered without resources is linked to it",
+      "test": "plugins/mcp/plugin_test.go",
+      "marker": "func TestMCPRegistrationLinksResource(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/mcp/McpOptions/resources": [
+    {
+      "label": "Declare the MCP resource on the provider unless it is declared already, keeping the caller's options",
+      "test": "plugins/mcp/plugin_test.go",
+      "marker": "func TestMCPPlugin(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/mcp/McpOptions/allowDynamicClientRegistration": [
+    {
+      "label": "Register MCP clients when dynamic registration is enabled",
+      "test": "plugins/mcp/plugin_test.go",
+      "marker": "func TestMCPRegistrationLinksResource("
+    }
+  ],
+  "plugin-symbol/mcp/McpOptions/allowUnauthenticatedClientRegistration": [
+    {
+      "label": "Register an MCP client without a session when unauthenticated registration is allowed",
+      "test": "plugins/mcp/plugin_test.go",
+      "marker": "func TestMCPRegistrationLinksResource("
+    }
+  ],
+  "plugin-symbol/mcp/McpOptions/clientRegistrationDefaultApplicationType": [
+    {
+      "label": "Register a loopback-callback MCP client as native with the infer default",
+      "test": "plugins/mcp/plugin_test.go",
+      "marker": "func TestMCPRegistrationLinksResource("
+    }
+  ],
+  "docs/content/docs/plugins/mcp.mdx#L156": [
+    {
+      "label": "Link a dynamically registered client to the MCP resource without a resources field",
+      "test": "plugins/mcp/plugin_test.go",
+      "marker": "func TestMCPRegistrationLinksResource(",
+      "complete": true
+    }
   ]
 }

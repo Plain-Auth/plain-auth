@@ -36,12 +36,14 @@
     - [ ] `requireOpenId`
     - [ ] `validateRedirectUri`
     - [ ] `allowInsecureRedirectUri`
-    - [ ] `resources`
+    - [x] `resources` ([test](../../../plugins/mcp/plugin_test.go#L24))
+      - [x] Declare the MCP resource on the provider unless it is declared already, keeping the caller's options ([test](../../../plugins/mcp/plugin_test.go#L24))
     - [ ] `resourceSeedMode`
     - [ ] `resourceSeedScope`
     - [ ] `cachedResources`
     - [ ] `enforcePerClientResources`
-    - [ ] `clientRegistrationDefaultResources`
+    - [x] `clientRegistrationDefaultResources` ([test](../../../plugins/mcp/plugin_test.go#L96))
+      - [x] Append the MCP resource to the default registration resources once, keeping the host's, so a client registered without resources is linked to it ([test](../../../plugins/mcp/plugin_test.go#L96))
     - [ ] `clientRegistrationAllowedResources`
     - [ ] `identifierValidator`
     - [ ] `resourcePrivileges`
@@ -57,13 +59,16 @@
     - [ ] `allowClientKeyRotation`
     - [ ] `allowPublicClientPrelogin`
     - [ ] `allowUnauthenticatedClientRegistration`
+      - [x] Register an MCP client without a session when unauthenticated registration is allowed ([test](../../../plugins/mcp/plugin_test.go#L96))
     - [ ] `allowDynamicClientRegistration`
+      - [x] Register MCP clients when dynamic registration is enabled ([test](../../../plugins/mcp/plugin_test.go#L96))
     - [ ] `validateInitialAccessToken`
     - [ ] `extensions`
     - [ ] `clientRegistrationDefaultScopes`
     - [ ] `clientRegistrationAllowedScopes`
     - [ ] `clientRegistrationRequirePKCE`
     - [ ] `clientRegistrationDefaultApplicationType`
+      - [x] Register a loopback-callback MCP client as native with the infer default ([test](../../../plugins/mcp/plugin_test.go#L96))
     - [ ] `clientRegistrationClientSecretExpiration`
     - [ ] `clientReference`
     - [ ] `clientPrivileges`
@@ -137,7 +142,8 @@
     - [ ] Add device authorization for your own CLI
     - [x] Protected Resource Metadata ([test](../../../plugins/mcp/plugin_test.go#L24))
       - [x] Serve the MCP resource's protected resource metadata with the provider's issuer, bearer method, DPoP algorithms and requirement and resource scopes, answering GET and HEAD and refusing other methods ([test](../../../plugins/mcp/plugin_test.go#L24))
-    - [ ] Optional DCR fallback
+    - [x] Optional DCR fallback ([test](../../../plugins/mcp/plugin_test.go#L96))
+      - [x] Link a dynamically registered client to the MCP resource without a resources field ([test](../../../plugins/mcp/plugin_test.go#L96))
     - [x] Protecting an MCP Route ([test](../../../plugins/mcp/require_auth_test.go#L63))
       - [x] Protect an MCP route in the same process with the instance's own tokens ([test](../../../plugins/mcp/require_auth_test.go#L63))
   - [ ] Configuration

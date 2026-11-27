@@ -90,3 +90,38 @@ func TestMCPPlugin(t *testing.T) {
 		}
 	}
 }
+
+// With open registration, a client registered without resources is linked
+// to the MCP resource, which the provider declares and seeds.
+func TestMCPRegistrationLinksResource(t *testing.T) {
+	ctx := t.Context()
+	store, err := sqlstore.OpenWithOptions(ctx, "sqlite", ":memory:", []string{"oauth-provider"}, schema.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { store.Close() })
+	const resource = "https://api.example.test/mcp"
+	opts := oauthprovider.Options{Scopes: []string{"mcp:read"}, Authorization: oauthprovider.BrowserAuthorizationOptions{LoginPage: "/login", ConsentPage: "/consent"}}
+	opts.Registration.Enabled, opts.Registration.AllowUnauthenticated, opts.Registration.DefaultApplicationType = true, true, "infer"
+	plugin, err := mcp.New(mcp.Options{Options: opts, Resource: resource})
+	if err != nil {
+		t.Fatal(err)
+	}
+	off := false
+	a, err := auth.New(auth.Options{Store: store, BaseURL: "https://auth.example.test", Secret: strings.Repeat("r", 32), Plugins: []auth.Plugin{plugin}, RateLimit: &off})
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := `{"redirect_uris":["http://127.0.0.1:3000/callback"],"token_endpoint_auth_method":"none","client_name":"MCP client"}`
+	r := httptest.NewRequest("POST", "https://auth.example.test/api/auth/oauth2/register", strings.NewReader(body))
+	r.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	a.ServeHTTP(w, r)
+	var registered oauthprovider.RegisteredClient
+	if w.Code != 200 && w.Code != 201 || json.Unmarshal(w.Body.Bytes(), &registered) != nil {
+		t.Fatal("open registration failed", w.Code, w.Body.String())
+	}
+	if !slices.Equal(registered.Resources, []string{resource}) || registered.ApplicationType != "native" {
+		t.Fatal("the registered client was not linked to the MCP resource", registered.Resources, registered.ApplicationType)
+	}
+}
