@@ -44231,6 +44231,12 @@
       "label": "Replay one domain without removing a role projected in another domain",
       "test": "adapters/sqlstore/scim_projection_test.go",
       "marker": "t.Fatal(\"tenant replay removed another domain's role\")"
+    },
+    {
+      "label": "Refuse an empty or overlong domain with 400 and reconcile an account with two sources once, in the one batch the SQL store commits per domain, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_projection_test.go",
+      "marker": "t.Fatal(\"a replay accepted an empty or overlong domain\", len(domain), e)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/scim/groups-and-roles.mdx#L31": [

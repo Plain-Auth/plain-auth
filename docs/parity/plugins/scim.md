@@ -11,7 +11,7 @@
       - [x] Refuse a token on both instances once the application verifier stops accepting it ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L232))
   - [ ] `SCIMAuthorizationSource`
     - [x] Hand each SCIM Group to the role mapper with its externalId, which selects the mapped roles ([test](../../../adapters/sqlstore/scim_projection_test.go#L80))
-    - [x] Hand the mapper the Group's ID, display name and empty externalId, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_projection_test.go#L660))
+    - [x] Hand the mapper the Group's ID, display name and empty externalId, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_projection_test.go#L672))
   - [ ] `SCIMBearerCredentialOptions`
     - `type` — *not applicable: TypeScript only. It is a type tag the other runtime never checks, and a Go scim.Credential is always a static bearer credential. Confirmed: packages/scim/src/index.ts validates id, token, scopes and expiresAt but never reads credential.type.*
     - [x] `id` ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L188))
@@ -102,7 +102,7 @@
     - [x] Read, patch and write Enterprise Users with phone numbers, addresses and entitlements in a SQLite file shared with the other runtime, and serve the same Enterprise schema ([test](../../../conformance/scim-contract.mjs#L253))
     - [x] Treat an Enterprise object holding only nested nulls as omitted ([test](../../../plugins/scim/enterprise_test.go#L43))
   - [ ] `SCIMGroupAuthorizationSource`
-    - [x] Hand the mapper and the reconciler's grant an empty externalId for a Group created without one, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_projection_test.go#L660))
+    - [x] Hand the mapper and the reconciler's grant an empty externalId for a Group created without one, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_projection_test.go#L672))
   - [ ] `SCIMIdentity`
     - [x] Resolve incoming SCIM Users to existing accounts before the directory transaction, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_identity_test.go#L20))
     - [x] Refuse identity resolution on a store that cannot apply it ([test](../../../plugins/scim/http_test.go#L208))
@@ -169,9 +169,9 @@
   - [x] `SCIMProjectedUserState` ([test](../../../adapters/sqlstore/scim_projection_test.go#L457))
     - [x] Hand the reconciler the domain, account and sorted sources after a deactivation ([test](../../../adapters/sqlstore/scim_projection_test.go#L332))
     - [x] Project an account with one deactivated source inactive, with no grants and that one inactive source, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_projection_test.go#L457))
-  - [x] `SCIMProjection` ([test](../../../adapters/sqlstore/scim_projection_test.go#L603))
+  - [x] `SCIMProjection` ([test](../../../adapters/sqlstore/scim_projection_test.go#L615))
     - [x] Roll back the directory change and the application's writes when the projection reconciler fails ([test](../../../adapters/sqlstore/scim_projection_test.go#L126))
-    - [x] Answer a reconciler's SCIM error as is and roll the provisioning back, and hide a plain error behind a 500, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_projection_test.go#L603))
+    - [x] Answer a reconciler's SCIM error as is and roll the provisioning back, and hide a plain error behind a 500, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_projection_test.go#L615))
   - [x] `SCIMResolvedConnectionVerificationResult` ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L204))
     - [x] Persist the first application-resolved directory domain and isolate case-sensitive connection IDs ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L35))
     - [x] Refuse a resolved directory whose connection or domain ID is empty, padded or over 255 characters, and accept one without an expiry, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L204))
@@ -179,10 +179,10 @@
     - [x] Ask the role catalog once per connection and role in one reconciliation, with the connection's directory ([test](../../../adapters/sqlstore/scim_projection_test.go#L256))
   - [x] `SCIMRoleMappingInput` ([test](../../../adapters/sqlstore/scim_projection_test.go#L249))
     - [x] Hand the role mapper each source's directory, SCIM User ID, account and Group, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_projection_test.go#L249))
-  - [x] `SCIMRoleProjection` ([test](../../../adapters/sqlstore/scim_projection_test.go#L636))
+  - [x] `SCIMRoleProjection` ([test](../../../adapters/sqlstore/scim_projection_test.go#L648))
     - [x] Grant one reader role per Group source when the mapper returns a padded copy, a repeat, an unknown role and an empty value ([test](../../../adapters/sqlstore/scim_projection_test.go#L81))
     - [x] Restore the same trimmed role in the native runtime's grant when its mapper returns padded, repeated and unknown roles ([test](../../../conformance/scim-contract.mjs#L240))
-    - [x] Answer a role mapper's or role lookup's SCIM error as is, hide a plain one behind a 500 and store nothing, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_projection_test.go#L636))
+    - [x] Answer a role mapper's or role lookup's SCIM error as is, hide a plain one behind a 500 and store nothing, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_projection_test.go#L648))
   - [x] `SCIMScope` ([test](../../../adapters/sqlstore/scim_groups_contract_test.go#L61))
     - [x] Refuse User creation with a read-only scope and listing with a write-only scope, and let the read scope list ([test](../../../adapters/sqlstore/scim_groups_test.go#L418))
     - [x] Refuse POST Users to a users-read-only token and GET Users to a users-write-only one, beside the Group scopes, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_groups_contract_test.go#L61))
@@ -305,9 +305,10 @@
   - [x] `SCIM_MANAGED_CREATION_REQUEST_ID_CONFLICT` ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L65))
     - [x] Reject the duplicate creation request without exposing the previously issued bearer ([test](../../../adapters/sqlstore/scim_managed_test.go#L31))
     - [x] Refuse a spent creation request ID in another domain with ErrCreationRequestConflict and no token, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L65))
-  - [ ] `reconcileSCIMProjection (server API only)`
+  - [x] `reconcileSCIMProjection (server API only)` ([test](../../../adapters/sqlstore/scim_projection_test.go#L543))
     - [x] Replay a domain from either instance after the application's role catalog changes ([test](../../../adapters/sqlstore/scim_projection_test.go#L364))
     - [x] Replay one domain without removing a role projected in another domain ([test](../../../adapters/sqlstore/scim_projection_test.go#L486))
+    - [x] Refuse an empty or overlong domain with 400 and reconcile an account with two sources once, in the one batch the SQL store commits per domain, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_projection_test.go#L543))
   - `SCIM_REQUIRES_NATIVE_TRANSACTIONS` — *not applicable: JavaScript adapter capability; the only Go SCIM store runs every directory change in a native database/sql transaction, so there is no non-transactional adapter to refuse*
   - [ ] `POST /scim/v2/Users`
     - [x] Create, reject conflicts, reprovision inactive Users and restore an external identity after deletion ([test](../../../conformance/scim-contract.mjs#L45))
@@ -355,7 +356,7 @@
   - [ ] Map Groups to custom roles
     - [x] Project mapped Group roles inside the directory transaction while preserving a manually assigned role ([test](../../../adapters/sqlstore/scim_projection_test.go#L202))
     - [ ] `roles.map`
-      - [x] Hand the mapper the directory, SCIM User, account and Group, grant a role returned padded once and skip an empty one, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_projection_test.go#L663))
+      - [x] Hand the mapper the directory, SCIM User, account and Group, grant a role returned padded once and skip an empty one, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_projection_test.go#L675))
     - [ ] `roles.exists`
       - [x] Confirm each candidate role against the application's role table before granting it ([test](../../../adapters/sqlstore/scim_projection_test.go#L96))
     - [x] `reconcileUser` ([test](../../../adapters/sqlstore/scim_projection_test.go#L112))

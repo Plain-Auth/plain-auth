@@ -535,13 +535,25 @@ func TestSCIMProjectionReplaySummary(t *testing.T) {
 			must(e)
 			host, e := auth.New(auth.Options{BaseURL: "https://directory.example.test", BasePath: "/identity/custom", Secret: strings.Repeat("a", 32), Store: configured})
 			must(e)
-			h, e := scim.New(host, scim.Options{Store: configured, Connections: []scim.Connection{{Directory: scim.Directory{ID: "ACME", ProvisioningDomainID: "Tenant"}, Credentials: []scim.Credential{{ID: "owned", Token: "writer"}}}}})
+			h, e := scim.New(host, scim.Options{Store: configured, Connections: []scim.Connection{{Directory: scim.Directory{ID: "ACME", ProvisioningDomainID: "Tenant"}, Credentials: []scim.Credential{{ID: "owned", Token: "writer"}}},
+				{Directory: scim.Directory{ID: "BETA", ProvisioningDomainID: "Tenant"}, Credentials: []scim.Credential{{ID: "owned", Token: "beta"}}}}})
 			must(e)
+			for _, domain := range []string{"", strings.Repeat("d", 256)} {
+				if _, e := configured.ReconcileSCIMProjection(ctx, domain); !errors.As(e, &se) || se.Status != 400 {
+					t.Fatal("a replay accepted an empty or overlong domain", len(domain), e)
+				}
+			}
 			for _, name := range []string{"one@example.test", "two@example.test"} {
 				if w := scimRequest(h, "POST", "Users", "writer", map[string]any{"schemas": []string{scim.UserSchema}, "userName": name}); w.Code != 201 {
 					t.Fatal("provisioning failed", w.Code, w.Body.String())
 				}
 			}
+			// A second source linked to the first account is reconciled with it.
+			if w := scimRequest(h, "POST", "Users", "beta", map[string]any{"schemas": []string{scim.UserSchema}, "userName": "three@example.test"}); w.Code != 201 {
+				t.Fatal("provisioning failed", w.Code, w.Body.String())
+			}
+			_, e = configured.db.ExecContext(ctx, configured.bind(`UPDATE "scimUser" SET "userId"=(SELECT "userId" FROM (SELECT "userId" FROM "scimUser" WHERE "userName"=?) AS first) WHERE "userName"=?`), "one@example.test", "three@example.test")
+			must(e)
 			calls = 0
 			replay, e := configured.ReconcileSCIMProjection(ctx, "Tenant")
 			if e != nil || replay != (scim.ProjectionReplay{ProvisioningDomainID: "Tenant", ReconciledUsers: 2, Batches: 1}) {

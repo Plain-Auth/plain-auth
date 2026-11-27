@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"github.com/Plain-Org/plain-auth/internal/jsjson"
 	"maps"
 	"strings"
 	"unicode/utf8"
@@ -93,6 +94,12 @@ func (s *Store) EnableSCIMProjection(ctx context.Context, domain string, policy 
 // directory facts and summarizes the replay. Call after changing trusted
 // role mappings or role catalogs.
 func (s *Store) ReconcileSCIMProjection(ctx context.Context, domain string) (scim.ProjectionReplay, error) {
+	// The domain is read as another runtime's request schema reads it:
+	// trimmed, then 1 to 255 code points.
+	domain = jsjson.TrimSpace(domain)
+	if n := utf8.RuneCountInString(domain); n < 1 || n > 255 {
+		return scim.ProjectionReplay{}, &scim.Error{Status: 400, Type: "invalidValue", Detail: "A valid provisioning domain is required"}
+	}
 	n, err := s.changeSCIMProjection(ctx, domain, false)
 	if err != nil {
 		return scim.ProjectionReplay{}, err
