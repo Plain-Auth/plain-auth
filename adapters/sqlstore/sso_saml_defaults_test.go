@@ -90,6 +90,14 @@ func TestEnterpriseSAMLDefaults(t *testing.T) {
 				must(store.db.QueryRowContext(ctx, store.bind(`SELECT COUNT(*) FROM "ssoProvider" WHERE "providerId"=?`), id).Scan(&n))
 				return n
 			}
+			// A SAML issuer must be a URL, as in another runtime.
+			for _, issuer := range []string{"not a url", "urn:example:idp"} {
+				body := keyed("bad-issuer", func(map[string]any) {})
+				body["issuer"] = issuer
+				if w := call("POST", "sso/register", owner, body); w.Code != 400 || rows("bad-issuer") != 0 {
+					t.Fatal("a SAML registration accepted an issuer that is not a URL", issuer, w.Code, w.Body.String())
+				}
+			}
 			const keyRefusal = "SAML private keys are not accepted in a provider registration; configure the request signing and decryption keys on the server"
 			for _, edit := range []func(map[string]any){
 				func(cfg map[string]any) { cfg["privateKey"] = "PEM" },

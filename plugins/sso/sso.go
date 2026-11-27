@@ -370,6 +370,8 @@ func New(o Options) (auth.Plugin, error) {
 				return nil, err
 			}
 		}
+		// The issuer is an HTTP or HTTPS URL for both protocols; another
+		// runtime accepts any URL, such as a urn: SAML issuer.
 		issuer, _ := c.Body["issuer"].(string)
 		if _, err = endpointURL(issuer); err != nil {
 			return nil, err

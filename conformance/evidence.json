@@ -11886,7 +11886,8 @@
     {
       "label": "Return the shared redirect URI in the registration response with SharedCallback, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/sso_oidc_contract_test.go",
-      "marker": "t.Fatal(\"a shared-callback registration did not return the shared redirect URI\", w.Code, registered.RedirectURI)"
+      "marker": "t.Fatal(\"a shared-callback registration did not return the shared redirect URI\", w.Code, registered.RedirectURI)",
+      "complete": true
     }
   ],
   "plugin-symbol/sso/OIDCConfig/tokenEndpointAuthentication": [
@@ -12016,6 +12017,12 @@
       "label": "Let an organization admin delete the organization's provider and refuse a plain member with 403, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/sso_test.go",
       "marker": "check(call(two, \"sso/delete-provider\", other, map[string]any{\"providerId\": \"corp-spare\"}), 200)"
+    },
+    {
+      "label": "Refuse a deletion without a string providerId with 400 and answer 404 for one never registered, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_test.go",
+      "marker": "check(call(one, \"sso/delete-provider\", owner, map[string]any{\"providerId\": 7}), 400)",
+      "complete": true
     }
   ],
   "plugin-symbol/sso/SSOOptions/guardProviderMutation": [
@@ -42762,6 +42769,12 @@
       "label": "Reject an OIDC registration whose discovered issuer differs from the submitted issuer",
       "test": "adapters/sqlstore/sso_test.go",
       "marker": "check(call(two, path, owner, makeBody(\"wrong\", \"\", \"/mismatch\")), 400)"
+    },
+    {
+      "label": "Refuse a SAML registration whose issuer is not an HTTP or HTTPS URL, a documented deviation for urn: issuers, and store nothing, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_defaults_test.go",
+      "marker": "t.Fatal(\"a SAML registration accepted an issuer that is not a URL\", issuer, w.Code, w.Body.String())",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/sso/index.mdx#L115/`domain`": [
@@ -43149,7 +43162,8 @@
     {
       "label": "Return the shared redirect URI at registration, answer a stateless per-provider return with state_not_found and keep SAML directories' own ACS with SharedCallback, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/sso_oidc_contract_test.go",
-      "marker": "t.Fatal(\"SharedCallback changed a SAML directory's ACS\", w.Body.String())"
+      "marker": "t.Fatal(\"SharedCallback changed a SAML directory's ACS\", w.Body.String())",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/sso/provisioning.mdx#L10": [
