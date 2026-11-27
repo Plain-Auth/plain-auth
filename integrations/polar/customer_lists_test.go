@@ -80,6 +80,10 @@ func (p *listProvider) Do(req *http.Request) (*http.Response, error) {
 			"subtotal_amount": 1000, "discount_amount": 0, "net_amount": 1000, "tax_amount": 200, "total_amount": 1200, "refunded_amount": 0, "currency": "usd",
 			"billing_reason": "purchase", "billing_name": "Private Name", "billing_address": map[string]any{"country": "US", "line1": "1 Private St"}, "customer_id": owner,
 			"product_id": otherProduct, "subscription_id": nil, "description": "Pro"}}, "pagination": page})
+	case "/v1/customer-portal/meters/":
+		return reply(200, map[string]any{"items": []any{map[string]any{"id": "44444444-0000-4000-8000-000000000001", "created_at": now, "customer_id": owner,
+			"meter_id": "60352a5a-2768-4016-97b8-315f585a9a6f", "consumed_units": 2.5, "credited_units": 4, "balance": 1.5,
+			"meter": map[string]any{"id": "60352a5a-2768-4016-97b8-315f585a9a6f", "name": "API requests", "created_at": now, "metadata": map[string]any{"note": "merchant-only"}}}}, "pagination": page})
 	case "/v1/customer-portal/subscriptions/":
 		return reply(200, map[string]any{"items": []any{map[string]any{"id": "33333333-0000-4000-8000-000000000001", "created_at": now, "status": "active", "amount": 1000,
 			"currency": "usd", "recurring_interval": "month", "current_period_start": now, "current_period_end": now.Add(720 * time.Hour), "cancel_at_period_end": false,
@@ -112,7 +116,7 @@ func TestCustomerPortalLists(t *testing.T) {
 			}
 			remote := &listProvider{queries: map[string]url.Values{}}
 			plugin, err := New(Options{Client: polargo.New(polargo.WithSecurity("fixture"), polargo.WithClient(remote)), Ledger: ledger, OrganizationID: merchant,
-				Portal: &PortalOptions{URL: portalURL}})
+				Portal: &PortalOptions{URL: portalURL}, Usage: &UsageOptions{}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -165,10 +169,16 @@ func TestCustomerPortalLists(t *testing.T) {
 			if got := remote.queries["/v1/customer-portal/subscriptions/"]; got.Get("active") != "true" {
 				t.Fatal("the active filter was not forwarded", got)
 			}
+			// Meters list the customer's consumption and balance.
+			status, out, raw = get("/usage/meters/list?limit=10")
+			if status != 200 || len(out["items"].([]any)) != 1 || out["items"].([]any)[0].(map[string]any)["balance"] != 1.5 ||
+				out["items"].([]any)[0].(map[string]any)["meter"].(map[string]any)["name"] != "API requests" || strings.Contains(raw, "merchant-only") {
+				t.Fatal("the meters were not listed as subsets", status, raw)
+			}
 			// Other query keys, repeated or out-of-range values are refused before Polar.
 			before := remote.sessions
 			for _, bad := range []string{"/customer/benefits/list?active=true", "/customer/orders/list?productBillingType=lifetime", "/customer/subscriptions/list?active=yes",
-				"/customer/orders/list?limit=101", "/customer/orders/list?page=0", "/customer/orders/list?page=1&page=2", "/customer/subscriptions/list?customerId=other"} {
+				"/customer/orders/list?limit=101", "/customer/orders/list?page=0", "/usage/meters/list?meterId=other", "/customer/orders/list?page=1&page=2", "/customer/subscriptions/list?customerId=other"} {
 				if status, out, _ := get(bad); status != 400 || out["code"] != "POLAR_INVALID_QUERY" {
 					t.Error("an invalid list query was accepted", bad, status, out)
 				}

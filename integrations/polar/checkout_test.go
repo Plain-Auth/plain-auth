@@ -648,9 +648,9 @@ func TestOptionSections(t *testing.T) {
 	}{
 		"no client":         {Options{OrganizationID: merchant}, "polar: configure a client and the merchant organization UUID"},
 		"no merchant":       {Options{Client: client}, "polar: configure a client and the merchant organization UUID"},
-		"checkout ledger":   {Options{Client: client, OrganizationID: merchant, Checkout: checkout}, "polar: checkout, portal and webhooks need a ledger"},
-		"webhooks ledger":   {Options{Client: client, OrganizationID: merchant, Webhooks: &WebhookOptions{Secret: "whsec_x"}}, "polar: checkout, portal and webhooks need a ledger"},
-		"portal ledger":     {Options{Client: client, OrganizationID: merchant, Portal: &PortalOptions{URL: "https://polar.test/portal"}}, "polar: checkout, portal and webhooks need a ledger"},
+		"checkout ledger":   {Options{Client: client, OrganizationID: merchant, Checkout: checkout}, "polar: checkout, portal, webhooks and usage need a ledger"},
+		"webhooks ledger":   {Options{Client: client, OrganizationID: merchant, Webhooks: &WebhookOptions{Secret: "whsec_x"}}, "polar: checkout, portal, webhooks and usage need a ledger"},
+		"portal ledger":     {Options{Client: client, OrganizationID: merchant, Portal: &PortalOptions{URL: "https://polar.test/portal"}}, "polar: checkout, portal, webhooks and usage need a ledger"},
 		"no products":       {Options{Client: client, OrganizationID: merchant, Ledger: ledger, Checkout: &CheckoutOptions{HostedOrigin: "https://polar.test", SuccessURL: "/success"}}, "polar: checkout needs products and a success URL"},
 		"no success":        {Options{Client: client, OrganizationID: merchant, Ledger: ledger, Checkout: &CheckoutOptions{Products: checkout.Products, HostedOrigin: "https://polar.test"}}, "polar: checkout needs products and a success URL"},
 		"bad origin":        {Options{Client: client, OrganizationID: merchant, Ledger: ledger, Checkout: &CheckoutOptions{Products: checkout.Products, HostedOrigin: "http://polar.test", SuccessURL: "/success"}}, "polar: hosted origin must be an exact HTTPS origin"},

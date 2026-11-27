@@ -2,16 +2,16 @@
 
 ## Verification progress
 
-**3,130 of 6,419 inventory entries are fully verified (48.8%).**
+**3,131 of 6,419 inventory entries are fully verified (48.8%).**
 
 | Inventory status | Entries |
 | --- | ---: |
-| Fully verified | 3,130 |
-| Partially verified | 1,586 |
-| No linked test evidence | 1,703 |
+| Fully verified | 3,131 |
+| Partially verified | 1,588 |
+| No linked test evidence | 1,700 |
 | Not applicable to a Go server | 606 |
 
-The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 8,230 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
+The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 8,233 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
 
 Entries that exist only for JavaScript clients, frameworks or runtimes are listed as not applicable, with the reason, and are left out of the totals. Backlog entries stay open on the roadmap but are not scheduled.
 
@@ -141,4 +141,4 @@ These integrations have independent release cycles.
 | [Creem](plugins/creem.md) | Backlog | 0 | 74 | 0 |
 | [Dodopayments](plugins/dodopayments.md) | Backlog | 0 | 20 | 0 |
 | [Dub](plugins/dub.md) | Backlog | 0 | 15 | 0 |
-| [Polar](plugins/polar.md) | Planned | 109 | 21 | 0 |
+| [Polar](plugins/polar.md) | Planned | 113 | 20 | 0 |

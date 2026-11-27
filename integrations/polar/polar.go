@@ -47,6 +47,8 @@ type Options struct {
 	Portal *PortalOptions
 	// Webhooks enables POST /polar/webhooks.
 	Webhooks *WebhookOptions
+	// Usage enables GET /usage/meters/list, the signed-in customer's meters.
+	Usage *UsageOptions
 }
 
 // CheckoutOptions enables personal hosted checkout.
@@ -99,8 +101,8 @@ func NewService(opts Options) (*Service, error) {
 	if opts.Client == nil || !canonicalID(opts.OrganizationID) {
 		return nil, errors.New("polar: configure a client and the merchant organization UUID")
 	}
-	if (opts.Checkout != nil || opts.Portal != nil || opts.Webhooks != nil) && opts.Ledger == nil {
-		return nil, errors.New("polar: checkout, portal and webhooks need a ledger")
+	if (opts.Checkout != nil || opts.Portal != nil || opts.Webhooks != nil || opts.Usage != nil) && opts.Ledger == nil {
+		return nil, errors.New("polar: checkout, portal, webhooks and usage need a ledger")
 	}
 	s := &Service{opts: opts, products: map[string]bool{}}
 	if opts.Checkout != nil {
@@ -172,6 +174,9 @@ func (s *Service) Plugin() auth.Plugin {
 			auth.Endpoint{Method: "GET", Path: "/customer/orders/list", Handler: s.customerOrders},
 			auth.Endpoint{Method: "GET", Path: "/customer/subscriptions/list", Handler: s.customerSubscriptions},
 		)
+	}
+	if s.opts.Usage != nil {
+		endpoints = append(endpoints, auth.Endpoint{Method: "GET", Path: "/usage/meters/list", Handler: s.customerMeters})
 	}
 	plugin := auth.Plugin{ID: "polar", Endpoints: endpoints}
 	if s.opts.SignUpCustomer != nil {

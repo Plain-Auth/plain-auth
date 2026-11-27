@@ -52405,5 +52405,27 @@
       "marker": "func TestCustomerPortalLists(t *testing.T) {",
       "complete": true
     }
+  ],
+  "docs/content/docs/plugins/polar.mdx#L384": [
+    {
+      "label": "List the signed-in customer's meters with consumed and credited units and balance through Polar's customer portal, on three SQL engines",
+      "test": "integrations/polar/customer_lists_test.go",
+      "marker": "// Meters list the customer's consumption and balance.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/polar.mdx#L345": [
+    {
+      "label": "Mount the signed-in customer's meter list with the usage section, on three SQL engines",
+      "test": "integrations/polar/customer_lists_test.go",
+      "marker": "// Meters list the customer's consumption and balance."
+    }
+  ],
+  "docs/content/docs/plugins/polar.mdx#L20/Event Ingestion & Customer Meters for flexible Usage Based Billing": [
+    {
+      "label": "List the signed-in customer's meters, on three SQL engines",
+      "test": "integrations/polar/customer_lists_test.go",
+      "marker": "// Meters list the customer's consumption and balance."
+    }
   ]
 }
