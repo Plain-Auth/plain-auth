@@ -12,6 +12,12 @@ Mount the plugin returned by `oauthprovider.New` with the `oauth-provider` datab
 | `GET /oauth2/get-clients` | Signed-in account owner | The current tenant’s registrations when a tenant is active, or the user's personal registrations otherwise. An empty list is `[]`. |
 | `GET /oauth2/public-client?client_id=…` | Any signed-in user | The enabled application's ID and available display fields: name, URI, logo, contacts, terms and privacy policy. The `redirect_uris` array is empty. |
 | `POST /oauth2/delete-client` | Personal owner or authorized member of the owning tenant | Deletes the local registration. Returns HTTP 200 with an empty body. |
+| `POST /oauth2/create-client` | Signed-in account owner with the `create` privilege | Creates an application; see [Create an application](#create-an-application). |
+| `POST /oauth2/update-client` | Personal owner or a member of the owning tenant with the `update` privilege | Replaces owner-editable fields; see [Update an application](#update-an-application). |
+| `POST /oauth2/public-client-prelogin` | A login page with a signed query, when enabled | The public fields before sign-in; see [Show the application on the login page](#show-the-application-on-the-login-page). |
+| `POST /oauth2/client/rotate-secret` | Personal owner or authorized member of the owning tenant | Replaces a shared secret and returns it once. |
+
+Server code also has `ClientManager.CreateClient`, `UpdateClient` and `SetClientCredentialsScopes`, with no HTTP route; they ask the same `create`, `update` and `configure-client-credentials-scopes` privileges. `token_endpoint_auth_method` cannot change after creation and no update sets the secret; updates ignore `jwks`, `jwks_uri` and `subject_type`, and dropping `client_credentials` clears the machine scope grant.
 
 The owner views omit shared secrets, stored digests and machine-to-machine scope grants. A secret's expiry indicator can appear in the owner view. A disabled registration remains visible to its owner. Looking it up through the public endpoint gives the same 404 as an unknown ID. Credential and impersonation sessions cannot perform account-owner operations.
 
@@ -126,3 +132,7 @@ func directoryOptions(permissions AppPermissions) oauthprovider.Options {
 ```
 
 A personal owner takes precedence if a stored record contains both an owner and a tenant reference. Ownership comparisons use exact IDs across all three SQL databases. Owner lookups and public display lookups currently resolve locally registered applications. An individual lookup for a client that requires an external discovery provider returns 404. The owner list can show a saved registration snapshot. Pre-login display and discovery providers have separate checklist entries. [OAuth checklist](parity/plugins/oauth-provider.md) · [HTTP comparison tests](../conformance/oauth-client-directory.mjs) · [SQL and Go SDK tests](../adapters/sqlstore/oauth_client_directory_test.go)
+
+## Trusted clients
+
+`Options.ImmutableClientIDs` names operator-managed clients, the counterpart of another runtime's `cachedTrustedClients`. Every management call on them, the `ClientManager` methods included, answers 400 `invalid_client` `trusted clients must be updated manually`. No snapshot is kept in memory: the provider reads the client row on every request, so disabling or editing it in the database takes effect at once on every instance, without a restart. Set `skip_consent` only on such operator-managed clients, since a client that skips consent can obtain the user's approval without asking.
