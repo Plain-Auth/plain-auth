@@ -174,3 +174,38 @@ func TestPlanSources(t *testing.T) {
 
 // seatStoreStub satisfies the seat worker's store for a configuration check.
 type seatStoreStub struct{ stripeplugin.SeatStore }
+
+// A plan needs a price ID or a lookup key; keys are unique, trimmed and at
+// most 200 bytes, and membership-based plans use price IDs.
+func TestPlanLookupKeyConfiguration(t *testing.T) {
+	start := func(plans ...stripeplugin.Plan) error {
+		_, err := authn.New(authn.Options{Store: memory.New(), BaseURL: "http://auth.test", Secret: "test-secret-0123456789-abcdefghijk",
+			Plugins: []authn.Plugin{stripeplugin.New(stripeplugin.Options{WebhookSecret: "whsec_local",
+				Organization:  &stripeplugin.OrganizationOptions{AuthorizeReference: func(stripeplugin.ReferenceAuthorization) bool { return true }},
+				Subscriptions: &stripeplugin.SubscriptionOptions{Client: stripesdk.NewClient("sk_test_local"), Plans: plans}})}})
+		return err
+	}
+	const key = "stripe: invalid or duplicate price lookup key"
+	for name, tc := range map[string]struct {
+		plans []stripeplugin.Plan
+		want  string
+	}{
+		"neither":        {[]stripeplugin.Plan{{Name: "pro"}}, "stripe: invalid or duplicate subscription plan"},
+		"two plans":      {[]stripeplugin.Plan{{Name: "pro", LookupKey: "monthly"}, {Name: "team", LookupKey: "monthly"}}, key},
+		"two intervals":  {[]stripeplugin.Plan{{Name: "pro", LookupKey: "pro", AnnualLookupKey: "pro"}}, key},
+		"blank":          {[]stripeplugin.Plan{{Name: "pro", PriceID: "price_pro", AnnualLookupKey: " "}}, key},
+		"padded":         {[]stripeplugin.Plan{{Name: "pro", LookupKey: " pro"}}, key},
+		"too long":       {[]stripeplugin.Plan{{Name: "pro", LookupKey: strings.Repeat("k", 201)}}, key},
+		"membership key": {[]stripeplugin.Plan{{Name: "team", PriceID: "price_team", SeatPriceID: "price_team", LookupKey: "team"}}, "stripe: a membership-based plan requires price IDs"},
+	} {
+		if err := start(tc.plans...); err == nil || err.Error() != tc.want {
+			t.Error("a lookup key was handled wrongly", name, err)
+		}
+	}
+	accepted := func(err error) bool {
+		return err == nil || !strings.Contains(err.Error(), "lookup key") && !strings.Contains(err.Error(), "subscription plan")
+	}
+	if err := start(stripeplugin.Plan{Name: "pro", LookupKey: "pro_monthly", AnnualLookupKey: strings.Repeat("k", 200)}); !accepted(err) {
+		t.Error("a key-only plan was refused", err)
+	}
+}

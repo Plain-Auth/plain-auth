@@ -51,6 +51,28 @@ type Plan struct {
 	// price here while any subscription uses it. Membership-based plans
 	// cannot retire prices, since seat updates bind the configured prices.
 	RetiredPriceIDs []string `json:",omitempty"`
+	// LookupKey selects the monthly price by its Stripe lookup key, as
+	// another runtime does. The active price holding the key is read before
+	// each new purchase or plan change and wins over PriceID, which is used
+	// only when no active price holds the key. Before moving a key to a new
+	// price, add the old price to RetiredPriceIDs so its subscribers keep this
+	// plan. Membership-based plans use price IDs.
+	LookupKey string `json:",omitempty"`
+	// AnnualLookupKey selects the annual price in the same way.
+	AnnualLookupKey string `json:",omitempty"`
+}
+
+// maxLookupKeyBytes bounds a lookup key.
+const maxLookupKeyBytes = 200
+
+var errPriceNotFound = billingError(400, "", "Price ID not found for the selected plan")
+
+// sellable returns a plan's configured price ID and lookup key for an interval.
+func (p Plan) sellable(interval string) (id, key string) {
+	if interval == "year" {
+		return p.AnnualPriceID, p.AnnualLookupKey
+	}
+	return p.PriceID, p.LookupKey
 }
 
 // maxRetiredPrices bounds a plan's retired prices, so a stored plan stays small.
@@ -247,7 +269,8 @@ type subscriptionPrice struct{ plan, interval string }
 type planCatalog struct {
 	plans                                       map[string]Plan
 	prices                                      map[string]subscriptionPrice
-	retired                                     map[string]string // retired price ID to plan name
+	retired                                     map[string]string            // retired price ID to plan name
+	keys                                        map[string]subscriptionPrice // lookup key to plan and interval
 	hasMeteredAddons                            bool
 	observeTrialStarts, observeTrialTransitions bool
 }
@@ -289,7 +312,7 @@ func configureSubscriptions(o *SubscriptionOptions) (*subscriptions, error) {
 
 // newPlanCatalog validates plans and indexes their prices.
 func newPlanCatalog(plans []Plan) (*planCatalog, error) {
-	s := &planCatalog{plans: map[string]Plan{}, prices: make(map[string]subscriptionPrice), retired: make(map[string]string)}
+	s := &planCatalog{plans: map[string]Plan{}, prices: make(map[string]subscriptionPrice), retired: make(map[string]string), keys: make(map[string]subscriptionPrice)}
 	for _, p := range plans {
 		if p.FreeTrial != nil {
 			trial := *p.FreeTrial
@@ -301,8 +324,21 @@ func newPlanCatalog(plans []Plan) (*planCatalog, error) {
 			s.observeTrialTransitions = s.observeTrialTransitions || trial.OnTrialEnd != nil || trial.OnTrialExpired != nil
 		}
 		p.Name = strings.ToLower(strings.TrimSpace(p.Name))
-		if p.Name == "" || !strings.HasPrefix(p.PriceID, "price_") || len(p.PriceID) == 6 || (p.AnnualPriceID != "" && (!strings.HasPrefix(p.AnnualPriceID, "price_") || len(p.AnnualPriceID) == 6)) || s.plans[p.Name].Name != "" {
+		badID := func(id string) bool { return id != "" && (!strings.HasPrefix(id, "price_") || len(id) == 6) }
+		if p.Name == "" || p.PriceID == "" && p.LookupKey == "" || badID(p.PriceID) || badID(p.AnnualPriceID) || s.plans[p.Name].Name != "" {
 			return nil, errors.New("stripe: invalid or duplicate subscription plan")
+		}
+		if p.SeatPriceID != "" && (p.LookupKey != "" || p.AnnualLookupKey != "") {
+			return nil, errors.New("stripe: a membership-based plan requires price IDs")
+		}
+		for interval, key := range map[string]string{"month": p.LookupKey, "year": p.AnnualLookupKey} {
+			if key == "" {
+				continue
+			}
+			if _, taken := s.keys[key]; taken || strings.TrimSpace(key) != key || len(key) > maxLookupKeyBytes {
+				return nil, errors.New("stripe: invalid or duplicate price lookup key")
+			}
+			s.keys[key] = subscriptionPrice{p.Name, interval}
 		}
 		if p.SeatPriceID != "" {
 			if !strings.HasPrefix(p.SeatPriceID, "price_") || len(p.SeatPriceID) == 6 {
@@ -421,6 +457,53 @@ func (s *subscriptions) loadCatalog(ctx context.Context) (catalog *planCatalog, 
 	return newPlanCatalog(plans)
 }
 
+// resolvePrice returns the price ID to sell for one interval of a plan: the
+// active price holding its lookup key, or else its configured price ID. A
+// failed lookup answers 502, where another runtime falls back to the price
+// ID, so a stale price is never sold; and a key resolving to a price this
+// catalog configures for another plan, interval or item is refused.
+func (s *subscriptions) resolvePrice(ctx context.Context, p Plan, interval string) (string, error) {
+	id, key := p.sellable(interval)
+	if key == "" {
+		if id == "" {
+			return "", errPriceNotFound
+		}
+		return id, nil
+	}
+	var found *sdk.Price
+	params := &sdk.PriceListParams{LookupKeys: []*string{sdk.String(key)}, Active: sdk.Bool(true), ListParams: sdk.ListParams{Limit: sdk.Int64(1)}}
+	for price, err := range s.client.V1Prices.List(ctx, params).All(ctx) {
+		if err != nil {
+			if ctx.Err() != nil {
+				return "", ctx.Err()
+			}
+			return "", billingError(502, "STRIPE_PRICE_UNAVAILABLE", "Could not retrieve the configured checkout price")
+		}
+		found = price
+		break
+	}
+	if found == nil || found.ID == "" || found.LookupKey != key {
+		if id == "" {
+			return "", errPriceNotFound
+		}
+		return id, nil
+	}
+	if mapped, ok := s.prices[found.ID]; ok && mapped != (subscriptionPrice{p.Name, interval}) || s.retired[found.ID] != "" && s.retired[found.ID] != p.Name || s.itemPrice(found.ID) {
+		return "", billingError(409, errUnsupportedItem.Code, "A lookup key resolved to a price configured for another plan or item")
+	}
+	return found.ID, nil
+}
+
+// itemPrice reports a price the catalog uses as a seat or metered add-on.
+func (s *planCatalog) itemPrice(id string) bool {
+	for _, plan := range s.plans {
+		if plan.SeatPriceID == id && plan.PriceID != id && plan.AnnualPriceID != id || slices.Contains(plan.MeteredPriceIDs, id) {
+			return true
+		}
+	}
+	return false
+}
+
 // withPlans runs a subscription route with the plans current for the
 // request. A loader failure is logged without its text and answers
 // ErrFetchPlans.
@@ -480,6 +563,11 @@ func (s *planCatalog) priceOf(p *sdk.Price) (subscriptionPrice, bool) {
 	}
 	if price, ok := s.prices[p.ID]; ok {
 		return price, true
+	}
+	if price, ok := s.keys[p.LookupKey]; ok && p.LookupKey != "" {
+		if _, retired := s.retired[p.ID]; !retired {
+			return price, true
+		}
 	}
 	plan, ok := s.retired[p.ID]
 	if !ok || p.Recurring == nil || p.Recurring.IntervalCount != 1 {
@@ -587,17 +675,33 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 			return nil, err
 		}
 	}
-	price, interval := p.PriceID, "month"
+	interval := "month"
 	if annual, _ := c.Body["annual"].(bool); annual {
-		price, interval = p.AnnualPriceID, "year"
-		if price == "" {
-			return nil, billingError(400, "", "Price ID not found for the selected plan")
+		interval = "year"
+	}
+	if id, key := p.sellable(interval); id == "" && key == "" {
+		return nil, errPriceNotFound
+	}
+	ctx := c.Request.Context()
+	// A pending purchase keeps the price it was opened with, so a retry
+	// reopens it with no lookup, even after its key moved to a new price.
+	price, pendingPrice := "", false
+	if _, key := p.sellable(interval); key != "" && explicit == "" {
+		if pending, ok := c.Store().(PendingCheckoutStore); ok {
+			if a, err := pending.PendingStripeCheckout(ctx, selection.reference); err == nil && a.Plan == p.Name && a.Interval == interval && time.Now().Unix() < a.Expires {
+				price, pendingPrice = a.Price, true
+			}
+		}
+	}
+	if price == "" {
+		var err error
+		if price, err = s.resolvePrice(ctx, p, interval); err != nil {
+			return nil, err
 		}
 	}
 	if explicit != "" {
-		return s.changePlan(c, selection, selected, price, returnURL, quantity)
+		return s.changePlan(c, selection, selected, p, interval, price, returnURL, quantity)
 	}
-	ctx := c.Request.Context()
 	store := c.Store().(SubscriptionStore)
 	want := CheckoutAttempt{Locale: locale, CheckPrice: true, RetainCompletion: s.onComplete != nil || p.FreeTrial != nil && p.FreeTrial.OnTrialStart != nil, MeteredPriceIDs: slices.Clone(p.MeteredPriceIDs), AutomaticSeats: automatic, Seats: quantity, Owner: selection.reference, Plan: p.Name, Interval: interval, Price: price, SuccessURL: success, CancelURL: cancel}
 	if automatic && p.SeatPriceID != price {
@@ -623,6 +727,15 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 		reserve = c.Store().(TrialCheckoutStore).ReserveStripeTrialCheckout
 	}
 	a, err := reserve(ctx, selection.reference, ss.Session.Token, want, time.Now().UTC())
+	if pendingPrice && (errors.Is(err, ErrCheckoutPriceCheck) || errors.Is(err, ErrExistingSubscription)) {
+		// The pending purchase ended meanwhile: the key is resolved again, so
+		// a stale price is never sold.
+		if price, err = s.resolvePrice(ctx, p, interval); err != nil {
+			return nil, err
+		}
+		want.Price = price
+		a, err = reserve(ctx, selection.reference, ss.Session.Token, want, time.Now().UTC())
+	}
 	if errors.Is(err, ErrCheckoutPriceCheck) {
 		if err := s.prepareCheckoutPrices(ctx, &want); err != nil {
 			return nil, err
@@ -650,7 +763,7 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 		if len(rows) != 1 || rows[0].SubscriptionID == nil {
 			return nil, ErrExistingSubscription
 		}
-		return s.changePlan(c, selection, rows[0], price, returnURL, quantity)
+		return s.changePlan(c, selection, rows[0], p, interval, price, returnURL, quantity)
 	}
 	if err != nil {
 		return nil, err

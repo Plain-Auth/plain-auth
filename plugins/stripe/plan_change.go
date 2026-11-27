@@ -18,12 +18,12 @@ var (
 
 // changePlan opens the customer confirmation page. The authoritative price only
 // changes when Stripe confirms it and the subscription is reconciled.
-func (s *subscriptions) changePlan(c auth.EndpointContext, selection billingSelection, local Subscription, target, returnURL string, quantity int64) (any, error) {
+func (s *subscriptions) changePlan(c auth.EndpointContext, selection billingSelection, local Subscription, to Plan, interval, target, returnURL string, quantity int64) (any, error) {
 	_, ok := c.Store().(SubscriptionManagementStore)
 	if !ok || local.SubscriptionID == nil {
 		return nil, ErrExistingSubscription
 	}
-	from, to := s.plans[local.Plan], s.plans[s.prices[target].plan]
+	from := s.plans[local.Plan]
 	if len(from.MeteredPriceIDs) > 0 || len(to.MeteredPriceIDs) > 0 {
 		return nil, errUnsupportedItem
 	}
@@ -87,7 +87,7 @@ func (s *subscriptions) changePlan(c auth.EndpointContext, selection billingSele
 	if sub.Status == sdk.SubscriptionStatusActive && item.Price.ID == target && item.Quantity == quantity && (item.CurrentPeriodEnd == 0 || item.CurrentPeriodEnd > time.Now().Unix()) {
 		return nil, errAlreadySubscribed
 	}
-	if err := s.verifyLicensedPrice(ctx, target); err != nil {
+	if err := s.verifyPriceInterval(ctx, target, interval); err != nil {
 		return nil, err
 	}
 	if _, err := checkOwner(); err != nil {
@@ -125,10 +125,6 @@ func (s *subscriptions) changePlan(c auth.EndpointContext, selection billingSele
 	}
 	disable, _ := c.Body["disableRedirect"].(bool)
 	return map[string]any{"url": portal.URL, "redirect": !disable}, nil
-}
-
-func (s *subscriptions) verifyLicensedPrice(ctx context.Context, target string) error {
-	return s.verifyPriceInterval(ctx, target, s.prices[target].interval)
 }
 
 func (s *subscriptions) verifyPriceInterval(ctx context.Context, target, interval string) error {

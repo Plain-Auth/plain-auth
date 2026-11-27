@@ -51525,6 +51525,12 @@
       "label": "Refuse a plan price that is not monthly with an interval count of one before reserving a purchase on three SQL engines",
       "test": "adapters/sqlstore/stripe_plan_rules_test.go",
       "marker": "// Weekly and quarterly prices are refused before any row."
+    },
+    {
+      "label": "Sell a plan's price ID when its lookup key finds no active price, and require a price ID or a lookup key, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_lookup_keys_test.go",
+      "marker": "// The annual key, and a configured ID when the key finds nothing.",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L1091/How it works:": [
@@ -52277,6 +52283,27 @@
       "label": "Define plans statically or load them at request time, selling a changed price at once while a retired one keeps its subscribers, on three SQL engines",
       "test": "adapters/sqlstore/stripe_loaded_plans_test.go",
       "marker": "// The plans move to a new price, keeping the old one retired: the",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L875/`lookupKey`": [
+    {
+      "label": "Sell the active price holding a plan's lookup key ahead of its price ID, keep a pending purchase's price across a key transfer, and map a subscription on the key's price to the plan, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_lookup_keys_test.go",
+      "marker": "func TestStripePriceLookupKeys(t *testing.T) {",
+      "complete": true
+    },
+    {
+      "label": "Refuse duplicate, padded or overlong lookup keys and keys on membership plans at startup",
+      "test": "plugins/stripe/plans_test.go",
+      "marker": "func TestPlanLookupKeyConfiguration(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L877/`annualDiscountLookupKey`": [
+    {
+      "label": "Sell the active price holding a plan's annual lookup key for an annual purchase, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_lookup_keys_test.go",
+      "marker": "// The annual key, and a configured ID when the key finds nothing.",
       "complete": true
     }
   ]

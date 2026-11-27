@@ -200,7 +200,7 @@ func (s *subscriptions) checkoutReceipt(c auth.EndpointContext, a CheckoutAttemp
 		return CheckoutReceipt{}, ErrCheckoutReconcile
 	}
 	item := sub.Items.Data[0]
-	if item == nil || item.Price == nil || item.Price.ID != a.Price || item.Quantity != a.Quantity() || a.Quantity() > 1 && !s.licensedPrice(item.Price) {
+	if item == nil || item.Price == nil || item.Price.ID != a.Price || item.Quantity != a.Quantity() || a.Quantity() > 1 && !licensedAtInterval(item.Price, a.Interval) {
 		return CheckoutReceipt{}, ErrCheckoutReconcile
 	}
 	return CheckoutReceipt{RemoteID: sub.ID, Status: string(sub.Status), PeriodStart: item.CurrentPeriodStart, PeriodEnd: item.CurrentPeriodEnd, TrialStart: sub.TrialStart, TrialEnd: sub.TrialEnd}, nil
