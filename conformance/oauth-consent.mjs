@@ -73,6 +73,10 @@ export async function compareOAuthConsents(t, reference, goFixture) {
       }
       await problem("oauth2/get-consent?id=", undefined, 404, "not_found", "missing id parameter");
       await problem("oauth2/get-consent?id=absent", undefined, 404, "not_found", "no consent");
+      // An update names its grant, and a grant without a user belongs to nobody.
+      await problem(update, { id: "", update: { scopes: [] } }, 404, "not_found", "missing id parameter");
+      const unassigned = await request(update, owner.cookie, { id: "unassigned", update: { scopes: [] } });
+      assert.equal(unassigned.status, 401);
       await problem(update, { id, update: { scopes: ["reports","profile"] } }, 400, "invalid_request", "unable to provide scopes to department");
       assert.deepEqual(await (await request(read, owner.cookie)).json(), initial);
 

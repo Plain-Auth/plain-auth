@@ -16574,6 +16574,12 @@
       "label": "Keep grants deleted when an owner edits from a second database connection at the same time",
       "test": "adapters/sqlstore/oauth_consent_test.go",
       "marker": "deleted grant restored"
+    },
+    {
+      "label": "Answer an update without a consent ID with 404 missing id parameter and refuse a grant without a user with 401, on both runtimes",
+      "test": "conformance/oauth-consent.mjs",
+      "marker": "await problem(update, { id: \"\", update: { scopes: [] } }, 404, \"not_found\", \"missing id parameter\");",
+      "complete": true
     }
   ],
   "plugin-symbol/oauth-provider/updateOAuthConsent": [
@@ -16581,6 +16587,12 @@
       "label": "Change the scopes of locally registered clients and preserve grant identity, resources and requested claims",
       "test": "conformance/oauth-consent.mjs",
       "marker": "assert.deepEqual(result, { ...initial, scopes: valid.update.scopes"
+    },
+    {
+      "label": "Answer an update without a consent ID with 404 and refuse a grant without a user with 401, on both runtimes",
+      "test": "conformance/oauth-consent.mjs",
+      "marker": "await problem(update, { id: \"\", update: { scopes: [] } }, 404, \"not_found\", \"missing id parameter\");",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/oauth-provider/sign-in-flow.mdx#L242/`updateOAuthConsent`": [
