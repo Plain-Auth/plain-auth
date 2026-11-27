@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/Plain-Org/plain-auth/internal/polarledger"
@@ -134,6 +135,17 @@ func (s *Store) applyMigrations(ctx context.Context, db migrationConnection, bas
 	return nil
 }
 
+// hasColumn reports whether a table has a column.
+func (s *Store) hasColumn(ctx context.Context, db migrationConnection, table, column string) (bool, error) {
+	rows, err := db.QueryContext(ctx, "SELECT * FROM "+table+" WHERE 1=0")
+	if err != nil {
+		return false, err
+	}
+	defer rows.Close()
+	columns, err := rows.Columns()
+	return slices.Contains(columns, column), err
+}
+
 func (s *Store) ensureTable(ctx context.Context, db migrationConnection, stmt string) error {
 	match := tableDDL.FindStringSubmatch(stmt)
 	if match == nil {
@@ -190,6 +202,16 @@ func (s *Store) ensureTable(ctx context.Context, db migrationConnection, stmt st
 			definition = definition[:len(definition)-len(" unique")]
 		}
 		if _, err := db.ExecContext(ctx, "ALTER TABLE "+table+" ADD COLUMN "+definition); err != nil {
+			// On MySQL, DDL is not transactional and nothing serializes this
+			// with a plugin opening its own tables, so another process may
+			// have added the column first. PostgreSQL and SQLite migrations
+			// hold a lock, and a failed PostgreSQL statement ends the
+			// transaction anyway.
+			if s.dialect == "mysql" {
+				if added, readErr := s.hasColumn(ctx, db, table, col[1]); readErr == nil && added {
+					continue
+				}
+			}
 			return err
 		}
 		if addUnique {
