@@ -657,6 +657,7 @@ func TestOptionSections(t *testing.T) {
 		"no webhook secret":   {Options{Client: client, OrganizationID: merchant, Ledger: ledger, Webhooks: &WebhookOptions{}}, "polar: a webhook signing secret is required"},
 		"no authorization":    {Options{Client: client, OrganizationID: merchant, Ledger: ledger, Checkout: checkout, Organization: &OrganizationOptions{}}, "polar: organization references need AuthorizeReference"},
 		"organization only":   {Options{Client: client, OrganizationID: merchant, Ledger: ledger, Organization: &OrganizationOptions{AuthorizeReference: func(ReferenceAuthorization) bool { return true }}}, "polar: organization references need the checkout or portal section"},
+		"organization server": {Options{Client: client, OrganizationID: merchant, Ledger: ledger, Checkout: checkout, Organization: &OrganizationOptions{ServerURL: "https://api.polar.test/v1", AuthorizeReference: func(ReferenceAuthorization) bool { return true }}}, "polar: the organization server URL must be an HTTPS origin"},
 		"organization ledger": {Options{Client: client, OrganizationID: merchant, Checkout: checkout, Organization: &OrganizationOptions{AuthorizeReference: func(ReferenceAuthorization) bool { return true }}}, "polar: checkout, portal, webhooks and usage need a ledger"},
 	} {
 		if _, err := NewService(tc.opts); err == nil || err.Error() != tc.want {

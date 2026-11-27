@@ -19,9 +19,10 @@
     - [ ] Handle Polar Webhooks securely with signature verification
       - [x] Verify raw-body and time-bound delivery signatures for current and legacy merchant secrets ([test](../../../integrations/polar/checkout_test.go#L547))
       - [x] Keep an unsigned or altered delivery away from the event handler ([test](../../../integrations/polar/webhook_test.go#L106))
-    - [ ] Reference System to associate purchases with organizations
-      - [x] A verified checkout delivery reports the organization the purchase bills ([test](../../../integrations/polar/organization_test.go#L254))
-      - [x] Customer state names the organization each active subscription bills ([test](../../../integrations/polar/organization_test.go#L312))
+    - [x] Reference System to associate purchases with organizations ([test](../../../integrations/polar/organization_test.go#L369))
+      - [x] A verified checkout delivery reports the organization the purchase bills ([test](../../../integrations/polar/organization_test.go#L258))
+      - [x] Customer state names the organization each active subscription bills ([test](../../../integrations/polar/organization_test.go#L316))
+      - [x] Organization purchases are made through referenceId on checkout and listed by referenceId, both for approved members only ([test](../../../integrations/polar/organization_test.go#L369))
   - [ ] Preparation
     - [x] Authenticate provider calls with the merchant's organization access token through the configured SDK client ([test](../../../integrations/polar/checkout_test.go#L148))
     - [ ] Configuring Auth Server
@@ -50,9 +51,9 @@
     - [x] Allow one sender across competing sessions and withhold the hosted checkout after session revocation ([test](../../../integrations/polar/checkout_test.go#L533))
     - [x] Provision the checkout ledger while the application starts and retain previously claimed webhook deliveries ([test](../../../integrations/polar/schema_test.go#L53))
     - [x] Offer up to ten distinct configured products in one checkout, let a slug decide the purchase when both are sent, and report the product bought beside every offered one, on three SQL engines ([test](../../../integrations/polar/products_test.go#L23))
-    - [x] Organization Support ([test](../../../integrations/polar/organization_test.go#L166))
-      - [x] A member the host approves checks out for an organization with referenceId sent in the checkout metadata and stored with the reservation ([test](../../../integrations/polar/organization_test.go#L166))
-      - [x] Non-members, denied members and near-miss organization IDs are refused before Polar ([test](../../../integrations/polar/organization_test.go#L195))
+    - [x] Organization Support ([test](../../../integrations/polar/organization_test.go#L170))
+      - [x] A member the host approves checks out for an organization with referenceId sent in the checkout metadata and stored with the reservation ([test](../../../integrations/polar/organization_test.go#L170))
+      - [x] Non-members, denied members and near-miss organization IDs are refused before Polar ([test](../../../integrations/polar/organization_test.go#L199))
   - [ ] Portal Plugin
     - [x] Customer Portal Management ([test](../../../integrations/polar/portal_test.go#L248))
       - [x] Open by GET or POST, preserve the theme and redirect preference, and validate the hosted path and token ([test](../../../integrations/polar/portal_test.go#L248))
@@ -64,15 +65,18 @@
       - [x] Return empty arrays for a customer without subscriptions, grants or meters ([test](../../../integrations/polar/portal_test.go#L277))
       - [x] Reject customer selectors and delegated, unverified or guest sessions before calling the provider ([test](../../../integrations/polar/portal_test.go#L224))
       - [x] Return the signed-in customer's state with subscriptions, granted benefits and meter balances while withholding merchant metadata ([test](../../../integrations/polar/portal_test.go#L266))
-    - [ ] Benefits, Orders & Subscriptions
+    - [x] Benefits, Orders & Subscriptions ([test](../../../integrations/polar/customer_lists_test.go#L99))
       - [x] List the signed-in customer's benefits, orders and subscriptions through Polar's customer portal, refusing other query keys and another customer's page, on three SQL engines ([test](../../../integrations/polar/customer_lists_test.go#L99))
       - [x] Benefits ([test](../../../integrations/polar/customer_lists_test.go#L146))
         - [x] List the signed-in customer's granted benefits with paging, as subsets that keep grant secrets at Polar, on three SQL engines ([test](../../../integrations/polar/customer_lists_test.go#L146))
       - [x] Orders ([test](../../../integrations/polar/customer_lists_test.go#L156))
         - [x] List the signed-in customer's orders with paging and a billing type filter, as subsets that keep billing details at Polar, on three SQL engines ([test](../../../integrations/polar/customer_lists_test.go#L156))
-      - [ ] Subscriptions
+      - [x] Subscriptions ([test](../../../integrations/polar/customer_lists_test.go#L164))
         - [x] List the signed-in customer's own subscriptions with paging and an active filter, on three SQL engines ([test](../../../integrations/polar/customer_lists_test.go#L164))
-        - [ ] Important
+        - [x] Important ([test](../../../integrations/polar/organization_test.go#L461))
+          - [x] An approved member lists the organization's subscriptions by referenceId as redacted items, filtered by merchant, reference, active and paging ([test](../../../integrations/polar/organization_test.go#L461))
+          - [x] An item for another organization or merchant refuses the whole organization page ([test](../../../integrations/polar/organization_test.go#L482))
+          - [x] Non-members and denied members cannot list an organization's subscriptions, and no request reaches Polar ([test](../../../integrations/polar/organization_test.go#L515))
   - [ ] Usage Plugin
     - [x] Mount the signed-in customer's meter list with the usage section, on three SQL engines ([test](../../../integrations/polar/customer_lists_test.go#L172))
     - [ ] Event Ingestion

@@ -2,12 +2,15 @@ package polar
 
 import (
 	"encoding/json"
+	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	auth "github.com/Plain-Org/plain-auth"
 	"github.com/polarsource/polar-go/models/components"
 	"github.com/polarsource/polar-go/models/operations"
+	"github.com/polarsource/polar-go/retry"
 )
 
 // Page is one page of a customer list, in Polar's snake-case field names.
@@ -78,19 +81,22 @@ type CustomerSubscription struct {
 // maxListLimit bounds a list page, as Polar does.
 const maxListLimit = 100
 
-// listQuery is a checked list request: paging and the route's one filter.
+// listQuery is a checked list request: paging, the route's one filter and,
+// where the route accepts one, an organization reference.
 type listQuery struct {
 	page, limit *int64
 	filter      string
+	reference   string
 }
 
 func invalidQuery() error {
 	return failure(400, "POLAR_INVALID_QUERY", "Use page, limit and the documented filter")
 }
 
-// listRequest reads page, limit and the route's optional filter, each at
-// most once, and refuses any other query key.
-func listRequest(c auth.EndpointContext, filter string) (listQuery, error) {
+// listRequest reads page, limit, the route's optional filter and, when
+// reference is set, referenceId, each at most once, and refuses any other
+// query key.
+func listRequest(c auth.EndpointContext, filter string, reference bool) (listQuery, error) {
 	var q listQuery
 	for key, values := range c.Request.URL.Query() {
 		if len(values) != 1 {
@@ -112,6 +118,14 @@ func listRequest(c auth.EndpointContext, filter string) (listQuery, error) {
 				return q, invalidQuery()
 			}
 			q.filter = values[0]
+		case "referenceId":
+			if !reference {
+				return q, invalidQuery()
+			}
+			if !validReference(values[0]) {
+				return q, failure(400, "POLAR_INVALID_REFERENCE", "referenceId must be an organization ID")
+			}
+			q.reference = values[0]
 		default:
 			return q, invalidQuery()
 		}
@@ -159,7 +173,7 @@ func subset[T any](items any, customer string, keep func(raw map[string]any) boo
 }
 
 func (s *Service) customerBenefits(c auth.EndpointContext) (any, error) {
-	q, err := listRequest(c, "")
+	q, err := listRequest(c, "", false)
 	if err != nil {
 		return nil, err
 	}
@@ -200,7 +214,7 @@ func (s *Service) customerBenefits(c auth.EndpointContext) (any, error) {
 }
 
 func (s *Service) customerOrders(c auth.EndpointContext) (any, error) {
-	q, err := listRequest(c, "productBillingType")
+	q, err := listRequest(c, "productBillingType", false)
 	if err != nil {
 		return nil, err
 	}
@@ -232,7 +246,7 @@ func (s *Service) customerOrders(c auth.EndpointContext) (any, error) {
 }
 
 func (s *Service) customerSubscriptions(c auth.EndpointContext) (any, error) {
-	q, err := listRequest(c, "active")
+	q, err := listRequest(c, "active", s.opts.Organization != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -244,6 +258,9 @@ func (s *Service) customerSubscriptions(c auth.EndpointContext) (any, error) {
 		req.Active = &active
 	default:
 		return nil, invalidQuery()
+	}
+	if q.reference != "" {
+		return s.referenceSubscriptions(c, q, req.Active)
 	}
 	session, p, err := s.listSession(c)
 	if err != nil {
@@ -261,4 +278,64 @@ func (s *Service) customerSubscriptions(c auth.EndpointContext) (any, error) {
 		return nil, err
 	}
 	return Page[CustomerSubscription]{Items: items, Pagination: Pagination(reply.ListResourceCustomerSubscription.Pagination)}, nil
+}
+
+// ReferenceSubscription is a subscription a member bought for an
+// organization, listed by referenceId.
+type ReferenceSubscription struct {
+	CustomerSubscription
+	ReferenceID string `json:"reference_id"`
+}
+
+// referenceSubscriptions lists the merchant's subscriptions whose
+// referenceId metadata names the organization, for a member the host
+// approves. Another runtime lists them for any signed-in caller and
+// returns Polar's objects whole; here each item is the personal list's
+// subset, so customer details and other metadata stay at Polar.
+func (s *Service) referenceSubscriptions(c auth.EndpointContext, q listQuery, active *bool) (any, error) {
+	session, err := s.owner(c)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.authorizeReference(c, session, q.reference, "list-subscription"); err != nil {
+		return nil, err
+	}
+	// The SDK prints a metadata filter as a Go struct, so the query is built
+	// here and carried on the server URL, which the SDK then sends as is.
+	query := url.Values{"organization_id": {s.opts.OrganizationID}, "metadata[" + referenceMetadata + "]": {q.reference}}
+	if active != nil {
+		query.Set("active", strconv.FormatBool(*active))
+	}
+	if q.page != nil {
+		query.Set("page", strconv.FormatInt(*q.page, 10))
+	}
+	if q.limit != nil {
+		query.Set("limit", strconv.FormatInt(*q.limit, 10))
+	}
+	server := strings.TrimSuffix(s.opts.Organization.serverURL(), "/") + "/?" + query.Encode()
+	reply, err := s.opts.Client.Subscriptions.List(c.Request.Context(), operations.SubscriptionsListRequest{},
+		operations.WithServerURL(server), versioned(), operations.WithRetries(retry.Config{Strategy: "none"}))
+	if err != nil || reply == nil || reply.ListResourceSubscription == nil {
+		return nil, failure(502, "POLAR_SUBSCRIPTIONS_UNAVAILABLE", "Unable to list the organization's subscriptions at Polar")
+	}
+	list := reply.ListResourceSubscription
+	out := Page[ReferenceSubscription]{Items: make([]ReferenceSubscription, 0, len(list.Items)), Pagination: Pagination(list.Pagination)}
+	for _, it := range list.Items {
+		if ref := it.Metadata[referenceMetadata].Str; ref == nil || *ref != q.reference || it.Customer.OrganizationID != s.opts.OrganizationID {
+			return nil, customerMismatch()
+		}
+		out.Items = append(out.Items, ReferenceSubscription{ReferenceID: q.reference, CustomerSubscription: CustomerSubscription{
+			ID: it.ID, ProductID: it.ProductID, Status: string(it.Status), Amount: it.Amount, Currency: it.Currency,
+			RecurringInterval: string(it.RecurringInterval), CurrentPeriodStart: it.CurrentPeriodStart, CurrentPeriodEnd: it.CurrentPeriodEnd,
+			CancelAtPeriodEnd: it.CancelAtPeriodEnd, CanceledAt: it.CanceledAt, StartedAt: it.StartedAt, EndsAt: it.EndsAt, EndedAt: it.EndedAt,
+		}})
+	}
+	// The member may have left while Polar answered.
+	if err = s.recheckCustomer(c, session); err != nil {
+		return nil, err
+	}
+	if err := s.authorizeReference(c, session, q.reference, "list-subscription"); err != nil {
+		return nil, err
+	}
+	return out, nil
 }

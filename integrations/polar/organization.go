@@ -2,26 +2,48 @@ package polar
 
 import (
 	"context"
+	"net/url"
 	"strings"
 	"unicode"
 	"unicode/utf8"
 
 	auth "github.com/Plain-Org/plain-auth"
+	polargo "github.com/polarsource/polar-go"
 )
 
-// OrganizationOptions accepts an organization's referenceId on checkout, as
-// another runtime's reference system does. The caller must be a member, and
-// AuthorizeReference must approve the request.
+// OrganizationOptions accepts an organization's referenceId on checkout and
+// on the subscription list, as another runtime's reference system does. The
+// caller must be a member, and AuthorizeReference must approve the request.
 type OrganizationOptions struct {
 	// AuthorizeReference is required. It runs outside any database
 	// transaction, before the provider call and again before the result is
 	// returned. Keep it local and side-effect free.
 	AuthorizeReference func(ReferenceAuthorization) bool
+	// ServerURL is the Polar API server the Client uses, for the
+	// organization subscription list: empty for production, or
+	// polargo.ServerList[polargo.ServerSandbox] for the sandbox. The list
+	// sends its metadata filter itself, since the Go SDK cannot encode it.
+	ServerURL string
+}
+
+// serverURL is the configured API server, production by default.
+func (o *OrganizationOptions) serverURL() string {
+	if o.ServerURL == "" {
+		return polargo.ServerList[polargo.ServerProduction]
+	}
+	return o.ServerURL
+}
+
+// validServerURL accepts an HTTPS origin without a path, query or
+// credentials.
+func validServerURL(raw string) bool {
+	u, err := url.Parse(raw)
+	return err == nil && u.Scheme == "https" && u.Host != "" && u.User == nil && (u.Path == "" || u.Path == "/") && u.RawQuery == "" && !u.ForceQuery && u.Fragment == ""
 }
 
 // ReferenceAuthorization describes one organization-scoped request. Role is
 // the member's role, which may list several roles separated by commas.
-// Action is "checkout".
+// Action is "checkout" or "list-subscription".
 type ReferenceAuthorization struct {
 	UserID, OrganizationID, SessionID, Role, Action string
 }

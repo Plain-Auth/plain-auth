@@ -115,6 +115,9 @@ func NewService(opts Options) (*Service, error) {
 		if opts.Checkout == nil && opts.Portal == nil {
 			return nil, errors.New("polar: organization references need the checkout or portal section")
 		}
+		if opts.Organization.ServerURL != "" && !validServerURL(opts.Organization.ServerURL) {
+			return nil, errors.New("polar: the organization server URL must be an HTTPS origin")
+		}
 		organization := *opts.Organization
 		opts.Organization = &organization
 	}

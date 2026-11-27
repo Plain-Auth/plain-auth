@@ -30,7 +30,7 @@ type MeterInfo struct {
 // customer portal with a server-held customer session, whose token reads
 // only that customer's data, as another runtime's usage.meters.list does.
 func (s *Service) customerMeters(c auth.EndpointContext) (any, error) {
-	q, err := listRequest(c, "")
+	q, err := listRequest(c, "", false)
 	if err != nil {
 		return nil, err
 	}

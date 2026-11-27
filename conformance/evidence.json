@@ -52451,6 +52451,30 @@
       "label": "Customer state names the organization each active subscription bills",
       "test": "integrations/polar/organization_test.go",
       "marker": "customer state did not name the organizations"
+    },
+    {
+      "label": "Organization purchases are made through referenceId on checkout and listed by referenceId, both for approved members only",
+      "test": "integrations/polar/organization_test.go",
+      "marker": "func TestOrganizationSubscriptionsByReference(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/polar.mdx#L320/Important": [
+    {
+      "label": "An approved member lists the organization's subscriptions by referenceId as redacted items, filtered by merchant, reference, active and paging",
+      "test": "integrations/polar/organization_test.go",
+      "marker": "member could not list the organization's subscriptions",
+      "complete": true
+    },
+    {
+      "label": "An item for another organization or merchant refuses the whole organization page",
+      "test": "integrations/polar/organization_test.go",
+      "marker": "reference list returned another organization's subscription"
+    },
+    {
+      "label": "Non-members and denied members cannot list an organization's subscriptions, and no request reaches Polar",
+      "test": "integrations/polar/organization_test.go",
+      "marker": "a refused reference list reached Polar"
     }
   ]
 }
