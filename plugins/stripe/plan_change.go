@@ -115,6 +115,7 @@ func (s *subscriptions) changePlan(c auth.EndpointContext, selection billingSele
 	if err != nil {
 		return nil, providerManagementError(err)
 	}
+	// Stripe's own unusable answer is a 502; see cancel.
 	if portal == nil || portal.Customer != sub.Customer.ID || portal.URL == "" {
 		return nil, billingError(502, "UNABLE_TO_CREATE_BILLING_PORTAL", "Stripe did not return a billing portal for this customer")
 	}

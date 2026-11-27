@@ -132,6 +132,9 @@ var (
 	ErrExistingSubscription = billingError(409, "SUBSCRIPTION_ALREADY_EXISTS", "A subscription already exists")
 	ErrCheckoutReconcile    = billingError(409, "CHECKOUT_RECONCILIATION_REQUIRED", "Waiting for checkout reconciliation")
 	ErrCheckoutSession      = billingError(401, "UNAUTHORIZED", "Unauthorized")
+	// ErrCustomerCreation answers a failure to find or create the Stripe
+	// customer, as another runtime does.
+	ErrCustomerCreation = billingError(400, "UNABLE_TO_CREATE_CUSTOMER", "Unable to create customer")
 )
 
 type subscriptionPrice struct{ plan, interval string }
@@ -375,6 +378,10 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 		var customer *sdk.Customer
 		if selection.organization {
 			customer, err = s.findOrganizationCustomer(ctx, a.OrganizationID)
+			if err != nil && err != ErrCheckoutReconcile {
+				c.Auth.Logger().ErrorContext(ctx, "Stripe customer lookup failed", "error", err)
+				return nil, ErrCustomerCreation
+			}
 			if err != nil {
 				return nil, err
 			}
@@ -386,7 +393,10 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 			customer, err = s.client.V1Customers.Create(ctx, params)
 		}
 		if err != nil || customer == nil || customer.ID == "" || customer.Metadata["customerType"] != params.Metadata["customerType"] || (selection.organization && customer.Metadata["organizationId"] != a.OrganizationID) || (!selection.organization && customer.Metadata["userId"] != a.Owner) {
-			return nil, billingError(502, "CUSTOMER_CREATION_FAILED", "Stripe customer creation failed")
+			if err != nil {
+				c.Auth.Logger().ErrorContext(ctx, "Stripe customer creation failed", "error", err)
+			}
+			return nil, ErrCustomerCreation
 		}
 		if err := store.BindStripeCheckoutCustomer(ctx, a, ss.Session.Token, customer.ID, time.Now()); err != nil {
 			return nil, err

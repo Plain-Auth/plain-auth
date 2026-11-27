@@ -35,7 +35,7 @@ Import `github.com/Plain-Org/plain-auth/plugins/stripe` as `stripeplugin` and `g
 
 Send an authenticated POST to `/api/auth/subscription/upgrade`.
 
-Personal billing defaults to the signed-in user’s account. Clients can omit `referenceId` or supply their own user ID. A foreign personal reference returns HTTP 400 with `REFERENCE_ID_NOT_ALLOWED`. To manage subscriptions for an organization, configure organization billing as described below.
+Personal billing defaults to the signed-in user’s account. Clients can omit `referenceId` or supply their own user ID. A foreign personal reference returns HTTP 400 with `REFERENCE_ID_NOT_ALLOWED`. When Stripe fails to find or create the customer, personal or organization, the request answers HTTP 400 `UNABLE_TO_CREATE_CUSTOMER` before any Checkout is created, as in another runtime, and can be retried. A failure to reconcile a signed event answers 500 `STRIPE_WEBHOOK_ERROR`, so Stripe retries it, where another runtime answers 400, and an unusable billing portal answer from Stripe answers 502 `UNABLE_TO_CREATE_BILLING_PORTAL`. [Error code tests](../adapters/sqlstore/stripe_errors_test.go) To manage subscriptions for an organization, configure organization billing as described below.
 
 The example requires a verified email before starting Checkout. Set `RequireEmailVerification` to `false` (the default) to let any signed-in owner start a subscription.
 

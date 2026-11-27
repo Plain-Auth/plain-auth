@@ -120,6 +120,9 @@ func (s *subscriptions) organizationEvent(c plainauth.EndpointContext, event sdk
 	return withOrganization(c, OrganizationScope{ID: id}), nil
 }
 
+// findOrganizationCustomer finds the organization's Stripe customer by
+// metadata, through search with a list fallback; two customers answer
+// ErrCheckoutReconcile and a provider failure is returned as is.
 func (s *subscriptions) findOrganizationCustomer(ctx context.Context, id string) (*sdk.Customer, error) {
 	var found *sdk.Customer
 	collect := func(rows sdk.Seq2[*sdk.Customer, error]) error {
@@ -142,9 +145,6 @@ func (s *subscriptions) findOrganizationCustomer(ctx context.Context, id string)
 	if err != nil && err != ErrCheckoutReconcile && ctx.Err() == nil {
 		found = nil
 		err = collect(s.client.V1Customers.List(ctx, &sdk.CustomerListParams{ListParams: sdk.ListParams{Limit: sdk.Int64(100)}}).All(ctx))
-	}
-	if err != nil && err != ErrCheckoutReconcile {
-		return nil, billingError(502, "CUSTOMER_LOOKUP_FAILED", "Stripe customer lookup failed")
 	}
 	return found, err
 }

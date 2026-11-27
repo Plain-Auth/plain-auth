@@ -120,6 +120,9 @@ func (s *subscriptions) cancel(c auth.EndpointContext) (any, error) {
 		}
 		return nil, providerManagementError(err)
 	}
+	// A missing URL or a portal for another customer is Stripe's answer,
+	// so it is a 502, where another runtime answers a provider error with
+	// its 500 "Unable to create billing portal session".
 	if portal == nil || portal.URL == "" || ((selection.organization || portal.Customer != "") && portal.Customer != sub.Customer.ID) {
 		return nil, billingError(502, "UNABLE_TO_CREATE_BILLING_PORTAL", "Stripe did not return a billing portal URL")
 	}

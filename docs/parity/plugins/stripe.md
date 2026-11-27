@@ -7,6 +7,7 @@
 - [ ] Stripe endpoints, types and options
   - [ ] `stripeClient`
   - [ ] `STRIPE_ERROR_CODES`
+    - [x] Answer the billing routes' error codes with another runtime's statuses and messages, including UNABLE_TO_CREATE_CUSTOMER for a personal or organization customer Stripe fails to find or create, before any Checkout and retryably ([test](../../../adapters/sqlstore/stripe_errors_test.go#L28))
   - [ ] `stripe`
   - [ ] `StripePlugin`
   - [ ] `POST /subscription/upgrade`
