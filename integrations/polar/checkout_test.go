@@ -283,6 +283,9 @@ func TestOwnedCheckoutAndVerifiedDeliveries(t *testing.T) {
 					handledMu.Lock()
 					handled++
 					byDelivery[e.DeliveryID] = e.Purchase
+					if p := e.Purchase; p != nil && (e.Checkout == nil || e.Checkout.ID != p.CheckoutID) {
+						t.Errorf("a reserved delivery lost its typed checkout: %s", e.DeliveryID)
+					}
 					if p := e.Purchase; p != nil {
 						fulfilled[p.CheckoutID+":"+p.Status] = *p
 					}

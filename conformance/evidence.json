@@ -13477,6 +13477,12 @@
       "label": "Run the event handler only after the checkout state has committed, with no ledger transaction open",
       "test": "integrations/polar/checkout_test.go",
       "marker": "// No ledger transaction is open while the handler runs."
+    },
+    {
+      "label": "Decode every event type of the pinned SDK into its typed field and pass undefined types, other API versions and undecodable data with the body alone",
+      "test": "integrations/polar/webhook_test.go",
+      "marker": "func TestTypedWebhookEvents(t *testing.T) {",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/polar.mdx#L444/`onCheckoutCreated`": [
@@ -13489,13 +13495,30 @@
       "label": "Pass a merchant checkout this installation did not reserve to the handler without a purchase",
       "test": "integrations/polar/webhook_test.go",
       "marker": "// An untagged checkout and a bad timestamp reach the handler without a purchase."
+    },
+    {
+      "label": "Decode an unreserved checkout.created into Checkout without a purchase",
+      "test": "integrations/polar/webhook_test.go",
+      "marker": "{components.WebhookEventTypeCheckoutCreated, "
+    },
+    {
+      "label": "Decode a reserved checkout's deliveries into Checkout alongside the committed purchase, on three SQL engines",
+      "test": "integrations/polar/checkout_test.go",
+      "marker": "a reserved delivery lost its typed checkout",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/polar.mdx#L445/`onCheckoutUpdated`": [
     {
-      "label": "Apply concurrent copies of one update once in the ledger, and pass a stale update to the handler without a purchase, on three SQL engines",
+      "label": "Deliver every checkout.updated, stale ones included, with a purchase only when current, apply concurrent copies once and never reopen a checkout, on three SQL engines",
       "test": "integrations/polar/checkout_test.go",
-      "marker": "a stale delivery was reported as a purchase"
+      "marker": "a stale delivery was reported as a purchase",
+      "complete": true
+    },
+    {
+      "label": "Decode an unreserved checkout.updated into Checkout without a purchase",
+      "test": "integrations/polar/webhook_test.go",
+      "marker": "{components.WebhookEventTypeCheckoutUpdated, "
     }
   ],
   "docs/content/docs/plugins/polar.mdx#L18/Customer Portal": [
@@ -52044,6 +52067,196 @@
       "label": "Pass every verified delivery, untagged checkouts and undefined types included, to one handler with its delivery ID, type, timestamp and body, on three SQL engines",
       "test": "integrations/polar/webhook_test.go",
       "marker": "func TestEventHandlerReceivesVerifiedDeliveries(t *testing.T) {"
+    },
+    {
+      "label": "Pass every verified delivery to one handler, with its typed object when the pinned SDK decodes it and with the body alone otherwise",
+      "test": "integrations/polar/webhook_test.go",
+      "marker": "undefined or undecodable data set a typed field",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/polar.mdx#L446/`onOrderCreated`": [
+    {
+      "label": "Decode a OrderCreated delivery into Event.Order and no other typed field",
+      "test": "integrations/polar/webhook_test.go",
+      "marker": "{components.WebhookEventTypeOrderCreated, ",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/polar.mdx#L447/`onOrderPaid`": [
+    {
+      "label": "Decode a OrderPaid delivery into Event.Order and no other typed field",
+      "test": "integrations/polar/webhook_test.go",
+      "marker": "{components.WebhookEventTypeOrderPaid, ",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/polar.mdx#L448/`onOrderRefunded`": [
+    {
+      "label": "Decode a OrderRefunded delivery into Event.Order and no other typed field",
+      "test": "integrations/polar/webhook_test.go",
+      "marker": "{components.WebhookEventTypeOrderRefunded, ",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/polar.mdx#L449/`onRefundCreated`": [
+    {
+      "label": "Decode a RefundCreated delivery into Event.Refund and no other typed field",
+      "test": "integrations/polar/webhook_test.go",
+      "marker": "{components.WebhookEventTypeRefundCreated, ",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/polar.mdx#L450/`onRefundUpdated`": [
+    {
+      "label": "Decode a RefundUpdated delivery into Event.Refund and no other typed field",
+      "test": "integrations/polar/webhook_test.go",
+      "marker": "{components.WebhookEventTypeRefundUpdated, ",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/polar.mdx#L451/`onSubscriptionCreated`": [
+    {
+      "label": "Decode a SubscriptionCreated delivery into Event.Subscription and no other typed field",
+      "test": "integrations/polar/webhook_test.go",
+      "marker": "{components.WebhookEventTypeSubscriptionCreated, ",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/polar.mdx#L452/`onSubscriptionUpdated`": [
+    {
+      "label": "Decode a SubscriptionUpdated delivery into Event.Subscription and no other typed field",
+      "test": "integrations/polar/webhook_test.go",
+      "marker": "{components.WebhookEventTypeSubscriptionUpdated, ",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/polar.mdx#L453/`onSubscriptionActive`": [
+    {
+      "label": "Decode a SubscriptionActive delivery into Event.Subscription and no other typed field",
+      "test": "integrations/polar/webhook_test.go",
+      "marker": "{components.WebhookEventTypeSubscriptionActive, ",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/polar.mdx#L454/`onSubscriptionCanceled`": [
+    {
+      "label": "Decode a SubscriptionCanceled delivery into Event.Subscription and no other typed field",
+      "test": "integrations/polar/webhook_test.go",
+      "marker": "{components.WebhookEventTypeSubscriptionCanceled, ",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/polar.mdx#L455/`onSubscriptionRevoked`": [
+    {
+      "label": "Decode a SubscriptionRevoked delivery into Event.Subscription and no other typed field",
+      "test": "integrations/polar/webhook_test.go",
+      "marker": "{components.WebhookEventTypeSubscriptionRevoked, ",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/polar.mdx#L456/`onSubscriptionUncanceled`": [
+    {
+      "label": "Decode a SubscriptionUncanceled delivery into Event.Subscription and no other typed field",
+      "test": "integrations/polar/webhook_test.go",
+      "marker": "{components.WebhookEventTypeSubscriptionUncanceled, ",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/polar.mdx#L457/`onProductCreated`": [
+    {
+      "label": "Decode a ProductCreated delivery into Event.Product and no other typed field",
+      "test": "integrations/polar/webhook_test.go",
+      "marker": "{components.WebhookEventTypeProductCreated, ",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/polar.mdx#L458/`onProductUpdated`": [
+    {
+      "label": "Decode a ProductUpdated delivery into Event.Product and no other typed field",
+      "test": "integrations/polar/webhook_test.go",
+      "marker": "{components.WebhookEventTypeProductUpdated, ",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/polar.mdx#L459/`onOrganizationUpdated`": [
+    {
+      "label": "Decode a OrganizationUpdated delivery into Event.Organization and no other typed field",
+      "test": "integrations/polar/webhook_test.go",
+      "marker": "{components.WebhookEventTypeOrganizationUpdated, ",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/polar.mdx#L460/`onBenefitCreated`": [
+    {
+      "label": "Decode a BenefitCreated delivery into Event.Benefit and no other typed field",
+      "test": "integrations/polar/webhook_test.go",
+      "marker": "{components.WebhookEventTypeBenefitCreated, ",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/polar.mdx#L461/`onBenefitUpdated`": [
+    {
+      "label": "Decode a BenefitUpdated delivery into Event.Benefit and no other typed field",
+      "test": "integrations/polar/webhook_test.go",
+      "marker": "{components.WebhookEventTypeBenefitUpdated, ",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/polar.mdx#L462/`onBenefitGrantCreated`": [
+    {
+      "label": "Decode a BenefitGrantCreated delivery into Event.BenefitGrant and no other typed field",
+      "test": "integrations/polar/webhook_test.go",
+      "marker": "{components.WebhookEventTypeBenefitGrantCreated, ",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/polar.mdx#L463/`onBenefitGrantUpdated`": [
+    {
+      "label": "Decode a BenefitGrantUpdated delivery into Event.BenefitGrant and no other typed field",
+      "test": "integrations/polar/webhook_test.go",
+      "marker": "{components.WebhookEventTypeBenefitGrantUpdated, ",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/polar.mdx#L464/`onBenefitGrantRevoked`": [
+    {
+      "label": "Decode a BenefitGrantRevoked delivery into Event.BenefitGrant and no other typed field",
+      "test": "integrations/polar/webhook_test.go",
+      "marker": "{components.WebhookEventTypeBenefitGrantRevoked, ",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/polar.mdx#L465/`onCustomerCreated`": [
+    {
+      "label": "Decode a CustomerCreated delivery into Event.Customer and no other typed field",
+      "test": "integrations/polar/webhook_test.go",
+      "marker": "{components.WebhookEventTypeCustomerCreated, ",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/polar.mdx#L466/`onCustomerUpdated`": [
+    {
+      "label": "Decode a CustomerUpdated delivery into Event.Customer and no other typed field",
+      "test": "integrations/polar/webhook_test.go",
+      "marker": "{components.WebhookEventTypeCustomerUpdated, ",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/polar.mdx#L467/`onCustomerDeleted`": [
+    {
+      "label": "Decode a CustomerDeleted delivery into Event.Customer and no other typed field",
+      "test": "integrations/polar/webhook_test.go",
+      "marker": "{components.WebhookEventTypeCustomerDeleted, ",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/polar.mdx#L468/`onCustomerStateChanged`": [
+    {
+      "label": "Decode a CustomerStateChanged delivery into Event.CustomerState and no other typed field",
+      "test": "integrations/polar/webhook_test.go",
+      "marker": "{components.WebhookEventTypeCustomerStateChanged, ",
+      "complete": true
     }
   ]
 }

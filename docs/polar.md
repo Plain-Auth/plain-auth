@@ -96,6 +96,45 @@ Configure a Polar webhook endpoint at `/api/auth/polar/webhooks` with raw JSON, 
 
 An error or panic from `OnEvent` answers 400 `POLAR_WEBHOOK_ERROR` "Webhook error: See server logs for more information." so Polar retries, as in another runtime, and logs only the delivery ID and type, where another runtime logs the error: a host error can carry payload data, so log your own. A delivery whose type, API version or data the integration does not use still reaches `OnEvent` with `Body` and answers 200 unless the handler fails. Checkout events still need API version `2026-10` and a valid payload, and a reserved checkout that conflicts with its reservation answers 409, before any handler runs. Without `OnEvent`, a verified delivery answers 200. The ledger still applies each delivery at most once; stale updates cannot reopen a closed checkout. [Event handler tests](../integrations/polar/webhook_test.go) · [Checkout delivery tests](../integrations/polar/checkout_test.go)
 
+### Use typed events
+
+`Event` also carries the decoded object for the delivery's type, at most one field, when the delivery's API version is `2026-10`, the pinned SDK defines its type and its decoder accepts the data:
+
+```go
+OnEvent: func(ctx context.Context, e polar.Event) error {
+    switch e.Type {
+    case components.WebhookEventTypeOrderPaid:
+        if e.Order == nil {
+            return errors.New("undecodable order") // Polar retries
+        }
+        return recordPaidOrder(ctx, e.DeliveryID, e.Order)
+    case components.WebhookEventTypeCustomerStateChanged:
+        return refreshEntitlements(ctx, e.CustomerState, e.Body)
+    }
+    if p := e.Purchase; p != nil {
+        return fulfil(ctx, p.CheckoutID, p.Status, p.Changed)
+    }
+    return nil
+}
+```
+
+| Another runtime's handler | `Type` | Field |
+| --- | --- | --- |
+| `onPayload` | any | `Body`, plus the typed field when set |
+| `onCheckoutCreated`, `onCheckoutUpdated` | `checkout.created`, `checkout.updated` | `Checkout`, plus `Purchase` |
+| `onOrderCreated`, `onOrderPaid`, `onOrderRefunded` | `order.created`, `order.paid`, `order.refunded` | `Order` |
+| `onRefundCreated`, `onRefundUpdated` | `refund.created`, `refund.updated` | `Refund` |
+| `onSubscriptionCreated`, `onSubscriptionUpdated`, `onSubscriptionActive`, `onSubscriptionCanceled`, `onSubscriptionRevoked`, `onSubscriptionUncanceled` | `subscription.created` … `subscription.uncanceled` | `Subscription` |
+| `onProductCreated`, `onProductUpdated` | `product.created`, `product.updated` | `Product` |
+| `onOrganizationUpdated` | `organization.updated` | `Organization` |
+| `onBenefitCreated`, `onBenefitUpdated` | `benefit.created`, `benefit.updated` | `Benefit` |
+| `onBenefitGrantCreated`, `onBenefitGrantUpdated`, `onBenefitGrantRevoked` | `benefit_grant.created`, `.updated`, `.revoked` | `BenefitGrant` |
+| `onCustomerCreated`, `onCustomerUpdated`, `onCustomerDeleted` | `customer.created`, `.updated`, `.deleted` | `Customer` |
+| `onCustomerStateChanged` | `customer.state_changed` | `CustomerState`, the full provider object, unlike the reduced `GET /customer/state` |
+| none listed | `checkout.expired`, `order.updated`, `subscription.past_due`, `benefit_grant.cycled`, `member.*`, `customer_seat.*` | `Checkout`, `Order`, `Subscription`, `BenefitGrant`, `Member`, `CustomerSeat` |
+
+One handler with typed fields replaces another runtime's catch-all handler and its per-type handlers, for simplicity: switch on `Type`. Data the pinned SDK cannot type, such as an undefined type, another API version, data that is not an object, or data its decoder rejects (an unknown enum or union member, or a missing required field), reaches `OnEvent` with `Body` alone and answers 200 unless the handler fails, where another runtime refuses it with 400: a permanent 400 would fail every retry until Polar disables the endpoint, checkout events that complete purchases included. Only the pinned version is typed, since the SDK checks required fields only for members, customers, customer state, benefits and benefit grants, so another version could decode into silently zeroed fields. To be as strict as another runtime, return an error when the field you need is nil. [Typed event tests](../integrations/polar/webhook_test.go)
+
 ## Enable the individual customer portal
 
 Add the `Portal` section to `polar.Options`. Supply the exact public URL for this merchant’s portal. Polar's API token needs `customer_sessions:write` to open a portal and `customers:read` or `customers:write` to read customer state. [Create customer session](https://polar.sh/docs/api-reference/2026-10/customer-sessions/create-customer-session) · [Read customer state by external ID](https://polar.sh/docs/api-reference/2026-10/customers/get-customer-state-by-external-id)

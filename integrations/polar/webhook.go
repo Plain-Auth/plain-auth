@@ -29,8 +29,26 @@ type Event struct {
 	Timestamp time.Time
 	// Body is the verified request body. A checkout body carries the
 	// checkout's client secret and hosted URL, and customer bodies carry
-	// personal data: keep Body out of logs, analytics and error messages.
+	// personal data: keep Body and the typed fields out of logs, analytics
+	// and error messages.
 	Body json.RawMessage
+
+	// At most one typed field is set, and only when the delivery's API
+	// version is 2026-10, the pinned SDK defines Type and its decoder accepts
+	// the data. Otherwise use Body.
+	Checkout      *components.Checkout            // checkout.created, .updated, .expired
+	Order         *components.Order               // order.created, .updated, .paid, .refunded
+	Refund        *components.Refund              // refund.created, .updated
+	Subscription  *components.Subscription        // subscription.created, .updated, .active, .canceled, .uncanceled, .revoked, .past_due
+	Product       *components.Product             // product.created, .updated
+	Organization  *components.Organization        // organization.updated
+	Benefit       *components.Benefit             // benefit.created, .updated
+	BenefitGrant  *components.BenefitGrantWebhook // benefit_grant.created, .cycled, .updated, .revoked
+	Customer      *components.Customer            // customer.created, .updated, .deleted
+	CustomerState *components.CustomerState       // customer.state_changed: the full provider object
+	Member        *components.Member              // member.created, .updated, .deleted
+	CustomerSeat  *components.CustomerSeat        // customer_seat.assigned, .claimed, .revoked
+
 	// Purchase is set for a checkout event of a checkout this installation
 	// reserved when, after the ledger commits, the reservation holds exactly
 	// this delivery's state. Another runtime has no equivalent.
@@ -135,6 +153,7 @@ func (s *Service) webhook(c auth.EndpointContext) (any, error) {
 	if json.Unmarshal(envelope.Timestamp, &e.Timestamp) != nil {
 		e.Timestamp = time.Time{}
 	}
+	e.decode(envelope.Version, envelope.Data)
 	if err := s.handle(ctx, e); err != nil {
 		// The host's error text can carry payload data, so only the delivery
 		// is logged, where another runtime logs the error.
@@ -142,6 +161,57 @@ func (s *Service) webhook(c auth.EndpointContext) (any, error) {
 		return nil, failure(400, "POLAR_WEBHOOK_ERROR", "Webhook error: See server logs for more information.")
 	}
 	return received, nil
+}
+
+// decode sets the typed field for the delivery's type. Data the pinned SDK
+// cannot type, such as an undefined type, another API version or data its
+// decoder rejects, sets none and still reaches OnEvent with Body, where
+// another runtime refuses it with 400: a permanent 400 would fail every
+// retry until Polar disables the endpoint, checkout events included. Only
+// the pinned version is typed, since the SDK checks required fields for few
+// types and another version could decode into silently zeroed fields.
+func (e *Event) decode(version string, data json.RawMessage) {
+	if version != apiVersion || len(data) == 0 || data[0] != '{' {
+		return
+	}
+	switch e.Type {
+	case components.WebhookEventTypeCheckoutCreated, components.WebhookEventTypeCheckoutUpdated, components.WebhookEventTypeCheckoutExpired:
+		e.Checkout = typed[components.Checkout](data)
+	case components.WebhookEventTypeOrderCreated, components.WebhookEventTypeOrderUpdated, components.WebhookEventTypeOrderPaid, components.WebhookEventTypeOrderRefunded:
+		e.Order = typed[components.Order](data)
+	case components.WebhookEventTypeRefundCreated, components.WebhookEventTypeRefundUpdated:
+		e.Refund = typed[components.Refund](data)
+	case components.WebhookEventTypeSubscriptionCreated, components.WebhookEventTypeSubscriptionUpdated, components.WebhookEventTypeSubscriptionActive,
+		components.WebhookEventTypeSubscriptionCanceled, components.WebhookEventTypeSubscriptionUncanceled, components.WebhookEventTypeSubscriptionRevoked,
+		components.WebhookEventTypeSubscriptionPastDue:
+		e.Subscription = typed[components.Subscription](data)
+	case components.WebhookEventTypeProductCreated, components.WebhookEventTypeProductUpdated:
+		e.Product = typed[components.Product](data)
+	case components.WebhookEventTypeOrganizationUpdated:
+		e.Organization = typed[components.Organization](data)
+	case components.WebhookEventTypeBenefitCreated, components.WebhookEventTypeBenefitUpdated:
+		e.Benefit = typed[components.Benefit](data)
+	case components.WebhookEventTypeBenefitGrantCreated, components.WebhookEventTypeBenefitGrantCycled, components.WebhookEventTypeBenefitGrantUpdated,
+		components.WebhookEventTypeBenefitGrantRevoked:
+		e.BenefitGrant = typed[components.BenefitGrantWebhook](data)
+	case components.WebhookEventTypeCustomerCreated, components.WebhookEventTypeCustomerUpdated, components.WebhookEventTypeCustomerDeleted:
+		e.Customer = typed[components.Customer](data)
+	case components.WebhookEventTypeCustomerStateChanged:
+		e.CustomerState = typed[components.CustomerState](data)
+	case components.WebhookEventTypeMemberCreated, components.WebhookEventTypeMemberUpdated, components.WebhookEventTypeMemberDeleted:
+		e.Member = typed[components.Member](data)
+	case components.WebhookEventTypeCustomerSeatAssigned, components.WebhookEventTypeCustomerSeatClaimed, components.WebhookEventTypeCustomerSeatRevoked:
+		e.CustomerSeat = typed[components.CustomerSeat](data)
+	}
+}
+
+// typed decodes data with the SDK's decoder, or answers nil when it refuses it.
+func typed[T any](data json.RawMessage) *T {
+	v := new(T)
+	if json.Unmarshal(data, v) != nil {
+		return nil
+	}
+	return v
 }
 
 // handle runs OnEvent outside any transaction, turning a panic into an
