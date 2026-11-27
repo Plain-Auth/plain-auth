@@ -96,7 +96,67 @@ func (opts Options) idTokenGrant(client AuthorizationCodeClient, user, liveSessi
 // client secret the client holds, when secret is set. That key includes a
 // configured SecretPrefix, as OIDC asks; another runtime keys it with the
 // unprefixed stored value, so the two differ only with a prefix.
-func (opts TokenOptions) signIDToken(c auth.EndpointContext, clientID, access string, grant IDTokenGrant, now time.Time, secret string) (string, error) {
+// idTokenContributors carries the extensions' ID-token claims and the grant
+// type they see.
+type idTokenContributors struct {
+	grantType  string
+	extensions []Extension
+}
+
+func (opts Options) extendsIDTokens() bool {
+	return slices.ContainsFunc(opts.Extensions, func(e Extension) bool { return e.IDTokenClaims != nil })
+}
+
+func (opts Options) idTokenContributors(grantType string) idTokenContributors {
+	return idTokenContributors{grantType: grantType, extensions: opts.Extensions}
+}
+
+// standardIDClaim reports a claim an ID-token extension cannot set: a
+// reserved protocol claim or a standard profile or email claim.
+func standardIDClaim(name string) bool {
+	switch name {
+	case "iss", "sub", "aud", "exp", "nbf", "iat", "jti", "auth_time", "nonce", "acr", "amr", "azp", "sid", "at_hash", "c_hash", "s_hash",
+		"name", "picture", "given_name", "family_name", "email", "email_verified":
+		return true
+	}
+	return false
+}
+
+// add adds the extensions' ID-token claims where the token
+// has no such claim, as another runtime's additive layer does.
+func (x idTokenContributors) add(c auth.EndpointContext, claims map[string]any, clientID string, grant IDTokenGrant) error {
+	if !slices.ContainsFunc(x.extensions, func(e Extension) bool { return e.IDTokenClaims != nil }) {
+		return nil
+	}
+	var snapshot IDTokenClaimsInput
+	if err := json.Unmarshal([]byte(grant.ClaimsInput), &snapshot); err != nil || snapshot.User.ID == "" {
+		return errors.New("oauthprovider: missing ID token claims input")
+	}
+	in := TokenClaimsInput{User: &snapshot.User, ClientID: clientID, Scopes: snapshot.Scopes, GrantType: x.grantType, Metadata: snapshot.Metadata, UserFields: snapshot.UserFields}
+	added := map[string]bool{}
+	for _, extension := range x.extensions {
+		if extension.IDTokenClaims == nil {
+			continue
+		}
+		extra, err := extension.IDTokenClaims(c.Request.Context(), in)
+		if err != nil {
+			return err
+		}
+		for name, value := range extra {
+			if _, present := claims[name]; present || standardIDClaim(name) {
+				continue
+			}
+			if added[name] {
+				c.Auth.Logger().WarnContext(c.Request.Context(), "OAuth provider extensions supplied the same ID token claim", "claim", name)
+				continue
+			}
+			claims[name], added[name] = value, true
+		}
+	}
+	return nil
+}
+
+func (opts TokenOptions) signIDToken(c auth.EndpointContext, clientID, access string, grant IDTokenGrant, now time.Time, secret string, contributors idTokenContributors) (string, error) {
 	alg := c.Auth.JWTSigningAlgorithm()
 	if secret != "" {
 		alg = "HS256"
@@ -144,6 +204,9 @@ func (opts TokenOptions) signIDToken(c auth.EndpointContext, clientID, access st
 			slices.Sort(reserved)
 			c.Auth.Logger().WarnContext(c.Request.Context(), "OAuth ID token ignored reserved claim names", "claims", reserved)
 		}
+	}
+	if err := contributors.add(c, claims, clientID, grant); err != nil {
+		return "", err
 	}
 	if secret != "" {
 		claims["iss"], claims["sub"], claims["aud"] = c.Auth.OAuthIssuer(), grant.Subject, clientID

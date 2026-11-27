@@ -201,6 +201,12 @@ func (opts Options) clientManagementOptions() Options {
 func New(opts Options) (auth.Plugin, error) {
 	opts = opts.clientManagementOptions()
 	opts.Extensions = slices.Clone(opts.Extensions)
+	opts.UserInfo.Extensions = slices.Clone(opts.UserInfo.Extensions)
+	for _, extension := range opts.Extensions {
+		if extension.UserInfoClaims != nil {
+			opts.UserInfo.Extensions = append(opts.UserInfo.Extensions, extension.UserInfoClaims)
+		}
+	}
 	if err := opts.Authorization.defaults(); err != nil {
 		return auth.Plugin{}, err
 	}
@@ -220,7 +226,6 @@ func New(opts Options) (auth.Plugin, error) {
 	}
 	opts.proofVerifier = proofs
 	opts.DPoP.SigningAlgorithms = slices.Clone(opts.DPoP.SigningAlgorithms)
-	opts.UserInfo.Extensions = slices.Clone(opts.UserInfo.Extensions)
 	opts.UserInfo.SupportedClaims = slices.Clone(opts.UserInfo.SupportedClaims)
 	for _, extension := range opts.UserInfo.Extensions {
 		if extension == nil {

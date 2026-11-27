@@ -278,6 +278,7 @@
     - [x] Pass each served discovery document's type and assembled fields to an extension, add its fields without replacing the provider's, keep the first extension's value for a shared field with a warning, and fail the host for a field that cannot be encoded; the static input is a documented deviation ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L293))
     - [x] Add an extension's discovery field to the OpenID configuration without replacing the issuer or token endpoint, on both runtimes ([test](../../../conformance/oauth-extensions.mjs#L12))
   - [ ] `OAuthClaimExtensionInput`
+    - [x] Add an extension's ID token claims only where the token has none and never as protocol or standard profile claims, pass the account and grant type for code and refresh exchanges, and add its UserInfo claims under the standard ones, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_secret_id_token_test.go#L131))
   - [ ] `OAuthUserInfoExtensionInput`
   - [ ] `OAuthProviderExtension`
   - [x] `InitialAccessTokenAuthorization` ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L93))
@@ -455,9 +456,9 @@
     - [x] `generateRefreshToken` ([test](../../../conformance/oauth-authorization-code.mjs#L82))
       - [x] Generate and hash the raw refresh token, encode it for its session, then apply the public prefix ([test](../../../adapters/sqlstore/oauth_offline_code_test.go#L139))
       - [x] Default to 32-letter refresh tokens in both runtimes ([test](../../../conformance/oauth-authorization-code.mjs#L82))
-    - [x] `disableJwtPlugin` ([test](../../../adapters/sqlstore/oauth_secret_id_token_test.go#L26))
+    - [x] `disableJwtPlugin` ([test](../../../adapters/sqlstore/oauth_secret_id_token_test.go#L27))
       - [x] Issue signed or opaque machine tokens for several registered APIs and verify them with an independent issuer ([test](../../../conformance/oauth-resource-machine-tokens.mjs#L28))
-      - [x] Sign code and refresh ID tokens with HS256 keyed by the client secret, advertise HS256 without a key set at the public issuer, give a public client no ID token, store secrets encrypted and refuse the jwt plugin alongside, on SQLite, PostgreSQL and MySQL; the prefixed key and the jwt refusal are documented deviations ([test](../../../adapters/sqlstore/oauth_secret_id_token_test.go#L26))
+      - [x] Sign code and refresh ID tokens with HS256 keyed by the client secret, advertise HS256 without a key set at the public issuer, give a public client no ID token, store secrets encrypted and refuse the jwt plugin alongside, on SQLite, PostgreSQL and MySQL; the prefixed key and the jwt refusal are documented deviations ([test](../../../adapters/sqlstore/oauth_secret_id_token_test.go#L27))
       - [x] Default to encrypted secret storage and refuse hashed storage, or encrypted storage without the option ([test](../../../plugins/oauthprovider/registration_test.go#L97))
     - [x] `rateLimit` ([test](../../../plugins/oauthprovider/machine_token_test.go#L208))
       - [x] Give token 20, authorize 30, introspect 100, revoke 30, register 5, key rotation 5 and userinfo 60 requests a minute by default, replace a default with a configured rule and leave the host's global limit for an empty rule on every route ([test](../../../plugins/oauthprovider/machine_token_test.go#L208))
@@ -1151,7 +1152,7 @@
     - [ ] Refresh token
     - [ ] JWT access token
   - [ ] Without the JWT plugin
-    - [x] Sign ID tokens with the client secret, give a public client no ID token and store secrets encrypted by default, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_secret_id_token_test.go#L26))
+    - [x] Sign ID tokens with the client secret, give a public client no ID token and store secrets encrypted by default, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_secret_id_token_test.go#L27))
   - [ ] Storage
     - [ ] `storeClientSecret`
       - [x] Seal client secrets for their client in encrypted mode, authenticate them exactly, refuse a value copied to another client, reseal on rotation and use a host encrypt and decrypt pair, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_secret_storage_test.go#L21))

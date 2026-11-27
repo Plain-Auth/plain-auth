@@ -18,6 +18,9 @@ type TokenClaimsInput struct {
 	Resources []string
 	// Metadata is the registered client's metadata object.
 	Metadata map[string]json.RawMessage
+	// UserFields holds the account's configured attributes for ID-token
+	// contributors.
+	UserFields map[string]json.RawMessage
 }
 
 // TokenClaimsFunc contributes application claims to an access token. It runs

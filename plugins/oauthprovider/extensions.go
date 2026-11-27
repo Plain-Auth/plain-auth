@@ -20,6 +20,14 @@ type Extension struct {
 	// AccessTokenClaims contributes claims to signed access tokens, below the
 	// host's CustomAccessTokenClaims and the resource's claims.
 	AccessTokenClaims TokenClaimsFunc
+	// IDTokenClaims adds claims to ID tokens. It cannot set a claim the
+	// token already has, a reserved claim or a standard profile or email
+	// claim; the first extension keeps a shared name.
+	IDTokenClaims TokenClaimsFunc
+	// UserInfoClaims adds UserInfo claims after UserInfo.Extensions, under
+	// the same rules: standard claims win and the first contributor keeps
+	// a name.
+	UserInfoClaims UserInfoClaimsFunc
 }
 
 // The discovery document types an Extension's Metadata is called for.

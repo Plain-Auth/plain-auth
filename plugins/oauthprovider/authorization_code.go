@@ -256,7 +256,7 @@ func (opts Options) redeemAuthorizationCode(c auth.EndpointContext, in tokenRequ
 			if !opts.canIssueIDToken(c) {
 				return DelegatedAccessRecord{}, registrationProblem(501, "server_error", "ID token issuance is unavailable")
 			}
-			if opts.Tokens.CustomIDTokenClaims != nil {
+			if opts.Tokens.CustomIDTokenClaims != nil || opts.extendsIDTokens() {
 				record.IDTokenUserFields = c.TrustedUserFields()
 			}
 			record.IDToken, err = opts.idTokenGrant(client, code.UserID, code.SessionID, code.Query.Nonce, authTime)
@@ -300,7 +300,7 @@ func (opts Options) redeemAuthorizationCode(c auth.EndpointContext, in tokenRequ
 			}
 		}
 		if grant.IDToken.Subject != "" {
-			token, err := opts.Tokens.signIDToken(c, in.id, issued, grant.IDToken, now, opts.idTokenSecret(in))
+			token, err := opts.Tokens.signIDToken(c, in.id, issued, grant.IDToken, now, opts.idTokenSecret(in), opts.idTokenContributors("authorization_code"))
 			if err != nil {
 				return "", err
 			}

@@ -48793,5 +48793,12 @@
       "test": "adapters/sqlstore/oauth_machine_resources_test.go",
       "marker": "t.Fatal(\"the contributed access token claims were not layered\", claims)"
     }
+  ],
+  "plugin-symbol/oauth-provider/OAuthClaimExtensionInput": [
+    {
+      "label": "Add an extension's ID token claims only where the token has none and never as protocol or standard profile claims, pass the account and grant type for code and refresh exchanges, and add its UserInfo claims under the standard ones, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_secret_id_token_test.go",
+      "marker": "t.Fatal(\"extension ID token claims were not added only where allowed\", claims)"
+    }
   ]
 }

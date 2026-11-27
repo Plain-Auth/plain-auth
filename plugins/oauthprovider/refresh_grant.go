@@ -92,7 +92,7 @@ func (opts Options) exchangeRefreshGrant(c auth.EndpointContext, in tokenRequest
 			if grant.SessionLive {
 				sid = grant.SessionID
 			}
-			if opts.Tokens.CustomIDTokenClaims != nil {
+			if opts.Tokens.CustomIDTokenClaims != nil || opts.extendsIDTokens() {
 				record.IDTokenUserFields = c.TrustedUserFields()
 			}
 			record.IDToken, err = opts.idTokenGrant(client, grant.UserID, sid, "", grant.AuthTime)
@@ -135,7 +135,7 @@ func (opts Options) exchangeRefreshGrant(c auth.EndpointContext, in tokenRequest
 			}
 			keys, err := issue(grant.SessionID, grant.Refresh)
 			if err == nil && grant.IDToken.Subject != "" {
-				result.IDToken, err = opts.Tokens.signIDToken(c, in.id, access, grant.IDToken, now, opts.idTokenSecret(in))
+				result.IDToken, err = opts.Tokens.signIDToken(c, in.id, access, grant.IDToken, now, opts.idTokenSecret(in), opts.idTokenContributors("refresh_token"))
 			}
 			return keys, err
 		})
