@@ -2,8 +2,6 @@ package stripe
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"math"
@@ -366,42 +364,11 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 		}
 	}
 	if a.Customer == "" {
-		params := &sdk.CustomerCreateParams{Metadata: map[string]string{"userId": ss.User.ID, "customerType": "user"}}
-		namespace := "customer:" + ss.User.ID
-		if selection.organization {
-			params.Name = sdk.String(a.OrganizationName)
-			params.Metadata = map[string]string{"organizationId": a.OrganizationID, "customerType": "organization"}
-			namespace = "organization-customer:" + a.OrganizationID
-		}
-		sum := sha256.Sum256([]byte(namespace))
-		params.SetIdempotencyKey("auth-customer-" + hex.EncodeToString(sum[:]))
-		var customer *sdk.Customer
-		if selection.organization {
-			customer, err = s.findOrganizationCustomer(ctx, a.OrganizationID)
-			if err != nil && err != ErrCheckoutReconcile {
-				c.Auth.Logger().ErrorContext(ctx, "Stripe customer lookup failed", "error", err)
-				return nil, ErrCustomerCreation
-			}
-			if err != nil {
-				return nil, err
-			}
-			if _, err = c.Store().(OrganizationBillingStore).StripeOrganizationAccount(ctx, ss.Session.Token, time.Now()); err != nil {
-				return nil, err
-			}
-		}
-		if customer == nil {
-			customer, err = s.client.V1Customers.Create(ctx, params)
-		}
-		if err != nil || customer == nil || customer.ID == "" || customer.Metadata["customerType"] != params.Metadata["customerType"] || (selection.organization && customer.Metadata["organizationId"] != a.OrganizationID) || (!selection.organization && customer.Metadata["userId"] != a.Owner) {
-			if err != nil {
-				c.Auth.Logger().ErrorContext(ctx, "Stripe customer creation failed", "error", err)
-			}
-			return nil, ErrCustomerCreation
-		}
-		if err := store.BindStripeCheckoutCustomer(ctx, a, ss.Session.Token, customer.ID, time.Now()); err != nil {
+		customer, err := s.checkoutCustomer(c, selection, store, a, ss)
+		if err != nil {
 			return nil, err
 		}
-		a.Customer = customer.ID
+		a.Customer = customer
 	}
 	if a.CheckoutID == "" {
 		meta := map[string]string{"userId": a.creator(), "referenceId": a.Owner, "subscriptionId": a.LocalSubscription, "checkoutAttemptId": a.ID}

@@ -217,7 +217,7 @@ func (s *Store) checkCustomerOwner(ctx context.Context, tx *sql.Tx, owner, custo
 		return err
 	}
 	if other {
-		return billing.ErrCheckoutReconcile
+		return billing.ErrCustomerInUse
 	}
 	return nil
 }

@@ -3587,6 +3587,11 @@
       "label": "Offer the configured trial only for a new personal or organization billing reference with no trial history across plans",
       "test": "conformance/stripe-organization-fixture.mjs",
       "marker": "assert.equal(remote.state.trialDays, priorTrial ? null : \"14\")"
+    },
+    {
+      "label": "Reuse a verified user's email-matched Stripe customer that no other user owns, through search or a list by email, otherwise create one with the user's email, name and metadata, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_customer_lookup_test.go",
+      "marker": "func TestCheckoutCustomerLookup("
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L221": [

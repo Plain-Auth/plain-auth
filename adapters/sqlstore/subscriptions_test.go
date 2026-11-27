@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -297,7 +298,7 @@ func TestSubscriptionCheckout(t *testing.T) {
 			if _, err = store.ReserveStripeCheckout(ctx, otherUser.User.ID, otherUser.Token, otherWant, start.Add(23*time.Hour+time.Second)); err != billing.ErrCheckoutReconcile {
 				t.Fatal("ambiguous expired checkout was recreated", err)
 			}
-			if err = store.BindStripeCheckoutCustomer(ctx, stale, otherUser.Token, "cus_local", start); err != billing.ErrCheckoutReconcile {
+			if err = store.BindStripeCheckoutCustomer(ctx, stale, otherUser.Token, "cus_local", start); !errors.Is(err, billing.ErrCustomerInUse) || !errors.Is(err, billing.ErrCheckoutReconcile) {
 				t.Fatal("duplicate customer was bound", err)
 			}
 			count(0, `SELECT COUNT(*) FROM "user" WHERE "id"=? AND "stripeCustomerId" IS NOT NULL`, otherUser.User.ID)
