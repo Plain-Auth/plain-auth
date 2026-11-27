@@ -316,8 +316,12 @@ func TestStateReferenceIDs(t *testing.T) {
 		t.Fatal("customer state did not name the organizations", got)
 	}
 	raw, _ := json.Marshal(state.ActiveSubscriptions[2])
-	if strings.Contains(string(raw), "reference_id") || strings.Contains(string(raw), "org_text") {
+	if !strings.Contains(string(raw), `"reference_id":""`) || strings.Contains(string(raw), "org_text") {
 		t.Fatal("a personal subscription carried a reference or other metadata", string(raw))
+	}
+	raw, _ = json.Marshal(state.ActiveSubscriptions[0])
+	if !strings.Contains(string(raw), `"reference_id":"org_text"`) {
+		t.Fatal("an organization subscription did not name its reference", string(raw))
 	}
 }
 

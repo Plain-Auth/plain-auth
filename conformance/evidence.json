@@ -52386,7 +52386,7 @@
     {
       "label": "List the signed-in customer's orders with paging and a billing type filter, as subsets that keep billing details at Polar, on three SQL engines",
       "test": "integrations/polar/customer_lists_test.go",
-      "marker": "// Orders filter by billing type and leave billing details out.",
+      "marker": "// Orders filter by billing type and page, leave billing details out,",
       "complete": true
     }
   ],
@@ -52394,7 +52394,7 @@
     {
       "label": "List the signed-in customer's own subscriptions with paging and an active filter, on three SQL engines",
       "test": "integrations/polar/customer_lists_test.go",
-      "marker": "// Subscriptions filter by active and leave comments out.",
+      "marker": "// Subscriptions filter by active and page, leave comments out, and",
       "complete": true
     }
   ],
@@ -52404,13 +52404,18 @@
       "test": "integrations/polar/customer_lists_test.go",
       "marker": "func TestCustomerPortalLists(t *testing.T) {",
       "complete": true
+    },
+    {
+      "label": "A session revoked while Polar answers withholds every customer list",
+      "test": "integrations/polar/customer_lists_test.go",
+      "marker": "a revoked session received a list"
     }
   ],
   "docs/content/docs/plugins/polar.mdx#L384": [
     {
       "label": "List the signed-in customer's meters with consumed and credited units and balance through Polar's customer portal, on three SQL engines",
       "test": "integrations/polar/customer_lists_test.go",
-      "marker": "// Meters list the customer's consumption and balance.",
+      "marker": "// Meters list the customer's consumption, credits and balance.",
       "complete": true
     }
   ],
@@ -52418,14 +52423,14 @@
     {
       "label": "Mount the signed-in customer's meter list with the usage section, on three SQL engines",
       "test": "integrations/polar/customer_lists_test.go",
-      "marker": "// Meters list the customer's consumption and balance."
+      "marker": "// Meters list the customer's consumption, credits and balance."
     }
   ],
   "docs/content/docs/plugins/polar.mdx#L20/Event Ingestion & Customer Meters for flexible Usage Based Billing": [
     {
       "label": "List the signed-in customer's meters, on three SQL engines",
       "test": "integrations/polar/customer_lists_test.go",
-      "marker": "// Meters list the customer's consumption and balance."
+      "marker": "// Meters list the customer's consumption, credits and balance."
     }
   ],
   "docs/content/docs/plugins/polar.mdx#L205": [
@@ -52457,6 +52462,11 @@
       "test": "integrations/polar/organization_test.go",
       "marker": "func TestOrganizationSubscriptionsByReference(t *testing.T) {",
       "complete": true
+    },
+    {
+      "label": "The buying member's own subscription and order lists name the organization a purchase bills",
+      "test": "integrations/polar/customer_lists_test.go",
+      "marker": "an organization's subscription read as the member's own"
     }
   ],
   "docs/content/docs/plugins/polar.mdx#L320/Important": [

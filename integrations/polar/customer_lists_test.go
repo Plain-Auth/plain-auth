@@ -25,7 +25,12 @@ type listProvider struct {
 	queries  map[string]url.Values
 	foreign  bool
 	sessions int
+	// during runs on each portal list request, before it answers.
+	during func()
 }
+
+// orgCheckout is the checkout the ledger reserved for an organization.
+const orgCheckout = "77777777-0000-4000-8000-000000000001"
 
 func (p *listProvider) Do(req *http.Request) (*http.Response, error) {
 	p.mu.Lock()
@@ -63,6 +68,9 @@ func (p *listProvider) Do(req *http.Request) (*http.Response, error) {
 		owner = customer("someone-else")
 	}
 	p.queries[req.URL.Path] = req.URL.Query()
+	if p.during != nil {
+		p.during()
+	}
 	page := map[string]any{"total_count": 3, "max_page": 2}
 	switch req.URL.Path {
 	case "/v1/customer-portal/benefit-grants/":
@@ -76,10 +84,18 @@ func (p *listProvider) Do(req *http.Request) (*http.Response, error) {
 		}
 		return reply(200, map[string]any{"items": []any{grant("11111111-0000-4000-8000-000000000001", true, false), grant("11111111-0000-4000-8000-000000000002", false, true)}, "pagination": page})
 	case "/v1/customer-portal/orders/":
-		return reply(200, map[string]any{"items": []any{map[string]any{"id": "22222222-0000-4000-8000-000000000001", "created_at": now, "status": "paid", "paid": true,
-			"subtotal_amount": 1000, "discount_amount": 0, "net_amount": 1000, "tax_amount": 200, "total_amount": 1200, "refunded_amount": 0, "currency": "usd",
-			"billing_reason": "purchase", "billing_name": "Private Name", "billing_address": map[string]any{"country": "US", "line1": "1 Private St"}, "customer_id": owner,
-			"product_id": otherProduct, "subscription_id": nil, "description": "Pro"}}, "pagination": page})
+		order := func(id string, checkout any, subscription any) map[string]any {
+			return map[string]any{"id": id, "created_at": now, "status": "paid", "paid": true,
+				"subtotal_amount": 1000, "discount_amount": 0, "net_amount": 1000, "tax_amount": 200, "total_amount": 1200, "refunded_amount": 0, "currency": "usd",
+				"billing_reason": "purchase", "billing_name": "Private Name", "billing_address": map[string]any{"country": "US", "line1": "1 Private St"}, "customer_id": owner,
+				"product_id": otherProduct, "subscription_id": nil, "description": "Pro", "checkout_id": checkout, "subscription": subscription}
+		}
+		// A renewal names its subscription's checkout, not its own.
+		renewed := map[string]any{"id": "33333333-0000-4000-8000-000000000001", "created_at": now, "modified_at": nil, "amount": 1000, "currency": "usd", "recurring_interval": "month",
+			"recurring_interval_count": 1, "status": "active", "current_period_start": now, "current_period_end": now.Add(720 * time.Hour), "trial_start": nil, "trial_end": nil,
+			"cancel_at_period_end": false, "canceled_at": nil, "started_at": now, "ends_at": nil, "ended_at": nil, "customer_id": owner, "product_id": otherProduct,
+			"discount_id": nil, "checkout_id": orgCheckout, "customer_cancellation_reason": nil, "customer_cancellation_comment": nil}
+		return reply(200, map[string]any{"items": []any{order("22222222-0000-4000-8000-000000000001", nil, renewed), order("22222222-0000-4000-8000-000000000002", "88888888-0000-4000-8000-000000000001", nil)}, "pagination": page})
 	case "/v1/customer-portal/meters/":
 		return reply(200, map[string]any{"items": []any{map[string]any{"id": "44444444-0000-4000-8000-000000000001", "created_at": now, "customer_id": owner,
 			"meter_id": "60352a5a-2768-4016-97b8-315f585a9a6f", "consumed_units": 2.5, "credited_units": 4, "balance": 1.5,
@@ -87,7 +103,7 @@ func (p *listProvider) Do(req *http.Request) (*http.Response, error) {
 	case "/v1/customer-portal/subscriptions/":
 		return reply(200, map[string]any{"items": []any{map[string]any{"id": "33333333-0000-4000-8000-000000000001", "created_at": now, "status": "active", "amount": 1000,
 			"currency": "usd", "recurring_interval": "month", "current_period_start": now, "current_period_end": now.Add(720 * time.Hour), "cancel_at_period_end": false,
-			"customer_id": owner, "product_id": otherProduct, "customer_cancellation_comment": "private comment"}}, "pagination": page})
+			"customer_id": owner, "product_id": otherProduct, "customer_cancellation_comment": "private comment", "checkout_id": orgCheckout}}, "pagination": page})
 	}
 	return nil, errors.New("unexpected provider endpoint " + req.URL.Path)
 }
@@ -135,6 +151,11 @@ func TestCustomerPortalLists(t *testing.T) {
 			if _, err := db.Exec(ledger.bind(q), v.User.ID); err != nil {
 				t.Fatal(err)
 			}
+			// The ledger reserved orgCheckout for an organization.
+			if _, err := db.Exec(ledger.bind(`INSERT INTO plainauth_polar_checkout (slot,attempt,owner_id,contact_hash,product,products,reference_id,merchant,success_url,return_url,checkout_id,hosted_url,status,expires_ms,changed_us) VALUES (?,?,?,?,?,?,?,?,?,?,?,'','succeeded',0,0)`),
+				strings.Repeat("c", 64), uuid.NewString(), v.User.ID, strings.Repeat("d", 64), otherProduct, otherProduct, "org_acme", merchant, "https://app.test/s", "", orgCheckout); err != nil {
+				t.Fatal(err)
+			}
 			cookie := a.SessionCookie(v.Token, true)
 			get := func(path string) (int, map[string]any, string) {
 				t.Helper()
@@ -153,27 +174,41 @@ func TestCustomerPortalLists(t *testing.T) {
 			if got := remote.queries["/v1/customer-portal/benefit-grants/"]; got.Get("page") != "2" || got.Get("limit") != "5" {
 				t.Fatal("the paging was not forwarded", got)
 			}
-			// Orders filter by billing type and leave billing details out.
-			status, out, raw = get("/customer/orders/list?productBillingType=one_time")
-			if status != 200 || len(out["items"].([]any)) != 1 || strings.Contains(raw, "Private") || out["items"].([]any)[0].(map[string]any)["total_amount"] != 1200.0 {
+			// Orders filter by billing type and page, leave billing details out,
+			// and name the organization a renewal bills through its subscription.
+			status, out, raw = get("/customer/orders/list?productBillingType=one_time&page=2&limit=7")
+			orders, _ := out["items"].([]any)
+			if status != 200 || len(orders) != 2 || strings.Contains(raw, "Private") || orders[0].(map[string]any)["total_amount"] != 1200.0 || out["pagination"].(map[string]any)["total_count"] != 3.0 {
 				t.Fatal("the orders were not listed as subsets", status, raw)
 			}
-			if got := remote.queries["/v1/customer-portal/orders/"]; got.Get("product_billing_type") != "one_time" {
-				t.Fatal("the billing type was not forwarded", got)
+			if orders[0].(map[string]any)["reference_id"] != "org_acme" || orders[1].(map[string]any)["reference_id"] != "" {
+				t.Fatal("an organization's order read as the member's own", raw)
 			}
-			// Subscriptions filter by active and leave comments out.
-			status, out, raw = get("/customer/subscriptions/list?active=true")
-			if status != 200 || len(out["items"].([]any)) != 1 || strings.Contains(raw, "private comment") || out["items"].([]any)[0].(map[string]any)["product_id"] != otherProduct {
+			if got := remote.queries["/v1/customer-portal/orders/"]; got.Get("product_billing_type") != "one_time" || got.Get("page") != "2" || got.Get("limit") != "7" {
+				t.Fatal("the billing type and paging were not forwarded", got)
+			}
+			// Subscriptions filter by active and page, leave comments out, and
+			// name the organization a member bought one for.
+			status, out, raw = get("/customer/subscriptions/list?active=true&page=3&limit=4")
+			subs, _ := out["items"].([]any)
+			if status != 200 || len(subs) != 1 || strings.Contains(raw, "private comment") || subs[0].(map[string]any)["product_id"] != otherProduct || out["pagination"].(map[string]any)["max_page"] != 2.0 {
 				t.Fatal("the subscriptions were not listed as subsets", status, raw)
 			}
-			if got := remote.queries["/v1/customer-portal/subscriptions/"]; got.Get("active") != "true" {
-				t.Fatal("the active filter was not forwarded", got)
+			if subs[0].(map[string]any)["reference_id"] != "org_acme" {
+				t.Fatal("an organization's subscription read as the member's own", raw)
 			}
-			// Meters list the customer's consumption and balance.
+			if got := remote.queries["/v1/customer-portal/subscriptions/"]; got.Get("active") != "true" || got.Get("page") != "3" || got.Get("limit") != "4" {
+				t.Fatal("the active filter and paging were not forwarded", got)
+			}
+			// Meters list the customer's consumption, credits and balance.
 			status, out, raw = get("/usage/meters/list?limit=10")
-			if status != 200 || len(out["items"].([]any)) != 1 || out["items"].([]any)[0].(map[string]any)["balance"] != 1.5 ||
-				out["items"].([]any)[0].(map[string]any)["meter"].(map[string]any)["name"] != "API requests" || strings.Contains(raw, "merchant-only") {
+			meters, _ := out["items"].([]any)
+			if status != 200 || len(meters) != 1 || meters[0].(map[string]any)["balance"] != 1.5 || meters[0].(map[string]any)["consumed_units"] != 2.5 || meters[0].(map[string]any)["credited_units"] != 4.0 ||
+				meters[0].(map[string]any)["meter"].(map[string]any)["name"] != "API requests" || strings.Contains(raw, "merchant-only") {
 				t.Fatal("the meters were not listed as subsets", status, raw)
+			}
+			if got := remote.queries["/v1/customer-portal/meters/"]; got.Get("limit") != "10" {
+				t.Fatal("the meter paging was not forwarded", got)
 			}
 			// Other query keys, repeated or out-of-range values are refused before Polar.
 			before := remote.sessions
@@ -185,6 +220,31 @@ func TestCustomerPortalLists(t *testing.T) {
 			}
 			if remote.sessions != before {
 				t.Fatal("an invalid query reached Polar")
+			}
+			// A session revoked while Polar answers withholds the page.
+			for _, path := range []string{"/customer/benefits/list", "/customer/orders/list", "/customer/subscriptions/list", "/usage/meters/list"} {
+				w, err := a.SignInEmail(ctx, auth.SignInInput{Email: "lister@example.test", Password: "local fixture password"}, auth.RequestMeta{})
+				if err != nil {
+					t.Fatal(err)
+				}
+				remote.mu.Lock()
+				remote.during = func() {
+					q := `DELETE FROM "session" WHERE "token"=?`
+					if dialect == "mysql" {
+						q = strings.ReplaceAll(q, `"`, "`")
+					}
+					if _, err := db.Exec(ledger.bind(q), w.Token); err != nil {
+						t.Error(err)
+					}
+				}
+				remote.mu.Unlock()
+				r := readPersonal(a, "GET", path, "", a.SessionCookie(w.Token, true), nil)
+				remote.mu.Lock()
+				remote.during = nil
+				remote.mu.Unlock()
+				if r.Code != 401 || strings.Contains(r.Body.String(), "-0000-4000-8000-") {
+					t.Error("a revoked session received a list", path, r.Code, r.Body.String())
+				}
 			}
 			// A page for another customer is refused.
 			remote.mu.Lock()

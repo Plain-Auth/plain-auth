@@ -29,7 +29,7 @@ type ActiveSubscription struct {
 	CancelAtPeriodEnd bool      `json:"cancel_at_period_end"`
 	// ReferenceID is the organization the subscription bills, from its
 	// referenceId metadata, or "" for the customer.
-	ReferenceID string `json:"reference_id,omitempty"`
+	ReferenceID string `json:"reference_id"`
 }
 
 // BenefitGrant describes a benefit currently granted to the individual customer.

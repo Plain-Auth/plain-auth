@@ -646,19 +646,20 @@ func TestOptionSections(t *testing.T) {
 		opts Options
 		want string
 	}{
-		"no client":           {Options{OrganizationID: merchant}, "polar: configure a client and the merchant organization UUID"},
-		"no merchant":         {Options{Client: client}, "polar: configure a client and the merchant organization UUID"},
-		"checkout ledger":     {Options{Client: client, OrganizationID: merchant, Checkout: checkout}, "polar: checkout, portal, webhooks and usage need a ledger"},
-		"webhooks ledger":     {Options{Client: client, OrganizationID: merchant, Webhooks: &WebhookOptions{Secret: "whsec_x"}}, "polar: checkout, portal, webhooks and usage need a ledger"},
-		"portal ledger":       {Options{Client: client, OrganizationID: merchant, Portal: &PortalOptions{URL: "https://polar.test/portal"}}, "polar: checkout, portal, webhooks and usage need a ledger"},
-		"no products":         {Options{Client: client, OrganizationID: merchant, Ledger: ledger, Checkout: &CheckoutOptions{HostedOrigin: "https://polar.test", SuccessURL: "/success"}}, "polar: checkout needs products and a success URL"},
-		"no success":          {Options{Client: client, OrganizationID: merchant, Ledger: ledger, Checkout: &CheckoutOptions{Products: checkout.Products, HostedOrigin: "https://polar.test"}}, "polar: checkout needs products and a success URL"},
-		"bad origin":          {Options{Client: client, OrganizationID: merchant, Ledger: ledger, Checkout: &CheckoutOptions{Products: checkout.Products, HostedOrigin: "http://polar.test", SuccessURL: "/success"}}, "polar: hosted origin must be an exact HTTPS origin"},
-		"no webhook secret":   {Options{Client: client, OrganizationID: merchant, Ledger: ledger, Webhooks: &WebhookOptions{}}, "polar: a webhook signing secret is required"},
-		"no authorization":    {Options{Client: client, OrganizationID: merchant, Ledger: ledger, Checkout: checkout, Organization: &OrganizationOptions{}}, "polar: organization references need AuthorizeReference"},
-		"organization only":   {Options{Client: client, OrganizationID: merchant, Ledger: ledger, Organization: &OrganizationOptions{AuthorizeReference: func(ReferenceAuthorization) bool { return true }}}, "polar: organization references need the checkout or portal section"},
-		"organization server": {Options{Client: client, OrganizationID: merchant, Ledger: ledger, Checkout: checkout, Organization: &OrganizationOptions{ServerURL: "https://api.polar.test/v1", AuthorizeReference: func(ReferenceAuthorization) bool { return true }}}, "polar: the organization server URL must be an HTTPS origin"},
-		"organization ledger": {Options{Client: client, OrganizationID: merchant, Checkout: checkout, Organization: &OrganizationOptions{AuthorizeReference: func(ReferenceAuthorization) bool { return true }}}, "polar: checkout, portal, webhooks and usage need a ledger"},
+		"no client":             {Options{OrganizationID: merchant}, "polar: configure a client and the merchant organization UUID"},
+		"no merchant":           {Options{Client: client}, "polar: configure a client and the merchant organization UUID"},
+		"checkout ledger":       {Options{Client: client, OrganizationID: merchant, Checkout: checkout}, "polar: checkout, portal, webhooks and usage need a ledger"},
+		"webhooks ledger":       {Options{Client: client, OrganizationID: merchant, Webhooks: &WebhookOptions{Secret: "whsec_x"}}, "polar: checkout, portal, webhooks and usage need a ledger"},
+		"portal ledger":         {Options{Client: client, OrganizationID: merchant, Portal: &PortalOptions{URL: "https://polar.test/portal"}}, "polar: checkout, portal, webhooks and usage need a ledger"},
+		"no products":           {Options{Client: client, OrganizationID: merchant, Ledger: ledger, Checkout: &CheckoutOptions{HostedOrigin: "https://polar.test", SuccessURL: "/success"}}, "polar: checkout needs products and a success URL"},
+		"no success":            {Options{Client: client, OrganizationID: merchant, Ledger: ledger, Checkout: &CheckoutOptions{Products: checkout.Products, HostedOrigin: "https://polar.test"}}, "polar: checkout needs products and a success URL"},
+		"bad origin":            {Options{Client: client, OrganizationID: merchant, Ledger: ledger, Checkout: &CheckoutOptions{Products: checkout.Products, HostedOrigin: "http://polar.test", SuccessURL: "/success"}}, "polar: hosted origin must be an exact HTTPS origin"},
+		"no webhook secret":     {Options{Client: client, OrganizationID: merchant, Ledger: ledger, Webhooks: &WebhookOptions{}}, "polar: a webhook signing secret is required"},
+		"no authorization":      {Options{Client: client, OrganizationID: merchant, Ledger: ledger, Checkout: checkout, Organization: &OrganizationOptions{}}, "polar: organization references need AuthorizeReference"},
+		"organization only":     {Options{Client: client, OrganizationID: merchant, Ledger: ledger, Organization: &OrganizationOptions{AuthorizeReference: func(ReferenceAuthorization) bool { return true }}}, "polar: organization references need the checkout or portal section"},
+		"organization fragment": {Options{Client: client, OrganizationID: merchant, Ledger: ledger, Checkout: checkout, Organization: &OrganizationOptions{ServerURL: "https://api.polar.test#", AuthorizeReference: func(ReferenceAuthorization) bool { return true }}}, "polar: the organization server URL must be an HTTPS origin"},
+		"organization server":   {Options{Client: client, OrganizationID: merchant, Ledger: ledger, Checkout: checkout, Organization: &OrganizationOptions{ServerURL: "https://api.polar.test/v1", AuthorizeReference: func(ReferenceAuthorization) bool { return true }}}, "polar: the organization server URL must be an HTTPS origin"},
+		"organization ledger":   {Options{Client: client, OrganizationID: merchant, Checkout: checkout, Organization: &OrganizationOptions{AuthorizeReference: func(ReferenceAuthorization) bool { return true }}}, "polar: checkout, portal, webhooks and usage need a ledger"},
 	} {
 		if _, err := NewService(tc.opts); err == nil || err.Error() != tc.want {
 			t.Error("an invalid configuration was handled wrongly", name, err)

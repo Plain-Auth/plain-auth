@@ -3,6 +3,7 @@ package polar
 import (
 	"context"
 	"net/url"
+	"slices"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -34,11 +35,13 @@ func (o *OrganizationOptions) serverURL() string {
 	return o.ServerURL
 }
 
-// validServerURL accepts an HTTPS origin without a path, query or
-// credentials.
+// validServerURL accepts an HTTPS origin without a path, query, fragment
+// or credentials. A bare "#" parses as no fragment, so it is refused by
+// text, as the portal URL is.
 func validServerURL(raw string) bool {
 	u, err := url.Parse(raw)
-	return err == nil && u.Scheme == "https" && u.Host != "" && u.User == nil && (u.Path == "" || u.Path == "/") && u.RawQuery == "" && !u.ForceQuery && u.Fragment == ""
+	return err == nil && u.Scheme == "https" && u.Host != "" && u.User == nil && (u.Path == "" || u.Path == "/") && u.RawQuery == "" && !u.ForceQuery &&
+		!strings.ContainsAny(raw, "#\\")
 }
 
 // ReferenceAuthorization describes one organization-scoped request. Role is
@@ -115,4 +118,46 @@ func (s *Service) authorizeReference(c auth.EndpointContext, session *auth.Sessi
 		return referenceForbidden()
 	}
 	return nil
+}
+
+// checkoutReferences reads the organization each checkout ID was reserved
+// for by owner, from the ledger, without a transaction. A nil, unknown or
+// foreign checkout reads as "". IDs are compared byte for byte, since MySQL
+// compares case-insensitively.
+func (l *Ledger) checkoutReferences(ctx context.Context, owner string, checkouts []*string) ([]string, error) {
+	out := make([]string, len(checkouts))
+	var ids []any
+	for _, id := range checkouts {
+		if id != nil && canonicalID(*id) && !slices.Contains(ids, any(*id)) {
+			ids = append(ids, *id)
+		}
+	}
+	if len(ids) == 0 {
+		return out, nil
+	}
+	q := "SELECT owner_id,checkout_id,reference_id FROM plainauth_polar_checkout WHERE owner_id=? AND checkout_id IN (?" + strings.Repeat(",?", len(ids)-1) + ")"
+	rows, err := l.db.QueryContext(ctx, l.bind(q), append([]any{owner}, ids...)...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	found := map[string]string{}
+	for rows.Next() {
+		var rowOwner, id, ref string
+		if err := rows.Scan(&rowOwner, &id, &ref); err != nil {
+			return nil, err
+		}
+		if rowOwner == owner {
+			found[id] = ref
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	for i, id := range checkouts {
+		if id != nil {
+			out[i] = found[*id]
+		}
+	}
+	return out, nil
 }

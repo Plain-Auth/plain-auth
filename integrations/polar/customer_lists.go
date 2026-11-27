@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/url"
 	"strconv"
-	"strings"
 	"time"
 
 	auth "github.com/Plain-Org/plain-auth"
@@ -59,9 +58,13 @@ type CustomerOrder struct {
 	TotalAmount    int64     `json:"total_amount"`
 	RefundedAmount int64     `json:"refunded_amount"`
 	Description    string    `json:"description"`
+	// ReferenceID is the organization the order bills when this
+	// installation reserved its checkout for one, or "".
+	ReferenceID string `json:"reference_id"`
 }
 
-// CustomerSubscription is one of the signed-in customer's own subscriptions.
+// CustomerSubscription is a subscription of the signed-in customer, or one
+// a member bought for an organization.
 type CustomerSubscription struct {
 	ID                 string     `json:"id"`
 	ProductID          string     `json:"product_id"`
@@ -76,6 +79,9 @@ type CustomerSubscription struct {
 	StartedAt          *time.Time `json:"started_at"`
 	EndsAt             *time.Time `json:"ends_at"`
 	EndedAt            *time.Time `json:"ended_at"`
+	// ReferenceID is the organization the subscription bills when this
+	// installation reserved its checkout for one, or "".
+	ReferenceID string `json:"reference_id"`
 }
 
 // maxListLimit bounds a list page, as Polar does.
@@ -239,6 +245,21 @@ func (s *Service) customerOrders(c auth.EndpointContext) (any, error) {
 	if err != nil {
 		return nil, err
 	}
+	// A renewal order names its subscription's checkout instead of its own.
+	checkouts := make([]*string, len(reply.ListResourceCustomerOrder.Items))
+	for i, it := range reply.ListResourceCustomerOrder.Items {
+		checkouts[i] = it.CheckoutID
+		if checkouts[i] == nil && it.Subscription != nil {
+			checkouts[i] = it.Subscription.CheckoutID
+		}
+	}
+	references, err := s.opts.Ledger.checkoutReferences(c.Request.Context(), session.User.ID, checkouts)
+	if err != nil {
+		return nil, err
+	}
+	for i := range items {
+		items[i].ReferenceID = references[i]
+	}
 	if err = s.recheckCustomer(c, session); err != nil {
 		return nil, err
 	}
@@ -274,17 +295,21 @@ func (s *Service) customerSubscriptions(c auth.EndpointContext) (any, error) {
 	if err != nil {
 		return nil, err
 	}
+	checkouts := make([]*string, len(reply.ListResourceCustomerSubscription.Items))
+	for i, it := range reply.ListResourceCustomerSubscription.Items {
+		checkouts[i] = it.CheckoutID
+	}
+	references, err := s.opts.Ledger.checkoutReferences(c.Request.Context(), session.User.ID, checkouts)
+	if err != nil {
+		return nil, err
+	}
+	for i := range items {
+		items[i].ReferenceID = references[i]
+	}
 	if err = s.recheckCustomer(c, session); err != nil {
 		return nil, err
 	}
 	return Page[CustomerSubscription]{Items: items, Pagination: Pagination(reply.ListResourceCustomerSubscription.Pagination)}, nil
-}
-
-// ReferenceSubscription is a subscription a member bought for an
-// organization, listed by referenceId.
-type ReferenceSubscription struct {
-	CustomerSubscription
-	ReferenceID string `json:"reference_id"`
 }
 
 // referenceSubscriptions lists the merchant's subscriptions whose
@@ -312,23 +337,25 @@ func (s *Service) referenceSubscriptions(c auth.EndpointContext, q listQuery, ac
 	if q.limit != nil {
 		query.Set("limit", strconv.FormatInt(*q.limit, 10))
 	}
-	server := strings.TrimSuffix(s.opts.Organization.serverURL(), "/") + "/?" + query.Encode()
+	origin, _ := url.Parse(s.opts.Organization.serverURL())
+	server := (&url.URL{Scheme: origin.Scheme, Host: origin.Host, Path: "/", RawQuery: query.Encode()}).String()
 	reply, err := s.opts.Client.Subscriptions.List(c.Request.Context(), operations.SubscriptionsListRequest{},
 		operations.WithServerURL(server), versioned(), operations.WithRetries(retry.Config{Strategy: "none"}))
 	if err != nil || reply == nil || reply.ListResourceSubscription == nil {
 		return nil, failure(502, "POLAR_SUBSCRIPTIONS_UNAVAILABLE", "Unable to list the organization's subscriptions at Polar")
 	}
 	list := reply.ListResourceSubscription
-	out := Page[ReferenceSubscription]{Items: make([]ReferenceSubscription, 0, len(list.Items)), Pagination: Pagination(list.Pagination)}
+	out := Page[CustomerSubscription]{Items: make([]CustomerSubscription, 0, len(list.Items)), Pagination: Pagination(list.Pagination)}
 	for _, it := range list.Items {
 		if ref := it.Metadata[referenceMetadata].Str; ref == nil || *ref != q.reference || it.Customer.OrganizationID != s.opts.OrganizationID {
 			return nil, customerMismatch()
 		}
-		out.Items = append(out.Items, ReferenceSubscription{ReferenceID: q.reference, CustomerSubscription: CustomerSubscription{
+		out.Items = append(out.Items, CustomerSubscription{
 			ID: it.ID, ProductID: it.ProductID, Status: string(it.Status), Amount: it.Amount, Currency: it.Currency,
 			RecurringInterval: string(it.RecurringInterval), CurrentPeriodStart: it.CurrentPeriodStart, CurrentPeriodEnd: it.CurrentPeriodEnd,
 			CancelAtPeriodEnd: it.CancelAtPeriodEnd, CanceledAt: it.CanceledAt, StartedAt: it.StartedAt, EndsAt: it.EndsAt, EndedAt: it.EndedAt,
-		}})
+			ReferenceID: q.reference,
+		})
 	}
 	// The member may have left while Polar answered.
 	if err = s.recheckCustomer(c, session); err != nil {
