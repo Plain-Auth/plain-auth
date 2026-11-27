@@ -14,7 +14,7 @@ var _ op.MachineTokenStore = (*Store)(nil)
 var _ op.DPoPMachineTokenStore = (*Store)(nil)
 
 const machineClientColumns = `"id","clientId","clientSecret","tokenEndpointAuthMethod","grantTypes","clientCredentialsScopes","disabled","dpopBoundAccessTokens","metadata","jwks","jwksUri"`
-const machineClientSelect = "SELECT " + machineClientColumns + ` FROM "oauthClient"` + localClientFilter
+const machineClientSelect = "SELECT " + machineClientColumns + ` FROM "oauthClient"` + clientFilter
 
 func scanMachineClient(row rowScanner, id string, extra ...any) (op.MachineClient, error) {
 	var client op.MachineClient
@@ -53,7 +53,7 @@ func scanMachineClient(row rowScanner, id string, extra ...any) (op.MachineClien
 }
 
 func (s *Store) LookupMachineClient(ctx context.Context, id string) (op.MachineClient, error) {
-	return scanMachineClient(s.db.QueryRowContext(ctx, s.bind(machineClientSelect), id), id)
+	return scanMachineClient(s.db.QueryRowContext(ctx, s.bind(machineClientSelect), id, op.ResolvedDiscovery(ctx, id)), id)
 }
 
 func (s *Store) StoreMachineToken(ctx context.Context, id string, prepare func(op.MachineClient) (op.MachineTokenRecord, error)) error {
@@ -75,7 +75,7 @@ func (s *Store) storeMachineToken(ctx context.Context, id, thumbprint string, pr
 		return err
 	}
 	defer tx.Rollback()
-	client, err := scanMachineClient(tx.QueryRowContext(ctx, s.readForUpdate(machineClientSelect), id), id)
+	client, err := scanMachineClient(tx.QueryRowContext(ctx, s.readForUpdate(machineClientSelect), id, op.ResolvedDiscovery(ctx, id)), id)
 	if err != nil {
 		return err
 	}

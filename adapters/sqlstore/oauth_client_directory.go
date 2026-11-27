@@ -14,7 +14,11 @@ import (
 var _ op.ClientDirectoryStore = (*Store)(nil)
 
 const clientDisplayColumns = `"clientId","name","uri","icon","contacts","tos","policy"`
-const localClientFilter = ` WHERE "clientId"=? AND ("clientDiscoveryId" IS NULL OR "clientDiscoveryId"='')`
+
+// clientFilter matches a client row by its ID: a local row, or one owned by
+// the discovery that resolved the ID in this request. Its arguments are the
+// ID and op.ResolvedDiscovery for it.
+const clientFilter = ` WHERE "clientId"=? AND ("clientDiscoveryId" IS NULL OR "clientDiscoveryId"='' OR "clientDiscoveryId"=?)`
 
 // The database only returns the presence of a stored secret, never the value.
 const clientDetailsColumns = clientDisplayColumns + `,"userId","referenceId","createdAt",
@@ -27,10 +31,10 @@ const clientDetailsColumns = clientDisplayColumns + `,"userId","referenceId","cr
 const clientDetailsSelect = `SELECT ` + clientDetailsColumns + ` FROM "oauthClient"`
 
 func (s *Store) PublicOAuthClient(ctx context.Context, id string) (op.PublicClient, error) {
-	q := `SELECT ` + clientDisplayColumns + ` FROM "oauthClient"` + localClientFilter + ` AND ("disabled" IS NULL OR "disabled"=FALSE)`
+	q := `SELECT ` + clientDisplayColumns + ` FROM "oauthClient"` + clientFilter + ` AND ("disabled" IS NULL OR "disabled"=FALSE)`
 	var c op.PublicClient
 	var contacts []byte
-	err := s.db.QueryRowContext(ctx, s.bind(q), id).Scan(&c.ClientID, &c.Name, &c.URI, &c.LogoURI, &contacts, &c.TermsURI, &c.PolicyURI)
+	err := s.db.QueryRowContext(ctx, s.bind(q), id, op.ResolvedDiscovery(ctx, id)).Scan(&c.ClientID, &c.Name, &c.URI, &c.LogoURI, &contacts, &c.TermsURI, &c.PolicyURI)
 	if errors.Is(err, sql.ErrNoRows) || (err == nil && c.ClientID != id) {
 		return op.PublicClient{}, op.ErrClientNotFound
 	}
@@ -104,7 +108,7 @@ func scanClientDetails(row rowScanner, extra ...any) (op.ClientDetails, error) {
 }
 
 func (s *Store) LookupOAuthClient(ctx context.Context, id string) (op.ClientDetails, error) {
-	c, err := scanClientDetails(s.db.QueryRowContext(ctx, s.bind(clientDetailsSelect+localClientFilter), id))
+	c, err := scanClientDetails(s.db.QueryRowContext(ctx, s.bind(clientDetailsSelect+clientFilter), id, op.ResolvedDiscovery(ctx, id)))
 	if err == nil && id != c.ClientID {
 		return op.ClientDetails{}, op.ErrClientNotFound
 	}

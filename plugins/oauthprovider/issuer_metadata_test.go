@@ -1,6 +1,7 @@
 package oauthprovider_test
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -370,3 +371,99 @@ func TestExtensionMetadata(t *testing.T) {
 		t.Fatal("an extension field that cannot be encoded was accepted")
 	}
 }
+
+// Client discoveries' fields go under the provider's, a later discovery
+// winning; a field the provider declares stays the provider's even when
+// absent, except client_id_metadata_document_supported; an extension cannot
+// replace a discovery's field; and none is advertised for discovered
+// clients unless the methods are set explicitly. New refuses an empty or
+// repeated discovery ID and a discovery without Matches or Resolve, and a
+// store that cannot hold discovered clients is refused.
+func TestDiscoveryMetadata(t *testing.T) {
+	s, err := sqlstore.OpenWithOptions(t.Context(), "sqlite", ":memory:", []string{"oauth-provider"}, schema.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { s.Close() })
+	const base = "https://discoveries.example.test"
+	never := func(string) bool { return false }
+	resolve := func(context.Context, op.DiscoveryRequest) (*op.DiscoveredClient, error) { return nil, nil }
+	first := op.ClientDiscovery{ID: "first", Matches: never, Resolve: resolve, Metadata: map[string]any{"client_id_metadata_document_supported": true, "x_shared": "first", "x_first": 1}}
+	second := op.ClientDiscovery{ID: "second", Matches: never, Resolve: resolve, Metadata: map[string]any{"x_shared": "second", "issuer": "forged", "registration_endpoint": "forged"}}
+	contributor := op.Extension{Metadata: func(in op.MetadataInput) map[string]any {
+		if in.Discovery["x_shared"] != "second" {
+			t.Error("the contributor did not see the discovery fields", in.Discovery)
+		}
+		return map[string]any{"x_shared": "extension", "x_extension": true}
+	}}
+	build := func(opts op.Options, after ...func()) map[string]any {
+		t.Helper()
+		opts.Scopes = []string{"read"}
+		p, err := op.New(opts)
+		if err != nil {
+			t.Fatal(err)
+		}
+		// A change to the caller's maps after New is not served.
+		for _, f := range after {
+			f()
+		}
+		a, err := auth.New(auth.Options{BaseURL: base, Secret: strings.Repeat("d", 48), Store: s, Plugins: []auth.Plugin{p}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		raw, ok := a.WellKnownJSON("/.well-known/oauth-authorization-server/api/auth")
+		var doc map[string]any
+		if !ok || json.Unmarshal(raw, &doc) != nil {
+			t.Fatal("no discovery document", string(raw))
+		}
+		return doc
+	}
+	opts := op.Options{Extensions: []op.Extension{{ClientDiscoveries: []op.ClientDiscovery{first}}, {ClientDiscoveries: []op.ClientDiscovery{second}}, contributor}}
+	opts.Authorization.LoginPage, opts.Authorization.ConsentPage = "/login", "/consent"
+	doc := build(opts, func() { first.Metadata["x_first"] = 2 })
+	if doc["client_id_metadata_document_supported"] != true || doc["x_shared"] != "second" || doc["x_first"] != 1.0 || doc["x_extension"] != true || doc["issuer"] != base+"/api/auth" {
+		t.Fatal("the discovery fields were merged wrongly", doc)
+	}
+	if _, ok := doc["registration_endpoint"]; ok {
+		t.Fatal("a discovery published an endpoint the provider does not serve", doc)
+	}
+	if methods, _ := doc["token_endpoint_auth_methods_supported"].([]any); len(methods) == 0 || methods[0] != "none" {
+		t.Fatal("none was not advertised for discovered clients", doc["token_endpoint_auth_methods_supported"])
+	}
+	opts.Metadata.TokenAuthMethods = []string{"client_secret_basic"}
+	if methods, _ := build(opts)["token_endpoint_auth_methods_supported"].([]any); len(methods) != 1 || methods[0] != "client_secret_basic" {
+		t.Fatal("explicit methods were not kept", methods)
+	}
+	// The typed getter reads the flag back.
+	p, err := op.New(op.Options{Scopes: []string{"read"}, Extensions: []op.Extension{{ClientDiscoveries: []op.ClientDiscovery{first}}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	a, err := auth.New(auth.Options{BaseURL: base, Secret: strings.Repeat("d", 48), Store: s, Plugins: []auth.Plugin{p}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if config, err := op.GetAuthorizationServerConfig(a); err != nil || !config.ClientIDMetadataDocumentSupported {
+		t.Fatal("the typed flag was not read back", config, err)
+	}
+	// Refused configurations.
+	for name, discoveries := range map[string][]op.Extension{
+		"empty ID":  {{ClientDiscoveries: []op.ClientDiscovery{{Matches: never, Resolve: resolve}}}},
+		"repeated":  {{ClientDiscoveries: []op.ClientDiscovery{first}}, {ClientDiscoveries: []op.ClientDiscovery{first}}},
+		"no match":  {{ClientDiscoveries: []op.ClientDiscovery{{ID: "x", Resolve: resolve}}}},
+		"no lookup": {{ClientDiscoveries: []op.ClientDiscovery{{ID: "x", Matches: never}}}},
+	} {
+		if _, err := op.New(op.Options{Scopes: []string{"read"}, Extensions: discoveries}); err == nil {
+			t.Error("a bad discovery was accepted", name)
+		}
+	}
+	if _, err := auth.New(auth.Options{BaseURL: base, Secret: strings.Repeat("d", 48), Store: undiscovering{s}, Plugins: []auth.Plugin{p}}); err == nil || !strings.Contains(err.Error(), "DiscoveredClientStore") {
+		t.Fatal("a store without discovered clients was accepted", err)
+	}
+}
+
+// undiscovering hides the store's discovered clients behind a method of
+// another signature.
+type undiscovering struct{ *sqlstore.Store }
+
+func (undiscovering) LookupDiscoveredClient() {}

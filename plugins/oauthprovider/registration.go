@@ -183,6 +183,8 @@ type Options struct {
 	proofVerifier       *DPoPVerifier
 	assertionKeys       *clientKeyCache
 	resourceSeeds       *resourceSeeds
+	// discoveries are the extensions' client discoveries in order.
+	discoveries []*ClientDiscovery
 }
 
 // seedResources applies the declared resources once through the request's
@@ -272,6 +274,9 @@ func New(opts Options) (auth.Plugin, error) {
 		return auth.Plugin{}, err
 	}
 	if err := opts.checkGrants(); err != nil {
+		return auth.Plugin{}, err
+	}
+	if err := opts.collectDiscoveries(); err != nil {
 		return auth.Plugin{}, err
 	}
 	if err := opts.Metadata.prepare(opts.Scopes, opts.extensionAuthMethods()); err != nil {
@@ -385,6 +390,9 @@ func New(opts Options) (auth.Plugin, error) {
 		}
 		if _, ok := s.(RegistrationStore); r.Enabled && !ok {
 			return errors.New("oauthprovider: registration requires a RegistrationStore")
+		}
+		if _, ok := s.(DiscoveredClientStore); len(opts.discoveries) > 0 && !ok {
+			return errors.New("oauthprovider: client discoveries require a DiscoveredClientStore")
 		}
 		if _, ok := s.(OpenIDGrantStore); opts.Tokens.CustomTokenResponseFields != nil && slices.Contains(opts.GrantTypes, "authorization_code") && !ok {
 			return errors.New("oauthprovider: token response fields require an OpenIDGrantStore")

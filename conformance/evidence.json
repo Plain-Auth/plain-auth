@@ -50290,5 +50290,41 @@
       "test": "plugins/oauthprovider/client_discovery_test.go",
       "marker": "// The defaults: auth method none, empty application type, code response,"
     }
+  ],
+  "plugin-symbol/oauth-provider/mergeDiscoveryMetadata": [
+    {
+      "label": "Merge client discoveries' discovery fields in order under the provider's, a later discovery winning, keeping every field the provider declares except the metadata document flag, which an extension cannot replace",
+      "test": "plugins/oauthprovider/issuer_metadata_test.go",
+      "marker": "func TestDiscoveryMetadata(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthProviderExtension": [
+    {
+      "label": "Carry client discoveries on a provider extension, consulted in extension order with the first match winning, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_client_discovery_test.go",
+      "marker": "func TestClientDiscoveryLookups("
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/extensions": [
+    {
+      "label": "Refuse empty or repeated client discovery IDs across extensions and discoveries without Matches or Resolve, and a store that cannot hold discovered clients",
+      "test": "plugins/oauthprovider/issuer_metadata_test.go",
+      "marker": "// Refused configurations."
+    }
+  ],
+  "plugin-symbol/oauth-provider/extendOAuthProvider": [
+    {
+      "label": "Install extensions through Options.Extensions, since a Go plugin cannot change another's options from its init, as a documented deviation",
+      "test": "plugins/oauthprovider/issuer_metadata_test.go",
+      "marker": "func TestDiscoveryMetadata("
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L417": [
+    {
+      "label": "Resolve discovered clients by their stored discovery ID, failing closed when it is removed, and only add discovery fields the provider does not own, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_client_discovery_test.go",
+      "marker": "// With its discovery removed, or not matching, the row stays hidden."
+    }
   ]
 }

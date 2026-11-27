@@ -20,7 +20,7 @@ func (s *Store) InspectOpaqueAccessToken(ctx context.Context, callerID, digest, 
 		return op.MachineClient{}, nil, false, err
 	}
 	defer tx.Rollback()
-	current, err := scanMachineClient(tx.QueryRowContext(ctx, s.bind(machineClientSelect), callerID), callerID)
+	current, err := scanMachineClient(tx.QueryRowContext(ctx, s.bind(machineClientSelect), callerID, op.ResolvedDiscovery(ctx, callerID)), callerID)
 	if err != nil || digest == "" {
 		return current, nil, false, err
 	}

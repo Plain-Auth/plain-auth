@@ -24,14 +24,14 @@ func (s *Store) InspectOpaqueMachineToken(ctx context.Context, clientID, digest 
 		(t."revoked" IS NULL AND t."sessionId" IS NULL AND t."userId" IS NULL AND t."refreshId" IS NULL
 		AND t."authorizationCodeId" IS NULL AND t."referenceId" IS NULL AND t."confirmation" IS NULL AND t."requestedUserInfoClaims" IS NULL)
 		FROM "oauthClient" c LEFT JOIN "oauthAccessToken" t ON t."token"=?
-		WHERE c."clientId"=? AND (c."clientDiscoveryId" IS NULL OR c."clientDiscoveryId"='')`
+		WHERE c."clientId"=? AND (c."clientDiscoveryId" IS NULL OR c."clientDiscoveryId"='' OR c."clientDiscoveryId"=?)`
 	var client op.MachineClient
 	var secret, method, stored, owner, jwks, uri sql.NullString
 	var eligible bool
 	var disabled sql.NullBool
 	var issued, expires sql.NullTime
 	var scopes, resources []byte
-	err := s.db.QueryRowContext(ctx, s.bind(query), digest, clientID).Scan(
+	err := s.db.QueryRowContext(ctx, s.bind(query), digest, clientID, op.ResolvedDiscovery(ctx, clientID)).Scan(
 		&client.RowID, &client.ClientID, &secret, &method, &disabled, &jwks, &uri, &stored, &owner, &issued, &expires, &scopes, &resources, &eligible)
 	if errors.Is(err, sql.ErrNoRows) || err == nil && client.ClientID != clientID {
 		return op.MachineClient{}, nil, false, op.ErrClientNotFound

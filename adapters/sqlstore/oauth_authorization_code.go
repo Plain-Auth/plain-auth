@@ -232,9 +232,9 @@ func (s *Store) readDelegatedClient(ctx context.Context, tx *sql.Tx, clientID st
 	var registeredScopes, redirects []byte
 	var subject, logoutURI sql.NullString
 	var logout sql.NullBool
-	const clientSelect = "SELECT " + machineClientColumns + `,"scopes","requirePKCE","subjectType","redirectUris","enableEndSession","backchannelLogoutUri" FROM "oauthClient"` + localClientFilter
+	const clientSelect = "SELECT " + machineClientColumns + `,"scopes","requirePKCE","subjectType","redirectUris","enableEndSession","backchannelLogoutUri" FROM "oauthClient"` + clientFilter
 	var err error
-	client.MachineClient, err = scanMachineClient(tx.QueryRowContext(ctx, s.readForUpdate(clientSelect), clientID), clientID, &registeredScopes, &client.RequirePKCE, &subject, &redirects, &logout, &logoutURI)
+	client.MachineClient, err = scanMachineClient(tx.QueryRowContext(ctx, s.readForUpdate(clientSelect), clientID, op.ResolvedDiscovery(ctx, clientID)), clientID, &registeredScopes, &client.RequirePKCE, &subject, &redirects, &logout, &logoutURI)
 	if err != nil {
 		return client, err
 	}

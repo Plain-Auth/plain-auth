@@ -28,7 +28,7 @@ func (s *Store) DeleteOAuthClient(ctx context.Context, id, userID, referenceID s
 	var rowID, clientID string
 	var owner, tenant *string
 	const q = `SELECT "id","clientId","userId","referenceId" FROM "oauthClient"`
-	err = tx.QueryRowContext(ctx, s.readForUpdate(q+localClientFilter), id).Scan(&rowID, &clientID, &owner, &tenant)
+	err = tx.QueryRowContext(ctx, s.readForUpdate(q+clientFilter), id, op.ResolvedDiscovery(ctx, id)).Scan(&rowID, &clientID, &owner, &tenant)
 	if errors.Is(err, sql.ErrNoRows) || (err == nil && clientID != id) {
 		return op.ErrClientNotFound
 	}

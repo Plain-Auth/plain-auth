@@ -17,7 +17,7 @@ func (s *Store) RevokeOAuthToken(ctx context.Context, clientID, digest string, k
 		return false, err
 	}
 	defer tx.Rollback()
-	client, err := scanMachineClient(tx.QueryRowContext(ctx, s.readForUpdate(machineClientSelect), clientID), clientID)
+	client, err := scanMachineClient(tx.QueryRowContext(ctx, s.readForUpdate(machineClientSelect), clientID, op.ResolvedDiscovery(ctx, clientID)), clientID)
 	if err != nil {
 		return false, err
 	}

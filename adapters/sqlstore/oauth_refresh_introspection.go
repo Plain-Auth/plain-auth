@@ -18,13 +18,13 @@ func (s *Store) InspectRefreshToken(ctx context.Context, clientID, digest string
 		FROM "oauthClient" c LEFT JOIN "oauthRefreshToken" r ON r."clientId"=c."clientId" AND r."token"=? AND r."revoked" IS NULL
 		LEFT JOIN "user" u ON u."id"=` + s.exactSQLValue(`r."userId"`) + `
 		LEFT JOIN "session" s ON s."id"=` + s.exactSQLValue(`r."sessionId"`) + ` AND s."userId"=` + s.exactSQLValue(`r."userId"`) + `
-		WHERE c."clientId"=? AND (c."clientDiscoveryId" IS NULL OR c."clientDiscoveryId"='')`
+		WHERE c."clientId"=? AND (c."clientDiscoveryId" IS NULL OR c."clientDiscoveryId"='' OR c."clientDiscoveryId"=?)`
 	var c op.MachineClient
 	var secret, method, jwks, uri, subject, stored, owner, user, session, code sql.NullString
 	var disabled sql.NullBool
 	var issued, expires, sessionEnd sql.NullTime
 	var redirects, scopes, confirmation []byte
-	err := s.db.QueryRowContext(ctx, s.bind(q), digest, clientID).Scan(&c.RowID, &c.ClientID, &secret, &method, &disabled, &jwks, &uri,
+	err := s.db.QueryRowContext(ctx, s.bind(q), digest, clientID, op.ResolvedDiscovery(ctx, clientID)).Scan(&c.RowID, &c.ClientID, &secret, &method, &disabled, &jwks, &uri,
 		&subject, &redirects, &stored, &owner, &issued, &expires, &scopes, &confirmation, &user, &session, &code, &sessionEnd)
 	if errors.Is(err, sql.ErrNoRows) || err == nil && c.ClientID != clientID {
 		return c, nil, op.ErrClientNotFound

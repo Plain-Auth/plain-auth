@@ -15,7 +15,7 @@ func (s *Store) SetOAuthClientCredentialsScopes(ctx context.Context, change op.C
 		return err
 	}
 	defer tx.Rollback()
-	c, err := scanClientDetails(tx.QueryRowContext(ctx, s.readForUpdate(clientDetailsSelect+localClientFilter), change.ClientID))
+	c, err := scanClientDetails(tx.QueryRowContext(ctx, s.readForUpdate(clientDetailsSelect+clientFilter), change.ClientID, op.ResolvedDiscovery(ctx, change.ClientID)))
 	if err != nil {
 		return err
 	}

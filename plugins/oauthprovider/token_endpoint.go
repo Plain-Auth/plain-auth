@@ -94,6 +94,9 @@ func (opts Options) token(c auth.EndpointContext) (any, error) {
 	if in.id == "" {
 		return nil, registrationProblem(400, "invalid_request", "Missing required client_id")
 	}
+	if c, err = opts.discoverRequestClient(c, in.id); err != nil {
+		return nil, tokenEndpointError(c.ResponseHeader, challenge, err)
+	}
 	in.resources = form["resource"]
 	if scopes := form["scope"]; len(scopes) != 0 {
 		in.scopes = strings.Split(scopes[len(scopes)-1], " ")

@@ -16,7 +16,7 @@ func (s *Store) UpdateOAuthClient(ctx context.Context, u op.ClientUpdate) (op.Cl
 		return op.ClientDetails{}, err
 	}
 	defer tx.Rollback()
-	locked, err := scanClientDetails(tx.QueryRowContext(ctx, s.readForUpdate(clientDetailsSelect+localClientFilter), u.ClientID))
+	locked, err := scanClientDetails(tx.QueryRowContext(ctx, s.readForUpdate(clientDetailsSelect+clientFilter), u.ClientID, op.ResolvedDiscovery(ctx, u.ClientID)))
 	if err != nil {
 		return op.ClientDetails{}, err
 	}
@@ -103,11 +103,11 @@ func (s *Store) UpdateOAuthClient(ctx context.Context, u op.ClientUpdate) (op.Cl
 		set("metadata", string(raw))
 	}
 	set("updatedAt", s.date(u.UpdatedAt))
-	args = append(args, u.ClientID)
-	if _, err := tx.ExecContext(ctx, s.bind(`UPDATE "oauthClient" SET `+strings.Join(sets, ",")+localClientFilter), args...); err != nil {
+	args = append(args, u.ClientID, op.ResolvedDiscovery(ctx, u.ClientID))
+	if _, err := tx.ExecContext(ctx, s.bind(`UPDATE "oauthClient" SET `+strings.Join(sets, ",")+clientFilter), args...); err != nil {
 		return op.ClientDetails{}, err
 	}
-	updated, err := scanClientDetails(tx.QueryRowContext(ctx, s.bind(clientDetailsSelect+localClientFilter), u.ClientID))
+	updated, err := scanClientDetails(tx.QueryRowContext(ctx, s.bind(clientDetailsSelect+clientFilter), u.ClientID, op.ResolvedDiscovery(ctx, u.ClientID)))
 	if err != nil {
 		return op.ClientDetails{}, err
 	}

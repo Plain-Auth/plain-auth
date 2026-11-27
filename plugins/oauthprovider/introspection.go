@@ -48,6 +48,9 @@ func (opts Options) introspect(c auth.EndpointContext) (any, error) {
 	if !ok || !machine && !supportsOpaque && !supportsSigned {
 		return nil, &auth.APIError{Status: 501, Code: "OAUTH_INTROSPECTION_STORE_UNAVAILABLE", Message: "The configured store does not support OAuth token introspection"}
 	}
+	if c, err = opts.discoverRequestClient(c, req.client.id); err != nil {
+		return nil, tokenEndpointError(c.ResponseHeader, req.challenge, err)
+	}
 	ctx := c.Request.Context()
 	in := req.client
 	first, err := opts.authenticateClient(c, reader, in, "/oauth2/introspect")

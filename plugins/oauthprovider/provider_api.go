@@ -96,6 +96,11 @@ func (p *ProviderAPI) Client(clientID string) (*ClientDetails, error) {
 	if !ok {
 		return nil, &auth.APIError{Status: 501, Code: "OAUTH_CLIENT_STORE_UNAVAILABLE", Message: "The configured store does not support OAuth client lookups"}
 	}
+	c, err := p.opts.discoverRequestClient(p.c, clientID)
+	if err != nil {
+		return nil, err
+	}
+	p.c = c
 	client, err := store.LookupOAuthClient(p.c.Request.Context(), clientID)
 	if errors.Is(err, ErrClientNotFound) {
 		return nil, nil
@@ -127,6 +132,9 @@ func (p *ProviderAPI) authenticateClient(req ClientAuthenticationRequest) (Authe
 	}
 	if in.id == "" {
 		return AuthenticatedClient{}, registrationProblem(400, "invalid_request", "Missing required client_id")
+	}
+	if p.c, err = p.opts.discoverRequestClient(p.c, in.id); err != nil {
+		return AuthenticatedClient{}, err
 	}
 	if !req.AllowPublic && in.secret == "" && in.assertion == nil && !in.proven {
 		return AuthenticatedClient{}, invalidClient("Missing required client credentials")

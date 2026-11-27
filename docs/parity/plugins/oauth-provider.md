@@ -8,7 +8,7 @@
   - [x] Enforce consent owner and client scope rules when a signed-in account manages its authorized applications ([test](../../../conformance/oauth-consent.mjs#L6))
   - [x] `getIssuer` ([test](../../../oauth_issuer_test.go#L28))
     - [x] Publish the issuer with an ASCII lowercase host, a canonical IP literal, no default or empty port and resolved dot segments, without its query, fragment and one trailing slash, and accept both the published and the configured spelling in the token issuer check; IPv4 shorthand is a documented deviation ([test](../../../oauth_issuer_test.go#L28))
-    - [x] Publish discovery for an issuer with a query and trailing slash at its normalized paths ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L117))
+    - [x] Publish discovery for an issuer with a query and trailing slash at its normalized paths ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L118))
     - [x] Sign machine access tokens with the published issuer when the configured issuer has a trailing slash, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_machine_resources_test.go#L155))
   - [x] `PublicClientJwksValidationResult` ([test](../../../plugins/oauthprovider/registration_test.go#L205))
     - [x] Return a validation error for unsupported algorithms and private key members ([test](../../../plugins/oauthprovider/registration_test.go#L149))
@@ -31,20 +31,21 @@
   - [ ] `OAuthDeviceAuthorizationOptions`
   - [ ] `oauthDeviceAuthorization`
   - [ ] `extendOAuthProvider`
+    - [x] Install extensions through Options.Extensions, since a Go plugin cannot change another's options from its init, as a documented deviation ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L382))
   - [ ] `authServerMetadata`
     - [x] Discover endpoints and capabilities for the machine grant, then register a client, verify a signed token and revoke an opaque token ([test](../../../conformance/oauth-issuer-metadata.mjs#L97))
     - [x] Publish the same grant, response type, scope, authentication method, DPoP and back-channel logout fields as another runtime for a machine-only issuer ([test](../../../conformance/oauth-issuer-metadata.mjs#L67))
-  - [x] `metadataResponse` ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L35))
-    - [x] Serialize the value once, preserve independent multi-value headers, honor custom cache rules and serve JSON ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L35))
+  - [x] `metadataResponse` ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L36))
+    - [x] Serialize the value once, preserve independent multi-value headers, honor custom cache rules and serve JSON ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L36))
   - [ ] `oauthAuthorizationServerMetadata`
     - [x] Discover endpoints and capabilities for the machine grant, then register a client, verify a signed token and revoke an opaque token ([test](../../../conformance/oauth-issuer-metadata.mjs#L97))
-  - [x] `oauthProviderAuthServerMetadata` ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L267))
+  - [x] `oauthProviderAuthServerMetadata` ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L268))
     - [x] Mount both issuer discovery paths through ServeMux, chi, Gorilla Mux, Gin, Echo and Fiber and read them with GET and HEAD ([test](../../../integrations/routers/routers_test.go#L169))
-    - [x] Retrieve the native issuer document, preserve escaped issuer paths and omit disabled endpoints and unavailable store capabilities ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L66))
-    - [x] Serve each mounted authorization server document as JSON with the configured headers or the default cache rule ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L267))
-  - [x] `oauthProviderOpenIdConfigMetadata` ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L286))
+    - [x] Retrieve the native issuer document, preserve escaped issuer paths and omit disabled endpoints and unavailable store capabilities ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L67))
+    - [x] Serve each mounted authorization server document as JSON with the configured headers or the default cache rule ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L268))
+  - [x] `oauthProviderOpenIdConfigMetadata` ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L287))
     - [x] Read the mounted OpenID provider document from Go, including host page capabilities and the configured claim list ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L75))
-    - [x] Serve the OpenID document as JSON with the default cache rule, or with the configured headers ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L286))
+    - [x] Serve the OpenID document as JSON with the default cache rule, or with the configured headers ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L287))
   - [ ] `oidcServerMetadata`
     - [x] Start from a custom issuer URL, discover the endpoints, complete PKCE sign-in and verify the ID token, access-token hash and UserInfo subject using an independent Go client ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L23))
     - [x] Publish end_session_endpoint and the back-channel logout flags, the fields the OpenID document lacked, and leave the endpoint out for a store that cannot read the hinted session (a documented deviation), on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_end_session_test.go#L173))
@@ -315,13 +316,14 @@
   - [x] `OAuthClientAuthenticationStrategy` ([test](../../../adapters/sqlstore/oauth_extension_auth_test.go#L30))
     - [x] Authenticate clients registered for an extension method with its strategy at the token, introspection and revocation endpoints, with each endpoint as the audience, before any store call, on SQLite, PostgreSQL and MySQL; requiring a matching form client_id is a documented deviation ([test](../../../adapters/sqlstore/oauth_extension_auth_test.go#L30))
     - [x] Refuse reserved, empty or repeated extension methods, a missing Authenticate, and relative, jwt-bearer, empty or repeated assertion types ([test](../../../plugins/oauthprovider/extension_auth_test.go#L15))
-  - [x] `OAuthMetadataExtensionInput` ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L294))
-    - [x] Pass each served discovery document's type and assembled fields to an extension, add its fields without replacing the provider's, keep the first extension's value for a shared field with a warning, and fail the host for a field that cannot be encoded; the static input is a documented deviation ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L294))
+  - [x] `OAuthMetadataExtensionInput` ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L295))
+    - [x] Pass each served discovery document's type and assembled fields to an extension, add its fields without replacing the provider's, keep the first extension's value for a shared field with a warning, and fail the host for a field that cannot be encoded; the static input is a documented deviation ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L295))
     - [x] Add an extension's discovery field to the OpenID configuration without replacing the issuer or token endpoint, on both runtimes ([test](../../../conformance/oauth-extensions.mjs#L14))
   - [ ] `OAuthClaimExtensionInput`
     - [x] Add an extension's ID token claims only where the token has none and never as protocol or standard profile claims, pass the account and grant type for code and refresh exchanges, and add its UserInfo claims under the standard ones, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_secret_id_token_test.go#L137))
   - [ ] `OAuthUserInfoExtensionInput`
   - [ ] `OAuthProviderExtension`
+    - [x] Carry client discoveries on a provider extension, consulted in extension order with the first match winning, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_discovery_test.go#L66))
   - [x] `InitialAccessTokenAuthorization` ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L93))
     - [x] Register a client without an owner when the initial access token's authorization names nobody, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L84))
     - [x] Register a client without an owner when the initial access token's authorization names nobody, and attach only the named reference otherwise, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L93))
@@ -412,6 +414,7 @@
     - [x] `validateInitialAccessToken` ([test](../../../conformance/oauth-registration.mjs#L162))
       - [x] Check initial bearer tokens, preserve session precedence and return challenges or callback failures ([test](../../../conformance/oauth-registration.mjs#L162))
     - [ ] `extensions`
+      - [x] Refuse empty or repeated client discovery IDs across extensions and discoveries without Matches or Resolve, and a store that cannot hold discovered clients ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L449))
     - [x] `clientRegistrationDefaultScopes` ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L70))
       - [x] Apply the host registration ceiling even when a client requests a narrower subset ([test](../../../conformance/oauth-registration.mjs#L216))
       - [x] Give a registration without scope options the issuer's scopes, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L70))
@@ -479,7 +482,7 @@
       - [x] Merge host fields under the standard fields of code, refresh and client_credentials responses, pass the account, client metadata and code value, run outside the grant transaction even without a refresh token, and leave the code or refresh token usable when it fails, on SQLite, PostgreSQL and MySQL; the scope recheck and the usable code are documented deviations ([test](../../../adapters/sqlstore/oauth_token_response_test.go#L27))
     - [ ] `advertisedMetadata`
       - [x] Preserve configured discovery scope and authentication method order independently of introspection and revocation ([test](../../../conformance/oauth-issuer-metadata.mjs#L67))
-      - [x] Reject unknown scopes, unsupported machine authentication, duplicate methods and an explicitly empty method list ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L19))
+      - [x] Reject unknown scopes, unsupported machine authentication, duplicate methods and an explicitly empty method list ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L20))
       - [x] Explicitly advertise pre-provisioned public clients, preserve protected introspection and publish only supported delegated grants ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L158))
       - [x] Advertise exactly the configured UserInfo claims ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L237))
       - [x] Advertise exactly the configured scopes and client authentication methods, in order, in both discovery documents, and the configured claims in the OpenID document ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L282))
@@ -584,7 +587,8 @@
   - [ ] `assertNotTrustedClient`
     - [x] Refuse deletion, secret rotation and a scope update of an operator-managed client with 400 invalid_client and keep it unchanged, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_immutable_clients_test.go#L50))
   - [ ] `getClient`
-  - [ ] `mergeDiscoveryMetadata`
+  - [x] `mergeDiscoveryMetadata` ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L382))
+    - [x] Merge client discoveries' discovery fields in order under the provider's, a later discovery winning, keeping every field the provider declares except the metadata document flag, which an extension cannot replace ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L382))
   - [ ] `decryptStoredClientSecret`
   - [ ] `storeClientSecret`
     - [x] Seal client secrets for their client in encrypted mode, authenticate them exactly, refuse a value copied to another client, reseal on rotation and use a host encrypt and decrypt pair, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_secret_storage_test.go#L21))
@@ -850,7 +854,7 @@
   - [ ] Endpoints
     - [ ] `GET /.well-known/oauth-authorization-server` (server API only)
       - [x] Discover endpoints and capabilities for the machine grant, then register a client, verify a signed token and revoke an opaque token ([test](../../../conformance/oauth-issuer-metadata.mjs#L97))
-      - [x] Retrieve the native issuer document, preserve escaped issuer paths and omit disabled endpoints and unavailable store capabilities ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L66))
+      - [x] Retrieve the native issuer document, preserve escaped issuer paths and omit disabled endpoints and unavailable store capabilities ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L67))
       - [x] Publish the same grant, response type, scope, authentication method, DPoP and back-channel logout fields as another runtime for a machine-only issuer ([test](../../../conformance/oauth-issuer-metadata.mjs#L67))
     - [ ] `GET /.well-known/openid-configuration` (server API only)
       - [x] Start from a custom issuer URL, discover the endpoints, complete PKCE sign-in and verify the ID token, access-token hash and UserInfo subject using an independent Go client ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L23))
@@ -990,6 +994,7 @@
     - [x] `userinfo` ([test](../../../adapters/sqlstore/oauth_introspection_test.go#L146))
       - [x] Share the default 60-request limit, explicit limits and the host global limit on the UserInfo route ([test](../../../adapters/sqlstore/oauth_introspection_test.go#L146))
   - [ ] Provider extensions
+    - [x] Resolve discovered clients by their stored discovery ID, failing closed when it is removed, and only add discovery fields the provider does not own, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_discovery_test.go#L233))
     - [ ] `authorization`
     - [ ] `url`
     - [ ] `replayStore`

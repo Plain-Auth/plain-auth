@@ -274,6 +274,9 @@ func (opts Options) publicClientPrelogin(c auth.EndpointContext) (any, error) {
 	if !ok {
 		return nil, &auth.APIError{Status: 501, Code: "OAUTH_CLIENT_DIRECTORY_UNAVAILABLE", Message: "The configured store does not support OAuth client lookup"}
 	}
+	if c, err = opts.discoverRequestClient(c, id); err != nil {
+		return nil, err
+	}
 	client, err := store.PublicOAuthClient(c.Request.Context(), id)
 	if errors.Is(err, ErrClientNotFound) {
 		return nil, &auth.OAuthError{Status: 404, Code: "not_found", Description: "client not found"}
@@ -308,6 +311,12 @@ func (opts Options) clientEndpoint(action string) auth.Endpoint {
 		store, ok := c.Store().(ClientDirectoryStore)
 		if !ok {
 			return nil, &auth.APIError{Status: 501, Code: "OAUTH_CLIENT_DIRECTORY_UNAVAILABLE", Message: "The configured store does not support OAuth client lookup"}
+		}
+		if id != "" {
+			if c, err = opts.discoverRequestClient(c, id); err != nil {
+				return nil, err
+			}
+			ctx = c.Request.Context()
 		}
 		notFound := &auth.OAuthError{Status: 404, Code: "not_found", Description: "client not found"}
 		if action == "public-client" {

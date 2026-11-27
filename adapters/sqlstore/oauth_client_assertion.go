@@ -44,7 +44,7 @@ func (s *Store) useOAuthClientAssertion(ctx context.Context, id, digest string, 
 		return err
 	}
 	defer tx.Rollback()
-	client, err := scanMachineClient(tx.QueryRowContext(ctx, s.readForUpdate(machineClientSelect), id), id)
+	client, err := scanMachineClient(tx.QueryRowContext(ctx, s.readForUpdate(machineClientSelect), id, op.ResolvedDiscovery(ctx, id)), id)
 	if err != nil {
 		return err
 	}

@@ -51,7 +51,7 @@ func (s *Store) LookupOAuthUserInfo(ctx context.Context, query op.UserInfoLookup
 		}
 	}
 	if query.IncludeClient {
-		client, err := scanClientDetails(tx.QueryRowContext(ctx, s.bind(clientDetailsSelect+localClientFilter), clientID))
+		client, err := scanClientDetails(tx.QueryRowContext(ctx, s.bind(clientDetailsSelect+clientFilter), clientID, op.ResolvedDiscovery(ctx, clientID)))
 		if err != nil {
 			return nil, err
 		}

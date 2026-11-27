@@ -73,6 +73,9 @@ type AuthorizationServerMetadata struct {
 	// The back-channel logout flags are always published, false included.
 	BackchannelLogoutSupported        bool `json:"backchannel_logout_supported"`
 	BackchannelLogoutSessionSupported bool `json:"backchannel_logout_session_supported"`
+	// ClientIDMetadataDocumentSupported is published by a client discovery's
+	// Metadata, such as the one for client ID metadata documents.
+	ClientIDMetadataDocumentSupported bool `json:"client_id_metadata_document_supported,omitempty"`
 }
 
 // Public discovery requires HTTPS. Loopback HTTP supports local development.
@@ -193,7 +196,8 @@ func (opts Options) issuerDocuments(a *auth.Auth, store auth.Store) (map[string]
 	tokenMethods := opts.Metadata.TokenAuthMethods
 	if tokenMethods == nil {
 		tokenMethods = methods
-		if (canAuthorize || canRefresh) && opts.Registration.Enabled && opts.Registration.AllowUnauthenticated {
+		// Unauthenticated registration and discovered clients are public.
+		if (canAuthorize || canRefresh) && (opts.Registration.Enabled && opts.Registration.AllowUnauthenticated || len(opts.discoveries) > 0) {
 			tokenMethods = append([]string{"none"}, methods...)
 		}
 	}

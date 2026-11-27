@@ -29,7 +29,7 @@ func (s *Store) WithMachineResources(ctx context.Context, clientID string, ids [
 			return err
 		}
 	}
-	client, err := scanMachineClient(tx.QueryRowContext(ctx, s.readForUpdate(machineClientSelect), clientID), clientID)
+	client, err := scanMachineClient(tx.QueryRowContext(ctx, s.readForUpdate(machineClientSelect), clientID, op.ResolvedDiscovery(ctx, clientID)), clientID)
 	if err != nil {
 		return err
 	}

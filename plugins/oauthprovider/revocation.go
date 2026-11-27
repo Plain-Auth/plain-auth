@@ -49,6 +49,9 @@ func (opts Options) revoke(c auth.EndpointContext) (any, error) {
 	if !ok {
 		return nil, &auth.APIError{Status: 501, Code: "OAUTH_REVOCATION_STORE_UNAVAILABLE", Message: "The configured store does not support OAuth token revocation"}
 	}
+	if c, err = opts.discoverRequestClient(c, req.client.id); err != nil {
+		return nil, tokenEndpointError(c.ResponseHeader, req.challenge, err)
+	}
 	ctx := c.Request.Context()
 	first, err := opts.authenticateClient(c, store, req.client, "/oauth2/revoke")
 	if err != nil {

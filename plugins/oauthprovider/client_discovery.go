@@ -20,13 +20,19 @@ type ClientDiscovery struct {
 	// Matches reports whether the discovery handles a client ID.
 	Matches func(clientID string) bool
 	// Resolve returns the client behind an ID, registering its document
-	// through req.Register, or nil when the discovery does not know it.
+	// through req.Register, or nil when the discovery does not know it. The
+	// provider reads the client from the store afterwards, so a resolved
+	// client must be stored through req.Register.
 	Resolve func(ctx context.Context, req DiscoveryRequest) (*DiscoveredClient, error)
 	// AllowCrossOriginJWKSURI lets a client's jwks_uri live outside its
 	// client ID's origin and the trusted origins. It runs outside any store
 	// transaction; false or an error refuses the jwks_uri, and an error is
 	// logged.
 	AllowCrossOriginJWKSURI func(ctx context.Context, clientID, jwksURI string) (bool, error)
+	// Metadata adds fields to the issuer's discovery documents, such as
+	// client_id_metadata_document_supported. A later discovery's field wins
+	// over an earlier one's; the provider's own fields always win.
+	Metadata map[string]any
 }
 
 // DiscoveryRequest is what a client discovery resolves. Resolve receives the

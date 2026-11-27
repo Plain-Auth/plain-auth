@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"math"
 	"net/http"
 	"net/url"
@@ -44,6 +45,10 @@ type Extension struct {
 	// request for one is handed to its handler before any credential is
 	// read, and discovery and registration accept it.
 	Grants map[string]GrantHandler
+	// ClientDiscoveries resolve clients the provider has not registered.
+	// Every extension's discoveries are consulted in order, the first match
+	// winning; IDs must be unique across extensions.
+	ClientDiscoveries []ClientDiscovery
 }
 
 // Confirmation is an RFC 7800 sender constraint. Exactly one member is set.
@@ -234,6 +239,9 @@ type MetadataInput struct {
 	Type   string
 	Server AuthorizationServerMetadata
 	OpenID *OpenIDProviderMetadata
+	// Discovery holds the client discoveries' fields already in the
+	// document, which an extension cannot replace.
+	Discovery map[string]any
 }
 
 // providerMetadataFields lists every JSON field the served document's type
@@ -288,13 +296,34 @@ func (opts Options) extendMetadata(a *auth.Auth, document any, input MetadataInp
 	if err := json.Unmarshal(raw, &merged); err != nil {
 		return nil, err
 	}
+	// The client discoveries' fields go under the provider's, a later
+	// discovery winning, as another runtime merges them. A field the
+	// provider's document declares stays the provider's even when absent,
+	// except the flag only a discovery publishes.
+	owned := providerMetadataFields(input.OpenID != nil)
+	discovery := map[string]any{}
+	for _, d := range opts.discoveries {
+		maps.Copy(discovery, d.Metadata)
+	}
+	for name, value := range discovery {
+		if _, present := merged[name]; present || owned[name] && name != "client_id_metadata_document_supported" {
+			delete(discovery, name)
+			continue
+		}
+		encoded, err := json.Marshal(value)
+		if err != nil {
+			return nil, err
+		}
+		merged[name] = encoded
+	}
+	input.Discovery = discovery
 	added := map[string]bool{}
 	for _, extension := range opts.Extensions {
 		if extension.Metadata == nil {
 			continue
 		}
 		for name, value := range extension.Metadata(input) {
-			if providerMetadataFields(input.OpenID != nil)[name] {
+			if _, fromDiscovery := discovery[name]; owned[name] || fromDiscovery {
 				continue
 			}
 			if added[name] {

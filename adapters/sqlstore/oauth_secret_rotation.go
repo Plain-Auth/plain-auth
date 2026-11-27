@@ -25,7 +25,7 @@ func (s *Store) RotateOAuthClientSecret(ctx context.Context, change op.ClientSec
 	var rowID, clientID string
 	var owner, tenant, method, oldSecret *string
 	const selectSecret = `SELECT "id","clientId","userId","referenceId","tokenEndpointAuthMethod","clientSecret" FROM "oauthClient"`
-	err = tx.QueryRowContext(ctx, s.readForUpdate(selectSecret+localClientFilter), change.ClientID).Scan(&rowID, &clientID, &owner, &tenant, &method, &oldSecret)
+	err = tx.QueryRowContext(ctx, s.readForUpdate(selectSecret+clientFilter), change.ClientID, op.ResolvedDiscovery(ctx, change.ClientID)).Scan(&rowID, &clientID, &owner, &tenant, &method, &oldSecret)
 	if errors.Is(err, sql.ErrNoRows) || (err == nil && clientID != change.ClientID) {
 		return op.ClientDetails{}, op.ErrClientNotFound
 	}

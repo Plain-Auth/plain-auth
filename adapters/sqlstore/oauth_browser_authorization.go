@@ -15,7 +15,7 @@ import (
 
 var _ op.BrowserAuthorizationStore = (*Store)(nil)
 
-const browserClientSelect = "SELECT " + machineClientColumns + `,"scopes","redirectUris","requirePKCE","skipConsent","applicationType" FROM "oauthClient"` + localClientFilter
+const browserClientSelect = "SELECT " + machineClientColumns + `,"scopes","redirectUris","requirePKCE","skipConsent","applicationType" FROM "oauthClient"` + clientFilter
 
 func scanBrowserClient(row rowScanner, id string) (op.BrowserClient, error) {
 	var c op.BrowserClient
@@ -40,7 +40,7 @@ func scanBrowserClient(row rowScanner, id string) (op.BrowserClient, error) {
 }
 
 func (s *Store) LookupAuthorizationClient(ctx context.Context, id string) (op.BrowserClient, error) {
-	return scanBrowserClient(s.db.QueryRowContext(ctx, s.bind(browserClientSelect), id), id)
+	return scanBrowserClient(s.db.QueryRowContext(ctx, s.bind(browserClientSelect), id, op.ResolvedDiscovery(ctx, id)), id)
 }
 
 func (s *Store) IssueBrowserCode(ctx context.Context, input op.BrowserCodeIssue) error {
@@ -74,7 +74,7 @@ func (s *Store) finishBrowserCode(ctx context.Context, input op.BrowserCodeIssue
 	}
 	defer tx.Rollback()
 	if action != declineBrowserConsent {
-		client, err := scanBrowserClient(tx.QueryRowContext(ctx, s.readForUpdate(browserClientSelect), input.Client.ClientID), input.Client.ClientID)
+		client, err := scanBrowserClient(tx.QueryRowContext(ctx, s.readForUpdate(browserClientSelect), input.Client.ClientID, op.ResolvedDiscovery(ctx, input.Client.ClientID)), input.Client.ClientID)
 		if err != nil {
 			return err
 		}
