@@ -126,7 +126,9 @@
   - [ ] `Subscription`
     - [x] Record the plan, reference, status, trial, billing period, interval, seats, cancellation, schedule and end dates from signed subscription events on three SQL engines ([test](../../../adapters/sqlstore/stripe_lifecycle_test.go#L23))
   - [ ] `SubscriptionOptions`
-    - [ ] `plans`
+    - [x] `plans` ([test](../../../adapters/sqlstore/stripe_loaded_plans_test.go#L28))
+      - [x] Serve fixed or loaded plans, loading them outside any store transaction for each subscription request and plan webhook, and refuse a failing or invalid loader with FAILED_TO_FETCH_PLANS, on three SQL engines ([test](../../../adapters/sqlstore/stripe_loaded_plans_test.go#L28))
+      - [x] Refuse both or neither of Plans and LoadPlans, and run a seat worker on loaded plans ([test](../../../plugins/stripe/plans_test.go#L143))
     - [x] `requireEmailVerification` ([test](../../../adapters/sqlstore/stripe_options_test.go#L131))
       - [x] Require verified email before starting Checkout when configured ([test](../../../adapters/sqlstore/stripe_management_test.go#L226))
       - [x] Let an unverified owner reach Checkout by default and, when required, refuse new checkouts and plan changes before contacting Stripe, on three SQL engines ([test](../../../adapters/sqlstore/stripe_options_test.go#L131))
@@ -205,7 +207,8 @@
     - [ ] Subscription Management
       - [x] Change, schedule, cancel, restore and list an owner's existing subscription through the browser client on both runtimes ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L417))
       - [x] Create a personal or organization subscription through Checkout with the browser client and record it from its signed completion on both runtimes ([test](../../../conformance/stripe-organization-fixture.mjs#L355))
-      - [ ] Defining Plans
+      - [x] Defining Plans ([test](../../../adapters/sqlstore/stripe_loaded_plans_test.go#L176))
+        - [x] Define plans statically or load them at request time, selling a changed price at once while a retired one keeps its subscribers, on three SQL engines ([test](../../../adapters/sqlstore/stripe_loaded_plans_test.go#L176))
       - [ ] Creating a Subscription
         - [x] Reserve an owner-scoped checkout, send the configured recurring price and return the same checkout on retries ([test](../../../adapters/sqlstore/subscriptions_test.go#L208))
         - [x] Reuse an existing Stripe customer when starting a monthly subscription ([test](../../../adapters/sqlstore/subscriptions_test.go#L345))
@@ -486,13 +489,13 @@
         - [x] Notify after a signed deletion, including redeliveries after an earlier terminal update ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L592))
         - [x] Preserve the organization’s local subscription identity across concurrent signed deletion deliveries ([test](../../../adapters/sqlstore/stripe_lifecycle_callbacks_test.go#L169))
       - [ ] Plan Configuration
-        - [x] `name` ([test](../../../plugins/stripe/plans_test.go#L64))
+        - [x] `name` ([test](../../../plugins/stripe/plans_test.go#L66))
           - [x] Match a configured mixed-case plan name case-insensitively when starting Checkout on three SQL engines ([test](../../../adapters/sqlstore/subscriptions_test.go#L161))
-          - [x] Trim plan names and compare them in lowercase, refusing empty and duplicate names at startup ([test](../../../plugins/stripe/plans_test.go#L64))
+          - [x] Trim plan names and compare them in lowercase, refusing empty and duplicate names at startup ([test](../../../plugins/stripe/plans_test.go#L66))
           - [x] Store a padded plan name in lowercase and match a request naming it in another case on three SQL engines ([test](../../../adapters/sqlstore/stripe_plan_rules_test.go#L114))
         - [ ] `priceId`
           - [x] Send the plan's configured monthly price to Checkout and refuse a client-supplied price on three SQL engines ([test](../../../adapters/sqlstore/subscriptions_test.go#L344))
-          - [x] Require a monthly price ID on every plan, refuse malformed IDs and a price shared by two plans or intervals, at startup ([test](../../../plugins/stripe/plans_test.go#L64))
+          - [x] Require a monthly price ID on every plan, refuse malformed IDs and a price shared by two plans or intervals, at startup ([test](../../../plugins/stripe/plans_test.go#L66))
           - [x] Refuse a plan price that is not monthly with an interval count of one before reserving a purchase on three SQL engines ([test](../../../adapters/sqlstore/stripe_plan_rules_test.go#L129))
         - [ ] `lookupKey`
         - [x] `annualDiscountPriceId` ([test](../../../adapters/sqlstore/stripe_plan_rules_test.go#L123))
@@ -503,9 +506,9 @@
         - [ ] `annualDiscountLookupKey`
         - [x] `limits` ([test](../../../adapters/sqlstore/stripe_options_test.go#L376))
           - [x] Return numbers, booleans, arrays and nested objects from plan limits on personal and organization lists, unaffected by later changes to the host's map, on three SQL engines ([test](../../../adapters/sqlstore/stripe_options_test.go#L376))
-          - [x] Refuse plan limits that are not JSON values of at most 8 KiB at startup ([test](../../../plugins/stripe/plans_test.go#L15))
+          - [x] Refuse plan limits that are not JSON values of at most 8 KiB at startup ([test](../../../plugins/stripe/plans_test.go#L17))
         - [ ] `group`
-          - [x] Accept a plan group as an application label alongside its limits ([test](../../../plugins/stripe/plans_test.go#L15))
+          - [x] Accept a plan group as an application label alongside its limits ([test](../../../plugins/stripe/plans_test.go#L17))
         - [ ] `seatPriceId`
           - [x] Count organization members for a monthly licensed checkout and ignore the caller’s seat override ([test](../../../conformance/stripe-organization-fixture.mjs#L223))
           - [x] Purchase one fixed monthly base unit and a separate licensed unit for each member with the browser client ([test](../../../conformance/stripe-organization-fixture.mjs#L221))
@@ -518,7 +521,7 @@
         - [ ] `prorationBehavior`
           - [x] Update the existing Stripe item when an invitation is accepted or a member is removed, using default proration ([test](../../../conformance/stripe-organization-fixture.mjs#L244))
           - [x] Configure monthly seat proration and reject unknown behavior or an unsupported plan shape ([test](../../../plugins/stripe/seats_test.go#L9))
-          - [x] Refuse an unknown proration behavior on licensed, metered add-on and membership plans at startup ([test](../../../plugins/stripe/plans_test.go#L39))
+          - [x] Refuse an unknown proration behavior on licensed, metered add-on and membership plans at startup ([test](../../../plugins/stripe/plans_test.go#L41))
           - [x] Report the configured proration behavior of licensed, metered add-on and membership plans, or create_prorations when unset ([test](../../../plugins/stripe/plans_internal_test.go#L12))
         - [ ] `lineItems`
           - [x] Configure up to 19 separate metered add-ons, validate price roles and isolate the installed plan from later host mutations ([test](../../../plugins/stripe/metered_addons_test.go#L11))

@@ -65,6 +65,21 @@ A checkout expires after 23 hours. Its signed expiration event releases the rese
 
 Plan names are trimmed and stored in lowercase, and a request names a plan in any case. Every plan needs a monthly `PriceID`; `AnnualPriceID` is optional, and an annual purchase of a plan without one answers 400 "Price ID not found for the selected plan", as in another runtime, but before any Stripe call, where another runtime first finds or creates the customer and lists its subscriptions. Each price names exactly one plan and interval, and a duplicate name or a malformed price ID stops startup. `PriceID` must be a monthly price and `AnnualPriceID` a yearly price, each with an interval count of one, where another runtime accepts any recurring price: a plan models a month and a year, and that interval drives the list, plan changes and Checkout. Another price answers 409 `UNSUPPORTED_SUBSCRIPTION_ITEM` before any purchase is reserved. A yearly subscription of a plan without an annual price lists the monthly price ID, as in another runtime. [Plan rule tests](../plugins/stripe/plans_test.go) · [Price rule tests](../adapters/sqlstore/stripe_plan_rules_test.go)
 
+### Load plans at request time
+
+Set `LoadPlans` instead of `Plans` to read the plans when they are used, as another runtime accepts a function for its plans:
+
+```go
+Subscriptions: &stripeplugin.SubscriptionOptions{
+    Client: stripeClient,
+    LoadPlans: func(ctx context.Context) ([]stripeplugin.Plan, error) {
+        return planCache.Current(ctx) // cache inside the loader
+    },
+},
+```
+
+The plugin calls it once for each request to a subscription route, for each Checkout or subscription webhook event, and for each seat-worker pass, never inside a store transaction; other events do not load plans. One operation uses the plans it loaded throughout, where another runtime calls its function at each use. The result is validated as `Plans` is, and the store and organization options must support it, where another runtime uses its plans unchecked: an error, a panic or an invalid result answers 500 `FAILED_TO_FETCH_PLANS`, and on the webhook the 500 makes Stripe redeliver, where another runtime logs the failure and acknowledges the event. The loader's error is logged without its text. A pending purchase stays bound to its stored price, so a retry after the price changed answers 409. When a plan moves to a new price, keep the old one in `RetiredPriceIDs` while subscriptions use it; otherwise they become `unmapped`. The seat worker needs only the subscription options with `LoadPlans`, and a pass whose plans have no membership plan does nothing until one returns. [Loaded plan tests](../adapters/sqlstore/stripe_loaded_plans_test.go) · [Plan source tests](../plugins/stripe/plans_test.go)
+
 ## Customize the Checkout Session
 
 Set `CheckoutSessionParams` to add Stripe Checkout Session parameters to a new purchase, as another runtime's `getCheckoutSessionParams` does:

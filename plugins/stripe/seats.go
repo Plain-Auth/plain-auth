@@ -44,6 +44,11 @@ func NewSeatWorker(store SeatStore, options SubscriptionOptions) (*SeatWorker, e
 	if err != nil {
 		return nil, err
 	}
+	// Loaded plans are read on each pass, and need no organization options:
+	// the worker runs no Checkout or callbacks.
+	if s.loadPlans != nil {
+		return &SeatWorker{store, s}, nil
+	}
 	for _, p := range s.plans {
 		if p.SeatPriceID != "" {
 			return &SeatWorker{store, s}, nil
@@ -80,8 +85,27 @@ func (w *SeatWorker) SyncOnce(ctx context.Context, limit int) error {
 	if limit < 1 || limit > 1000 {
 		return errors.New("stripe: seat worker batch size must be 1 through 1000")
 	}
+	subs := w.subscriptions
+	if subs.loadPlans != nil {
+		catalog, err := subs.loadCatalog(ctx)
+		if err != nil {
+			return err
+		}
+		view := *subs
+		view.planCatalog = catalog
+		subs = &view
+	}
+	// A pass with no membership plan does nothing: queued seat work waits
+	// until one returns.
+	seats := false
+	for _, plan := range subs.plans {
+		seats = seats || plan.SeatPriceID != ""
+	}
+	if !seats {
+		return nil
+	}
 	var failures []error
-	for _, plan := range w.subscriptions.plans {
+	for _, plan := range subs.plans {
 		if plan.SeatPriceID != "" {
 			if err := w.store.DiscoverStripeSeats(ctx, plan, limit); err != nil {
 				failures = append(failures, err)
@@ -97,19 +121,18 @@ func (w *SeatWorker) SyncOnce(ctx context.Context, limit int) error {
 			return err
 		}
 		scoped := context.WithValue(ctx, organizationScopeKey{}, OrganizationScope{ID: group})
-		if err := w.syncGroup(scoped, group); err != nil {
+		if err := w.syncGroup(scoped, subs, group); err != nil {
 			failures = append(failures, fmt.Errorf("organization %s: %w", group, errors.Join(err, w.store.RequeueStripeSeats(ctx, group))))
 		}
 	}
 	return errors.Join(failures...)
 }
 
-func (w *SeatWorker) syncGroup(ctx context.Context, group string) error {
+func (w *SeatWorker) syncGroup(ctx context.Context, s *subscriptions, group string) error {
 	job, err := w.store.ClaimStripeSeats(ctx, group)
 	if err != nil || job == nil {
 		return err
 	}
-	s := w.subscriptions
 	plan := s.plans[job.Plan]
 	if plan.SeatPriceID == "" || plan.SeatPriceID != job.Price {
 		return ErrSeatReconciliation

@@ -52258,5 +52258,26 @@
       "marker": "{components.WebhookEventTypeCustomerStateChanged, ",
       "complete": true
     }
+  ],
+  "plugin-symbol/stripe/SubscriptionOptions/plans": [
+    {
+      "label": "Serve fixed or loaded plans, loading them outside any store transaction for each subscription request and plan webhook, and refuse a failing or invalid loader with FAILED_TO_FETCH_PLANS, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_loaded_plans_test.go",
+      "marker": "func TestLoadedStripePlans(t *testing.T) {",
+      "complete": true
+    },
+    {
+      "label": "Refuse both or neither of Plans and LoadPlans, and run a seat worker on loaded plans",
+      "test": "plugins/stripe/plans_test.go",
+      "marker": "func TestPlanSources(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L173": [
+    {
+      "label": "Define plans statically or load them at request time, selling a changed price at once while a retired one keeps its subscribers, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_loaded_plans_test.go",
+      "marker": "// The plans move to a new price, keeping the old one retired: the",
+      "complete": true
+    }
   ]
 }

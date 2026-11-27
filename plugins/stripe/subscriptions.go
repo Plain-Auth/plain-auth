@@ -103,7 +103,18 @@ func cloneLimits(in map[string]any) map[string]any {
 
 type SubscriptionOptions struct {
 	Client *sdk.Client
-	Plans  []Plan
+	// Plans is a fixed plan list. Set Plans or LoadPlans, not both.
+	Plans []Plan
+	// LoadPlans returns the current plans, as another runtime accepts a
+	// function for its plans. The plugin calls it for each request to a
+	// subscription route, for each Checkout and subscription webhook event,
+	// and for each seat-worker pass, never inside a store transaction. It
+	// must be safe for concurrent use; cache inside it. Its result is
+	// validated as Plans is, and an error, a panic or an invalid result fails
+	// that operation with ErrFetchPlans, where another runtime uses its
+	// plans unchecked. Keep a plan's earlier prices in RetiredPriceIDs while
+	// subscriptions use them.
+	LoadPlans func(context.Context) ([]Plan, error)
 	// RequireEmailVerification restricts starting Checkout to a verified owner.
 	RequireEmailVerification bool
 	// CheckoutSessionParams adds Stripe Checkout Session parameters, such as
@@ -231,33 +242,55 @@ var (
 
 type subscriptionPrice struct{ plan, interval string }
 
-type subscriptions struct {
-	checkoutParams                              func(context.Context, CheckoutSessionInput) (*sdk.CheckoutSessionCreateParams, error)
-	organization                                *OrganizationOptions
+// planCatalog is one validated set of plans. An operation uses one catalog
+// throughout.
+type planCatalog struct {
+	plans                                       map[string]Plan
 	prices                                      map[string]subscriptionPrice
 	retired                                     map[string]string // retired price ID to plan name
-	client                                      *sdk.Client
-	plans                                       map[string]Plan
-	requireEmailVerification                    bool
 	hasMeteredAddons                            bool
 	observeTrialStarts, observeTrialTransitions bool
-	onUpdate                                    func(context.Context, SubscriptionUpdate) error
-	onCreated                                   func(context.Context, SubscriptionCreated) error
-	onCancel                                    func(context.Context, SubscriptionCancellation) error
-	onDeleted                                   func(context.Context, SubscriptionEvent) error
-	onComplete                                  func(context.Context, SubscriptionComplete) error
+}
+
+// ErrFetchPlans reports that LoadPlans failed or returned unusable plans.
+var ErrFetchPlans = billingError(500, "FAILED_TO_FETCH_PLANS", "Failed to fetch plans")
+
+type subscriptions struct {
+	// planCatalog holds fixed plans; with LoadPlans it is empty, and each
+	// operation uses the view current returns.
+	*planCatalog
+	loadPlans                func(context.Context) ([]Plan, error)
+	checkoutParams           func(context.Context, CheckoutSessionInput) (*sdk.CheckoutSessionCreateParams, error)
+	organization             *OrganizationOptions
+	client                   *sdk.Client
+	requireEmailVerification bool
+	onUpdate                 func(context.Context, SubscriptionUpdate) error
+	onCreated                func(context.Context, SubscriptionCreated) error
+	onCancel                 func(context.Context, SubscriptionCancellation) error
+	onDeleted                func(context.Context, SubscriptionEvent) error
+	onComplete               func(context.Context, SubscriptionComplete) error
 }
 
 func configureSubscriptions(o *SubscriptionOptions) (*subscriptions, error) {
 	if o == nil {
 		return nil, nil
 	}
-	if o.Client == nil || len(o.Plans) == 0 {
-		return nil, errors.New("stripe: subscriptions require a client and plans")
+	if o.Client == nil || (len(o.Plans) == 0) == (o.LoadPlans == nil) {
+		return nil, errors.New("stripe: subscriptions require a client and either Plans or LoadPlans")
 	}
-	s := &subscriptions{client: o.Client, plans: map[string]Plan{}, requireEmailVerification: o.RequireEmailVerification, onUpdate: o.OnSubscriptionUpdate, onCreated: o.OnSubscriptionCreated, onCancel: o.OnSubscriptionCancel, onDeleted: o.OnSubscriptionDeleted, onComplete: o.OnSubscriptionComplete, checkoutParams: o.CheckoutSessionParams}
-	s.prices, s.retired = make(map[string]subscriptionPrice), make(map[string]string)
-	for _, p := range o.Plans {
+	s := &subscriptions{client: o.Client, loadPlans: o.LoadPlans, requireEmailVerification: o.RequireEmailVerification, onUpdate: o.OnSubscriptionUpdate, onCreated: o.OnSubscriptionCreated, onCancel: o.OnSubscriptionCancel, onDeleted: o.OnSubscriptionDeleted, onComplete: o.OnSubscriptionComplete, checkoutParams: o.CheckoutSessionParams}
+	catalog, err := newPlanCatalog(o.Plans)
+	if err != nil {
+		return nil, err
+	}
+	s.planCatalog = catalog
+	return s, nil
+}
+
+// newPlanCatalog validates plans and indexes their prices.
+func newPlanCatalog(plans []Plan) (*planCatalog, error) {
+	s := &planCatalog{plans: map[string]Plan{}, prices: make(map[string]subscriptionPrice), retired: make(map[string]string)}
+	for _, p := range plans {
 		if p.FreeTrial != nil {
 			trial := *p.FreeTrial
 			if trial.Days < 1 {
@@ -321,9 +354,90 @@ func configureSubscriptions(o *SubscriptionOptions) (*subscriptions, error) {
 	return s, nil
 }
 
+// check reports a store or organization option the catalog's plans need.
+func (s *planCatalog) check(store auth.Store, org *OrganizationOptions) error {
+	if s.observeTrialTransitions {
+		if _, ok := store.(SubscriptionNotificationStore); !ok {
+			return errors.New("stripe: subscription lifecycle callbacks require a store with transition receipts")
+		}
+	}
+	if s.observeTrialStarts {
+		if _, ok := store.(CheckoutCompletionStore); !ok {
+			return errors.New("stripe: checkout completion callbacks require a store with settled checkout and event receipts")
+		}
+	}
+	for _, plan := range s.plans {
+		if plan.FreeTrial != nil {
+			if _, ok := store.(TrialCheckoutStore); !ok {
+				return errors.New("stripe: free trials require a store with reservation-bound trial eligibility")
+			}
+		}
+		// A membership plan cannot bill correctly without the policy and
+		// seat tracking, so it fails at startup, where another runtime
+		// logs an error or refuses each organization request.
+		if plan.SeatPriceID != "" {
+			if org == nil || org.AuthorizeReference == nil {
+				return errors.New("stripe: membership-based billing requires organization authorization")
+			}
+			if _, ok := store.(SeatStore); !ok {
+				return errors.New("stripe: store does not support automatic seats")
+			}
+		}
+	}
+	return nil
+}
+
+// current returns s for fixed plans, or a copy holding freshly loaded plans
+// that the store and organization options support, loaded outside any
+// store transaction. Plans load once per operation, which then uses that
+// one catalog throughout.
+func (s *subscriptions) current(ctx context.Context, store auth.Store) (*subscriptions, error) {
+	if s.loadPlans == nil {
+		return s, nil
+	}
+	catalog, err := s.loadCatalog(ctx)
+	if err == nil {
+		err = catalog.check(store, s.organization)
+	}
+	if err != nil {
+		return nil, err
+	}
+	view := *s
+	view.planCatalog = catalog
+	return &view, nil
+}
+
+// loadCatalog runs LoadPlans, recovering a panic, and validates the result.
+func (s *subscriptions) loadCatalog(ctx context.Context) (catalog *planCatalog, err error) {
+	defer func() {
+		if recover() != nil {
+			catalog, err = nil, errors.New("stripe: LoadPlans panicked")
+		}
+	}()
+	plans, err := s.loadPlans(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return newPlanCatalog(plans)
+}
+
+// withPlans runs a subscription route with the plans current for the
+// request. A loader failure is logged without its text and answers
+// ErrFetchPlans.
+func (s *subscriptions) withPlans(route func(*subscriptions, auth.EndpointContext) (any, error)) func(auth.EndpointContext) (any, error) {
+	return func(c auth.EndpointContext) (any, error) {
+		view, err := s.current(c.Request.Context(), c.Store())
+		if err != nil {
+			c.Auth.Logger().ErrorContext(c.Request.Context(), "Stripe LoadPlans failed")
+			return nil, ErrFetchPlans
+		}
+		return route(view, c)
+	}
+}
+
 // configureRetiredPrices checks that each retired price is a price ID used
 // nowhere else in the catalog, and indexes it by plan.
-func (s *subscriptions) configureRetiredPrices() error {
+func (s *planCatalog) configureRetiredPrices() error {
 	used := make(map[string]bool)
 	for price := range s.prices {
 		used[price] = true
@@ -360,7 +474,7 @@ func (s *subscriptions) configureRetiredPrices() error {
 // Any other price maps to nothing, so its subscription is unmapped, where
 // another runtime keeps an unknown single price's stored plan: a price
 // nobody configured must not keep a plan's entitlements.
-func (s *subscriptions) priceOf(p *sdk.Price) (subscriptionPrice, bool) {
+func (s *planCatalog) priceOf(p *sdk.Price) (subscriptionPrice, bool) {
 	if p == nil {
 		return subscriptionPrice{}, false
 	}

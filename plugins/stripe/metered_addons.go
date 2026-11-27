@@ -12,7 +12,7 @@ import (
 // A subscription Checkout accepts at most twenty recurring price lines.
 const maxRecurringLines = 20
 
-func (s *subscriptions) validateMeteredAddons() error {
+func (s *planCatalog) validateMeteredAddons() error {
 	reserved := make(map[string]bool)
 	for _, plan := range s.plans {
 		for _, id := range []string{plan.PriceID, plan.AnnualPriceID, plan.SeatPriceID} {

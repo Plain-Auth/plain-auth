@@ -1,6 +1,8 @@
 package stripe_test
 
 import (
+	"context"
+	"errors"
 	"math"
 	"strings"
 	"testing"
@@ -135,3 +137,40 @@ func TestRetiredPriceConfiguration(t *testing.T) {
 		t.Error("100 retired prices were refused", err)
 	}
 }
+
+// Subscriptions take Plans or LoadPlans, never both or neither, and a seat
+// worker with loaded plans needs no organization options.
+func TestPlanSources(t *testing.T) {
+	const message = "stripe: subscriptions require a client and either Plans or LoadPlans"
+	load := func(context.Context) ([]stripeplugin.Plan, error) { return nil, nil }
+	pro := []stripeplugin.Plan{{Name: "pro", PriceID: "price_pro"}}
+	for name, opts := range map[string]stripeplugin.SubscriptionOptions{
+		"both":    {Client: stripesdk.NewClient("sk_test_local"), Plans: pro, LoadPlans: load},
+		"neither": {Client: stripesdk.NewClient("sk_test_local")},
+	} {
+		_, err := authn.New(authn.Options{Store: memory.New(), BaseURL: "http://auth.test", Secret: "test-secret-0123456789-abcdefghijk",
+			Plugins: []authn.Plugin{stripeplugin.New(stripeplugin.Options{WebhookSecret: "whsec_local", Subscriptions: &opts})}})
+		if err == nil || err.Error() != message {
+			t.Error("a plan source was accepted", name, err)
+		}
+	}
+	worker, err := stripeplugin.NewSeatWorker(seatStoreStub{}, stripeplugin.SubscriptionOptions{Client: stripesdk.NewClient("sk_test_local"), LoadPlans: func(context.Context) ([]stripeplugin.Plan, error) {
+		return pro, nil
+	}})
+	if err != nil {
+		t.Fatal("a seat worker with loaded plans was refused", err)
+	}
+	// A pass whose loaded plans have no membership plan touches no store.
+	if err := worker.SyncOnce(t.Context(), 10); err != nil {
+		t.Fatal("a pass without membership plans failed", err)
+	}
+	failing, _ := stripeplugin.NewSeatWorker(seatStoreStub{}, stripeplugin.SubscriptionOptions{Client: stripesdk.NewClient("sk_test_local"), LoadPlans: func(context.Context) ([]stripeplugin.Plan, error) {
+		return nil, errors.New("plans unavailable")
+	}})
+	if err := failing.SyncOnce(t.Context(), 10); err == nil {
+		t.Fatal("a pass ignored a loader failure")
+	}
+}
+
+// seatStoreStub satisfies the seat worker's store for a configuration check.
+type seatStoreStub struct{ stripeplugin.SeatStore }

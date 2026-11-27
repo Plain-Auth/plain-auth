@@ -3,7 +3,6 @@ package stripe
 import (
 	"context"
 	"errors"
-	"net/http"
 	"net/url"
 	"strings"
 	"time"
@@ -205,8 +204,4 @@ func (s *subscriptions) checkoutReceipt(c auth.EndpointContext, a CheckoutAttemp
 		return CheckoutReceipt{}, ErrCheckoutReconcile
 	}
 	return CheckoutReceipt{RemoteID: sub.ID, Status: string(sub.Status), PeriodStart: item.CurrentPeriodStart, PeriodEnd: item.CurrentPeriodEnd, TrialStart: sub.TrialStart, TrialEnd: sub.TrialEnd}, nil
-}
-
-func (s *subscriptions) successEndpoint() auth.Endpoint {
-	return auth.Endpoint{Method: http.MethodGet, Path: "/subscription/success", Handler: s.checkoutSuccess}
 }

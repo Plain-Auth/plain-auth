@@ -109,8 +109,8 @@ func TestSubscriptionOptionsAtStartup(t *testing.T) {
 		opts *stripeplugin.SubscriptionOptions
 		want string
 	}{
-		"no client": {&stripeplugin.SubscriptionOptions{Plans: pro}, "stripe: subscriptions require a client and plans"},
-		"no plans":  {&stripeplugin.SubscriptionOptions{Client: client}, "stripe: subscriptions require a client and plans"},
+		"no client": {&stripeplugin.SubscriptionOptions{Plans: pro}, "stripe: subscriptions require a client and either Plans or LoadPlans"},
+		"no plans":  {&stripeplugin.SubscriptionOptions{Client: client}, "stripe: subscriptions require a client and either Plans or LoadPlans"},
 		"no store":  {&stripeplugin.SubscriptionOptions{Client: client, Plans: pro}, "stripe: store does not support subscriptions"},
 	} {
 		_, err := authn.New(authn.Options{Store: memory.New(), BaseURL: "http://auth.test", Secret: "test-secret-0123456789-abcdefghijk",

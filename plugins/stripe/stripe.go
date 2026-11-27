@@ -73,15 +73,26 @@ func New(opts Options) authn.Plugin {
 						return nil, &authn.APIError{Status: 500, Code: "STRIPE_WEBHOOK_ERROR", Message: "Subscription reconciliation failed"}
 					}
 				}
-				if err := subs.handleCheckoutEvent(ctx, event); err != nil {
+				// Loaded plans serve the Checkout and subscription events; a
+				// loader failure answers 500 so Stripe redelivers, where another
+				// runtime logs it and acknowledges the event.
+				view := subs
+				if planEvent(event.Type) {
+					var err error
+					if view, err = subs.current(ctx.Request.Context(), ctx.Store()); err != nil {
+						ctx.Auth.Logger().ErrorContext(ctx.Request.Context(), "Stripe LoadPlans failed")
+						return nil, ErrFetchPlans
+					}
+				}
+				if err := view.handleCheckoutEvent(ctx, event); err != nil {
 					return nil, &authn.APIError{Status: 500, Code: "STRIPE_WEBHOOK_ERROR", Message: "Subscription reconciliation failed"}
 				}
-				if (subs.onComplete != nil || subs.observeTrialStarts) && event.Type == stripesdk.EventTypeCheckoutSessionCompleted {
-					if err := subs.observeCheckoutCompletion(ctx, event); err != nil {
+				if (view.onComplete != nil || view.observeTrialStarts) && event.Type == stripesdk.EventTypeCheckoutSessionCompleted {
+					if err := view.observeCheckoutCompletion(ctx, event); err != nil {
 						return nil, &authn.APIError{Status: 500, Code: "STRIPE_WEBHOOK_ERROR", Message: "Checkout completion reconciliation failed"}
 					}
 				}
-				if err := subs.handleSubscriptionEvent(ctx, event); err != nil {
+				if err := view.handleSubscriptionEvent(ctx, event); err != nil {
 					return nil, &authn.APIError{Status: 500, Code: "STRIPE_WEBHOOK_ERROR", Message: "Subscription reconciliation failed"}
 				}
 			}
@@ -127,12 +138,12 @@ func New(opts Options) authn.Plugin {
 					return errors.New("stripe: subscription update callbacks require a store with committed update receipts")
 				}
 			}
-			if subs.onCreated != nil || subs.onDeleted != nil || subs.onCancel != nil || subs.observeTrialTransitions {
+			if subs.onCreated != nil || subs.onDeleted != nil || subs.onCancel != nil {
 				if _, ok := store.(SubscriptionNotificationStore); !ok {
 					return errors.New("stripe: subscription lifecycle callbacks require a store with transition receipts")
 				}
 			}
-			if subs.onComplete != nil || subs.observeTrialStarts {
+			if subs.onComplete != nil {
 				if _, ok := store.(CheckoutCompletionStore); !ok {
 					return errors.New("stripe: checkout completion callbacks require a store with settled checkout and event receipts")
 				}
@@ -140,23 +151,9 @@ func New(opts Options) authn.Plugin {
 			if err := s.CheckSubscriptionSchema(context.Background()); err != nil {
 				return err
 			}
-			for _, plan := range subs.plans {
-				if plan.FreeTrial != nil {
-					if _, ok := store.(TrialCheckoutStore); !ok {
-						return errors.New("stripe: free trials require a store with reservation-bound trial eligibility")
-					}
-				}
-				// A membership plan cannot bill correctly without the policy and
-				// seat tracking, so it fails at startup, where another runtime
-				// logs an error or refuses each organization request.
-				if plan.SeatPriceID != "" {
-					if opts.Organization == nil || opts.Organization.AuthorizeReference == nil {
-						return errors.New("stripe: membership-based billing requires organization authorization")
-					}
-					if _, ok := store.(SeatStore); !ok {
-						return errors.New("stripe: store does not support automatic seats")
-					}
-				}
+			// Loaded plans are checked as each operation loads them.
+			if err := subs.check(store, opts.Organization); err != nil {
+				return err
 			}
 			if opts.Organization != nil {
 				org, ok := store.(OrganizationBillingStore)
@@ -169,11 +166,12 @@ func New(opts Options) authn.Plugin {
 		}
 		if subs != nil {
 			plugin.StoredUserFields = map[string]authn.UserField{"stripeCustomerId": {Type: authn.FieldString}}
-			plugin.Endpoints = append(plugin.Endpoints, subs.successEndpoint(),
-				authn.Endpoint{Method: http.MethodPost, Path: "/subscription/upgrade", Handler: subs.checkout},
-				authn.Endpoint{Method: http.MethodGet, Path: "/subscription/list", Handler: subs.list},
-				authn.Endpoint{Method: http.MethodPost, Path: "/subscription/cancel", Handler: subs.cancel},
-				authn.Endpoint{Method: http.MethodPost, Path: "/subscription/restore", Handler: subs.restore},
+			plugin.Endpoints = append(plugin.Endpoints,
+				authn.Endpoint{Method: http.MethodGet, Path: "/subscription/success", Handler: subs.withPlans((*subscriptions).checkoutSuccess)},
+				authn.Endpoint{Method: http.MethodPost, Path: "/subscription/upgrade", Handler: subs.withPlans((*subscriptions).checkout)},
+				authn.Endpoint{Method: http.MethodGet, Path: "/subscription/list", Handler: subs.withPlans((*subscriptions).list)},
+				authn.Endpoint{Method: http.MethodPost, Path: "/subscription/cancel", Handler: subs.withPlans((*subscriptions).cancel)},
+				authn.Endpoint{Method: http.MethodPost, Path: "/subscription/restore", Handler: subs.withPlans((*subscriptions).restore)},
 			)
 		}
 	}
@@ -197,4 +195,14 @@ func New(opts Options) authn.Plugin {
 		}
 	}
 	return plugin
+}
+
+// planEvent reports an event that maps Stripe prices to plans.
+func planEvent(t stripesdk.EventType) bool {
+	switch t {
+	case stripesdk.EventTypeCheckoutSessionCompleted, stripesdk.EventTypeCheckoutSessionExpired,
+		stripesdk.EventTypeCustomerSubscriptionCreated, stripesdk.EventTypeCustomerSubscriptionUpdated, stripesdk.EventTypeCustomerSubscriptionDeleted:
+		return true
+	}
+	return false
 }
