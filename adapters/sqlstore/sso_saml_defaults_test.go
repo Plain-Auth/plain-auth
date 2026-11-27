@@ -98,7 +98,7 @@ func TestEnterpriseSAMLDefaults(t *testing.T) {
 				code   string
 				text   string
 			}{{"not a url", "VALIDATION_ERROR", "[body.issuer] Invalid URL"}, {nil, "VALIDATION_ERROR", "[body.issuer] Invalid input: expected string, received undefined"},
-				{7, "VALIDATION_ERROR", "[body.issuer] Invalid input: expected string, received number"}, {"urn:example:idp", "discovery_invalid_url", ""}} {
+				{7, "VALIDATION_ERROR", "[body.issuer] Invalid input: expected string, received number"}, {"https://idp.example.test:70000/x", "VALIDATION_ERROR", "[body.issuer] Invalid URL"}, {"urn:example:idp", "discovery_invalid_url", ""}} {
 				body := keyed("bad-issuer", func(map[string]any) {})
 				if body["issuer"] = c.issuer; c.issuer == nil {
 					delete(body, "issuer")
@@ -109,6 +109,17 @@ func TestEnterpriseSAMLDefaults(t *testing.T) {
 				if w.Code != 400 || e.Code != c.code || c.text != "" && e.Message != c.text || rows("bad-issuer") != 0 {
 					t.Fatal("a SAML registration accepted an issuer that is not a URL", c.issuer, w.Code, w.Body.String())
 				}
+			}
+			// A padded issuer is stored trimmed.
+			padded := keyed("padded-issuer", func(map[string]any) {})
+			padded["issuer"] = " " + spIssuer + "\t "
+			if w := call("POST", "sso/register", owner, padded); w.Code != 200 {
+				t.Fatal("a padded issuer was refused", w.Code, w.Body.String())
+			}
+			var storedIssuer string
+			must(store.db.QueryRowContext(ctx, store.bind(`SELECT "issuer" FROM "ssoProvider" WHERE "providerId"=?`), "padded-issuer").Scan(&storedIssuer))
+			if storedIssuer != spIssuer {
+				t.Fatal("a padded issuer was not stored trimmed", storedIssuer)
 			}
 			const keyRefusal = "SAML private keys are not accepted in a provider registration; configure the request signing and decryption keys on the server"
 			for _, edit := range []func(map[string]any){

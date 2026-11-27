@@ -60,6 +60,11 @@ func TestEnterpriseDomainOrganizationAssignment(t *testing.T) {
 				return h
 			}
 			h, admin := build(sso.Options{}), build(sso.Options{DefaultOrganizationRole: "admin"})
+			var resolved []sso.OrganizationRoleInput
+			chooser := build(sso.Options{ResolveOrganizationRole: func(_ context.Context, in sso.OrganizationRoleInput) (string, error) {
+				resolved = append(resolved, in)
+				return "member", nil
+			}})
 			owner, err := client.New("https://domain.test/identity", &http.Client{Transport: guestTransport{h}})
 			must(err)
 			created, err := owner.SignUpEmail(ctx, client.SignUpRequest{Name: "Owner", Email: "owner@local.example", Password: "an independent fixture password"})
@@ -146,6 +151,17 @@ func TestEnterpriseDomainOrganizationAssignment(t *testing.T) {
 			employee := signIn(admin, "employee@acme.example", true)
 			if got := roles(employee); len(got) != 1 || got[0] != "acme-org:member" {
 				t.Fatal("a returning member's role changed", got)
+			}
+			// The role is resolved only for a user who would join, from the
+			// stored user with no provider profile or token.
+			signIn(chooser, "employee@acme.example", true)
+			signIn(chooser, "invited@acme.example", true)
+			if len(resolved) != 0 {
+				t.Fatal("ResolveOrganizationRole ran for a member or a pending invitee", resolved)
+			}
+			signIn(chooser, "chosen@acme.example", true)
+			if len(resolved) != 1 || resolved[0].User.Email != "chosen@acme.example" || !resolved[0].User.EmailVerified || resolved[0].UserInfo.Email != "" || resolved[0].Token != nil || resolved[0].Provider.ProviderID != "acme" {
+				t.Fatal("ResolveOrganizationRole did not receive the stored user and an empty profile", resolved)
 			}
 			register("beta", "beta-org")
 			verify("beta")

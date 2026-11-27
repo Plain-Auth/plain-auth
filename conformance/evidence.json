@@ -9808,6 +9808,11 @@
       "label": "Narrow a POST response with attributes, create an inactive User, and refuse a body without userName or schemas, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/scim_users_contract_test.go",
       "marker": "t.Fatal(\"attributes did not narrow a POST response\", narrowed)"
+    },
+    {
+      "label": "Refuse a retired connection's invalid body with 400 and its unsupported body with 415 before the binding, as another runtime validates the body first, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_decommission_test.go",
+      "marker": "t.Fatal(\"a retired connection's invalid body was not refused before its binding\", w.Code, w.Body.String())"
     }
   ],
   "plugin/scim/GET /scim/v2/Users/:userId": [
@@ -9861,7 +9866,7 @@
       "marker": "assert.equal((await call(\"GET\",collection+\"?filter=bogus&attributes=a%20b\",400)).scimType,\"invalidFilter\");"
     },
     {
-      "label": "Check a connection's binding before its query, so a retired connection answers 401 and a remapped one 409 to a malformed list, on SQLite, PostgreSQL and MySQL",
+      "label": "Check a retired connection's binding before its query, so a malformed list answers 401, and after its body, so an invalid body answers 400 or 415, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/scim_decommission_test.go",
       "marker": "t.Fatal(\"a retired connection's malformed request was read before its binding\", req, w.Code, w.Body.String())"
     },
@@ -9869,6 +9874,11 @@
       "label": "Parse startIndex before count with an optional minus sign and ASCII digits after JavaScript trimming, within the safe integer range",
       "test": "plugins/scim/selection_test.go",
       "marker": "t.Fatal(\"a page parameter was not refused with its name\", c.values, err)"
+    },
+    {
+      "label": "Check a remapped connection's binding before its query, so a malformed list answers 409, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_dynamic_test.go",
+      "marker": "call(a, \"GET\", \"Users?filter=bogus\", \"remap\", nil, 409)"
     }
   ],
   "plugin/scim/PUT /scim/v2/Users/:userId": [
@@ -10787,7 +10797,7 @@
     {
       "label": "Answer 401 when the verifier's result is expired, names an unknown directory, both names and supplies one, or has an invalid credential ID or scopes",
       "test": "adapters/sqlstore/scim_dynamic_test.go",
-      "marker": "for _, token := range []string{\"stale\", \"collision\", \"reserved\", \"unknown-conn\", \"bad-domain\", \"ambiguous\", \"bad-id\", \"duplicate\", \"bad-scope\", \"absent-scopes\", \"unknown\", \"padded-conn\", \"long-conn\", \"padded-domain\", \"long-domain\"} {"
+      "marker": "for _, token := range []string{\"stale\", \"collision\", \"reserved\", \"unknown-conn\", \"bad-domain\", \"ambiguous\", \"bad-id\", \"duplicate\", \"bad-scope\", \"absent-scopes\", \"unknown\", \"padded-conn\", \"long-conn\", \"empty-conn\", \"padded-domain\", \"long-domain\"} {"
     }
   ],
   "plugin-symbol/scim/SCIMResolvedConnectionVerificationResult": [
@@ -11915,6 +11925,11 @@
       "test": "adapters/sqlstore/sso_organization_role_test.go",
       "marker": "func TestEnterpriseOrganizationRole(",
       "complete": true
+    },
+    {
+      "label": "Resolve a domain assignment's role only for a user who would join, from the stored user with no provider profile or token, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_domain_org_test.go",
+      "marker": "t.Fatal(\"ResolveOrganizationRole did not receive the stored user and an empty profile\", resolved)"
     }
   ],
   "plugin-symbol/sso/SSOOptions/redirectURI": [
@@ -44362,7 +44377,7 @@
     {
       "label": "Answer 401 when the verifier's result is expired, names an unknown directory, both names and supplies one, or has an invalid credential ID or scopes",
       "test": "adapters/sqlstore/scim_dynamic_test.go",
-      "marker": "for _, token := range []string{\"stale\", \"collision\", \"reserved\", \"unknown-conn\", \"bad-domain\", \"ambiguous\", \"bad-id\", \"duplicate\", \"bad-scope\", \"absent-scopes\", \"unknown\", \"padded-conn\", \"long-conn\", \"padded-domain\", \"long-domain\"} {",
+      "marker": "for _, token := range []string{\"stale\", \"collision\", \"reserved\", \"unknown-conn\", \"bad-domain\", \"ambiguous\", \"bad-id\", \"duplicate\", \"bad-scope\", \"absent-scopes\", \"unknown\", \"padded-conn\", \"long-conn\", \"empty-conn\", \"padded-domain\", \"long-domain\"} {",
       "complete": true
     },
     {
@@ -44709,7 +44724,7 @@
     {
       "label": "Refuse a verifier result naming a padded or over-long connection ID with 401, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/scim_dynamic_test.go",
-      "marker": "for _, token := range []string{\"stale\", \"collision\", \"reserved\", \"unknown-conn\", \"bad-domain\", \"ambiguous\", \"bad-id\", \"duplicate\", \"bad-scope\", \"absent-scopes\", \"unknown\", \"padded-conn\", \"long-conn\", \"padded-domain\", \"long-domain\"} {",
+      "marker": "for _, token := range []string{\"stale\", \"collision\", \"reserved\", \"unknown-conn\", \"bad-domain\", \"ambiguous\", \"bad-id\", \"duplicate\", \"bad-scope\", \"absent-scopes\", \"unknown\", \"padded-conn\", \"long-conn\", \"empty-conn\", \"padded-domain\", \"long-domain\"} {",
       "complete": true
     }
   ],

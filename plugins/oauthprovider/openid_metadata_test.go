@@ -237,7 +237,7 @@ func TestProviderOptionDefaultsAndRefusals(t *testing.T) {
 		t.Fatal("the configured UserInfo claims were not advertised exactly", doc.ClaimsSupported)
 	}
 	for name, opts := range map[string]op.Options{
-		"registration scope outside the scopes": {Scopes: []string{"read"}, Registration: op.RegistrationOptions{AllowedScopes: []string{"write"}}},
+		"registration scope outside the scopes":   {Scopes: []string{"read"}, Registration: op.RegistrationOptions{AllowedScopes: []string{"write"}}},
 		"refresh_token without a delegated grant": {GrantTypes: []string{"refresh_token"}},
 		"short pairwise secret":                   {PairwiseSecret: strings.Repeat("p", 31)},
 	} {

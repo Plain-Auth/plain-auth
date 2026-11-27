@@ -356,10 +356,10 @@
       - [x] Check the host create privilege for a signed-in registration ([test](../../../conformance/oauth-registration.mjs#L249))
       - [x] Apply the host privilege hook to authenticated create, read and list actions before checking ownership ([test](../../../conformance/oauth-client-directory.mjs#L98))
       - [x] Enforce the rotate privilege on the authenticated session before replacing a tenant credential ([test](../../../conformance/oauth-registration.mjs#L466))
-    - [x] `grantTypes` ([test](../../../adapters/sqlstore/oauth_grant_refusal_test.go#L82))
+    - [x] `grantTypes` ([test](../../../adapters/sqlstore/oauth_grant_refusal_test.go#L84))
       - [x] Register only the mutually supported requested grant types ([test](../../../conformance/oauth-registration.mjs#L216))
       - [x] Refuse refresh_token without authorization_code when the plugin is built ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L245))
-      - [x] Refuse a grant outside GrantTypes with unsupported_grant_type, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_grant_refusal_test.go#L82))
+      - [x] Refuse a grant outside GrantTypes with unsupported_grant_type, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_grant_refusal_test.go#L84))
     - [x] `loginPage` ([test](../../../conformance/oauth-browser-login.mjs#L64))
       - [x] Open the configured host page for signed-out and forced login and return an error for silent requests ([test](../../../conformance/oauth-browser-login.mjs#L64))
     - [x] `consentPage` ([test](../../../conformance/oauth-browser-authorization.mjs#L57))
@@ -800,10 +800,10 @@
       - [x] Refuse a code redeemed with another client's credentials and a refresh token that belongs to another client or has expired with invalid_grant, on both runtimes ([test](../../../conformance/oauth-authorization-code.mjs#L45))
     - [x] `invalid_user` ([test](../../../adapters/sqlstore/oauth_authorization_code_test.go#L141))
       - [x] Refuse a code whose approving user no longer exists with invalid_user ([test](../../../adapters/sqlstore/oauth_authorization_code_test.go#L141))
-    - [x] `unauthorized_client` ([test](../../../adapters/sqlstore/oauth_grant_refusal_test.go#L74))
-      - [x] Refuse client credentials to a client without that grant, a public client and a client without client-credentials scopes with unauthorized_client, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_grant_refusal_test.go#L74))
-    - [x] `unsupported_grant_type` ([test](../../../adapters/sqlstore/oauth_grant_refusal_test.go#L82))
-      - [x] Refuse a grant the issuer does not offer with unsupported_grant_type, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_grant_refusal_test.go#L82))
+    - [x] `unauthorized_client` ([test](../../../adapters/sqlstore/oauth_grant_refusal_test.go#L76))
+      - [x] Refuse client credentials to a client without that grant, a public client and a client without client-credentials scopes with unauthorized_client, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_grant_refusal_test.go#L76))
+    - [x] `unsupported_grant_type` ([test](../../../adapters/sqlstore/oauth_grant_refusal_test.go#L84))
+      - [x] Refuse a grant the issuer does not offer with unsupported_grant_type, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_grant_refusal_test.go#L84))
     - [ ] `invalid_scope`
     - [ ] `invalid_target`
     - [ ] `invalid_dpop_proof`

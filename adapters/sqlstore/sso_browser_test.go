@@ -334,6 +334,9 @@ func TestEnterpriseOIDCBrowser(t *testing.T) {
 				{map[string]any{"providerId": "acme", "providerType": "saml", "callbackURL": "/home"}, 400, "SAML provider is not configured"},
 				{map[string]any{"providerId": "absent", "providerType": "saml", "callbackURL": "/home"}, 404, "No provider found for the issuer"},
 				{map[string]any{"providerId": "acme", "providerType": "ldap", "callbackURL": "/home"}, 400, `[body.providerType] Invalid option: expected one of "oidc"|"saml"`},
+				{map[string]any{"providerId": "acme", "providerType": "", "callbackURL": "/home"}, 400, `[body.providerType] Invalid option: expected one of "oidc"|"saml"`},
+				{map[string]any{"providerId": "acme", "providerType": nil, "callbackURL": "/home"}, 400, `[body.providerType] Invalid option: expected one of "oidc"|"saml"`},
+				{map[string]any{"providerId": "acme", "providerType": 5, "callbackURL": "/home"}, 400, `[body.providerType] Invalid option: expected one of "oidc"|"saml"`},
 			} {
 				w := call(one, "POST", "sign-in/sso", "", c.body)
 				var e struct{ Message string }

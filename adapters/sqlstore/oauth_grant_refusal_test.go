@@ -45,7 +45,9 @@ func TestOAuthTokenGrantRefusals(t *testing.T) {
 				_, err := s.db.ExecContext(ctx, s.bind(insert), c.id, c.id, secret, c.method, c.grants, c.machineScopes, `["reports"]`, `[]`)
 				must(err)
 			}
-			verify := func(_ context.Context, supplied, stored string) (bool, error) { return stored == "plain:"+supplied, nil }
+			verify := func(_ context.Context, supplied, stored string) (bool, error) {
+				return stored == "plain:"+supplied, nil
+			}
 			build := func(grants []string) *auth.Auth {
 				p, err := op.New(op.Options{Scopes: []string{"reports"}, GrantTypes: grants, Registration: op.RegistrationOptions{VerifySecret: verify}})
 				must(err)

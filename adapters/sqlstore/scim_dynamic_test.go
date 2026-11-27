@@ -96,6 +96,7 @@ func TestSCIMDynamicBearer(t *testing.T) {
 			storeClaims("ba_scim_credential_fixture.fallback", good)
 			storeClaims("padded-conn", claims(" runtime", "tenant", scim.UsersRead))
 			storeClaims("long-conn", claims(strings.Repeat("r", 256), "tenant", scim.UsersRead))
+			storeClaims("empty-conn", claims("", "tenant", scim.UsersRead))
 			storeClaims("rotated-out", claims("rotated", "tenant", scim.UsersRead))
 			storeClaims("padded-domain", claims("padded-tenant", " tenant", scim.UsersRead))
 			storeClaims("long-domain", claims("long-tenant", strings.Repeat("d", 256), scim.UsersRead))
@@ -157,7 +158,7 @@ func TestSCIMDynamicBearer(t *testing.T) {
 			if n := calls.Load(); n != 0 {
 				t.Fatal("called verifier for static or reserved token", n)
 			}
-			for _, token := range []string{"stale", "collision", "reserved", "unknown-conn", "bad-domain", "ambiguous", "bad-id", "duplicate", "bad-scope", "absent-scopes", "unknown", "padded-conn", "long-conn", "padded-domain", "long-domain"} {
+			for _, token := range []string{"stale", "collision", "reserved", "unknown-conn", "bad-domain", "ambiguous", "bad-id", "duplicate", "bad-scope", "absent-scopes", "unknown", "padded-conn", "long-conn", "empty-conn", "padded-domain", "long-domain"} {
 				call(a, "GET", "Users", token, nil, 401)
 			}
 			call(a, "GET", "Users", "outage", nil, 500)

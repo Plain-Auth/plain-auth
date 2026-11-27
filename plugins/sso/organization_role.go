@@ -26,7 +26,13 @@ func organizationRole(role string) bool { return role == "member" || role == "ad
 
 // membershipRole returns the role the provider's organization gives this
 // sign-in, or "" when it provisions no membership.
-func (o Options) membershipRole(ctx context.Context, p Provider, profile auth.OAuthProfile, tokens *auth.OAuthTokens) (role string, err error) {
+func (o Options) membershipRole(ctx context.Context, p Provider, profile auth.OAuthProfile, tokens *auth.OAuthTokens) (string, error) {
+	return o.organizationRoleFor(ctx, p, OrganizationRoleInput{User: providerUser(profile), UserInfo: profile, Token: tokens, Provider: p})
+}
+
+// organizationRoleFor resolves the role the provider's organization gives
+// the sign-in described by in, or "" when it provisions no membership.
+func (o Options) organizationRoleFor(ctx context.Context, p Provider, in OrganizationRoleInput) (role string, err error) {
 	if o.DisableOrganizationProvisioning || p.OrganizationID == nil || *p.OrganizationID == "" {
 		return "", nil
 	}
@@ -42,7 +48,7 @@ func (o Options) membershipRole(ctx context.Context, p Provider, profile auth.OA
 			role, err = "", errOrganizationRole
 		}
 	}()
-	role, err = o.ResolveOrganizationRole(ctx, OrganizationRoleInput{User: providerUser(profile), UserInfo: profile, Token: tokens, Provider: p})
+	role, err = o.ResolveOrganizationRole(ctx, in)
 	if err != nil {
 		return "", errors.Join(errOrganizationRole, err)
 	}

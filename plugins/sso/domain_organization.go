@@ -21,8 +21,10 @@ type DomainOrganization struct {
 type DomainOrganizationStore interface {
 	// SSODomainOrganization returns the first provider, by provider ID,
 	// that holds a current DNS proof for domain and belongs to an
-	// organization, and false when there is none or no organization table.
-	SSODomainOrganization(ctx context.Context, domain string) (DomainOrganization, bool, error)
+	// organization, and false when there is none, no organization table, or
+	// the user with this ID and email is already a member or holds a pending
+	// invitation there.
+	SSODomainOrganization(ctx context.Context, domain, userID, email string) (DomainOrganization, bool, error)
 	// AddSSODomainMember adds the user with role unless they are already a
 	// member or hold a pending invitation, within the organization's limits.
 	AddSSODomainMember(ctx context.Context, organizationID, userID, email, role string) error
@@ -55,7 +57,7 @@ func (o Options) assignDomainOrganization(c *auth.HookContext) error {
 	}
 	ctx := c.Request.Context()
 	logger := c.Auth.Logger()
-	found, ok, err := store.SSODomainOrganization(ctx, domain)
+	found, ok, err := store.SSODomainOrganization(ctx, domain, u.ID, u.Email)
 	if err != nil {
 		logger.ErrorContext(ctx, "sso: organization lookup by verified domain failed")
 		return nil
@@ -67,7 +69,9 @@ func (o Options) assignDomainOrganization(c *auth.HookContext) error {
 	if !ok {
 		return nil
 	}
-	role, err := o.membershipRole(ctx, found.Provider, auth.OAuthProfile{Email: u.Email, EmailVerified: true, Name: u.Name, Image: u.Image}, nil)
+	// The role input carries the stored user and, as in another runtime, no
+	// provider profile or token.
+	role, err := o.organizationRoleFor(ctx, found.Provider, OrganizationRoleInput{User: ProviderUser{Email: u.Email, EmailVerified: u.EmailVerified, Name: u.Name, Image: u.Image}, Provider: found.Provider})
 	if err != nil {
 		logger.ErrorContext(ctx, "sso: ResolveOrganizationRole failed")
 		return nil

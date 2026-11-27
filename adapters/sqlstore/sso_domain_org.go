@@ -17,7 +17,7 @@ var _ sso.DomainOrganizationStore = (*Store)(nil)
 // SSODomainOrganization returns the first provider, by provider ID, that
 // holds a current DNS proof for domain and belongs to an organization. A
 // domain that such providers of several organizations serve is ambiguous.
-func (s *Store) SSODomainOrganization(ctx context.Context, domain string) (sso.DomainOrganization, bool, error) {
+func (s *Store) SSODomainOrganization(ctx context.Context, domain, userID, email string) (sso.DomainOrganization, bool, error) {
 	var found sso.DomainOrganization
 	exists, err := s.hasKeyOwnerTable(ctx, s.db, "organization")
 	if err != nil || !exists {
@@ -50,6 +50,8 @@ func (s *Store) SSODomainOrganization(ctx context.Context, domain string) (sso.D
 	if err = rows.Close(); err != nil {
 		return found, false, err
 	}
+	// Byte order, where another runtime sorts by locale; it only picks the
+	// provider handed to the role resolver.
 	sort.Slice(candidates, func(i, j int) bool { return candidates[i].ProviderID < candidates[j].ProviderID })
 	organizations := map[string]bool{}
 	var first *sso.Provider
@@ -72,6 +74,14 @@ func (s *Store) SSODomainOrganization(ctx context.Context, domain string) (sso.D
 	}
 	if first == nil {
 		return found, false, nil
+	}
+	// A member or a pending invitee joins nothing, so the role is resolved
+	// only for a user who would join; AddSSODomainMember checks again.
+	var taken bool
+	err = s.db.QueryRowContext(ctx, s.bind(`SELECT EXISTS(SELECT 1 FROM "member" WHERE "organizationId"=? AND "userId"=?) OR EXISTS(SELECT 1 FROM "invitation" WHERE "organizationId"=? AND "email"=? AND "status"='pending' AND "expiresAt">?)`),
+		*first.OrganizationID, userID, *first.OrganizationID, strings.ToLower(email), s.date(time.Now().UTC())).Scan(&taken)
+	if err != nil || taken {
+		return found, false, err
 	}
 	return sso.DomainOrganization{Provider: *first}, true, nil
 }

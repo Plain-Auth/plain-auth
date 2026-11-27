@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 
@@ -225,11 +226,12 @@ var slug = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$`)
 var label = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$`)
 var reserved = []string{"credential", "email-otp", "magic-link", "phone-number", "anonymous", "siwe"}
 
-// issuerInput refuses a registration issuer that is not a string or does
-// not parse as an absolute URL, as another runtime's body schema does. An
-// absolute URL that is not HTTP or HTTPS is refused later, with
-// discovery_invalid_url.
-func issuerInput(body map[string]any) error {
+// issuerInput reads a registration issuer as another runtime's body schema
+// checks it: a string that parses as an absolute URL once trimmed, with the
+// tabs and line breaks a URL parser drops removed. The issuer is stored in
+// that form. An absolute URL that is not HTTP or HTTPS is refused later,
+// with discovery_invalid_url.
+func issuerInput(body map[string]any) (string, error) {
 	raw, present := body["issuer"]
 	v, ok := raw.(string)
 	if !ok {
@@ -237,14 +239,19 @@ func issuerInput(body map[string]any) error {
 		if present {
 			received = jsjson.TypeName(raw)
 		}
-		return &auth.APIError{Status: 400, Code: "VALIDATION_ERROR", Message: "[body.issuer] Invalid input: expected string, received " + received}
+		return "", &auth.APIError{Status: 400, Code: "VALIDATION_ERROR", Message: "[body.issuer] Invalid input: expected string, received " + received}
 	}
-	u, err := url.Parse(jsjson.TrimSpace(v))
+	v = strings.NewReplacer("\t", "", "\n", "", "\r", "").Replace(jsjson.TrimSpace(v))
+	u, err := url.Parse(v)
 	special := err == nil && slices.Contains([]string{"http", "https", "ws", "wss", "ftp"}, strings.ToLower(u.Scheme))
-	if err != nil || u.Scheme == "" || special && u.Host == "" && u.Opaque == "" {
-		return &auth.APIError{Status: 400, Code: "VALIDATION_ERROR", Message: "[body.issuer] Invalid URL"}
+	port, portErr := 0, error(nil)
+	if err == nil && u.Port() != "" {
+		port, portErr = strconv.Atoi(u.Port())
 	}
-	return nil
+	if err != nil || u.Scheme == "" || special && u.Host == "" && u.Opaque == "" || portErr != nil || port > 65535 {
+		return "", &auth.APIError{Status: 400, Code: "VALIDATION_ERROR", Message: "[body.issuer] Invalid URL"}
+	}
+	return v, nil
 }
 
 func domains(value string) (string, error) {
@@ -343,8 +350,11 @@ func New(o Options) (auth.Plugin, error) {
 	}
 	register := func(c auth.EndpointContext, store Store, actor Actor) (any, error) {
 		// The issuer is checked with the body, before the route's own checks,
-		// in another runtime's body validation form.
-		if err := issuerInput(c.Body); err != nil {
+		// in another runtime's body validation form. The session is checked
+		// first, where another runtime validates the body before it, so an
+		// anonymous caller learns nothing about the body.
+		issuer, err := issuerInput(c.Body)
+		if err != nil {
 			return nil, err
 		}
 		limit, err := o.providerLimit(c.Request.Context(), actor.user, limit)
@@ -400,7 +410,6 @@ func New(o Options) (auth.Plugin, error) {
 		}
 		// The issuer is an HTTP or HTTPS URL for both protocols; another
 		// runtime accepts any URL, such as a urn: SAML issuer.
-		issuer, _ := c.Body["issuer"].(string)
 		if _, err = endpointURL(issuer); err != nil {
 			return nil, err
 		}

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -302,11 +303,24 @@ func TestSCIMStaticDecommission(t *testing.T) {
 			if w := scimRequest(h, "GET", "Users", "static-token", nil); w.Code != 401 {
 				t.Fatal("a retired connection's token still works", w.Code)
 			}
-			// A retired connection is refused before its query or body is read.
+			// A retired connection is refused before its query is read and
+			// once its body is valid, as another runtime's middleware runs
+			// after body validation.
 			for _, req := range []struct{ method, path string }{{"GET", "Users?filter=bogus"}, {"GET", "Groups?startIndex=x"}, {"POST", "Users?attributes=a%20b"}} {
 				if w := scimRequest(h, req.method, req.path, "static-token", map[string]any{"schemas": []string{scim.UserSchema}, "userName": "late@example.test"}); w.Code != 401 || w.Header().Get("WWW-Authenticate") == "" {
 					t.Fatal("a retired connection's malformed request was read before its binding", req, w.Code, w.Body.String())
 				}
+			}
+			if w := scimRequest(h, "POST", "Users", "static-token", map[string]any{"schemas": []string{scim.UserSchema}}); w.Code != 400 || !strings.Contains(w.Body.String(), "invalidValue") {
+				t.Fatal("a retired connection's invalid body was not refused before its binding", w.Code, w.Body.String())
+			}
+			plain := httptest.NewRequest("POST", "https://untrusted.test"+directoryPath+"Users", strings.NewReader("userName=late"))
+			plain.Header.Set("Content-Type", "text/plain")
+			plain.Header.Set("Authorization", "Bearer static-token")
+			unsupported := httptest.NewRecorder()
+			h.ServeHTTP(unsupported, plain)
+			if unsupported.Code != 415 {
+				t.Fatal("a retired connection's unsupported body was not refused before its binding", unsupported.Code, unsupported.Body.String())
 			}
 			for _, table := range []string{"scimUser", "scimGroup", "scimGroupMember"} {
 				var n int

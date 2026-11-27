@@ -62,7 +62,14 @@ func (o Options) start(c auth.EndpointContext) (any, error) {
 	}
 	body := c.Body
 	read := func(key string) string { v, _ := body[key].(string); return v }
-	for _, k := range []string{"providerId", "organizationSlug", "domain", "email", "providerType", "loginHint"} {
+	// providerType is checked as another runtime's body schema checks an
+	// enum: any other value, including an empty or non-string one, fails.
+	if raw, has := body["providerType"]; has {
+		if s, _ := raw.(string); s != "oidc" && s != "saml" {
+			return nil, &auth.APIError{Status: 400, Code: "VALIDATION_ERROR", Message: `[body.providerType] Invalid option: expected one of "oidc"|"saml"`}
+		}
+	}
+	for _, k := range []string{"providerId", "organizationSlug", "domain", "email", "loginHint"} {
 		if _, has := body[k]; has {
 			if _, ok := body[k].(string); !ok {
 				return nil, apiError(400, "Invalid "+k)
@@ -70,9 +77,6 @@ func (o Options) start(c auth.EndpointContext) (any, error) {
 		}
 	}
 	kind := read("providerType")
-	if kind != "" && kind != "oidc" && kind != "saml" {
-		return nil, &auth.APIError{Status: 400, Code: "VALIDATION_ERROR", Message: `[body.providerType] Invalid option: expected one of "oidc"|"saml"`}
-	}
 	sel := Selector{ProviderID: read("providerId"), OrganizationSlug: read("organizationSlug"), Domain: read("domain")}
 	sel.Protocol = kind
 	if o.SAML == nil {

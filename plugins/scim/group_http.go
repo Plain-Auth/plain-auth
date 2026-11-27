@@ -27,12 +27,9 @@ func (h *Handler) groupResource(g Group, members bool) map[string]any {
 }
 func (h *Handler) serveGroups(w http.ResponseWriter, r *http.Request, d Directory, id string, single bool) {
 	// A read checks its projection last, after the Group lookup or the page
-	// and filter, and a deletion takes none, as in another runtime.
+	// and filter, a write after its body and binding, and a deletion takes
+	// none, as in another runtime.
 	p, selectErr := selectionQuery(r.URL.Query(), GroupSchema)
-	if selectErr != nil && r.Method != http.MethodGet && r.Method != http.MethodDelete {
-		writeError(w, selectErr)
-		return
-	}
 	var e error
 	ctx := r.Context()
 	var g Group
@@ -83,12 +80,18 @@ func (h *Handler) serveGroups(w http.ResponseWriter, r *http.Request, d Director
 				e = groupOpsDuplicates(ops)
 			}
 			if e == nil {
+				e = h.bound(ctx, d, selectErr)
+			}
+			if e == nil {
 				g, e = h.groups.SCIMUpdateGroup(ctx, d, id, func(current Group) (GroupChange, error) { return applyGroupPatch(current, ops) })
 			}
 		} else {
 			var v GroupProfile
 			v, e = parseGroup(input, r.Method == http.MethodPost && h.legacyGroup)
 			if e != nil {
+				break
+			}
+			if e = h.bound(ctx, d, selectErr); e != nil {
 				break
 			}
 			if r.Method == http.MethodPost {

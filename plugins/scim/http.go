@@ -92,11 +92,11 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	r = r.WithContext(context.WithValue(r.Context(), principalKey{}, identity))
 	d := identity.Directory
-	// The connection's binding is recorded and checked before the request
-	// is read, as another runtime's authentication middleware does, so a
-	// retired or remapped connection is refused before its query or body.
-	if b, ok := h.store.(BindingStore); ok {
-		if err := b.SCIMBind(r.Context(), d); err != nil {
+	// A read or deletion checks the connection's binding before its query,
+	// as another runtime's authentication middleware does; a write checks it
+	// once its body is valid.
+	if r.Method == http.MethodGet || r.Method == http.MethodDelete {
+		if err := h.bound(r.Context(), d, nil); err != nil {
 			writeError(w, err)
 			return
 		}
@@ -106,12 +106,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// A read checks its projection last, after the User lookup or the page
-	// and filter, and a deletion takes none, as in another runtime.
+	// and filter, a write after its body and binding, and a deletion takes
+	// none, as in another runtime.
 	pr, selectErr := selectionQuery(r.URL.Query(), UserSchema)
-	if selectErr != nil && r.Method != http.MethodGet && r.Method != http.MethodDelete {
-		writeError(w, selectErr)
-		return
-	}
 	ctx := r.Context()
 	var rec Record
 	switch r.Method {
@@ -161,6 +158,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				err = opsDuplicates(ops)
 			}
 			if err == nil {
+				err = h.bound(ctx, d, selectErr)
+			}
+			if err == nil {
 				// An unchanged PATCH, including an empty Operations array, keeps
 				// the stored resource and its lastModified.
 				var unchanged Record
@@ -183,6 +183,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			var profile Profile
 			profile, err = normalize(input)
 			if err != nil {
+				break
+			}
+			if err = h.bound(ctx, d, selectErr); err != nil {
 				break
 			}
 			if r.Method == http.MethodPost {
@@ -284,6 +287,19 @@ func write(w http.ResponseWriter, status int, v any) {
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(v)
 }
+
+// bound checks the connection's binding, as another runtime's
+// authentication middleware does after body validation, then returns the
+// projection's error, which that runtime's handler reads next.
+func (h *Handler) bound(ctx context.Context, d Directory, projection error) error {
+	if b, ok := h.store.(BindingStore); ok {
+		if err := b.SCIMBind(ctx, d); err != nil {
+			return err
+		}
+	}
+	return projection
+}
+
 func writeError(w http.ResponseWriter, err error) {
 	var e *Error
 	if refused := auth.UserInfoRefusal(err); refused != nil {
