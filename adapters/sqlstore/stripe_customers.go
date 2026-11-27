@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"time"
 
 	auth "github.com/Plain-Org/plain-auth"
 	billing "github.com/Plain-Org/plain-auth/plugins/stripe"
@@ -93,8 +94,8 @@ func (s *Store) LinkStripeUserCustomer(ctx context.Context, userID, customer str
 var _ billing.OrganizationBillingReader = (*Store)(nil)
 
 // StripeOrganizationBilling reads an organization's Stripe customer and
-// whether a purchase is reserved for it. Any reservation counts, as it
-// blocks a new purchase until a webhook settles or expires it.
+// whether an unexpired purchase is reserved for it. A reservation expires
+// with its Checkout Session, so an expired one can no longer complete.
 func (s *Store) StripeOrganizationBilling(ctx context.Context, organizationID string) (billing.OrganizationBilling, error) {
 	var out billing.OrganizationBilling
 	var customer sql.NullString
@@ -106,6 +107,6 @@ func (s *Store) StripeOrganizationBilling(ctx context.Context, organizationID st
 		return out, err
 	}
 	out.Customer = customer.String
-	err = s.db.QueryRowContext(ctx, s.bind(`SELECT EXISTS(SELECT 1 FROM "verification" WHERE "identifier"=?)`), "stripe-org-checkout:"+organizationID).Scan(&out.PendingCheckout)
+	err = s.db.QueryRowContext(ctx, s.bind(`SELECT EXISTS(SELECT 1 FROM "verification" WHERE "identifier"=? AND "expiresAt">?)`), "stripe-org-checkout:"+organizationID, s.date(time.Now())).Scan(&out.PendingCheckout)
 	return out, err
 }

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -40,6 +41,7 @@ func TestOrganizationCustomerCallbacks(t *testing.T) {
 			t.Cleanup(func() { store.Close() })
 			var mu sync.Mutex
 			var creates []url.Values
+			var deletes []string
 			var found []map[string]any
 			transport := localBillingTransport(func(r *http.Request) (*http.Response, error) {
 				mu.Lock()
@@ -52,6 +54,9 @@ func TestOrganizationCustomerCallbacks(t *testing.T) {
 					return stripeJSON(200, map[string]any{"id": "price_basic", "active": true, "recurring": map[string]any{"interval": "month", "interval_count": 1, "usage_type": "licensed"}}), nil
 				case r.URL.Path == "/v1/customers/search":
 					return stripeJSON(200, map[string]any{"object": "search_result", "has_more": false, "data": found}), nil
+				case strings.HasPrefix(r.URL.Path, "/v1/customers/") && r.Method == "DELETE":
+					deletes = append(deletes, strings.TrimPrefix(r.URL.Path, "/v1/customers/"))
+					return stripeJSON(200, map[string]any{"id": strings.TrimPrefix(r.URL.Path, "/v1/customers/"), "object": "customer", "deleted": true}), nil
 				case r.URL.Path == "/v1/customers" && r.Method == "POST":
 					creates = append(creates, r.PostForm)
 					meta := map[string]string{"userId": r.PostForm.Get("metadata[userId]"), "organizationId": r.PostForm.Get("metadata[organizationId]"), "customerType": r.PostForm.Get("metadata[customerType]")}
@@ -68,6 +73,7 @@ func TestOrganizationCustomerCallbacks(t *testing.T) {
 			var params []billing.NewOrganizationCustomer
 			var reported []billing.OrganizationCustomerCreated
 			var paramsErr, reportErr error
+			var duringParams func(billing.NewOrganizationCustomer)
 			orgPlugin, err := org.New(org.Options{Store: store})
 			if err != nil {
 				t.Fatal(err)
@@ -82,6 +88,9 @@ func TestOrganizationCustomerCallbacks(t *testing.T) {
 							mu.Lock()
 							defer mu.Unlock()
 							params = append(params, in)
+							if duringParams != nil {
+								duringParams(in)
+							}
 							p := &sdk.CustomerCreateParams{Email: sdk.String("billing@" + in.Name + ".test"), Name: sdk.String("Spoofed"), Description: sdk.String("Team " + in.Name),
 								Metadata: map[string]string{"plan": "team", "organizationId": "spoof", "customerType": "user"}}
 							return p, paramsErr
@@ -191,9 +200,10 @@ func TestOrganizationCustomerCallbacks(t *testing.T) {
 				t.Fatal("a found customer or a personal purchase called an organization callback", made, asked, told)
 			}
 
-			// A failing parameters callback creates nothing; a failing
-			// creation callback keeps the customer, and the retry continues
-			// with it without reporting it again.
+			// A failing parameters callback creates nothing; a rename while
+			// the purchase is pending names the customer the retry creates; a
+			// failing creation callback keeps the customer, and the retry
+			// continues with it without reporting it again.
 			paramsErr = errors.New("host detail")
 			gamma := group("gamma")
 			if status, out := upgrade(gamma); status != 400 || out["code"] != "UNABLE_TO_CREATE_CUSTOMER" || customerOf(gamma) != "" {
@@ -202,9 +212,15 @@ func TestOrganizationCustomerCallbacks(t *testing.T) {
 			if made, _, _ := counts(); made != 2 {
 				t.Fatal("a failing parameters callback created a customer", made)
 			}
+			if status, out := call("/organization/update", map[string]any{"organizationId": gamma, "data": map[string]any{"name": "gamma renamed"}}); status != 200 {
+				t.Fatal("organization rename", status, out)
+			}
 			paramsErr, reportErr = nil, errors.New("host detail")
 			if status, out := upgrade(gamma); status != 400 || out["code"] != "UNABLE_TO_CREATE_CUSTOMER" || customerOf(gamma) != "cus_orgcb_3" {
 				t.Fatal("a failing creation callback did not refuse the purchase with the customer stored", status, out, customerOf(gamma))
+			}
+			if name := creates[2].Get("name"); name != "gamma renamed" || params[len(params)-1].Name != "gamma renamed" {
+				t.Fatal("the customer was not created under the current name", name, params[len(params)-1].Name)
 			}
 			reportErr = nil
 			if status, out := upgrade(gamma); status != 200 {
@@ -212,6 +228,25 @@ func TestOrganizationCustomerCallbacks(t *testing.T) {
 			}
 			if made, _, told := counts(); made != 3 || told != 2 {
 				t.Fatal("a retry created another customer or reported it again", made, told)
+			}
+
+			// A purchaser demoted while the customer is created cannot bind
+			// it: the unbound customer is deleted, unreported.
+			delta := group("delta")
+			duringParams = func(billing.NewOrganizationCustomer) {
+				if _, err := store.db.ExecContext(ctx, store.bind(`UPDATE "member" SET "role"='member' WHERE "organizationId"=? AND "userId"=?`), delta, hit.User.ID); err != nil {
+					t.Error(err)
+				}
+			}
+			if status, _ := upgrade(delta); status < 400 || customerOf(delta) != "" {
+				t.Fatal("a demoted purchaser bound the customer", status, customerOf(delta))
+			}
+			duringParams = nil
+			mu.Lock()
+			removed, told := slices.Clone(deletes), len(reported)
+			mu.Unlock()
+			if len(removed) != 1 || removed[0] != "cus_orgcb_4" || told != 2 {
+				t.Fatal("the unbound customer was not deleted unreported", removed, told)
 			}
 		})
 	}

@@ -2,6 +2,7 @@ package sqlstore
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -226,9 +227,26 @@ func TestOrganizationStripeHooks(t *testing.T) {
 			if status, code := remove(pending); status != 400 || code != "ORGANIZATION_HAS_ACTIVE_SUBSCRIPTION" || !remains(pending) || stripeCalls() != before {
 				t.Fatal("a pending purchase did not refuse the deletion", status, code)
 			}
-			// Hooks without a client or store refuse to run.
+			// An expired reservation can no longer complete and allows it.
+			if _, err := store.db.ExecContext(ctx, store.bind(`UPDATE "verification" SET "expiresAt"=? WHERE "identifier"=?`), store.date(now.Add(-time.Minute)), "stripe-org-checkout:"+pending); err != nil {
+				t.Fatal(err)
+			}
+			if status, _ := remove(pending); status != 200 || remains(pending) {
+				t.Fatal("an expired reservation refused the deletion", status)
+			}
+			// A rename reaches Stripe after the request was cancelled.
+			cancelled, cancel := context.WithCancel(ctx)
+			cancel()
+			if err := hooks.AfterUpdateOrganization(cancelled, org.AfterProfileUpdate{Organization: &org.Organization{ID: named, Name: "Detached"}}); err != nil || renames[len(renames)-1] != "cus_named=Detached" {
+				t.Fatal("a cancelled request stopped the rename", err, renames)
+			}
+			// Hooks without a client or store refuse a deletion and never fail
+			// an update.
 			if err := (billing.OrganizationHooks{}).BeforeDeleteOrganization(ctx, org.OrganizationDeletion{}); err == nil {
-				t.Fatal("hooks without a client or store ran")
+				t.Fatal("hooks without a client or store allowed a deletion")
+			}
+			if err := (billing.OrganizationHooks{}).AfterUpdateOrganization(ctx, org.AfterProfileUpdate{Organization: &org.Organization{ID: named}}); err != nil {
+				t.Fatal("hooks without a client or store failed an update", err)
 			}
 		})
 	}

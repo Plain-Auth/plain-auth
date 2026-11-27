@@ -51927,7 +51927,7 @@
     {
       "label": "Report an organization customer once, only from the purchase that created and stored it, and answer UNABLE_TO_CREATE_CUSTOMER when the callback fails, on three SQL engines",
       "test": "adapters/sqlstore/stripe_organization_customer_test.go",
-      "marker": "// A failing parameters callback creates nothing; a failing",
+      "marker": "// A failing parameters callback creates nothing; a rename while",
       "complete": true
     }
   ],

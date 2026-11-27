@@ -34,16 +34,13 @@ func (CustomerBoundError) Unwrap() error { return ErrCheckoutReconcile }
 // one. A customer this request created but could not bind, because another
 // was bound first or the purchase was released or replaced meanwhile, is
 // deleted.
-func (s *subscriptions) bindCustomer(c auth.EndpointContext, store SubscriptionStore, a CheckoutAttempt, token, customer string, created bool) (string, error) {
-	ctx := c.Request.Context()
+func (s *subscriptions) bindCustomer(ctx context.Context, log *slog.Logger, store SubscriptionStore, a CheckoutAttempt, token, customer string, created bool) (string, error) {
 	err := store.BindStripeCheckoutCustomer(ctx, a, token, customer, time.Now())
 	if err == nil {
 		return customer, nil
 	}
 	if created && errors.Is(err, ErrCheckoutReconcile) {
-		if _, err := s.client.V1Customers.Delete(ctx, customer, nil); err != nil {
-			c.Auth.Logger().WarnContext(ctx, "Stripe customer from a concurrent purchase was not deleted", append([]any{"customer", customer}, stripeErrorAttrs(err)...)...)
-		}
+		s.deleteCustomer(ctx, log, customer)
 	}
 	var bound CustomerBoundError
 	if errors.As(err, &bound) {
@@ -52,14 +49,24 @@ func (s *subscriptions) bindCustomer(c auth.EndpointContext, store SubscriptionS
 	return customer, err
 }
 
+func (s *subscriptions) deleteCustomer(ctx context.Context, log *slog.Logger, customer string) {
+	if _, err := s.client.V1Customers.Delete(ctx, customer, nil); err != nil {
+		log.WarnContext(ctx, "Stripe customer from a concurrent purchase was not deleted", append([]any{"customer", customer}, stripeErrorAttrs(err)...)...)
+	}
+}
+
 // checkoutCustomer links a Stripe customer to a new purchase and returns its
-// ID. An organization's is found by its metadata or created under its name.
-// A person with a verified email reuses the customer Stripe finds for that
-// email when no other user owns it, as another runtime does; otherwise a
-// customer is created with the user's email, name and metadata. A failure
-// to find or create one answers ErrCustomerCreation.
+// ID. An organization's is found by its metadata or created under its
+// current name. A person with a verified email reuses the customer Stripe
+// finds for that email when no other user owns it, as another runtime does;
+// otherwise a customer is created with the user's email, name and metadata.
+// A failure to find or create one answers ErrCustomerCreation. The work runs
+// on its own bounded context, so a client that disconnects cannot strand a
+// customer Stripe created between its creation and its binding.
 func (s *subscriptions) checkoutCustomer(c auth.EndpointContext, selection billingSelection, store SubscriptionStore, a CheckoutAttempt, ss *auth.SessionResult) (string, error) {
-	ctx := c.Request.Context()
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(c.Request.Context()), customerCallTimeout)
+	defer cancel()
+	log := c.Auth.Logger()
 	token := ss.Session.Token
 	if selection.organization {
 		customer, err := s.findOrganizationCustomer(ctx, a.OrganizationID)
@@ -67,30 +74,37 @@ func (s *subscriptions) checkoutCustomer(c auth.EndpointContext, selection billi
 			return "", err
 		}
 		if err != nil {
-			c.Auth.Logger().ErrorContext(ctx, "Stripe customer lookup failed", stripeErrorAttrs(err)...)
+			log.ErrorContext(ctx, "Stripe customer lookup failed", stripeErrorAttrs(err)...)
 			return "", ErrCustomerCreation
 		}
-		if _, err = c.Store().(OrganizationBillingStore).StripeOrganizationAccount(ctx, token, time.Now()); err != nil {
+		account, err := c.Store().(OrganizationBillingStore).StripeOrganizationAccount(ctx, token, time.Now())
+		if err != nil {
 			return "", err
 		}
-		in := NewOrganizationCustomer{OrganizationID: a.OrganizationID, Name: a.OrganizationName, User: ss.User, Request: c.RequestMetadata()}
+		// The current name, not the one the reservation recorded, names the
+		// customer: a rename while it had no customer reached no customer.
+		in := NewOrganizationCustomer{OrganizationID: a.OrganizationID, Name: account.Name, User: ss.User, Request: c.RequestMetadata()}
 		created := customer == nil
 		if created {
-			if customer, err = s.createOrganizationCustomer(c, in); err != nil {
+			if customer, err = s.createOrganizationCustomer(ctx, log, in); err != nil {
 				return "", err
 			}
 		}
 		if customer == nil || customer.ID == "" || customer.Metadata["customerType"] != "organization" || customer.Metadata["organizationId"] != a.OrganizationID {
 			return "", ErrCustomerCreation
 		}
-		id, err := s.bindCustomer(c, store, a, token, customer.ID, created)
+		id, err := s.bindCustomer(ctx, log, store, a, token, customer.ID, created)
+		if created && err != nil && !errors.Is(err, ErrCheckoutReconcile) {
+			// The binding failed without saying whether it was stored.
+			s.settleOrganizationCustomer(ctx, log, c.Store(), in, customer)
+			return "", err
+		}
 		// Only the request that bound the customer it created reports it,
 		// so a concurrent identical purchase never reports it twice.
-		if err != nil || !created || id != customer.ID || s.organization == nil || s.organization.OnCustomerCreate == nil {
+		if err != nil || !created || id != customer.ID {
 			return id, err
 		}
-		if err := s.organization.OnCustomerCreate(ctx, OrganizationCustomerCreated{NewOrganizationCustomer: in, Customer: customer}); err != nil {
-			c.Auth.Logger().ErrorContext(ctx, "Stripe organization OnCustomerCreate failed", "organization_id", a.OrganizationID, "customer_id", id)
+		if !s.reportOrganizationCustomer(ctx, log, in, customer) {
 			return "", ErrCustomerCreation
 		}
 		return id, nil
@@ -98,15 +112,15 @@ func (s *subscriptions) checkoutCustomer(c auth.EndpointContext, selection billi
 	// An unverified email is not looked up, so a lookup outage cannot block
 	// the purchase, where another runtime looks it up and discards the match.
 	if ss.User.EmailVerified {
-		match, err := findUserCustomer(ctx, s.client, c.Auth.Logger(), ss.User.Email)
+		match, err := findUserCustomer(ctx, s.client, log, ss.User.Email)
 		if err != nil {
-			c.Auth.Logger().ErrorContext(ctx, "Stripe customer lookup failed", stripeErrorAttrs(err)...)
+			log.ErrorContext(ctx, "Stripe customer lookup failed", stripeErrorAttrs(err)...)
 			return "", ErrCustomerCreation
 		}
 		if match != nil && (match.Metadata["userId"] == "" || match.Metadata["userId"] == ss.User.ID) {
 			// A customer another account holds is not shared, since each
 			// account binds its own customer: a new one is created.
-			id, err := s.bindCustomer(c, store, a, token, match.ID, false)
+			id, err := s.bindCustomer(ctx, log, store, a, token, match.ID, false)
 			if !errors.Is(err, ErrCustomerInUse) {
 				return id, err
 			}
@@ -116,29 +130,62 @@ func (s *subscriptions) checkoutCustomer(c auth.EndpointContext, selection billi
 	if ss.User.Name != "" {
 		params.Name = sdk.String(ss.User.Name)
 	}
-	customer := s.createCustomer(c, params)
+	customer := s.createCustomer(ctx, log, params)
 	if customer == nil || customer.ID == "" || customer.Metadata["customerType"] != "user" || customer.Metadata["userId"] != a.Owner {
 		return "", ErrCustomerCreation
 	}
-	return s.bindCustomer(c, store, a, token, customer.ID, true)
+	return s.bindCustomer(ctx, log, store, a, token, customer.ID, true)
+}
+
+// reportOrganizationCustomer calls OnCustomerCreate for a customer this
+// request created and stored, and reports whether it succeeded.
+func (s *subscriptions) reportOrganizationCustomer(ctx context.Context, log *slog.Logger, in NewOrganizationCustomer, customer *sdk.Customer) bool {
+	if s.organization == nil || s.organization.OnCustomerCreate == nil {
+		return true
+	}
+	if err := s.organization.OnCustomerCreate(ctx, OrganizationCustomerCreated{NewOrganizationCustomer: in, Customer: customer}); err != nil {
+		log.ErrorContext(ctx, "Stripe organization OnCustomerCreate failed", "organization_id", in.OrganizationID, "customer_id", customer.ID)
+		return false
+	}
+	return true
+}
+
+// settleOrganizationCustomer reads which customer the organization holds
+// after a binding failed without a verdict. The created customer is
+// reported when it was stored after all, and deleted otherwise, so a later
+// purchase cannot adopt it unreported. A failed read leaves it alone.
+func (s *subscriptions) settleOrganizationCustomer(ctx context.Context, log *slog.Logger, store auth.Store, in NewOrganizationCustomer, customer *sdk.Customer) {
+	reader, ok := store.(OrganizationBillingReader)
+	if !ok {
+		return
+	}
+	state, err := reader.StripeOrganizationBilling(ctx, in.OrganizationID)
+	switch {
+	case err != nil:
+		log.ErrorContext(ctx, "Stripe organization customer not settled", "organization_id", in.OrganizationID, "customer_id", customer.ID)
+	case state.Customer == customer.ID:
+		s.reportOrganizationCustomer(ctx, log, in, customer)
+	default:
+		s.deleteCustomer(ctx, log, customer.ID)
+	}
 }
 
 // createOrganizationCustomer creates an organization's customer under its
 // name and metadata, over the host's CustomerCreateParams, as another
 // runtime merges them. A failed or refused callback creates nothing.
-func (s *subscriptions) createOrganizationCustomer(c auth.EndpointContext, in NewOrganizationCustomer) (*sdk.Customer, error) {
+func (s *subscriptions) createOrganizationCustomer(ctx context.Context, log *slog.Logger, in NewOrganizationCustomer) (*sdk.Customer, error) {
 	params := &sdk.CustomerCreateParams{Name: sdk.String(in.Name), Metadata: map[string]string{"organizationId": in.OrganizationID, "customerType": "organization"}}
 	if s.organization != nil && s.organization.CustomerCreateParams != nil {
-		host, err := s.organization.CustomerCreateParams(c.Request.Context(), in)
+		host, err := s.organization.CustomerCreateParams(ctx, in)
 		if err == nil {
 			params, err = mergeCustomerParams(params, host)
 		}
 		if err != nil {
-			c.Auth.Logger().ErrorContext(c.Request.Context(), "Stripe organization CustomerCreateParams failed", "organization_id", in.OrganizationID)
+			log.ErrorContext(ctx, "Stripe organization CustomerCreateParams failed", "organization_id", in.OrganizationID)
 			return nil, ErrCustomerCreation
 		}
 	}
-	return s.createCustomer(c, params), nil
+	return s.createCustomer(ctx, log, params), nil
 }
 
 // errCustomerOptions refuses host customer parameters with request
@@ -182,10 +229,10 @@ func mergeCustomerParams(own, host *sdk.CustomerCreateParams) (*sdk.CustomerCrea
 // identical requests settle on the first customer bound; a response lost
 // after Stripe created a customer can leave it unbound, which a later
 // search for a verified email finds once Stripe indexes it.
-func (s *subscriptions) createCustomer(c auth.EndpointContext, params *sdk.CustomerCreateParams) *sdk.Customer {
-	customer, err := s.client.V1Customers.Create(c.Request.Context(), params)
+func (s *subscriptions) createCustomer(ctx context.Context, log *slog.Logger, params *sdk.CustomerCreateParams) *sdk.Customer {
+	customer, err := s.client.V1Customers.Create(ctx, params)
 	if err != nil {
-		c.Auth.Logger().ErrorContext(c.Request.Context(), "Stripe customer creation failed", stripeErrorAttrs(err)...)
+		log.ErrorContext(ctx, "Stripe customer creation failed", stripeErrorAttrs(err)...)
 		return nil
 	}
 	return customer

@@ -47,16 +47,27 @@ func (h OrganizationHooks) logger() *slog.Logger {
 }
 
 // AfterUpdateOrganization renames the organization's Stripe customer when
-// its name changed. A failure is logged and never fails the update, as in
-// another runtime.
+// its name changed. It runs on its own bounded context, so a client that
+// disconnects after the update committed cannot cancel it. A failure,
+// hooks without a client or store included, is logged and never fails the
+// update, as in another runtime.
 func (h OrganizationHooks) AfterUpdateOrganization(ctx context.Context, u organization.AfterProfileUpdate) error {
+	log := h.logger()
 	if h.Client == nil || h.Store == nil {
-		return errOrganizationHooks
+		log.ErrorContext(ctx, errOrganizationHooks.Error())
+		return nil
 	}
 	if u.Organization == nil {
 		return nil
 	}
-	log, id := h.logger(), u.Organization.ID
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), customerCallTimeout)
+	defer cancel()
+	id := u.Organization.ID
+	defer func() {
+		if recover() != nil {
+			log.ErrorContext(ctx, "Stripe organization rename hook panicked", "organization_id", id)
+		}
+	}()
 	state, err := h.Store.StripeOrganizationBilling(ctx, id)
 	if err != nil {
 		log.ErrorContext(ctx, "Stripe organization customer lookup failed", "organization_id", id)
