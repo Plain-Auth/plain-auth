@@ -204,6 +204,9 @@ func (opts Options) runBrowserAuthorization(c auth.EndpointContext, q url.Values
 	if len(q["redirect_uri"]) != 1 {
 		return serverError("invalid_redirect", "invalid redirect uri")
 	}
+	if problem := redirectSyntax(q.Get("redirect_uri")); q.Get("redirect_uri") != "" && problem != "" {
+		return serverError("invalid_request", "redirect_uri: "+problem)
+	}
 	ctx := c.Request.Context()
 	client, err := store.LookupAuthorizationClient(ctx, q.Get("client_id"))
 	if errors.Is(err, ErrClientNotFound) {

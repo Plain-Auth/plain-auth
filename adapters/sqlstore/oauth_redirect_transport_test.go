@@ -45,6 +45,7 @@ func TestAuthorizeRedirectTransport(t *testing.T) {
 				{"web-local", "web", "https://localhost/cb"}, {"native-custom", "native", "myapp:callback"},
 				{"web-http", "web", "http://localhost:3000/cb"}, {"native-loop", "native", "http://127.0.0.1/cb"},
 				{"web-intranet", "web", "http://intranet.example/cb"}, {"web-hook", "web", "https://app.example/cb"},
+				{"web-user", "web", "https://user@app.example/cb"},
 			} {
 				write(`INSERT INTO "oauthClient" ("id","clientId","applicationType","redirectUris","scopes","tokenEndpointAuthMethod","skipConsent") VALUES (?,?,?,?,?,'none',?)`, c.id, c.id, c.app, `["`+c.uri+`"]`, `["reports"]`, true)
 			}
@@ -121,14 +122,41 @@ func TestAuthorizeRedirectTransport(t *testing.T) {
 			if u := authorize(checked, "web-hook", "http://intranet.example/cb"); !refused(u, "invalid_request", insecure) || len(hooked) != 0 {
 				t.Fatal("the hook overrode the HTTPS policy", u, hooked)
 			}
-			for _, uri := range []string{"https://app.example/cb#part", "https://user@app.example/cb", "javascript:alert(1)"} {
-				if u := authorize(checked, "web-hook", uri); !refused(u, "invalid_redirect", "") || len(hooked) != 0 {
-					t.Fatal("the hook judged an unsafe callback", uri, u, hooked)
+			// A fragment, a script scheme or a URI that does not parse fails
+			// the syntax check first; credentials never reach the hook.
+			for _, tc := range []struct{ uri, code, description string }{
+				{"https://app.example/cb#part", "invalid_request", "redirect_uri: Redirect URI must not contain a fragment component"},
+				{"javascript:alert(1)", "invalid_request", "redirect_uri: URL cannot use javascript:, data:, or vbscript: scheme"},
+				{"relative/cb", "invalid_request", "redirect_uri: Invalid URL"},
+				{"https://user@app.example/cb", "invalid_redirect", "invalid redirect uri"},
+			} {
+				if u := authorize(checked, "web-hook", tc.uri); !refused(u, tc.code, tc.description) || len(hooked) != 0 {
+					t.Fatal("the hook judged an unsafe callback", tc.uri, u, hooked)
 				}
 			}
-			hook = func(string) (bool, error) { return true, errors.New("lookup failed") }
+			// A callback stored with credentials never matches.
+			if u := authorize(plain, "web-user", "https://user@app.example/cb"); !refused(u, "invalid_redirect", "invalid redirect uri") {
+				t.Fatal("a stored callback with credentials matched", u)
+			}
+			// The hook's answer replaces the registered match.
+			hook = func(string) (bool, error) { return false, nil }
 			if u := authorize(checked, "web-hook", "https://app.example/cb"); !refused(u, "invalid_redirect", "") || len(hooked) != 1 {
+				t.Fatal("the hook could not refuse a registered callback", u, hooked)
+			}
+			hook = func(string) (bool, error) { return true, errors.New("lookup failed") }
+			if u := authorize(checked, "web-hook", "https://app.example/cb"); !refused(u, "invalid_redirect", "") || len(hooked) != 2 {
 				t.Fatal("a failing hook did not fail closed", u, hooked)
+			}
+			// Later errors go to a callback only the hook accepted.
+			hook = func(string) (bool, error) { return true, nil }
+			q := url.Values{"client_id": {"web-hook"}, "response_type": {"code"}, "redirect_uri": {"https://preview.app.example/cb"}, "scope": {"write"}, "state": {"saved"},
+				"code_challenge": {base64.RawURLEncoding.EncodeToString(sum[:])}, "code_challenge_method": {"S256"}}
+			req := httptest.NewRequest("GET", base+"/api/auth/oauth2/authorize?"+q.Encode(), nil)
+			req.AddCookie(checked.SessionCookie("browser", true))
+			out := httptest.NewRecorder()
+			checked.ServeHTTP(out, req)
+			if u, err := url.Parse(out.Header().Get("Location")); err != nil || u.Host != "preview.app.example" || u.Query().Get("error") != "invalid_scope" || u.Query().Get("state") != "saved" || u.Query().Get("iss") != base+"/api/auth" {
+				t.Fatal("a later error did not reach the callback the hook accepted", out.Code, out.Header().Get("Location"))
 			}
 		})
 	}

@@ -100,10 +100,17 @@ export async function exerciseBrowserLogin({ server, db, created, cookie, reques
   const newCookie = cookies(newUser);
   const signupPage = await jsonRedirect(newUser);
   assert.equal(signupPage.pathname, "/signup");
-  // Without a true step flag the continuation is refused before its query.
-  const unflagged = await request("oauth2/continue", { created: false, oauth_query: await signed(signupPage) }, { cookie: newCookie });
-  assert.equal(unflagged.status, 400);
-  assert.deepEqual(await unflagged.json(), { error: "invalid_request", error_description: "Missing parameters" });
+  // Without a true step flag the continuation is refused before its query
+  // is read, and a flagged one without a query is refused for the query.
+  for (const [body, description] of [
+    [{ created: false, oauth_query: await signed(signupPage) }, "Missing parameters"],
+    [{}, "Missing parameters"],
+    [{ created: true }, "missing oauth query"],
+  ]) {
+    const unflagged = await request("oauth2/continue", body, { cookie: newCookie });
+    assert.equal(unflagged.status, 400);
+    assert.deepEqual(await unflagged.json(), { error: "invalid_request", error_description: description });
+  }
   const next = await request("oauth2/continue", { created: true, oauth_query: await signed(signupPage) }, { cookie: newCookie });
   const freshConsent = await jsonRedirect(next);
   assert.equal(freshConsent.pathname, "/consent");

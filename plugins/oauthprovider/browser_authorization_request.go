@@ -138,6 +138,12 @@ func browserFragmentError(q url.Values) bool {
 }
 
 func (c BrowserClient) matchesCallback(raw string) bool {
+	// As in another runtime, a callback with a fragment or credentials, or
+	// one that does not parse, never matches, even when stored that way.
+	u, err := url.Parse(raw)
+	if err != nil || strings.Contains(raw, "#") || u.User != nil {
+		return false
+	}
 	if slices.Contains(c.RedirectURIs, raw) {
 		return true
 	}
@@ -146,6 +152,21 @@ func (c BrowserClient) matchesCallback(raw string) bool {
 	}
 	key := loopbackCallback(raw)
 	return key != "" && slices.ContainsFunc(c.RedirectURIs, func(uri string) bool { return loopbackCallback(uri) == key })
+}
+
+// redirectSyntax describes why a requested callback fails the redirect URI
+// syntax another runtime's authorization query schema applies, or returns "".
+func redirectSyntax(raw string) string {
+	u, err := url.Parse(raw)
+	switch {
+	case err != nil || !u.IsAbs():
+		return "Invalid URL"
+	case u.Scheme == "javascript" || u.Scheme == "data" || u.Scheme == "vbscript":
+		return "URL cannot use javascript:, data:, or vbscript: scheme"
+	case strings.Contains(raw, "#"):
+		return "Redirect URI must not contain a fragment component"
+	}
+	return ""
 }
 
 // Compare original URI bytes apart from the port, including escapes, host

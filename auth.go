@@ -13,6 +13,7 @@ import (
 	"log/slog"
 	"maps"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"regexp"
 	"runtime"
@@ -25,6 +26,7 @@ import (
 	"github.com/Plain-Org/plain-auth/internal/configenv"
 	"github.com/Plain-Org/plain-auth/internal/httporigin"
 	"github.com/Plain-Org/plain-auth/internal/sessionfields"
+	"golang.org/x/net/idna"
 )
 
 // Auth is safe for concurrent use by application handlers.
@@ -1082,19 +1084,34 @@ func (a *Auth) oauthIssuerAccepted(iss string) bool {
 	return iss == a.OAuthIssuer() || iss == a.configuredOAuthIssuer()
 }
 
-// normalizeIssuer serializes an absolute URL as a WHATWG URL is, with a
-// lowercase host, no default port and its dot segments resolved, then drops
-// its query, fragment and one trailing slash; a value that does not parse
-// is returned unchanged.
+// normalizeIssuer serializes an absolute URL as a WHATWG URL is, with an
+// ASCII lowercase host, a canonical IP literal, no default or empty port and
+// its dot segments resolved, then drops its query, fragment and one trailing
+// slash; a value that does not parse is returned unchanged. IPv4 shorthand
+// such as 127.1 is kept as configured, where a WHATWG URL expands it.
 func normalizeIssuer(raw string) string {
 	u, err := url.Parse(raw)
 	if err != nil || !u.IsAbs() {
 		return raw
 	}
 	u = u.ResolveReference(&url.URL{})
-	u.Host = strings.ToLower(u.Host)
-	if port := u.Port(); u.Scheme == "https" && port == "443" || u.Scheme == "http" && port == "80" {
-		u.Host = strings.TrimSuffix(u.Host, ":"+port)
+	if u.Host != "" {
+		host, port := strings.ToLower(u.Hostname()), u.Port()
+		if addr, err := netip.ParseAddr(host); err == nil {
+			host = addr.String()
+		} else if ascii, err := idna.Lookup.ToASCII(host); err == nil {
+			host = ascii
+		}
+		if u.Scheme == "https" && port == "443" || u.Scheme == "http" && port == "80" {
+			port = ""
+		}
+		if strings.Contains(host, ":") {
+			host = "[" + host + "]"
+		}
+		u.Host = host
+		if port != "" {
+			u.Host += ":" + port
+		}
 	}
 	u.RawQuery, u.ForceQuery, u.Fragment, u.RawFragment = "", false, "", ""
 	return strings.TrimSuffix(u.String(), "/")

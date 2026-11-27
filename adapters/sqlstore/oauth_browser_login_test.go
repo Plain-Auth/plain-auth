@@ -157,6 +157,11 @@ func TestBrowserLoginContinuation(t *testing.T) {
 					t.Fatal("a continuation did not pick its step as another runtime does", tc.body, w.Code, w.Body.String())
 				}
 			}
+			// created comes before postLogin, so the signup page's query
+			// resumes even with both flags set.
+			if w := post(h, "oauth2/continue", map[string]any{"created": true, "postLogin": true, "oauth_query": signupQuery}, signedIn, nil); w.Code != 200 || !strings.Contains(w.Body.String(), "code=") {
+				t.Fatal("postLogin took precedence over created", w.Code, w.Body.String())
+			}
 			location, err := browser.ContinueOAuthSignup(ctx, signupQuery)
 			must(err)
 			next, err := url.Parse(location)

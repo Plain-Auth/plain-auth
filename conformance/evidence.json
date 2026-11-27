@@ -18689,10 +18689,9 @@
       "marker": "host-approved redirect did not receive the code"
     },
     {
-      "label": "Check only the HTTPS policy before the host callback, never call it for a callback with credentials, a fragment or a script scheme, let it accept callbacks the registration rules would refuse, and fail closed on an error, on SQLite, PostgreSQL and MySQL",
+      "label": "Check the redirect syntax and HTTPS policy before the host callback, never call it for credentials, let its answer replace the registered match in both directions, send later errors to a callback only it accepted, and fail closed on an error, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_redirect_transport_test.go",
-      "marker": "t.Fatal(\"the hook judged an unsafe callback\", uri, u, hooked)",
-      "complete": true
+      "marker": "t.Fatal(\"the hook judged an unsafe callback\", tc.uri, u, hooked)"
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/codeExpiresIn": [
@@ -19020,12 +19019,12 @@
       "marker": "const picked = await destination("
     },
     {
-      "label": "Refuse a continuation without a true step flag with Missing parameters before its query, on both runtimes",
+      "label": "Refuse a continuation without a true step flag with Missing parameters, with or without a signed query, and a flagged one without a query with missing oauth query, on both runtimes",
       "test": "conformance/oauth-browser-login.mjs",
-      "marker": "const unflagged = await request(\"oauth2/continue\""
+      "marker": "const unflagged = await request(\"oauth2/continue\", body, { cookie: newCookie });"
     },
     {
-      "label": "Pick the first true flag in the order selected, created and postLogin, accept only a query signed for that step's page, and resume a created step from the login page without prompt=create, on SQLite, PostgreSQL and MySQL",
+      "label": "Pick selected before created and created before postLogin, accept only a query signed for that step's page, and resume a created step from the login page without prompt=create, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_browser_login_test.go",
       "marker": "t.Fatal(\"a continuation did not pick its step as another runtime does\""
     }
@@ -19114,12 +19113,12 @@
       "complete": true
     },
     {
-      "label": "Refuse a continuation without a true step flag with Missing parameters before its query, on both runtimes",
+      "label": "Refuse a continuation without a true step flag with Missing parameters, with or without a signed query, and a flagged one without a query with missing oauth query, on both runtimes",
       "test": "conformance/oauth-browser-login.mjs",
-      "marker": "const unflagged = await request(\"oauth2/continue\""
+      "marker": "const unflagged = await request(\"oauth2/continue\", body, { cookie: newCookie });"
     },
     {
-      "label": "Pick the first true flag in the order selected, created and postLogin, accept only a query signed for that step's page, and resume a created step from the login page without prompt=create, on SQLite, PostgreSQL and MySQL",
+      "label": "Pick selected before created and created before postLogin, accept only a query signed for that step's page, and resume a created step from the login page without prompt=create, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_browser_login_test.go",
       "marker": "t.Fatal(\"a continuation did not pick its step as another runtime does\""
     }
@@ -48502,7 +48501,7 @@
   ],
   "plugin-symbol/oauth-provider/getIssuer": [
     {
-      "label": "Publish the issuer serialized as a WHATWG URL without its query, fragment and one trailing slash, and accept both the published and the configured spelling in the token issuer check",
+      "label": "Publish the issuer with an ASCII lowercase host, a canonical IP literal, no default or empty port and resolved dot segments, without its query, fragment and one trailing slash, and accept both the published and the configured spelling in the token issuer check; IPv4 shorthand is a documented deviation",
       "test": "oauth_issuer_test.go",
       "marker": "t.Fatal(\"the issuer was not published normalized\", configured, got)",
       "complete": true
