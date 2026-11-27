@@ -3,8 +3,10 @@ package sqlstore
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"sync"
 	"testing"
@@ -18,12 +20,75 @@ import (
 	sdk "github.com/stripe/stripe-go/v87"
 )
 
+// stripeFailure is a Stripe API error the fake returns instead of a result;
+// code may be empty, as Stripe sends for many refusals.
+type stripeFailure struct {
+	status        int
+	code, message string
+}
+
+func stripeError(f stripeFailure) *http.Response {
+	body := map[string]string{"type": "invalid_request_error", "message": f.message}
+	if f.code != "" {
+		body["code"] = f.code
+	}
+	return stripeJSON(f.status, map[string]any{"error": body})
+}
+
 type managementProvider struct {
 	mu                                           sync.Mutex
 	origin, customer, schedule, scheduleCustomer string
-	cancelAt                                     int64
-	atEnd                                        bool
-	updates, releases, calls                     int
+	// status and scheduleStatus report active when empty.
+	status, scheduleStatus string
+	// periodEnd is fixed on first use.
+	periodEnd, cancelAt, canceledAt int64
+	atEnd, missing                  bool
+	portalError, updateError        *stripeFailure
+	scheduleError, releaseError     *stripeFailure
+	// onPortal runs under mu and only assigns fields.
+	onPortal func()
+	// others are more subscriptions of the same customer, item and period,
+	// by ID and status, with no pending cancellation.
+	others                            map[string]string
+	portalForm, updateForm            url.Values
+	updates, releases, calls, portals int
+}
+
+// form is a copy of the last portal form.
+func (p *managementProvider) form() url.Values {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return maps.Clone(p.portalForm)
+}
+
+// lastUpdate is a copy of the last subscription update form.
+func (p *managementProvider) lastUpdate() url.Values {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return maps.Clone(p.updateForm)
+}
+
+func (p *managementProvider) subscription(id, status string) map[string]any {
+	if p.periodEnd == 0 {
+		p.periodEnd = time.Now().Add(24 * time.Hour).Unix()
+	}
+	if status == "" {
+		status = "active"
+	}
+	// Only sub_fixture carries the fixture's pending cancellation.
+	cancelAt, atEnd, canceledAt := p.cancelAt, p.atEnd, p.canceledAt
+	if id != "sub_fixture" {
+		cancelAt, atEnd, canceledAt = 0, false, 0
+	}
+	data := map[string]any{"id": id, "object": "subscription", "customer": p.customer, "status": status, "cancel_at": cancelAt, "cancel_at_period_end": atEnd, "canceled_at": canceledAt,
+		"items": map[string]any{"data": []any{map[string]any{"id": "si_fixture", "quantity": 1, "price": map[string]any{"id": "price_pro", "recurring": map[string]any{"interval": "month", "interval_count": 1, "usage_type": "licensed"}}, "current_period_start": 100, "current_period_end": p.periodEnd}}}}
+	if status == "canceled" {
+		data["ended_at"] = p.periodEnd - 3600
+	}
+	if p.schedule != "" && id == "sub_fixture" {
+		data["schedule"] = p.schedule
+	}
+	return data
 }
 
 func (p *managementProvider) RoundTrip(r *http.Request) (*http.Response, error) {
@@ -36,34 +101,56 @@ func (p *managementProvider) RoundTrip(r *http.Request) (*http.Response, error) 
 	path := r.URL.Path
 	switch {
 	case path == "/v1/subscriptions/sub_fixture":
+		if p.missing {
+			return stripeError(stripeFailure{404, "resource_missing", "No such subscription: 'sub_fixture'"}), nil
+		}
 		if r.Method == "POST" {
+			if p.updateError != nil {
+				return stripeError(*p.updateError), nil
+			}
 			switch {
 			case p.cancelAt != 0 && r.PostForm.Has("cancel_at") && r.PostForm.Get("cancel_at") == "" && !r.PostForm.Has("cancel_at_period_end"):
-				p.cancelAt = 0
+				// Unsetting cancel_at also clears a period-end cancellation.
+				p.cancelAt, p.atEnd = 0, false
 			case p.atEnd && r.PostForm.Get("cancel_at_period_end") == "false" && !r.PostForm.Has("cancel_at"):
 				p.atEnd = false
 			default:
 				return nil, errors.New("wrong Stripe restore parameters")
 			}
+			p.canceledAt = 0
+			p.updateForm = maps.Clone(r.PostForm)
 			p.updates++
 		}
-		data := map[string]any{"id": "sub_fixture", "object": "subscription", "customer": p.customer, "status": "active", "cancel_at": p.cancelAt, "cancel_at_period_end": p.atEnd,
-			"items": map[string]any{"data": []any{map[string]any{"id": "si_fixture", "quantity": 1, "price": map[string]any{"id": "price_pro", "recurring": map[string]any{"interval": "month", "interval_count": 1, "usage_type": "licensed"}}, "current_period_start": 100, "current_period_end": time.Now().Add(24 * time.Hour).Unix()}}}}
-		if p.schedule != "" {
-			data["schedule"] = p.schedule
-		}
-		return stripeJSON(200, data), nil
+		return stripeJSON(200, p.subscription("sub_fixture", p.status)), nil
+	case strings.HasPrefix(path, "/v1/subscriptions/") && p.others[strings.TrimPrefix(path, "/v1/subscriptions/")] != "" && r.Method == "GET":
+		id := strings.TrimPrefix(path, "/v1/subscriptions/")
+		return stripeJSON(200, p.subscription(id, p.others[id])), nil
 	case path == "/v1/billing_portal/sessions" && r.Method == "POST":
-		if r.PostForm.Get("customer") != p.customer || r.PostForm.Get("return_url") != p.origin+"/billing" {
-			return nil, errors.New("wrong portal owner or return")
+		if r.PostForm.Get("return_url") != p.origin+"/billing" {
+			return nil, errors.New("wrong portal return")
 		}
-		if flow := r.PostForm.Get("flow_data[type]"); flow != "" && (flow != "subscription_cancel" || r.PostForm.Get("flow_data[subscription_cancel][subscription]") != "sub_fixture") {
-			return nil, errors.New("wrong cancellation flow")
+		p.portalForm = maps.Clone(r.PostForm)
+		p.portals++
+		if p.onPortal != nil {
+			p.onPortal()
 		}
-		return stripeJSON(200, map[string]string{"id": "bps_fixture", "url": "https://billing.stripe.test/fixture"}), nil
+		if p.portalError != nil {
+			return stripeError(*p.portalError), nil
+		}
+		return stripeJSON(200, map[string]string{"id": "bps_fixture", "url": "https://billing.stripe.test/fixture", "customer": r.PostForm.Get("customer")}), nil
 	case path == "/v1/subscription_schedules/sched_fixture" && r.Method == "GET":
-		return stripeJSON(200, map[string]string{"id": p.schedule, "customer": p.scheduleCustomer, "status": "active", "subscription": "sub_fixture"}), nil
+		if p.scheduleError != nil {
+			return stripeError(*p.scheduleError), nil
+		}
+		status := p.scheduleStatus
+		if status == "" {
+			status = "active"
+		}
+		return stripeJSON(200, map[string]string{"id": p.schedule, "customer": p.scheduleCustomer, "status": status, "subscription": "sub_fixture"}), nil
 	case path == "/v1/subscription_schedules/sched_fixture/release" && r.Method == "POST":
+		if p.releaseError != nil {
+			return stripeError(*p.releaseError), nil
+		}
 		p.releases++
 		p.schedule = ""
 		return stripeJSON(200, map[string]string{"id": "sched_fixture", "status": "released", "released_subscription": "sub_fixture"}), nil
@@ -154,11 +241,12 @@ func TestOwnerSubscriptionManagement(t *testing.T) {
 				t.Fatal("foreign request reached billing provider")
 			}
 			page, err := a.Cancel(ctx, cancellation)
-			if err != nil || page.Redirect || page.URL != "https://billing.stripe.test/fixture" {
+			if form := p.form(); err != nil || page.Redirect || page.URL != "https://billing.stripe.test/fixture" || form.Get("customer") != "cus_owner" ||
+				form.Get("flow_data[type]") != "subscription_cancel" || form.Get("flow_data[subscription_cancel][subscription]") != "sub_fixture" {
 				t.Fatal("targeted cancellation portal", page, err)
 			}
 			page, err = a.BillingPortal(ctx, stripeclient.Portal{ReturnURL: "/billing"})
-			if err != nil || !page.Redirect {
+			if form := p.form(); err != nil || !page.Redirect || form.Get("customer") != "cus_owner" || form.Has("flow_data[type]") {
 				t.Fatal("account portal", page, err)
 			}
 			_, err = a.Restore(ctx, "sub_fixture")

@@ -87,7 +87,7 @@ opts.Plugins = append(opts.Plugins, authstripe.New(authstripe.Options{
 }))
 ```
 
-Send an authenticated `POST /api/auth/subscription/billing-portal` with `{"returnUrl":"/account","disableRedirect":true}`. The response contains a Stripe portal URL and the redirect preference. The endpoint resolves the customer using the session owner and accepts return URLs on configured trusted origins. The [portal test](../plugins/stripe/portal_test.go) exercises the real Go SDK with a local transport.
+Send an authenticated `POST /api/auth/subscription/billing-portal` with `{"returnUrl":"/account","disableRedirect":true}`. The response contains a Stripe portal URL and the redirect preference. The endpoint resolves the customer using the session owner and accepts return URLs on configured trusted origins. The [portal test](../plugins/stripe/portal_test.go) exercises the real Go SDK with a local transport. `Portal` alone mounts the billing portal, with or without `Subscriptions`, and `Subscriptions` alone does not mount it, where another runtime mounts it with subscriptions: the portal needs its own client and customer lookup, and a portal-only application needs no checkout schema. [Option tests](../adapters/sqlstore/stripe_options_test.go)
 
 ## Return an application-defined session view
 

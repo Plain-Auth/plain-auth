@@ -374,3 +374,142 @@ func TestStripeSubscriptionReconciliation(t *testing.T) {
 		})
 	}
 }
+
+// Signed updates and deletions store Stripe's cancellation flag, dates and
+// end time as Stripe reports them, clear them when undone, and a deletion
+// clears the schedule and passes the committed row to its callback.
+func TestStripeCancellationFields(t *testing.T) {
+	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
+		t.Run(dialect, func(t *testing.T) {
+			ctx := t.Context()
+			ddl, err := schema.Generate(dialect, []string{"stripe-subscriptions"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			db, err := OpenWithSchema(ctx, dialect, organizationTestDSN(t, dialect), ddl)
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { db.Close() })
+			var mu sync.Mutex
+			remote := map[string]map[string]any{}
+			put := func(id string, fields map[string]any) {
+				mu.Lock()
+				defer mu.Unlock()
+				obj := map[string]any{"object": "subscription", "id": id, "customer": "cus_fields", "status": "active", "metadata": map[string]string{},
+					"items": map[string]any{"data": []any{map[string]any{"quantity": int64(1), "price": map[string]any{"id": "price_base"}, "current_period_start": 1000, "current_period_end": 2000}}}}
+				maps.Copy(obj, fields)
+				remote[id] = obj
+			}
+			transport := localBillingTransport(func(r *http.Request) (*http.Response, error) {
+				mu.Lock()
+				defer mu.Unlock()
+				if obj, ok := remote[strings.TrimPrefix(r.URL.Path, "/v1/subscriptions/")]; ok && r.Method == "GET" {
+					return stripeJSON(200, obj), nil
+				}
+				return nil, fmt.Errorf("unexpected Stripe call %s %s", r.Method, r.URL.Path)
+			})
+			const secret = "whsec_fields"
+			var deleted []billing.Subscription
+			plug := billing.New(billing.Options{WebhookSecret: secret, Subscriptions: &billing.SubscriptionOptions{
+				Client: sdk.NewClient("sk_test_local", sdk.WithBackends(sdk.NewBackendsWithConfig(&sdk.BackendConfig{HTTPClient: &http.Client{Transport: transport}, MaxNetworkRetries: sdk.Int64(0)}))),
+				Plans:  []billing.Plan{{Name: "basic", PriceID: "price_base"}},
+				OnSubscriptionDeleted: func(_ context.Context, e billing.SubscriptionEvent) error {
+					mu.Lock()
+					defer mu.Unlock()
+					deleted = append(deleted, e.Subscription)
+					return nil
+				},
+			}})
+			off := false
+			a, err := auth.New(auth.Options{Store: db, Secret: strings.Repeat("s", 32), BaseURL: "https://bill.example", EmailAndPassword: true, Plugins: []auth.Plugin{plug}, RateLimit: &off})
+			if err != nil {
+				t.Fatal(err)
+			}
+			owner, err := a.SignUpEmail(ctx, auth.SignUpInput{Name: "owner", Email: "owner@example.test", Password: "local fixture password"}, auth.RequestMeta{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := db.db.ExecContext(ctx, db.bind(`UPDATE "user" SET "stripeCustomerId"=? WHERE "id"=?`), "cus_fields", owner.User.ID); err != nil {
+				t.Fatal(err)
+			}
+			var created int64
+			send := func(event, kind, id string) {
+				t.Helper()
+				created++
+				mu.Lock()
+				object := remote[id]
+				mu.Unlock()
+				raw, _ := json.Marshal(map[string]any{"id": event, "object": "event", "api_version": sdk.APIVersion, "created": created, "type": kind, "data": map[string]any{"object": object}})
+				req := httptest.NewRequest("POST", "https://bill.example/api/auth/stripe/webhook", bytes.NewReader(raw))
+				req.Header.Set("Content-Type", "application/json")
+				req.Header.Set("Stripe-Signature", webhook.GenerateTestSignedPayload(&webhook.UnsignedPayload{Payload: raw, Secret: secret}).Header)
+				w := httptest.NewRecorder()
+				a.ServeHTTP(w, req)
+				if w.Code != 200 {
+					t.Fatal(kind, event, w.Code, w.Body)
+				}
+			}
+			read := func(id string) billing.Subscription {
+				t.Helper()
+				r, err := scanStripeSubscription(db.db.QueryRowContext(ctx, db.bind(`SELECT `+subscriptionFields+` FROM "subscription" WHERE "stripeSubscriptionId"=?`), id))
+				if err != nil {
+					t.Fatal(err)
+				}
+				return r
+			}
+			unix := func(at *time.Time) int64 {
+				if at == nil {
+					return 0
+				}
+				return at.Unix()
+			}
+			flag := func(b *bool) bool { return b != nil && *b }
+			put("sub_fields", nil)
+			send("evt_create", "customer.subscription.created", "sub_fields")
+			if r := read("sub_fields"); flag(r.CancelAtPeriodEnd) || r.CancelAt != nil || r.CanceledAt != nil || r.EndedAt != nil {
+				t.Fatal("a new subscription carried cancellation fields", r)
+			}
+			put("sub_fields", map[string]any{"cancel_at_period_end": true, "cancel_at": 2000, "canceled_at": 1500})
+			send("evt_pending", "customer.subscription.updated", "sub_fields")
+			if r := read("sub_fields"); !flag(r.CancelAtPeriodEnd) || unix(r.CancelAt) != 2000 || unix(r.CanceledAt) != 1500 || r.Status != "active" || r.EndedAt != nil {
+				t.Fatal("pending period-end cancellation was not recorded", r)
+			}
+			put("sub_fields", nil)
+			send("evt_undone", "customer.subscription.updated", "sub_fields")
+			if r := read("sub_fields"); flag(r.CancelAtPeriodEnd) || r.CancelAt != nil || r.CanceledAt != nil {
+				t.Fatal("undone cancellation kept its dates", r)
+			}
+			put("sub_fields", map[string]any{"cancel_at": 1700, "canceled_at": 1600})
+			send("evt_dated", "customer.subscription.updated", "sub_fields")
+			if r := read("sub_fields"); unix(r.CancelAt) != 1700 || flag(r.CancelAtPeriodEnd) || r.Status != "active" {
+				t.Fatal("dated cancellation was not recorded", r)
+			}
+			put("sub_fields", map[string]any{"cancel_at": 1700, "canceled_at": 1600, "schedule": "sched_fields"})
+			send("evt_schedule", "customer.subscription.updated", "sub_fields")
+			if r := read("sub_fields"); r.ScheduleID == nil || *r.ScheduleID != "sched_fields" {
+				t.Fatal("the schedule was not recorded", r)
+			}
+			put("sub_fields", map[string]any{"status": "canceled", "cancel_at_period_end": true, "cancel_at": 2000, "canceled_at": 1600, "ended_at": 2000, "trial_start": 900, "trial_end": 950, "schedule": "sched_fields"})
+			send("evt_delete", "customer.subscription.deleted", "sub_fields")
+			r := read("sub_fields")
+			mu.Lock()
+			var callback billing.Subscription
+			if len(deleted) == 1 {
+				callback = deleted[0]
+			}
+			mu.Unlock()
+			if r.Status != "canceled" || unix(r.CanceledAt) != 1600 || unix(r.EndedAt) != 2000 || !flag(r.CancelAtPeriodEnd) || unix(r.CancelAt) != 2000 || unix(r.TrialStart) != 900 || unix(r.TrialEnd) != 950 || r.ScheduleID != nil ||
+				unix(callback.EndedAt) != 2000 || unix(callback.CanceledAt) != 1600 || !flag(callback.CancelAtPeriodEnd) {
+				t.Fatal("signed deletion lost or swapped its cancellation fields", r, callback)
+			}
+			put("sub_now", nil)
+			send("evt_now_create", "customer.subscription.created", "sub_now")
+			put("sub_now", map[string]any{"status": "canceled", "canceled_at": 1800, "ended_at": 1900})
+			send("evt_now_end", "customer.subscription.updated", "sub_now")
+			if r := read("sub_now"); r.Status != "canceled" || unix(r.CanceledAt) != 1800 || unix(r.EndedAt) != 1900 {
+				t.Fatal("update that ended the subscription", r)
+			}
+		})
+	}
+}

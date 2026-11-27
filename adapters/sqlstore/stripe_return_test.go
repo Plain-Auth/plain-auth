@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -38,6 +39,8 @@ type returnFixture struct {
 	mode                         string
 	getCheckout, getSub, onEvent int
 	duringSubscriptionGet        func()
+	// extra is merged into the subscription Stripe returns.
+	extra map[string]any
 }
 
 func (f *returnFixture) event(context.Context, sdk.Event) error { f.onEvent++; return nil }
@@ -103,7 +106,9 @@ func (f *returnFixture) provider(r *http.Request) (*http.Response, error) {
 		if f.mode == "trial" {
 			status = "trialing"
 		}
-		return stripeJSON(200, map[string]any{"id": remote, "object": "subscription", "customer": rec.customer, "metadata": rec.meta, "status": status, "items": map[string]any{"data": []any{map[string]any{"quantity": 1, "price": map[string]any{"id": price}, "current_period_start": 1000, "current_period_end": 2000}}}}), nil
+		obj := map[string]any{"id": remote, "object": "subscription", "customer": rec.customer, "metadata": rec.meta, "status": status, "items": map[string]any{"data": []any{map[string]any{"quantity": 1, "price": map[string]any{"id": price}, "current_period_start": 1000, "current_period_end": 2000}}}}
+		maps.Copy(obj, f.extra)
+		return stripeJSON(200, obj), nil
 	}
 	return stripeJSON(404, map[string]any{"error": map[string]string{"code": "unexpected_route"}}), nil
 }
@@ -353,6 +358,28 @@ func TestHostedCheckoutReturn(t *testing.T) {
 				t.Fatal(err)
 			}
 			f.back(rec.id, returnTemplate, c, 404, "")
+		})
+	}
+}
+
+// The Checkout return stores Stripe's cancellation flag and dates from the
+// retrieved subscription, with no end time until Stripe reports one.
+func TestCheckoutReturnCancellationFields(t *testing.T) {
+	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
+		t.Run(dialect, func(t *testing.T) {
+			f := newReturnFixture(t, dialect)
+			f.extra = map[string]any{"cancel_at_period_end": true, "cancel_at": 2000, "canceled_at": 1500}
+			owner := f.user("owner")
+			rec := f.start(owner)
+			filled := strings.ReplaceAll(returnTemplate, "{CHECKOUT_SESSION_ID}", rec.id)
+			f.back(rec.id, returnTemplate, f.a.SessionCookie(owner.Token, true), 302, filled)
+			r, err := scanStripeSubscription(f.store.db.QueryRowContext(t.Context(), f.store.bind(`SELECT `+subscriptionFields+` FROM "subscription" WHERE "referenceId"=?`), owner.User.ID))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if r.Status != "active" || r.CancelAtPeriodEnd == nil || !*r.CancelAtPeriodEnd || r.CancelAt == nil || r.CancelAt.Unix() != 2000 || r.CanceledAt == nil || r.CanceledAt.Unix() != 1500 || r.EndedAt != nil || f.onEvent != 0 {
+				t.Fatal("Checkout confirmation dropped Stripe's cancellation fields", r, f.onEvent)
+			}
 		})
 	}
 }

@@ -90,6 +90,10 @@ func New(opts Options) authn.Plugin {
 			return map[string]bool{"success": true}, nil
 		},
 	}}}
+	// The billing portal is mounted by portal options alone, with or
+	// without subscriptions, where another runtime mounts it with
+	// subscriptions: it needs its own client and customer lookup, and a
+	// portal-only application needs no checkout schema.
 	if opts.Portal != nil {
 		plugin.Endpoints = append(plugin.Endpoints, portalEndpoint(*opts.Portal, opts.Organization))
 	}
@@ -140,6 +144,9 @@ func New(opts Options) authn.Plugin {
 						return errors.New("stripe: free trials require a store with reservation-bound trial eligibility")
 					}
 				}
+				// A membership plan cannot bill correctly without the policy and
+				// seat tracking, so it fails at startup, where another runtime
+				// logs an error or refuses each organization request.
 				if plan.SeatPriceID != "" {
 					if opts.Organization == nil || opts.Organization.AuthorizeReference == nil {
 						return errors.New("stripe: membership-based billing requires organization authorization")

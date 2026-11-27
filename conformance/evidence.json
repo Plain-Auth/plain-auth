@@ -8104,6 +8104,16 @@
       "label": "Recheck organization membership before disclosing cancellation and plan confirmation links or changing a future phase",
       "test": "adapters/sqlstore/stripe_organization_management_test.go",
       "marker": "func TestOrganizationSubscriptionManagement("
+    },
+    {
+      "label": "Choose the first active subscription when the ID is omitted and the named one otherwise, and refuse another account's, an unknown or an ended subscription before Stripe opens a portal, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_cancel_restore_test.go",
+      "marker": "func TestOwnerCancellationSelection("
+    },
+    {
+      "label": "Synchronize a cancellation Stripe already scheduled, keep subscriptions Stripe reports ended as history and leave ones it reports missing unchanged without opening a portal, and relay coded refusals while answering other Stripe failures with HTTP 502, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_cancel_restore_test.go",
+      "marker": "func TestOwnerCancellationProviderStates("
     }
   ],
   "plugin/stripe/POST /subscription/restore": [
@@ -8141,6 +8151,16 @@
       "label": "Refuse to release an organization schedule when the caller loses restore permission during Stripe’s response",
       "test": "adapters/sqlstore/stripe_organization_management_test.go",
       "marker": "revoked restore permission released the schedule"
+    },
+    {
+      "label": "Restore the first active subscription when the ID is omitted and the named one otherwise, and refuse ended, foreign or unknown subscriptions before contacting Stripe, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_cancel_restore_test.go",
+      "marker": "func TestOwnerRestoreSelection("
+    },
+    {
+      "label": "Persist Stripe's cleared cancellation, release a schedule while keeping the plan, clear a schedule Stripe no longer reports, and relay Stripe's refusals, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_cancel_restore_test.go",
+      "marker": "func TestOwnerRestoreProviderStates("
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L413": [
@@ -8192,6 +8212,12 @@
       "label": "Require verified email before starting Checkout when configured",
       "test": "adapters/sqlstore/stripe_management_test.go",
       "marker": "mustCode(err, 400, \"EMAIL_VERIFICATION_REQUIRED\")"
+    },
+    {
+      "label": "Let an unverified owner reach Checkout by default and, when required, refuse new checkouts and plan changes before contacting Stripe, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_options_test.go",
+      "marker": "func TestCheckoutEmailVerification(",
+      "complete": true
     }
   ],
   "plugin-symbol/api-key/ApiKeyConfigurationOptions/enableSessionForAPIKeys": [
@@ -10773,6 +10799,12 @@
       "label": "Recheck organization membership before disclosing cancellation and plan confirmation links or changing a future phase",
       "test": "adapters/sqlstore/stripe_organization_management_test.go",
       "marker": "func TestOrganizationSubscriptionManagement("
+    },
+    {
+      "label": "Answer organization requests with AUTHORIZE_REFERENCE_REQUIRED before contacting Stripe or reserving a purchase when no policy is configured, while personal billing still works, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_options_test.go",
+      "marker": "t.Fatal(\"organization request without a policy reached Stripe or a reservation\", calls.Load(), rows, err)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L908": [
@@ -10800,6 +10832,12 @@
       "label": "Generate the optional organization customer column with organization and subscription tables on three SQL dialects",
       "test": "conformance/schema.test.mjs",
       "marker": "test(\"organization billing adds the organization customer column"
+    },
+    {
+      "label": "Refuse organization billing at startup without the organization customer column, with or without subscriptions, and start after the schema upgrade keeps existing organizations, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_options_test.go",
+      "marker": "t.Fatal(\"organization billing started without its schema\", subs != nil)",
+      "complete": true
     }
   ],
   "plugin-symbol/scim/SCIMAuthenticationOptions/verifyBearerToken": [
@@ -12077,6 +12115,17 @@
       "label": "Charge a single yearly item at the organization member count and synchronize that same item after a member joins or leaves",
       "test": "conformance/stripe-organization-fixture.mjs",
       "marker": "[[\"price_basic_annual\", 2]]"
+    },
+    {
+      "label": "Refuse a membership plan without an organization policy or a seat-capable store at startup",
+      "test": "adapters/sqlstore/stripe_options_test.go",
+      "marker": "t.Fatal(\"a membership plan started without an organization policy\", err)"
+    },
+    {
+      "label": "Keep a personal checkout of a membership plan at the caller's base price and quantity while an organization is active, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_options_test.go",
+      "marker": "func TestPersonalCheckoutForSeatPlan(",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L19/Team subscription support with seats management": [
@@ -50919,6 +50968,11 @@
       "label": "Open Stripe’s cancellation flow for the signed-in owner’s subscription with the trusted return page and return its link without a redirect, on both runtimes",
       "test": "conformance/stripe-lifecycle-fixture.mjs",
       "marker": "assert.deepEqual(ok(await owner.subscription.cancel(cancel)), { url: \"https://billing.example.test/cancel\", redirect: false });"
+    },
+    {
+      "label": "Synchronize a cancellation Stripe already scheduled, keep subscriptions Stripe reports ended as history and leave ones it reports missing unchanged without opening a portal, and relay coded refusals while answering other Stripe failures with HTTP 502, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_cancel_restore_test.go",
+      "marker": "func TestOwnerCancellationProviderStates("
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L423/Parameter `referenceId` (optional)": [
@@ -50947,6 +51001,17 @@
       "label": "List a period-end cancellation only after Stripe’s signed update confirms it and clear it after restoring, on both runtimes",
       "test": "conformance/stripe-lifecycle-fixture.mjs",
       "marker": "assert.equal((await list(owner, ownerID, ownerSub.id)).cancelAtPeriodEnd, true);"
+    },
+    {
+      "label": "Record period-end and dated cancellations with their request times from signed updates, clear them when undone, end a subscription through an update, and keep distinct cancellation and end times after deletion, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_lifecycle_test.go",
+      "marker": "func TestStripeCancellationFields(",
+      "complete": true
+    },
+    {
+      "label": "Store Stripe's cancellation flag and dates from the retrieved subscription on Checkout confirmation, with no end time until Stripe reports one, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_return_test.go",
+      "marker": "func TestCheckoutReturnCancellationFields("
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L450/`cancelAt`": [
@@ -50962,6 +51027,17 @@
       "label": "Record the cancellation time from a signed deletion and keep it when a later update arrives, on three SQL engines",
       "test": "adapters/sqlstore/stripe_lifecycle_test.go",
       "marker": "row.CanceledAt.Unix() != 5000"
+    },
+    {
+      "label": "Record period-end and dated cancellations with their request times from signed updates, clear them when undone, end a subscription through an update, and keep distinct cancellation and end times after deletion, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_lifecycle_test.go",
+      "marker": "func TestStripeCancellationFields(",
+      "complete": true
+    },
+    {
+      "label": "Store Stripe's cancellation flag and dates from the retrieved subscription on Checkout confirmation, with no end time until Stripe reports one, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_return_test.go",
+      "marker": "func TestCheckoutReturnCancellationFields("
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L452/`endedAt`": [
@@ -50969,6 +51045,17 @@
       "label": "Record the end time from a signed deletion and keep it when a later update arrives, on three SQL engines",
       "test": "adapters/sqlstore/stripe_lifecycle_test.go",
       "marker": "row.EndedAt.Unix() != 5000"
+    },
+    {
+      "label": "Record period-end and dated cancellations with their request times from signed updates, clear them when undone, end a subscription through an update, and keep distinct cancellation and end times after deletion, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_lifecycle_test.go",
+      "marker": "func TestStripeCancellationFields(",
+      "complete": true
+    },
+    {
+      "label": "Store Stripe's cancellation flag and dates from the retrieved subscription on Checkout confirmation, with no end time until Stripe reports one, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_return_test.go",
+      "marker": "func TestCheckoutReturnCancellationFields("
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L453/`status`": [
@@ -50984,6 +51071,11 @@
       "label": "Return Stripe’s unmodified subscription object after the signed-in owner restores a dated cancellation, on both runtimes",
       "test": "conformance/stripe-lifecycle-fixture.mjs",
       "marker": "assert.deepEqual(ok(await owner.subscription.restore(own)), ownerSub);"
+    },
+    {
+      "label": "Persist Stripe's cleared cancellation, release a schedule while keeping the plan, clear a schedule Stripe no longer reports, and relay Stripe's refusals, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_cancel_restore_test.go",
+      "marker": "func TestOwnerRestoreProviderStates("
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L468/Parameter `referenceId` (optional)": [
@@ -51155,6 +51247,16 @@
       "label": "Store the provider's cancellation time after a signed deletion and keep it when a late update arrives on three SQL engines",
       "test": "adapters/sqlstore/stripe_lifecycle_test.go",
       "marker": "if row = read(remote); row.Status != \"canceled\" || row.CanceledAt.Unix() != 5000 || row.EndedAt.Unix() != 5000 || row.ScheduleID != nil {"
+    },
+    {
+      "label": "Record period-end and dated cancellations with their request times from signed updates, clear them when undone, end a subscription through an update, and keep distinct cancellation and end times after deletion, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_lifecycle_test.go",
+      "marker": "func TestStripeCancellationFields("
+    },
+    {
+      "label": "Store Stripe's cancellation flag and dates from the retrieved subscription on Checkout confirmation, with no end time until Stripe reports one, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_return_test.go",
+      "marker": "func TestCheckoutReturnCancellationFields("
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L787/`stripeSubscriptionTableFields.seats`": [
@@ -51244,6 +51346,12 @@
       "label": "Refuse Checkout for an unverified owner when required and continue once the email is verified on three SQL engines",
       "test": "adapters/sqlstore/stripe_management_test.go",
       "marker": "mustCode(err, 400, \"EMAIL_VERIFICATION_REQUIRED\")"
+    },
+    {
+      "label": "Let an unverified owner reach Checkout by default and, when required, refuse new checkouts and plan changes before contacting Stripe, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_options_test.go",
+      "marker": "func TestCheckoutEmailVerification(",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L873/`name`": [
@@ -51325,6 +51433,12 @@
       "label": "Store a signed update's past_due status and drop it from the active list on both runtimes",
       "test": "conformance/stripe-lifecycle-fixture.mjs",
       "marker": "get(subscription.id).status, \"past_due\");"
+    },
+    {
+      "label": "Record, change and clear a signed update's cancellation flags and dates on three SQL engines",
+      "test": "adapters/sqlstore/stripe_lifecycle_test.go",
+      "marker": "func TestStripeCancellationFields(",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L593/`customer.subscription.deleted`": [
@@ -51332,6 +51446,12 @@
       "label": "Mark a signed deletion canceled and keep it canceled after a later update on three SQL engines",
       "test": "adapters/sqlstore/stripe_lifecycle_test.go",
       "marker": "t.Fatal(\"terminal lifecycle state regressed\", row)"
+    },
+    {
+      "label": "Record a signed deletion's distinct cancellation and end times, flags and trial dates, clear its schedule, and pass the committed row to the deletion callback, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_lifecycle_test.go",
+      "marker": "func TestStripeCancellationFields(",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L780/`stripeSubscriptionTableFields.endedAt`": [
@@ -51339,6 +51459,17 @@
       "label": "Keep the end time from a signed deletion when a later update arrives on three SQL engines",
       "test": "adapters/sqlstore/stripe_lifecycle_test.go",
       "marker": "row.EndedAt.Unix() != 5000"
+    },
+    {
+      "label": "Leave the end time empty until Stripe reports one and store it apart from the cancellation time from an update or a deletion, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_lifecycle_test.go",
+      "marker": "func TestStripeCancellationFields(",
+      "complete": true
+    },
+    {
+      "label": "Store Stripe's cancellation flag and dates from the retrieved subscription on Checkout confirmation, with no end time until Stripe reports one, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_return_test.go",
+      "marker": "func TestCheckoutReturnCancellationFields("
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L861/`authorizeReference`": [
@@ -51391,6 +51522,63 @@
       "label": "Answer a delivery with HTTP 500 when no signing secret is configured, and reject another secret's signature, before calling the application",
       "test": "plugins/stripe/stripe_test.go",
       "marker": "t.Fatal(\"rejected deliveries reached the application callback\", callbacks)"
+    }
+  ],
+  "plugin-symbol/stripe/StripeOptions/subscription": [
+    {
+      "label": "Mount the upgrade, list, cancel, restore and success routes only with subscription options, leave the billing portal to portal options, and refuse a store without the Stripe schema at startup, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_options_test.go",
+      "marker": "func TestStripeSubscriptionOptions(",
+      "complete": true
+    },
+    {
+      "label": "Refuse subscription options without a client or plans, or with a store that cannot hold subscriptions",
+      "test": "plugins/stripe/stripe_test.go",
+      "marker": "func TestSubscriptionOptionsAtStartup("
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L858/`enabled`": [
+    {
+      "label": "Mount the upgrade, list, cancel, restore and success routes only with subscription options, leave the billing portal to portal options, and refuse a store without the Stripe schema at startup, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_options_test.go",
+      "marker": "func TestStripeSubscriptionOptions(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L695/`stripeOrganizationTableFields.stripeCustomerId`": [
+    {
+      "label": "Add the organization customer column to an existing organization table without losing rows, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_options_test.go",
+      "marker": "t.Fatal(\"schema upgrade lost an existing organization\", err, customer)"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L431/Parameter `subscriptionId` (optional)": [
+    {
+      "label": "Choose the first active subscription when the ID is omitted and the named one otherwise, and refuse another account's, an unknown or an ended subscription before Stripe opens a portal, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_cancel_restore_test.go",
+      "marker": "func TestOwnerCancellationSelection(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L476/Parameter `subscriptionId` (optional)": [
+    {
+      "label": "Restore the first active subscription when the ID is omitted and the named one otherwise, and refuse ended, foreign or unknown subscriptions before contacting Stripe, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_cancel_restore_test.go",
+      "marker": "func TestOwnerRestoreSelection(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L443/Understanding Cancellation States": [
+    {
+      "label": "Record period-end and dated cancellations with their request times from signed updates, clear them when undone, end a subscription through an update, and keep distinct cancellation and end times after deletion, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_lifecycle_test.go",
+      "marker": "func TestStripeCancellationFields(",
+      "complete": true
+    },
+    {
+      "label": "Store Stripe's cancellation flag and dates from the retrieved subscription on Checkout confirmation, with no end time until Stripe reports one, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_return_test.go",
+      "marker": "func TestCheckoutReturnCancellationFields("
     }
   ]
 }

@@ -49,6 +49,11 @@ func recheckManaged(c auth.EndpointContext, selection billingSelection, local Su
 	return row, nil
 }
 
+// providerManagementError answers a Stripe failure: 404 resource_missing
+// as SUBSCRIPTION_NOT_FOUND without changing billing state, since a key for
+// another account or mode answers the same; a coded 400 with its code and a
+// fixed message; anything else, a codeless refusal included, 502. Another
+// runtime relays Stripe's code and message for every failure.
 func providerManagementError(err error) error {
 	var api *sdk.Error
 	if errors.As(err, &api) {
@@ -97,6 +102,8 @@ func (s *subscriptions) cancel(c auth.EndpointContext) (any, error) {
 	if err != nil {
 		return nil, err
 	}
+	// An ended subscription keeps its refreshed local row as history, where
+	// another runtime deletes it.
 	if sub.Status != sdk.SubscriptionStatusActive && sub.Status != sdk.SubscriptionStatusTrialing {
 		return nil, ErrManagedSubscriptionNotFound
 	}

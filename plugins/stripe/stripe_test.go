@@ -99,3 +99,24 @@ func TestWebhookSecretRequiredForSubscriptions(t *testing.T) {
 		t.Fatal("subscriptions started without a webhook signing secret", err)
 	}
 }
+
+// Subscription options without a client or plans, or with a store that
+// cannot hold subscriptions, refuse to start.
+func TestSubscriptionOptionsAtStartup(t *testing.T) {
+	pro := []stripeplugin.Plan{{Name: "pro", PriceID: "price_pro"}}
+	client := stripesdk.NewClient("sk_test_local")
+	for name, tc := range map[string]struct {
+		opts *stripeplugin.SubscriptionOptions
+		want string
+	}{
+		"no client": {&stripeplugin.SubscriptionOptions{Plans: pro}, "stripe: subscriptions require a client and plans"},
+		"no plans":  {&stripeplugin.SubscriptionOptions{Client: client}, "stripe: subscriptions require a client and plans"},
+		"no store":  {&stripeplugin.SubscriptionOptions{Client: client, Plans: pro}, "stripe: store does not support subscriptions"},
+	} {
+		_, err := authn.New(authn.Options{Store: memory.New(), BaseURL: "http://auth.test", Secret: "test-secret-0123456789-abcdefghijk",
+			Plugins: []authn.Plugin{stripeplugin.New(stripeplugin.Options{WebhookSecret: "whsec_local", Subscriptions: tc.opts})}})
+		if err == nil || !strings.Contains(err.Error(), tc.want) {
+			t.Error("subscription options started", name, err)
+		}
+	}
+}
