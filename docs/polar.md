@@ -41,20 +41,24 @@ sdk := polargo.New(
     }),
 )
 billing, err := polar.NewService(polar.Options{
-    Client: sdk,
-    Ledger: ledger,
+    Client:         sdk,
+    Ledger:         ledger,
     OrganizationID: os.Getenv("POLAR_ORGANIZATION_ID"),
-    HostedOrigin: os.Getenv("POLAR_HOSTED_ORIGIN"),
-    Products: map[string]string{"pro": os.Getenv("POLAR_PRO_PRODUCT_ID")},
-    SuccessURL: "/billing/success?checkout_id={CHECKOUT_ID}",
-    ReturnURL: "/billing",
-    WebhookSecret: os.Getenv("POLAR_WEBHOOK_SECRET"),
+    Checkout: &polar.CheckoutOptions{
+        HostedOrigin: os.Getenv("POLAR_HOSTED_ORIGIN"),
+        Products:     map[string]string{"pro": os.Getenv("POLAR_PRO_PRODUCT_ID")},
+        SuccessURL:   "/billing/success?checkout_id={CHECKOUT_ID}",
+        ReturnURL:    "/billing",
+    },
+    Webhooks: &polar.WebhookOptions{Secret: os.Getenv("POLAR_WEBHOOK_SECRET")},
 })
 if err != nil {
     return err
 }
 opts.Plugins = append(opts.Plugins, billing.Plugin())
 ```
+
+`Client` and `OrganizationID` are always required, where another runtime needs only the client: every checkout and delivery is checked against the merchant organization. Each section enables one part, as another runtime composes its checkout, portal and webhook parts around one client: `Checkout` mounts `POST /checkout`, `Webhooks` mounts `POST /polar/webhooks`, and `Portal` mounts the portal and customer-state routes. A nil section mounts nothing, and every section needs the `Ledger`. A node with only `Webhooks` still completes the checkouts other nodes reserved on the same ledger; without `Checkout` it has no hosted origin to compare, so it checks a checkout URL's shape alone, and the checkout route checks the exact origin again before handing a stored URL out. `ReconcileCheckout` needs `Checkout`. [Section tests](../integrations/polar/checkout_test.go)
 
 For sandbox requests, also pass `polargo.WithServer(polargo.ServerSandbox)`. `OpenLedger` initializes two tables and can run again after restart. All serving replicas must use the same ledger. It stores provider checkout IDs, the hosted URLs, hashed contact bindings, reservation states and delivery fingerprints. Protect this database as you would the auth database. The module pins the official Go SDK and sends `Polar-Version: 2026-10` on requests. [Polar checkout API](https://polar.sh/docs/api-reference/2026-10/checkouts/create-checkout-session) · [API versioning](https://polar.sh/docs/api-reference/versioning)
 
@@ -84,13 +88,13 @@ Plain Auth commits the reservation before asking Polar to create a checkout. Onl
 
 ## Receive verified deliveries
 
-Configure a Polar webhook endpoint at `/api/auth/polar/webhooks` with raw JSON, API version `2026-10`, and checkout created, updated and expired events. Use the dashboard secret as supplied. For secrets created before September 8, 2026 at 00:00 UTC, set `LegacySecret: true`. The default uses the Standard Webhooks key format. Verification covers the raw body, delivery ID and timestamp, with five minutes of clock tolerance. [Polar webhook delivery](https://polar.sh/docs/integrate/webhooks/delivery) · [Standard Webhooks](https://github.com/standard-webhooks/standard-webhooks)
+Configure a Polar webhook endpoint at `/api/auth/polar/webhooks` with raw JSON, API version `2026-10`, and checkout created, updated and expired events. Use the dashboard secret as supplied. For secrets created before September 8, 2026 at 00:00 UTC, set `LegacySecret: true` on `polar.WebhookOptions`. The default uses the Standard Webhooks key format. Verification covers the raw body, delivery ID and timestamp, with five minutes of clock tolerance. [Polar webhook delivery](https://polar.sh/docs/integrate/webhooks/delivery) · [Standard Webhooks](https://github.com/standard-webhooks/standard-webhooks)
 
-`OnCheckout(ctx, tx, event)` receives a typed checkout transition bound to a locally reserved purchase. The delivery receipt, checkout state and callback’s SQL writes commit together. Return an error to roll back and allow Polar to retry. For external work, insert a job in an application outbox through the supplied transaction. Separate provider events have separate delivery IDs. Duplicate deliveries have one effect, and stale updates cannot reopen a closed checkout. Verified events outside the supported checkout types are acknowledged without invoking the callback.
+`WebhookOptions.OnCheckout(ctx, tx, event)` receives a typed checkout transition bound to a locally reserved purchase. The delivery receipt, checkout state and callback’s SQL writes commit together. Return an error to roll back and allow Polar to retry. For external work, insert a job in an application outbox through the supplied transaction. Separate provider events have separate delivery IDs. Duplicate deliveries have one effect, and stale updates cannot reopen a closed checkout. Verified events outside the supported checkout types are acknowledged without invoking the callback.
 
 ## Enable the individual customer portal
 
-Add the following field to `polar.Options`. Supply the exact public URL for this merchant’s portal. Polar's API token needs `customer_sessions:write` to open a portal and `customers:read` or `customers:write` to read customer state. [Create customer session](https://polar.sh/docs/api-reference/2026-10/customer-sessions/create-customer-session) · [Read customer state by external ID](https://polar.sh/docs/api-reference/2026-10/customers/get-customer-state-by-external-id)
+Add the `Portal` section to `polar.Options`. Supply the exact public URL for this merchant’s portal. Polar's API token needs `customer_sessions:write` to open a portal and `customers:read` or `customers:write` to read customer state. [Create customer session](https://polar.sh/docs/api-reference/2026-10/customer-sessions/create-customer-session) · [Read customer state by external ID](https://polar.sh/docs/api-reference/2026-10/customers/get-customer-state-by-external-id)
 
 ```go
 Portal: &polar.PortalOptions{

@@ -264,7 +264,8 @@ func TestOwnedCheckoutAndVerifiedDeliveries(t *testing.T) {
 			mock := new(provider)
 			var reject atomic.Bool
 			opts := Options{Client: polargo.New(polargo.WithSecurity("fake-token"), polargo.WithClient(transport(mock.create))), Ledger: ledger, OrganizationID: merchant,
-				Products: map[string]string{"pro": product, "team": otherProduct}, HostedOrigin: hosted, SuccessURL: "/success?checkout_id={CHECKOUT_ID}", ReturnURL: "/cancel", WebhookSecret: dashboardSecret,
+				Checkout: &CheckoutOptions{Products: map[string]string{"pro": product, "team": otherProduct}, HostedOrigin: hosted, SuccessURL: "/success?checkout_id={CHECKOUT_ID}", ReturnURL: "/cancel"}}
+			opts.Webhooks = &WebhookOptions{Secret: dashboardSecret,
 				OnCheckout: func(ctx context.Context, tx *sql.Tx, e Event) error {
 					if _, err := tx.ExecContext(ctx, ledger.bind("INSERT INTO customer_checkout_events (delivery,owner_id) VALUES (?,?)"), e.DeliveryID, e.OwnerID); err != nil {
 						return err
@@ -355,6 +356,8 @@ func TestOwnedCheckoutAndVerifiedDeliveries(t *testing.T) {
 			}
 			opts.Ledger = freshLedger
 			replica := makeAuth(opts)
+			// A node with only webhooks completes checkouts other nodes reserved.
+			hooksOnly := makeAuth(Options{Client: opts.Client, OrganizationID: merchant, Ledger: ledger, Webhooks: opts.Webhooks})
 			if got := expect(t, buy(replica, alice, "one", body), 200); got != first || mock.count() != 1 {
 				t.Fatal("restart did not reuse the original hosted checkout")
 			}
@@ -392,7 +395,8 @@ func TestOwnedCheckoutAndVerifiedDeliveries(t *testing.T) {
 			reject.Store(true)
 			expect(t, notify(a, raw, "created"), 500)
 			expect(t, buy(replica, alice, "lost", body), 409)
-			expect(t, notify(replica, raw, "created"), 200)
+			expect(t, buy(hooksOnly, alice, "lost", body), 404)
+			expect(t, notify(hooksOnly, raw, "created"), 200)
 			if !strings.Contains(expect(t, buy(a, alice, "lost", body), 200), snapshot["id"].(string)) {
 				t.Fatal("signed event failed to recover lost response")
 			}
@@ -489,7 +493,9 @@ func TestOwnedCheckoutAndVerifiedDeliveries(t *testing.T) {
 				t.Fatal("concurrent requests issued duplicate remote checkout")
 			}
 
-			opts.LegacySecret = true
+			legacySecret := *opts.Webhooks
+			legacySecret.LegacySecret = true
+			opts.Webhooks = &legacySecret
 			legacy := makeAuth(opts)
 			expect(t, call(legacy, "/polar/webhooks", updated, "", nil, signed(updated, "updated", time.Now(), true)), 200)
 			expect(t, call(a, "/polar/webhooks", updated, "", nil, signed(updated, "wrong-mode", time.Now(), true)), 403)
@@ -553,9 +559,10 @@ func TestGuestOwnerAcrossPostgresSearchPath(t *testing.T) {
 	mock := new(provider)
 	billing, err := New(Options{
 		Client: polargo.New(polargo.WithSecurity("fake-token"), polargo.WithClient(transport(mock.create))),
-		Ledger: ledger, OrganizationID: merchant, Products: map[string]string{"pro": product},
-		HostedOrigin: hosted, SuccessURL: "/success", WebhookSecret: dashboardSecret,
-		Portal: &PortalOptions{URL: portalURL},
+		Ledger: ledger, OrganizationID: merchant,
+		Checkout: &CheckoutOptions{Products: map[string]string{"pro": product}, HostedOrigin: hosted, SuccessURL: "/success"},
+		Webhooks: &WebhookOptions{Secret: dashboardSecret},
+		Portal:   &PortalOptions{URL: portalURL},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -578,5 +585,51 @@ func TestGuestOwnerAcrossPostgresSearchPath(t *testing.T) {
 	}
 	if mock.count() != 0 || reservations != 0 || strings.Contains(result.Body.String(), hosted) {
 		t.Fatal("a guest selected from the second PostgreSQL schema obtained a purchase")
+	}
+}
+
+// Client and the merchant are always required; each section mounts only
+// its routes and needs a ledger; checkout needs products and a success URL.
+func TestOptionSections(t *testing.T) {
+	client := polargo.New(polargo.WithSecurity("fixture"))
+	const merchant = "11111111-1111-4111-8111-111111111111"
+	const product = "22222222-2222-4222-8222-222222222222"
+	ledger := &Ledger{}
+	checkout := &CheckoutOptions{Products: map[string]string{"pro": product}, HostedOrigin: "https://polar.test", SuccessURL: "/success"}
+	for name, tc := range map[string]struct {
+		opts Options
+		want string
+	}{
+		"no client":         {Options{OrganizationID: merchant}, "polar: configure a client and the merchant organization UUID"},
+		"no merchant":       {Options{Client: client}, "polar: configure a client and the merchant organization UUID"},
+		"checkout ledger":   {Options{Client: client, OrganizationID: merchant, Checkout: checkout}, "polar: checkout, portal and webhooks need a ledger"},
+		"webhooks ledger":   {Options{Client: client, OrganizationID: merchant, Webhooks: &WebhookOptions{Secret: "whsec_x"}}, "polar: checkout, portal and webhooks need a ledger"},
+		"portal ledger":     {Options{Client: client, OrganizationID: merchant, Portal: &PortalOptions{URL: "https://polar.test/portal"}}, "polar: checkout, portal and webhooks need a ledger"},
+		"no products":       {Options{Client: client, OrganizationID: merchant, Ledger: ledger, Checkout: &CheckoutOptions{HostedOrigin: "https://polar.test", SuccessURL: "/success"}}, "polar: checkout needs products and a success URL"},
+		"no success":        {Options{Client: client, OrganizationID: merchant, Ledger: ledger, Checkout: &CheckoutOptions{Products: checkout.Products, HostedOrigin: "https://polar.test"}}, "polar: checkout needs products and a success URL"},
+		"bad origin":        {Options{Client: client, OrganizationID: merchant, Ledger: ledger, Checkout: &CheckoutOptions{Products: checkout.Products, HostedOrigin: "http://polar.test", SuccessURL: "/success"}}, "polar: hosted origin must be an exact HTTPS origin"},
+		"no webhook secret": {Options{Client: client, OrganizationID: merchant, Ledger: ledger, Webhooks: &WebhookOptions{}}, "polar: a webhook signing secret is required"},
+	} {
+		if _, err := NewService(tc.opts); err == nil || err.Error() != tc.want {
+			t.Error("an invalid configuration was handled wrongly", name, err)
+		}
+	}
+	bare, err := NewService(Options{Client: client, OrganizationID: merchant})
+	if err != nil || len(bare.Plugin().Endpoints) != 0 {
+		t.Fatal("a configuration without sections mounted routes", err)
+	}
+	if err := bare.ReconcileCheckout(t.Context(), product); err == nil || err.Error() != "polar: checkout is not enabled" {
+		t.Fatal("recovery ran without checkout", err)
+	}
+	webhooks, err := NewService(Options{Client: client, OrganizationID: merchant, Ledger: ledger, Webhooks: &WebhookOptions{Secret: "whsec_" + strings.Repeat("A", 32)}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if paths := webhooks.Plugin().Endpoints; len(paths) != 1 || paths[0].Path != "/polar/webhooks" {
+		t.Fatal("a webhooks-only configuration mounted other routes", paths)
+	}
+	// Without checkout, a stored URL keeps its shape checks but any host.
+	if !webhooks.hosted("https://any.polar.test/checkout/x") || webhooks.hosted("http://any.polar.test/x") || webhooks.hosted("https://any.polar.test") {
+		t.Fatal("a webhooks-only node checked hosted URLs wrongly")
 	}
 }

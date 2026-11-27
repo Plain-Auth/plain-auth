@@ -176,8 +176,8 @@ func (s *Service) apply(ctx context.Context, v checkoutSnapshot, d *delivery) er
 		if _, err = tx.ExecContext(ctx, l.bind(q), v.ID, v.URL, v.Status, v.Expires.UnixMilli(), change.UnixMicro(), row.Slot); err != nil {
 			return err
 		}
-		if d != nil && s.opts.OnCheckout != nil {
-			err = s.opts.OnCheckout(ctx, tx, Event{DeliveryID: d.id, Type: d.kind, CheckoutID: v.ID, OwnerID: row.Owner, ProductID: product, Status: v.Status})
+		if d != nil && s.opts.Webhooks != nil && s.opts.Webhooks.OnCheckout != nil {
+			err = s.opts.Webhooks.OnCheckout(ctx, tx, Event{DeliveryID: d.id, Type: d.kind, CheckoutID: v.ID, OwnerID: row.Owner, ProductID: product, Status: v.Status})
 			if err != nil {
 				return err
 			}

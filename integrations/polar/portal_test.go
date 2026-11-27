@@ -154,7 +154,9 @@ func TestPersonalPortalAndCustomerState(t *testing.T) {
 			provider := &portalProvider{t: t, names: map[string]string{}}
 			opts := Options{
 				Client: polargo.New(polargo.WithSecurity("fixture"), polargo.WithClient(provider)),
-				Ledger: ledger, OrganizationID: merchant, Products: map[string]string{"pro": product}, HostedOrigin: hosted, SuccessURL: "/success", WebhookSecret: dashboardSecret,
+				Ledger: ledger, OrganizationID: merchant,
+				Checkout: &CheckoutOptions{Products: map[string]string{"pro": product}, HostedOrigin: hosted, SuccessURL: "/success"},
+				Webhooks: &WebhookOptions{Secret: dashboardSecret},
 			}
 			node := func(opts Options) *auth.Auth {
 				t.Helper()

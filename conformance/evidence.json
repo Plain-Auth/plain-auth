@@ -13410,6 +13410,11 @@
       "label": "Reject a verified guest on a checkout-only node when a PostgreSQL search path resolves the auth table from another schema",
       "test": "integrations/polar/checkout_test.go",
       "marker": "func TestGuestOwnerAcrossPostgresSearchPath("
+    },
+    {
+      "label": "Enable checkout, portal and webhooks as separate sections around one client, each mounting only its routes, with a webhooks-only node completing checkouts another node reserved",
+      "test": "integrations/polar/checkout_test.go",
+      "marker": "// A node with only webhooks completes checkouts other nodes reserved."
     }
   ],
   "docs/content/docs/plugins/polar.mdx#L150/`client`": [
@@ -51501,6 +51506,12 @@
       "label": "Send provider requests through the configured SDK client with its scoped bearer and pinned API version",
       "test": "integrations/polar/checkout_test.go",
       "marker": "return nil, errors.New(\"incorrect SDK request\")"
+    },
+    {
+      "label": "Require the client and merchant organization, and mount nothing else until a section is set",
+      "test": "integrations/polar/checkout_test.go",
+      "marker": "func TestOptionSections(t *testing.T) {",
+      "complete": true
     }
   ],
   "plugin-symbol/stripe/STRIPE_ERROR_CODES": [
@@ -51994,6 +52005,13 @@
       "label": "Create a user's customer at sign-up and keep an organization's customer in step with renames and deletion through the browser client on both runtimes",
       "test": "conformance/stripe-organization-fixture.mjs",
       "marker": "export async function organizationCustomerSync(t, { reference, goFixture, instrument }) {"
+    }
+  ],
+  "docs/content/docs/plugins/polar.mdx#L108": [
+    {
+      "label": "Configure the client, merchant and the checkout, portal and webhook sections, refusing a section without the ledger or checkout without products and a success URL",
+      "test": "integrations/polar/checkout_test.go",
+      "marker": "func TestOptionSections(t *testing.T) {"
     }
   ]
 }

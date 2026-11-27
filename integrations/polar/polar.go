@@ -25,17 +25,38 @@ import (
 const apiVersion = "2026-10"
 const attemptMetadata = "plainauth_checkout_attempt"
 
+// Options configures the Polar integration, as another runtime composes
+// checkout, portal and webhook parts around one client. Client and
+// OrganizationID are always required; each non-nil section enables one part
+// and mounts only its routes.
 type Options struct {
+	// Client is the configured SDK client. Select the sandbox with
+	// polargo.WithServer(polargo.ServerSandbox).
 	Client *polargo.Polar
-	Ledger *Ledger
 	// OrganizationID identifies the merchant organization in Polar.
-	OrganizationID        string
+	OrganizationID string
+	// Ledger is required when Checkout, Portal or Webhooks is set.
+	Ledger *Ledger
+	// Checkout enables POST /checkout.
+	Checkout *CheckoutOptions
+	// Portal enables personal portal sessions and customer-state reads.
+	Portal *PortalOptions
+	// Webhooks enables POST /polar/webhooks.
+	Webhooks *WebhookOptions
+}
+
+// CheckoutOptions enables personal hosted checkout.
+type CheckoutOptions struct {
 	Products              map[string]string // application slug to Polar product UUID
 	HostedOrigin          string            // exact HTTPS origin serving this merchant's Polar checkout
 	SuccessURL, ReturnURL string
-	WebhookSecret         string
-	// Portal enables personal portal sessions and customer-state reads when configured.
-	Portal *PortalOptions
+}
+
+// WebhookOptions enables verified checkout deliveries. A node with
+// webhooks and no checkout still completes the checkouts other nodes
+// reserved on the same ledger.
+type WebhookOptions struct {
+	Secret string
 	// LegacySecret selects the raw UTF-8 signing key used for secrets created before 8 September 2026.
 	LegacySecret bool
 	// OnCheckout runs in the same SQL transaction as the verified delivery receipt.
@@ -63,49 +84,66 @@ func New(opts Options) (auth.Plugin, error) {
 
 // NewService also exposes server-side recovery for a known checkout ID.
 func NewService(opts Options) (*Service, error) {
-	if opts.Client == nil || opts.Ledger == nil || len(opts.Products) == 0 || opts.SuccessURL == "" || !canonicalID(opts.OrganizationID) {
-		return nil, errors.New("polar: configure a client, ledger, merchant UUID, products and success URL")
+	if opts.Client == nil || !canonicalID(opts.OrganizationID) {
+		return nil, errors.New("polar: configure a client and the merchant organization UUID")
 	}
-	origin, err := url.Parse(opts.HostedOrigin)
-	if err != nil || origin.Scheme != "https" || origin.Hostname() == "" || origin.User != nil || origin.String() != "https://"+origin.Host {
-		return nil, errors.New("polar: hosted origin must be an exact HTTPS origin")
+	if (opts.Checkout != nil || opts.Portal != nil || opts.Webhooks != nil) && opts.Ledger == nil {
+		return nil, errors.New("polar: checkout, portal and webhooks need a ledger")
 	}
-	if opts.WebhookSecret == "" {
-		return nil, errors.New("polar: a webhook signing secret is required")
+	s := &Service{opts: opts, products: map[string]bool{}}
+	if opts.Checkout != nil {
+		checkout := *opts.Checkout
+		if len(checkout.Products) == 0 || checkout.SuccessURL == "" {
+			return nil, errors.New("polar: checkout needs products and a success URL")
+		}
+		origin, err := url.Parse(checkout.HostedOrigin)
+		if err != nil || origin.Scheme != "https" || origin.Hostname() == "" || origin.User != nil || origin.String() != "https://"+origin.Host {
+			return nil, errors.New("polar: hosted origin must be an exact HTTPS origin")
+		}
+		checkout.Products = make(map[string]string, len(opts.Checkout.Products))
+		for slug, id := range opts.Checkout.Products {
+			if !requestKey.MatchString(slug) || !canonicalID(id) {
+				return nil, errors.New("polar: invalid product slug or UUID")
+			}
+			checkout.Products[slug] = id
+			s.products[id] = true
+		}
+		s.opts.Checkout = &checkout
 	}
-	var verifier *standard.Webhook
-	if opts.LegacySecret {
-		verifier, err = standard.NewWebhookRaw([]byte(opts.WebhookSecret))
-	} else {
-		verifier, err = standard.NewWebhook(opts.WebhookSecret)
-	}
-	if err != nil {
-		return nil, errors.New("polar: invalid webhook signing secret")
+	if opts.Webhooks != nil {
+		webhooks := *opts.Webhooks
+		if webhooks.Secret == "" {
+			return nil, errors.New("polar: a webhook signing secret is required")
+		}
+		var err error
+		if webhooks.LegacySecret {
+			s.verifier, err = standard.NewWebhookRaw([]byte(webhooks.Secret))
+		} else {
+			s.verifier, err = standard.NewWebhook(webhooks.Secret)
+		}
+		if err != nil {
+			return nil, errors.New("polar: invalid webhook signing secret")
+		}
+		s.opts.Webhooks = &webhooks
 	}
 	if opts.Portal != nil {
 		portal := *opts.Portal
 		if err := portal.validate(); err != nil {
 			return nil, err
 		}
-		opts.Portal = &portal
-	}
-	s := &Service{opts: opts, products: map[string]bool{}, verifier: verifier}
-	s.opts.Products = make(map[string]string, len(opts.Products))
-	for slug, id := range opts.Products {
-		if !requestKey.MatchString(slug) || !canonicalID(id) {
-			return nil, errors.New("polar: invalid product slug or UUID")
-		}
-		s.opts.Products[slug] = id
-		s.products[id] = true
+		s.opts.Portal = &portal
 	}
 	return s, nil
 }
 
 // Plugin returns the configured billing endpoints.
 func (s *Service) Plugin() auth.Plugin {
-	endpoints := []auth.Endpoint{
-		{Method: "POST", Path: "/checkout", Handler: s.checkout},
-		{Method: "POST", Path: "/polar/webhooks", RawBody: true, Handler: s.webhook},
+	var endpoints []auth.Endpoint
+	if s.opts.Checkout != nil {
+		endpoints = append(endpoints, auth.Endpoint{Method: "POST", Path: "/checkout", Handler: s.checkout})
+	}
+	if s.opts.Webhooks != nil {
+		endpoints = append(endpoints, auth.Endpoint{Method: "POST", Path: "/polar/webhooks", RawBody: true, Handler: s.webhook})
 	}
 	if s.opts.Portal != nil {
 		endpoints = append(endpoints,
@@ -157,10 +195,10 @@ func (s *Service) selection(body map[string]any) (id string, redirect bool, err 
 		switch field {
 		case "slug":
 			slug, _ := v.(string)
-			if id != "" || s.opts.Products[slug] == "" {
+			if id != "" || s.opts.Checkout.Products[slug] == "" {
 				return "", false, bad
 			}
-			id = s.opts.Products[slug]
+			id = s.opts.Checkout.Products[slug]
 		case "products":
 			var product string
 			switch v := v.(type) {
@@ -201,11 +239,11 @@ func (s *Service) checkout(c auth.EndpointContext) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	success, err := c.CallbackURL(s.opts.SuccessURL)
+	success, err := c.CallbackURL(s.opts.Checkout.SuccessURL)
 	if err != nil {
 		return nil, err
 	}
-	back := s.opts.ReturnURL
+	back := s.opts.Checkout.ReturnURL
 	if back != "" {
 		back, err = c.CallbackURL(back)
 		if err != nil {
@@ -292,14 +330,24 @@ func conflict() error {
 	return failure(409, "POLAR_CHECKOUT_CONFLICT", "Checkout details did not match the reserved purchase")
 }
 
+// hosted checks a checkout URL's shape and, with Checkout, its exact
+// hosted origin. A webhooks-only node has no origin to compare, so it
+// accepts any host: the checkout route checks the exact origin again before
+// it hands out a stored URL.
 func (s *Service) hosted(raw string) bool {
 	u, err := url.Parse(raw)
-	return err == nil && u.User == nil && u.Scheme == "https" && u.Scheme+"://"+u.Host == s.opts.HostedOrigin && u.Path != "" && !strings.ContainsAny(raw, "\\\r\n") && u.Fragment == ""
+	if err != nil || u.User != nil || u.Scheme != "https" || u.Host == "" || u.Path == "" || strings.ContainsAny(raw, "\\\r\n") || u.Fragment != "" {
+		return false
+	}
+	return s.opts.Checkout == nil || u.Scheme+"://"+u.Host == s.opts.Checkout.HostedOrigin
 }
 
 // ReconcileCheckout reads a known Polar checkout after a lost response. It never
 // creates a checkout, returns its hosted URL, or synthesizes a signed delivery.
 func (s *Service) ReconcileCheckout(ctx context.Context, id string) error {
+	if s.opts.Checkout == nil {
+		return errors.New("polar: checkout is not enabled")
+	}
 	if !canonicalID(id) {
 		return errors.New("polar: invalid checkout UUID")
 	}
