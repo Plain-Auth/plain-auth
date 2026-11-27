@@ -399,11 +399,12 @@
       - [x] Retry after callback failure and recheck the profile and metadata on three databases, including hidden fields and active-plugin isolation ([test](../../../adapters/sqlstore/oauth_id_token_test.go#L182))
     - [ ] `customAccessTokenClaims`
     - [ ] `customTokenResponseFields`
-    - [ ] `advertisedMetadata`
+    - [x] `advertisedMetadata` ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L282))
       - [x] Preserve configured discovery scope and authentication method order independently of introspection and revocation ([test](../../../conformance/oauth-issuer-metadata.mjs#L65))
       - [x] Reject unknown scopes, unsupported machine authentication, duplicate methods and an explicitly empty method list ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L17))
       - [x] Explicitly advertise pre-provisioned public clients, preserve protected introspection and publish only supported delegated grants ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L158))
       - [x] Advertise exactly the configured UserInfo claims ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L237))
+      - [x] Advertise exactly the configured scopes, claims and client authentication methods, in order, in both discovery documents ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L282))
     - [x] `prefix` ([test](../../../conformance/oauth-authorization-code.mjs#L27))
       - [x] Return prefixed shared credentials accepted by an independent issuer ([test](../../../conformance/oauth-registration.mjs#L239))
       - [x] Generate and hash the raw refresh token, encode it for its session, then apply the public prefix ([test](../../../adapters/sqlstore/oauth_offline_code_test.go#L139))

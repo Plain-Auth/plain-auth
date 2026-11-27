@@ -69,7 +69,8 @@
     - [ ] `customIdTokenClaims`
     - [ ] `customAccessTokenClaims`
     - [ ] `customTokenResponseFields`
-    - [ ] `advertisedMetadata`
+    - [x] `advertisedMetadata` ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L282))
+      - [x] Advertise exactly the configured scopes, claims and client authentication methods, in order, in both discovery documents ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L282))
     - [ ] `prefix`
     - [x] `generateClientId` ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L65))
       - [x] Generate a default client ID of 32 ASCII letters ([test](../../../plugins/oauthprovider/machine_token_test.go#L121))

@@ -246,3 +246,39 @@ func TestProviderOptionDefaultsAndRefusals(t *testing.T) {
 		}
 	}
 }
+
+// The advertised scopes, claims and client authentication methods appear
+// exactly as configured, in order, in both discovery documents.
+func TestAdvertisedMetadataOrder(t *testing.T) {
+	store, err := sqlstore.OpenWithOptions(t.Context(), "sqlite", ":memory:", []string{"jwt", "oauth-provider"}, schema.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { store.Close() })
+	sign, err := auth.NewJWT(auth.JWTOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := op.New(op.Options{Scopes: []string{"openid", "email", "reports"}, Metadata: op.IssuerMetadataOptions{Scopes: []string{"reports", "openid"}, TokenAuthMethods: []string{"client_secret_post", "none"}},
+		UserInfo: op.UserInfoOptions{SupportedClaims: []string{"email", "sub"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	api, err := auth.New(auth.Options{BaseURL: "https://auth.example.test", Secret: strings.Repeat("s", 40), Store: store, Plugins: []auth.Plugin{p, sign}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	openid, err := op.GetOpenIDConfig(api)
+	if err != nil {
+		t.Fatal(err)
+	}
+	server, err := op.GetAuthorizationServerConfig(api)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(openid.ScopesSupported, []string{"reports", "openid"}) || !slices.Equal(server.ScopesSupported, []string{"reports", "openid"}) ||
+		!slices.Equal(openid.TokenEndpointAuthMethods, []string{"client_secret_post", "none"}) || !slices.Equal(server.TokenEndpointAuthMethods, []string{"client_secret_post", "none"}) ||
+		!slices.Equal(openid.ClaimsSupported, []string{"email", "sub"}) {
+		t.Fatal("the advertised metadata did not appear exactly as configured", openid, server)
+	}
+}

@@ -18418,6 +18418,12 @@
       "label": "Advertise exactly the configured UserInfo claims",
       "test": "plugins/oauthprovider/openid_metadata_test.go",
       "marker": "t.Fatal(\"the configured UserInfo claims were not advertised exactly\", doc.ClaimsSupported)"
+    },
+    {
+      "label": "Advertise exactly the configured scopes, claims and client authentication methods, in order, in both discovery documents",
+      "test": "plugins/oauthprovider/openid_metadata_test.go",
+      "marker": "t.Fatal(\"the advertised metadata did not appear exactly as configured\", openid, server)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/oauth-provider/tokens.mdx#L8": [
@@ -48357,6 +48363,14 @@
       "label": "Default a confidential registration without a method to client_secret_basic and authenticate it with a Basic header, refusing a wrong secret with a Basic challenge, on both runtimes",
       "test": "conformance/oauth-machine-tokens.mjs",
       "marker": "assert.equal(defaulted.token_endpoint_auth_method, \"client_secret_basic\");",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/mcp/McpOptions/advertisedMetadata": [
+    {
+      "label": "Advertise exactly the configured scopes, claims and client authentication methods, in order, in both discovery documents",
+      "test": "plugins/oauthprovider/openid_metadata_test.go",
+      "marker": "t.Fatal(\"the advertised metadata did not appear exactly as configured\", openid, server)",
       "complete": true
     }
   ]
