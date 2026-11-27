@@ -3,6 +3,7 @@ package oauthprovider
 import (
 	"context"
 	"encoding/json"
+	auth "github.com/Plain-Org/plain-auth"
 	"net/http"
 	"regexp"
 	"testing"
@@ -154,5 +155,35 @@ func TestTokenGenerationAndStorage(t *testing.T) {
 	}
 	if calls["access"] != 1 || calls["refresh"] != 1 || calls["code"] != 1 {
 		t.Fatal("a hash function ran for another token kind", calls)
+	}
+}
+
+// Each OAuth route has another runtime's default rate limit, a configured
+// rule replaces it and an empty rule leaves the host's global limit.
+func TestEndpointRateLimitDefaults(t *testing.T) {
+	limits := func(opts Options) map[string]*auth.RateLimitRule {
+		t.Helper()
+		p, err := New(opts)
+		if err != nil {
+			t.Fatal(err)
+		}
+		out := map[string]*auth.RateLimitRule{}
+		for _, ep := range p.Endpoints {
+			out[ep.Path] = ep.RateLimit
+		}
+		return out
+	}
+	got := limits(Options{Registration: RegistrationOptions{Enabled: true}})
+	for path, max := range map[string]int{"/oauth2/token": 20, "/oauth2/authorize": 30, "/oauth2/introspect": 100, "/oauth2/revoke": 30, "/oauth2/register": 5, keyRotationPath: 5} {
+		if rule := got[path]; rule == nil || rule.Max != max || rule.Window != time.Minute {
+			t.Fatal("a route lacks its default rate limit", path, rule)
+		}
+	}
+	got = limits(Options{Tokens: TokenOptions{RevocationRateLimit: &auth.RateLimitRule{Window: time.Second, Max: 7}, IntrospectionRateLimit: &auth.RateLimitRule{}}})
+	if rule := got["/oauth2/revoke"]; rule == nil || rule.Max != 7 || rule.Window != time.Second {
+		t.Fatal("a configured rate limit did not replace the default", rule)
+	}
+	if got["/oauth2/introspect"] != nil {
+		t.Fatal("an empty rate limit did not leave the host's global limit", got["/oauth2/introspect"])
 	}
 }

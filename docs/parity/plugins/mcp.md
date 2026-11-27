@@ -63,8 +63,8 @@
     - [ ] `postLogin`
     - [ ] `formatRefreshToken`
     - [ ] `storeClientSecret`
-    - [x] `storeTokens` ([test](../../../plugins/oauthprovider/machine_token_test.go#L156))
-      - [x] Store each token kind through its own configured hash function ([test](../../../plugins/oauthprovider/machine_token_test.go#L156))
+    - [x] `storeTokens` ([test](../../../plugins/oauthprovider/machine_token_test.go#L157))
+      - [x] Store each token kind through its own configured hash function ([test](../../../plugins/oauthprovider/machine_token_test.go#L157))
     - [ ] `customUserInfoClaims`
     - [ ] `customIdTokenClaims`
     - [ ] `customAccessTokenClaims`
@@ -72,16 +72,17 @@
     - [ ] `advertisedMetadata`
     - [ ] `prefix`
     - [x] `generateClientId` ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L65))
-      - [x] Generate a default client ID of 32 ASCII letters ([test](../../../plugins/oauthprovider/machine_token_test.go#L120))
+      - [x] Generate a default client ID of 32 ASCII letters ([test](../../../plugins/oauthprovider/machine_token_test.go#L121))
       - [x] Register a client with a 32-letter client ID by default, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L65))
     - [x] `generateClientSecret` ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L80))
       - [x] Issue a 32-letter client secret by default and rotate through a configured secret generator, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L80))
-    - [x] `generateOpaqueAccessToken` ([test](../../../plugins/oauthprovider/machine_token_test.go#L147))
-      - [x] Generate a default opaque access token of 32 letters and use a configured generator instead ([test](../../../plugins/oauthprovider/machine_token_test.go#L147))
+    - [x] `generateOpaqueAccessToken` ([test](../../../plugins/oauthprovider/machine_token_test.go#L148))
+      - [x] Generate a default opaque access token of 32 letters and use a configured generator instead ([test](../../../plugins/oauthprovider/machine_token_test.go#L148))
     - [ ] `generateRefreshToken`
-      - [x] Generate a default refresh token of 32 letters and use a configured generator instead ([test](../../../plugins/oauthprovider/machine_token_test.go#L150))
+      - [x] Generate a default refresh token of 32 letters and use a configured generator instead ([test](../../../plugins/oauthprovider/machine_token_test.go#L151))
     - [ ] `disableJwtPlugin`
-    - [ ] `rateLimit`
+    - [x] `rateLimit` ([test](../../../plugins/oauthprovider/machine_token_test.go#L179))
+      - [x] Give token 20, authorize 30, introspect 100, revoke 30, register 5 and key rotation 5 requests a minute by default, replace a default with a configured rule and leave the global limit for an empty one ([test](../../../plugins/oauthprovider/machine_token_test.go#L179))
     - [ ] `pairwiseSecret`
     - [ ] `requestUriResolver`
     - [ ] `dpop`
@@ -118,13 +119,13 @@
     - [x] `mcpOauthOptionsType.scopes` ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L234))
       - [x] Advertise the four default scopes when none are configured ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L234))
     - [ ] `mcpOauthOptionsType.resources`
-    - [x] `mcpOauthOptionsType.accessTokenExpiresIn` ([test](../../../plugins/oauthprovider/machine_token_test.go#L108))
-      - [x] Default the access token lifetime to an hour ([test](../../../plugins/oauthprovider/machine_token_test.go#L108))
+    - [x] `mcpOauthOptionsType.accessTokenExpiresIn` ([test](../../../plugins/oauthprovider/machine_token_test.go#L109))
+      - [x] Default the access token lifetime to an hour ([test](../../../plugins/oauthprovider/machine_token_test.go#L109))
     - [x] `mcpOauthOptionsType.idTokenExpiresIn` ([test](../../../conformance/oauth-id-tokens.mjs#L77))
       - [x] Apply the ten-hour default or configured whole-second lifetime to signed ID tokens on code and refresh exchanges ([test](../../../conformance/oauth-id-tokens.mjs#L77))
-    - [x] `mcpOauthOptionsType.refreshTokenExpiresIn` ([test](../../../plugins/oauthprovider/machine_token_test.go#L108))
-      - [x] Default the refresh token lifetime to thirty days ([test](../../../plugins/oauthprovider/machine_token_test.go#L108))
+    - [x] `mcpOauthOptionsType.refreshTokenExpiresIn` ([test](../../../plugins/oauthprovider/machine_token_test.go#L109))
+      - [x] Default the refresh token lifetime to thirty days ([test](../../../plugins/oauthprovider/machine_token_test.go#L109))
     - [ ] `mcpOauthOptionsType.refreshTokenReuseInterval`
-    - [x] `mcpOauthOptionsType.codeExpiresIn` ([test](../../../plugins/oauthprovider/machine_token_test.go#L108))
-      - [x] Default the authorization code lifetime to ten minutes ([test](../../../plugins/oauthprovider/machine_token_test.go#L108))
+    - [x] `mcpOauthOptionsType.codeExpiresIn` ([test](../../../plugins/oauthprovider/machine_token_test.go#L109))
+      - [x] Default the authorization code lifetime to ten minutes ([test](../../../plugins/oauthprovider/machine_token_test.go#L109))
   - [ ] Remote MCP Server

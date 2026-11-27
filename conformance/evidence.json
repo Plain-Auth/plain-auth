@@ -17821,6 +17821,11 @@
       "label": "Authenticate issuance, introspection and revocation with independently signed assertions and reject replay across issuers",
       "test": "conformance/oauth-client-assertions.mjs",
       "marker": "export async function exerciseClientAssertions("
+    },
+    {
+      "label": "Limit revocation to 30 requests a minute by default and take a configured rule",
+      "test": "plugins/oauthprovider/machine_token_test.go",
+      "marker": "t.Fatal(\"a configured rate limit did not replace the default\", rule)"
     }
   ],
   "docs/content/docs/plugins/oauth-provider/reference.mdx#L323/`POST /oauth2/revoke`": [
@@ -48289,6 +48294,14 @@
       "label": "Issue a 32-letter client secret by default and rotate through a configured secret generator, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_registration_defaults_test.go",
       "marker": "t.Fatal(\"rotation did not use the configured secret generator\", rotated.ClientSecret, err)",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/mcp/McpOptions/rateLimit": [
+    {
+      "label": "Give token 20, authorize 30, introspect 100, revoke 30, register 5 and key rotation 5 requests a minute by default, replace a default with a configured rule and leave the global limit for an empty one",
+      "test": "plugins/oauthprovider/machine_token_test.go",
+      "marker": "t.Fatal(\"a route lacks its default rate limit\", path, rule)",
       "complete": true
     }
   ]
