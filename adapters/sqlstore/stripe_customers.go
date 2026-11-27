@@ -24,8 +24,11 @@ func (s *Store) CheckStripeCustomerSchema(ctx context.Context) error {
 
 // LinkStripeUserCustomer stores customer as the user's Stripe customer
 // while the user has none and no personal Checkout reservation, and reports
-// whether it did. A reservation copied the empty column, so the Checkout
-// binds its own customer; linking another would refuse that binding.
+// whether the user's customer is now customer, as it is when a concurrent
+// Checkout already bound it. A reservation copied the empty column, so the
+// Checkout binds its own customer; linking another would refuse that
+// binding. The column is the plugin's, so it is written as Checkout writes
+// it, without the user update database hooks.
 func (s *Store) LinkStripeUserCustomer(ctx context.Context, userID, customer string) (bool, error) {
 	if customer == "" {
 		return false, errors.New("sqlstore: empty Stripe customer")
@@ -49,6 +52,9 @@ func (s *Store) LinkStripeUserCustomer(ctx context.Context, userID, customer str
 	var pending bool
 	if err := tx.QueryRowContext(ctx, s.bind(`SELECT EXISTS(SELECT 1 FROM "verification" WHERE "identifier"=?)`), "stripe-checkout:"+userID).Scan(&pending); err != nil {
 		return false, err
+	}
+	if current.String == customer {
+		return true, nil
 	}
 	if current.String != "" || pending {
 		return false, nil

@@ -837,6 +837,20 @@ func TestCheckoutSessionParams(t *testing.T) {
 				if f, _ := last(); f.Get("locale") != "de" {
 					t.Error("the hook's locale did not apply without a body locale", f.Get("locale"))
 				}
+				// A value the hook shares across purchases is never changed.
+				shared := &sdk.CheckoutSessionCreateParams{Metadata: map[string]string{"planType": "shared"}}
+				shared.Params.Metadata = map[string]string{"orderRef": "shared"}
+				shared.Params.AddExpand("line_items")
+				setHook(func(billing.CheckoutSessionInput) (*sdk.CheckoutSessionCreateParams, error) { return shared, nil })
+				for range 2 {
+					buyer, _, body := newBuyer()
+					if status, _ := upgrade(buyer, body); status != 200 {
+						t.Fatal("upgrade with a shared hook value", status)
+					}
+				}
+				if f, _ := last(); shared.CustomerUpdate != nil || len(shared.Expand) != 0 || len(shared.Metadata) != 1 || f.Get("metadata[orderRef]") != "shared" || f.Get("customer_update[address]") != "auto" {
+					t.Error("the hook's shared value was changed", shared.CustomerUpdate, shared.Expand, shared.Metadata, f)
+				}
 				// Refusals and failures reserve nothing.
 				count := func(ref string) int {
 					var n int

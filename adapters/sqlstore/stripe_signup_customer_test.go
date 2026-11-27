@@ -291,10 +291,14 @@ func TestSignUpStripeCustomer(t *testing.T) {
 				t.Fatal("a panicking OnCustomerCreate failed the HTTP sign-up", w.Code, w.Body.String(), created, logged())
 			}
 
-			// The store links only a user without a customer, refuses a
-			// customer another account holds, and ignores a missing user.
+			// The store links only a user without a customer, reports a
+			// customer the user already holds as linked, refuses a customer
+			// another account holds, and ignores a missing user.
 			if linked, err := store.LinkStripeUserCustomer(ctx, out.User.ID, "cus_other"); err != nil || linked {
 				t.Fatal("a user's customer was replaced", linked, err)
+			}
+			if linked, err := store.LinkStripeUserCustomer(ctx, out.User.ID, "cus_signup7"); err != nil || !linked {
+				t.Fatal("the user's own customer was not reported as linked", linked, err)
 			}
 			fresh := signUpWithout(t, ctx, store)
 			if _, err := store.LinkStripeUserCustomer(ctx, fresh, "cus_signup7"); !errors.Is(err, billing.ErrCustomerInUse) {
@@ -303,8 +307,41 @@ func TestSignUpStripeCustomer(t *testing.T) {
 			if linked, err := store.LinkStripeUserCustomer(ctx, "missing-user", "cus_missing"); err != nil || linked {
 				t.Fatal("a missing user was linked", linked, err)
 			}
+
+			// A store failure that stored nothing deletes the created
+			// customer; one that may have stored the link keeps it.
+			failing := &linkFailures{Store: store}
+			other, err := plainauth.New(plainauth.Options{Store: failing, Secret: strings.Repeat("s", 32), BaseURL: origin, EmailAndPassword: true, RateLimit: &off,
+				Plugins: []plainauth.Plugin{billing.New(billing.Options{UserCustomers: &billing.UserCustomerOptions{Client: remote, CreateCustomerOnSignUp: true, Logger: logger}})}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, maybe := range []bool{false, true} {
+				reset()
+				failing.maybeStored = maybe
+				if _, err := other.SignUpEmail(ctx, plainauth.SignUpInput{Name: "failing buyer", Email: fmt.Sprintf("failing.%v@example.test", maybe), Password: "local fixture password"}, plainauth.RequestMeta{}); err != nil {
+					t.Fatal(err)
+				}
+				mu.Lock()
+				removed := len(deletes)
+				mu.Unlock()
+				if maybe && (removed != 0 || !strings.Contains(logged(), "link not confirmed")) || !maybe && (removed != 1 || !strings.Contains(logged(), "Stripe customer not linked")) {
+					t.Fatal("a failed link handled the created customer wrongly", maybe, removed, logged())
+				}
+			}
 		})
 	}
+}
+
+// linkFailures fails every customer link, reporting whether it may have
+// been stored.
+type linkFailures struct {
+	*Store
+	maybeStored bool
+}
+
+func (l *linkFailures) LinkStripeUserCustomer(context.Context, string, string) (bool, error) {
+	return l.maybeStored, errors.New("link failed")
 }
 
 // signUpWithout stores a user directly, with no hooks.
@@ -352,6 +389,14 @@ func TestUserCustomerOptions(t *testing.T) {
 	a, err := build(open("stripe-subscriptions"), billing.UserCustomerOptions{Client: remote})
 	if err != nil {
 		t.Fatal(err)
+	}
+	// One plugin value serves one Auth.
+	shared := billing.New(billing.Options{UserCustomers: &billing.UserCustomerOptions{Client: remote, CreateCustomerOnSignUp: true}})
+	for i, store := range []*Store{open("stripe-subscriptions"), open("stripe-subscriptions")} {
+		_, err := plainauth.New(plainauth.Options{Store: store, Secret: strings.Repeat("s", 32), BaseURL: "https://billing.example", EmailAndPassword: true, Plugins: []plainauth.Plugin{shared}})
+		if i == 0 && err != nil || i == 1 && (err == nil || !strings.Contains(err.Error(), "serves one Auth")) {
+			t.Fatal("a plugin value served a second Auth", i, err)
+		}
 	}
 	if _, err := a.SignUpEmail(ctx, plainauth.SignUpInput{Name: "quiet", Email: "quiet@example.test", Password: "local fixture password"}, plainauth.RequestMeta{}); err != nil || calls != 0 {
 		t.Fatal("a sign-up without CreateCustomerOnSignUp called Stripe", err, calls)

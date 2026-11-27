@@ -3,7 +3,9 @@ package stripe
 import (
 	"encoding/json"
 	"errors"
+	"maps"
 	"net/http"
+	"slices"
 
 	auth "github.com/Plain-Org/plain-auth"
 	sdk "github.com/stripe/stripe-go/v87"
@@ -57,7 +59,12 @@ func (s *subscriptions) newCheckoutParams(c auth.EndpointContext, in CheckoutSes
 			c.Auth.Logger().ErrorContext(ctx, "Stripe CheckoutSessionParams failed")
 			return nil, errCheckoutParams
 		case host != nil:
-			params = host
+			// The host's value is copied, never changed: a hook may return
+			// one shared value to every purchase.
+			copied := *host
+			copied.Metadata = maps.Clone(host.Metadata)
+			copied.Expand = slices.Concat(host.Expand, host.Params.Expand)
+			params = &copied
 		}
 	}
 	// Request options cannot be replayed from a stored reservation, and a
@@ -73,7 +80,6 @@ func (s *subscriptions) newCheckoutParams(c auth.EndpointContext, in CheckoutSes
 			params.AddMetadata(k, v)
 		}
 	}
-	params.Expand = append(params.Expand, params.Params.Expand...)
 	// Checkout saves the buyer's address, and a person's name, onto the
 	// existing customer, as another runtime does, unless the host chose.
 	if params.CustomerUpdate == nil {

@@ -155,7 +155,7 @@
       - [x] Answer a delivery with HTTP 500 when no signing secret is configured, and reject another secret's signature, before calling the application ([test](../../../plugins/stripe/stripe_test.go#L84))
     - [x] `createCustomerOnSignUp` ([test](../../../adapters/sqlstore/stripe_signup_customer_test.go#L30))
       - [x] Create or link each new user's Stripe customer after sign-up, from HTTP and Go calls, reusing a verified email's unowned match through search or list, and never failing the sign-up, on three SQL engines ([test](../../../adapters/sqlstore/stripe_signup_customer_test.go#L30))
-      - [x] Refuse sign-up customer options without a client or the user's customer column at startup, and call Stripe for nothing when sign-up creation is off ([test](../../../adapters/sqlstore/stripe_signup_customer_test.go#L323))
+      - [x] Refuse sign-up customer options without a client or the user's customer column at startup, and call Stripe for nothing when sign-up creation is off ([test](../../../adapters/sqlstore/stripe_signup_customer_test.go#L360))
     - [x] `onCustomerCreate` ([test](../../../adapters/sqlstore/stripe_signup_customer_test.go#L271))
       - [x] Report a created or linked sign-up customer with the user and the endpoint call once it is stored, and keep the link when the callback fails or panics, on three SQL engines ([test](../../../adapters/sqlstore/stripe_signup_customer_test.go#L271))
     - [x] `getCustomerCreateParams` ([test](../../../adapters/sqlstore/stripe_signup_customer_test.go#L233))

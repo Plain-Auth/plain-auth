@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"maps"
+	"sync"
 	"time"
 
 	auth "github.com/Plain-Org/plain-auth"
@@ -60,18 +61,26 @@ type UserCustomerStore interface {
 	CheckStripeCustomerSchema(context.Context) error
 	// LinkStripeUserCustomer stores customer as the user's stripeCustomerId
 	// while the user has none and no personal Checkout reservation, and
-	// reports whether it did. A customer another user or an organization
-	// holds answers ErrCustomerInUse.
+	// reports whether the user's customer is now customer, including when
+	// it already was. A customer another user or an organization holds
+	// answers ErrCustomerInUse. An error with false means nothing was
+	// stored; one with true, such as a failed commit, that it may have been.
 	LinkStripeUserCustomer(ctx context.Context, userID, customer string) (bool, error)
 }
 
-// customerCallTimeout bounds a sign-up hook's Stripe calls.
-const customerCallTimeout = 30 * time.Second
+// customerCallTimeout bounds a sign-up hook's lookup and creation at
+// Stripe; linkTimeout bounds the link and the deletion of a customer it
+// could not link, each on its own budget.
+const (
+	customerCallTimeout = 30 * time.Second
+	linkTimeout         = 10 * time.Second
+)
 
 // userCustomers runs the user customer hooks. One plugin value serves one
-// Auth: the store comes from that Auth's ValidateStore.
+// Auth, whose store it keeps for direct Go calls, which carry no endpoint.
 type userCustomers struct {
 	opts  UserCustomerOptions
+	mu    sync.Mutex
 	store UserCustomerStore
 }
 
@@ -86,8 +95,22 @@ func (h *userCustomers) useStore(store auth.Store) error {
 	if err := s.CheckStripeCustomerSchema(context.Background()); err != nil {
 		return err
 	}
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.store != nil {
+		return errors.New("stripe: a plugin with UserCustomers serves one Auth; call New for each")
+	}
 	h.store = s
 	return nil
+}
+
+func (h *userCustomers) link(ctx context.Context, userID, customer string) (bool, error) {
+	h.mu.Lock()
+	store := h.store
+	h.mu.Unlock()
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), linkTimeout)
+	defer cancel()
+	return store.LinkStripeUserCustomer(ctx, userID, customer)
 }
 
 func (h *userCustomers) logger(c *auth.HookContext) *slog.Logger {
@@ -130,7 +153,7 @@ func (h *userCustomers) signUpCustomer(ctx context.Context, log *slog.Logger, in
 			return
 		}
 		if match != nil && (match.Metadata["userId"] == "" || match.Metadata["userId"] == user.ID) {
-			linked, err := h.store.LinkStripeUserCustomer(ctx, user.ID, match.ID)
+			linked, err := h.link(ctx, user.ID, match.ID)
 			switch {
 			case errors.Is(err, ErrCustomerInUse):
 				// Another account holds it: a new customer is created.
@@ -155,21 +178,24 @@ func (h *userCustomers) signUpCustomer(ctx context.Context, log *slog.Logger, in
 		log.ErrorContext(ctx, "Stripe customer creation failed", append([]any{"user_id", user.ID}, stripeErrorAttrs(err)...)...)
 		return
 	}
-	linked, err := h.store.LinkStripeUserCustomer(ctx, user.ID, customer.ID)
-	if err != nil && !errors.Is(err, ErrCustomerInUse) {
-		log.ErrorContext(ctx, "Stripe customer not linked", "user_id", user.ID, "customer_id", customer.ID)
-		return
-	}
-	if !linked {
-		// The user already has a customer or a pending Checkout, or was
-		// deleted: the customer this sign-up created is removed.
+	linked, err := h.link(ctx, user.ID, customer.ID)
+	switch {
+	case linked && err != nil:
+		// The link may be stored, so the customer is kept.
+		log.ErrorContext(ctx, "Stripe customer link not confirmed", "user_id", user.ID, "customer_id", customer.ID)
+	case !linked:
+		// The user already has another customer or a pending Checkout, was
+		// deleted, or the store failed: the customer this sign-up created
+		// is removed, on its own budget.
 		log.WarnContext(ctx, "Stripe customer not linked", "user_id", user.ID, "customer_id", customer.ID)
-		if _, err := h.opts.Client.V1Customers.Delete(ctx, customer.ID, nil); err != nil {
+		remove, cancel := context.WithTimeout(context.WithoutCancel(ctx), linkTimeout)
+		defer cancel()
+		if _, err := h.opts.Client.V1Customers.Delete(remove, customer.ID, nil); err != nil {
 			log.WarnContext(ctx, "Stripe customer not deleted", append([]any{"customer_id", customer.ID}, stripeErrorAttrs(err)...)...)
 		}
-		return
+	default:
+		h.created(ctx, log, in, customer, "Created Stripe customer")
 	}
-	h.created(ctx, log, in, customer, "Created Stripe customer")
 }
 
 func (h *userCustomers) created(ctx context.Context, log *slog.Logger, in NewUserCustomer, customer *sdk.Customer, message string) {

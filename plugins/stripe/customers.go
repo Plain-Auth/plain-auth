@@ -120,7 +120,7 @@ func (s *subscriptions) checkoutCustomer(c auth.EndpointContext, selection billi
 func (s *subscriptions) createCustomer(c auth.EndpointContext, params *sdk.CustomerCreateParams) *sdk.Customer {
 	customer, err := s.client.V1Customers.Create(c.Request.Context(), params)
 	if err != nil {
-		c.Auth.Logger().ErrorContext(c.Request.Context(), "Stripe customer creation failed", "error", err)
+		c.Auth.Logger().ErrorContext(c.Request.Context(), "Stripe customer creation failed", stripeErrorAttrs(err)...)
 		return nil
 	}
 	return customer
@@ -167,6 +167,9 @@ func stripeErrorAttrs(err error) []any {
 		return []any{"reason", "timeout"}
 	case errors.Is(err, context.Canceled):
 		return []any{"reason", "canceled"}
+	case err == nil:
+		// Stripe answered without the object asked for.
+		return []any{"reason", "invalid_response"}
 	}
 	return []any{"reason", "transport"}
 }
