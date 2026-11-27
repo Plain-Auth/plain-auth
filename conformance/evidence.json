@@ -50237,5 +50237,13 @@
       "marker": "func TestIsForbiddenMetadataDocumentField(",
       "complete": true
     }
+  ],
+  "plugin-symbol/oauth-provider/RegisterClientMetadataDocumentInput": [
+    {
+      "label": "Store a client discovery's document with its client ID, discovery and the row a refresh started from: create a client with no owner or secret and its default resource links, replace only the fields the document owns, refuse another source's client and a deleted row, and converge concurrent first saves, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_discovered_client_test.go",
+      "marker": "func TestDiscoveredOAuthClients(",
+      "complete": true
+    }
   ]
 }

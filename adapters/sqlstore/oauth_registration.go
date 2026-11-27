@@ -22,22 +22,8 @@ func (s *Store) CreateRegisteredClient(ctx context.Context, r op.ClientRegistrat
 	}
 	defer tx.Rollback()
 	m := r.Metadata
-	// Lock resources in a stable order before inserting any rows. This keeps
-	// concurrent registrations and policy changes consistent across SQL engines.
-	resources := slices.Clone(m.Resources)
-	slices.Sort(resources)
-	for _, id := range slices.Compact(resources) {
-		var disabled sql.NullBool
-		err := tx.QueryRowContext(ctx, s.readForUpdate(`SELECT "disabled" FROM "oauthResource" WHERE "identifier"=?`), id).Scan(&disabled)
-		if errors.Is(err, sql.ErrNoRows) {
-			return &auth.OAuthError{Status: 400, Code: "invalid_target", Description: "requested resource " + id + " does not exist"}
-		}
-		if err != nil {
-			return err
-		}
-		if disabled.Bool {
-			return &auth.OAuthError{Status: 400, Code: "invalid_target", Description: "requested resource " + id + " is disabled"}
-		}
+	if err := s.lockClientResources(ctx, tx, m.Resources); err != nil {
+		return err
 	}
 	var cols []string
 	var args []any
@@ -115,4 +101,26 @@ func (s *Store) CreateRegisteredClient(ctx context.Context, r op.ClientRegistrat
 		}
 	}
 	return tx.Commit()
+}
+
+// lockClientResources locks each resource row in a stable order before any
+// client row is written, refusing a missing or disabled one. This keeps
+// concurrent registrations and policy changes consistent across SQL engines.
+func (s *Store) lockClientResources(ctx context.Context, tx *sql.Tx, ids []string) error {
+	resources := slices.Clone(ids)
+	slices.Sort(resources)
+	for _, id := range slices.Compact(resources) {
+		var disabled sql.NullBool
+		err := tx.QueryRowContext(ctx, s.readForUpdate(`SELECT "disabled" FROM "oauthResource" WHERE "identifier"=?`), id).Scan(&disabled)
+		if errors.Is(err, sql.ErrNoRows) {
+			return &auth.OAuthError{Status: 400, Code: "invalid_target", Description: "requested resource " + id + " does not exist"}
+		}
+		if err != nil {
+			return err
+		}
+		if disabled.Bool {
+			return &auth.OAuthError{Status: 400, Code: "invalid_target", Description: "requested resource " + id + " is disabled"}
+		}
+	}
+	return nil
 }

@@ -17,13 +17,14 @@ const clientDisplayColumns = `"clientId","name","uri","icon","contacts","tos","p
 const localClientFilter = ` WHERE "clientId"=? AND ("clientDiscoveryId" IS NULL OR "clientDiscoveryId"='')`
 
 // The database only returns the presence of a stored secret, never the value.
-const clientDetailsSelect = `SELECT ` + clientDisplayColumns + `,"userId","referenceId","createdAt",
+const clientDetailsColumns = clientDisplayColumns + `,"userId","referenceId","createdAt",
 	CASE WHEN LENGTH("clientSecret")>0 THEN 0 ELSE NULL END,
 	"softwareId","softwareVersion","softwareStatement","jwks","jwksUri",
 	"redirectUris","postLogoutRedirectUris","backchannelLogoutUri","backchannelLogoutSessionRequired",
 	"tokenEndpointAuthMethod","grantTypes","responseTypes","applicationType","subjectType",
-	"disabled","skipConsent","enableEndSession","requirePKCE","dpopBoundAccessTokens","scopes","metadata","clientCredentialsScopes"
-	FROM "oauthClient"`
+	"disabled","skipConsent","enableEndSession","requirePKCE","dpopBoundAccessTokens","scopes","metadata","clientCredentialsScopes"`
+
+const clientDetailsSelect = `SELECT ` + clientDetailsColumns + ` FROM "oauthClient"`
 
 func (s *Store) PublicOAuthClient(ctx context.Context, id string) (op.PublicClient, error) {
 	q := `SELECT ` + clientDisplayColumns + ` FROM "oauthClient"` + localClientFilter + ` AND ("disabled" IS NULL OR "disabled"=FALSE)`
@@ -45,16 +46,18 @@ func (s *Store) PublicOAuthClient(ctx context.Context, id string) (op.PublicClie
 	return c, nil
 }
 
-func scanClientDetails(row rowScanner) (op.ClientDetails, error) {
+// scanClientDetails reads the clientDetailsColumns, then any extra columns
+// into extra.
+func scanClientDetails(row rowScanner, extra ...any) (op.ClientDetails, error) {
 	var c op.ClientDetails
 	var issued *time.Time
 	var contacts, scopes, redirects, logoutRedirects, grants, responses, keys, metadata, machine []byte
-	err := row.Scan(&c.ClientID, &c.Name, &c.URI, &c.LogoURI, &contacts, &c.TermsURI, &c.PolicyURI,
+	err := row.Scan(append([]any{&c.ClientID, &c.Name, &c.URI, &c.LogoURI, &contacts, &c.TermsURI, &c.PolicyURI,
 		&c.UserID, &c.ReferenceID, &issued, &c.SecretExpiresAt,
 		&c.SoftwareID, &c.SoftwareVersion, &c.SoftwareStatement, &keys, &c.JWKSURI,
 		&redirects, &logoutRedirects, &c.BackchannelLogoutURI, &c.BackchannelLogoutSessionRequired,
 		&c.TokenEndpointAuthMethod, &grants, &responses, &c.ApplicationType, &c.SubjectType,
-		&c.Disabled, &c.SkipConsent, &c.EnableEndSession, &c.RequirePKCE, &c.DPoPBoundAccessTokens, &scopes, &metadata, &machine)
+		&c.Disabled, &c.SkipConsent, &c.EnableEndSession, &c.RequirePKCE, &c.DPoPBoundAccessTokens, &scopes, &metadata, &machine}, extra...)...)
 	if errors.Is(err, sql.ErrNoRows) {
 		return c, op.ErrClientNotFound
 	}

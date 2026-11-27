@@ -266,7 +266,8 @@
   - [x] `adminUnlinkClientResource` ([test](../../../conformance/resource-registry.mjs#L89))
     - [x] Remove an existing client grant and permit a subsequent fresh link ([test](../../../conformance/resource-registry.mjs#L89))
   - [ ] `OAuthClientRegistrationResult`
-  - [ ] `RegisterClientMetadataDocumentInput`
+  - [x] `RegisterClientMetadataDocumentInput` ([test](../../../adapters/sqlstore/oauth_discovered_client_test.go#L21))
+    - [x] Store a client discovery's document with its client ID, discovery and the row a refresh started from: create a client with no owner or secret and its default resource links, replace only the fields the document owns, refuse another source's client and a deleted row, and converge concurrent first saves, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_discovered_client_test.go#L21))
   - [ ] `registerClientMetadataDocument`
   - [x] `createResourceServerChallenge` ([test](../../../conformance/resource-challenges.mjs#L6))
     - [x] Compare Bearer and DPoP challenges, required scopes, public errors, metadata mappings and ordinary denials over HTTP ([test](../../../conformance/resource-challenges.mjs#L6))
