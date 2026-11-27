@@ -49346,5 +49346,26 @@
       "marker": "func TestExtensionClientAuthentication(",
       "complete": true
     }
+  ],
+  "plugin-symbol/oauth-provider/consumeClientAssertion": [
+    {
+      "label": "Check a verified assertion payload's audience, exp, iat, nbf and jti with the provider's lifetime and clock tolerance, spend the jti once per namespace with private_key_jwt's digest, and refuse without a replay store",
+      "test": "plugins/oauthprovider/client_assertion_test.go",
+      "marker": "func TestConsumeClientAssertion(",
+      "complete": true
+    },
+    {
+      "label": "Spend a strategy's assertion jti once across token requests and store pools on one database, per client namespace, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_extension_auth_test.go",
+      "marker": "func TestExtensionAssertionReplay("
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L467": [
+    {
+      "label": "A strategy proves the client, the provider loads and authorizes its registration, and ConsumeClientAssertion binds the audience, bounds the lifetime and refuses a replayed jti, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_extension_auth_test.go",
+      "marker": "func TestExtensionAssertionReplay(",
+      "complete": true
+    }
   ]
 }

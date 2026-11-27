@@ -11,6 +11,21 @@ import (
 
 var _ op.ClientAssertionStore = (*Store)(nil)
 var _ op.ClientKeyRotationStore = (*Store)(nil)
+var _ op.ClientAssertionReplayStore = (*Store)(nil)
+
+// ReserveOAuthClientAssertion spends an extension strategy's assertion
+// digest once. The row's primary key makes the spend atomic across
+// processes, and the digest shares the table with private_key_jwt.
+func (s *Store) ReserveOAuthClientAssertion(ctx context.Context, digest string, expires time.Time) error {
+	const insert = `INSERT INTO "oauthClientAssertion" ("id","expiresAt") VALUES (?,?)`
+	if _, err := s.db.ExecContext(ctx, s.bind(insert), digest, s.date(expires)); err != nil {
+		if duplicateConstraint(err) {
+			return op.ErrAssertionReplay
+		}
+		return err
+	}
+	return nil
+}
 
 func (s *Store) ConsumeOAuthClientAssertion(ctx context.Context, id, digest string, expires time.Time, check func(op.MachineClient) error) error {
 	return s.useOAuthClientAssertion(ctx, id, digest, expires, nil, check)

@@ -204,6 +204,8 @@ func (opts Options) readCredentials(c auth.EndpointContext, form url.Values, end
 	input := *in.extension
 	input.ExpectedAudience = c.Auth.PublicURL() + endpoint
 	input.Header = c.Request.Header.Clone()
+	input.limits = opts.Assertions
+	input.replay, _ = c.Store().(ClientAssertionReplayStore)
 	result, err := in.strategy.Authenticate(c.Request.Context(), input)
 	if err != nil {
 		var problem *auth.OAuthError

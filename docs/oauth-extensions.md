@@ -47,3 +47,12 @@ extension := oauthprovider.Extension{ClientAuthentication: map[string]oauthprovi
 ```
 
 `New` refuses a method that is empty, one of the built-in ones, without `Authenticate`, or defined twice, and an assertion type that is not an absolute URI, is the JWT bearer type or is claimed twice. Clients register the method like any other and get no secret. Discovery lists extension methods after the built-in ones for the token, introspection and revocation endpoints, and `IssuerMetadataOptions.TokenAuthMethods` may name them. A form `client_id` that differs from the proven client is refused with 400 `invalid_client`, as for `private_key_jwt`, where another runtime takes the strategy's value. The callback gets a copy of the request headers rather than the whole request. A `Confirmation` it returns is kept for grants that forward it; the built-in grants ignore it, as in another runtime. [Extension authentication tests](../adapters/sqlstore/oauth_extension_auth_test.go) · [Option checks](../plugins/oauthprovider/extension_auth_test.go)
+
+After verifying the signature, a strategy should bind the audience, bound the lifetime and refuse a replayed `jti` ([RFC 7523 §3](https://datatracker.ietf.org/doc/html/rfc7523#section-3)). `in.ConsumeClientAssertion(ctx, namespace, payload)` does all three with the verified JSON payload, under the provider's `Assertions.MaxLifetime` and `ClockTolerance`:
+
+- `aud`, a string or an array, must include `ExpectedAudience`;
+- `exp` must be a number, unexpired and at most the lifetime away; `iat`, when a number, must be at most the lifetime old;
+- `nbf`, when a number, must not be in the future; another runtime leaves this check to the strategy;
+- `jti` must be a non-empty string, spent once under the namespace until `exp` plus the tolerance.
+
+Each refusal is 400 `invalid_client` with another runtime's description, and a replay is "client assertion jti has already been used". Name the namespace after the method and the client, such as `"workload_identity:" + id`, so the same `jti` may recur under another method or client but never within one; `private_key_jwt` spends under `"private_key_jwt:" + clientID` in the same table. The store must implement `oauthprovider.ClientAssertionReplayStore`, which the SQL adapter does with one insert into `oauthClientAssertion`, shared by every instance on the database; otherwise the call returns 501 `OAUTH_ASSERTION_STORE_UNAVAILABLE`. [Claim checks](../plugins/oauthprovider/client_assertion_test.go) · [Replay test](../adapters/sqlstore/oauth_extension_auth_test.go)

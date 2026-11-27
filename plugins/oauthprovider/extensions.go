@@ -3,13 +3,16 @@ package oauthprovider
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"net/url"
 	"reflect"
 	"slices"
 	"strings"
 	"sync"
+	"time"
 
 	auth "github.com/Plain-Org/plain-auth"
 )
@@ -67,6 +70,70 @@ type ClientAuthenticationInput struct {
 	ExpectedAudience string
 	// Header is a copy of the request headers.
 	Header http.Header
+
+	limits AssertionOptions
+	replay ClientAssertionReplayStore
+}
+
+// ConsumeClientAssertion checks the audience, lifetime and jti of an
+// assertion payload whose signature the strategy has verified, and spends
+// the jti once under namespace, such as the method and client. It applies
+// the provider's MaxLifetime and ClockTolerance, as private_key_jwt does.
+// It also refuses an nbf in the future, which another runtime leaves to the
+// strategy (safety).
+func (in ClientAuthenticationInput) ConsumeClientAssertion(ctx context.Context, namespace string, payload []byte) error {
+	if namespace == "" {
+		return errors.New("oauthprovider: ConsumeClientAssertion needs a namespace")
+	}
+	jti, expires, err := in.limits.checkConsumed(payload, in.ExpectedAudience, time.Now())
+	if err != nil {
+		return err
+	}
+	if in.replay == nil {
+		return &auth.APIError{Status: 501, Code: "OAUTH_ASSERTION_STORE_UNAVAILABLE", Message: "The configured store does not support OAuth client assertions"}
+	}
+	return assertionStoreError(in.replay.ReserveOAuthClientAssertion(ctx, assertionDigest(namespace, jti), expires))
+}
+
+// checkConsumed applies ConsumeClientAssertion's claim rules, with another
+// runtime's error descriptions.
+func (opts AssertionOptions) checkConsumed(payload []byte, audience string, now time.Time) (string, time.Time, error) {
+	var claims map[string]json.RawMessage
+	// A payload that is not an object has no aud.
+	_ = json.Unmarshal(payload, &claims)
+	var one string
+	var many []json.RawMessage
+	matched := json.Unmarshal(claims["aud"], &one) == nil && one == audience
+	if !matched && json.Unmarshal(claims["aud"], &many) == nil {
+		matched = slices.ContainsFunc(many, func(raw json.RawMessage) bool {
+			return json.Unmarshal(raw, &one) == nil && one == audience
+		})
+	}
+	if audience == "" || !matched {
+		return "", time.Time{}, invalidClient("client assertion aud does not match the endpoint")
+	}
+	seconds, skew, limit := float64(now.Unix()), opts.ClockTolerance.Seconds(), opts.MaxLifetime.Seconds()
+	exp, ok := claimNumber(claims["exp"])
+	switch {
+	case !ok:
+		return "", time.Time{}, invalidClient("client assertion must include exp claim")
+	case exp <= seconds-skew:
+		return "", time.Time{}, invalidClient("client assertion has expired")
+	case exp-seconds > limit+skew:
+		return "", time.Time{}, invalidClient(fmt.Sprintf("client assertion exp is too far in the future (max %.0fs)", limit))
+	}
+	if iat, ok := claimNumber(claims["iat"]); ok && seconds-iat > limit+skew {
+		return "", time.Time{}, invalidClient(fmt.Sprintf("client assertion iat is too far in the past (max %.0fs)", limit))
+	}
+	if nbf, ok := claimNumber(claims["nbf"]); ok && nbf > seconds+skew {
+		return "", time.Time{}, invalidClient("client assertion is not yet valid")
+	}
+	var jti string
+	if json.Unmarshal(claims["jti"], &jti) != nil || jti == "" {
+		return "", time.Time{}, invalidClient("client assertion must include jti claim")
+	}
+	sec, fraction := math.Modf(exp + skew)
+	return jti, time.Unix(int64(sec), int64(fraction*1e9)).UTC(), nil
 }
 
 // ClientAuthenticationResult names the proven client, and a confirmation

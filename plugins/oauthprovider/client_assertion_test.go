@@ -7,6 +7,8 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"io"
@@ -290,5 +292,95 @@ func TestClientKeyFetchSharesRequestsAndRespectsCancellation(t *testing.T) {
 	}
 	if calls.Load() != 1 {
 		t.Fatal("duplicate remote fetches", calls.Load())
+	}
+}
+
+// reservedDigests is a ClientAssertionReplayStore in memory.
+type reservedDigests map[string]time.Time
+
+func (r reservedDigests) ReserveOAuthClientAssertion(_ context.Context, digest string, expires time.Time) error {
+	if _, ok := r[digest]; ok {
+		return ErrAssertionReplay
+	}
+	r[digest] = expires
+	return nil
+}
+
+// ConsumeClientAssertion refuses a wrong audience, a missing, expired or
+// distant exp, an old iat, a future nbf, a missing jti and an empty
+// namespace; it spends a jti once per namespace, and private_key_jwt's
+// digest is the one for namespace "private_key_jwt:<client>".
+func TestConsumeClientAssertion(t *testing.T) {
+	const audience = "https://issuer.example.test/api/auth/oauth2/token"
+	limits := AssertionOptions{ClockTolerance: 30 * time.Second}
+	if err := limits.defaults(); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().Unix()
+	payload := func(overrides map[string]any) []byte {
+		claims := map[string]any{"aud": audience, "exp": now + 60, "iat": now, "jti": "one"}
+		for k, v := range overrides {
+			if v == nil {
+				delete(claims, k)
+			} else {
+				claims[k] = v
+			}
+		}
+		data, _ := json.Marshal(claims)
+		return data
+	}
+	store := reservedDigests{}
+	in := ClientAuthenticationInput{ExpectedAudience: audience, limits: limits, replay: store}
+	described := func(err error) string {
+		var problem *auth.OAuthError
+		if !errors.As(err, &problem) || problem.Status != 400 || problem.Code != "invalid_client" {
+			t.Fatalf("wanted 400 invalid_client, got %v", err)
+		}
+		return problem.Description
+	}
+	for description, claims := range map[string][]byte{
+		"client assertion aud does not match the endpoint":         payload(map[string]any{"aud": []any{"https://other.example.test", 7}}),
+		"client assertion must include exp claim":                  payload(map[string]any{"exp": "soon"}),
+		"client assertion has expired":                             payload(map[string]any{"exp": now - 61}),
+		"client assertion exp is too far in the future (max 300s)": payload(map[string]any{"exp": now + 400}),
+		"client assertion iat is too far in the past (max 300s)":   payload(map[string]any{"iat": now - 400}),
+		"client assertion is not yet valid":                        payload(map[string]any{"nbf": now + 120}),
+		"client assertion must include jti claim":                  payload(map[string]any{"jti": nil}),
+	} {
+		if got := described(in.ConsumeClientAssertion(t.Context(), "urn:test", claims)); got != description {
+			t.Errorf("wanted %q, got %q", description, got)
+		}
+	}
+	if err := in.ConsumeClientAssertion(t.Context(), "", payload(nil)); err == nil {
+		t.Fatal("an empty namespace was accepted")
+	}
+	if len(store) != 0 {
+		t.Fatal("a refused assertion was spent", store)
+	}
+	// An audience array, then a replay, then the same jti elsewhere.
+	if err := in.ConsumeClientAssertion(t.Context(), "urn:test", payload(map[string]any{"aud": []any{"x", audience}})); err != nil {
+		t.Fatal(err)
+	}
+	if got := described(in.ConsumeClientAssertion(t.Context(), "urn:test", payload(nil))); got != "client assertion jti has already been used" {
+		t.Fatal("a replay was not refused", got)
+	}
+	if err := in.ConsumeClientAssertion(t.Context(), "urn:other", payload(nil)); err != nil {
+		t.Fatal("the same jti under another namespace was refused", err)
+	}
+	if expires := store[assertionDigest("urn:test", "one")]; !expires.Equal(time.Unix(now+60+30, 0)) {
+		t.Fatal("the spend did not last until exp plus the tolerance", expires)
+	}
+	if err := in.ConsumeClientAssertion(t.Context(), "private_key_jwt:app", payload(nil)); err != nil {
+		t.Fatal(err)
+	}
+	sum := sha256.Sum256([]byte("private_key_jwt:app:one"))
+	if _, ok := store[base64.RawURLEncoding.EncodeToString(sum[:24])]; !ok {
+		t.Fatal("the namespaced digest is not private_key_jwt's")
+	}
+	// Without a replay store, the call is refused after the claim checks.
+	in.replay = nil
+	var api *auth.APIError
+	if err := in.ConsumeClientAssertion(t.Context(), "urn:test", payload(map[string]any{"jti": "two"})); !errors.As(err, &api) || api.Status != 501 {
+		t.Fatal("a store without assertion replay support was not 501", err)
 	}
 }

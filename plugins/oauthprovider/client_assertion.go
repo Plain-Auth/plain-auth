@@ -46,6 +46,13 @@ func (o *AssertionOptions) defaults() error {
 	return nil
 }
 
+// ClientAssertionReplayStore spends a namespaced assertion digest once,
+// across endpoints and processes, for ConsumeClientAssertion. A digest
+// already spent returns ErrAssertionReplay.
+type ClientAssertionReplayStore interface {
+	ReserveOAuthClientAssertion(ctx context.Context, digest string, expires time.Time) error
+}
+
 // ErrAssertionReplay means the client has already used this assertion identifier.
 var ErrAssertionReplay = errors.New("oauthprovider: client assertion already used")
 
@@ -136,9 +143,21 @@ func (opts Options) signedAssertion(c auth.EndpointContext, assertion *clientAss
 	if err != nil {
 		return "", time.Time{}, err
 	}
-	sum := sha256.Sum256([]byte("private_key_jwt:" + first.ClientID + ":" + jti))
-	digest := base64.RawURLEncoding.EncodeToString(sum[:24])
-	return digest, expires, nil
+	return assertionDigest("private_key_jwt:"+first.ClientID, jti), expires, nil
+}
+
+// assertionDigest names a spent assertion by its namespace and jti, so the
+// same jti may recur under another method or client but never within one.
+func assertionDigest(namespace, jti string) string {
+	sum := sha256.Sum256([]byte(namespace + ":" + jti))
+	return base64.RawURLEncoding.EncodeToString(sum[:24])
+}
+
+// claimNumber reads a JSON number claim. Null and other types are absent.
+func claimNumber(raw json.RawMessage) (float64, bool) {
+	var value float64
+	ok := len(raw) > 0 && string(raw) != "null" && json.Unmarshal(raw, &value) == nil
+	return value, ok
 }
 
 func (opts AssertionOptions) checkClaims(data []byte, id string, now time.Time, accepted ...string) (string, time.Time, error) {
@@ -163,17 +182,12 @@ func (opts AssertionOptions) checkClaims(data []byte, id string, now time.Time, 
 	}
 	seconds, skew := float64(now.Unix()), opts.ClockTolerance.Seconds()
 	limit := opts.MaxLifetime.Seconds()
-	number := func(raw json.RawMessage) (float64, bool) {
-		var value float64
-		ok := len(raw) > 0 && string(raw) != "null" && json.Unmarshal(raw, &value) == nil
-		return value, ok
-	}
-	exp, ok := number(claims["exp"])
+	exp, ok := claimNumber(claims["exp"])
 	if !ok || exp <= seconds-skew {
 		return "", time.Time{}, failedAssertion()
 	}
 	if claims["nbf"] != nil {
-		if nbf, ok := number(claims["nbf"]); !ok || nbf > seconds+skew {
+		if nbf, ok := claimNumber(claims["nbf"]); !ok || nbf > seconds+skew {
 			return "", time.Time{}, failedAssertion()
 		}
 	}
@@ -181,7 +195,7 @@ func (opts AssertionOptions) checkClaims(data []byte, id string, now time.Time, 
 		return "", time.Time{}, invalidClient(fmt.Sprintf("client assertion exp is too far in the future (max %.0fs)", limit))
 	}
 	if claims["iat"] != nil {
-		iat, ok := number(claims["iat"])
+		iat, ok := claimNumber(claims["iat"])
 		if !ok {
 			return "", time.Time{}, failedAssertion()
 		}
