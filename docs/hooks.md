@@ -199,7 +199,7 @@ audit := plainauth.Plugin{ID: "audit", OnSessionsEnded: func(ctx context.Context
 }}
 ```
 
-The store must implement `plainauth.SessionEndReporter`, as the SQL adapter does; with another store the observer is never called. Another runtime observes this through its session delete hooks. Here the store reports instead, so sessions ended inside a store's own transactions, such as a password reset or a SCIM deactivation, are reported too. The OAuth provider uses this for back-channel logout. [Report tests](../adapters/sqlstore/session_end_report_test.go)
+The store must implement `plainauth.SessionEndReporter`, as the SQL adapter does; with another store the observer is never called. One store reports to one Auth: the one created last on it. Another runtime observes this through its session delete hooks. Here the store reports instead, so sessions ended inside a store's own transactions, such as a password reset or a SCIM deactivation, are reported too. The OAuth provider uses this for back-channel logout. [Report tests](../adapters/sqlstore/session_end_report_test.go)
 
 ### Sign-ins the store decides
 

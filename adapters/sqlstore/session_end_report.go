@@ -21,21 +21,24 @@ type sessionEndReports struct {
 }
 
 // ReportSessionEnds attaches report to every session this store ends, on
-// every path. The store calls it once per committed transaction that ended
-// sessions, after the commit and outside the transaction, with the context
-// the transaction began with. Rolled-back transactions report nothing.
+// every path, replacing the report attached before, so a second New on the
+// same store does not report twice. The store calls it once per committed
+// transaction that ended sessions, after the commit and outside the
+// transaction, with the context the transaction began with. Rolled-back
+// transactions report nothing.
 func (s *Store) ReportSessionEnds(report func(context.Context, []authn.EndedSession)) {
 	if s.ends == nil || report == nil {
 		return
 	}
 	s.ends.mu.Lock()
 	defer s.ends.mu.Unlock()
-	s.ends.receivers = append(s.ends.receivers, report)
+	s.ends.receivers = []func(context.Context, []authn.EndedSession){report}
 }
 
 // strictSessionEnds makes every untracked session end an error, receivers
-// or not. The package tests set it, so the whole suite checks that each
-// transaction able to end a session is tracked.
+// or not; without it only a store with a receiver refuses one. The package
+// tests set it, so the whole suite checks that each transaction able to
+// end a session is tracked.
 var strictSessionEnds bool
 
 // sessionEnds collects the sessions one transaction ends.
@@ -56,11 +59,10 @@ func (s *Store) trackSessionEnds(ctx context.Context, tx *sql.Tx) *sessionEnds {
 	if s.ends == nil {
 		return e
 	}
+	// Every transaction is registered, so one that began before the first
+	// receiver was attached is known and simply reports nothing.
 	s.ends.mu.Lock()
 	defer s.ends.mu.Unlock()
-	if len(s.ends.receivers) == 0 && !strictSessionEnds {
-		return e
-	}
 	e.tracked = true
 	e.receivers = slices.Clone(s.ends.receivers)
 	if s.ends.open == nil {

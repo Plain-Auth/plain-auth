@@ -13,7 +13,8 @@ type EndedSession struct {
 // SessionEndReporter is a store that reports every session it ends,
 // whatever path ends it. After the transaction commits, and outside it, the
 // store calls the attached report once with the context of the call. New
-// attaches one report when a plugin sets OnSessionsEnded.
+// attaches one report when a plugin sets OnSessionsEnded; attaching another
+// replaces it, so the Auth created last on a store hears its session ends.
 type SessionEndReporter interface {
 	ReportSessionEnds(report func(context.Context, []EndedSession))
 }

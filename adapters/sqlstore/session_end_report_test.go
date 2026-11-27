@@ -20,7 +20,8 @@ import (
 // its user and the OAuth clients that held tokens on it, revoked or not. A
 // rollback reports nothing, a copy of the store shares the receiver, an
 // untracked transaction is refused, a preserved row is not reported again
-// when its user is deleted, and New attaches plugin observers.
+// when its user is deleted, and New attaches plugin observers in place of
+// the earlier receiver.
 func TestSessionEndReports(t *testing.T) {
 	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
 		t.Run(dialect, func(t *testing.T) {
@@ -123,9 +124,12 @@ func TestSessionEndReports(t *testing.T) {
 			must(err)
 			must(c.SignOut(ctx))
 			mu.Lock()
-			got := observed
-			reports = nil
+			got, earlier := observed, reports
 			mu.Unlock()
+			// The observer replaced the receiver attached before it.
+			if len(earlier) != 0 {
+				t.Fatal("a replaced receiver still heard session ends", earlier)
+			}
 			if len(got) != 1 || got[0].Auth != h || len(got[0].Sessions) != 1 || got[0].Sessions[0].UserID != signed.User.ID {
 				t.Fatal("the plugin observer did not see the sign-out", got)
 			}
