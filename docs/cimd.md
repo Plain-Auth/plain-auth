@@ -2,6 +2,41 @@
 
 The `plugins/cimd` package identifies OAuth clients by Client ID Metadata Documents ([draft-ietf-oauth-client-id-metadata-document-02](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-client-id-metadata-document-02)), as another runtime's cimd plugin does: a client ID that is an HTTPS URL names a JSON document with the client's metadata. [Feature checklist](parity/plugins/cimd.md)
 
+## Enable metadata document clients
+
+Install `cimd.NewClientDiscovery` on the OAuth provider through an extension. Another runtime adds it as a companion plugin; here it is composed explicitly. Every option is optional:
+
+```go
+discovery, err := cimd.NewClientDiscovery(cimd.Options{
+    MetadataRevalidationInterval: 10 * time.Minute,
+    MaxCacheEntries:              1000,
+    FetchPolicy: cimd.FetchPolicy{
+        MinimumFetchInterval:          time.Second,
+        MaxConcurrentFetches:          16,
+        MaxConcurrentFetchesPerOrigin: 4,
+        MaxFetchesPerMinute:           120,
+        MaxFetchesPerOriginPerMinute:  30,
+    },
+    OriginBoundFields: []string{"post_logout_redirect_uris"},
+    AllowMetadataURL: func(ctx context.Context, clientIDURL string) (bool, error) {
+        u, err := url.Parse(clientIDURL)
+        return err == nil && strings.HasSuffix(u.Hostname(), ".trusted.example"), nil
+    },
+    OnClientCreated: func(ctx context.Context, e cimd.ClientCreatedEvent) error {
+        return nil // assign local trust or audit state
+    },
+    OnClientRefreshed: func(ctx context.Context, e cimd.ClientRefreshedEvent) error {
+        return nil // compare e.PreviousClient with e.Client
+    },
+})
+provider, err := oauthprovider.New(oauthprovider.Options{
+    Extensions: []oauthprovider.Extension{{ClientDiscoveries: []oauthprovider.ClientDiscovery{discovery}}},
+    // ...
+})
+```
+
+For the Model Context Protocol, set `Profile: cimd.ProfileMCP20260728` and pass the extension in the options of [`mcp.New`](mcp.md); the profile requires `client_name` and a non-empty `redirect_uris`. Dynamic registration stays off unless the provider enables it. Durations are `time.Duration`, where another runtime takes seconds or duration strings, and the transport defaults to `NewTransport`, which pins addresses, where another runtime needs the host to supply one.
+
 ## Validate client ID URLs and documents
 
 `cimd.IsClientIDURLCandidate` tells a metadata document URL from another client ID without any lookup: an `https` URL that names a host. `cimd.ValidateClientIDURL` then checks it as draft-02 §3 requires, in another runtime's order: no dot segments, no fragment, a valid URL, `https` with an explicit `https://` authority and a path, no credentials, and a public host. Explicit default ports are significant, since the document's `client_id` must equal the URL exactly.
@@ -60,3 +95,11 @@ After a save, `OnClientCreated` runs for a new client and `OnClientRefreshed` fo
 By default a failed refresh refuses the request, so a short outage at a client's metadata host stops its users from signing in. `MetadataStaleIfError`, modeled on RFC 5861 stale-if-error, serves the stored client unchanged instead, with a warning, when it was last validated within that bound, at most 24 hours, and the failure is transient: a 500, 502, 503 or 504 answer, the five-second timeout, or a connection failure, where another runtime reads Node error codes. While it serves a stored client, the document is fetched at most once a minute, and a fetch limit's refusal serves it too within five minutes of the last transient failure. The document's cache directives do not matter here.
 
 A terminal failure stops stale serving until a fetch succeeds, so an owner can revoke a client by removing its document: a document retrieved and refused, for any other status, a redirect, the media type, the size, invalid JSON or an invalid document, a refused or invalid client ID URL, or a document the provider refuses. A transport failure that retrieved nothing and a storage failure leave no record. Only a successful save advances the stored client's `updatedAt`, a 304 revalidation included; an administrator's edit does not, so it cannot extend the bound. The records are bounded by `MaxCacheEntries`, and evicting a terminal record moves a watermark, so clients validated before it are not served stale. The same bound keeps a `private_key_jwt` client's cached `jwks_uri` keys verifying through transient failures, counted from the last successful key fetch. [Stale tests](../plugins/cimd/stale_test.go)
+
+## Security boundary
+
+A document fetch is bounded to five seconds, 5 KB, JSON or `application/*+json`, and no redirects; a discovered client's key set to 64 KiB. Client ID URLs on loopback, private or reserved hosts are refused, and the default transport refuses any host that resolves to one. Tests route HTTPS `.test` origins to in-process handlers through a custom `Transport` without loosening the URL rules; a custom transport must keep the default's guarantees: one lookup, public addresses only, the address pinned, and no redirects.
+
+## Write another discovery
+
+A discovery for another source of client metadata implements `oauthprovider.ClientDiscovery`: a stable `ID`, stored as each client's provenance, so changing it orphans the clients it saved; `Matches`; and `Resolve`, which validates the source's metadata, turns it into an `oauthprovider.ClientMetadataDocument` and stores it through `req.Register`, or returns nil. `Resolve` runs outside any store transaction with the request's context, and `req.Existing` is the row it saved before. See [OAuth provider extensions](oauth-extensions.md#resolve-clients-through-a-discovery).

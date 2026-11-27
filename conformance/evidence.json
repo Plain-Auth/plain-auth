@@ -50633,5 +50633,19 @@
       "test": "plugins/cimd/stale_test.go",
       "marker": "func TestStaleWatermark("
     }
+  ],
+  "docs/content/docs/plugins/cimd.mdx#L86": [
+    {
+      "label": "Configure revalidation, cache size, fetch policy, origin-bound fields, the URL policy and the created and refreshed notifications",
+      "test": "plugins/cimd/resolver_test.go",
+      "marker": "func TestResolverNotifications("
+    }
+  ],
+  "docs/content/docs/plugins/cimd.mdx": [
+    {
+      "label": "Identify OAuth clients by metadata documents through the provider's endpoints, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_cimd_test.go",
+      "marker": "func TestCIMDClients("
+    }
   ]
 }

@@ -56,8 +56,10 @@
 ## Client ID Metadata Document (CIMD)
 
 - [ ] Client ID Metadata Document (CIMD)
+  - [x] Identify OAuth clients by metadata documents through the provider's endpoints, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_cimd_test.go#L63))
   - [ ] MCP configuration
   - [ ] Configuration
+    - [x] Configure revalidation, cache size, fetch policy, origin-bound fields, the URL policy and the created and refreshed notifications ([test](../../../plugins/cimd/resolver_test.go#L206))
     - [ ] `cimdOptionsType.fetchClientMetadataResource`
       - [x] Fetch documents through the configured transport, the pinned one by default ([test](../../../plugins/cimd/fetch_test.go#L38))
     - [ ] `cimdOptionsType.metadataProfile`
