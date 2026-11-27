@@ -8,6 +8,7 @@
   - [ ] `createCimdClientDiscovery`
   - [ ] `cimd`
   - [ ] `fetchClientMetadataResource`
+    - [x] Fetch metadata resources over HTTPS GET and HEAD only, pinning the vetted public addresses of one lookup, returning redirects unfollowed, refusing upgrades and bounding concurrent lookups ([test](../../../plugins/cimd/transport_test.go#L55))
   - [ ] `CimdClientCreatedEvent`
   - [ ] `CimdClientRefreshedEvent`
   - [ ] `CimdMetadataFetchPolicy`
