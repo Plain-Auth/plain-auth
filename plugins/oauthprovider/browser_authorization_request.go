@@ -88,7 +88,7 @@ func (opts Options) browserGrant(client BrowserClient, q url.Values) (browserAut
 	if q.Has("dpop_jkt") || client.RequireDPoP {
 		return fail("invalid_request", "this authorization request requires an unsupported token binding")
 	}
-	prompts := distinct(strings.Fields(q.Get("prompt")))
+	prompts := distinct(promptValues(q.Get("prompt")))
 	for _, prompt := range prompts {
 		if !slices.Contains([]string{"none", "login", "consent", "create", "select_account"}, prompt) {
 			return fail("invalid_request", "unsupported prompt value")

@@ -45,7 +45,7 @@ func (c EndpointContext) OAuthJWTPayload(token string) (claims map[string]any, r
 		return nil, true, nil
 	}
 	issuer, _ := claims["iss"].(string)
-	if issuer != a.OAuthIssuer() {
+	if !a.oauthIssuerAccepted(issuer) {
 		return nil, false, nil
 	}
 	for _, name := range []string{"iat", "nbf", "exp"} {

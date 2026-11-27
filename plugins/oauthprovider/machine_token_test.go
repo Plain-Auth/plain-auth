@@ -2,6 +2,8 @@ package oauthprovider
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	auth "github.com/Plain-Org/plain-auth"
 	"net/http"
@@ -124,15 +126,20 @@ func TestTokenGenerationAndStorage(t *testing.T) {
 	if err := tokens.defaults(); err != nil {
 		t.Fatal(err)
 	}
+	// Stored values are the unpadded base64url SHA-256 of the issued value.
+	sha := func(raw string) string {
+		sum := sha256.Sum256([]byte(raw))
+		return base64.RawURLEncoding.EncodeToString(sum[:])
+	}
 	issued, stored, err := tokens.newOpaqueToken(ctx)
-	if err != nil || !letters.MatchString(issued) || stored != tokenDigest(issued) {
+	if err != nil || !letters.MatchString(issued) || stored != sha(issued) {
 		t.Fatal("a default opaque access token is not 32 letters stored as its digest", issued, stored, err)
 	}
 	wire, digest, err := tokens.issueRefreshToken(ctx, "session")
-	if err != nil || !letters.MatchString(wire) || digest != tokenDigest(wire) {
+	if err != nil || !letters.MatchString(wire) || digest != sha(wire) {
 		t.Fatal("a default refresh token is not 32 letters stored as its digest", wire, digest, err)
 	}
-	if code, err := tokens.storedAuthorizationCode(ctx, "code"); err != nil || code != tokenDigest("code") {
+	if code, err := tokens.storedAuthorizationCode(ctx, "code"); err != nil || code != "VpTQii5T_8rgwxA-Wtb2B2q9lg6x-KVldwQLwQKPcCs" {
 		t.Fatal("an authorization code is not stored as its digest", code, err)
 	}
 	calls := map[string]int{}

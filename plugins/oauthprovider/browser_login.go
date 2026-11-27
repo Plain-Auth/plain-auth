@@ -115,7 +115,7 @@ func withoutPrompt(q url.Values, value string) {
 	if !q.Has("prompt") {
 		return
 	}
-	remaining := slices.DeleteFunc(strings.Fields(q.Get("prompt")), func(p string) bool { return p == value })
+	remaining := slices.DeleteFunc(promptValues(q.Get("prompt")), func(p string) bool { return p == value })
 	if len(remaining) == 0 {
 		q.Del("prompt")
 	} else {
@@ -212,7 +212,7 @@ func (opts Options) continueAccount(c auth.EndpointContext) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	if prompt == "create" && !q.Has("pa_signup") && !slices.Contains(strings.Fields(q.Get("prompt")), "create") {
+	if prompt == "create" && !q.Has("pa_signup") && !slices.Contains(promptValues(q.Get("prompt")), "create") {
 		return nil, registrationProblem(400, "invalid_request", "account creation was not requested")
 	}
 	if prompt != "" {

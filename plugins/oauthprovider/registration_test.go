@@ -32,9 +32,37 @@ func TestRegistrationRedirectPolicy(t *testing.T) {
 		{"web", "com.example.app:/callback", false}, {"native", "com.example.app:/callback", true},
 		{"web", "myapp://example.app/callback", false}, {"native", "myapp://example.app/callback", true},
 		{"web", "http://localhost:3000/cb", false},
+		// Shortened loopback forms, HTTPS loopback and plain HTTP hosts
+		// are refused for both kinds, and so is a script URL.
+		{"native", "http://127.1/callback", false}, {"web", "https://127.1/cb", false},
+		{"native", "https://127.0.0.1/cb", false}, {"native", "http://example.com/callback", false},
+		{"web", "http://example.com/callback", false}, {"native", "javascript:alert(1)", false},
+		{"web", "javascript://example.com/%0Aalert(1)", false},
 	} {
 		if err := r.validateRedirect(tc.uri, tc.app); (err == nil) != tc.ok {
 			t.Errorf("%s %s: %v", tc.app, tc.uri, err)
+		}
+	}
+	// Native clients refuse unsafe schemes, malformed reverse-domain
+	// schemes, non-loopback HTTP hosts and HTTPS loopback.
+	for _, uri := range []string{
+		"file:///callback", "ftp://example.com/callback", "mailto:oauth@example.com", "ws://host/callback",
+		"wss://host/callback", "myapp:/callback", "com.example.app:callback", "com.example.app:///callback",
+		"com..example.app:/callback", "com.example..app:/callback", "com.example.-app:/callback", "com.example.app-:/callback",
+		"https://localhost/callback", "https://localhost./callback", "https://localhost../callback", "http://localhost../callback",
+		"http://192.168.1.2/callback", "http://tenant.localhost/callback", "http://127.42.7.9:49152/callback",
+		"https://user:password@example.com/callback", "https://example.com/callback#fragment",
+	} {
+		if r.validateRedirect(uri, "native") == nil {
+			t.Error("native redirect accepted", uri)
+		}
+	}
+	for _, uri := range []string{
+		"http://localhost:54921/callback", "http://127.0.0.1:54921/callback", "http://[::1]:61234/callback",
+		"com.example.app:/callback", "com.example.app://host/callback", "https://app.example.com/callback",
+	} {
+		if err := r.validateRedirect(uri, "native"); err != nil {
+			t.Error("native redirect refused", uri, err)
 		}
 	}
 	// An approved web host may use HTTP, but never with credentials.

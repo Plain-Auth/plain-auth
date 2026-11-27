@@ -99,6 +99,9 @@ func TestIssuerDiscoveryMounts(t *testing.T) {
 		{"https://issuer.example.test/", []string{wellKnown}},
 		{"https://issuer.example.test/ten%2Fant/v2/", []string{wellKnown + "/ten%2Fant/v2", "/ten%2Fant/v2" + wellKnown}},
 		{"http://localhost:9999/dev", []string{wellKnown + "/dev", "/dev" + wellKnown}},
+		// The published issuer drops a query, a fragment and one trailing
+		// slash, as another runtime publishes it.
+		{"https://issuer.example.test/tenant/?invalid=issuer#part", []string{wellKnown + "/tenant", "/tenant" + wellKnown}},
 	} {
 		a, err := build(p, s, tc.issuer, nil)
 		if err != nil {
@@ -108,6 +111,9 @@ func TestIssuerDiscoveryMounts(t *testing.T) {
 			t.Fatalf("issuer %q published paths %v", tc.issuer, a.WellKnownPaths())
 		}
 		doc, err := op.GetAuthorizationServerConfig(a)
+		if tc.issuer != "" && a.OAuthIssuer() != strings.TrimSuffix(strings.Split(strings.Split(tc.issuer, "?")[0], "#")[0], "/") {
+			t.Fatal("the issuer was not published without its query, fragment and trailing slash", tc.issuer, a.OAuthIssuer())
+		}
 		if err != nil || doc.Issuer != a.OAuthIssuer() || doc.TokenEndpoint != base+mount+"/oauth2/token" ||
 			!slices.Equal(doc.ScopesSupported, []string{"read", "write"}) || doc.RegistrationEndpoint == "" {
 			t.Fatal("unexpected issuer metadata", doc, err)
@@ -213,7 +219,7 @@ func TestIssuerDiscoveryMounts(t *testing.T) {
 		disabled []string
 	}{
 		{disabled, "", nil}, {noGrants, "", nil}, {p, "http://untrusted.example.test", nil},
-		{p, "https://issuer.example.test/tenant?invalid=issuer", nil}, {p, "", []string{"/oauth2/token"}},
+		{p, "", []string{"/oauth2/token"}},
 	} {
 		a, err := build(tc.plugin, s, tc.issuer, tc.disabled)
 		if err != nil {

@@ -6,12 +6,14 @@
 
 - [ ] OAuth provider endpoints, types and options
   - [x] Enforce consent owner and client scope rules when a signed-in account manages its authorized applications ([test](../../../conformance/oauth-consent.mjs#L6))
-  - [ ] `getIssuer`
-  - [x] `PublicClientJwksValidationResult` ([test](../../../plugins/oauthprovider/registration_test.go#L106))
-    - [x] Return a validation error for unsupported algorithms and private key members ([test](../../../plugins/oauthprovider/registration_test.go#L50))
-    - [x] Refuse each invalid public key set with invalid_client_metadata and the description naming its reason ([test](../../../plugins/oauthprovider/registration_test.go#L106))
-  - [x] `validatePublicClientJwks` ([test](../../../plugins/oauthprovider/registration_test.go#L50))
-    - [x] Validate public RSA, EC and Ed25519 keys and compatible signing algorithms and reject private key material ([test](../../../plugins/oauthprovider/registration_test.go#L50))
+  - [x] `getIssuer` ([test](../../../oauth_issuer_test.go#L17))
+    - [x] Publish the issuer without its query, fragment and one trailing slash and accept tokens naming either spelling; signed tokens name the published issuer, a documented deviation ([test](../../../oauth_issuer_test.go#L17))
+    - [x] Publish discovery for an issuer with a query and trailing slash at its normalized paths ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L115))
+  - [x] `PublicClientJwksValidationResult` ([test](../../../plugins/oauthprovider/registration_test.go#L134))
+    - [x] Return a validation error for unsupported algorithms and private key members ([test](../../../plugins/oauthprovider/registration_test.go#L78))
+    - [x] Refuse each invalid public key set with invalid_client_metadata and the description naming its reason ([test](../../../plugins/oauthprovider/registration_test.go#L134))
+  - [x] `validatePublicClientJwks` ([test](../../../plugins/oauthprovider/registration_test.go#L78))
+    - [x] Validate public RSA, EC and Ed25519 keys and compatible signing algorithms and reject private key material ([test](../../../plugins/oauthprovider/registration_test.go#L78))
   - [ ] `isForbiddenCimdClientMetadataField`
   - [ ] `oauthProviderResourceClient`
     - [x] Derive protected-resource discovery from a local auth mount and issuer or from standalone configuration ([test](../../../conformance/resource-discovery.mjs#L7))
@@ -28,13 +30,13 @@
     - [x] Serialize the value once, preserve independent multi-value headers, honor custom cache rules and serve JSON ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L33))
   - [ ] `oauthAuthorizationServerMetadata`
     - [x] Discover endpoints and capabilities for the machine grant, then register a client, verify a signed token and revoke an opaque token ([test](../../../conformance/oauth-issuer-metadata.mjs#L95))
-  - [x] `oauthProviderAuthServerMetadata` ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L259))
+  - [x] `oauthProviderAuthServerMetadata` ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L265))
     - [x] Mount both issuer discovery paths through ServeMux, chi, Gorilla Mux, Gin, Echo and Fiber and read them with GET and HEAD ([test](../../../integrations/routers/routers_test.go#L169))
     - [x] Retrieve the native issuer document, preserve escaped issuer paths and omit disabled endpoints and unavailable store capabilities ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L64))
-    - [x] Serve each mounted authorization server document as JSON with the configured headers or the default cache rule ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L259))
-  - [x] `oauthProviderOpenIdConfigMetadata` ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L278))
+    - [x] Serve each mounted authorization server document as JSON with the configured headers or the default cache rule ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L265))
+  - [x] `oauthProviderOpenIdConfigMetadata` ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L284))
     - [x] Read the mounted OpenID provider document from Go, including host page capabilities and the configured claim list ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L75))
-    - [x] Serve the OpenID document as JSON with the default cache rule, or with the configured headers ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L278))
+    - [x] Serve the OpenID document as JSON with the default cache rule, or with the configured headers ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L284))
   - [ ] `oidcServerMetadata`
     - [x] Start from a custom issuer URL, discover the endpoints, complete PKCE sign-in and verify the ID token, access-token hash and UserInfo subject using an independent Go client ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L23))
   - [ ] `publicSessionMiddleware`
@@ -113,7 +115,7 @@
     - [x] Revoke refresh tokens transactionally and isolate a replayed family by client and user during simultaneous requests on three SQL engines ([test](../../../adapters/sqlstore/oauth_revocation_test.go#L153))
     - [x] Recognize independently signed live access tokens and check every resource audience before reporting unsupported token type ([test](../../../conformance/oauth-revocation.mjs#L94))
     - [x] Authenticate issuance, introspection and revocation with independently signed assertions and reject replay across issuers ([test](../../../conformance/oauth-client-assertions.mjs#L5))
-    - [x] Limit revocation to 30 requests a minute by default and take a configured rule ([test](../../../plugins/oauthprovider/machine_token_test.go#L184))
+    - [x] Limit revocation to 30 requests a minute by default and take a configured rule ([test](../../../plugins/oauthprovider/machine_token_test.go#L191))
   - [x] `GET / POST /oauth2/userinfo` ([test](../../../conformance/oauth-userinfo.mjs#L40))
     - [x] Read scoped profile claims over GET and form POST and match the subject of an independently issued ID token for signed and opaque grants ([test](../../../conformance/oauth-userinfo.mjs#L40))
     - [x] Apply standard, extension and operator claim precedence, preserve the pairwise subject and propagate hook failures on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_userinfo_test.go#L21))
@@ -253,7 +255,7 @@
   - [ ] `OAuthAuthenticatedClient`
   - [ ] `OAuthClientAuthenticationRequest`
   - [ ] `OAuthTokenIssueParams`
-  - [x] `OAuthTokenResponse` ([test](../../../conformance/oauth-authorization-code.mjs#L84))
+  - [ ] `OAuthTokenResponse`
     - [x] Return exactly access_token, expires_at, expires_in, refresh_token, scope and token_type for an offline code exchange, with expires_at matching expires_in, on both runtimes ([test](../../../conformance/oauth-authorization-code.mjs#L84))
   - [ ] `ActiveAccessTokenPayload`
   - [ ] `OAuthProviderApi`
@@ -302,12 +304,12 @@
       - [x] Provide the session, caller, action, headers and target to the Go privilege callback ([test](../../../adapters/sqlstore/oauth_resources_test.go#L195))
     - [ ] `cachedTrustedClients`
       - [x] Keep an operator-managed credential immutable from the owner endpoint ([test](../../../conformance/oauth-registration.mjs#L469))
-    - [x] `accessTokenExpiresIn` ([test](../../../plugins/oauthprovider/machine_token_test.go#L109))
+    - [ ] `accessTokenExpiresIn`
       - [x] Apply the configured delegated lifetime for a successful headless public-client exchange on all SQL engines ([test](../../../adapters/sqlstore/oauth_authorization_code_test.go#L114))
-      - [x] Default the access token lifetime to an hour ([test](../../../plugins/oauthprovider/machine_token_test.go#L109))
+      - [x] Default the access token lifetime to an hour ([test](../../../plugins/oauthprovider/machine_token_test.go#L111))
     - [x] `m2mAccessTokenExpiresIn` ([test](../../../conformance/oauth-resource-machine-tokens.mjs#L89))
       - [x] Apply the machine token lifetime and shortest applicable scope lifetime to the response and persisted expiry ([test](../../../conformance/oauth-machine-tokens.mjs#L68))
-      - [x] Default to a one-hour machine lifetime and 20 token requests per minute ([test](../../../plugins/oauthprovider/machine_token_test.go#L29))
+      - [x] Default to a one-hour machine lifetime and 20 token requests per minute ([test](../../../plugins/oauthprovider/machine_token_test.go#L31))
       - [x] Apply the machine grant lifetime together with scope and resource ceilings for signed and opaque grants ([test](../../../conformance/oauth-resource-machine-tokens.mjs#L89))
     - [x] `idTokenExpiresIn` ([test](../../../conformance/oauth-id-tokens.mjs#L77))
       - [x] Apply the ten-hour default or configured whole-second lifetime to signed ID tokens on code and refresh exchanges ([test](../../../conformance/oauth-id-tokens.mjs#L77))
@@ -492,10 +494,10 @@
   - [ ] `mergeDiscoveryMetadata`
   - [ ] `decryptStoredClientSecret`
   - [ ] `storeClientSecret`
-  - [x] `storeToken` ([test](../../../plugins/oauthprovider/machine_token_test.go#L157))
-    - [x] Store access tokens, refresh tokens and codes as their SHA-256 base64url digest by default, and through each kind's own hash function only ([test](../../../plugins/oauthprovider/machine_token_test.go#L157))
-  - [x] `getStoredToken` ([test](../../../plugins/oauthprovider/machine_token_test.go#L136))
-    - [x] Derive the same digest for lookup as for storage, by default and through each kind's hash function ([test](../../../plugins/oauthprovider/machine_token_test.go#L136))
+  - [x] `storeToken` ([test](../../../plugins/oauthprovider/machine_token_test.go#L164))
+    - [x] Store access tokens, refresh tokens and codes as their SHA-256 base64url digest by default, and through each kind's own hash function only ([test](../../../plugins/oauthprovider/machine_token_test.go#L164))
+  - [x] `getStoredToken` ([test](../../../plugins/oauthprovider/machine_token_test.go#L143))
+    - [x] Derive the same digest for lookup as for storage, by default and through each kind's hash function ([test](../../../plugins/oauthprovider/machine_token_test.go#L143))
   - [ ] `ClientAuthenticationField`
   - [x] `normalizeClientAuthenticationParameters` ([test](../../../conformance/oauth-machine-tokens.mjs#L98))
     - [x] Refuse a secret with an assertion, in the body or with a Basic header, as two client authentication methods, on both runtimes ([test](../../../conformance/oauth-machine-tokens.mjs#L98))
@@ -507,8 +509,8 @@
   - [ ] `ExtractedCredentials`
   - [ ] `destructureCredentials`
   - [ ] `extractClientCredentials`
-  - [x] `parsePrompt` ([test](../../../plugins/oauthprovider/browser_authorization_test.go#L60))
-    - [x] Accept each supported prompt and drop repeats and extra spaces from a prompt list ([test](../../../plugins/oauthprovider/browser_authorization_test.go#L60))
+  - [x] `parsePrompt` ([test](../../../plugins/oauthprovider/browser_authorization_test.go#L61))
+    - [x] Accept each supported prompt and drop repeats and extra spaces from a prompt list ([test](../../../plugins/oauthprovider/browser_authorization_test.go#L61))
   - [ ] `resolveSubjectIdentifier`
   - [x] `getConsentReferenceId` ([test](../../../adapters/sqlstore/oauth_post_login_test.go#L209))
     - [x] Resolve the approval reference for the requested or accepted scopes and support personal approval when the host returns an empty reference ([test](../../../adapters/sqlstore/oauth_post_login_test.go#L209))
@@ -523,8 +525,8 @@
   - [x] `isPKCERequired` ([test](../../../plugins/oauthprovider/authorization_code_test.go#L15))
     - [x] Resolve public and confidential client PKCE requirements, including offline scopes, OIDC nonces and explicit registration policy ([test](../../../plugins/oauthprovider/authorization_code_test.go#L15))
   - [ ] `isRedirectUriTransportAllowed`
-  - [x] `isInsecureRedirectUriAllowed` ([test](../../../plugins/oauthprovider/registration_test.go#L46))
-    - [x] Refuse an HTTP callback with credentials even on an approved host, and accept an approved HTTP web callback ([test](../../../plugins/oauthprovider/registration_test.go#L46))
+  - [x] `isInsecureRedirectUriAllowed` ([test](../../../plugins/oauthprovider/registration_test.go#L74))
+    - [x] Refuse an HTTP callback with credentials even on an approved host, and accept an approved HTTP web callback ([test](../../../plugins/oauthprovider/registration_test.go#L74))
   - [ ] `getAuthEndpointUrl`
   - [ ] `isLocalCapacityRefusal`
   - [ ] `isTransientAbort`
@@ -634,7 +636,7 @@
   - [ ] What the provider supports
     - [ ] Grants
     - [ ] Authorization requests
-      - [x] Accept the none, login, consent, select_account and create prompts with the query response mode ([test](../../../plugins/oauthprovider/browser_authorization_test.go#L56))
+      - [x] Accept the none, login, consent, select_account and create prompts with the query response mode ([test](../../../plugins/oauthprovider/browser_authorization_test.go#L57))
     - [ ] PKCE
       - [x] Exchange a browser-issued S256 code, verify the delegated access token with an independent issuer and isolate replay cleanup to that code ([test](../../../conformance/oauth-authorization-code.mjs#L5))
       - [x] Resolve public and confidential client PKCE requirements, including offline scopes, OIDC nonces and explicit registration policy ([test](../../../plugins/oauthprovider/authorization_code_test.go#L15))
@@ -666,7 +668,7 @@
 ## OpenID Connect and logout
 
 - [ ] OpenID Connect and logout
-  - [x] Discovery metadata ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L237))
+  - [ ] Discovery metadata
     - [x] Read identical OpenID and OAuth aliases, discover signing keys and validate claims and subjects for each supported signing algorithm ([test](../../../conformance/oauth-id-tokens.mjs#L33))
     - [x] Advertise exactly the configured supported claims ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L237))
   - [ ] ID token claims
@@ -805,10 +807,13 @@
     - [ ] `invalid_client`
     - [x] `invalid_grant` ([test](../../../conformance/oauth-authorization-code.mjs#L45))
       - [x] Refuse a code redeemed with another client's credentials and a refresh token that belongs to another client or has expired with invalid_grant, on both runtimes ([test](../../../conformance/oauth-authorization-code.mjs#L45))
+      - [x] Refuse an expired authorization code with invalid_grant, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_authorization_code_test.go#L143))
+      - [x] Refuse an unknown refresh token with invalid_grant, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_refresh_grant_test.go#L127))
     - [x] `invalid_user` ([test](../../../adapters/sqlstore/oauth_authorization_code_test.go#L141))
       - [x] Refuse a code whose approving user no longer exists with invalid_user ([test](../../../adapters/sqlstore/oauth_authorization_code_test.go#L141))
-    - [x] `unauthorized_client` ([test](../../../adapters/sqlstore/oauth_grant_refusal_test.go#L76))
+    - [ ] `unauthorized_client`
       - [x] Refuse client credentials to a client without that grant, a public client and a client without client-credentials scopes with unauthorized_client, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_grant_refusal_test.go#L76))
+      - [x] Refuse a refresh exchange for a client without that grant with unauthorized_client, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_refresh_grant_test.go#L137))
     - [x] `unsupported_grant_type` ([test](../../../adapters/sqlstore/oauth_grant_refusal_test.go#L84))
       - [x] Refuse a grant the issuer does not offer with unsupported_grant_type, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_grant_refusal_test.go#L84))
     - [ ] `invalid_scope`
@@ -820,10 +825,10 @@
       - [x] Share the default 30-request allowance across GET and POST, apply a custom rule or inherit the host limit ([test](../../../adapters/sqlstore/oauth_browser_authorization_test.go#L206))
     - [x] `introspect` ([test](../../../adapters/sqlstore/oauth_introspection_test.go#L142))
       - [x] Enforce the default introspection limit, a route override or the host's global rule ([test](../../../adapters/sqlstore/oauth_introspection_test.go#L142))
-      - [x] Apply a 100-request, one-minute default to the form endpoint ([test](../../../plugins/oauthprovider/machine_token_test.go#L60))
+      - [x] Apply a 100-request, one-minute default to the form endpoint ([test](../../../plugins/oauthprovider/machine_token_test.go#L62))
     - [x] `revoke` ([test](../../../adapters/sqlstore/oauth_introspection_test.go#L150))
       - [x] Enforce 30 revocation requests per minute per IP, a host override or the global fallback ([test](../../../adapters/sqlstore/oauth_introspection_test.go#L150))
-      - [x] Expose POST, form media type and the default one-minute limit on the revocation route ([test](../../../plugins/oauthprovider/machine_token_test.go#L64))
+      - [x] Expose POST, form media type and the default one-minute limit on the revocation route ([test](../../../plugins/oauthprovider/machine_token_test.go#L66))
     - [x] `register` ([test](../../../adapters/sqlstore/oauth_registration_test.go#L170))
       - [x] Enforce the five-per-minute route limit and honor a host override ([test](../../../adapters/sqlstore/oauth_registration_test.go#L170))
     - [x] `rotateClientKeys` ([test](../../../adapters/sqlstore/oauth_introspection_test.go#L154))
@@ -997,6 +1002,7 @@
       - [x] Return email and email_verified for the email scope at UserInfo ([test](../../../adapters/sqlstore/oauth_userinfo_test.go#L136))
     - [x] `offline_access` ([test](../../../conformance/oauth-authorization-code.mjs#L80))
       - [x] Return a refresh token only when offline_access is granted on the code exchange ([test](../../../conformance/oauth-authorization-code.mjs#L80))
+      - [x] Issue a refresh token on a code exchange for a client registered without grant types, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_offline_code_test.go#L137))
   - [ ] Resources
     - [x] `name` ([test](../../../conformance/resource-seeds.mjs#L53))
       - [x] Persist and return the configured display name across restarts ([test](../../../conformance/resource-seeds.mjs#L53))
@@ -1048,11 +1054,12 @@
       - [x] `adminUnlinkClientResource` ([test](../../../conformance/resource-registry.mjs#L89))
         - [x] Remove an existing client grant and permit a subsequent fresh link ([test](../../../conformance/resource-registry.mjs#L89))
   - [ ] Lifetimes
-    - [x] `accessTokenExpiresIn` ([test](../../../plugins/oauthprovider/machine_token_test.go#L109))
-      - [x] Default the access token lifetime to an hour ([test](../../../plugins/oauthprovider/machine_token_test.go#L109))
+    - [ ] `accessTokenExpiresIn`
+      - [x] Default the access token lifetime to an hour ([test](../../../plugins/oauthprovider/machine_token_test.go#L111))
+      - [x] Give a code exchange the configured access token lifetime, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_authorization_code_test.go#L114))
     - [x] `m2mAccessTokenExpiresIn` ([test](../../../conformance/oauth-machine-tokens.mjs#L68))
       - [x] Apply the machine token lifetime and shortest applicable scope lifetime to the response and persisted expiry ([test](../../../conformance/oauth-machine-tokens.mjs#L68))
-      - [x] Default to a one-hour machine lifetime and 20 token requests per minute ([test](../../../plugins/oauthprovider/machine_token_test.go#L29))
+      - [x] Default to a one-hour machine lifetime and 20 token requests per minute ([test](../../../plugins/oauthprovider/machine_token_test.go#L31))
     - [x] `idTokenExpiresIn` ([test](../../../conformance/oauth-id-tokens.mjs#L77))
       - [x] Apply the ten-hour default or configured whole-second lifetime to signed ID tokens on code and refresh exchanges ([test](../../../conformance/oauth-id-tokens.mjs#L77))
     - [x] `refreshTokenExpiresIn` ([test](../../../conformance/oauth-authorization-code.mjs#L109))
@@ -1092,6 +1099,6 @@
   - [ ] Without the JWT plugin
   - [ ] Storage
     - [ ] `storeClientSecret`
-    - [x] `storeTokens` ([test](../../../plugins/oauthprovider/machine_token_test.go#L157))
-      - [x] Store tokens as their SHA-256 base64url digest by default and through configured hash functions ([test](../../../plugins/oauthprovider/machine_token_test.go#L157))
+    - [x] `storeTokens` ([test](../../../plugins/oauthprovider/machine_token_test.go#L164))
+      - [x] Store tokens as their SHA-256 base64url digest by default and through configured hash functions ([test](../../../plugins/oauthprovider/machine_token_test.go#L164))
   - [ ] Device code grant

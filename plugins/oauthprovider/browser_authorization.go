@@ -152,7 +152,7 @@ func (opts Options) runBrowserAuthorization(c auth.EndpointContext, q url.Values
 		return browserRedirect(c, page, url.Values{"error": {code}, "error_description": {description}}, false), nil
 	}
 	selection := opts.Authorization.SelectAccount
-	if selection.Page == "" && slices.Contains(strings.Fields(q.Get("prompt")), "select_account") {
+	if selection.Page == "" && slices.Contains(promptValues(q.Get("prompt")), "select_account") {
 		return serverError("unsupported_prompt_select_account", "unsupported prompt type")
 	}
 	store, ok := c.Store().(BrowserAuthorizationStore)

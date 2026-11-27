@@ -284,7 +284,7 @@ func (c EndpointContext) CheckOAuthJWTRevocation(token string, resourceKnown fun
 	if claims.Expiry != nil && !now.Before(claims.Expiry.Time()) {
 		return true, nil
 	}
-	if claims.Issuer != a.OAuthIssuer() || claims.NotBefore != nil && now.Before(claims.NotBefore.Time()) {
+	if !a.oauthIssuerAccepted(claims.Issuer) || claims.NotBefore != nil && now.Before(claims.NotBefore.Time()) {
 		return false, nil
 	}
 	if claims.Client == "" || len(claims.Audience) > 64 {

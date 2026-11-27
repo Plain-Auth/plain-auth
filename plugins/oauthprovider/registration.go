@@ -304,6 +304,18 @@ func distinct(xs []string) []string {
 	return result
 }
 
+// promptValues splits a prompt parameter on single spaces, trims each value
+// and drops empty ones, so "login\tconsent" stays one unsupported value.
+func promptValues(raw string) []string {
+	var values []string
+	for _, v := range strings.Split(raw, " ") {
+		if v = strings.TrimSpace(v); v != "" {
+			values = append(values, v)
+		}
+	}
+	return values
+}
+
 func randomClientCredential() (string, error) {
 	return randomCredential("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 }

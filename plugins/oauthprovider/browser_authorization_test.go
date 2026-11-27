@@ -39,6 +39,7 @@ func TestBrowserAuthorizationRules(t *testing.T) {
 		{"request", "signed", "request_not_supported"}, {"request_uri", "urn:entry", "request_uri_not_supported"},
 		{"response_type", "token", "unsupported_response_type"}, {"response_mode", "form_post", "invalid_request"},
 		{"scope", "write", "invalid_scope"}, {"prompt", "none consent", "invalid_request"}, {"prompt", "unknown", "invalid_request"},
+		{"prompt", "login\tconsent", "invalid_request"},
 		{"max_age", "-1", "invalid_request"}, {"code_challenge_method", "plain", "invalid_request"}, {"claims", "{}", "invalid_request"},
 		{"resource", "urn:api", "invalid_target"}, {"dpop_jkt", "binding", "invalid_request"},
 	} {
@@ -56,7 +57,7 @@ func TestBrowserAuthorizationRules(t *testing.T) {
 			t.Fatal("a supported prompt was refused", prompt, err)
 		}
 	}
-	if request, err := opts.browserGrant(base, url.Values{"response_type": {"code"}, "code_challenge": {"digest"}, "code_challenge_method": {"S256"}, "prompt": {"login  consent login"}}); err != nil || !slices.Equal(request.prompts, []string{"login", "consent"}) {
+	if request, err := opts.browserGrant(base, url.Values{"response_type": {"code"}, "code_challenge": {"digest"}, "code_challenge_method": {"S256"}, "prompt": {"login  consent login\t"}}); err != nil || !slices.Equal(request.prompts, []string{"login", "consent"}) {
 		t.Fatal("a prompt list kept its repeats", request.prompts, err)
 	}
 	q := url.Values{"response_type": {"code"}, "code_challenge": {"digest"}, "code_challenge_method": {"S256"}}

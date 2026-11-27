@@ -13,6 +13,7 @@ import (
 	"log/slog"
 	"maps"
 	"net/http"
+	"net/url"
 	"regexp"
 	"runtime"
 	"slices"
@@ -1060,9 +1061,34 @@ func (a *Auth) PublicURL() string {
 
 // OAuthIssuer returns the authorization-server issuer advertised by OAuth
 // discovery. An explicit JWT issuer takes precedence over the public auth URL.
+// The issuer is published without a query, fragment or trailing slash, as
+// another runtime publishes it. Tokens this server signs name it too, where
+// that runtime stamps the configured spelling, because clients compare iss
+// with the discovered issuer exactly.
 func (a *Auth) OAuthIssuer() string {
+	return normalizeIssuer(a.configuredOAuthIssuer())
+}
+
+func (a *Auth) configuredOAuthIssuer() string {
 	if a.serviceJWT != nil && a.serviceJWT.Issuer != "" {
 		return a.serviceJWT.Issuer
 	}
 	return a.PublicURL()
+}
+
+// oauthIssuerAccepted reports whether iss names this server in its
+// published or its configured spelling, as another runtime accepts both.
+func (a *Auth) oauthIssuerAccepted(iss string) bool {
+	return iss == a.OAuthIssuer() || iss == a.configuredOAuthIssuer()
+}
+
+// normalizeIssuer drops an absolute URL's query, fragment and one trailing
+// slash; a value that does not parse is returned unchanged.
+func normalizeIssuer(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil || !u.IsAbs() {
+		return raw
+	}
+	u.RawQuery, u.ForceQuery, u.Fragment, u.RawFragment = "", false, "", ""
+	return strings.TrimSuffix(u.String(), "/")
 }

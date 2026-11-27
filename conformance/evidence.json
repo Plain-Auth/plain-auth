@@ -18509,8 +18509,7 @@
     {
       "label": "Default the access token lifetime to an hour",
       "test": "plugins/oauthprovider/machine_token_test.go",
-      "marker": "t.Fatal(\"an unset lifetime did not take its default\"",
-      "complete": true
+      "marker": "t.Fatal(\"an unset lifetime did not take its default\""
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/refreshTokenExpiresIn": [
@@ -19395,8 +19394,7 @@
     {
       "label": "Advertise exactly the configured supported claims",
       "test": "plugins/oauthprovider/openid_metadata_test.go",
-      "marker": "t.Fatal(\"the configured UserInfo claims were not advertised exactly\", doc.ClaimsSupported)",
-      "complete": true
+      "marker": "t.Fatal(\"the configured UserInfo claims were not advertised exactly\", doc.ClaimsSupported)"
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/customIdTokenClaims": [
@@ -48010,8 +48008,7 @@
     {
       "label": "Advertise the four default scopes when none are configured",
       "test": "plugins/oauthprovider/openid_metadata_test.go",
-      "marker": "t.Fatal(\"the default scopes were not advertised\", doc.ScopesSupported)",
-      "complete": true
+      "marker": "t.Fatal(\"the default scopes were not advertised\", doc.ScopesSupported)"
     }
   ],
   "plugin-symbol/oauth-provider/parsePrompt": [
@@ -48033,23 +48030,36 @@
     {
       "label": "Default the access token lifetime to an hour",
       "test": "plugins/oauthprovider/machine_token_test.go",
-      "marker": "t.Fatal(\"an unset lifetime did not take its default\"",
-      "complete": true
+      "marker": "t.Fatal(\"an unset lifetime did not take its default\""
+    },
+    {
+      "label": "Give a code exchange the configured access token lifetime, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_authorization_code_test.go",
+      "marker": "reply.ExpiresIn != 120"
     }
   ],
   "docs/content/docs/plugins/mcp.mdx#L320/`mcpOauthOptionsType.accessTokenExpiresIn`": [
     {
       "label": "Default the access token lifetime to an hour",
       "test": "plugins/oauthprovider/machine_token_test.go",
-      "marker": "t.Fatal(\"an unset lifetime did not take its default\"",
-      "complete": true
+      "marker": "t.Fatal(\"an unset lifetime did not take its default\""
+    },
+    {
+      "label": "Give a code exchange the configured access token lifetime, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_authorization_code_test.go",
+      "marker": "reply.ExpiresIn != 120"
     }
   ],
   "docs/content/docs/plugins/mcp.mdx#L330/`mcpOauthOptionsType.refreshTokenExpiresIn`": [
     {
       "label": "Default the refresh token lifetime to thirty days",
       "test": "plugins/oauthprovider/machine_token_test.go",
-      "marker": "t.Fatal(\"an unset lifetime did not take its default\"",
+      "marker": "t.Fatal(\"an unset lifetime did not take its default\""
+    },
+    {
+      "label": "Give an offline code exchange a thirty-day refresh token by default, on both runtimes",
+      "test": "conformance/oauth-authorization-code.mjs",
+      "marker": "30 * 24 * 3600 * 1000",
       "complete": true
     }
   ],
@@ -48057,16 +48067,19 @@
     {
       "label": "Default the authorization code lifetime to ten minutes",
       "test": "plugins/oauthprovider/machine_token_test.go",
-      "marker": "t.Fatal(\"an unset lifetime did not take its default\"",
-      "complete": true
+      "marker": "t.Fatal(\"an unset lifetime did not take its default\""
     }
   ],
   "docs/content/docs/plugins/oauth-provider/reference.mdx#L380/`unauthorized_client`": [
     {
       "label": "Refuse client credentials to a client without that grant, a public client and a client without client-credentials scopes with unauthorized_client, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_grant_refusal_test.go",
-      "marker": "t.Fatal(\"a client credentials request was not refused with unauthorized_client\", id, status, code)",
-      "complete": true
+      "marker": "t.Fatal(\"a client credentials request was not refused with unauthorized_client\", id, status, code)"
+    },
+    {
+      "label": "Refuse a refresh exchange for a client without that grant with unauthorized_client, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_refresh_grant_test.go",
+      "marker": "expect(\"app\", original, 400, \"unauthorized_client\")"
     }
   ],
   "docs/content/docs/plugins/oauth-provider/reference.mdx#L381/`unsupported_grant_type`": [
@@ -48157,8 +48170,7 @@
     {
       "label": "Return exactly access_token, expires_at, expires_in, refresh_token, scope and token_type for an offline code exchange, with expires_at matching expires_in, on both runtimes",
       "test": "conformance/oauth-authorization-code.mjs",
-      "marker": "assert.deepEqual(Object.keys(pair).sort(), [\"access_token\", \"expires_at\", \"expires_in\", \"refresh_token\", \"scope\", \"token_type\"]);",
-      "complete": true
+      "marker": "assert.deepEqual(Object.keys(pair).sort(), [\"access_token\", \"expires_at\", \"expires_in\", \"refresh_token\", \"scope\", \"token_type\"]);"
     }
   ],
   "docs/content/docs/plugins/oauth-provider/reference.mdx#L378/`invalid_grant`": [
@@ -48167,6 +48179,16 @@
       "test": "conformance/oauth-authorization-code.mjs",
       "marker": "const foreign = await exchange({ ...(await authorizeCode()), ...other.fields });",
       "complete": true
+    },
+    {
+      "label": "Refuse an expired authorization code with invalid_grant, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_authorization_code_test.go",
+      "marker": "check(call(first, \"expired\", \"client\", \"\", verifier), 400, \"invalid_grant\")"
+    },
+    {
+      "label": "Refuse an unknown refresh token with invalid_grant, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_refresh_grant_test.go",
+      "marker": "expect(\"app\", \"bad-format\", 400, \"invalid_grant\")"
     }
   ],
   "plugin-symbol/oauth-provider/OAuthClientRegistrationResponse": [
@@ -48191,6 +48213,11 @@
       "test": "conformance/oauth-authorization-code.mjs",
       "marker": "assert.equal(pair.scope, \"reports offline_access\");",
       "complete": true
+    },
+    {
+      "label": "Issue a refresh token on a code exchange for a client registered without grant types, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_offline_code_test.go",
+      "marker": "raw, ok := strings.CutPrefix(token.RefreshToken, \"rt.sid.custom-\")"
     }
   ],
   "plugin-symbol/oauth-provider/removePromptFromQuery": [
@@ -48382,6 +48409,19 @@
       "test": "plugins/oauthprovider/openid_metadata_test.go",
       "marker": "t.Fatal(\"the advertised metadata did not appear exactly as configured\", openid, server)",
       "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/getIssuer": [
+    {
+      "label": "Publish the issuer without its query, fragment and one trailing slash and accept tokens naming either spelling; signed tokens name the published issuer, a documented deviation",
+      "test": "oauth_issuer_test.go",
+      "marker": "t.Fatal(\"the issuer was not published normalized\", configured, got)",
+      "complete": true
+    },
+    {
+      "label": "Publish discovery for an issuer with a query and trailing slash at its normalized paths",
+      "test": "plugins/oauthprovider/issuer_metadata_test.go",
+      "marker": "t.Fatal(\"the issuer was not published without its query, fragment and trailing slash\", tc.issuer, a.OAuthIssuer())"
     }
   ]
 }
