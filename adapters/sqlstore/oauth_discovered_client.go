@@ -54,7 +54,13 @@ func (s *Store) SaveDiscoveredClient(ctx context.Context, r op.DiscoveredClientR
 }
 
 func (s *Store) saveDiscoveredClient(ctx context.Context, r op.DiscoveredClientRecord) (op.DiscoveredClient, bool, error) {
-	tx, err := s.db.BeginTx(ctx, nil)
+	var txOptions *sql.TxOptions
+	if s.dialect != "sqlite" {
+		// Read committed takes no gap lock on MySQL, so racing first saves
+		// meet on the unique client ID instead of deadlocking.
+		txOptions = &sql.TxOptions{Isolation: sql.LevelReadCommitted}
+	}
+	tx, err := s.db.BeginTx(ctx, txOptions)
 	if err != nil {
 		return op.DiscoveredClient{}, false, err
 	}
