@@ -31,7 +31,18 @@ type TokenClaimsFunc func(context.Context, TokenClaimsInput) (map[string]any, er
 // particular grant omits.
 func providerClaim(name string) bool {
 	switch name {
-	case "active", "iss", "sub", "aud", "exp", "iat", "jti", "client_id", "azp", "scope", "auth_time", "acr", "amr", "cnf", "sid", "token_type":
+	case "active", "azp", "sid", "token_type":
+		return true
+	}
+	return reservedAccessClaim(name)
+}
+
+// reservedAccessClaim reports a claim no contributor may set on a signed
+// access token, the same set another runtime strips. The signer still
+// writes azp and sid where the grant has them.
+func reservedAccessClaim(name string) bool {
+	switch name {
+	case "iss", "sub", "aud", "exp", "iat", "jti", "client_id", "scope", "auth_time", "acr", "amr", "cnf":
 		return true
 	}
 	return false
@@ -48,7 +59,7 @@ func (opts Options) accessTokenClaims(c auth.EndpointContext, in TokenClaimsInpu
 	var ignored []string
 	add := func(extra map[string]any, extension bool) {
 		for name, value := range extra {
-			if providerClaim(name) {
+			if reservedAccessClaim(name) {
 				ignored = append(ignored, name)
 				continue
 			}

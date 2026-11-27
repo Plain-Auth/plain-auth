@@ -192,6 +192,10 @@ func (opts Options) issueResourceMachineToken(c auth.EndpointContext, store Mach
 			}
 			return nil, nil
 		}
+		// Host response fields describe the first read's scopes.
+		if opts.Tokens.CustomTokenResponseFields != nil && !slices.Equal(current.scopes, policy.scopes) {
+			return nil, registrationProblem(400, "invalid_request", "client scopes changed during issuance, retry the request")
+		}
 		policy = current
 		record := MachineTokenRecord{StoredToken: stored, Scopes: current.scopes, IssuedAt: now, ExpiresAt: now.Add(current.lifetime)}
 		return &ResourceMachineTokenRecord{MachineTokenRecord: record, Resources: in.resources, Thumbprint: thumb}, nil
@@ -213,8 +217,14 @@ func (p machineResourcePolicy) sign(c auth.EndpointContext, client string, audie
 	if claims == nil {
 		claims = map[string]any{}
 	}
+	for name, raw := range p.claims {
+		if !reservedAccessClaim(name) {
+			claims[name] = raw
+		}
+	}
+	// A client token has no session; the issuer stamps its own claims last.
+	delete(claims, "sid")
 	claims["jti"], claims["client_id"], claims["azp"], claims["scope"] = jti, client, client, strings.Join(p.scopes, " ")
-	addResourceClaims(claims, p.claims)
 	if thumb != "" {
 		claims["cnf"] = map[string]string{"jkt": thumb}
 	}

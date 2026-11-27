@@ -9,7 +9,7 @@
   - [x] `getIssuer` ([test](../../../oauth_issuer_test.go#L28))
     - [x] Publish the issuer with an ASCII lowercase host, a canonical IP literal, no default or empty port and resolved dot segments, without its query, fragment and one trailing slash, and accept both the published and the configured spelling in the token issuer check; IPv4 shorthand is a documented deviation ([test](../../../oauth_issuer_test.go#L28))
     - [x] Publish discovery for an issuer with a query and trailing slash at its normalized paths ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L117))
-    - [x] Sign machine access tokens with the published issuer when the configured issuer has a trailing slash, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_machine_resources_test.go#L135))
+    - [x] Sign machine access tokens with the published issuer when the configured issuer has a trailing slash, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_machine_resources_test.go#L155))
   - [x] `PublicClientJwksValidationResult` ([test](../../../plugins/oauthprovider/registration_test.go#L205))
     - [x] Return a validation error for unsupported algorithms and private key members ([test](../../../plugins/oauthprovider/registration_test.go#L149))
     - [x] Refuse each invalid public key set with invalid_client_metadata and the description naming its reason ([test](../../../plugins/oauthprovider/registration_test.go#L205))
@@ -136,7 +136,7 @@
   - [ ] `oauthProvider`
   - [ ] `POST /admin/oauth2/create-client` (server API only)
   - [ ] `POST /oauth2/create-client`
-    - [x] Create a client for a signed-in owner with dynamic registration disabled, bound by the issuer's grants and scopes, without the registration ceiling or PKCE setting, dropping owner-only fields and refusing anonymous or denied callers, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_creation_test.go#L24))
+    - [x] Create a client for a signed-in owner with dynamic registration disabled, bound by the issuer's grants and scopes, without the registration ceiling or PKCE setting, dropping owner-only fields and refusing anonymous or denied callers, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_creation_test.go#L25))
   - [x] `GET /oauth2/get-client` ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L233))
     - [x] Read locally registered owner metadata and omit internal fields and the shared secret ([test](../../../conformance/oauth-client-directory.mjs#L117))
     - [x] Enforce account-owner sessions, exact tenant IDs and current ownership on three SQL engines ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L23))
@@ -173,7 +173,7 @@
   - [ ] `adminCreateOAuthClient`
     - [x] Create a client from server code with consent skipping, end session, PKCE, machine scopes and metadata, approve machine scopes and requested resource links separately, link default resources and always return the machine scopes, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_admin_test.go#L24))
   - [ ] `createOAuthClient`
-    - [x] Create a client for a signed-in owner with dynamic registration disabled, bound by the issuer's grants and scopes, without the registration ceiling or PKCE setting, dropping owner-only fields and refusing anonymous or denied callers, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_creation_test.go#L24))
+    - [x] Create a client for a signed-in owner with dynamic registration disabled, bound by the issuer's grants and scopes, without the registration ceiling or PKCE setting, dropping owner-only fields and refusing anonymous or denied callers, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_creation_test.go#L25))
   - [x] `getOAuthClient` ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L233))
     - [x] Read locally registered owner metadata and omit internal fields and the shared secret ([test](../../../conformance/oauth-client-directory.mjs#L117))
     - [x] Refuse every user a client without an owner with 401, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L233))
@@ -281,11 +281,11 @@
   - [ ] `OAuthClientAuthenticationInput`
   - [ ] `OAuthClientAuthenticationResult`
   - [ ] `OAuthClientAuthenticationStrategy`
-  - [x] `OAuthMetadataExtensionInput` ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L293))
-    - [x] Pass each served discovery document's type and assembled fields to an extension, add its fields without replacing the provider's, keep the first extension's value for a shared field with a warning, and fail the host for a field that cannot be encoded; the static input is a documented deviation ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L293))
+  - [x] `OAuthMetadataExtensionInput` ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L294))
+    - [x] Pass each served discovery document's type and assembled fields to an extension, add its fields without replacing the provider's, keep the first extension's value for a shared field with a warning, and fail the host for a field that cannot be encoded; the static input is a documented deviation ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L294))
     - [x] Add an extension's discovery field to the OpenID configuration without replacing the issuer or token endpoint, on both runtimes ([test](../../../conformance/oauth-extensions.mjs#L12))
   - [ ] `OAuthClaimExtensionInput`
-    - [x] Add an extension's ID token claims only where the token has none and never as protocol or standard profile claims, pass the account and grant type for code and refresh exchanges, and add its UserInfo claims under the standard ones, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_secret_id_token_test.go#L131))
+    - [x] Add an extension's ID token claims only where the token has none and never as protocol or standard profile claims, pass the account and grant type for code and refresh exchanges, and add its UserInfo claims under the standard ones, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_secret_id_token_test.go#L137))
   - [ ] `OAuthUserInfoExtensionInput`
   - [ ] `OAuthProviderExtension`
   - [x] `InitialAccessTokenAuthorization` ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L93))
@@ -437,9 +437,9 @@
       - [x] Use the current user, registered client metadata and narrowed scopes without invoking the hook for an exchange that drops OpenID ([test](../../../conformance/oauth-id-tokens.mjs#L141))
       - [x] Retry after callback failure and recheck the profile and metadata on three databases, including hidden fields and active-plugin isolation ([test](../../../adapters/sqlstore/oauth_id_token_test.go#L182))
     - [ ] `customAccessTokenClaims`
-      - [x] Layer extension and host claims into signed resource access tokens below the issuer's own claims, on SQLite, PostgreSQL and MySQL; opaque introspection does not add them yet ([test](../../../adapters/sqlstore/oauth_machine_resources_test.go#L141))
+      - [x] Layer extension and host claims into signed resource access tokens below the issuer's own claims, on SQLite, PostgreSQL and MySQL; opaque introspection does not add them yet ([test](../../../adapters/sqlstore/oauth_machine_resources_test.go#L162))
     - [x] `customTokenResponseFields` ([test](../../../adapters/sqlstore/oauth_token_response_test.go#L27))
-      - [x] Merge host fields under the standard fields of code, refresh and client_credentials responses, pass the account, client metadata and code value, run outside the grant transaction even without a refresh token, and leave the code or refresh token usable when it fails, on SQLite, PostgreSQL and MySQL; the scope recheck is a documented deviation ([test](../../../adapters/sqlstore/oauth_token_response_test.go#L27))
+      - [x] Merge host fields under the standard fields of code, refresh and client_credentials responses, pass the account, client metadata and code value, run outside the grant transaction even without a refresh token, and leave the code or refresh token usable when it fails, on SQLite, PostgreSQL and MySQL; the scope recheck and the usable code are documented deviations ([test](../../../adapters/sqlstore/oauth_token_response_test.go#L27))
     - [ ] `advertisedMetadata`
       - [x] Preserve configured discovery scope and authentication method order independently of introspection and revocation ([test](../../../conformance/oauth-issuer-metadata.mjs#L65))
       - [x] Reject unknown scopes, unsupported machine authentication, duplicate methods and an explicitly empty method list ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L19))
@@ -463,7 +463,7 @@
     - [x] `generateRefreshToken` ([test](../../../conformance/oauth-authorization-code.mjs#L82))
       - [x] Generate and hash the raw refresh token, encode it for its session, then apply the public prefix ([test](../../../adapters/sqlstore/oauth_offline_code_test.go#L139))
       - [x] Default to 32-letter refresh tokens in both runtimes ([test](../../../conformance/oauth-authorization-code.mjs#L82))
-    - [x] `disableJwtPlugin` ([test](../../../adapters/sqlstore/oauth_secret_id_token_test.go#L27))
+    - [ ] `disableJwtPlugin`
       - [x] Issue signed or opaque machine tokens for several registered APIs and verify them with an independent issuer ([test](../../../conformance/oauth-resource-machine-tokens.mjs#L28))
       - [x] Sign code and refresh ID tokens with HS256 keyed by the client secret, advertise HS256 without a key set at the public issuer, give a public client no ID token, store secrets encrypted and refuse the jwt plugin alongside, on SQLite, PostgreSQL and MySQL; the prefixed key and the jwt refusal are documented deviations ([test](../../../adapters/sqlstore/oauth_secret_id_token_test.go#L27))
       - [x] Default to encrypted secret storage and refuse hashed storage, or encrypted storage without the option ([test](../../../plugins/oauthprovider/registration_test.go#L97))
@@ -590,17 +590,17 @@
     - [ ] `application_type`
   - [ ] Manage clients
     - [ ] `POST /oauth2/create-client`
-      - [x] Create a client for a signed-in owner with dynamic registration disabled, bound by the issuer's grants and scopes, without the registration ceiling or PKCE setting, dropping owner-only fields and refusing anonymous or denied callers, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_creation_test.go#L24))
+      - [x] Create a client for a signed-in owner with dynamic registration disabled, bound by the issuer's grants and scopes, without the registration ceiling or PKCE setting, dropping owner-only fields and refusing anonymous or denied callers, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_creation_test.go#L25))
       - [ ] Parameter `redirect_uris` (optional)
-        - [x] Create a client through /oauth2/create-client with this field, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_creation_test.go#L24))
+        - [x] Create a client through /oauth2/create-client with this field, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_creation_test.go#L25))
       - [ ] Parameter `client_name` (optional)
-        - [x] Create a client through /oauth2/create-client with this field, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_creation_test.go#L24))
+        - [x] Create a named client through /oauth2/create-client and get the name back, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_creation_test.go#L88))
       - [ ] Parameter `token_endpoint_auth_method` (optional)
-        - [x] Create a client through /oauth2/create-client with this field, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_creation_test.go#L24))
+        - [x] Create a public client with method none through /oauth2/create-client and get no secret, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_creation_test.go#L88))
       - [ ] Parameter `application_type` (optional)
-        - [x] Create a client through /oauth2/create-client with this field, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_creation_test.go#L24))
+        - [x] Create a native client with a loopback callback, and see that callback refused for a web client, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_creation_test.go#L92))
       - [ ] Parameter `scope` (optional)
-        - [x] Create a client through /oauth2/create-client with this field, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_creation_test.go#L24))
+        - [x] Create a client through /oauth2/create-client with this field, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_creation_test.go#L25))
     - [x] `getOAuthClient` ([test](../../../conformance/oauth-client-directory.mjs#L146))
       - [x] Read locally registered owner metadata and omit internal fields and the shared secret ([test](../../../conformance/oauth-client-directory.mjs#L117))
       - [x] Read a personally or tenant-owned registration and refuse a missing session, another owner or a denied read ([test](../../../conformance/oauth-client-directory.mjs#L146))
@@ -830,7 +830,7 @@
       - [x] Grant, narrow and revoke machine access from server code and verify the changed scope ceiling at an independent issuer ([test](../../../conformance/oauth-registration.mjs#L407))
       - [x] Update a client from server code: change owner fields, consent skipping and metadata, disable and enable it with tokens refused meanwhile, and clear machine scopes through the scopes-only path, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_admin_test.go#L153))
     - [ ] `POST /oauth2/create-client`
-      - [x] Create a client for a signed-in owner with dynamic registration disabled, bound by the issuer's grants and scopes, without the registration ceiling or PKCE setting, dropping owner-only fields and refusing anonymous or denied callers, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_creation_test.go#L24))
+      - [x] Create a client for a signed-in owner with dynamic registration disabled, bound by the issuer's grants and scopes, without the registration ceiling or PKCE setting, dropping owner-only fields and refusing anonymous or denied callers, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_creation_test.go#L25))
     - [ ] `GET /oauth2/get-client`
       - [x] Read locally registered owner metadata and omit internal fields and the shared secret ([test](../../../conformance/oauth-client-directory.mjs#L117))
     - [x] `GET /oauth2/public-client` ([test](../../../conformance/oauth-client-directory.mjs#L130))

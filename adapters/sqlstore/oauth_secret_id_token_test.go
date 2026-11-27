@@ -44,13 +44,19 @@ func TestSecretSignedIDTokens(t *testing.T) {
 			extension := op.Extension{
 				IDTokenClaims: func(_ context.Context, in op.TokenClaimsInput) (map[string]any, error) {
 					grants = append(grants, in.GrantType)
-					return map[string]any{"team": "blue", "sub": "forged", "email": "forged", "name": "forged", "acr": "forged", "user": in.User.Email}, nil
+					return map[string]any{"team": "blue", "plan": "extension", "sub": "forged", "email": "forged", "name": "forged", "acr": "forged", "user": in.User.Email}, nil
 				},
 				UserInfoClaims: func(context.Context, op.UserInfoInput) (map[string]any, error) {
 					return map[string]any{"team": "blue", "sub": "forged"}, nil
 				},
 			}
-			opts := op.Options{Scopes: []string{"openid", "reports", "offline_access"}, DisableJWTPlugin: true, Registration: op.RegistrationOptions{Enabled: true}, Extensions: []op.Extension{extension}}
+			second := op.Extension{IDTokenClaims: func(context.Context, op.TokenClaimsInput) (map[string]any, error) {
+				return map[string]any{"team": "red"}, nil
+			}}
+			opts := op.Options{Scopes: []string{"openid", "reports", "offline_access"}, DisableJWTPlugin: true, Registration: op.RegistrationOptions{Enabled: true}, Extensions: []op.Extension{extension, second},
+				Tokens: op.TokenOptions{CustomIDTokenClaims: func(context.Context, op.IDTokenClaimsInput) (map[string]any, error) {
+					return map[string]any{"plan": "host"}, nil
+				}}}
 			p, err := op.New(opts)
 			must(err)
 			off := false
@@ -127,11 +133,22 @@ func TestSecretSignedIDTokens(t *testing.T) {
 					claims["iss"] != origin+"/api/auth" || claims["at_hash"] != base64.RawURLEncoding.EncodeToString(access[:16]) {
 					t.Fatal("the ID token was not signed with the client secret", string(header), claims)
 				}
-				if claims["team"] != "blue" || claims["user"] != "owner@secret-signed.test" || claims["sub"] == "forged" || claims["acr"] != "0" || claims["email"] != nil || claims["name"] != nil {
+				if claims["team"] != "blue" || claims["plan"] != "host" || claims["user"] != "owner@secret-signed.test" || claims["sub"] == "forged" || claims["acr"] != "0" || claims["email"] != nil || claims["name"] != nil {
 					t.Fatal("extension ID token claims were not added only where allowed", claims)
 				}
 			}
 			confidential := register("client_secret_post")
+			// The secret is stored encrypted by default in this mode.
+			var storedSecret string
+			must(s.db.QueryRowContext(ctx, s.bind(`SELECT "clientSecret" FROM "oauthClient" WHERE "clientId"=?`), confidential.ClientID).Scan(&storedSecret))
+			if !strings.HasPrefix(storedSecret, "authn.v1.") || strings.Contains(storedSecret, confidential.ClientSecret) {
+				t.Fatal("the client secret was not stored encrypted", storedSecret)
+			}
+			// Logout tokens need the jwt plugin.
+			logoutURI := "https://app.example.test/logout"
+			if _, err := owner.RegisterOAuthClient(ctx, op.RegistrationMetadata{RedirectURIs: []string{"https://app.example.test/cb"}, BackchannelLogoutURI: &logoutURI}); err == nil {
+				t.Fatal("a back-channel logout URI was accepted without the jwt plugin")
+			}
 			first := exchange(url.Values{"grant_type": {"authorization_code"}, "client_id": {confidential.ClientID}, "client_secret": {confidential.ClientSecret}, "code": {code(confidential.ClientID)}, "code_verifier": {verifier}})
 			check(first, confidential)
 			refreshed := exchange(url.Values{"grant_type": {"refresh_token"}, "client_id": {confidential.ClientID}, "client_secret": {confidential.ClientSecret}, "refresh_token": {first["refresh_token"].(string)}})

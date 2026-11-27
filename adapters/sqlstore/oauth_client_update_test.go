@@ -101,12 +101,12 @@ func TestOAuthClientUpdate(t *testing.T) {
 			if w.Code != 200 || updated["client_name"] != "Reports" || updated["scope"] != "reports extra" || updated["client_secret"] != nil {
 				t.Fatal("the update was not applied", w.Code, w.Body.String())
 			}
-			if stored("redirectUris") != `["https://app.example.test/new"]` || stored("scopes") != `["reports","extra"]` || stored("tokenEndpointAuthMethod") != "client_secret_basic" ||
-				stored("clientCredentialsScopes") != `["reports"]` || stored("skipConsent") == "1" || stored("skipConsent") == "true" {
+			if !sameJSON(stored("redirectUris"), `["https://app.example.test/new"]`) || !sameJSON(stored("scopes"), `["reports","extra"]`) || stored("tokenEndpointAuthMethod") != "client_secret_basic" ||
+				!sameJSON(stored("clientCredentialsScopes"), `["reports"]`) || stored("skipConsent") == "1" || stored("skipConsent") == "true" {
 				t.Fatal("the stored client did not take only the owner's fields", stored("redirectUris"), stored("scopes"), stored("clientCredentialsScopes"))
 			}
 			// Dropping the machine grant clears the machine scopes.
-			if w := post(cookie, map[string]any{"client_id": app.ClientID, "update": map[string]any{"grant_types": []string{"authorization_code"}}}); w.Code != 200 || stored("clientCredentialsScopes") != `[]` {
+			if w := post(cookie, map[string]any{"client_id": app.ClientID, "update": map[string]any{"grant_types": []string{"authorization_code"}}}); w.Code != 200 || !sameJSON(stored("clientCredentialsScopes"), `[]`) {
 				t.Fatal("dropping the machine grant kept the machine scopes", w.Code, w.Body.String(), stored("clientCredentialsScopes"))
 			}
 			// An empty update returns the client unchanged.

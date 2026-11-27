@@ -59,6 +59,7 @@ func TestMachineResourceIssuance(t *testing.T) {
 			jwt, err := auth.NewJWT(auth.JWTOptions{Issuer: issuer, AdditionalAlgorithms: []string{"ES256"}})
 			must(err)
 			var generationHook func()
+			var withFields bool
 			host := func(allowUnlinked, signing bool) *auth.Auth {
 				t.Helper()
 				opts := op.Options{Tokens: op.TokenOptions{AllowUnlinkedResources: allowUnlinked,
@@ -74,8 +75,11 @@ func TestMachineResourceIssuance(t *testing.T) {
 					return map[string]any{"tier": "host", "plan": "host", "scope": "forged", "client": in.ClientID + " " + in.GrantType}, nil
 				}
 				opts.Extensions = []op.Extension{{AccessTokenClaims: func(context.Context, op.TokenClaimsInput) (map[string]any, error) {
-					return map[string]any{"tier": "extension", "region": "eu", "jti": "forged"}, nil
+					return map[string]any{"tier": "extension", "region": "eu", "jti": "forged", "active": "extension", "token_type": "extension", "sid": "forged", "azp": "forged"}, nil
 				}}}
+				if withFields {
+					opts.Tokens.CustomTokenResponseFields = func(context.Context, op.TokenResponseInput) (map[string]any, error) { return nil, nil }
+				}
 				p, err := op.New(opts)
 				must(err)
 				plugins := []auth.Plugin{p}
@@ -124,6 +128,22 @@ func TestMachineResourceIssuance(t *testing.T) {
 			generationHook = func() { write(`UPDATE "oauthResource" SET "allowedScopes"=?`, `["other"]`) }
 			request(linked, res, 400, "invalid_scope")
 			write(`UPDATE "oauthResource" SET "allowedScopes"=?`, `["read"]`)
+			// With host response fields, an opaque token whose scopes change
+			// between the reads is refused and not stored.
+			withFields = true
+			fielded := host(true, false)
+			withFields = false
+			var stored, after int
+			must(peer.db.QueryRowContext(ctx, peer.bind(`SELECT COUNT(*) FROM "oauthAccessToken" WHERE "clientId"=?`), id).Scan(&stored))
+			generationHook = func() { write(`UPDATE "oauthResource" SET "allowedScopes"=?`, `["read","write"]`) }
+			if b := request(fielded, res, 400, "invalid_request"); b["error_description"] != "client scopes changed during issuance, retry the request" {
+				t.Fatal("a scope change during opaque issuance was not refused", b)
+			}
+			must(peer.db.QueryRowContext(ctx, peer.bind(`SELECT COUNT(*) FROM "oauthAccessToken" WHERE "clientId"=?`), id).Scan(&after))
+			if after != stored {
+				t.Fatal("a refused opaque token was stored", stored, after)
+			}
+			write(`UPDATE "oauthResource" SET "allowedScopes"=?`, `["read"]`)
 			generationHook = func() { write(`UPDATE "oauthResource" SET "dpopBoundAccessTokensRequired"=?`, true) }
 			request(linked, res, 400, "invalid_dpop_proof")
 			generationHook = nil
@@ -137,7 +157,8 @@ func TestMachineResourceIssuance(t *testing.T) {
 			if claims["scope"] != "read" || response["expires_in"] != float64(8) {
 				t.Fatal("unexpected signed grant", claims)
 			}
-			if claims["plan"] != "host" || claims["region"] != "eu" || claims["tier"] != "host" || claims["client"] != id+" client_credentials" || claims["jti"] == "forged" {
+			if claims["plan"] != "host" || claims["region"] != "eu" || claims["tier"] != "host" || claims["client"] != id+" client_credentials" || claims["jti"] == "forged" ||
+				claims["active"] != "extension" || claims["token_type"] != "extension" || claims["sid"] != nil || claims["azp"] != id {
 				t.Fatal("the contributed access token claims were not layered", claims)
 			}
 			write(`UPDATE "oauthResource" SET "signingKeyId"='missing'`)

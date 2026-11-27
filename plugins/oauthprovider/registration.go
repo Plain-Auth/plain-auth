@@ -57,10 +57,17 @@ type RegisteredClient struct {
 	ReferenceID     string `json:"reference_id,omitempty"`
 	RequirePKCE     *bool  `json:"require_pkce,omitempty"`
 	Disabled        bool   `json:"disabled"`
+	// managed marks a client created without dynamic registration.
+	managed bool
 }
 
 func (c RegisteredClient) MarshalJSON() ([]byte, error) {
 	type record RegisteredClient
+	// A client created without a scope leaves it out, as another runtime
+	// does; a registration always names its scope.
+	if c.managed && c.Scope == "" {
+		return json.Marshal(record(c))
+	}
 	return json.Marshal(struct {
 		record
 		Scope string `json:"scope"`
@@ -534,7 +541,7 @@ func (opts Options) storeClient(ctx context.Context, a *auth.Auth, store Registr
 		return RegisteredClient{}, errors.New("oauthprovider: empty generated client ID")
 	}
 	row.ID, row.ClientID, row.CreatedAt = rand.Text(), id, time.Now().UTC().Truncate(time.Second)
-	result := RegisteredClient{RegistrationMetadata: m, ClientID: id, UserID: owner, ReferenceID: reference, IssuedAt: row.CreatedAt.Unix()}
+	result := RegisteredClient{RegistrationMetadata: m, ClientID: id, UserID: owner, ReferenceID: reference, IssuedAt: row.CreatedAt.Unix(), managed: !dynamic}
 	if row.RequirePKCE != nil {
 		result.RequirePKCE = row.RequirePKCE
 	}

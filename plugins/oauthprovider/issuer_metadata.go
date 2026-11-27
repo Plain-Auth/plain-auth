@@ -244,10 +244,10 @@ func (opts Options) issuerDocuments(a *auth.Auth, store auth.Store) (map[string]
 		}
 		openIDDoc := opts.openIDMetadata(a, doc, userInfoURL, endpoint(http.MethodPost, "/oauth2/consent") != "")
 		metadata, input.OpenID = openIDDoc, &openIDDoc
+		// Every path serves the OpenID document, so extensions see its
+		// type on all of them, as another runtime passes it.
+		input.Type = MetadataOpenIDConfiguration
 	}
-	// Each served document gets its own extension fields: the
-	// authorization-server paths, which serve the OpenID document while
-	// OpenID is advertised, and the OpenID configuration path.
 	docs := make(map[string]auth.WellKnownDocument)
 	serve := func(paths []string, input MetadataInput) error {
 		extended, err := opts.extendMetadata(a, metadata, input)
@@ -263,14 +263,12 @@ func (opts Options) issuerDocuments(a *auth.Auth, store auth.Store) (map[string]
 		}
 		return nil
 	}
-	if err := serve(issuerAliases(u), input); err != nil {
-		return nil, err
-	}
+	paths := issuerAliases(u)
 	if openid {
-		input.Type = MetadataOpenIDConfiguration
-		if err := serve([]string{openIDConfigPath(u)}, input); err != nil {
-			return nil, err
-		}
+		paths = append(paths, openIDConfigPath(u))
+	}
+	if err := serve(paths, input); err != nil {
+		return nil, err
 	}
 	return docs, nil
 }

@@ -2,12 +2,12 @@
 
 ## Verification progress
 
-**2,904 of 6,419 inventory entries are fully verified (45.2%).**
+**2,903 of 6,419 inventory entries are fully verified (45.2%).**
 
 | Inventory status | Entries |
 | --- | ---: |
-| Fully verified | 2,904 |
-| Partially verified | 1,480 |
+| Fully verified | 2,903 |
+| Partially verified | 1,481 |
 | No linked test evidence | 2,035 |
 | Not applicable to a Go server | 606 |
 
@@ -112,7 +112,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Model Context Protocol](plugins/mcp.md) | 31 | 100 | 0 |
 | [Multi session](plugins/multi-session.md) | 64 | 2 | 0 |
 | [OAuth popup](plugins/oauth-popup.md) | 56 | 5 | 0 |
-| [OAuth provider](plugins/oauth-provider.md) | 881 | 279 | 0 |
+| [OAuth provider](plugins/oauth-provider.md) | 880 | 280 | 0 |
 | [OAuth proxy](plugins/oauth-proxy.md) | 27 | 5 | 1 |
 | [One tap](plugins/one-tap.md) | 78 | 9 | 0 |
 | [One time token](plugins/one-time-token.md) | 76 | 0 | 0 |

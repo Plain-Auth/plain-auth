@@ -150,11 +150,10 @@ func parseGroup(input map[string]any, allowLegacy bool) (GroupProfile, error) {
 }
 
 func groupOperations(raw map[string]any) ([]any, error) {
-	// The Entra marker is honoured only on Group creation.
-	for key := range raw {
-		if strings.EqualFold(key, legacyGroupSchema) {
-			return nil, invalid("invalidValue", "The compatibility schema cannot contain attributes")
-		}
+	// The Entra marker is honoured only on Group creation; its exact key is
+	// read, as another runtime reads it.
+	if _, present := raw[legacyGroupSchema]; present {
+		return nil, invalid("invalidValue", "The compatibility schema cannot contain attributes")
 	}
 	// The envelope's exact schemas and Operations keys are read, as another
 	// runtime's body schema does; other spellings are ignored.

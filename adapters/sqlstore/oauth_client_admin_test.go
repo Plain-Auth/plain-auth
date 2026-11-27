@@ -80,7 +80,7 @@ func TestAdminClientCreation(t *testing.T) {
 			}
 			var storedScopes, metadata sql.NullString
 			must(s.db.QueryRowContext(ctx, s.bind(`SELECT "clientCredentialsScopes","metadata" FROM "oauthClient" WHERE "clientId"=?`), created.ClientID).Scan(&storedScopes, &metadata))
-			if storedScopes.String != `["reports"]` || metadata.String != `{"tier":"gold"}` {
+			if !sameJSON(storedScopes.String, `["reports"]`) || !sameJSON(metadata.String, `{"tier":"gold"}`) {
 				t.Fatal("the machine scopes or metadata were not stored", storedScopes, metadata)
 			}
 			// The machine client gets a token for its scope.
@@ -160,7 +160,7 @@ func TestAdminClientCreation(t *testing.T) {
 			must(err)
 			var name, meta sql.NullString
 			must(s.db.QueryRowContext(ctx, s.bind(`SELECT "name","metadata","skipConsent" FROM "oauthClient" WHERE "clientId"=?`), app.ClientID).Scan(&name, &meta, &skip))
-			if name.String != "Admin named" || meta.String != `{"tier":"silver"}` || skip.Bool || updated.SkipConsent == nil || *updated.SkipConsent {
+			if name.String != "Admin named" || !sameJSON(meta.String, `{"tier":"silver"}`) || skip.Bool || updated.SkipConsent == nil || *updated.SkipConsent {
 				t.Fatal("the administrator update was not stored", name, meta, skip)
 			}
 			// A scopes-only update goes through SetClientCredentialsScopes.

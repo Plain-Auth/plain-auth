@@ -151,15 +151,9 @@ func opsDuplicates(ops []any) error {
 				continue
 			}
 		}
-		var path, value any
-		for key, v := range op {
-			switch strings.ToLower(key) {
-			case "path":
-				path = v
-			case "value":
-				value = v
-			}
-		}
+		// The exact path and value keys are read, as another runtime's
+		// request hook reads them before its body schema.
+		path, value := op["path"], op["value"]
 		text, isString := path.(string)
 		if path != nil && !isString {
 			continue
@@ -188,15 +182,9 @@ func groupOpsDuplicates(ops []any) error {
 				continue
 			}
 		}
-		var path, value any
-		for key, v := range op {
-			switch strings.ToLower(key) {
-			case "path":
-				path = v
-			case "value":
-				value = v
-			}
-		}
+		// The exact path and value keys are read, as another runtime's
+		// request hook reads them before its body schema.
+		path, value := op["path"], op["value"]
 		text, isString := path.(string)
 		if path != nil && !isString {
 			continue

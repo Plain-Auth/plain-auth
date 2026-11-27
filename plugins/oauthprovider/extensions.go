@@ -66,6 +66,11 @@ var providerMetadataFields = sync.OnceValue(func() map[string]bool {
 		}
 	}
 	collect(reflect.TypeFor[OpenIDProviderMetadata]())
+	// Fields another runtime always publishes, which these types do not
+	// declare yet, belong to the provider too.
+	for _, name := range []string{"end_session_endpoint", "backchannel_logout_supported", "backchannel_logout_session_supported"} {
+		fields[name] = true
+	}
 	return fields
 })
 

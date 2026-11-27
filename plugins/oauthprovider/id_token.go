@@ -143,11 +143,11 @@ func (x idTokenContributors) add(c auth.EndpointContext, claims map[string]any, 
 			return err
 		}
 		for name, value := range extra {
-			if _, present := claims[name]; present || standardIDClaim(name) {
-				continue
-			}
 			if added[name] {
 				c.Auth.Logger().WarnContext(c.Request.Context(), "OAuth provider extensions supplied the same ID token claim", "claim", name)
+				continue
+			}
+			if _, present := claims[name]; present || standardIDClaim(name) {
 				continue
 			}
 			claims[name], added[name] = value, true

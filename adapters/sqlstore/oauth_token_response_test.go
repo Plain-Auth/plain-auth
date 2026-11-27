@@ -39,10 +39,14 @@ func TestTokenResponseFields(t *testing.T) {
 			t.Cleanup(func() { s.Close() })
 			var inputs []op.TokenResponseInput
 			var fail bool
-			p, err := op.New(op.Options{Scopes: []string{"reports", "offline_access"}, Registration: op.RegistrationOptions{Enabled: true},
+			var between func()
+			p, err := op.New(op.Options{Scopes: []string{"reports", "offline_access", "audit"}, Registration: op.RegistrationOptions{Enabled: true},
 				Tokens: op.TokenOptions{CustomTokenResponseFields: func(_ context.Context, in op.TokenResponseInput) (map[string]any, error) {
 					if fail {
 						return nil, errors.New("fields unavailable")
+					}
+					if between != nil {
+						between()
 					}
 					inputs = append(inputs, in)
 					return map[string]any{"tenant": "acme", "access_token": "forged", "id_token": "forged", "scope": "forged", "refresh_token": "forged"}, nil
@@ -138,6 +142,22 @@ func TestTokenResponseFields(t *testing.T) {
 			if last := inputs[len(inputs)-1]; last.GrantType != "client_credentials" || last.User != nil || string(last.Metadata["tier"]) != `"machine"` || len(last.Scopes) != 1 {
 				t.Fatal("the client_credentials input was incomplete", last)
 			}
+			// The fields describe the first read's scopes, so a scope change
+			// before the token is stored refuses the request.
+			tokens := func() (n int) {
+				must(s.db.QueryRowContext(ctx, s.bind(`SELECT COUNT(*) FROM "oauthAccessToken" WHERE "clientId"='machine'`)).Scan(&n))
+				return n
+			}
+			before := tokens()
+			between = func() {
+				_, err := s.db.ExecContext(ctx, s.bind(`UPDATE "oauthClient" SET "clientCredentialsScopes"=? WHERE "clientId"='machine'`), `["reports","audit"]`)
+				must(err)
+			}
+			if status, body := exchange(url.Values{"grant_type": {"client_credentials"}, "client_id": {"machine"}, "client_secret": {secret}}); status != 400 ||
+				body["error_description"] != "client scopes changed during issuance, retry the request" || tokens() != before {
+				t.Fatal("a scope change during issuance was not refused", status, body)
+			}
+			between = nil
 		})
 	}
 }

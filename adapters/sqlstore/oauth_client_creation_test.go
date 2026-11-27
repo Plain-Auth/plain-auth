@@ -8,6 +8,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -75,8 +76,23 @@ func TestOAuthClientCreation(t *testing.T) {
 			}
 			var scopes, pkce sql.NullString
 			must(s.db.QueryRowContext(ctx, s.bind(`SELECT "scopes","requirePKCE" FROM "oauthClient" WHERE "clientId"=?`), app.ClientID).Scan(&scopes, &pkce))
-			if scopes.String != `["reports","extra"]` || pkce.Valid && pkce.String != "" && pkce.String != "1" && pkce.String != "true" {
+			if !sameJSON(scopes.String, `["reports","extra"]`) || pkce.Valid && pkce.String != "" && pkce.String != "1" && pkce.String != "true" {
 				t.Fatal("the stored client took the registration ceiling or PKCE setting", scopes, pkce)
+			}
+			// The name, method and application type are taken as sent: a
+			// public client gets no secret, and a native loopback callback
+			// is refused for a web client.
+			public, err := owner.CreateOAuthClient(ctx, op.RegistrationMetadata{RedirectURIs: []string{"http://127.0.0.1:8080/cb"}, Name: ptrString("Desktop"),
+				TokenEndpointAuthMethod: "none", ApplicationType: "native"})
+			must(err)
+			if public.ClientSecret != "" || public.TokenEndpointAuthMethod != "none" || public.ApplicationType != "native" || public.Name == nil || *public.Name != "Desktop" {
+				t.Fatal("the created client did not take its name, method and type", public)
+			}
+			if _, err := owner.CreateOAuthClient(ctx, op.RegistrationMetadata{RedirectURIs: []string{"http://127.0.0.1:8080/cb"}, ApplicationType: "web"}); err == nil {
+				t.Fatal("a web client took a loopback callback")
+			}
+			if w := post(cookie, map[string]any{"redirect_uris": m.RedirectURIs}); w.Code != 201 || strings.Contains(w.Body.String(), `"scope"`) {
+				t.Fatal("a client created without a scope named one", w.Code, w.Body.String())
 			}
 			// Without a scope the client may request every configured scope.
 			open, err := owner.CreateOAuthClient(ctx, op.RegistrationMetadata{RedirectURIs: m.RedirectURIs})
@@ -114,3 +130,12 @@ func TestOAuthClientCreation(t *testing.T) {
 		})
 	}
 }
+
+// sameJSON compares a stored JSON column with want, ignoring the spacing
+// PostgreSQL and MySQL add.
+func sameJSON(stored, want string) bool {
+	var a, b any
+	return json.Unmarshal([]byte(stored), &a) == nil && json.Unmarshal([]byte(want), &b) == nil && reflect.DeepEqual(a, b)
+}
+
+func ptrString(s string) *string { return &s }

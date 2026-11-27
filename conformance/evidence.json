@@ -18398,8 +18398,7 @@
     {
       "label": "Sign code and refresh ID tokens with HS256 keyed by the client secret, advertise HS256 without a key set at the public issuer, give a public client no ID token, store secrets encrypted and refuse the jwt plugin alongside, on SQLite, PostgreSQL and MySQL; the prefixed key and the jwt refusal are documented deviations",
       "test": "adapters/sqlstore/oauth_secret_id_token_test.go",
-      "marker": "func TestSecretSignedIDTokens(",
-      "complete": true
+      "marker": "func TestSecretSignedIDTokens("
     },
     {
       "label": "Default to encrypted secret storage and refuse hashed storage, or encrypted storage without the option",
@@ -48781,7 +48780,7 @@
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/customTokenResponseFields": [
     {
-      "label": "Merge host fields under the standard fields of code, refresh and client_credentials responses, pass the account, client metadata and code value, run outside the grant transaction even without a refresh token, and leave the code or refresh token usable when it fails, on SQLite, PostgreSQL and MySQL; the scope recheck is a documented deviation",
+      "label": "Merge host fields under the standard fields of code, refresh and client_credentials responses, pass the account, client metadata and code value, run outside the grant transaction even without a refresh token, and leave the code or refresh token usable when it fails, on SQLite, PostgreSQL and MySQL; the scope recheck and the usable code are documented deviations",
       "test": "adapters/sqlstore/oauth_token_response_test.go",
       "marker": "func TestTokenResponseFields(",
       "complete": true
@@ -48858,23 +48857,23 @@
   ],
   "docs/content/docs/plugins/oauth-provider/clients.mdx#L33/Parameter `client_name` (optional)": [
     {
-      "label": "Create a client through /oauth2/create-client with this field, on SQLite, PostgreSQL and MySQL",
+      "label": "Create a named client through /oauth2/create-client and get the name back, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_client_creation_test.go",
-      "marker": "func TestOAuthClientCreation("
+      "marker": "*public.Name != \"Desktop\""
     }
   ],
   "docs/content/docs/plugins/oauth-provider/clients.mdx#L37/Parameter `token_endpoint_auth_method` (optional)": [
     {
-      "label": "Create a client through /oauth2/create-client with this field, on SQLite, PostgreSQL and MySQL",
+      "label": "Create a public client with method none through /oauth2/create-client and get no secret, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_client_creation_test.go",
-      "marker": "func TestOAuthClientCreation("
+      "marker": "public.ClientSecret != \"\" || public.TokenEndpointAuthMethod != \"none\""
     }
   ],
   "docs/content/docs/plugins/oauth-provider/clients.mdx#L41/Parameter `application_type` (optional)": [
     {
-      "label": "Create a client through /oauth2/create-client with this field, on SQLite, PostgreSQL and MySQL",
+      "label": "Create a native client with a loopback callback, and see that callback refused for a web client, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_client_creation_test.go",
-      "marker": "func TestOAuthClientCreation("
+      "marker": "t.Fatal(\"a web client took a loopback callback\")"
     }
   ],
   "docs/content/docs/plugins/oauth-provider/clients.mdx#L45/Parameter `scope` (optional)": [
