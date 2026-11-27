@@ -51540,6 +51540,11 @@
       "label": "Refuse an organization the caller cannot manage before contacting Stripe and default a purchase to the active organization, on both runtimes",
       "test": "conformance/stripe-organization-fixture.mjs",
       "marker": "const denied = await peer.subscription.upgrade({ ...explicit, plan: \"basic\" });"
+    },
+    {
+      "label": "Require an organization reference for a purchase when none is active, before contacting Stripe, on both runtimes",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "assert.equal((await owner.subscription.upgrade({ ...selector, plan: \"basic\", disableRedirect: true })).error.code, \"ORGANIZATION_REFERENCE_ID_REQUIRED\");"
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L251/Parameter `customerType` (optional)": [
@@ -51547,6 +51552,12 @@
       "label": "Bill the organization's own Stripe customer, named after it, when customerType is organization, on both runtimes",
       "test": "conformance/stripe-organization-fixture.mjs",
       "marker": "const purchase = checked(await owner.subscription.upgrade("
+    },
+    {
+      "label": "Keep a purchase without customerType on the signed-in user's own customer while an organization is active, on both runtimes",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "assert.equal(remote.state.checkout.customer, \"cus_user\");",
+      "complete": true
     }
   ],
   "plugin-symbol/stripe/StripeOptions/stripeWebhookSecret": [
@@ -51665,6 +51676,21 @@
       "label": "Store Stripe's cancel_at as reported, including none, and clear it after restoration on both runtimes",
       "test": "conformance/stripe-lifecycle-fixture.mjs",
       "marker": "ownerSub.cancel_at = ownerSub.items.data[0].current_period_end - 86_400;",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L372/Parameter `referenceId` (optional)": [
+    {
+      "label": "List the organization named by referenceId rather than the active one and refuse a non-member's explicit reference, on both runtimes",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "assert.equal((await peer.subscription.list({ query: explicit })).error.code, \"UNAUTHORIZED\");"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L975": [
+    {
+      "label": "Create the organization customer without an email and never update it during checkout or renewal, on both runtimes",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "assert.equal(remote.state.calls.some(([method, path]) => method === \"POST\" && path.startsWith(\"/v1/customers/\")), false);",
       "complete": true
     }
   ]

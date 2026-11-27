@@ -32,7 +32,10 @@ async function provider(t, meteredIDs = []) {
     if (url.pathname === "/v1/customers/search") result = { object: "search_result", has_more: false, data: [] };
     if (url.pathname === "/v1/customers" && req.method === "GET") result = { object: "list", has_more: false, data: [] };
     if (url.pathname === "/v1/customers" && req.method === "POST") {
-      result = state.customer = { id: "cus_org", object: "customer", name: form.get("name"), metadata: fields("metadata[") };
+      const metadata = fields("metadata[");
+      result = { id: metadata.customerType === "organization" ? "cus_org" : "cus_user", object: "customer", name: form.get("name"), email: form.get("email"), metadata };
+      if (result.id === "cus_org") state.customer = result;
+      else state.userCustomer = result;
     }
     if (url.pathname === "/v1/subscriptions" && req.method === "GET") result = { object: "list", has_more: false, data: [] };
     if (url.pathname.startsWith("/v1/prices/")) {
@@ -48,7 +51,7 @@ async function provider(t, meteredIDs = []) {
         if (quantity !== null) line.quantity = Number(quantity);
         lines.push(line);
       }
-      result = state.checkout = { id: "cs_org", object: "checkout.session", mode: form.get("mode"), customer: form.get("customer"),
+      result = state.checkout = { id: "cs_org", object: "checkout.session", mode: form.get("mode"), customer: form.get("customer"), customer_email: form.get("customer_email"),
         url: "https://checkout.example.test/org", client_reference_id: form.get("client_reference_id"), metadata: fields("metadata["),
         subscription: "sub_org", status: "complete", payment_status: "paid", line_items: {object: "list", has_more: false, data: lines} };
       const start = Math.floor(Date.now() / 1000);
@@ -121,6 +124,8 @@ export async function organizationBilling(t, { reference, goFixture, instrument 
     checked(await peer.signUp.email({ email: "outside@example.test", name: "Peer", password: "test-password-123" }));
     const selector = { customerType: "organization" };
     assert.equal((await owner.subscription.list({ query: selector })).error.code, "ORGANIZATION_REFERENCE_ID_REQUIRED");
+    assert.equal((await owner.subscription.upgrade({ ...selector, plan: "basic", disableRedirect: true })).error.code, "ORGANIZATION_REFERENCE_ID_REQUIRED");
+    assert.equal(remote.state.calls.length, 0);
     const group = checked(await owner.organization.create({ name: "Fixture Group", slug: "fixture-group" }));
     const explicit = { ...selector, referenceId: group.id };
     const denied = await peer.subscription.upgrade({ ...explicit, plan: "basic" });
@@ -141,6 +146,8 @@ export async function organizationBilling(t, { reference, goFixture, instrument 
     assert.equal(remote.state.checkout.customer, "cus_org");
     assert.equal(remote.state.checkout.metadata.referenceId, group.id);
     assert.equal(remote.state.checkout.metadata.userId, account.user.id);
+    assert.equal(remote.state.customer.email ?? null, null);
+    assert.equal(remote.state.checkout.customer_email ?? null, null);
     assert.deepEqual(checked(await owner.subscription.list()), []);
     assert.deepEqual(checked(await owner.subscription.list({ query: explicit })), []);
     async function deliver(id, type, object) {
@@ -168,6 +175,18 @@ export async function organizationBilling(t, { reference, goFixture, instrument 
     assert.equal(updated[0].priceId, "price_team_annual");
     assert.deepEqual(checked(await owner.subscription.list()), []);
     assert.deepEqual(checked(await peer.subscription.list()), []);
+    // An explicit reference lists that organization rather than the active
+    // one, and a purchase without a customer type stays the user's own.
+    checked(await owner.organization.create({ name: "Second Group", slug: "second-group" }));
+    assert.deepEqual(checked(await owner.subscription.list({ query: selector })), []);
+    assert.deepEqual(checked(await owner.subscription.list({ query: explicit })).map(row => [row.referenceId, row.plan, row.priceId]), [[group.id, "team", "price_team_annual"]]);
+    assert.equal((await peer.subscription.list({ query: explicit })).error.code, "UNAUTHORIZED");
+    checked(await owner.subscription.upgrade({ plan: "team", disableRedirect: true }));
+    assert.deepEqual(remote.state.userCustomer.metadata, { userId: account.user.id, customerType: "user" });
+    assert.equal(remote.state.checkout.client_reference_id, account.user.id);
+    assert.equal(remote.state.checkout.metadata.referenceId, account.user.id);
+    assert.equal(remote.state.checkout.customer, "cus_user");
+    assert.equal(remote.state.calls.some(([method, path]) => method === "POST" && path.startsWith("/v1/customers/")), false);
   });
 }
 
