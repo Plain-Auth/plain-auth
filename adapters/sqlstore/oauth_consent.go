@@ -87,8 +87,8 @@ func (s *Store) UpdateOAuthConsent(ctx context.Context, owner, id string, scopes
 	if err != nil {
 		return op.Consent{}, err
 	}
-	if discovery != nil && *discovery != "" {
-		return op.Consent{}, op.ErrClientNotFound
+	if discovery != nil && *discovery != "" && *discovery != op.ResolvedDiscovery(ctx, c.ClientID) {
+		return op.Consent{}, &op.UnresolvedClientError{ClientID: c.ClientID, DiscoveryID: *discovery}
 	}
 	var allowed []string
 	if clientScopes != nil {

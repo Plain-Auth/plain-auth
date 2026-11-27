@@ -30,12 +30,12 @@ func (s *Store) InspectSignedAccessGrant(ctx context.Context, callerID, userInfo
 }
 
 func (s *Store) readSignedGrant(ctx context.Context, tx *sql.Tx, callerID, userInfoURL string, grant op.SignedAccessGrant) (*op.SignedGrantClient, error) {
-	var subject sql.NullString
+	var subject, discovery sql.NullString
 	var redirects []byte
 	var sessionExpiry sql.NullTime
-	q := `SELECT c."subjectType",c."redirectUris",s."expiresAt" FROM "oauthClient" c LEFT JOIN "session" s ON s."id"=` + s.exactSQLValue("?") + `
-		WHERE c."clientId"=` + s.exactSQLValue("?") + ` AND (c."clientDiscoveryId" IS NULL OR c."clientDiscoveryId"='') AND (c."disabled"=FALSE OR c."disabled" IS NULL)`
-	err := tx.QueryRowContext(ctx, s.bind(q), grant.SessionID, grant.ClientID).Scan(&subject, &redirects, &sessionExpiry)
+	q := `SELECT c."subjectType",c."redirectUris",s."expiresAt",c."clientDiscoveryId" FROM "oauthClient" c LEFT JOIN "session" s ON s."id"=` + s.exactSQLValue("?") + `
+		WHERE c."clientId"=` + s.exactSQLValue("?") + ` AND (c."disabled"=FALSE OR c."disabled" IS NULL)`
+	err := tx.QueryRowContext(ctx, s.bind(q), grant.SessionID, grant.ClientID).Scan(&subject, &redirects, &sessionExpiry, &discovery)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -44,6 +44,10 @@ func (s *Store) readSignedGrant(ctx context.Context, tx *sql.Tx, callerID, userI
 	}
 	if grant.SessionID != "" && !sessionExpiry.Time.After(time.Now()) {
 		return nil, nil
+	}
+	// A client a discovery owns is served only once the request resolved it.
+	if discovery.String != "" && discovery.String != op.ResolvedDiscovery(ctx, grant.ClientID) {
+		return nil, &op.UnresolvedClientError{ClientID: grant.ClientID, DiscoveryID: discovery.String}
 	}
 	ok, _, err := s.resolveAccessAudiences(ctx, tx, callerID, grant.ClientID, userInfoURL, grant.Audiences, false)
 	if !ok || err != nil {

@@ -117,3 +117,37 @@ func (opts Options) discoverRequestClient(c auth.EndpointContext, clientID strin
 	c.Request = c.Request.WithContext(ctx)
 	return c, nil
 }
+
+// UnresolvedClientError is a store's answer for a read that reached a
+// client a discovery owns, through a token or a consent, that the request
+// has not resolved. The provider resolves the client outside the store's
+// transaction and repeats the read once; a client left unresolved is
+// treated as missing, so the error matches ErrClientNotFound.
+type UnresolvedClientError struct{ ClientID, DiscoveryID string }
+
+func (e *UnresolvedClientError) Error() string {
+	return "oauthprovider: client " + e.ClientID + " is owned by unresolved client discovery " + e.DiscoveryID
+}
+
+func (e *UnresolvedClientError) Is(target error) bool { return target == ErrClientNotFound }
+
+func unresolvedClient(err error) bool {
+	var unresolved *UnresolvedClientError
+	return errors.As(err, &unresolved)
+}
+
+// retryResolved runs a store read and, when it reports an unresolved
+// client, resolves that client and runs the read once more with the
+// resolved context, which reports the client again unless its own
+// discovery resolved it.
+func (opts Options) retryResolved(c auth.EndpointContext, read func(context.Context) error) (auth.EndpointContext, error) {
+	err := read(c.Request.Context())
+	var unresolved *UnresolvedClientError
+	if !errors.As(err, &unresolved) {
+		return c, err
+	}
+	if c, err = opts.discoverRequestClient(c, unresolved.ClientID); err != nil {
+		return c, err
+	}
+	return c, read(c.Request.Context())
+}

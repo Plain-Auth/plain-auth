@@ -171,7 +171,15 @@ func (opts Options) userInfoAccess(c auth.EndpointContext, store UserInfoStore, 
 			return nil, nil, err
 		}
 	}
-	record, err := store.LookupOAuthUserInfo(ctx, query)
+	var record *UserInfoRecord
+	_, err = opts.retryResolved(c, func(ctx context.Context) (err error) {
+		record, err = store.LookupOAuthUserInfo(ctx, query)
+		return err
+	})
+	// A grant whose client stays unresolved is not found.
+	if unresolvedClient(err) {
+		return nil, nil, nil
+	}
 	if err != nil || record == nil {
 		return nil, nil, err
 	}

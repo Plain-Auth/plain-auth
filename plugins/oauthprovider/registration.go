@@ -371,7 +371,7 @@ func New(opts Options) (auth.Plugin, error) {
 		r.GenerateClientSecret = randomClientCredential
 	}
 	limit := tokenRouteLimit(r.RateLimit, 5)
-	p := ConsentManagement(ConsentOptions{Scopes: opts.Scopes})
+	p := ConsentManagement(ConsentOptions{Scopes: opts.Scopes, resolve: opts.retryResolved})
 	p.WellKnown = opts.issuerDocuments
 	p.OnSessionsEnded = opts.sessionsEnded
 	validateConsent := p.ValidateStore

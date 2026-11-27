@@ -78,7 +78,14 @@ func (opts Options) introspect(c auth.EndpointContext) (any, error) {
 	userInfoURL := c.Auth.PublicURL() + "/oauth2/userinfo"
 	var knownAccess bool
 	if supportsOpaque {
-		current, access, knownAccess, err = opaque.InspectOpaqueAccessToken(ctx, in.id, digest, userInfoURL)
+		c, err = opts.retryResolved(c, func(ctx context.Context) (err error) {
+			current, access, knownAccess, err = opaque.InspectOpaqueAccessToken(ctx, in.id, digest, userInfoURL)
+			return err
+		})
+		// The client behind a token that stays unresolved makes it inactive.
+		if unresolvedClient(err) {
+			access, knownAccess, err = nil, true, nil
+		}
 	} else if supportsRefresh {
 		current, record, knownAccess, err = refreshStore.InspectOpaqueMachineToken(ctx, in.id, digest)
 	} else if machine {

@@ -33,18 +33,18 @@ func (s *Store) InspectOpaqueAccessToken(ctx context.Context, callerID, digest, 
 
 func (s *Store) readOpaqueGrant(ctx context.Context, tx *sql.Tx, callerID *string, digest, userInfoURL string) (*op.OpaqueAccessTokenRecord, bool, error) {
 	q := `SELECT t."clientId",t."revoked",t."createdAt",t."expiresAt",t."scopes",t."resources",t."confirmation",t."requestedUserInfoClaims",
-		t."userId",u."id",t."sessionId",s."expiresAt",c."id",c."subjectType",c."redirectUris",c."disabled"
-		FROM "oauthAccessToken" t LEFT JOIN "oauthClient" c ON c."clientId"=` + s.exactSQLValue(`t."clientId"`) + ` AND (c."clientDiscoveryId" IS NULL OR c."clientDiscoveryId"='')
+		t."userId",u."id",t."sessionId",s."expiresAt",c."id",c."subjectType",c."redirectUris",c."disabled",c."clientDiscoveryId"
+		FROM "oauthAccessToken" t LEFT JOIN "oauthClient" c ON c."clientId"=` + s.exactSQLValue(`t."clientId"`) + `
 		LEFT JOIN "user" u ON u."id"=` + s.exactSQLValue(`t."userId"`) + `
 		LEFT JOIN "session" s ON s."id"=` + s.exactSQLValue(`t."sessionId"`) + ` AND (t."userId" IS NULL OR s."userId"=` + s.exactSQLValue(`t."userId"`) + `)
 		WHERE t."token"=` + s.exactSQLValue("?")
 	r := op.OpaqueAccessTokenRecord{}
-	var clientRow, subject, owner, user, sid sql.NullString
+	var clientRow, subject, owner, user, sid, discovery sql.NullString
 	var revoked, sessionEnd sql.NullTime
 	var disabled sql.NullBool
 	var scopes, resources, confirmation, redirects, requested []byte
 	err := tx.QueryRowContext(ctx, s.bind(q), digest).Scan(&r.ClientID, &revoked, &r.IssuedAt, &r.ExpiresAt, &scopes, &resources, &confirmation, &requested,
-		&owner, &user, &sid, &sessionEnd, &clientRow, &subject, &redirects, &disabled)
+		&owner, &user, &sid, &sessionEnd, &clientRow, &subject, &redirects, &disabled, &discovery)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, false, nil
 	}
@@ -54,6 +54,10 @@ func (s *Store) readOpaqueGrant(ctx context.Context, tx *sql.Tx, callerID *strin
 	now := time.Now()
 	if revoked.Valid || !clientRow.Valid || disabled.Bool || !r.ExpiresAt.After(now) || (owner.Valid && !user.Valid) || (sid.Valid && !sessionEnd.Time.After(now)) {
 		return nil, true, nil
+	}
+	// A client a discovery owns is served only once the request resolved it.
+	if discovery.String != "" && discovery.String != op.ResolvedDiscovery(ctx, r.ClientID) {
+		return nil, true, &op.UnresolvedClientError{ClientID: r.ClientID, DiscoveryID: discovery.String}
 	}
 	r.StoredToken, r.SubjectType, r.UserID, r.SessionID, r.SessionExpiresAt = digest, subject.String, user.String, sid.String, sessionEnd.Time
 	if len(resources) > 0 && json.Unmarshal(resources, &r.Resources) != nil {

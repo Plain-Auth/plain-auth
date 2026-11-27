@@ -77,7 +77,7 @@ func TestClientDiscoveryLookups(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			s, err := OpenWithOptions(ctx, dialect, organizationTestDSN(t, dialect), []string{"oauth-provider"}, schema.Options{})
+			s, err := OpenWithOptions(ctx, dialect, organizationTestDSN(t, dialect), []string{"oauth-provider", "jwt"}, schema.Options{})
 			must(err)
 			t.Cleanup(func() { s.Close() })
 			write := func(q string, args ...any) {
@@ -91,6 +91,8 @@ func TestClientDiscoveryLookups(t *testing.T) {
 			const base = "https://issuer.example.test"
 			first, second := &stubDiscovery{}, &stubDiscovery{}
 			var opts op.Options
+			const api = "https://api.example.test"
+			opaqueTokens := false
 			host := func(discoveries ...op.ClientDiscovery) *auth.Auth {
 				t.Helper()
 				// The extension grant reads clients through the provider's API.
@@ -105,24 +107,30 @@ func TestClientDiscoveryLookups(t *testing.T) {
 					}
 					return op.TokenResponse{AccessToken: "x", TokenType: "Bearer", Fields: map[string]any{"client": client.ClientID, "other": *other.Name}}, nil
 				}
-				opts = op.Options{Scopes: []string{"offline_access", "read"}, Extensions: []op.Extension{{ClientDiscoveries: discoveries, Grants: map[string]op.GrantHandler{"urn:test:grant": grant}}},
+				opts = op.Options{Scopes: []string{"openid", "offline_access", "read"}, Extensions: []op.Extension{{ClientDiscoveries: discoveries, Grants: map[string]op.GrantHandler{"urn:test:grant": grant}}},
 					Authorization:    op.BrowserAuthorizationOptions{LoginPage: "/login", ConsentPage: "/consent", AllowPublicClientPrelogin: true},
-					ClientPrivileges: func(context.Context, op.ClientAccess) (bool, error) { return true, nil }}
+					ClientPrivileges: func(context.Context, op.ClientAccess) (bool, error) { return true, nil },
+					Resources:        []op.ResourceDefinition{{Identifier: api}}}
 				opts.Assertions.AllowKeyRotation = true
+				opts.Registration.DefaultResources = []string{api}
+				opts.Tokens.OpaqueResourceTokens = opaqueTokens
 				p, err := op.New(opts)
 				must(err)
 				off := false
-				h, err := auth.New(auth.Options{BaseURL: base, Secret: strings.Repeat("c", 40), Plugins: []auth.Plugin{p}, Store: s, RateLimit: &off})
+				signing, err := auth.NewJWT(auth.JWTOptions{})
+				must(err)
+				h, err := auth.New(auth.Options{BaseURL: base, Secret: strings.Repeat("c", 40), Plugins: []auth.Plugin{p, signing}, Store: s, RateLimit: &off})
 				must(err)
 				return h
 			}
 			h := host(first.discovery("stub"))
+			mainOptions := opts
 			verifier := strings.Repeat("v", 64)
 			sum := sha256.Sum256([]byte(verifier))
-			authorize := func(h *auth.Auth, clientID, scope string) url.Values {
+			authorize := func(h *auth.Auth, clientID, scope string, resources ...string) url.Values {
 				t.Helper()
 				q := url.Values{"client_id": {clientID}, "response_type": {"code"}, "redirect_uri": {"http://127.0.0.1:41234/cb"}, "scope": {scope}, "state": {"saved"},
-					"code_challenge": {base64.RawURLEncoding.EncodeToString(sum[:])}, "code_challenge_method": {"S256"}, "prompt": {"none"}}
+					"code_challenge": {base64.RawURLEncoding.EncodeToString(sum[:])}, "code_challenge_method": {"S256"}, "prompt": {"none"}, "resource": resources}
 				req := httptest.NewRequest("GET", base+"/api/auth/oauth2/authorize?"+q.Encode(), nil)
 				req.AddCookie(h.SessionCookie("browser", true))
 				out := httptest.NewRecorder()
@@ -148,7 +156,7 @@ func TestClientDiscoveryLookups(t *testing.T) {
 			}
 			const app = "https://app.example.test/client.json"
 			// The first authorize registers the document and asks for consent.
-			if got := authorize(h, app, "offline_access read"); got.Get("error") != "consent_required" || got.Get("host") != "127.0.0.1:41234" || first.calls.Load() != 1 {
+			if got := authorize(h, app, "openid offline_access read"); got.Get("error") != "consent_required" || got.Get("host") != "127.0.0.1:41234" || first.calls.Load() != 1 {
 				t.Fatal("the discovered client was not resolved at authorize", got, first.calls.Load())
 			}
 			var owner string
@@ -188,8 +196,8 @@ func TestClientDiscoveryLookups(t *testing.T) {
 				t.Fatal("a client was resolved twice in one request", status, body, first.calls.Load()-calls)
 			}
 			// With consent, a code exchanges, refreshes and revokes.
-			write(`INSERT INTO "oauthConsent" ("id","clientId","userId","scopes","createdAt","updatedAt") VALUES ('approval',?,'owner',?,?,?)`, app, `["offline_access","read"]`, s.date(now), s.date(now))
-			got := authorize(h, app, "offline_access read")
+			write(`INSERT INTO "oauthConsent" ("id","clientId","userId","scopes","createdAt","updatedAt") VALUES ('approval',?,'owner',?,?,?)`, app, `["openid","offline_access","read"]`, s.date(now), s.date(now))
+			got := authorize(h, app, "openid offline_access read")
 			if got.Get("code") == "" {
 				t.Fatal("a consented discovered client got no code", got)
 			}
@@ -203,6 +211,77 @@ func TestClientDiscoveryLookups(t *testing.T) {
 			}
 			if status, body := post(h, "/oauth2/revoke", url.Values{"client_id": {app}, "token": {refreshed["refresh_token"].(string)}}); status != 200 {
 				t.Fatal("the client could not revoke its token", status, body)
+			}
+			// A local resource server introspects the client's resource tokens,
+			// opaque and signed, and UserInfo reads its grant.
+			rsSecret := sha256.Sum256([]byte("rs-secret"))
+			write(`INSERT INTO "oauthClient" ("id","clientId","clientSecret","tokenEndpointAuthMethod","redirectUris","grantTypes") VALUES ('rs','rs',?,'client_secret_post','[]',?)`,
+				base64.RawURLEncoding.EncodeToString(rsSecret[:]), `["client_credentials"]`)
+			write(`INSERT INTO "oauthClientResource" ("id","resourceId","clientId") VALUES ('rs-link',?,'rs')`, api)
+			write(`UPDATE "oauthConsent" SET "resources"=? WHERE "id"='approval'`, `["`+api+`"]`)
+			boundToken := func(h *auth.Auth) string {
+				t.Helper()
+				got := authorize(h, app, "openid read", api)
+				status, body := post(h, "/oauth2/token", url.Values{"grant_type": {"authorization_code"}, "client_id": {app}, "code": {got.Get("code")}, "code_verifier": {verifier}, "redirect_uri": {"http://127.0.0.1:41234/cb"}, "resource": {api}})
+				if status != 200 {
+					t.Fatal("a resource code exchange failed", got, status, body)
+				}
+				return body["access_token"].(string)
+			}
+			introspect := func(h *auth.Auth, token string) any {
+				t.Helper()
+				status, body := post(h, "/oauth2/introspect", url.Values{"client_id": {"rs"}, "client_secret": {"rs-secret"}, "token": {token}})
+				if status != 200 {
+					t.Fatal("introspection failed", status, body)
+				}
+				return body["active"]
+			}
+			userInfo := func(h *auth.Auth, token string) int {
+				req := httptest.NewRequest("GET", base+"/api/auth/oauth2/userinfo", nil)
+				req.Header.Set("Authorization", "Bearer "+token)
+				out := httptest.NewRecorder()
+				h.ServeHTTP(out, req)
+				return out.Code
+			}
+			signedToken := boundToken(h)
+			opaqueTokens = true
+			opaqueToken := boundToken(host(first.discovery("stub")))
+			opaqueTokens = false
+			if strings.Count(signedToken, ".") != 2 || strings.Count(opaqueToken, ".") == 2 {
+				t.Fatal("the resource tokens were not one signed and one opaque", signedToken, opaqueToken)
+			}
+			if introspect(h, signedToken) != true || introspect(h, opaqueToken) != true {
+				t.Fatal("a resource server could not introspect a discovered client's tokens")
+			}
+			if code := userInfo(h, token["access_token"].(string)); code != 200 {
+				t.Fatal("UserInfo refused a discovered client's grant", code)
+			}
+			// Without the discovery the tokens are inactive and UserInfo refuses.
+			bare := host(op.ClientDiscovery{ID: "other", Matches: func(string) bool { return true }, Resolve: func(context.Context, op.DiscoveryRequest) (*op.DiscoveredClient, error) {
+				t.Fatal("another discovery was asked about a stored client")
+				return nil, nil
+			}})
+			if introspect(bare, signedToken) != false || introspect(bare, opaqueToken) != false || userInfo(bare, token["access_token"].(string)) != 401 {
+				t.Fatal("tokens of an unconfigured discovery's client were served")
+			}
+			// The user updates the consent of a discovered client.
+			req = httptest.NewRequest("POST", base+"/api/auth/oauth2/update-consent", strings.NewReader(`{"id":"approval","update":{"scopes":["openid","read"]}}`))
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("Origin", base)
+			req.AddCookie(h.SessionCookie("browser", true))
+			out = httptest.NewRecorder()
+			h.ServeHTTP(out, req)
+			if out.Code != 200 {
+				t.Fatal("the consent of a discovered client could not be updated", out.Code, out.Body.String())
+			}
+			req = httptest.NewRequest("POST", base+"/api/auth/oauth2/update-consent", strings.NewReader(`{"id":"approval","update":{"scopes":["read"]}}`))
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("Origin", base)
+			req.AddCookie(bare.SessionCookie("browser", true))
+			out = httptest.NewRecorder()
+			bare.ServeHTTP(out, req)
+			if out.Code != 404 || !strings.Contains(out.Body.String(), "client not found") {
+				t.Fatal("the consent of an unconfigured discovery's client was updated", out.Code, out.Body.String())
 			}
 			// A discovered client with keys authenticates to introspection.
 			pub, priv, err := ed25519.GenerateKey(rand.Reader)
@@ -260,7 +339,7 @@ func TestClientDiscoveryLookups(t *testing.T) {
 			first.mode.Store("stored")
 			before := now.Add(-time.Hour)
 			write(`UPDATE "oauthClient" SET "updatedAt"=? WHERE "clientId"=?`, s.date(before), keyed)
-			manager, err := op.NewClientManager(h, s, opts)
+			manager, err := op.NewClientManager(h, s, mainOptions)
 			must(err)
 			header := http.Header{"Cookie": {h.SessionCookie("browser", true).String()}}
 			if granted, err := manager.SetClientCredentialsScopes(ctx, header, keyed, []string{"read"}); err != nil || len(granted) != 1 || granted[0] != "read" {

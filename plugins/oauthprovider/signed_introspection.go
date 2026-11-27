@@ -38,7 +38,16 @@ func (opts Options) introspectSigned(c auth.EndpointContext, req tokenAction, fi
 	if !valid || !supported {
 		return inactive, true, tokenEndpointError(c.ResponseHeader, req.challenge, req.checkCurrent(ctx, reader, first))
 	}
-	current, owner, err := store.InspectSignedAccessGrant(ctx, req.client.id, c.Auth.PublicURL()+"/oauth2/userinfo", grant)
+	var current MachineClient
+	var owner *SignedGrantClient
+	_, err = opts.retryResolved(c, func(ctx context.Context) (err error) {
+		current, owner, err = store.InspectSignedAccessGrant(ctx, req.client.id, c.Auth.PublicURL()+"/oauth2/userinfo", grant)
+		return err
+	})
+	// The client behind a token that stays unresolved makes it inactive.
+	if unresolvedClient(err) {
+		owner, err = nil, nil
+	}
 	if err == nil {
 		err = req.client.recheckClient(first, current)
 	}

@@ -53,6 +53,9 @@ type ConsentOptions struct {
 	// Scopes applies to clients with no registered scope list. An empty list permits no scopes.
 	// The default allows openid, profile, email, and offline_access.
 	Scopes []string
+	// resolve retries an update whose client a discovery owns. The provider
+	// sets it; standalone consent management treats such a client as missing.
+	resolve func(auth.EndpointContext, func(context.Context) error) (auth.EndpointContext, error)
 }
 
 // ConsentManagement adds the four end-user consent endpoints to the auth mount.
@@ -68,14 +71,14 @@ func ConsentManagement(opts ConsentOptions) auth.Plugin {
 		}
 		return nil
 	}, Endpoints: []auth.Endpoint{
-		consentEndpoint(http.MethodGet, "get-consent", scopes),
-		consentEndpoint(http.MethodGet, "get-consents", scopes),
-		consentEndpoint(http.MethodPost, "update-consent", scopes),
-		consentEndpoint(http.MethodPost, "delete-consent", scopes),
+		consentEndpoint(http.MethodGet, "get-consent", scopes, nil),
+		consentEndpoint(http.MethodGet, "get-consents", scopes, nil),
+		consentEndpoint(http.MethodPost, "update-consent", scopes, opts.resolve),
+		consentEndpoint(http.MethodPost, "delete-consent", scopes, nil),
 	}}
 }
 
-func consentEndpoint(method, action string, providerScopes []string) auth.Endpoint {
+func consentEndpoint(method, action string, providerScopes []string, resolve func(auth.EndpointContext, func(context.Context) error) (auth.EndpointContext, error)) auth.Endpoint {
 	return auth.Endpoint{Method: method, Path: "/oauth2/" + action, Handler: func(c auth.EndpointContext) (any, error) {
 		ctx := c.Request.Context()
 		store := c.Store().(ConsentStore)
@@ -105,7 +108,15 @@ func consentEndpoint(method, action string, providerScopes []string) auth.Endpoi
 		case "get-consent":
 			result, err = store.OAuthConsent(ctx, session.User.ID, id)
 		case "update-consent":
-			result, err = store.UpdateOAuthConsent(ctx, session.User.ID, id, scopes, providerScopes, time.Now().UTC().Truncate(time.Second))
+			update := func(ctx context.Context) (err error) {
+				result, err = store.UpdateOAuthConsent(ctx, session.User.ID, id, scopes, providerScopes, time.Now().UTC().Truncate(time.Second))
+				return err
+			}
+			if resolve != nil {
+				_, err = resolve(c, update)
+			} else {
+				err = update(ctx)
+			}
 		case "delete-consent":
 			err = store.DeleteOAuthConsent(ctx, session.User.ID, id)
 			result = auth.EmptyResponse{}

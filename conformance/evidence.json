@@ -50326,5 +50326,13 @@
       "test": "adapters/sqlstore/oauth_client_discovery_test.go",
       "marker": "// With its discovery removed, or not matching, the row stays hidden."
     }
+  ],
+  "plugin-symbol/oauth-provider/getClient": [
+    {
+      "label": "Resolve a client through the provider: a local row as is, a discovered one through its own discovery and hidden when that is gone, at every endpoint and behind tokens and consents, on SQLite, PostgreSQL and MySQL; no trusted-client cache precedes the read, as a documented deviation",
+      "test": "adapters/sqlstore/oauth_client_discovery_test.go",
+      "marker": "func TestClientDiscoveryLookups(",
+      "complete": true
+    }
   ]
 }
