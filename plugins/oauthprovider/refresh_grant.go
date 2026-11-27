@@ -163,6 +163,7 @@ func (opts Options) exchangeRefreshGrant(c auth.EndpointContext, in tokenRequest
 		if err != nil {
 			return DelegatedAccessRecord{}, err
 		}
+		requireProof := false
 		refreshLifetime := opts.Tokens.RefreshLifetime
 		if len(effective) > 0 {
 			// The UserInfo URL is an implicit audience, not a registered resource.
@@ -176,9 +177,7 @@ func (opts Options) exchangeRefreshGrant(c auth.EndpointContext, in tokenRequest
 			if err != nil {
 				return DelegatedAccessRecord{}, err
 			}
-			if granted.bound && thumb == "" && proofErr == nil {
-				return DelegatedAccessRecord{}, proofError("DPoP proof header is required")
-			}
+			requireProof = granted.bound
 			if opts.signsResourceTokens(c) {
 				signing = newDelegatedSigning(c, granted, effective, scopes)
 			}
@@ -196,6 +195,9 @@ func (opts Options) exchangeRefreshGrant(c auth.EndpointContext, in tokenRequest
 		}
 		if proofErr != nil {
 			return DelegatedAccessRecord{}, proofErr
+		}
+		if requireProof && thumb == "" {
+			return DelegatedAccessRecord{}, proofError("DPoP proof header is required")
 		}
 		if err := grant.checkBinding(client, in.proof, thumb); err != nil {
 			return DelegatedAccessRecord{}, err

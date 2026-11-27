@@ -298,21 +298,15 @@ func (p *ProviderAPI) IssueTokens(params TokenIssueParams) (TokenResponse, error
 	return token, nil
 }
 
-// check refuses malformed issue parameters.
+// check refuses malformed issue parameters. A resource identifier is left
+// to the resources' policy, which refuses an unknown one as another runtime
+// does.
 func (params TokenIssueParams) check() error {
 	if params.ClientID == "" {
 		return errors.New("oauthprovider: IssueTokens needs a client ID")
 	}
 	if cnf := params.Confirmation; cnf != nil && (cnf.JKT == "") == (cnf.X5TS256 == "") {
 		return errors.New("oauthprovider: a token confirmation names exactly one key")
-	}
-	if len(params.Resources) > 64 {
-		return registrationProblem(400, "invalid_target", "at most 64 resource parameters are supported")
-	}
-	for _, id := range params.Resources {
-		if !ValidResourceIdentifier(id) {
-			return registrationProblem(400, "invalid_request", "resource must be an absolute URI without a fragment")
-		}
 	}
 	return nil
 }
@@ -376,6 +370,10 @@ func (p *ProviderAPI) issueTokens(params TokenIssueParams) (TokenResponse, error
 	audiences := distinct(params.Resources)
 	userInfo := c.Auth.PublicURL() + "/oauth2/userinfo"
 	identifiers := slices.DeleteFunc(slices.Clone(audiences), func(id string) bool { return id == userInfo })
+	// A signed token for openid names UserInfo too, as a user's does.
+	if len(audiences) > 0 && slices.Contains(params.Scopes, "openid") && !slices.Contains(audiences, userInfo) {
+		audiences = append(audiences, userInfo)
+	}
 	// One issuance instant serves both passes.
 	now := time.Now().UTC().Truncate(time.Second)
 	resolve := func(client MachineClient, rows map[string]MachineResource) (machineResourcePolicy, error) {

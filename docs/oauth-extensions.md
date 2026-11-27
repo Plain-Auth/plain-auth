@@ -93,7 +93,7 @@ return in.Provider.IssueTokens(oauthprovider.TokenIssueParams{
 })
 ```
 
-- The token has the client credentials lifetime and scope lifetimes. Without `Resources` it is opaque and stored, so introspection and revocation work as for `client_credentials`. With `Resources`, each must be registered, enabled and linked to the client unless `Tokens.AllowUnlinkedResources` is set; their allowed scopes narrow `Scopes`, their lifetimes cap the token's, and with the jwt plugin, unless `Tokens.OpaqueResourceTokens` or `DisableJWTPlugin` is set, the token is a signed `at+jwt` for them.
+- The token has the client credentials lifetime and scope lifetimes. Without `Resources` it is opaque and stored, so introspection and revocation work as for `client_credentials`. With `Resources`, each must be registered, enabled and linked to the client unless `Tokens.AllowUnlinkedResources` is set; their allowed scopes narrow `Scopes`, their lifetimes cap the token's, and with the jwt plugin, unless `Tokens.OpaqueResourceTokens` or `DisableJWTPlugin` is set, the token is a signed `at+jwt` for them and, for `openid`, UserInfo. An unknown resource answers 400 `invalid_target` "requested resource X is not configured".
 - `AccessTokenClaims` appear only in a signed token, above the extensions' `AccessTokenClaims` and below `Tokens.CustomAccessTokenClaims` and the resources' claims; the issuer's own claims, such as `client_id` and `cnf`, are never replaced. `TokenResponse` adds response members above `Tokens.CustomTokenResponseFields`, which sees the extension grant type.
 - `Confirmation` binds the token and must name exactly one key: `JKT` makes it a DPoP token, and `X5TS256` keeps a certificate thumbprint as `cnf`. Without one, a DPoP proof on the request binds it. A client or resource that requires DPoP needs a DPoP key, from the confirmation or a proof, where another runtime accepts any confirmation.
 - The client must still be enabled and registered for the grant, and when the handler called `AuthenticateClient`, its credentials must be unchanged; otherwise no token is stored.
@@ -108,6 +108,7 @@ With `UserID`, `IssueTokens` issues the user's tokens as a code exchange does wi
 - `SessionID`, when set, binds the tokens to that session, which must be the user's and live; `AuthTime` defaults to its start. Without a session the tokens outlive any sign-in.
 - `openid` adds an ID token with the user's subject, pairwise for a pairwise client, `Nonce`, `AuthTime`, and `sid` for a client with logout enabled. `IDTokenClaims` are added where the token has none, above the extensions' `IDTokenClaims`; standard and profile claims are never set.
 - `offline_access` adds a refresh token when the client's grant types allow refresh, `authorization_code` or `refresh_token`. It rotates through the `refresh_token` grant like any other.
+- With `DisableJWTPlugin`, the ID token is keyed with the issued client's own secret: the one the handler authenticated that client with, or else its stored secret read back, `Registration.SecretPrefix` included. A client without a readable secret gets no ID token.
 - The same bindings apply as for client tokens, on both tokens.
 - `TokenIssueParams` leaves out the parent refresh token, code and stored code value that another runtime's built-in grants pass to the same call, which no extension grant needs.
 

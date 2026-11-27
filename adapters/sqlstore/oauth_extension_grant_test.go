@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -20,6 +21,7 @@ import (
 	"github.com/Plain-Org/plain-auth/client"
 	op "github.com/Plain-Org/plain-auth/plugins/oauthprovider"
 	"github.com/Plain-Org/plain-auth/schema"
+	jose "github.com/go-jose/go-jose/v4"
 )
 
 // An extension grant: registration and discovery accept its grant type, the
@@ -43,6 +45,7 @@ func TestExtensionGrantDispatch(t *testing.T) {
 			t.Cleanup(func() { s.Close() })
 			const grant = "urn:test:grant"
 			var lookups []*op.ClientDetails
+			var authenticated op.AuthenticatedClient
 			var hashed string
 			// refusedStatus is the status of the error AuthenticateClient returned.
 			var refusedStatus int
@@ -66,14 +69,20 @@ func TestExtensionGrantDispatch(t *testing.T) {
 				if err != nil {
 					return op.TokenResponse{}, err
 				}
-				lookups = []*op.ClientDetails{found, missing}
+				lookups, authenticated = []*op.ClientDetails{found, missing}, client
 				if hashed, err = in.Provider.HashToken("refresh-value", op.StoredRefreshToken); err != nil {
 					return op.TokenResponse{}, err
 				}
 				return op.TokenResponse{AccessToken: "minted-" + client.ClientID, TokenType: "Bearer", ExpiresIn: 60, Scope: in.Form.Get("scope"),
 					Fields: map[string]any{"tenant": "acme", "access_token": "replaced", "method": client.Method}}, nil
 			}
-			p, err := op.New(op.Options{Scopes: []string{"reports", "billing"}, Registration: op.RegistrationOptions{Enabled: true}, Extensions: []op.Extension{{Grants: map[string]op.GrantHandler{grant: handler}}},
+			const assertionType = "urn:test:grant-assertion"
+			strategy := op.ClientAuthenticationStrategy{AssertionTypes: []string{assertionType}, Authenticate: func(_ context.Context, in op.ClientAuthenticationInput) (op.ClientAuthenticationResult, error) {
+				id, _ := strings.CutPrefix(in.Assertion, "assertion:")
+				return op.ClientAuthenticationResult{ClientID: id, Confirmation: &op.Confirmation{JKT: "strategy-key"}}, nil
+			}}
+			p, err := op.New(op.Options{Scopes: []string{"reports", "billing"}, Registration: op.RegistrationOptions{Enabled: true},
+				Extensions:       []op.Extension{{Grants: map[string]op.GrantHandler{grant: handler}, ClientAuthentication: map[string]op.ClientAuthenticationStrategy{"assertion": strategy}}},
 				ClientPrivileges: func(context.Context, op.ClientAccess) (bool, error) { return true, nil }})
 			must(err)
 			const origin = "https://grant.example.test"
@@ -125,6 +134,9 @@ func TestExtensionGrantDispatch(t *testing.T) {
 			if lookups[0] == nil || lookups[0].ClientID != id || lookups[1] != nil {
 				t.Fatal("the provider's client lookup was wrong", lookups)
 			}
+			if authenticated.ClientID != id || authenticated.Client.Scope == nil || *authenticated.Client.Scope != "reports" || !slices.Equal(authenticated.Client.GrantTypes, []string{grant}) {
+				t.Fatal("AuthenticateClient did not return the registration", authenticated)
+			}
 			sum := sha256.Sum256([]byte("refresh-value"))
 			if hashed != base64.RawURLEncoding.EncodeToString(sum[:]) {
 				t.Fatal("HashToken did not return the stored form", hashed)
@@ -153,6 +165,13 @@ func TestExtensionGrantDispatch(t *testing.T) {
 			refusal(status, body, "invalid_client", "Missing required client credentials")
 			if status, body, _ := post(url.Values{"client_id": {public.ClientID}, "public": {"yes"}}, "", ""); status != 200 || body["method"] != "none" {
 				t.Fatal("a public client was refused with AllowPublic", status, body)
+			}
+			// A strategy's confirmation reaches the handler.
+			asserted, err := owner.CreateOAuthClient(ctx, op.RegistrationMetadata{GrantTypes: []string{grant}, TokenEndpointAuthMethod: "assertion"})
+			must(err)
+			status, body, _ = post(url.Values{"client_assertion_type": {assertionType}, "client_assertion": {"assertion:" + asserted.ClientID}}, "", "")
+			if status != 200 || body["method"] != "assertion" || authenticated.Confirmation == nil || authenticated.Confirmation.JKT != "strategy-key" {
+				t.Fatal("the strategy's confirmation did not reach the handler", status, body, authenticated.Confirmation)
 			}
 			// Discovery lists the grant; an unknown grant is unsupported.
 			doc, err := op.GetAuthorizationServerConfig(h)
@@ -228,7 +247,8 @@ func TestExtensionGrantClientTokens(t *testing.T) {
 					write(`UPDATE "oauthClient" SET "clientSecret"=? WHERE "clientId"=?`, "rotated", client.ClientID)
 				}
 				params := op.TokenIssueParams{ClientID: client.ClientID, Scopes: strings.Fields(in.Form.Get("scope")), Resources: in.Form["resource"],
-					AccessTokenClaims: map[string]any{"per": "issue", "client_id": "forged"}, TokenResponse: map[string]any{"tenant": "handler", "access_token": "replaced"}}
+					AccessTokenClaims: map[string]any{"per": "issue", "client_id": "forged", "plugin": "issue", "iss": "forged", "scope": "forged", "cnf": "forged", "jti": "forged"},
+					TokenResponse:     map[string]any{"tenant": "handler", "access_token": "replaced"}}
 				if v := in.Form.Get("x5t"); v != "" {
 					params.Confirmation = &op.Confirmation{X5TS256: v}
 				}
@@ -337,14 +357,14 @@ func TestExtensionGrantClientTokens(t *testing.T) {
 			must(err)
 			var claims map[string]any
 			must(json.Unmarshal(raw, &claims))
-			if claims["aud"] != "urn:api" || claims["sub"] != "app" || claims["client_id"] != "app" || claims["scope"] != "reports" ||
+			if claims["aud"] != "urn:api" || claims["sub"] != "app" || claims["client_id"] != "app" || claims["scope"] != "reports" || claims["iss"] != origin+"/api/auth" || claims["jti"] == "forged" ||
 				claims["per"] != "issue" || claims["ext"] != "yes" || claims["plugin"] != "yes" || claims["tier"] != "gold" ||
 				claims["exp"].(float64)-claims["iat"].(float64) != 120 || !reflect.DeepEqual(claims["cnf"], map[string]any{"x5t#S256": "cert-thumbprint"}) {
 				t.Fatal("the resource token's claims were wrong", claims)
 			}
 			// Malformed parameters are refused.
 			for invalid, want := range map[string]int{"confirmation": 500, "resource": 400, "client": 500} {
-				if status, body := mint("app", url.Values{"scope": {"reports"}, "invalid": {invalid}}, ""); status != want || want == 400 && body["error"] != "invalid_request" {
+				if status, body := mint("app", url.Values{"scope": {"reports"}, "invalid": {invalid}}, ""); status != want || want == 400 && body["error_description"] != "requested resource relative is not configured" {
 					t.Fatal("malformed issue parameters were accepted", invalid, status, body)
 				}
 			}
@@ -370,6 +390,17 @@ func TestExtensionGrantClientTokens(t *testing.T) {
 			write(`UPDATE "oauthResource" SET "accessTokenTtl"=? WHERE "identifier"='urn:api'`, 120)
 			if status != 400 || body["error_description"] != "resource policy changed during issuance, retry the request" {
 				t.Fatal("a changed resource policy was signed", status, body)
+			}
+			// A signed token for openid names UserInfo too.
+			status, body = mint("app", url.Values{"scope": {"openid reports"}, "resource": {"urn:api"}}, "")
+			if status != 200 {
+				t.Fatal("the openid resource token was refused", status, body)
+			}
+			raw, err = base64.RawURLEncoding.DecodeString(strings.Split(body["access_token"].(string), ".")[1])
+			must(err)
+			must(json.Unmarshal(raw, &claims))
+			if !reflect.DeepEqual(claims["aud"], []any{"urn:api", origin + "/api/auth/oauth2/userinfo"}) {
+				t.Fatal("an openid client token did not name UserInfo", claims["aud"])
 			}
 			// A client disabled after authentication gets no token.
 			count := func() int {
@@ -446,7 +477,13 @@ func TestExtensionGrantUserTokens(t *testing.T) {
 				if err != nil {
 					return op.TokenResponse{}, err
 				}
+				var authTime time.Time
+				if v := in.Form.Get("auth_time"); v != "" {
+					seconds, _ := strconv.ParseInt(v, 10, 64)
+					authTime = time.Unix(seconds, 0)
+				}
 				params := op.TokenIssueParams{ClientID: client.ClientID, UserID: in.Form.Get("user"), SessionID: in.Form.Get("session"), Scopes: strings.Fields(in.Form.Get("scope")),
+					ReferenceID: in.Form.Get("reference"), AuthTime: authTime,
 					Resources: in.Form["resource"], Nonce: "n-1", RequestedUserInfoClaims: []string{"email", "bogus"},
 					IDTokenClaims: map[string]any{"shared": "issue", "grant_claim": "yes", "email": "forged", "nonce": "forged", "host": "issue"}}
 				if v := in.Form.Get("x5t"); v != "" {
@@ -527,6 +564,20 @@ func TestExtensionGrantUserTokens(t *testing.T) {
 			user, session, claims, _ := row("oauthAccessToken", body["access_token"].(string))
 			if user != "owner" || session == nil || *session != "sid" || claims == nil || !sameJSON(*claims, `["email"]`) {
 				t.Fatal("the access token row was wrong", user, session, claims)
+			}
+			// A reference and an explicit authentication time are kept.
+			at := start.Add(-time.Hour)
+			status, body = mint("app", url.Values{"session": {"sid"}, "scope": {"openid reports offline_access"}, "reference": {"tenant-1"}, "auth_time": {strconv.FormatInt(at.Unix(), 10)}}, "")
+			if status != 200 || payload(body["id_token"].(string))["auth_time"] != float64(at.Unix()) {
+				t.Fatal("the explicit authentication time was not used", status, body)
+			}
+			for table, token := range map[string]string{"oauthAccessToken": body["access_token"].(string), "oauthRefreshToken": body["refresh_token"].(string)} {
+				var reference *string
+				digest := sha256.Sum256([]byte(token))
+				must(s.db.QueryRowContext(ctx, s.bind(`SELECT "referenceId" FROM "`+table+`" WHERE "token"=?`), base64.RawURLEncoding.EncodeToString(digest[:])).Scan(&reference))
+				if reference == nil || *reference != "tenant-1" {
+					t.Fatal("the reference was not stored", table, reference)
+				}
 			}
 			// The refresh token rotates through the refresh_token grant.
 			if status, rotated := call("/oauth2/token", url.Values{"grant_type": {"refresh_token"}, "client_id": {"app"}, "client_secret": {secret}, "refresh_token": {body["refresh_token"].(string)}}, ""); status != 200 || rotated["refresh_token"] == nil {
@@ -760,6 +811,85 @@ func TestExtensionGrantValidateTokens(t *testing.T) {
 			// An unknown caller is refused.
 			if status, body, _ := post(url.Values{"grant_type": {checkGrant}, "token": {signed["access_token"].(string)}, "caller": {"missing"}}, ""); status != 400 || body["error"] != "invalid_client" {
 				t.Fatal("an unknown caller was accepted", status, body)
+			}
+		})
+	}
+}
+
+// With DisableJWTPlugin, a user's ID token from an extension grant is keyed
+// with the issued client's own secret: the one the handler authenticated
+// it with, or else its stored secret read back, even when the handler
+// authenticated another client.
+func TestExtensionGrantSecretIDTokens(t *testing.T) {
+	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
+		t.Run(dialect, func(t *testing.T) {
+			ctx := t.Context()
+			must := func(err error) {
+				t.Helper()
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			s, err := OpenWithOptions(ctx, dialect, organizationTestDSN(t, dialect), []string{"oauth-provider"}, schema.Options{})
+			must(err)
+			t.Cleanup(func() { s.Close() })
+			const grant = "urn:test:secret"
+			handler := func(in op.GrantInput) (op.TokenResponse, error) {
+				client, err := in.Provider.AuthenticateClient(op.ClientAuthenticationRequest{})
+				if err != nil {
+					return op.TokenResponse{}, err
+				}
+				issued := client.ClientID
+				if other := in.Form.Get("for"); other != "" {
+					issued = other
+				}
+				return in.Provider.IssueTokens(op.TokenIssueParams{ClientID: issued, UserID: in.Form.Get("user"), Scopes: []string{"openid"}})
+			}
+			p, err := op.New(op.Options{Scopes: []string{"openid"}, DisableJWTPlugin: true, Registration: op.RegistrationOptions{SecretPrefix: "pre_"},
+				Extensions: []op.Extension{{Grants: map[string]op.GrantHandler{grant: handler}}}})
+			must(err)
+			const origin = "https://secret.example.test"
+			off := false
+			h, err := auth.New(auth.Options{BaseURL: origin, Secret: strings.Repeat("s", 40), Store: s, EmailAndPassword: true, PasswordHash: testPasswordHash, PasswordVerify: testPasswordVerify, Plugins: []auth.Plugin{p}, RateLimit: &off})
+			must(err)
+			owner, err := client.New(origin, &http.Client{Transport: guestTransport{h}})
+			must(err)
+			session, err := owner.SignUpEmail(ctx, client.SignUpRequest{Name: "Owner", Email: "owner@secret.test", Password: "local secret password"})
+			must(err)
+			first, err := owner.CreateOAuthClient(ctx, op.RegistrationMetadata{GrantTypes: []string{grant}, TokenEndpointAuthMethod: "client_secret_post"})
+			must(err)
+			second, err := owner.CreateOAuthClient(ctx, op.RegistrationMetadata{GrantTypes: []string{grant}, TokenEndpointAuthMethod: "client_secret_post"})
+			must(err)
+			mint := func(extra url.Values) map[string]any {
+				t.Helper()
+				form := url.Values{"grant_type": {grant}, "client_id": {first.ClientID}, "client_secret": {first.ClientSecret}, "user": {session.User.ID}}
+				for k, v := range extra {
+					form[k] = v
+				}
+				req := httptest.NewRequest("POST", origin+"/api/auth/oauth2/token", strings.NewReader(form.Encode()))
+				req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+				out := httptest.NewRecorder()
+				h.ServeHTTP(out, req)
+				var body map[string]any
+				must(json.Unmarshal(out.Body.Bytes(), &body))
+				if out.Code != 200 || body["id_token"] == nil {
+					t.Fatal("the grant did not issue an ID token", out.Code, body)
+				}
+				return body
+			}
+			keyedWith := func(token, secret string) bool {
+				signed, err := jose.ParseSigned(token, []jose.SignatureAlgorithm{jose.HS256})
+				if err != nil {
+					return false
+				}
+				_, err = signed.Verify([]byte(secret))
+				return err == nil
+			}
+			if token := mint(nil)["id_token"].(string); !keyedWith(token, first.ClientSecret) {
+				t.Fatal("the ID token was not keyed with the authenticated client's secret")
+			}
+			if token := mint(url.Values{"for": {second.ClientID}})["id_token"].(string); !keyedWith(token, second.ClientSecret) || keyedWith(token, first.ClientSecret) {
+				t.Fatal("another client's ID token was not keyed with its own secret")
 			}
 		})
 	}

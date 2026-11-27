@@ -34,6 +34,10 @@ func (p *ProviderAPI) issueUserTokens(params TokenIssueParams) (TokenResponse, e
 	if err != nil {
 		return TokenResponse{}, err
 	}
+	idSecret, err := p.idTokenSecret(params.ClientID)
+	if err != nil {
+		return TokenResponse{}, err
+	}
 	var thumb string
 	var other *Confirmation
 	if cnf != nil && cnf.JKT != "" {
@@ -88,7 +92,7 @@ func (p *ProviderAPI) issueUserTokens(params TokenIssueParams) (TokenResponse, e
 			RequestedUserInfoClaims: claims, Resources: resources, Thumbprint: thumb, Confirmation: other,
 		}
 		// A client without a secret gets no ID token when the secret signs it.
-		if slices.Contains(scopes, "openid") && (!opts.DisableJWTPlugin || p.request.secret != "") {
+		if slices.Contains(scopes, "openid") && (!opts.DisableJWTPlugin || idSecret != "") {
 			if !opts.canIssueIDToken(c) {
 				return DelegatedAccessRecord{}, registrationProblem(501, "server_error", "ID token issuance is unavailable")
 			}
@@ -145,7 +149,7 @@ func (p *ProviderAPI) issueUserTokens(params TokenIssueParams) (TokenResponse, e
 		if grant.IDToken.Subject != "" {
 			contributors := opts.idTokenContributors(p.grant)
 			contributors.claims = params.IDTokenClaims
-			if idToken, err = opts.Tokens.signIDToken(c, params.ClientID, access, grant.IDToken, now, opts.idTokenSecret(p.request), contributors); err != nil {
+			if idToken, err = opts.Tokens.signIDToken(c, params.ClientID, access, grant.IDToken, now, idSecret, contributors); err != nil {
 				return "", err
 			}
 		}
@@ -173,4 +177,36 @@ func (p *ProviderAPI) issueUserTokens(params TokenIssueParams) (TokenResponse, e
 	}
 	return TokenResponse{AccessToken: access, TokenType: token.TokenType, ExpiresIn: token.ExpiresIn, ExpiresAt: token.ExpiresAt,
 		Scope: token.Scope, RefreshToken: refresh, IDToken: idToken, Fields: params.responseFields(fields)}, nil
+}
+
+// idTokenSecret is the HS256 key of the issued client's ID token with
+// DisableJWTPlugin: the secret the handler authenticated that client with,
+// or else its stored secret read back, prefix included, as another runtime
+// keys it with the issued client's own secret. It is "" otherwise, and a
+// client without one gets no ID token.
+func (p *ProviderAPI) idTokenSecret(clientID string) (string, error) {
+	opts := p.opts
+	if !opts.DisableJWTPlugin {
+		return "", nil
+	}
+	if p.authenticated != nil && p.authenticated.ClientID == clientID && p.request.secret != "" {
+		return p.request.secret, nil
+	}
+	reader, ok := p.c.Store().(MachineClientReader)
+	if !ok {
+		return "", nil
+	}
+	ctx := p.c.Request.Context()
+	stored, err := reader.LookupMachineClient(ctx, clientID)
+	if errors.Is(err, ErrClientNotFound) || err == nil && stored.StoredSecret == "" {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	secret, err := opts.Registration.storedSecret(ctx, p.c.Auth, clientID, stored.StoredSecret)
+	if err != nil || secret == "" {
+		return "", err
+	}
+	return opts.Registration.SecretPrefix + secret, nil
 }

@@ -49407,9 +49407,9 @@
   ],
   "plugin-symbol/oauth-provider/OAuthAuthenticatedClient": [
     {
-      "label": "Return the authenticated client's ID, registration and method from AuthenticateClient, refusing missing, wrong or unauthorized credentials, on SQLite, PostgreSQL and MySQL",
+      "label": "Return the authenticated client's ID, registration, method and strategy confirmation from AuthenticateClient, refusing missing, wrong or unauthorized credentials, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_extension_grant_test.go",
-      "marker": "refusal(status, body, \"unauthorized_client\", \"client is not authorized to use grant type \"+grant)",
+      "marker": "t.Fatal(\"AuthenticateClient did not return the registration\", authenticated)",
       "complete": true
     }
   ],

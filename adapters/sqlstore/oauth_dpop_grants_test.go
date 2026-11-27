@@ -90,6 +90,8 @@ func TestDPoPBoundDelegatedGrants(t *testing.T) {
 			}
 			write(`INSERT INTO "oauthResource" ("id","identifier","name","dpopBoundAccessTokensRequired") VALUES ('bound','urn:bound','Bound',?)`, true)
 			write(`INSERT INTO "oauthClientResource" ("id","resourceId","clientId") VALUES ('link','urn:bound','app')`)
+			write(`INSERT INTO "oauthResource" ("id","identifier","name","dpopBoundAccessTokensRequired") VALUES ('later','urn:later','Later',?)`, false)
+			write(`INSERT INTO "oauthClientResource" ("id","resourceId","clientId") VALUES ('link-later','urn:later','app')`)
 			const origin = "https://issuer.example.test"
 			p, err := op.New(op.Options{Scopes: []string{"reports", "offline_access"}})
 			must(err)
@@ -216,6 +218,30 @@ func TestDPoPBoundDelegatedGrants(t *testing.T) {
 				t.Fatal("a disabled resource was not refused before the proof", status, body)
 			}
 			write(`UPDATE "oauthResource" SET "disabled"=? WHERE "identifier"='urn:bound'`, false)
+			// After the session ends, a narrowed exchange of a family whose
+			// resource requires DPoP is refused for the session before the
+			// missing proof.
+			raw = code("app", nil, map[string]any{"resource": []string{"urn:bound"}})
+			status, body = exchange("app", raw, key.proof(t, tokenURL))
+			if status != 200 {
+				t.Fatal("the bound resource exchange failed", status, body)
+			}
+			write(`UPDATE "session" SET "expiresAt"=? WHERE "id"='sid'`, s.date(now.Add(-time.Minute)))
+			narrowed := url.Values{"grant_type": {"refresh_token"}, "client_id": {"app"}, "client_secret": {secret}, "refresh_token": {body["refresh_token"].(string)}, "scope": {"reports"}}
+			status, body = post(narrowed, "")
+			write(`UPDATE "session" SET "expiresAt"=? WHERE "id"='sid'`, s.date(now.Add(time.Hour)))
+			if status != 400 || body["error"] != "invalid_grant" {
+				t.Fatal("a narrowed exchange after the session ended was not refused for the session", status, body)
+			}
+			// A resource that starts requiring DPoP needs a proof at refresh.
+			raw = code("app", nil, map[string]any{"resource": []string{"urn:later"}})
+			status, body = exchange("app", raw, "")
+			if status != 200 || body["token_type"] != "Bearer" {
+				t.Fatal("the unbound resource exchange failed", status, body)
+			}
+			write(`UPDATE "oauthResource" SET "dpopBoundAccessTokensRequired"=? WHERE "identifier"='urn:later'`, true)
+			status, body = refresh("app", body["refresh_token"].(string), "")
+			refused(status, body, "DPoP proof header is required")
 			// An unbound exchange gets Bearer tokens.
 			if status, body := exchange("app", code("app", nil, nil), ""); status != 200 || body["token_type"] != "Bearer" || confirmation("oauthAccessToken", body["access_token"].(string)) != "" {
 				t.Fatal("an unbound exchange was bound", status, body)
