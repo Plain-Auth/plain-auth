@@ -2,6 +2,7 @@ package sqlstore
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"sync"
 	"testing"
@@ -26,7 +27,8 @@ func TestEnterpriseSAMLResolveUser(t *testing.T) {
 			}
 			var mu sync.Mutex
 			var inputs []sso.UserResolutionInput
-			var readErr error
+			var readErr, resolveErr error
+			resolvePanics := false
 			decision := sso.UserResolution{Action: sso.ResolveLink, UserID: "selected", Profile: "preserve"}
 			resolve := func(rc context.Context, in sso.UserResolutionInput) (sso.UserResolution, error) {
 				read, cancel := context.WithTimeout(rc, 2*time.Second)
@@ -35,7 +37,10 @@ func TestEnterpriseSAMLResolveUser(t *testing.T) {
 				mu.Lock()
 				defer mu.Unlock()
 				inputs, readErr = append(inputs, in), e
-				return decision, nil
+				if resolvePanics {
+					panic("resolver fixture panic")
+				}
+				return decision, resolveErr
 			}
 			var provisioned []sso.Provisioning
 			provision := func(_ context.Context, pr sso.Provisioning) error {
@@ -99,6 +104,10 @@ func TestEnterpriseSAMLResolveUser(t *testing.T) {
 			if err := p.store.db.QueryRowContext(ctx, p.store.bind(`SELECT "userId" FROM "account" WHERE "providerId"=? AND "accountId"=?`), "acme", "employee").Scan(&owner); err != nil || owner != "selected" {
 				t.Fatal("the SAML identity was not linked to the resolved user", owner, err)
 			}
+			var keptName, keptEmail string
+			if err := p.store.db.QueryRowContext(ctx, p.store.bind(`SELECT "name","email" FROM "user" WHERE "id"=?`), "selected").Scan(&keptName, &keptEmail); err != nil || keptName != "Provisioned Employee" || keptEmail != "provisioned@example.test" {
+				t.Fatal("a preserving SAML resolver link changed the user's profile", keptName, keptEmail, err)
+			}
 
 			mu.Lock()
 			calls := append([]sso.Provisioning(nil), provisioned...)
@@ -115,6 +124,51 @@ func TestEnterpriseSAMLResolveUser(t *testing.T) {
 			location, _ = samlOutcome(t, p.finish(h, "acme", req, state, nil, assert("blocked"), nil))
 			if location.String() != "https://service.test/retry?error=SAML_BLOCKED&error_description=Not+provisioned" || sessions() != before {
 				t.Fatal("a rejected SAML sign-in did not reach the error callback", location)
+			}
+			// An error, a panic or an empty decision fails the sign-in.
+			for _, c := range []struct {
+				decision sso.UserResolution
+				err      error
+				panics   bool
+			}{{decision, errors.New("directory unavailable"), false}, {decision, nil, true}, {sso.UserResolution{}, nil, false}} {
+				mu.Lock()
+				decision, resolveErr, resolvePanics = c.decision, c.err, c.panics
+				mu.Unlock()
+				req, state = p.start(h, "acme")
+				location, _ = samlOutcome(t, p.finish(h, "acme", req, state, nil, assert("failing"), nil))
+				if location.Query().Get("error") != "SSO_USER_RESOLUTION_FAILED" || location.Query().Get("error_description") != "Unable to resolve the SSO user" || sessions() != before {
+					t.Fatal("a failing SAML resolver did not answer SSO_USER_RESOLUTION_FAILED", c.err, c.panics, location)
+				}
+			}
+			// Continue leaves the sign-in to the default rules.
+			mu.Lock()
+			decision, resolveErr, resolvePanics = sso.UserResolution{Action: sso.ResolveContinue}, nil, false
+			mu.Unlock()
+			req, state = p.start(h, "acme")
+			location, session = samlOutcome(t, p.finish(h, "acme", req, state, nil, func(a *saml.Assertion) {
+				assert("continued")(a)
+				for i, attr := range a.AttributeStatements[0].Attributes {
+					if attr.Name == "email" {
+						a.AttributeStatements[0].Attributes[i].Values = []saml.AttributeValue{{Value: "continued@acme.example"}}
+					}
+				}
+			}, nil))
+			var continued string
+			if err := p.store.db.QueryRowContext(ctx, p.store.bind(`SELECT "userId" FROM "account" WHERE "providerId"=? AND "accountId"=?`), "acme", "continued").Scan(&continued); err != nil || continued == "selected" || !session {
+				t.Fatal("a continued SAML resolution did not take the default sign-in", location, continued, err)
+			}
+			// A link with Profile update copies the assertion's profile to the
+			// selected user.
+			mu.Lock()
+			decision = sso.UserResolution{Action: sso.ResolveLink, UserID: "selected", Profile: "update"}
+			mu.Unlock()
+			req, state = p.start(h, "acme")
+			if location, session = samlOutcome(t, p.finish(h, "acme", req, state, nil, assert("employee"), nil)); !session {
+				t.Fatal("an updating SAML resolver link did not sign in", location)
+			}
+			var name, email string
+			if err := p.store.db.QueryRowContext(ctx, p.store.bind(`SELECT "name","email" FROM "user" WHERE "id"=?`), "selected").Scan(&name, &email); err != nil || name != "Local Employee" || email != "employee@acme.example" {
+				t.Fatal("an updating SAML resolver link did not copy the assertion's profile", name, email, err)
 			}
 		})
 	}

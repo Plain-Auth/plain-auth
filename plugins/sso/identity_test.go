@@ -1,6 +1,7 @@
 package sso
 
 import (
+	"errors"
 	"io"
 	"net/http"
 	"net/netip"
@@ -129,5 +130,37 @@ func TestOIDCMappingShape(t *testing.T) {
 		if validMapping(m) {
 			t.Fatal("an invalid OIDC mapping was accepted", m)
 		}
+	}
+}
+
+// An unusable UserInfo answer refuses the identity: an error status,
+// invalid JSON, a body without a subject or a missing access token. A usable
+// one supplies the subject and email.
+func TestEnterpriseUserInfoEndpoint(t *testing.T) {
+	var status int
+	var body string
+	client := &http.Client{Transport: transportFunc(func(r *http.Request) (*http.Response, error) {
+		return &http.Response{Request: r, StatusCode: status, Body: io.NopCloser(strings.NewReader(body)), Header: http.Header{}}, nil
+	})}
+	p := BrowserProvider{Provider: Provider{ProviderID: "acme", Issuer: "https://login.company.test", OIDC: &Config{UserInfoEndpoint: "https://login.company.test/userinfo"}}}
+	for _, c := range []struct {
+		status      int
+		body, token string
+	}{
+		{500, `{"sub":"employee"}`, "access-token"},
+		{200, `not json`, "access-token"},
+		{200, `{"email":"employee@acme.example"}`, "access-token"},
+		{200, `{"sub":""}`, "access-token"},
+		{200, `{"sub":"employee"}`, ""},
+	} {
+		status, body = c.status, c.body
+		if _, _, err := resolveIdentity(t.Context(), client, p, &oauth2.Token{AccessToken: c.token}, ""); !errors.Is(err, invalidIdentity) {
+			t.Fatal("an unusable UserInfo answer was accepted", c, err)
+		}
+	}
+	status, body = 200, `{"sub":"employee","email":"employee@acme.example"}`
+	profile, _, err := resolveIdentity(t.Context(), client, p, &oauth2.Token{AccessToken: "access-token"}, "")
+	if err != nil || profile.Subject != "employee" || profile.Email != "employee@acme.example" {
+		t.Fatal("a usable UserInfo answer did not supply the identity", profile, err)
 	}
 }

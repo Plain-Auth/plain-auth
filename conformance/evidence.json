@@ -11922,6 +11922,12 @@
       "label": "Resolve the subject through UserInfo and reject disagreement with a signed ID token",
       "test": "adapters/sqlstore/sso_browser_test.go",
       "marker": "missing UserInfo identity"
+    },
+    {
+      "label": "Refuse a UserInfo answer with an error status, invalid JSON or no subject, and a missing access token, and take the subject and email from a usable one",
+      "test": "plugins/sso/identity_test.go",
+      "marker": "t.Fatal(\"an unusable UserInfo answer was accepted\", c, err)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L880/`seatPriceId`": [
@@ -42423,6 +42429,11 @@
       "label": "Run ResolveUser after the OIDC identity is verified and before the sign-in transaction, and require an ID token",
       "test": "adapters/sqlstore/sso_resolve_user_test.go",
       "marker": "t.Fatal(\"the resolver could not read the store, so it ran inside the sign-in transaction\", e)"
+    },
+    {
+      "label": "Fail a SAML sign-in with SSO_USER_RESOLUTION_FAILED when the resolver errors, panics or returns an empty decision, and take the default sign-in on continue, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_resolve_user_test.go",
+      "marker": "t.Fatal(\"a failing SAML resolver did not answer SSO_USER_RESOLUTION_FAILED\", c.err, c.panics, location)"
     }
   ],
   "plugin-symbol/sso/SSOOptions/trustEmailVerified": [
@@ -45304,9 +45315,10 @@
   ],
   "plugin-symbol/sso/OIDCConfig/mapping": [
     {
-      "label": "Read the email, name and image claims named by oidcConfig.mapping instead of the defaults",
+      "label": "Read the email, name and image claims named by oidcConfig.mapping from the UserInfo answer; mapping.emailVerified is accepted and ignored and extraFields values must name one claim, documented deviations",
       "test": "plugins/sso/identity_test.go",
-      "marker": "mapping.email did not select the mapped email claim"
+      "marker": "mapping.email did not select the mapped email claim",
+      "complete": true
     },
     {
       "label": "Read email, name and picture when no mapping is set",
@@ -46012,6 +46024,12 @@
       "label": "Overwrite a returning user's name, email, image and mapped fields at each OIDC sign-in and store a changed email unverified",
       "test": "adapters/sqlstore/sso_profile_override_test.go",
       "marker": "t.Fatal(\"overrideUserInfo did not store the changed email unverified\", moved)"
+    },
+    {
+      "label": "Keep the selected user's profile on a preserving SAML resolver link and copy the assertion's name and email on an updating one, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_resolve_user_test.go",
+      "marker": "t.Fatal(\"an updating SAML resolver link did not copy the assertion's profile\", name, email, err)",
+      "complete": true
     }
   ],
   "plugin-symbol/sso/SAMLMapping": [
@@ -46189,6 +46207,12 @@
       "label": "Run provisioning code after an enterprise sign-in commits",
       "test": "adapters/sqlstore/sso_provision_user_test.go",
       "marker": "t.Fatal(\"ProvisionUser ran inside the sign-in transaction or before the membership committed\", e, n)"
+    },
+    {
+      "label": "Hand ProvisionUser the resolver-linked user after the sign-in commits, with ProvisionUserOnEveryLogin, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_resolve_user_test.go",
+      "marker": "t.Fatal(\"ProvisionUser received OIDC tokens or no profile for a SAML sign-in\", calls)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/sso/provisioning.mdx#L54": [
