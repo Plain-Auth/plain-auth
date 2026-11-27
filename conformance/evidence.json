@@ -3617,6 +3617,16 @@
       "label": "Reuse a verified user's email-matched Stripe customer that no other user owns, through search or a list by email, otherwise create one with the user's email, name and metadata, on three SQL engines",
       "test": "adapters/sqlstore/stripe_customer_lookup_test.go",
       "marker": "func TestCheckoutCustomerLookup("
+    },
+    {
+      "label": "Release a purchase Stripe definitively refused, deleting its unsent row, without asking the policy, and keep one after idempotency or lock failures for a retry with the same key, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_checkout_release_test.go",
+      "marker": "t.Fatal(\"refused checkout kept its reservation\", rows(), reservations())"
+    },
+    {
+      "label": "Refuse a reservation too large for every SQL store before any row or Stripe write, and store one just under the limit intact, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_checkout_release_test.go",
+      "marker": "func TestCheckoutReservationSize("
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L221": [
@@ -3671,6 +3681,12 @@
       "label": "Read the licensed base quantity after metered add-ons move ahead of it on a paid subscription",
       "test": "conformance/stripe-organization-fixture.mjs",
       "marker": "[referenceId, priceID, \"year\", 12]"
+    },
+    {
+      "label": "Return each listed plan's configured limits through the browser client on both runtimes, omitted for a plan without limits",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "assert.deepEqual(kept.limits, planLimits);",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L362": [
@@ -8096,8 +8112,7 @@
     {
       "label": "Confirm an organization's paid Checkout from the hosted return for an authorized member without a webhook, and refuse another organization or a member demoted during Stripe's reply with HTTP errors before committing, on three SQL engines",
       "test": "adapters/sqlstore/stripe_return_test.go",
-      "marker": "func TestOrganizationCheckoutReturn(",
-      "complete": true
+      "marker": "func TestOrganizationCheckoutReturn("
     }
   ],
   "plugin/stripe/POST /subscription/cancel": [
@@ -10822,10 +10837,9 @@
       "marker": "func TestOrganizationSubscriptionManagement("
     },
     {
-      "label": "Answer organization requests with AUTHORIZE_REFERENCE_REQUIRED before contacting Stripe or reserving a purchase when no policy is configured, while personal billing still works, on three SQL engines",
+      "label": "Answer upgrade, list, cancel, restore and billing-portal requests for an organization with AUTHORIZE_REFERENCE_REQUIRED before contacting Stripe or reserving a purchase when no policy is configured, and refuse the organization's Checkout return with 401, while personal billing still works, on three SQL engines",
       "test": "adapters/sqlstore/stripe_options_test.go",
-      "marker": "t.Fatal(\"organization request without a policy reached Stripe or a reservation\", calls.Load(), rows, err)",
-      "complete": true
+      "marker": "t.Fatal(\"organization request without a policy reached Stripe or a reservation\", calls.Load(), rows, err)"
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L908": [
@@ -10857,8 +10871,7 @@
     {
       "label": "Refuse organization billing at startup without the organization customer column, with or without subscriptions, and start after the schema upgrade keeps existing organizations, on three SQL engines",
       "test": "adapters/sqlstore/stripe_options_test.go",
-      "marker": "t.Fatal(\"organization billing started without its schema\", subs != nil)",
-      "complete": true
+      "marker": "t.Fatal(\"organization billing started without its schema\", subs != nil)"
     }
   ],
   "plugin-symbol/scim/SCIMAuthenticationOptions/verifyBearerToken": [
@@ -12145,8 +12158,7 @@
     {
       "label": "Keep a personal checkout of a membership plan at the caller's base price and quantity while an organization is active, on three SQL engines",
       "test": "adapters/sqlstore/stripe_options_test.go",
-      "marker": "func TestPersonalCheckoutForSeatPlan(",
-      "complete": true
+      "marker": "func TestPersonalCheckoutForSeatPlan("
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L19/Team subscription support with seats management": [
@@ -50975,6 +50987,11 @@
       "label": "List the owner’s trialing subscription with its configured annual price ID, current seats and period end, and nothing for another account, on three SQL engines",
       "test": "adapters/sqlstore/subscriptions_test.go",
       "marker": "t.Fatalf(\"unexpected active subscriptions: %+v %v\", rows, err)"
+    },
+    {
+      "label": "Return each listed plan's configured limits through the browser client on both runtimes, omitted for a plan without limits",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "assert.deepEqual(kept.limits, planLimits);"
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L376/Parameter `customerType` (optional)": [
@@ -51463,8 +51480,7 @@
     {
       "label": "Record, change and clear a signed update's cancellation flags and dates on three SQL engines",
       "test": "adapters/sqlstore/stripe_lifecycle_test.go",
-      "marker": "func TestStripeCancellationFields(",
-      "complete": true
+      "marker": "func TestStripeCancellationFields("
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L593/`customer.subscription.deleted`": [
@@ -51529,10 +51545,9 @@
       "marker": "const invalidType = "
     },
     {
-      "label": "Accept an explicit user customer type on every billing route and the organization type on every route once organization billing is enabled, on both runtimes",
+      "label": "Accept an explicit user customer type on the upgrade, list, billing-portal, cancel and restore routes on both runtimes",
       "test": "conformance/stripe-lifecycle-fixture.mjs",
-      "marker": "const restored = ok(await owner.subscription.restore({ ...own, customerType: \"user\" }));",
-      "complete": true
+      "marker": "const restored = ok(await owner.subscription.restore({ ...own, customerType: \"user\" }));"
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L239/Parameter `referenceId` (optional)": [
@@ -51692,6 +51707,26 @@
       "test": "conformance/stripe-organization-fixture.mjs",
       "marker": "assert.equal(remote.state.calls.some(([method, path]) => method === \"POST\" && path.startsWith(\"/v1/customers/\")), false);",
       "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L878/`limits`": [
+    {
+      "label": "Return numbers, booleans, arrays and nested objects from plan limits on personal and organization lists, unaffected by later changes to the host's map, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_options_test.go",
+      "marker": "func TestStripePlanLimits(",
+      "complete": true
+    },
+    {
+      "label": "Refuse plan limits that are not JSON values of at most 8 KiB at startup",
+      "test": "plugins/stripe/plans_test.go",
+      "marker": "func TestPlanMetadataConfiguration("
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L879/`group`": [
+    {
+      "label": "Accept a plan group as an application label alongside its limits",
+      "test": "plugins/stripe/plans_test.go",
+      "marker": "func TestPlanMetadataConfiguration("
     }
   ]
 }

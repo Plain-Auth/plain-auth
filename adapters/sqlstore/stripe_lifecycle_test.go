@@ -482,7 +482,7 @@ func TestStripeCancellationFields(t *testing.T) {
 			}
 			put("sub_fields", map[string]any{"cancel_at": 1700, "canceled_at": 1600})
 			send("evt_dated", "customer.subscription.updated", "sub_fields")
-			if r := read("sub_fields"); unix(r.CancelAt) != 1700 || flag(r.CancelAtPeriodEnd) || r.Status != "active" {
+			if r := read("sub_fields"); unix(r.CancelAt) != 1700 || unix(r.CanceledAt) != 1600 || flag(r.CancelAtPeriodEnd) || r.Status != "active" {
 				t.Fatal("dated cancellation was not recorded", r)
 			}
 			put("sub_fields", map[string]any{"cancel_at": 1700, "canceled_at": 1600, "schedule": "sched_fields"})

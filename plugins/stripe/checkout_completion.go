@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"slices"
 
 	auth "github.com/Plain-Org/plain-auth"
 	sdk "github.com/stripe/stripe-go/v87"
@@ -105,12 +104,7 @@ func (s *subscriptions) observeCheckoutCompletion(c auth.EndpointContext, event 
 		return nil
 	}
 	_, err = callSubscriptionHook(c, event, *delivery.local, "completion", remote, func(p SubscriptionEvent) error {
-		plan.MeteredPriceIDs = slices.Clone(plan.MeteredPriceIDs)
-		if plan.FreeTrial != nil {
-			trial := *plan.FreeTrial
-			plan.FreeTrial = &trial
-		}
-		return s.onComplete(ctx, SubscriptionComplete{SubscriptionEvent: p, Plan: plan, Request: webhookRequest(c.Request)})
+		return s.onComplete(ctx, SubscriptionComplete{SubscriptionEvent: p, Plan: plan.clone(), Request: webhookRequest(c.Request)})
 	})
 	return err
 }

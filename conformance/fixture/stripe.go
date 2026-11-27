@@ -36,6 +36,10 @@ func fixtureStripe(ctx context.Context, store *sqlstore.Store, endpoint string, 
 	subscriptions := &billing.SubscriptionOptions{Client: provider, Plans: []billing.Plan{
 		{Name: "basic", PriceID: "price_basic"}, {Name: "team", PriceID: "price_team", AnnualPriceID: "price_team_annual"},
 	}}
+	if os.Getenv("CONFORMANCE_STRIPE_PLAN_LIMITS") == "1" {
+		subscriptions.Plans[0].Limits = map[string]any{"projects": 5, "features": []any{"api"}, "sso": true, "storage": []any{10, "GB"}}
+		subscriptions.Plans[0].Group = "core"
+	}
 	if os.Getenv("CONFORMANCE_STRIPE_FREE_TRIAL") == "1" {
 		subscriptions.Plans[0].FreeTrial = &billing.FreeTrial{Days: 14}
 	}

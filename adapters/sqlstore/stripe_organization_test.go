@@ -234,11 +234,17 @@ func TestOrganizationBillingIsolation(t *testing.T) {
 			}
 			// A client cannot set the organization's customer, and the portal
 			// never falls back to a subscription's customer.
-			updateErr := buyer.Auth.Do(ctx, "POST", "/organization/update", map[string]any{"organizationId": group, "data": map[string]any{"name": "Fixture organization", "stripeCustomerId": "cus_client"}}, nil)
+			updateErr := buyer.Auth.Do(ctx, "POST", "/organization/update", map[string]any{"organizationId": group, "data": map[string]any{"name": "Renamed organization", "stripeCustomerId": "cus_client"}}, nil)
 			var held sql.NullString
-			if err := store.db.QueryRowContext(ctx, store.bind(`SELECT "stripeCustomerId" FROM "organization" WHERE "id"=?`), group).Scan(&held); err != nil || held.Valid {
+			var name string
+			if err := store.db.QueryRowContext(ctx, store.bind(`SELECT "stripeCustomerId","name" FROM "organization" WHERE "id"=?`), group).Scan(&held, &name); err != nil || held.Valid {
 				t.Fatal("a client set the organization customer", held, err, updateErr)
 			}
+			var refused *plainauth.APIError
+			if updateErr == nil && name != "Renamed organization" || updateErr != nil && (!errors.As(updateErr, &refused) || refused.Status != 400) {
+				t.Fatal("the organization update neither applied nor refused the field", updateErr, name)
+			}
+			exec(`UPDATE "organization" SET "name"='Fixture organization' WHERE "id"=?`, group)
 			exec(`INSERT INTO "subscription" ("id","plan","referenceId","stripeCustomerId","stripeSubscriptionId","status") VALUES('org_row','basic',?,'cus_row','sub_row','active')`, group)
 			portalPage, err := buyer.BillingPortal(ctx, stripeclient.Portal{CustomerType: "organization", ReferenceID: group, ReturnURL: "/billing"})
 			code(err, 404, "CUSTOMER_NOT_FOUND")

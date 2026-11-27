@@ -184,11 +184,16 @@ func (s *Store) ReserveStripeCheckout(ctx context.Context, owner, token string, 
 		want.ID, want.Owner, want.LocalSubscription, want.Customer = rand.Text(), owner, rand.Text(), customer.String
 		// Stripe accepts expiries 30 minutes to 24 hours after creation.
 		want.Expires = now.Add(23 * time.Hour).Unix()
-		_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "subscription" ("id","plan","referenceId","stripeCustomerId","status","seats","billingInterval") VALUES(?,?,?,?,'incomplete',?,?)`), want.LocalSubscription, want.Plan, owner, customer, want.Quantity(), want.Interval)
+		data, err := json.Marshal(want)
 		if err != nil {
 			return err
 		}
-		data, err := json.Marshal(want)
+		// The reservation must fit every store's verification column with
+		// room left for the customer and Checkout IDs.
+		if len(data) > checkoutAttemptLimit {
+			return billing.ErrCheckoutTooLarge
+		}
+		_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "subscription" ("id","plan","referenceId","stripeCustomerId","status","seats","billingInterval") VALUES(?,?,?,?,'incomplete',?,?)`), want.LocalSubscription, want.Plan, owner, customer, want.Quantity(), want.Interval)
 		if err != nil {
 			return err
 		}
@@ -240,6 +245,9 @@ func (s *Store) editCheckout(ctx context.Context, want billing.CheckoutAttempt, 
 		if err != nil {
 			return err
 		}
+		if len(data) > verificationValueLimit {
+			return errors.New("sqlstore: Stripe checkout reservation exceeds the verification value limit")
+		}
 		_, err = tx.ExecContext(ctx, s.bind(`UPDATE "verification" SET "value"=?,"updatedAt"=? WHERE "id"=? AND "identifier"=?`), string(data), s.date(now), a.ID, stripeOwnerKey(ctx, "checkout", a.Owner))
 		return err
 	})
@@ -269,6 +277,46 @@ func (s *Store) BindStripeCheckoutCustomer(ctx context.Context, want billing.Che
 		return s.checkCustomerOwner(ctx, tx, a.Owner, customer)
 	})
 }
+
+var _ billing.CheckoutReleaseStore = (*Store)(nil)
+
+const (
+	// checkoutAttemptLimit bounds a new reservation, leaving room for the
+	// customer and Checkout IDs and URL it gains later.
+	checkoutAttemptLimit = 56 << 10
+	// verificationValueLimit is MySQL's text column; nothing larger is written.
+	verificationValueLimit = 65535
+)
+
+// ReleaseStripeCheckout deletes a reservation Stripe refused and its unsent
+// incomplete row, under the owner's lock and with no session or policy.
+func (s *Store) ReleaseStripeCheckout(ctx context.Context, want billing.CheckoutAttempt) error {
+	return s.billingTransaction(ctx, want.Owner, "", time.Now(), func(tx *sql.Tx) error {
+		a, err := s.checkoutAttempt(ctx, tx, want.Owner)
+		if errors.Is(err, auth.ErrNotFound) || err == nil && a.ID != want.ID {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		if a.CheckoutID != "" || a.LocalSubscription != want.LocalSubscription {
+			return billing.ErrCheckoutReconcile
+		}
+		res, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "subscription" WHERE "id"=? AND "referenceId"=? AND "status"='incomplete' AND "stripeSubscriptionId" IS NULL`), a.LocalSubscription, a.Owner)
+		if err != nil {
+			return err
+		}
+		if n, err := res.RowsAffected(); err != nil || n != 1 {
+			if err != nil {
+				return err
+			}
+			return billing.ErrCheckoutReconcile
+		}
+		_, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "id"=? AND "identifier"=?`), a.ID, stripeOwnerKey(ctx, "checkout", a.Owner))
+		return err
+	})
+}
+
 func (s *Store) SaveStripeCheckoutResult(ctx context.Context, want billing.CheckoutAttempt, token, id, url string, now time.Time) error {
 	return s.editCheckout(ctx, want, token, now, func(tx *sql.Tx, a *billing.CheckoutAttempt) error {
 		if a.Customer == "" || a.Customer != want.Customer || (a.CheckoutID != "" && a.CheckoutID != id) {

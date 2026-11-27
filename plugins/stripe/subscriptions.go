@@ -31,7 +31,61 @@ type Plan struct {
 	SeatPriceID, ProrationBehavior string
 	// MeteredPriceIDs adds fixed metered prices to a licensed base at the same interval.
 	MeteredPriceIDs []string
+	// Limits is application data for the plan, such as {"projects": 5}. The
+	// list endpoint returns it with each subscription of the plan, and
+	// callbacks receive it on Plan. The plugin keeps a JSON copy of at most
+	// 8 KiB, so numbers become float64, arrays []any and objects
+	// map[string]any; an empty map counts as unset.
+	Limits map[string]any `json:",omitempty"`
+	// Group labels related plans for the application; the plugin only
+	// passes it on and never sends it to Stripe.
+	Group string `json:",omitempty"`
 }
+
+// maxLimitsBytes bounds a plan's marshalled limits, so a stored callback
+// receipt that carries the plan fits every supported store's column.
+const maxLimitsBytes = 8 << 10
+
+// jsonLimits copies limits through JSON, so later changes to the host's map
+// never reach installed plans and a callback sees the same values whether
+// it runs now or from a stored receipt.
+func jsonLimits(in map[string]any) (map[string]any, error) {
+	if len(in) == 0 {
+		return nil, nil
+	}
+	raw, err := json.Marshal(in)
+	if err != nil || len(raw) > maxLimitsBytes {
+		return nil, errors.New("stripe: plan limits must be JSON values of at most 8 KiB")
+	}
+	var out map[string]any
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// clone copies a plan's slices and maps, so a callback cannot change the
+// installed plan.
+func (p Plan) clone() Plan {
+	p.MeteredPriceIDs = slices.Clone(p.MeteredPriceIDs)
+	if p.FreeTrial != nil {
+		trial := *p.FreeTrial
+		p.FreeTrial = &trial
+	}
+	p.Limits = cloneLimits(p.Limits)
+	return p
+}
+
+func cloneLimits(in map[string]any) map[string]any {
+	if in == nil {
+		return nil
+	}
+	raw, _ := json.Marshal(in)
+	var out map[string]any
+	json.Unmarshal(raw, &out)
+	return out
+}
+
 type SubscriptionOptions struct {
 	Client *sdk.Client
 	Plans  []Plan
@@ -64,6 +118,8 @@ type Subscription struct {
 	Interval          *string    `json:"billingInterval,omitempty"`
 	ScheduleID        *string    `json:"stripeScheduleId,omitempty"`
 	PriceID           string     `json:"priceId,omitempty"`
+	// Limits is the configured plan's limits; only the list endpoint fills it.
+	Limits map[string]any `json:"limits,omitempty"`
 }
 
 // CheckoutAttempt is a durable reservation; the same attempt always sends
@@ -130,6 +186,10 @@ var (
 	ErrExistingSubscription = billingError(409, "SUBSCRIPTION_ALREADY_EXISTS", "A subscription already exists")
 	ErrCheckoutReconcile    = billingError(409, "CHECKOUT_RECONCILIATION_REQUIRED", "Waiting for checkout reconciliation")
 	ErrCheckoutSession      = billingError(401, "UNAUTHORIZED", "Unauthorized")
+	// ErrCheckoutTooLarge refuses a purchase whose reservation would not fit
+	// every supported store's column, such as one with very long callback
+	// URLs.
+	ErrCheckoutTooLarge = billingError(400, "CHECKOUT_TOO_LARGE", "Checkout request is too large")
 	// ErrCustomerCreation answers a failure to find or create the Stripe
 	// customer, as another runtime does.
 	ErrCustomerCreation = billingError(400, "UNABLE_TO_CREATE_CUSTOMER", "Unable to create customer")
@@ -191,6 +251,11 @@ func configureSubscriptions(o *SubscriptionOptions) (*subscriptions, error) {
 			}
 		}
 		p.MeteredPriceIDs = slices.Clone(p.MeteredPriceIDs)
+		limits, err := jsonLimits(p.Limits)
+		if err != nil {
+			return nil, err
+		}
+		p.Limits = limits
 		s.plans[p.Name] = p
 		for interval, price := range map[string]string{"month": p.PriceID, "year": p.AnnualPriceID} {
 			if price == "" {
@@ -226,6 +291,7 @@ func (s *subscriptions) list(c auth.EndpointContext) (any, error) {
 	for i := range rows {
 		p := s.plans[strings.ToLower(rows[i].Plan)]
 		rows[i].PriceID = p.PriceID
+		rows[i].Limits = cloneLimits(p.Limits)
 		if rows[i].Interval != nil && *rows[i].Interval == "year" && p.AnnualPriceID != "" {
 			rows[i].PriceID = p.AnnualPriceID
 		}
@@ -409,10 +475,19 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 		// answers 400 with Stripe's code and message: provider text can
 		// disclose account configuration to the browser, so it is logged.
 		if err != nil || checkout == nil || checkout.ID == "" || checkout.URL == "" {
-			if err != nil {
-				c.Auth.Logger().ErrorContext(ctx, "Stripe checkout creation failed", "error", err)
+			failed := billingError(502, "CHECKOUT_CREATION_FAILED", "Stripe checkout creation failed")
+			if err == nil {
+				return nil, failed
 			}
-			return nil, billingError(502, "CHECKOUT_CREATION_FAILED", "Stripe checkout creation failed")
+			logStripeError(c, "Stripe checkout creation failed", err)
+			// A purchase Stripe definitively refused is released, so the
+			// next request starts afresh rather than replaying the refusal.
+			if release, ok := store.(CheckoutReleaseStore); ok && refusedByStripe(err) {
+				if err := release.ReleaseStripeCheckout(releaseContext(ctx, a), a); err != nil {
+					return nil, errors.Join(failed, err)
+				}
+			}
+			return nil, failed
 		}
 		if err := store.SaveStripeCheckoutResult(ctx, a, ss.Session.Token, checkout.ID, checkout.URL, time.Now()); err != nil {
 			return nil, err

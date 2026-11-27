@@ -12,6 +12,7 @@ import Stripe from "stripe";
 const webhookSecret = "whsec_offline_fixture";
 const basicPrice = "price_basic";
 const teamPrice = "price_team";
+const planLimits = { projects: 5, features: ["api"], sso: true, storage: [10, "GB"] };
 const annualTeamPrice = "price_team_annual";
 const period = 2_592_000;
 
@@ -150,10 +151,10 @@ function seed(database, id, sub, kind = "user") {
 async function exercise(t, runtime, { reference, goFixture, instrument }) {
   const provider = await localStripe(t);
   const server = runtime === "Go"
-    ? await goFixture(t, ["stripe-subscriptions"], { CONFORMANCE_STRIPE_URL: provider.url })
+    ? await goFixture(t, ["stripe-subscriptions"], { CONFORMANCE_STRIPE_URL: provider.url, CONFORMANCE_STRIPE_PLAN_LIMITS: "1" })
     : await reference(t, [stripe({
       stripeClient: provider.api, stripeWebhookSecret: webhookSecret,
-      subscription: { enabled: true, plans: [{ name: "basic", priceId: basicPrice }, { name: "team", priceId: teamPrice, annualDiscountPriceId: annualTeamPrice }] },
+      subscription: { enabled: true, plans: [{ name: "basic", priceId: basicPrice, limits: planLimits, group: "core" }, { name: "team", priceId: teamPrice, annualDiscountPriceId: annualTeamPrice }] },
     })]);
   const database = server.database ?? new DatabaseSync(server.databasePath);
   if (!server.database) t.after(() => database.close());
@@ -312,6 +313,7 @@ async function exercise(t, runtime, { reference, goFixture, instrument }) {
   const kept = await list(owner, ownerID, ownerSub.id);
   assert.equal(kept.stripeScheduleId ?? null, null);
   assert.deepEqual([kept.plan, kept.priceId], ["basic", basicPrice]);
+  assert.deepEqual(kept.limits, planLimits);
 
   assert.deepEqual(ok(await owner.subscription.billingPortal({ ...portal, customerType: "user" })), { url: "https://billing.example.test/portal", redirect: false });
   const portalCall = provider.calls.at(-1);
@@ -378,6 +380,7 @@ async function exercise(t, runtime, { reference, goFixture, instrument }) {
   await signedUpdate(server, provider, "evt_renew", ownerSub);
   const renewed = await list(owner, ownerID, ownerSub.id);
   assert.equal(renewed.plan, "team");
+  assert.equal(renewed.limits ?? null, null);
   assert.equal(renewed.priceId, teamPrice);
   assert.equal(renewed.status, "active");
   assert.equal(renewed.billingInterval, "month");

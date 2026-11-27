@@ -3,6 +3,7 @@ package sqlstore
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/plugins/organization"
 	billing "github.com/Plain-Org/plain-auth/plugins/stripe"
 	"github.com/Plain-Org/plain-auth/schema"
 	sdk "github.com/stripe/stripe-go/v87"
@@ -365,5 +367,104 @@ func TestPersonalCheckoutForSeatPlan(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+// The list endpoint returns each plan's configured limits, numbers,
+// booleans, arrays and nested objects included, for personal and
+// organization subscriptions, and omits them for a plan without limits.
+func TestStripePlanLimits(t *testing.T) {
+	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
+		t.Run(dialect, func(t *testing.T) {
+			ctx := t.Context()
+			ddl, err := schema.Generate(dialect, []string{"stripe-organization"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			store, err := OpenWithSchema(ctx, dialect, organizationTestDSN(t, dialect), ddl)
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { store.Close() })
+			provider := sdk.NewClient("sk_test_local", sdk.WithBackends(sdk.NewBackendsWithConfig(&sdk.BackendConfig{HTTPClient: &http.Client{Transport: localBillingTransport(func(r *http.Request) (*http.Response, error) {
+				return nil, errors.New("unexpected Stripe call " + r.URL.Path)
+			})}, MaxNetworkRetries: sdk.Int64(0)})))
+			limits := map[string]any{"projects": 5, "features": []any{"api", "sso"}, "rate": map[string]any{"requests": 1000}, "permissions": map[string]any{"admin": true, "write": false}, "bandwidth": []any{100, "GB"}}
+			orgPlugin, err := organization.New(organization.Options{Store: store})
+			if err != nil {
+				t.Fatal(err)
+			}
+			const origin = "https://billing.example"
+			off := false
+			a, err := plainauth.New(plainauth.Options{Store: store, Secret: strings.Repeat("s", 32), BaseURL: origin, EmailAndPassword: true, RateLimit: &off, Plugins: []plainauth.Plugin{orgPlugin,
+				billing.New(billing.Options{WebhookSecret: "whsec_limits", Organization: &billing.OrganizationOptions{AuthorizeReference: func(m billing.ReferenceAuthorization) bool { return m.Role == "owner" }},
+					Subscriptions: &billing.SubscriptionOptions{Client: provider, Plans: []billing.Plan{{Name: "pro", PriceID: "price_pro", Limits: limits, Group: "core"}, {Name: "basic", PriceID: "price_basic"}}}})}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			// Later changes to the host's map never reach the installed plan.
+			limits["projects"] = 99
+			signup := func(name string) (string, *http.Cookie) {
+				hit, err := a.SignUpEmail(ctx, plainauth.SignUpInput{Name: name, Email: name + "@example.test", Password: "local fixture password"}, plainauth.RequestMeta{})
+				if err != nil {
+					t.Fatal(err)
+				}
+				return hit.User.ID, a.SessionCookie(hit.Token, true)
+			}
+			owner, ownerCookie := signup("owner")
+			other, otherCookie := signup("other")
+			get := func(path string, cookie *http.Cookie) string {
+				t.Helper()
+				r := httptest.NewRequest("GET", origin+"/api/auth"+path, nil)
+				r.AddCookie(cookie)
+				w := httptest.NewRecorder()
+				a.ServeHTTP(w, r)
+				if w.Code != 200 {
+					t.Fatal(path, w.Code, w.Body)
+				}
+				return w.Body.String()
+			}
+			r := httptest.NewRequest("POST", origin+"/api/auth/organization/create", strings.NewReader(`{"name":"Limits","slug":"limits"}`))
+			r.Header.Set("Origin", origin)
+			r.Header.Set("Content-Type", "application/json")
+			r.AddCookie(ownerCookie)
+			w := httptest.NewRecorder()
+			a.ServeHTTP(w, r)
+			var group struct{ ID string }
+			if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &group) != nil || group.ID == "" {
+				t.Fatal("organization create", w.Code, w.Body)
+			}
+			seed := func(id, plan, reference, customer string) {
+				t.Helper()
+				if _, err := store.db.ExecContext(ctx, store.bind(`INSERT INTO "subscription" ("id","plan","referenceId","stripeCustomerId","stripeSubscriptionId","status","seats") VALUES(?,?,?,?,?,'active',1)`), id, plan, reference, customer, "sub_"+id); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if _, err := store.db.ExecContext(ctx, store.bind(`UPDATE "user" SET "stripeCustomerId"=? WHERE "id"=?`), "cus_owner", owner); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := store.db.ExecContext(ctx, store.bind(`UPDATE "user" SET "stripeCustomerId"=? WHERE "id"=?`), "cus_other", other); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := store.db.ExecContext(ctx, store.bind(`UPDATE "organization" SET "stripeCustomerId"=? WHERE "id"=?`), "cus_group", group.ID); err != nil {
+				t.Fatal(err)
+			}
+			seed("local_owner", "pro", owner, "cus_owner")
+			seed("local_group", "pro", group.ID, "cus_group")
+			seed("local_other", "basic", other, "cus_other")
+			const want = `"limits":{"bandwidth":[100,"GB"],"features":["api","sso"],"permissions":{"admin":true,"write":false},"projects":5,"rate":{"requests":1000}}`
+			for _, body := range []string{get("/subscription/list", ownerCookie), get("/subscription/list?customerType=organization&referenceId="+group.ID, ownerCookie)} {
+				if !strings.Contains(body, want) {
+					t.Fatal("a plan's limits were not listed", body)
+				}
+			}
+			if body := get("/subscription/list", otherCookie); strings.Contains(body, `"limits"`) {
+				t.Fatal("a plan without limits listed some", body)
+			}
+			var rows []billing.Subscription
+			if err := json.Unmarshal([]byte(get("/subscription/list", ownerCookie)), &rows); err != nil || len(rows) != 1 || rows[0].Limits["projects"] != float64(5) || rows[0].Limits["permissions"].(map[string]any)["admin"] != true {
+				t.Fatal("listed limits did not decode", rows, err)
+			}
+		})
 	}
 }

@@ -92,8 +92,7 @@ func New(opts Options) authn.Plugin {
 	}}}
 	// The billing portal is mounted by portal options alone, with or
 	// without subscriptions, where another runtime mounts it with
-	// subscriptions: it needs its own client and customer lookup, and a
-	// portal-only application needs no checkout schema.
+	// subscriptions: it needs its own client and customer lookup.
 	if opts.Portal != nil {
 		plugin.Endpoints = append(plugin.Endpoints, portalEndpoint(*opts.Portal, opts.Organization))
 	}
