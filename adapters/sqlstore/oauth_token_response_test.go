@@ -54,7 +54,7 @@ func TestTokenResponseFields(t *testing.T) {
 			must(err)
 			const origin = "https://fields.example.test"
 			off := false
-			h, err := auth.New(auth.Options{BaseURL: origin, Secret: strings.Repeat("f", 40), Store: s, EmailAndPassword: true, Plugins: []auth.Plugin{p}, RateLimit: &off})
+			h, err := auth.New(auth.Options{BaseURL: origin, Secret: strings.Repeat("f", 40), Store: s, EmailAndPassword: true, PasswordHash: testPasswordHash, PasswordVerify: testPasswordVerify, Plugins: []auth.Plugin{p}, RateLimit: &off})
 			must(err)
 			owner, err := client.New(origin, &http.Client{Transport: guestTransport{h}})
 			must(err)

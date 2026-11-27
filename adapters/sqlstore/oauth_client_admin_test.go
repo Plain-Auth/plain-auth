@@ -45,7 +45,7 @@ func TestAdminClientCreation(t *testing.T) {
 			must(err)
 			const origin = "https://admin.example.test"
 			off := false
-			h, err := auth.New(auth.Options{BaseURL: origin, Secret: strings.Repeat("d", 40), Store: s, EmailAndPassword: true, Plugins: []auth.Plugin{p}, RateLimit: &off})
+			h, err := auth.New(auth.Options{BaseURL: origin, Secret: strings.Repeat("d", 40), Store: s, EmailAndPassword: true, PasswordHash: testPasswordHash, PasswordVerify: testPasswordVerify, Plugins: []auth.Plugin{p}, RateLimit: &off})
 			must(err)
 			owner, err := client.New(origin, &http.Client{Transport: guestTransport{h}})
 			must(err)
@@ -179,7 +179,7 @@ func TestAdminClientCreation(t *testing.T) {
 			hsOpts := op.Options{Scopes: []string{"openid", "reports"}, DisableJWTPlugin: true, ClientPrivileges: func(context.Context, op.ClientAccess) (bool, error) { return true, nil }}
 			hsPlugin, err := op.New(hsOpts)
 			must(err)
-			hs, err := auth.New(auth.Options{BaseURL: origin, Secret: strings.Repeat("d", 40), Store: s, EmailAndPassword: true, Plugins: []auth.Plugin{hsPlugin}, RateLimit: &off})
+			hs, err := auth.New(auth.Options{BaseURL: origin, Secret: strings.Repeat("d", 40), Store: s, EmailAndPassword: true, PasswordHash: testPasswordHash, PasswordVerify: testPasswordVerify, Plugins: []auth.Plugin{hsPlugin}, RateLimit: &off})
 			must(err)
 			hsManager, err := op.NewClientManager(hs, s, hsOpts)
 			must(err)

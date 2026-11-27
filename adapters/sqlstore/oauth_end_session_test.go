@@ -89,7 +89,7 @@ func TestEndSession(t *testing.T) {
 				must(err)
 				signing, err := auth.NewJWT(auth.JWTOptions{})
 				must(err)
-				h, err := auth.New(auth.Options{BaseURL: origin, BasePath: basePath, Secret: strings.Repeat("e", 40), Store: store, EmailAndPassword: true,
+				h, err := auth.New(auth.Options{BaseURL: origin, BasePath: basePath, Secret: strings.Repeat("e", 40), Store: store, EmailAndPassword: true, PasswordHash: testPasswordHash, PasswordVerify: testPasswordVerify,
 					Plugins: []auth.Plugin{p, signing}, RateLimit: &off})
 				must(err)
 				return h

@@ -116,7 +116,7 @@ func TestSessionEndReports(t *testing.T) {
 			}}
 			const origin = "https://ends.example.test"
 			off := false
-			h, err := authn.New(authn.Options{BaseURL: origin, Secret: strings.Repeat("e", 40), Store: s, EmailAndPassword: true, Plugins: []authn.Plugin{observer}, RateLimit: &off})
+			h, err := authn.New(authn.Options{BaseURL: origin, Secret: strings.Repeat("e", 40), Store: s, EmailAndPassword: true, PasswordHash: testPasswordHash, PasswordVerify: testPasswordVerify, Plugins: []authn.Plugin{observer}, RateLimit: &off})
 			must(err)
 			c, err := client.New(origin, &http.Client{Transport: guestTransport{h}})
 			must(err)

@@ -1,9 +1,9 @@
 .PHONY: test test-routers test-redis test-polar test-conformance vet verify verify-commit
 
 # Go applies this deadline to the entire package. The three-engine SQL race
-# suite can exceed 18 minutes on a hosted runner. The workflow has a 45-minute limit.
+# suite can exceed 30 minutes on a hosted runner. The workflow has a 60-minute limit.
 test:
-	go test -race -count=1 -timeout=30m ./...
+	go test -race -count=1 -timeout=45m ./...
 
 test-routers:
 	cd integrations/routers && go test -race -count=1 ./...

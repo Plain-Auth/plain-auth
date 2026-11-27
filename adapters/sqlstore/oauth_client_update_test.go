@@ -35,7 +35,7 @@ func TestOAuthClientUpdate(t *testing.T) {
 			must(err)
 			const origin = "https://update.example.test"
 			off := false
-			h, err := auth.New(auth.Options{BaseURL: origin, Secret: strings.Repeat("u", 40), Store: s, EmailAndPassword: true, Plugins: []auth.Plugin{p}, RateLimit: &off})
+			h, err := auth.New(auth.Options{BaseURL: origin, Secret: strings.Repeat("u", 40), Store: s, EmailAndPassword: true, PasswordHash: testPasswordHash, PasswordVerify: testPasswordVerify, Plugins: []auth.Plugin{p}, RateLimit: &off})
 			must(err)
 			account := func(email string) (*client.Client, string) {
 				t.Helper()

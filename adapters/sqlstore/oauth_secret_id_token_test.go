@@ -60,7 +60,7 @@ func TestSecretSignedIDTokens(t *testing.T) {
 			p, err := op.New(opts)
 			must(err)
 			off := false
-			h, err := auth.New(auth.Options{BaseURL: origin, Secret: strings.Repeat("h", 40), Store: s, EmailAndPassword: true, Plugins: []auth.Plugin{p}, RateLimit: &off})
+			h, err := auth.New(auth.Options{BaseURL: origin, Secret: strings.Repeat("h", 40), Store: s, EmailAndPassword: true, PasswordHash: testPasswordHash, PasswordVerify: testPasswordVerify, Plugins: []auth.Plugin{p}, RateLimit: &off})
 			must(err)
 			jwtPlugin, err := auth.NewJWT(auth.JWTOptions{})
 			must(err)

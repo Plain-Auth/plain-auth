@@ -121,7 +121,7 @@ func TestBackchannelLogout(t *testing.T) {
 					must(err)
 					plugins = append(plugins, signing)
 				}
-				h, err := auth.New(auth.Options{BaseURL: origin, Secret: strings.Repeat("l", 40), Store: s, EmailAndPassword: true, Plugins: plugins, RateLimit: &off,
+				h, err := auth.New(auth.Options{BaseURL: origin, Secret: strings.Repeat("l", 40), Store: s, EmailAndPassword: true, PasswordHash: testPasswordHash, PasswordVerify: testPasswordVerify, Plugins: plugins, RateLimit: &off,
 					Logger: slog.New(slog.NewTextHandler(logs, nil)), BackgroundTasks: background})
 				must(err)
 				return h
