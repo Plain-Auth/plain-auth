@@ -50424,5 +50424,13 @@
       "test": "plugins/cimd/transport_test.go",
       "marker": "func TestTransport("
     }
+  ],
+  "plugin-symbol/cimd/CimdMetadataFetchPolicy": [
+    {
+      "label": "Pace a client after a failed fetch and bound fetches in flight and per minute, globally and per origin, with their defaults, refusing at once with 429 temporarily_unavailable",
+      "test": "plugins/cimd/governor_test.go",
+      "marker": "func TestGovernorLimits(",
+      "complete": true
+    }
   ]
 }

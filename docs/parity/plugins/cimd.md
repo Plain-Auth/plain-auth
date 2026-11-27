@@ -11,7 +11,8 @@
     - [x] Fetch metadata resources over HTTPS GET and HEAD only, pinning the vetted public addresses of one lookup, returning redirects unfollowed, refusing upgrades and bounding concurrent lookups ([test](../../../plugins/cimd/transport_test.go#L55))
   - [ ] `CimdClientCreatedEvent`
   - [ ] `CimdClientRefreshedEvent`
-  - [ ] `CimdMetadataFetchPolicy`
+  - [x] `CimdMetadataFetchPolicy` ([test](../../../plugins/cimd/governor_test.go#L69))
+    - [x] Pace a client after a failed fetch and bound fetches in flight and per minute, globally and per origin, with their defaults, refusing at once with 429 temporarily_unavailable ([test](../../../plugins/cimd/governor_test.go#L69))
   - [ ] `CimdMetadataProfile`
   - [ ] `CimdOptions`
     - [ ] `fetchClientMetadataResource`
