@@ -617,6 +617,26 @@ func TestKeyFetchFailures(t *testing.T) {
 	}
 }
 
+// A transport that panics fails the key fetch for every caller, which
+// settles, and the process survives.
+func TestKeyFetchTransportPanic(t *testing.T) {
+	var logs strings.Builder
+	host, err := auth.New(auth.Options{Store: memory.New(), BaseURL: "https://auth.example.test", Secret: strings.Repeat("s", 40), TrustedOrigins: []string{"https://keys.example.test"},
+		Logger: slog.New(slog.NewTextHandler(&logs, nil))})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cache := newClientKeyCache(assertionTransport(func(*http.Request) (*http.Response, error) { panic("transport bug") }), nil)
+	r := httptest.NewRequest(http.MethodPost, "https://auth.example.test/api/auth/oauth2/token", nil)
+	_, err = cache.verificationKey(auth.EndpointContext{Auth: host, Request: r}, MachineClient{ClientID: "client", JWKSURI: "https://keys.example.test/jwks"}, jose.Header{KeyID: "k", Algorithm: "EdDSA"})
+	cache.mu.Lock()
+	pending := len(cache.pending)
+	cache.mu.Unlock()
+	if err == nil || pending != 0 || !strings.Contains(logs.String(), "key set transport panicked") {
+		t.Fatal("a panicking key transport did not settle the fetch", err, pending, logs.String())
+	}
+}
+
 func TestClientKeyFetchSharesRequestsAndRespectsCancellation(t *testing.T) {
 	pub, _, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/Plain-Org/plain-auth"
 	billing "github.com/Plain-Org/plain-auth/plugins/stripe"
@@ -25,7 +26,7 @@ func TestCheckoutCustomerLookup(t *testing.T) {
 	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
 		t.Run(dialect, func(t *testing.T) {
 			ctx := t.Context()
-			ddl, err := schema.Generate(dialect, []string{"stripe-subscriptions"})
+			ddl, err := schema.Generate(dialect, []string{"stripe-organization"})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -37,10 +38,14 @@ func TestCheckoutCustomerLookup(t *testing.T) {
 			var mu sync.Mutex
 			var searches, lists []url.Values
 			var creates []url.Values
+			var checkouts []string
 			var keys []string
 			var checkoutCustomer string
 			var made int
-			var createFails bool
+			var createFails, concurrent bool
+			var arrivals int
+			var deletes []string
+			barrier := make(chan struct{})
 			searchStatus, listStatus := 200, 200
 			var found, listed []map[string]any
 			transport := localBillingTransport(func(r *http.Request) (*http.Response, error) {
@@ -64,7 +69,20 @@ func TestCheckoutCustomerLookup(t *testing.T) {
 						return stripeJSON(listStatus, map[string]any{"error": map[string]string{"type": "api_error", "message": "down"}}), nil
 					}
 					return stripeJSON(200, map[string]any{"object": "list", "has_more": false, "data": listed}), nil
+				case strings.HasPrefix(r.URL.Path, "/v1/customers/") && r.Method == http.MethodDelete:
+					deletes = append(deletes, strings.TrimPrefix(r.URL.Path, "/v1/customers/"))
+					return stripeJSON(200, map[string]any{"id": strings.TrimPrefix(r.URL.Path, "/v1/customers/"), "object": "customer", "deleted": true}), nil
 				case r.URL.Path == "/v1/customers" && r.Method == http.MethodPost:
+					if concurrent {
+						// Both creations are in flight before either answers.
+						arrivals++
+						if arrivals == 2 {
+							close(barrier)
+						}
+						mu.Unlock()
+						<-barrier
+						mu.Lock()
+					}
 					if createFails {
 						createFails = false
 						return stripeJSON(500, map[string]any{"error": map[string]string{"type": "api_error", "message": "down"}}), nil
@@ -76,6 +94,7 @@ func TestCheckoutCustomerLookup(t *testing.T) {
 					return stripeJSON(200, map[string]any{"id": id, "object": "customer", "metadata": map[string]string{"userId": r.PostForm.Get("metadata[userId]"), "customerType": r.PostForm.Get("metadata[customerType]")}}), nil
 				case r.URL.Path == "/v1/checkout/sessions":
 					checkoutCustomer = r.PostForm.Get("customer")
+					checkouts = append(checkouts, checkoutCustomer)
 					return stripeJSON(200, map[string]any{"id": "cs_" + checkoutCustomer, "object": "checkout.session", "url": "https://checkout.stripe.test/" + checkoutCustomer}), nil
 				}
 				return nil, fmt.Errorf("unexpected Stripe call %s %s", r.Method, r.URL.Path)
@@ -199,6 +218,41 @@ func TestCheckoutCustomerLookup(t *testing.T) {
 			}
 			if status, out = upgrade(last); status != 200 || len(creates) != 1 || customerOf(id) == "" {
 				t.Fatal("a failed creation could not be retried", status, out, len(creates))
+			}
+			// Two identical purchases at once settle on the first customer
+			// bound, and the other created customer is deleted.
+			reset()
+			mu.Lock()
+			deletes, checkouts = nil, nil
+			mu.Unlock()
+			hit, err := a.SignUpEmail(ctx, plainauth.SignUpInput{Name: "twice Buyer", Email: "twice@example.test", Password: "local fixture password"}, plainauth.RequestMeta{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			twice := a.SessionCookie(hit.Token, true)
+			concurrent = true
+			statuses := make(chan int, 2)
+			for range 2 {
+				go func() { status, _ := upgrade(twice); statuses <- status }()
+			}
+			first, second := <-statuses, <-statuses
+			concurrent = false
+			mu.Lock()
+			bound := customerOf(hit.User.ID)
+			if first != 200 || second != 200 || len(creates) != 2 || len(deletes) != 1 || deletes[0] == bound || bound == "" || len(checkouts) != 2 || checkouts[0] != bound || checkouts[1] != bound {
+				mu.Unlock()
+				t.Fatal("concurrent identical purchases did not settle on one customer", first, second, len(creates), deletes, bound, checkouts)
+			}
+			mu.Unlock()
+			// A match an organization holds is not shared either.
+			reset()
+			if _, err := store.db.ExecContext(ctx, store.bind(`INSERT INTO "organization" ("id","name","slug","createdAt","stripeCustomerId") VALUES(?,?,?,?,?)`), "org_held", "Held", "held", store.date(time.Now()), "cus_orgheld"); err != nil {
+				t.Fatal(err)
+			}
+			found = []map[string]any{{"id": "cus_orgheld", "object": "customer", "metadata": map[string]string{}}}
+			id, status, out = buy("orgheld", true)
+			if status != 200 || len(creates) != 1 || customerOf(id) == "cus_orgheld" || customerOf(id) == "" {
+				t.Fatal("a customer an organization holds was shared", status, out, len(creates), customerOf(id))
 			}
 			// Both lookups failing for a verified user answer
 			// UNABLE_TO_CREATE_CUSTOMER without a creation or a Checkout.

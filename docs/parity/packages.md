@@ -326,7 +326,7 @@ Each row tracks the behavior exposed by a published entry point. The Go implemen
     - [x] Buy a licensed base and two fixed metered add-ons for a personal or organization account, sending a quantity only for the base ([test](../../conformance/stripe-organization-fixture.mjs#L256))
     - [x] Replay the exact original add-on basket after a lost Checkout response on independent SQL connections ([test](../../adapters/sqlstore/stripe_addons_test.go#L158))
     - [x] Offer the configured trial only for a new personal or organization billing reference with no trial history across plans ([test](../../conformance/stripe-organization-fixture.mjs#L392))
-    - [x] Reuse a verified user's email-matched Stripe customer that no other user owns, through search or a list by email, otherwise create one with the user's email, name and metadata, on three SQL engines ([test](../../adapters/sqlstore/stripe_customer_lookup_test.go#L24))
+    - [x] Reuse a verified user's email-matched Stripe customer that no other user owns, through search or a list by email, otherwise create one with the user's email, name and metadata, on three SQL engines ([test](../../adapters/sqlstore/stripe_customer_lookup_test.go#L25))
   - [ ] Client integration (`./client`)
 
 ## Telemetry

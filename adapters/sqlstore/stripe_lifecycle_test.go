@@ -225,7 +225,7 @@ func TestStripeSubscriptionReconciliation(t *testing.T) {
 			mu.Lock()
 			connectedBefore := requests
 			mu.Unlock()
-			for id, envelope := range map[string]map[string]any{"evt_connected": {"account": "acct_connected"}, "evt_context": {"context": "ctx_platform"}} {
+			for id, envelope := range map[string]map[string]any{"evt_connected": {"account": "acct_connected"}, "evt_context": {"context": "ctx_other"}} {
 				if got := deliver(b, id, updated, 6, marshal(y), true, envelope); got != 200 {
 					t.Fatal("a connected account event was refused", id, got)
 				}
@@ -239,7 +239,7 @@ func TestStripeSubscriptionReconciliation(t *testing.T) {
 				accounts[e.ID] = e.Account + e.Context
 			}
 			seenMu.Unlock()
-			if row = read(remote); after != connectedBefore || row.Status != "active" || row.Plan != "basic" || accounts["evt_connected"] != "acct_connected" || accounts["evt_context"] != "ctx_platform" {
+			if row = read(remote); after != connectedBefore || row.Status != "active" || row.Plan != "basic" || accounts["evt_connected"] != "acct_connected" || accounts["evt_context"] != "ctx_other" {
 				t.Fatal("connected account event changed platform billing", after-connectedBefore, row.Status, row.Plan, accounts)
 			}
 			set(x)

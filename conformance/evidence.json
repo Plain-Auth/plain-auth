@@ -3764,7 +3764,7 @@
       "marker": "t.Fatal(\"rejected deliveries reached the application callback\", callbacks)"
     },
     {
-      "label": "Pass a connected-account or account-context event to OnEvent without reading or changing the platform subscription on three SQL engines",
+      "label": "Pass an event with an account or a context to OnEvent without reading or changing subscriptions on three SQL engines",
       "test": "adapters/sqlstore/stripe_lifecycle_test.go",
       "marker": "t.Fatal(\"connected account event changed platform billing\""
     }
@@ -51308,7 +51308,7 @@
       "marker": "func TestSignedWebhookDelivery(t *testing.T) {"
     },
     {
-      "label": "Refuse subscription billing without a signing secret at startup and answer a delivery with HTTP 500 without one",
+      "label": "Refuse subscription billing without a signing secret at startup",
       "test": "plugins/stripe/stripe_test.go",
       "marker": "t.Fatal(\"subscriptions started without a webhook signing secret\", err)"
     }

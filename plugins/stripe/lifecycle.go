@@ -61,7 +61,7 @@ func (s *subscriptions) handleSubscriptionEvent(c auth.EndpointContext, event sd
 		return nil
 	}
 	store, ok := c.Store().(SubscriptionLifecycleStore)
-	if !ok || event.Account != "" || event.Context != "" {
+	if !ok {
 		return nil
 	}
 	if event.Data == nil || event.ID == "" {

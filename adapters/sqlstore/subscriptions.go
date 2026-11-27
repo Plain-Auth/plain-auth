@@ -250,7 +250,11 @@ func (s *Store) BindStripeCheckoutCustomer(ctx context.Context, want billing.Che
 		if err := tx.QueryRowContext(ctx, s.bind(`SELECT "stripeCustomerId" FROM `+billingTable(ctx)+` WHERE "id"=?`), a.Owner).Scan(&actual); err != nil {
 			return err
 		}
-		if (actual.String != "" && actual.String != customer) || (a.Customer != "" && a.Customer != customer) || customer == "" {
+		// A concurrent identical request bound its customer first.
+		if a.Customer != "" && a.Customer != customer && customer != "" {
+			return billing.CustomerBoundError{Customer: a.Customer}
+		}
+		if (actual.String != "" && actual.String != customer) || customer == "" {
 			return billing.ErrCheckoutReconcile
 		}
 		_, err := tx.ExecContext(ctx, s.bind(`UPDATE `+billingTable(ctx)+` SET "stripeCustomerId"=? WHERE "id"=?`), customer, a.Owner)

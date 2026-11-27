@@ -18,6 +18,31 @@ type customerInUse struct{}
 func (customerInUse) Error() string { return ErrCheckoutReconcile.Error() }
 func (customerInUse) Unwrap() error { return ErrCheckoutReconcile }
 
+// CustomerBoundError refuses binding a customer to a purchase a concurrent
+// identical request already bound to Customer; it answers as
+// ErrCheckoutReconcile does.
+type CustomerBoundError struct{ Customer string }
+
+func (CustomerBoundError) Error() string { return ErrCheckoutReconcile.Error() }
+func (CustomerBoundError) Unwrap() error { return ErrCheckoutReconcile }
+
+// bindCustomer links a customer to the purchase. When a concurrent
+// identical request bound another first, the purchase continues with that
+// one, and a customer this request created is deleted.
+func (s *subscriptions) bindCustomer(c auth.EndpointContext, store SubscriptionStore, a CheckoutAttempt, token, customer string, created bool) (string, error) {
+	err := store.BindStripeCheckoutCustomer(c.Request.Context(), a, token, customer, time.Now())
+	var bound CustomerBoundError
+	if !errors.As(err, &bound) {
+		return customer, err
+	}
+	if created {
+		if _, err := s.client.V1Customers.Delete(c.Request.Context(), customer, nil); err != nil {
+			c.Auth.Logger().WarnContext(c.Request.Context(), "Stripe customer from a concurrent purchase was not deleted", "customer", customer, "error", err)
+		}
+	}
+	return bound.Customer, nil
+}
+
 // checkoutCustomer links a Stripe customer to a new purchase and returns its
 // ID. An organization's is found by its metadata or created under its name.
 // A person with a verified email reuses the customer Stripe finds for that
@@ -39,14 +64,15 @@ func (s *subscriptions) checkoutCustomer(c auth.EndpointContext, selection billi
 		if _, err = c.Store().(OrganizationBillingStore).StripeOrganizationAccount(ctx, token, time.Now()); err != nil {
 			return "", err
 		}
-		if customer == nil {
+		created := customer == nil
+		if created {
 			params := &sdk.CustomerCreateParams{Name: sdk.String(a.OrganizationName), Metadata: map[string]string{"organizationId": a.OrganizationID, "customerType": "organization"}}
 			customer = s.createCustomer(c, params)
 		}
 		if customer == nil || customer.ID == "" || customer.Metadata["customerType"] != "organization" || customer.Metadata["organizationId"] != a.OrganizationID {
 			return "", ErrCustomerCreation
 		}
-		return customer.ID, store.BindStripeCheckoutCustomer(ctx, a, token, customer.ID, time.Now())
+		return s.bindCustomer(c, store, a, token, customer.ID, created)
 	}
 	// An unverified email is not looked up, so a lookup outage cannot block
 	// the purchase, where another runtime looks it up and discards the match.
@@ -59,9 +85,9 @@ func (s *subscriptions) checkoutCustomer(c auth.EndpointContext, selection billi
 		if match != nil && (match.Metadata["userId"] == "" || match.Metadata["userId"] == ss.User.ID) {
 			// A customer another account holds is not shared, since each
 			// account binds its own customer: a new one is created.
-			err := store.BindStripeCheckoutCustomer(ctx, a, token, match.ID, time.Now())
+			id, err := s.bindCustomer(c, store, a, token, match.ID, false)
 			if !errors.Is(err, ErrCustomerInUse) {
-				return match.ID, err
+				return id, err
 			}
 		}
 	}
@@ -73,14 +99,16 @@ func (s *subscriptions) checkoutCustomer(c auth.EndpointContext, selection billi
 	if customer == nil || customer.ID == "" || customer.Metadata["customerType"] != "user" || customer.Metadata["userId"] != a.Owner {
 		return "", ErrCustomerCreation
 	}
-	return customer.ID, store.BindStripeCheckoutCustomer(ctx, a, token, customer.ID, time.Now())
+	return s.bindCustomer(c, store, a, token, customer.ID, true)
 }
 
 // createCustomer creates a Stripe customer, logging a failure and returning
 // nil. It sends no idempotency key of its own, as another runtime sends
 // none: Stripe replays a key's first answer, an error included, for a day,
-// so a fixed key would refuse every retry after a failure. The search that
-// precedes it finds a customer an earlier lost response created.
+// so a fixed key would refuse every retry after a failure. Concurrent
+// identical requests settle on the first customer bound; a response lost
+// after Stripe created a customer can leave it unbound, which a later
+// search for a verified email finds once Stripe indexes it.
 func (s *subscriptions) createCustomer(c auth.EndpointContext, params *sdk.CustomerCreateParams) *sdk.Customer {
 	customer, err := s.client.V1Customers.Create(c.Request.Context(), params)
 	if err != nil {

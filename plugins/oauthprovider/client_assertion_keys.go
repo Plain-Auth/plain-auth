@@ -291,7 +291,7 @@ func (cache *clientKeyCache) load(ctx context.Context, src keySource, previous *
 // the lifetime, or an invalid key set, drops the set; any other failure
 // keeps it for a later fetch.
 func (cache *clientKeyCache) refresh(ctx context.Context, src keySource, f *keyFetch) {
-	keys, kind, invalid, err := cache.fetch(ctx, src)
+	keys, kind, invalid, err := cache.fetchGuarded(ctx, src)
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
 	defer close(f.done)
@@ -356,6 +356,19 @@ func (cache *clientKeyCache) refresh(ctx context.Context, src keySource, f *keyF
 	}
 	f.value = &cachedClientKeys{keys: keys, fetched: f.started}
 	cache.sets[src.key] = f.value
+}
+
+// fetchGuarded fetches a key set, before the cache's lock, turning a panic
+// in a custom transport into a transport failure, so the shared fetch
+// always settles and the process survives.
+func (cache *clientKeyCache) fetchGuarded(ctx context.Context, src keySource) (keys assertionKeys, kind keyFailure, invalid bool, err error) {
+	defer func() {
+		if p := recover(); p != nil {
+			src.logger.ErrorContext(ctx, "oauth-provider key set transport panicked", "panic", fmt.Sprint(p))
+			keys, kind, invalid, err = nil, keyTransport, false, fmt.Errorf("%w: transport panicked", errFetchKeys)
+		}
+	}()
+	return cache.fetch(ctx, src)
 }
 
 // fetch reads a key set and classifies a failure, reporting whether the

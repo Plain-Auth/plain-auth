@@ -58,18 +58,21 @@ func (s *Store) distinctStripeReference(ctx context.Context, q rowQuerier, ref, 
 		}
 		other = `"organization"`
 	}
-	query := `SELECT EXISTS(SELECT 1 FROM ` + other + ` WHERE "id"=?`
-	args := []any{ref}
-	if customer != "" {
-		query += ` OR "stripeCustomerId"=?`
-		args = append(args, customer)
-	}
 	var collision bool
-	if err := q.QueryRowContext(ctx, s.bind(query+`)`), args...).Scan(&collision); err != nil {
+	if err := q.QueryRowContext(ctx, s.bind(`SELECT EXISTS(SELECT 1 FROM `+other+` WHERE "id"=?)`), ref).Scan(&collision); err != nil {
 		return err
 	}
 	if collision {
 		return billing.ErrCheckoutReconcile
+	}
+	// A customer the other kind of account holds is in use.
+	if customer != "" {
+		if err := q.QueryRowContext(ctx, s.bind(`SELECT EXISTS(SELECT 1 FROM `+other+` WHERE "stripeCustomerId"=?)`), customer).Scan(&collision); err != nil {
+			return err
+		}
+		if collision {
+			return billing.ErrCustomerInUse
+		}
 	}
 	return nil
 }

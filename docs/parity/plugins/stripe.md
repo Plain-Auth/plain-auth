@@ -38,7 +38,7 @@
     - [x] Buy a licensed base and two fixed metered add-ons for a personal or organization account, sending a quantity only for the base ([test](../../../conformance/stripe-organization-fixture.mjs#L256))
     - [x] Replay the exact original add-on basket after a lost Checkout response on independent SQL connections ([test](../../../adapters/sqlstore/stripe_addons_test.go#L158))
     - [x] Offer the configured trial only for a new personal or organization billing reference with no trial history across plans ([test](../../../conformance/stripe-organization-fixture.mjs#L392))
-    - [x] Reuse a verified user's email-matched Stripe customer that no other user owns, through search or a list by email, otherwise create one with the user's email, name and metadata, on three SQL engines ([test](../../../adapters/sqlstore/stripe_customer_lookup_test.go#L24))
+    - [x] Reuse a verified user's email-matched Stripe customer that no other user owns, through search or a list by email, otherwise create one with the user's email, name and metadata, on three SQL engines ([test](../../../adapters/sqlstore/stripe_customer_lookup_test.go#L25))
   - [ ] `POST /subscription/cancel`
     - [x] Open a cancellation page scoped to the signed-in customer and selected subscription ([test](../../../adapters/sqlstore/stripe_management_test.go#L246))
     - [x] Match the browser client's session, customer-type and foreign-reference errors before contacting Stripe ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L211))
@@ -98,7 +98,7 @@
     - [x] Verify the signed Checkout callback for personal and organization subscriptions even when subscription creation arrived first ([test](../../../conformance/stripe-organization-fixture.mjs#L343))
     - [x] Claim trial conversion and expiration once across replicas and preserve general webhook delivery after callback failures ([test](../../../adapters/sqlstore/stripe_trial_callbacks_test.go#L21))
     - [x] Answer a missing signing secret with HTTP 500, a body over 1 MiB with 413 before the signature check, and another secret's signature with 400, before calling the application ([test](../../../plugins/stripe/stripe_test.go#L84))
-    - [x] Pass a connected-account or account-context event to OnEvent without reading or changing the platform subscription on three SQL engines ([test](../../../adapters/sqlstore/stripe_lifecycle_test.go#L243))
+    - [x] Pass an event with an account or a context to OnEvent without reading or changing subscriptions on three SQL engines ([test](../../../adapters/sqlstore/stripe_lifecycle_test.go#L243))
   - [ ] `AuthorizeReferenceAction`
   - [ ] `CustomerType`
     - [x] Reject customer types other than user and organization on every billing route and refuse organizations when organization billing is off, matching the other runtime ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L212))
@@ -404,7 +404,7 @@
       - [x] Send customer, price, Checkout and subscription requests through the configured Stripe client on three SQL engines ([test](../../../adapters/sqlstore/subscriptions_test.go#L120))
     - [ ] `stripeWebhookSecret`
       - [x] Accept only deliveries signed with the configured secret and reject missing, altered and stale signatures before any callback runs ([test](../../../plugins/stripe/stripe_test.go#L21))
-      - [x] Refuse subscription billing without a signing secret at startup and answer a delivery with HTTP 500 without one ([test](../../../plugins/stripe/stripe_test.go#L99))
+      - [x] Refuse subscription billing without a signing secret at startup ([test](../../../plugins/stripe/stripe_test.go#L99))
     - [ ] `createCustomerOnSignUp`
     - [ ] `onCustomerCreate`
     - [ ] `getCustomerCreateParams`

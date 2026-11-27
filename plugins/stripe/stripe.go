@@ -56,12 +56,12 @@ func New(opts Options) authn.Plugin {
 			if err != nil {
 				return nil, &authn.APIError{Status: 400, Code: "FAILED_TO_CONSTRUCT_STRIPE_EVENT", Message: "Failed to construct Stripe event"}
 			}
-			// A reconciliation failure answers 500 STRIPE_WEBHOOK_ERROR, where
-			// another runtime answers its 400 "Stripe webhook error": a store
-			// failure is the server's, and Stripe retries a 5xx delivery.
-			// A connected account's event, or one in another account's
-			// context, carries that account's customer IDs, so it only reaches
-			// OnEvent.
+			// A reconciliation failure answers 500 STRIPE_WEBHOOK_ERROR without
+			// calling OnEvent, so Stripe retries it, where another runtime logs
+			// it, calls its event callback and answers 200.
+			// An event with an account or a context only reaches OnEvent, where
+			// another runtime reconciles it: a connected account's customer IDs
+			// belong to another Stripe account.
 			if subs != nil && event.Account == "" && event.Context == "" {
 				if subs.organization != nil {
 					var err error
