@@ -51908,5 +51908,18 @@
       "marker": "// A failing parameters callback creates nothing; a failing",
       "complete": true
     }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L913/When Organization Customer is enabled:": [
+    {
+      "label": "Rename an organization's Stripe customer after its name changes without failing the update, and refuse deleting the organization while Stripe reports a billing subscription on any page, a purchase is pending or the lookup fails, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_organization_hooks_test.go",
+      "marker": "func TestOrganizationStripeHooks(t *testing.T) {",
+      "complete": true
+    },
+    {
+      "label": "Create an organization's Stripe customer on its first purchase and report it once, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_organization_customer_test.go",
+      "marker": "func TestOrganizationCustomerCallbacks(t *testing.T) {"
+    }
   ]
 }

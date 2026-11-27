@@ -542,7 +542,9 @@
     - [ ] Using with Organizations
       - [x] Apply signed checkout and renewal events to the organization and list its updated price through the browser client ([test](../../../conformance/stripe-organization-fixture.mjs#L173))
       - [x] Bill an organization as its own named Stripe customer, apply signed checkout and renewal events to it and keep members' personal lists empty through the browser client ([test](../../../conformance/stripe-organization-fixture.mjs#L173))
-      - [ ] When Organization Customer is enabled:
+      - [x] When Organization Customer is enabled: ([test](../../../adapters/sqlstore/stripe_organization_hooks_test.go#L27))
+        - [x] Rename an organization's Stripe customer after its name changes without failing the update, and refuse deleting the organization while Stripe reports a billing subscription on any page, a purchase is pending or the lookup fails, on three SQL engines ([test](../../../adapters/sqlstore/stripe_organization_hooks_test.go#L27))
+        - [x] Create an organization's Stripe customer on its first purchase and report it once, on three SQL engines ([test](../../../adapters/sqlstore/stripe_organization_customer_test.go#L28))
       - [ ] Enabling Organization Customer
         - [x] Generate the optional organization customer column with organization and subscription tables on three SQL dialects ([test](../../../conformance/schema.test.mjs#L190))
         - [x] Refuse organization billing at startup without the organization customer column, with or without subscriptions, and start after the schema upgrade keeps existing organizations, on three SQL engines ([test](../../../adapters/sqlstore/stripe_options_test.go#L221))

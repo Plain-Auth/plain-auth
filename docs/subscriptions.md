@@ -203,13 +203,28 @@ The SQL adapter reads the member's role and calls the policy with it and the ope
 
 The organization receives its own Stripe customer, which only the server stores: its billing portal uses that customer alone, and answers `CUSTOMER_NOT_FOUND` before Stripe until the customer exists, where another runtime falls back to an active subscription's customer. The server searches for an existing customer using organization metadata, with a paginated list fallback if search is unavailable. Customer creation uses the stored organization name, and the server never sets or updates an organization customer's email itself, during Checkout or renewal; return it from `CustomerCreateParams`, or call your own Stripe client with the customer ID from the organization's `stripeCustomerId` column or from `CustomerID` on a row `ListOrganization` returns. A purchase without `customerType` stays on the signed-in user's own customer even while an organization is active, and an explicit `referenceId` names its organization rather than the active one. Signed checkout and subscription webhooks update the organization’s subscription even if the original purchaser has since left. Ambiguous personal and organization references or customer mappings require reconciliation. [Browser client and renewal tests](../conformance/stripe-organization-fixture.mjs)
 
-An authorized member can open Stripe’s cancellation or plan confirmation page, request a different seat quantity, or undo a pending change. A single-seat subscription also supports price changes at the next billing boundary. The server rechecks the acting member’s current permission before disclosing a hosted link or sending a schedule change to Stripe. Signed webhooks record confirmed cancellations and new prices. These flows have local provider coverage on SQLite, PostgreSQL and MySQL. Multi-item plan changes and synchronization of organization name or deletion events remain open. [Organization management tests](../adapters/sqlstore/stripe_organization_management_test.go)
+An authorized member can open Stripe’s cancellation or plan confirmation page, request a different seat quantity, or undo a pending change. A single-seat subscription also supports price changes at the next billing boundary. The server rechecks the acting member’s current permission before disclosing a hosted link or sending a schedule change to Stripe. Signed webhooks record confirmed cancellations and new prices. These flows have local provider coverage on SQLite, PostgreSQL and MySQL. Multi-item plan changes remain open. [Organization management tests](../adapters/sqlstore/stripe_organization_management_test.go)
 
 ### Customize the organization's customer
 
 Set `CustomerCreateParams` on `stripeplugin.OrganizationOptions` to add parameters, such as a billing email, a description or tax details, to the customer an organization's first purchase creates. It runs after the purchaser's membership is rechecked, with the organization's ID and name, the purchaser and a body-free copy of the request, and never for a customer found in Stripe. The organization's name and the plugin's metadata keys (`organizationId`, `customerType`) replace the host's, as another runtime merges them. An error, or request options such as a connected account, answers 400 `UNABLE_TO_CREATE_CUSTOMER` and creates nothing.
 
 `OnCustomerCreate` runs once the purchase that created the customer has stored it, with the same input and the Stripe customer. Of two identical purchases at once, only the one whose customer was bound reports it. An error answers 400 `UNABLE_TO_CREATE_CUSTOMER`, as in another runtime, but the customer stays stored, where another runtime leaves it unstored for a later search to find; the next attempt continues with it without calling `OnCustomerCreate` again. A personal purchase calls neither; users' customers are customized through `UserCustomers`. [Organization customer tests](../adapters/sqlstore/stripe_organization_customer_test.go)
+
+### Keep the organization's customer in step
+
+The Stripe plugin cannot wrap the organization plugin's hooks, as another runtime does, so assign `stripeplugin.OrganizationHooks` methods to `organization.Options`, calling your own hooks first:
+
+```go
+hooks := stripeplugin.OrganizationHooks{Client: stripeClient, Store: store, Logger: logger}
+orgPlugin, err := organization.New(organization.Options{
+    Store:                    store,
+    AfterUpdateOrganization:  hooks.AfterUpdateOrganization,
+    BeforeDeleteOrganization: hooks.BeforeDeleteOrganization,
+})
+```
+
+`AfterUpdateOrganization` renames the organization's Stripe customer when the organization's name differs from the customer's, as in another runtime. It does nothing for an organization without a customer or a customer Stripe reports deleted, and logs a failure without Stripe's message, never failing the update. `BeforeDeleteOrganization` refuses with 400 `ORGANIZATION_HAS_ACTIVE_SUBSCRIPTION` while Stripe reports any subscription of the customer other than canceled, incomplete or incomplete_expired, across every page, as in another runtime. It also refuses while a purchase is reserved for the organization, which another runtime does not check, so a Checkout cannot complete for a deleted organization. A failed lookup is logged and refuses the deletion. A purchase started between the check and the deletion is not seen, as in another runtime, since the organization plugin runs the hook outside its deletion transaction. Custom stores implement `stripeplugin.OrganizationBillingReader`. [Organization hook tests](../adapters/sqlstore/stripe_organization_hooks_test.go)
 
 ## Bill by organization membership
 

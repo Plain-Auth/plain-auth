@@ -77,3 +77,23 @@ func (s *Store) LinkStripeUserCustomer(ctx context.Context, userID, customer str
 	}
 	return true, tx.Commit()
 }
+
+var _ billing.OrganizationBillingReader = (*Store)(nil)
+
+// StripeOrganizationBilling reads an organization's Stripe customer and
+// whether a purchase is reserved for it. Any reservation counts, as it
+// blocks a new purchase until a webhook settles or expires it.
+func (s *Store) StripeOrganizationBilling(ctx context.Context, organizationID string) (billing.OrganizationBilling, error) {
+	var out billing.OrganizationBilling
+	var customer sql.NullString
+	err := s.db.QueryRowContext(ctx, s.bind(`SELECT "stripeCustomerId" FROM "organization" WHERE "id"=?`), organizationID).Scan(&customer)
+	if errors.Is(err, sql.ErrNoRows) {
+		return out, auth.ErrNotFound
+	}
+	if err != nil {
+		return out, err
+	}
+	out.Customer = customer.String
+	err = s.db.QueryRowContext(ctx, s.bind(`SELECT EXISTS(SELECT 1 FROM "verification" WHERE "identifier"=?)`), "stripe-org-checkout:"+organizationID).Scan(&out.PendingCheckout)
+	return out, err
+}
