@@ -131,3 +131,65 @@ export async function compareResourceVerifier(t, goFixture) {
   assert.equal((await reference(endless, [])).status, 200);
   assert.deepEqual(await go(endless, []), { status: 401, error: "invalid_token", error_description: "invalid access token", message: "invalid access token", scopes: undefined });
 }
+
+// Both runtimes introspect tokens at the same scripted endpoint with the
+// same form and headers, and answer each response alike.
+export async function compareRemoteVerifier(t, goFixture) {
+  const issuer = "https://issuer.example.test/api/auth", audience = "https://api.example.test";
+  const now = Math.floor(Date.now() / 1000);
+  const active = extra => ({ active: true, iss: issuer, aud: audience, sub: "user", client_id: "app", exp: now + 60, scope: "read", ...extra });
+  const answers = {
+    "access_active": [200, active({})],
+    "access_inactive": [200, { active: false }],
+    "access_no_audience": [200, active({ aud: undefined })],
+    "access_other_audience": [200, active({ aud: "https://other.example.test" })],
+    "access_expired": [200, active({ exp: now - 10 })],
+    "access_other_issuer": [200, active({ iss: "https://evil.example.test" })],
+    "access_failing": [500, { error: "server_error" }],
+  };
+  const recorded = [];
+  const stub = createServer(async (req, res) => {
+    let body = "";
+    for await (const chunk of req) body += chunk;
+    const form = new URLSearchParams(body);
+    recorded.push({ form: Object.fromEntries(form), accept: req.headers.accept, type: req.headers["content-type"] });
+    const [status, answer] = answers[form.get("token")] ?? [200, { active: false }];
+    res.writeHead(status, { "content-type": "application/json" });
+    res.end(JSON.stringify(answer));
+  });
+  stub.listen(0, "127.0.0.1");
+  await once(stub, "listening");
+  t.after(() => stub.close());
+  const introspectUrl = `http://127.0.0.1:${stub.address().port}/introspect`;
+  const remote = { introspectUrl, clientId: "api", clientSecret: "api-secret" };
+  const reference = async token => {
+    try {
+      const payload = await verifyBearerToken(token, { verifyOptions: { issuer, audience }, remoteVerify: remote });
+      return { status: 200, payload };
+    } catch (error) {
+      if (!error.statusCode) throw error;
+      return { status: error.statusCode, error: error.body?.error, error_description: error.body?.error_description };
+    }
+  };
+  const server = await goFixture(t, [], { CONFORMANCE_RESOURCE_VERIFIER: JSON.stringify({
+    Issuer: issuer, Audience: [audience], Remote: { IntrospectionURL: introspectUrl, ClientID: "api", ClientSecret: "api-secret" },
+  }) });
+  const go = async token => (await server.send(new Request(server.baseURL + "/__fixture/verify-bearer", {
+    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ token, scopes: [] }),
+  }))).json();
+  for (const token of Object.keys(answers)) {
+    recorded.length = 0;
+    const want = await reference(token);
+    const got = await go(token);
+    assert.equal(got.status, want.status, token + " " + JSON.stringify([want, got]));
+    if (want.status === 200) {
+      assert.equal(got.payload.sub, want.payload.sub, token);
+    } else if (want.status !== 500) {
+      assert.equal(got.error, want.error, token);
+      assert.equal(got.error_description, want.error_description, token);
+    }
+    assert.equal(recorded.length, 2, token);
+    assert.deepEqual(recorded[1], recorded[0], token);
+    assert.deepEqual(recorded[0].form, { client_id: "api", client_secret: "api-secret", token, token_type_hint: "access_token" });
+  }
+}

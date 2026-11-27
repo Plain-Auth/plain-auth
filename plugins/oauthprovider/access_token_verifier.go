@@ -27,6 +27,7 @@ type AccessTokenVerifierOptions struct {
 	// Audience lists the aud values accepted; a token must name one.
 	Audience []string
 	// JWKSURL serves the issuer's signing keys, over HTTPS or on loopback.
+	// It may be empty when Remote is set.
 	JWKSURL string
 	// Type is the typ header tokens must carry, at+jwt by default.
 	Type string
@@ -37,6 +38,8 @@ type AccessTokenVerifierOptions struct {
 	ScopeSatisfied func(required string, granted map[string]bool) bool
 	// Transport fetches the keys; http.DefaultTransport by default.
 	Transport http.RoundTripper
+	// Remote introspects every token at the issuer after the local check.
+	Remote *RemoteVerification
 	// DPoP checks the proofs of DPoP-bound tokens at VerifyRequest. Its
 	// replay store defaults to memory for this verifier; share a SQL or
 	// Redis store across the API's instances.
@@ -50,6 +53,7 @@ type AccessTokenVerifier struct {
 	opts   AccessTokenVerifierOptions
 	keys   *resourceKeys
 	proofs *DPoPVerifier
+	http   *http.Client
 	now    func() time.Time
 }
 
@@ -65,9 +69,18 @@ func NewAccessTokenVerifier(opts AccessTokenVerifierOptions) (*AccessTokenVerifi
 	if len(opts.Audience) == 0 {
 		return nil, errors.New("oauthprovider: access token verifier needs an audience")
 	}
-	u, err := url.Parse(opts.JWKSURL)
-	if err != nil || !u.IsAbs() || u.User != nil || u.Fragment != "" || u.Host == "" || !(u.Scheme == "https" || u.Scheme == "http" && loopback(u.Hostname())) {
+	if opts.JWKSURL == "" && opts.Remote == nil {
+		return nil, errors.New("oauthprovider: access token verifier needs a JWKS URL or remote verification")
+	}
+	if opts.JWKSURL != "" && !secureURL(opts.JWKSURL) {
 		return nil, errors.New("oauthprovider: access token verifier needs an HTTPS JWKS URL, or HTTP on loopback")
+	}
+	if r := opts.Remote; r != nil {
+		if !secureURL(r.IntrospectionURL) || r.ClientID == "" || r.ClientSecret == "" {
+			return nil, errors.New("oauthprovider: remote verification needs an HTTPS introspection URL, or HTTP on loopback, and the API's client credentials")
+		}
+		copied := *r
+		opts.Remote = &copied
 	}
 	if opts.Type == "" {
 		opts.Type = "at+jwt"
@@ -80,7 +93,18 @@ func NewAccessTokenVerifier(opts AccessTokenVerifierOptions) (*AccessTokenVerifi
 	if err != nil {
 		return nil, err
 	}
-	return &AccessTokenVerifier{opts: opts, keys: newResourceKeys(opts.JWKSURL, nil, opts.Transport), proofs: proofs, now: time.Now}, nil
+	v := &AccessTokenVerifier{opts: opts, proofs: proofs, now: time.Now, http: newIntrospectionClient(opts.Transport)}
+	if opts.JWKSURL != "" {
+		v.keys = newResourceKeys(opts.JWKSURL, nil, opts.Transport)
+	}
+	return v, nil
+}
+
+// secureURL reports an absolute HTTPS URL, or HTTP on loopback, without
+// credentials or a fragment.
+func secureURL(raw string) bool {
+	u, err := url.Parse(raw)
+	return err == nil && u.IsAbs() && u.User == nil && u.Fragment == "" && u.Host != "" && (u.Scheme == "https" || u.Scheme == "http" && loopback(u.Hostname()))
 }
 
 // Error returns the failure's description, or else its message.
@@ -205,9 +229,25 @@ func (v *AccessTokenVerifier) verify(ctx context.Context, token string, required
 	if token == "" {
 		return nil, &ResourceFailure{Status: 401, Message: "missing authorization header"}
 	}
-	claims, err := v.verifyLocal(ctx, token)
-	if err != nil {
-		return nil, err
+	// The local check runs with a key source unless Remote forces
+	// introspection alone; an opaque value goes on to introspection.
+	var claims map[string]any
+	remote := v.opts.Remote
+	if v.keys != nil && (remote == nil || !remote.Force) {
+		var err error
+		claims, err = v.verifyLocal(ctx, token)
+		if err != nil && !errors.Is(err, errOpaqueToken) {
+			return nil, err
+		}
+	}
+	if remote != nil {
+		var err error
+		if claims, err = v.introspect(ctx, token); err != nil {
+			return nil, err
+		}
+	}
+	if claims == nil {
+		return nil, invalidToken("no token payload")
 	}
 	granted, err := grantedScopes(claims["scope"])
 	if err != nil {
@@ -251,6 +291,9 @@ func grantedScopes(claim any) (map[string]bool, error) {
 	return granted, nil
 }
 
+// errOpaqueToken marks a value that is not a compact JWS.
+var errOpaqueToken = errors.New("oauthprovider: not a JWS access token")
+
 // verifyLocal checks a JWS access token against the issuer's keys, as
 // another runtime's jwtVerify does, in its order. A value that is not a
 // compact JWS is an opaque token, which this verifier cannot read.
@@ -258,7 +301,7 @@ func (v *AccessTokenVerifier) verifyLocal(ctx context.Context, token string) (ma
 	parts := strings.Split(token, ".")
 	var header map[string]any
 	if len(parts) != 3 || !decodeSegment(parts[0], &header) || !decodeSegment(parts[1], new(any)) {
-		return nil, invalidToken("no token payload")
+		return nil, errOpaqueToken
 	}
 	invalid := invalidToken("invalid access token")
 	signed, err := jose.ParseSigned(token, assertionAlgorithms)
@@ -279,33 +322,51 @@ func (v *AccessTokenVerifier) verifyLocal(ctx context.Context, token string) (ma
 	if json.Unmarshal(payload, &claims) != nil || claims == nil {
 		return nil, invalid
 	}
-	for _, name := range append([]string{"iss", "aud"}, v.opts.RequiredClaims...) {
-		if _, ok := claims[name]; !ok {
-			return nil, invalid
-		}
-	}
-	if claims["iss"] != v.opts.Issuer || !audienceMatches(claims["aud"], v.opts.Audience) {
-		return nil, invalid
-	}
-	now := float64(v.now().Unix())
-	if _, ok := claims["iat"]; ok && !isNumber(claims["iat"]) {
-		return nil, invalid
-	}
-	if nbf, ok := claims["nbf"]; ok && (!isNumber(nbf) || nbf.(float64) > now) {
-		return nil, invalid
-	}
-	// exp is required and numeric.
-	exp, ok := claims["exp"].(float64)
-	if !ok {
-		return nil, invalid
-	}
-	if exp <= now {
-		return nil, invalidToken("token expired")
+	if err := v.checkClaims(claims, true, true); err != nil {
+		return nil, err
 	}
 	if azp, ok := claims["azp"].(string); ok && azp != "" {
 		claims["client_id"] = azp
 	}
 	return claims, nil
+}
+
+// checkClaims applies the claim rules another runtime's jose checks, in
+// its order: required claims present, iss, aud when checked, then iat,
+// nbf and exp as numbers, exp required when asked.
+func (v *AccessTokenVerifier) checkClaims(claims map[string]any, audience, requireExp bool) error {
+	invalid := invalidToken("invalid access token")
+	required := append([]string{"iss"}, v.opts.RequiredClaims...)
+	if audience {
+		required = append(required, "aud")
+	}
+	for _, name := range required {
+		if _, ok := claims[name]; !ok {
+			return invalid
+		}
+	}
+	if claims["iss"] != v.opts.Issuer || audience && !audienceMatches(claims["aud"], v.opts.Audience) {
+		return invalid
+	}
+	now := float64(v.now().Unix())
+	if _, ok := claims["iat"]; ok && !isNumber(claims["iat"]) {
+		return invalid
+	}
+	if nbf, ok := claims["nbf"]; ok && (!isNumber(nbf) || nbf.(float64) > now) {
+		return invalid
+	}
+	raw, present := claims["exp"]
+	if !present && !requireExp {
+		return nil
+	}
+	exp, ok := raw.(float64)
+	if !ok {
+		return invalid
+	}
+	if exp <= now {
+		return invalidToken("token expired")
+	}
+	return nil
 }
 
 func isNumber(v any) bool {

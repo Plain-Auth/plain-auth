@@ -8,9 +8,12 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -301,5 +304,155 @@ func TestResourceRequestFrom(t *testing.T) {
 	got := ResourceRequestFrom(r, "https://api.example.test/")
 	if got != (ResourceRequest{Authorization: "DPoP token", DPoP: "proof", Method: "POST", URL: "https://api.example.test/v1/posts?id=7"}) {
 		t.Fatal("the resource request was read wrong", got)
+	}
+}
+
+// Remote verification posts the token to the issuer's introspection
+// endpoint with the API's credentials and checks the response: inactive,
+// audience-less, foreign, expired and wrongly issued answers are refused,
+// AllowMissingAudience accepts only a missing aud, an opaque token reported
+// active passes, Force skips the local check and its typ, active must be
+// JSON true, and failed calls are server errors.
+func TestAccessTokenVerifierRemote(t *testing.T) {
+	ctx := t.Context()
+	issuer := newIssuerKeys(t)
+	signer := issuer.publish("ec")["ec"]
+	const iss, aud = "https://issuer.example.test/api/auth", "https://api.example.test"
+	now := time.Now().Unix()
+	var mu sync.Mutex
+	var forms []url.Values
+	var headers []http.Header
+	response := `{}`
+	status := 200
+	stub := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r.ParseForm()
+		mu.Lock()
+		forms, headers = append(forms, r.PostForm), append(headers, r.Header.Clone())
+		body, code := response, status
+		mu.Unlock()
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(code)
+		w.Write([]byte(body))
+	}))
+	t.Cleanup(stub.Close)
+	answer := func(code int, body map[string]any) {
+		raw, _ := json.Marshal(body)
+		mu.Lock()
+		status, response = code, string(raw)
+		mu.Unlock()
+	}
+	remote := func(r RemoteVerification, jwks bool) *AccessTokenVerifier {
+		t.Helper()
+		r.IntrospectionURL, r.ClientID, r.ClientSecret = stub.URL+"/introspect", "api", "api-secret"
+		opts := AccessTokenVerifierOptions{Issuer: iss, Audience: []string{aud}, Remote: &r, Transport: stub.Client().Transport}
+		if jwks {
+			opts.JWKSURL = issuer.server.URL
+		}
+		v, err := NewAccessTokenVerifier(opts)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return v
+	}
+	active := func(extra map[string]any) map[string]any {
+		body := map[string]any{"active": true, "iss": iss, "aud": aud, "sub": "user", "client_id": "app", "exp": now + 60, "scope": "read"}
+		for k, value := range extra {
+			if value == nil {
+				delete(body, k)
+			} else {
+				body[k] = value
+			}
+		}
+		return body
+	}
+	refused := func(err error, description string) {
+		t.Helper()
+		var f *ResourceFailure
+		if !errors.As(err, &f) || f.Status != 401 || f.Code != "invalid_token" || f.Description != description {
+			t.Fatalf("wanted invalid_token %q, got %v", description, err)
+		}
+	}
+	v := remote(RemoteVerification{}, false)
+	// The request carries exactly the API's credentials and the token.
+	answer(200, active(nil))
+	claims, err := v.VerifyBearer(ctx, "access_opaque", "read")
+	if err != nil || claims["sub"] != "user" {
+		t.Fatal("an opaque token reported active was refused", err)
+	}
+	mu.Lock()
+	form, header := forms[len(forms)-1], headers[len(headers)-1]
+	mu.Unlock()
+	if len(form) != 4 || form.Get("client_id") != "api" || form.Get("client_secret") != "api-secret" || form.Get("token") != "access_opaque" || form.Get("token_type_hint") != "access_token" ||
+		header.Get("Accept") != "application/json" || header.Get("Content-Type") != "application/x-www-form-urlencoded" {
+		t.Fatal("the introspection request was wrong", form, header)
+	}
+	for name, c := range map[string]struct {
+		body        map[string]any
+		description string
+	}{
+		"inactive":       {map[string]any{"active": false}, "token inactive"},
+		"string active":  {active(map[string]any{"active": "true"}), "token inactive"},
+		"no audience":    {active(map[string]any{"aud": nil}), "invalid access token"},
+		"other audience": {active(map[string]any{"aud": "https://other.example.test"}), "invalid access token"},
+		"expired":        {active(map[string]any{"exp": now - 1}), "token expired"},
+		"other issuer":   {active(map[string]any{"iss": "https://evil.example.test"}), "invalid access token"},
+	} {
+		answer(200, c.body)
+		_, err := v.VerifyBearer(ctx, "access_opaque")
+		refused(err, c.description)
+		_ = name
+	}
+	// exp is optional in an introspection response.
+	answer(200, active(map[string]any{"exp": nil}))
+	if _, err := v.VerifyBearer(ctx, "access_opaque"); err != nil {
+		t.Fatal("an introspection response without exp was refused", err)
+	}
+	// AllowMissingAudience accepts only a missing aud.
+	lenient := remote(RemoteVerification{AllowMissingAudience: true}, false)
+	answer(200, active(map[string]any{"aud": nil}))
+	if _, err := lenient.VerifyBearer(ctx, "access_opaque"); err != nil {
+		t.Fatal("AllowMissingAudience refused a missing aud", err)
+	}
+	answer(200, active(map[string]any{"aud": "https://other.example.test"}))
+	_, err = lenient.VerifyBearer(ctx, "access_opaque")
+	refused(err, "invalid access token")
+	// A JWT passes both checks; without Force a wrong typ is refused
+	// locally, with Force it is not.
+	jwt := func(typ string) string {
+		s, _ := jose.NewSigner(jose.SigningKey{Algorithm: jose.ES256, Key: signer}, new(jose.SignerOptions).WithHeader("kid", "ec").WithType(jose.ContentType(typ)))
+		payload, _ := json.Marshal(map[string]any{"iss": iss, "aud": aud, "sub": "user", "exp": now + 60})
+		object, _ := s.Sign(payload)
+		compact, _ := object.CompactSerialize()
+		return compact
+	}
+	both := remote(RemoteVerification{}, true)
+	answer(200, active(nil))
+	if _, err := both.VerifyBearer(ctx, jwt("at+jwt")); err != nil {
+		t.Fatal("a JWT did not pass both checks", err)
+	}
+	_, err = both.VerifyBearer(ctx, jwt("JWT"))
+	refused(err, "invalid access token")
+	if _, err := remote(RemoteVerification{Force: true}, true).VerifyBearer(ctx, jwt("JWT")); err != nil {
+		t.Fatal("Force did not skip the local check", err)
+	}
+	// Failed calls are server errors.
+	for _, code := range []int{401, 500, 302} {
+		answer(code, map[string]any{"error": "x"})
+		if _, err := v.VerifyBearer(ctx, "access_opaque"); err == nil || errors.As(err, new(*ResourceFailure)) || strings.Contains(err.Error(), "api-secret") {
+			t.Fatal("a failed introspection was not a server error", code, err)
+		}
+	}
+	// Construction checks.
+	for name, r := range map[string]*RemoteVerification{
+		"plain http": {IntrospectionURL: "http://issuer.example.test/introspect", ClientID: "a", ClientSecret: "b"},
+		"no client":  {IntrospectionURL: stub.URL, ClientSecret: "b"},
+		"no secret":  {IntrospectionURL: stub.URL, ClientID: "a"},
+	} {
+		if _, err := NewAccessTokenVerifier(AccessTokenVerifierOptions{Issuer: iss, Audience: []string{aud}, Remote: r}); err == nil {
+			t.Error("remote options were accepted", name)
+		}
+	}
+	if _, err := NewAccessTokenVerifier(AccessTokenVerifierOptions{Issuer: iss, Audience: []string{aud}}); err == nil {
+		t.Fatal("a verifier without a key source or introspection was accepted")
 	}
 }

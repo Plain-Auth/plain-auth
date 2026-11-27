@@ -39,6 +39,27 @@ Pass the scopes a route needs after the token. A token whose `scope` claim is no
 
 Scopes describe what a client may request; permissions are what your API enforces. Map one scope to one permission, or set `ScopeSatisfied` to decide when the granted scopes, given as a set, satisfy one required scope, for example a hierarchy where `files` satisfies `files:read`.
 
+## JWT or opaque tokens
+
+The provider issues a signed access token when the request names a `resource` and the jwt plugin is enabled, and an opaque one otherwise. A verifier with `JWKSURL` checks signed tokens locally, with no call to the issuer, but cannot see that a session ended: a signed token passes until it expires. An opaque token answers `no token payload` unless the verifier also introspects.
+
+To accept opaque tokens, or to see ended sessions, set `Remote`:
+
+```go
+verifier, err := oauthprovider.NewAccessTokenVerifier(oauthprovider.AccessTokenVerifierOptions{
+    Issuer:   "https://auth.example.com/api/auth",
+    Audience: []string{"https://api.example.com"},
+    JWKSURL:  "https://auth.example.com/api/auth/jwks",
+    Remote: &oauthprovider.RemoteVerification{
+        IntrospectionURL: "https://auth.example.com/api/auth/oauth2/introspect",
+        ClientID:         apiClientID,
+        ClientSecret:     apiClientSecret,
+    },
+})
+```
+
+Register the API as a client with `client_secret_post`, since the credentials travel in the form, and [link it to its resource](oauth-resource-management.md) so introspection answers for tokens issued to other clients. With `Remote`, every token is introspected after the local check, as another runtime's `remoteVerify` does: the form carries `client_id`, `client_secret`, the token and `token_type_hint=access_token`. The response replaces the local claims; `active` must be JSON `true`, where another runtime accepts any truthy value, or the token answers `invalid_token` "token inactive". Its `iss`, `aud` and required claims are checked as a local token's are, without `typ`, which an introspection response cannot carry, and with `exp` optional, as RFC 7662 allows. A response without `aud` is refused unless `AllowMissingAudience` is set; a mismatched `aud` is always refused. `Force` skips the local check, and so the `typ` check; keep it off so a session JWT signed with the same key still fails. A failed call, a status outside 2xx or a response that is not a JSON object of at most 64 KiB is a server error, which keeps the status but never the secret. `IntrospectionURL` must use HTTPS, or HTTP on loopback, since the request carries the API's secret. `JWKSURL` may be left empty to introspect every token. [Remote tests](../plugins/oauthprovider/access_token_verifier_test.go) · [Three-database test](../adapters/sqlstore/oauth_resource_verifier_test.go)
+
 ## Key caching
 
 The verifier keeps the issuer's key set as another runtime does. A set is trusted for five minutes. A token naming a key the set lacks refetches it at most every 30 seconds, so made-up key IDs cannot make the verifier fetch on every request, and a newly published key verifies once that window passes. Concurrent requests share one fetch, each waiting at most five seconds. When a refetch fails, an expired set keeps serving tokens it can verify for up to ten minutes after it was fetched; past that, or for a key it lacks, verification fails with an error that is not a `*ResourceFailure`, which your API should answer as a server error. A key set must be a JSON document of at most 64 KiB, fetched without redirects; one carrying private key members is refused, and keys that cannot verify are skipped. The cache belongs to the verifier rather than to the process. [Verifier tests](../plugins/oauthprovider/access_token_verifier_test.go) · [Cache tests](../plugins/oauthprovider/resource_keys_test.go) · [Cross-runtime test](../conformance/resource-verifier.mjs)

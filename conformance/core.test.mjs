@@ -1931,6 +1931,11 @@ test("a resource server verifies bearer access tokens as the other runtime does"
   await compareResourceVerifier(t, goFixture);
 });
 
+test("a resource server introspects access tokens as the other runtime does", async t => {
+  const { compareRemoteVerifier } = await import("./resource-verifier.mjs");
+  await compareRemoteVerifier(t, goFixture);
+});
+
 test("a provider extension grant issues client tokens through the provider", async t => {
   const { compareExtensionGrant } = await import("./oauth-extensions.mjs");
   await compareExtensionGrant(t, { reference, goFixture });
