@@ -57,6 +57,10 @@ type Plugin struct {
 	OnResponse func(*ResponseContext)
 	// Middleware runs before the endpoint hooks for the routes its path matches.
 	Middleware []Middleware
+	// OnSessionsEnded observes sessions the store ended, after its
+	// transaction commits and outside it, when the store implements
+	// SessionEndReporter. Observers run in plugin order; a panic is logged.
+	OnSessionsEnded func(context.Context, SessionsEnded)
 	// PrepareOAuthLogin verifies a signed oauth_query before credential handling.
 	PrepareOAuthLogin func(EndpointContext, string) (OAuthLoginContinuation, error)
 	// PrepareOAuthSelection verifies a signed post-login query before an

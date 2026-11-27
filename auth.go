@@ -454,6 +454,7 @@ func New(opts Options) (*Auth, error) {
 	if err := prepareVerificationCleanup(cleanupStore, opts.DisableVerificationCleanup); err != nil {
 		return nil, err
 	}
+	a.attachSessionEnds()
 	return a, nil
 }
 
