@@ -205,9 +205,16 @@ func (e *Event) decode(version string, data json.RawMessage) {
 	}
 }
 
-// typed decodes data with the SDK's decoder, or answers nil when it refuses it.
-func typed[T any](data json.RawMessage) *T {
-	v := new(T)
+// typed decodes data with the SDK's decoder, or answers nil when it refuses
+// it. The SDK's union decoders can panic on a nested null, so a panic is a
+// refusal too, and the delivery still reaches OnEvent with Body.
+func typed[T any](data json.RawMessage) (v *T) {
+	defer func() {
+		if recover() != nil {
+			v = nil
+		}
+	}()
+	v = new(T)
 	if json.Unmarshal(data, v) != nil {
 		return nil
 	}

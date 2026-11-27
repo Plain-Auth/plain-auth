@@ -323,6 +323,9 @@ func TestTypedWebhookEvents(t *testing.T) {
 		{"api_version": apiVersion, "type": "member.created", "data": with(plain, map[string]any{"customer_id": customerID, "role": "member"})()},
 		{"api_version": apiVersion, "type": "customer.created", "data": with(customer, map[string]any{"type": "organization"})()},
 		{"api_version": apiVersion, "type": "unrelated.new.event", "data": plain()},
+		// The SDK's union decoders panic on a nested null.
+		{"api_version": apiVersion, "type": "benefit_grant.revoked", "data": with(grant, map[string]any{"customer": nil})()},
+		{"api_version": apiVersion, "type": "checkout.updated", "data": with(checkout, map[string]any{"attached_custom_fields": []any{map[string]any{"custom_field_id": id, "custom_field": nil, "order": 0, "required": false}}})()},
 	}
 	for i, payload := range bad {
 		raw, _ := json.Marshal(payload)
