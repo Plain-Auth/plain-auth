@@ -209,6 +209,7 @@ func TestLoadedStripePlans(t *testing.T) {
 				panic bool
 			}{
 				"error":      {nil, errors.New("plans unavailable"), false},
+				"empty":      {nil, nil, false},
 				"panic":      {nil, nil, true},
 				"duplicate":  {[]billing.Plan{{Name: "Pro", PriceID: "price_a"}, {Name: "pro", PriceID: "price_b"}}, nil, false},
 				"seats":      {[]billing.Plan{{Name: "team", PriceID: "price_team", SeatPriceID: "price_team"}}, nil, false},

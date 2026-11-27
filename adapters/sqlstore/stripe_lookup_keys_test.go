@@ -38,7 +38,7 @@ func TestStripePriceLookupKeys(t *testing.T) {
 			}
 			t.Cleanup(func() { store.Close() })
 			const secret = "whsec_lookup_local"
-			intervals := map[string]string{"price_pro_1": "month", "price_pro_2": "month", "price_pro_year": "year", "price_plus": "month", "price_basic": "month", "price_pro_9": "month"}
+			intervals := map[string]string{"price_pro_1": "month", "price_pro_2": "month", "price_pro_year": "year", "price_plus": "month", "price_basic": "month", "price_pro_9": "month", "price_plus_old": "month"}
 			recurring := func(id string) map[string]any {
 				return map[string]any{"interval": intervals[id], "interval_count": 1, "usage_type": "licensed"}
 			}
@@ -102,7 +102,7 @@ func TestStripePriceLookupKeys(t *testing.T) {
 			a, err := auth.New(auth.Options{Store: store, Secret: strings.Repeat("s", 32), BaseURL: origin, EmailAndPassword: true, RateLimit: &off,
 				Plugins: []auth.Plugin{billing.New(billing.Options{WebhookSecret: secret, Subscriptions: &billing.SubscriptionOptions{Client: remote, Plans: []billing.Plan{
 					{Name: "pro", LookupKey: "pro_monthly", AnnualLookupKey: "pro_annual"},
-					{Name: "plus", PriceID: "price_plus", LookupKey: "plus_monthly"},
+					{Name: "plus", PriceID: "price_plus", LookupKey: "plus_monthly", RetiredPriceIDs: []string{"price_plus_old"}},
 					{Name: "basic", PriceID: "price_basic"},
 				}}})}})
 			if err != nil {
@@ -208,6 +208,20 @@ func TestStripePriceLookupKeys(t *testing.T) {
 			if _, sent, _ := state(); sent != "price_plus" {
 				t.Fatal("an empty lookup did not fall back to the price ID", sent)
 			}
+			// A key still on the plan's retired price sells its price ID.
+			mu.Lock()
+			keys["plus_monthly"] = "price_plus_old"
+			mu.Unlock()
+			retiredBuyer, _ := buyer()
+			if status, _ := upgrade(retiredBuyer, "plus", false); status != 200 {
+				t.Fatal("upgrade with a key on a retired price", status)
+			}
+			if _, sent, _ := state(); sent != "price_plus" {
+				t.Fatal("a retired price was sold through its key", sent)
+			}
+			mu.Lock()
+			delete(keys, "plus_monthly")
+			mu.Unlock()
 			// A failed lookup answers 502, a key-only plan without a price 400,
 			// and a key resolving to another plan's price 409, with no row.
 			fifth, fifthID := buyer()

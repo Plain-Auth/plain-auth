@@ -54,9 +54,10 @@ type Plan struct {
 	// LookupKey selects the monthly price by its Stripe lookup key, as
 	// another runtime does. The active price holding the key is read before
 	// each new purchase or plan change and wins over PriceID, which is used
-	// only when no active price holds the key. Before moving a key to a new
-	// price, add the old price to RetiredPriceIDs so its subscribers keep this
-	// plan. Membership-based plans use price IDs.
+	// only when no active price holds the key, or the key is still on one of
+	// this plan's retired prices. To move a key, add the old price to
+	// RetiredPriceIDs first, so its subscribers keep this plan, then move the
+	// key. Membership-based plans use price IDs.
 	LookupKey string `json:",omitempty"`
 	// AnnualLookupKey selects the annual price in the same way.
 	AnnualLookupKey string `json:",omitempty"`
@@ -454,6 +455,11 @@ func (s *subscriptions) loadCatalog(ctx context.Context) (catalog *planCatalog, 
 	if err != nil {
 		return nil, err
 	}
+	// No plans is refused, as for fixed plans: an empty catalog would mark
+	// every subscriber unmapped.
+	if len(plans) == 0 {
+		return nil, errors.New("stripe: LoadPlans returned no plans")
+	}
 	return newPlanCatalog(plans)
 }
 
@@ -482,7 +488,9 @@ func (s *subscriptions) resolvePrice(ctx context.Context, p Plan, interval strin
 		found = price
 		break
 	}
-	if found == nil || found.ID == "" || found.LookupKey != key {
+	// A key still on one of the plan's retired prices sells the plan's price
+	// ID instead, so a retired price is never sold.
+	if found == nil || found.ID == "" || found.LookupKey != key || s.retired[found.ID] == p.Name {
 		if id == "" {
 			return "", errPriceNotFound
 		}
@@ -564,7 +572,7 @@ func (s *planCatalog) priceOf(p *sdk.Price) (subscriptionPrice, bool) {
 	if price, ok := s.prices[p.ID]; ok {
 		return price, true
 	}
-	if price, ok := s.keys[p.LookupKey]; ok && p.LookupKey != "" {
+	if price, ok := s.keys[p.LookupKey]; ok && p.LookupKey != "" && !s.itemPrice(p.ID) {
 		if _, retired := s.retired[p.ID]; !retired {
 			return price, true
 		}
