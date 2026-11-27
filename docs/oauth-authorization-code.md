@@ -340,6 +340,10 @@ Profile and email fields are available from UserInfo. To request individual fiel
 
 Signing and persistence must both succeed before the issuer responds with credentials. If a signing key is temporarily unavailable, the client can retry using the same code or refresh token. A custom database adapter must implement `oauthprovider.OpenIDGrantStore` for these exchanges. [Credential retry tests on all three databases](../adapters/sqlstore/oauth_id_token_test.go)
 
+### Sign ID tokens with client secrets
+
+Without the JWT plugin, set `Options.DisableJWTPlugin` to sign ID tokens with HS256 keyed by the client secret, as OpenID Connect allows for confidential clients. Discovery then advertises `id_token_signing_alg_values_supported: ["HS256"]` without a `jwks_uri`, the issuer is the auth mount's public URL, and access tokens stay opaque. A client without a secret, such as a public or `private_key_jwt` client, gets its access token and no ID token. The client verifies the token with the `client_secret` it holds. Client secrets are stored encrypted, the default in this mode: `New` refuses `SecretStorage: "hashed"` or a hash-only `StoreSecret` here, and refuses `"encrypted"` or `DecryptSecret` without `DisableJWTPlugin`. Installing the JWT plugin as well fails `auth.New`, where another runtime ignores it; otherwise discovery and token checks would follow the JWT plugin's issuer. The HS256 key is the secret the client holds, `SecretPrefix` included, where another runtime keys it with the unprefixed stored value, so the two differ only when a prefix is configured. [Secret-signed ID token tests](../adapters/sqlstore/oauth_secret_id_token_test.go)
+
 ### Add application claims to an ID token
 
 Configure `Tokens.CustomIDTokenClaims` on the issuer. The callback runs once during each code or refresh exchange that issues an ID token. It receives the current account, the scopes approved for this exchange and the issuing client's stored metadata. A pairwise client still receives its sector-specific `sub`. The hook sees the internal account ID so your backend can look up entitlements.

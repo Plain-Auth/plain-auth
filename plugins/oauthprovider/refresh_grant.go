@@ -84,8 +84,8 @@ func (opts Options) exchangeRefreshGrant(c auth.EndpointContext, in tokenRequest
 		}
 		result.MachineToken = machineResponse("", "", scopes, now, ttl)
 		record := DelegatedAccessRecord{MachineTokenRecord: MachineTokenRecord{Scopes: scopes, IssuedAt: now, ExpiresAt: now.Add(ttl)}}
-		if slices.Contains(scopes, "openid") {
-			if !canIssueIDToken(c) {
+		if slices.Contains(scopes, "openid") && (!opts.DisableJWTPlugin || in.secret != "") {
+			if !opts.canIssueIDToken(c) {
 				return DelegatedAccessRecord{}, registrationProblem(501, "server_error", "ID token issuance is unavailable")
 			}
 			var sid string
@@ -118,7 +118,7 @@ func (opts Options) exchangeRefreshGrant(c auth.EndpointContext, in tokenRequest
 		err = openidStore.ExchangeOpenIDRefresh(ctx, in.id, digest, checkClient, prepare, func(grant DelegatedTokenIssue) (RefreshGrantDigests, error) {
 			keys, err := issue(grant.SessionID, grant.Refresh)
 			if err == nil && grant.IDToken.Subject != "" {
-				result.IDToken, err = opts.Tokens.signIDToken(c, in.id, access, grant.IDToken, now)
+				result.IDToken, err = opts.Tokens.signIDToken(c, in.id, access, grant.IDToken, now, opts.idTokenSecret(in))
 			}
 			return keys, err
 		})

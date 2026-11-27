@@ -246,8 +246,9 @@ func (opts Options) redeemAuthorizationCode(c auth.EndpointContext, in tokenRequ
 		if code.AuthTime != nil {
 			authTime = time.UnixMilli(*code.AuthTime).UTC()
 		}
-		if slices.Contains(scopes, "openid") {
-			if !canIssueIDToken(c) {
+		// A client without a secret gets no ID token when the secret signs it.
+		if slices.Contains(scopes, "openid") && (!opts.DisableJWTPlugin || in.secret != "") {
+			if !opts.canIssueIDToken(c) {
 				return DelegatedAccessRecord{}, registrationProblem(501, "server_error", "ID token issuance is unavailable")
 			}
 			if opts.Tokens.CustomIDTokenClaims != nil {
@@ -276,7 +277,7 @@ func (opts Options) redeemAuthorizationCode(c auth.EndpointContext, in tokenRequ
 	}
 	issueOpenID := func(grant DelegatedTokenIssue) (string, error) {
 		if grant.IDToken.Subject != "" {
-			token, err := opts.Tokens.signIDToken(c, in.id, issued, grant.IDToken, now)
+			token, err := opts.Tokens.signIDToken(c, in.id, issued, grant.IDToken, now, opts.idTokenSecret(in))
 			if err != nil {
 				return "", err
 			}

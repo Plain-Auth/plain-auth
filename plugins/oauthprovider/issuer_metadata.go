@@ -160,7 +160,12 @@ func (opts Options) issuerDocuments(a *auth.Auth, store auth.Store) (map[string]
 	canRefresh := slices.Contains(grants, "refresh_token")
 	_, offline := store.(OfflineAuthorizationCodeStore)
 	_, identityStore := store.(OpenIDGrantStore)
-	openid := canAuthorize && identityStore && a.PublicJWKSURL() != "" && slices.Contains(opts.Scopes, "openid")
+	// DisableJWTPlugin signs ID tokens with client secrets, so the jwt
+	// plugin's issuer and keys must not also be in play.
+	if opts.DisableJWTPlugin && a.PublicJWKSURL() != "" {
+		return nil, errors.New("oauthprovider: DisableJWTPlugin cannot be used with the jwt plugin")
+	}
+	openid := canAuthorize && identityStore && (opts.DisableJWTPlugin || a.PublicJWKSURL() != "") && slices.Contains(opts.Scopes, "openid")
 	scopes := opts.Metadata.Scopes
 	if scopes == nil {
 		scopes = opts.Scopes

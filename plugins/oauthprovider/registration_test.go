@@ -90,25 +90,33 @@ func TestRegistrationSecretLifetime(t *testing.T) {
 	}
 }
 
-// Secret storage takes a known mode, and a host's decrypt function pairs
-// only with its own StoreSecret.
+// Secret storage takes a known mode. As in another runtime, secrets are
+// hashed when the jwt plugin signs ID tokens and encrypted, the default,
+// when DisableJWTPlugin signs them with the client secret; a host's decrypt
+// function pairs only with its own StoreSecret.
 func TestRegistrationSecretStorageOptions(t *testing.T) {
 	store := func(context.Context, string) (string, error) { return "stored", nil }
 	decrypt := func(context.Context, string) (string, error) { return "raw", nil }
 	verify := func(context.Context, string, string) (bool, error) { return true, nil }
-	for _, r := range []RegistrationOptions{
-		{SecretStorage: "plain"}, {SecretStorage: "encrypted", StoreSecret: store},
-		{DecryptSecret: decrypt}, {StoreSecret: store, DecryptSecret: decrypt, VerifySecret: verify},
+	for _, tc := range []struct {
+		noJWT bool
+		r     RegistrationOptions
+		ok    bool
+	}{
+		{false, RegistrationOptions{}, true}, {false, RegistrationOptions{SecretStorage: "hashed"}, true},
+		{false, RegistrationOptions{StoreSecret: store, VerifySecret: verify}, true},
+		{false, RegistrationOptions{SecretStorage: "encrypted"}, false}, {false, RegistrationOptions{StoreSecret: store, DecryptSecret: decrypt}, false},
+		{false, RegistrationOptions{SecretStorage: "plain"}, false},
+		{true, RegistrationOptions{}, true}, {true, RegistrationOptions{SecretStorage: "encrypted"}, true},
+		{true, RegistrationOptions{StoreSecret: store, DecryptSecret: decrypt}, true},
+		{true, RegistrationOptions{SecretStorage: "hashed"}, false}, {true, RegistrationOptions{StoreSecret: store}, false},
+		{true, RegistrationOptions{SecretStorage: "encrypted", StoreSecret: store, DecryptSecret: decrypt}, false},
+		{true, RegistrationOptions{DecryptSecret: decrypt}, false},
+		{true, RegistrationOptions{StoreSecret: store, DecryptSecret: decrypt, VerifySecret: verify}, false},
 	} {
-		r.Enabled = true
-		if _, err := New(Options{Registration: r}); err == nil {
-			t.Errorf("secret storage %q with custom functions was accepted", r.SecretStorage)
-		}
-	}
-	for _, r := range []RegistrationOptions{{SecretStorage: "hashed"}, {SecretStorage: "encrypted"}, {StoreSecret: store, DecryptSecret: decrypt}, {StoreSecret: store, VerifySecret: verify}} {
-		r.Enabled = true
-		if _, err := New(Options{Registration: r}); err != nil {
-			t.Error(err)
+		tc.r.Enabled = true
+		if _, err := New(Options{DisableJWTPlugin: tc.noJWT, Registration: tc.r}); (err == nil) != tc.ok {
+			t.Errorf("DisableJWTPlugin %v with storage %q: %v", tc.noJWT, tc.r.SecretStorage, err)
 		}
 	}
 }

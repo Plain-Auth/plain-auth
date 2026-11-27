@@ -2,6 +2,7 @@ package oauthprovider
 
 import (
 	"context"
+	"crypto/hmac"
 	"crypto/sha256"
 	"crypto/sha512"
 	"encoding/base64"
@@ -56,9 +57,18 @@ type OpenIDGrantStore interface {
 	ExchangeOpenIDRefresh(ctx context.Context, clientID, digest string, check func(MachineClient) error, prepare func(AuthorizationCodeClient, RefreshGrant) (DelegatedAccessRecord, error), issue func(DelegatedTokenIssue) (RefreshGrantDigests, error)) error
 }
 
-func canIssueIDToken(c auth.EndpointContext) bool {
+// idTokenSecret is the HS256 key for an ID token: the client secret the
+// request authenticated with, when DisableJWTPlugin is set.
+func (opts Options) idTokenSecret(in tokenRequest) string {
+	if opts.DisableJWTPlugin {
+		return in.secret
+	}
+	return ""
+}
+
+func (opts Options) canIssueIDToken(c auth.EndpointContext) bool {
 	_, ok := c.Store().(OpenIDGrantStore)
-	return ok && c.Auth.PublicJWKSURL() != ""
+	return ok && (opts.DisableJWTPlugin || c.Auth.PublicJWKSURL() != "")
 }
 
 func (opts Options) idTokenGrant(client AuthorizationCodeClient, user, liveSession, nonce string, at time.Time) (IDTokenGrant, error) {
@@ -79,11 +89,18 @@ func (opts Options) idTokenGrant(client AuthorizationCodeClient, user, liveSessi
 	return IDTokenGrant{Subject: subject, Nonce: nonce, SessionID: liveSession, AuthTime: at.UTC()}, nil
 }
 
-func (opts TokenOptions) signIDToken(c auth.EndpointContext, clientID, access string, grant IDTokenGrant, now time.Time) (string, error) {
+// signIDToken signs with the jwt plugin, or with HS256 keyed by secret, the
+// client secret the client holds, when secret is set. That key includes a
+// configured SecretPrefix, as OIDC asks; another runtime keys it with the
+// unprefixed stored value, so the two differ only with a prefix.
+func (opts TokenOptions) signIDToken(c auth.EndpointContext, clientID, access string, grant IDTokenGrant, now time.Time, secret string) (string, error) {
 	alg := c.Auth.JWTSigningAlgorithm()
+	if secret != "" {
+		alg = "HS256"
+	}
 	var hash []byte
 	switch alg {
-	case "RS256", "ES256", "PS256":
+	case "RS256", "ES256", "PS256", "HS256":
 		sum := sha256.Sum256([]byte(access))
 		hash = sum[:len(sum)/2]
 	case "EdDSA", "ES512":
@@ -124,6 +141,18 @@ func (opts TokenOptions) signIDToken(c auth.EndpointContext, clientID, access st
 			slices.Sort(reserved)
 			c.Auth.Logger().WarnContext(c.Request.Context(), "OAuth ID token ignored reserved claim names", "claims", reserved)
 		}
+	}
+	if secret != "" {
+		claims["iss"], claims["sub"], claims["aud"] = c.Auth.OAuthIssuer(), grant.Subject, clientID
+		claims["iat"], claims["exp"] = now.Unix(), now.Add(opts.IDTokenLifetime).Unix()
+		payload, err := json.Marshal(claims)
+		if err != nil {
+			return "", err
+		}
+		signing := base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"HS256"}`)) + "." + base64.RawURLEncoding.EncodeToString(payload)
+		mac := hmac.New(sha256.New, []byte(secret))
+		mac.Write([]byte(signing))
+		return signing + "." + base64.RawURLEncoding.EncodeToString(mac.Sum(nil)), nil
 	}
 	return c.Auth.SignJWT(c.Request.Context(), grant.Subject, auth.JWTSignOptions{
 		Algorithm: alg, Issuer: c.Auth.OAuthIssuer(), Audience: []string{clientID}, Claims: claims,

@@ -18374,6 +18374,17 @@
       "label": "Issue signed or opaque machine tokens for several registered APIs and verify them with an independent issuer",
       "test": "conformance/oauth-resource-machine-tokens.mjs",
       "marker": "await checkResourceIssuance(server, inspector, db, opaque,"
+    },
+    {
+      "label": "Sign code and refresh ID tokens with HS256 keyed by the client secret, advertise HS256 without a key set at the public issuer, give a public client no ID token, store secrets encrypted and refuse the jwt plugin alongside, on SQLite, PostgreSQL and MySQL; the prefixed key and the jwt refusal are documented deviations",
+      "test": "adapters/sqlstore/oauth_secret_id_token_test.go",
+      "marker": "func TestSecretSignedIDTokens(",
+      "complete": true
+    },
+    {
+      "label": "Default to encrypted secret storage and refuse hashed storage, or encrypted storage without the option",
+      "test": "plugins/oauthprovider/registration_test.go",
+      "marker": "func TestRegistrationSecretStorageOptions("
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/enforcePerClientResources": [
@@ -48739,6 +48750,13 @@
       "label": "Refuse an unknown storage mode and mismatched custom storage functions",
       "test": "plugins/oauthprovider/registration_test.go",
       "marker": "func TestRegistrationSecretStorageOptions("
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/tokens.mdx#L283": [
+    {
+      "label": "Sign ID tokens with the client secret, give a public client no ID token and store secrets encrypted by default, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_secret_id_token_test.go",
+      "marker": "func TestSecretSignedIDTokens("
     }
   ]
 }

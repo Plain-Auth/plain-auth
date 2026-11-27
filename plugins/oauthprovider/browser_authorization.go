@@ -271,7 +271,7 @@ func (opts Options) runBrowserAuthorization(c auth.EndpointContext, q url.Values
 		return reject(problem.Code, problem.Description)
 	}
 	issue := grant.BrowserCodeIssue
-	if slices.Contains(issue.Scopes, "openid") && !canIssueIDToken(c) {
+	if slices.Contains(issue.Scopes, "openid") && !opts.canIssueIDToken(c) {
 		return reject("invalid_request", "ID token issuance is unavailable")
 	}
 	var session *auth.SessionResult

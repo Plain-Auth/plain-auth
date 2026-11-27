@@ -146,6 +146,11 @@ type Options struct {
 	// DPoP controls sender proofs at the token endpoint. The host SQL store
 	// shares reservations automatically when ReplayStore is omitted.
 	DPoP DPoPOptions
+	// DisableJWTPlugin signs ID tokens with HS256 keyed by the client secret
+	// instead of the jwt plugin, which must not be installed. Access tokens
+	// stay opaque, clients without a secret get no ID token, and client
+	// secrets must be stored encrypted, the default in this mode.
+	DisableJWTPlugin bool
 	// Resources declares the protected resources this issuer serves. They are
 	// seeded into the store on the first request and again before a lookup
 	// while a seed has not finished, and registration default and allowed
@@ -279,7 +284,16 @@ func New(opts Options) (auth.Plugin, error) {
 		v := *r.RequirePKCE
 		r.RequirePKCE = &v
 	}
+	// As in another runtime, secrets are hashed when the jwt plugin signs ID
+	// tokens and encrypted when they are signed with the client secret.
+	if opts.DisableJWTPlugin && r.SecretStorage == "" && r.StoreSecret == nil {
+		r.SecretStorage = "encrypted"
+	}
 	switch {
+	case opts.DisableJWTPlugin && (r.SecretStorage == "hashed" || r.StoreSecret != nil && r.DecryptSecret == nil):
+		return auth.Plugin{}, errors.New("oauthprovider: DisableJWTPlugin signs ID tokens with client secrets, which must be stored encrypted")
+	case !opts.DisableJWTPlugin && (r.SecretStorage == "encrypted" || r.DecryptSecret != nil):
+		return auth.Plugin{}, errors.New("oauthprovider: encrypted client secrets require DisableJWTPlugin")
 	case r.SecretStorage != "" && r.SecretStorage != "hashed" && r.SecretStorage != "encrypted":
 		return auth.Plugin{}, fmt.Errorf("oauthprovider: unknown client secret storage %q", r.SecretStorage)
 	case r.StoreSecret != nil && r.SecretStorage == "encrypted":

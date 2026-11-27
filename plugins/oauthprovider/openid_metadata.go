@@ -50,7 +50,7 @@ func (opts Options) openIDMetadata(a *auth.Auth, server AuthorizationServerMetad
 		UserInfoEndpoint:            userInfo,
 		ClaimsSupported:             opts.supportedUserInfoClaims(), ClaimsParameterSupported: true,
 		SubjectTypesSupported: []string{"public"}, ACRValuesSupported: []string{"0"},
-		IDTokenSigningAlgorithms: []string{a.JWTSigningAlgorithm()},
+		IDTokenSigningAlgorithms: []string{opts.idTokenAlgorithm(a)},
 	}
 	if opts.PairwiseSecret != "" {
 		doc.SubjectTypesSupported = append(doc.SubjectTypesSupported, "pairwise")
@@ -70,4 +70,11 @@ func (opts Options) openIDMetadata(a *auth.Auth, server AuthorizationServerMetad
 	}
 	doc.PromptValuesSupported = append(doc.PromptValuesSupported, "none")
 	return doc
+}
+
+func (opts Options) idTokenAlgorithm(a *auth.Auth) string {
+	if opts.DisableJWTPlugin {
+		return "HS256"
+	}
+	return a.JWTSigningAlgorithm()
 }

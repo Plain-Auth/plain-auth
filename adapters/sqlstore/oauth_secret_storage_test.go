@@ -36,7 +36,7 @@ func TestEncryptedClientSecrets(t *testing.T) {
 			host := func(r op.RegistrationOptions) (*auth.Auth, *client.Client) {
 				t.Helper()
 				r.Enabled = true
-				p, err := op.New(op.Options{Scopes: []string{"reports"}, Registration: r})
+				p, err := op.New(op.Options{Scopes: []string{"reports"}, DisableJWTPlugin: true, Registration: r})
 				must(err)
 				h, err := auth.New(auth.Options{BaseURL: origin, Secret: strings.Repeat("e", 40), Store: s, EmailAndPassword: true, Plugins: []auth.Plugin{p}, RateLimit: &off})
 				must(err)
