@@ -80,3 +80,22 @@ extension := oauthprovider.Extension{Grants: map[string]oauthprovider.GrantHandl
 - `HashToken(token, kind)` returns the stored form of a token the provider issued, so a handler can find or revoke one by its value.
 
 `New` refuses a grant type that is not an absolute URI, has no handler, or is defined by two extensions; the built-in grant names are not URIs, so they cannot be replaced. Discovery's `grant_types_supported` and the token endpoint's OpenAPI `grant_type` list the extension grants after the configured ones, and client registration accepts them; `redirect_uris` stay required only with `authorization_code`. The provider API exists only inside a dispatched grant, where another runtime also offers it to other endpoints, since a Go plugin cannot reach another plugin's options at request time; `AllowPublic` is the Go form of turning `requireCredentials` off, and a handler closes over the options it needs rather than receiving them. [Grant tests](../adapters/sqlstore/oauth_extension_grant_test.go) · [Option checks](../plugins/oauthprovider/extension_auth_test.go)
+
+### Issue client tokens
+
+`in.Provider.IssueTokens` mints the access token for a client, as another runtime's `issueTokens` does without a user. It applies the resources' policy and checks the registration again, outside any host code, but does not check that `Scopes` were approved: the handler authorizes them, for example by passing them to `AuthenticateClient`.
+
+```go
+return in.Provider.IssueTokens(oauthprovider.TokenIssueParams{
+    ClientID:  client.ClientID,
+    Scopes:    strings.Fields(in.Form.Get("scope")),
+    Resources: in.Form["resource"],
+})
+```
+
+- The token has the client credentials lifetime and scope lifetimes. Without `Resources` it is opaque and stored, so introspection and revocation work as for `client_credentials`. With `Resources`, each must be registered, enabled and linked to the client unless `Tokens.AllowUnlinkedResources` is set; their allowed scopes narrow `Scopes`, their lifetimes cap the token's, and with the jwt plugin, unless `Tokens.OpaqueResourceTokens` or `DisableJWTPlugin` is set, the token is a signed `at+jwt` for them.
+- `AccessTokenClaims` appear only in a signed token, above the extensions' `AccessTokenClaims` and below `Tokens.CustomAccessTokenClaims` and the resources' claims; the issuer's own claims, such as `client_id` and `cnf`, are never replaced. `TokenResponse` adds response members above `Tokens.CustomTokenResponseFields`, which sees the extension grant type.
+- `Confirmation` binds the token and must name exactly one key: `JKT` makes it a DPoP token, and `X5TS256` keeps a certificate thumbprint as `cnf`. Without one, a DPoP proof on the request binds it. A client or resource that requires DPoP needs a DPoP key, from the confirmation or a proof, where another runtime accepts any confirmation.
+- The client must still be enabled and registered for the grant, and when the handler called `AuthenticateClient`, its credentials must be unchanged; otherwise no token is stored.
+
+A store without `oauthprovider.ResourceMachineTokenStore` answers 501. [Client token tests](../adapters/sqlstore/oauth_extension_grant_test.go)

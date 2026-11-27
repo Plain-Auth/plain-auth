@@ -1926,6 +1926,11 @@ test("a provider extension adds discovery fields without replacing the provider'
   await compareExtensionMetadata(t, { reference, goFixture });
 });
 
+test("a provider extension grant issues client tokens through the provider", async t => {
+  const { compareExtensionGrant } = await import("./oauth-extensions.mjs");
+  await compareExtensionGrant(t, { reference, goFixture });
+});
+
 test("a pushed authorization request resolves through the host callback", async t => {
   const { compareRequestURI } = await import("./oauth-request-uri.mjs");
   await compareRequestURI(t, { reference, goFixture });

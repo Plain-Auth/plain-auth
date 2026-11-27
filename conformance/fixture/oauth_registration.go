@@ -164,10 +164,10 @@ func registrationFixtureOptions() op.Options {
 	}
 	opts.Authorization.RequireOpenID = os.Getenv("CONFORMANCE_REQUIRE_OPENID") == "1"
 	if os.Getenv("CONFORMANCE_OAUTH_EXTENSIONS") == "1" {
-		// The contributor conformance/oauth-extensions.mjs registers.
+		// The contributor and grant conformance/oauth-extensions.mjs registers.
 		opts.Extensions = []op.Extension{{Metadata: func(in op.MetadataInput) map[string]any {
 			return map[string]any{"credential_issuer": "https://wallet.example.test/" + in.Type, "issuer": "forged", "token_endpoint": "forged"}
-		}}}
+		}, Grants: map[string]op.GrantHandler{"urn:conformance:client": extensionClientGrant}}}
 	}
 	if os.Getenv("CONFORMANCE_REQUEST_URI") == "1" {
 		// The pushed request conformance/oauth-request-uri.mjs stores.
@@ -225,4 +225,16 @@ func (t receiverTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 	r = r.Clone(r.Context())
 	r.URL.Scheme, r.URL.Host, r.Host = t.target.Scheme, t.target.Host, t.target.Host
 	return http.DefaultTransport.RoundTrip(r)
+}
+
+// extensionClientGrant authenticates the client for the requested scopes
+// and issues a client token for them, as the grant
+// conformance/oauth-extensions.mjs registers does.
+func extensionClientGrant(in op.GrantInput) (op.TokenResponse, error) {
+	scopes := strings.Fields(in.Form.Get("scope"))
+	client, err := in.Provider.AuthenticateClient(op.ClientAuthenticationRequest{Scopes: scopes})
+	if err != nil {
+		return op.TokenResponse{}, err
+	}
+	return in.Provider.IssueTokens(op.TokenIssueParams{ClientID: client.ClientID, Scopes: scopes, TokenResponse: map[string]any{"tenant": "handler"}})
 }

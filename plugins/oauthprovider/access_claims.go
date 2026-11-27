@@ -57,10 +57,11 @@ func reservedAccessClaim(name string) bool {
 
 // accessTokenClaims merges the claim contributors lowest first, as another
 // runtime does: each extension in order, where the first keeps a shared
-// name with a warning, then Tokens.CustomAccessTokenClaims. Resource claims
+// name with a warning, then an extension grant's per-issuance claims, then
+// Tokens.CustomAccessTokenClaims. Resource claims
 // and the issuer's own claims are applied above them by the caller; names
 // the issuer owns are dropped here with a warning.
-func (opts Options) accessTokenClaims(c auth.EndpointContext, in TokenClaimsInput) (map[string]any, error) {
+func (opts Options) accessTokenClaims(c auth.EndpointContext, in TokenClaimsInput, perIssuance map[string]any) (map[string]any, error) {
 	ctx := c.Request.Context()
 	claims := map[string]any{}
 	var ignored []string
@@ -87,6 +88,9 @@ func (opts Options) accessTokenClaims(c auth.EndpointContext, in TokenClaimsInpu
 		}
 		add(extra, true)
 	}
+	// An extension grant's own claims sit above the extensions' and below
+	// the host's, as in another runtime.
+	add(perIssuance, false)
 	if opts.Tokens.CustomAccessTokenClaims != nil {
 		extra, err := opts.Tokens.CustomAccessTokenClaims(ctx, in)
 		if err != nil {

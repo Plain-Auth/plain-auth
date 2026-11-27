@@ -3,9 +3,12 @@ package oauthprovider
 import (
 	"encoding/json"
 	"errors"
+	"maps"
 	"net/url"
+	"reflect"
 	"slices"
 	"strings"
+	"time"
 
 	auth "github.com/Plain-Org/plain-auth"
 )
@@ -35,8 +38,10 @@ type ProviderAPI struct {
 	grant string
 	// challenge is the WWW-Authenticate scheme for a refused client.
 	challenge string
-	// authenticated is the registration AuthenticateClient accepted.
+	// authenticated is the registration AuthenticateClient accepted, for
+	// the request it read.
 	authenticated *MachineClient
+	request       tokenRequest
 }
 
 // ClientAuthenticationRequest says what AuthenticateClient checks besides
@@ -149,7 +154,7 @@ func (p *ProviderAPI) authenticateClient(req ClientAuthenticationRequest) (Authe
 	if !clientAllowsGrant(first.GrantTypes, p.grant) {
 		return AuthenticatedClient{}, registrationProblem(400, "unauthorized_client", "client is not authorized to use grant type "+p.grant)
 	}
-	p.authenticated = &first
+	p.authenticated, p.request = &first, in
 	return AuthenticatedClient{ClientID: in.id, Client: details, Method: in.method, Confirmation: in.confirmation}, nil
 }
 
@@ -226,4 +231,174 @@ func (opts Options) tokenOperation() json.RawMessage {
 	}
 	enum, _ := json.Marshal(grants)
 	return json.RawMessage(strings.Replace(machineTokenOperation, builtIn, `"enum":`+string(enum), 1))
+}
+
+// TokenIssueParams describes tokens an extension grant issues for a client.
+// IssueTokens applies the resources' policy and checks the registration
+// again, but does not check that the scopes were approved: the handler
+// authorizes them, for example with AuthenticateClient's Scopes.
+type TokenIssueParams struct {
+	ClientID string
+	Scopes   []string
+	// Resources are the token's audiences, as resource parameters name them.
+	Resources []string
+	// AccessTokenClaims are added to a signed access token, above the
+	// extensions' claims and below the host's and the resources'.
+	AccessTokenClaims map[string]any
+	// TokenResponse adds response members above CustomTokenResponseFields.
+	TokenResponse map[string]any
+	// Confirmation binds the tokens, naming exactly one key; without one,
+	// a DPoP proof on the request does.
+	Confirmation *Confirmation
+}
+
+// IssueTokens issues an access token for a client, with the client
+// credentials lifetime, as another runtime's issueTokens does without a
+// user. With resources and the jwt plugin the token is a signed at+jwt;
+// otherwise it is opaque and stored. A client or resource that requires
+// DPoP needs a DPoP key, from the confirmation or a proof, where another
+// runtime accepts any confirmation (safety).
+func (p *ProviderAPI) IssueTokens(params TokenIssueParams) (TokenResponse, error) {
+	token, err := p.issueTokens(params)
+	if err != nil {
+		return TokenResponse{}, tokenEndpointError(p.c.ResponseHeader, p.challenge, err)
+	}
+	return token, nil
+}
+
+func (p *ProviderAPI) issueTokens(params TokenIssueParams) (TokenResponse, error) {
+	c, opts := p.c, p.opts
+	ctx := c.Request.Context()
+	if params.ClientID == "" {
+		return TokenResponse{}, errors.New("oauthprovider: IssueTokens needs a client ID")
+	}
+	if cnf := params.Confirmation; cnf != nil && (cnf.JKT == "") == (cnf.X5TS256 == "") {
+		return TokenResponse{}, errors.New("oauthprovider: a token confirmation names exactly one key")
+	}
+	if len(params.Resources) > 64 {
+		return TokenResponse{}, registrationProblem(400, "invalid_target", "at most 64 resource parameters are supported")
+	}
+	for _, id := range params.Resources {
+		if !ValidResourceIdentifier(id) {
+			return TokenResponse{}, registrationProblem(400, "invalid_request", "resource must be an absolute URI without a fragment")
+		}
+	}
+	store, ok := c.Store().(ResourceMachineTokenStore)
+	if !ok {
+		return TokenResponse{}, &auth.APIError{Status: 501, Code: "OAUTH_RESOURCE_TOKEN_STORE_UNAVAILABLE", Message: "The configured store cannot issue resource-targeted tokens"}
+	}
+	if err := opts.seedResources(c); err != nil {
+		return TokenResponse{}, err
+	}
+	audiences := distinct(params.Resources)
+	userInfo := c.Auth.PublicURL() + "/oauth2/userinfo"
+	identifiers := slices.DeleteFunc(slices.Clone(audiences), func(id string) bool { return id == userInfo })
+	// One issuance instant serves both passes.
+	now := time.Now().UTC().Truncate(time.Second)
+	resolve := func(client MachineClient, rows map[string]MachineResource) (machineResourcePolicy, error) {
+		if client.Disabled {
+			return machineResourcePolicy{}, invalidClient("client is disabled")
+		}
+		if !clientAllowsGrant(client.GrantTypes, p.grant) {
+			return machineResourcePolicy{}, registrationProblem(400, "unauthorized_client", "client is not authorized to use grant type "+p.grant)
+		}
+		if p.authenticated != nil && p.authenticated.ClientID == client.ClientID {
+			if err := p.request.recheckClient(*p.authenticated, client); err != nil {
+				return machineResourcePolicy{}, err
+			}
+		}
+		return opts.Tokens.machineResourcePolicy(client, params.Scopes, identifiers, rows, now)
+	}
+	var policy machineResourcePolicy
+	var metadata map[string]json.RawMessage
+	err := store.WithMachineResources(ctx, params.ClientID, identifiers, func(client MachineClient, rows map[string]MachineResource) (*ResourceMachineTokenRecord, error) {
+		var err error
+		policy, err = resolve(client, rows)
+		metadata = client.Metadata
+		return nil, err
+	})
+	if err != nil {
+		return TokenResponse{}, err
+	}
+	// Host fields are resolved from the first read, before any token exists.
+	fields, err := opts.Tokens.responseFields(ctx, TokenResponseInput{GrantType: p.grant, Scopes: policy.scopes, Metadata: metadata})
+	if err != nil {
+		return TokenResponse{}, err
+	}
+	if len(params.TokenResponse) > 0 {
+		fields = maps.Clone(fields)
+		if fields == nil {
+			fields = map[string]any{}
+		}
+		maps.Copy(fields, params.TokenResponse)
+	}
+	cnf := params.Confirmation
+	if cnf == nil {
+		if len(c.Request.Header.Values("DPoP")) > 1 {
+			return TokenResponse{}, proofError("DPoP proof header must not be repeated")
+		}
+		thumb, err := opts.machineThumbprint(c, tokenRequest{proof: c.Request.Header.Get("DPoP")}, policy.bound)
+		if err != nil {
+			return TokenResponse{}, err
+		}
+		cnf = jktConfirmation(thumb)
+	}
+	unbound := cnf == nil || cnf.JKT == ""
+	signed := len(audiences) > 0 && opts.signsResourceTokens(c)
+	var issued, stored string
+	if signed {
+		// Contributed claims are resolved outside the store's transactions.
+		extra, err := opts.accessTokenClaims(c, TokenClaimsInput{ClientID: params.ClientID, Scopes: policy.scopes, GrantType: p.grant, Resources: params.Resources, Metadata: metadata}, params.AccessTokenClaims)
+		if err != nil {
+			return TokenResponse{}, err
+		}
+		issued, err = policy.sign(c, params.ClientID, params.ClientID, "", audiences, cnf, now, extra)
+		if err != nil {
+			return TokenResponse{}, err
+		}
+	} else if issued, stored, err = opts.Tokens.newOpaqueToken(ctx); err != nil {
+		return TokenResponse{}, err
+	}
+	// Signing and host token generators may use this same database. Run
+	// them outside the transaction, then authorize the actual response again.
+	err = store.WithMachineResources(ctx, params.ClientID, identifiers, func(client MachineClient, rows map[string]MachineResource) (*ResourceMachineTokenRecord, error) {
+		current, err := resolve(client, rows)
+		if err != nil {
+			return nil, err
+		}
+		if current.bound && unbound {
+			return nil, proofError("DPoP proof header is required")
+		}
+		if signed {
+			if !reflect.DeepEqual(current, policy) {
+				return nil, registrationProblem(400, "invalid_request", "resource policy changed during issuance, retry the request")
+			}
+			if !time.Now().Before(now.Add(policy.lifetime)) {
+				return nil, registrationProblem(503, "temporarily_unavailable", "token expired during issuance, retry the request")
+			}
+			return nil, nil
+		}
+		if opts.Tokens.CustomTokenResponseFields != nil && !slices.Equal(current.scopes, policy.scopes) {
+			return nil, registrationProblem(400, "invalid_request", "client scopes changed during issuance, retry the request")
+		}
+		policy = current
+		record := MachineTokenRecord{StoredToken: stored, Scopes: current.scopes, IssuedAt: now, ExpiresAt: now.Add(current.lifetime)}
+		return &ResourceMachineTokenRecord{MachineTokenRecord: record, Resources: params.Resources, Confirmation: cnf}, nil
+	})
+	if err != nil {
+		return TokenResponse{}, err
+	}
+	token := machineResponse(issued, "", policy.scopes, now, policy.lifetime)
+	if !unbound {
+		token.TokenType = "DPoP"
+	}
+	return TokenResponse{AccessToken: token.AccessToken, TokenType: token.TokenType, ExpiresIn: token.ExpiresIn, ExpiresAt: token.ExpiresAt, Scope: token.Scope, Fields: fields}, nil
+}
+
+// jktConfirmation names a DPoP key as a token confirmation, or none.
+func jktConfirmation(thumb string) *Confirmation {
+	if thumb == "" {
+		return nil
+	}
+	return &Confirmation{JKT: thumb}
 }

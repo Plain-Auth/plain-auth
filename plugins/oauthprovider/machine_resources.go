@@ -20,11 +20,13 @@ type MachineResource struct {
 }
 
 // ResourceMachineTokenRecord persists an opaque grant with its original ordered
-// resource parameters and any verified sender binding.
+// resource parameters and any verified sender binding: a DPoP Thumbprint,
+// or a Confirmation an extension grant supplied, never both.
 type ResourceMachineTokenRecord struct {
 	MachineTokenRecord
-	Resources  []string
-	Thumbprint string
+	Resources    []string
+	Thumbprint   string
+	Confirmation *Confirmation
 }
 
 // ResourceMachineTokenStore locks the requested policies, authenticated registration
@@ -186,11 +188,11 @@ func (opts Options) issueResourceMachineToken(c auth.EndpointContext, store Mach
 	if signed {
 		// Contributed claims are resolved outside the store's transactions.
 		var extra map[string]any
-		extra, err = opts.accessTokenClaims(c, TokenClaimsInput{ClientID: in.id, Scopes: policy.scopes, GrantType: "client_credentials", Resources: in.resources, Metadata: first.Metadata})
+		extra, err = opts.accessTokenClaims(c, TokenClaimsInput{ClientID: in.id, Scopes: policy.scopes, GrantType: "client_credentials", Resources: in.resources, Metadata: first.Metadata}, nil)
 		if err != nil {
 			return MachineToken{}, err
 		}
-		issued, err = policy.sign(c, in.id, in.id, "", audiences, thumb, now, extra)
+		issued, err = policy.sign(c, in.id, in.id, "", audiences, jktConfirmation(thumb), now, extra)
 	} else {
 		issued, stored, err = opts.Tokens.newOpaqueToken(ctx)
 	}
@@ -233,8 +235,8 @@ func (opts Options) issueResourceMachineToken(c auth.EndpointContext, store Mach
 }
 
 // sign issues an at+jwt for subject, a user or the client itself, with the
-// session's sid when it has one.
-func (p machineResourcePolicy) sign(c auth.EndpointContext, subject, client, sid string, audiences []string, thumb string, now time.Time, extra map[string]any) (string, error) {
+// session's sid when it has one and the confirmation as cnf.
+func (p machineResourcePolicy) sign(c auth.EndpointContext, subject, client, sid string, audiences []string, cnf *Confirmation, now time.Time, extra map[string]any) (string, error) {
 	jti, err := randomClientCredential()
 	if err != nil {
 		return "", err
@@ -255,8 +257,8 @@ func (p machineResourcePolicy) sign(c auth.EndpointContext, subject, client, sid
 		claims["sid"] = sid
 	}
 	claims["jti"], claims["client_id"], claims["azp"], claims["scope"] = jti, client, client, strings.Join(p.scopes, " ")
-	if thumb != "" {
-		claims["cnf"] = map[string]string{"jkt": thumb}
+	if cnf != nil {
+		claims["cnf"] = cnf
 	}
 	return c.Auth.SignJWT(c.Request.Context(), subject, auth.JWTSignOptions{
 		Type: "at+jwt", Issuer: c.Auth.OAuthIssuer(), Audience: audiences, Algorithm: p.algorithm, KeyID: p.keyID,
@@ -320,11 +322,11 @@ func (opts Options) signDelegated(c auth.EndpointContext, s *delegatedSigning, g
 			in.User, in.Metadata = &claims.User, claims.Metadata
 		}
 	}
-	extra, err := opts.accessTokenClaims(c, in)
+	extra, err := opts.accessTokenClaims(c, in, nil)
 	if err != nil {
 		return "", err
 	}
-	return s.policy.sign(c, userID, clientID, sid, s.audiences, thumb, now, extra)
+	return s.policy.sign(c, userID, clientID, sid, s.audiences, jktConfirmation(thumb), now, extra)
 }
 
 // contributesAccessClaims reports access-token claim contributors, which

@@ -49382,6 +49382,11 @@
       "label": "Refuse a relative, built-in, handlerless or repeated extension grant type",
       "test": "plugins/oauthprovider/extension_auth_test.go",
       "marker": "func TestExtensionGrantOptions("
+    },
+    {
+      "label": "Dispatch an extension grant that authenticates its client and issues a client token, refusing a wrong secret or a client without the grant, on both runtimes",
+      "test": "conformance/oauth-extensions.mjs",
+      "marker": "const response = await post(\"token\", { grant_type: extensionGrant, client_id: \"granted\", client_secret: secret, scope: \"extra\" });"
     }
   ],
   "plugin-symbol/oauth-provider/OAuthExtensionGrantHandlerInput": [
@@ -49413,6 +49418,11 @@
       "label": "Authenticate clients, look clients up and hash tokens through the provider API inside an extension grant, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_extension_grant_test.go",
       "marker": "t.Fatal(\"HashToken did not return the stored form\", hashed)"
+    },
+    {
+      "label": "Issue an extension grant's client token through the provider with the client credentials lifetime, introspecting like one, on both runtimes",
+      "test": "conformance/oauth-extensions.mjs",
+      "marker": "export async function compareExtensionGrant("
     }
   ],
   "plugin-symbol/oauth-provider/getOAuthProviderApi": [
@@ -49427,6 +49437,26 @@
       "label": "Accept extension grants at the token endpoint, in registration and in discovery, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_extension_grant_test.go",
       "marker": "t.Fatal(\"discovery did not list the extension grant\", doc.GrantTypesSupported)"
+    },
+    {
+      "label": "Advertise and dispatch an extension grant on both runtimes",
+      "test": "conformance/oauth-extensions.mjs",
+      "marker": "assert.ok(doc.grant_types_supported.includes(extensionGrant), JSON.stringify(doc.grant_types_supported));"
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthTokenIssueParams": [
+    {
+      "label": "Issue a client token from an extension grant with scopes, resources, per-issuance claims, response fields and a confirmation, checking the registration and the resources' policy again, on SQLite, PostgreSQL and MySQL; requiring a DPoP key where DPoP is required is a documented deviation",
+      "test": "adapters/sqlstore/oauth_extension_grant_test.go",
+      "marker": "func TestExtensionGrantClientTokens("
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L493/Access token": [
+    {
+      "label": "Order access token claims from the extensions, a grant's per-issuance claims, the host and the resource, with the issuer's client_id and cnf kept, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_extension_grant_test.go",
+      "marker": "t.Fatal(\"the resource token's claims were wrong\", claims)",
+      "complete": true
     }
   ]
 }

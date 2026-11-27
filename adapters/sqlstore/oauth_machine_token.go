@@ -102,8 +102,17 @@ func (s *Store) insertMachineToken(ctx context.Context, tx *sql.Tx, id string, r
 		}
 		resources = sql.NullString{String: string(raw), Valid: true}
 	}
+	if record.Thumbprint != "" && record.Confirmation != nil {
+		return errors.New("sqlstore: a machine token has both a thumbprint and a confirmation")
+	}
+	var cnf any
 	if record.Thumbprint != "" {
-		raw, err := json.Marshal(map[string]string{"jkt": record.Thumbprint})
+		cnf = map[string]string{"jkt": record.Thumbprint}
+	} else if record.Confirmation != nil {
+		cnf = record.Confirmation
+	}
+	if cnf != nil {
+		raw, err := json.Marshal(cnf)
 		if err != nil {
 			return err
 		}
