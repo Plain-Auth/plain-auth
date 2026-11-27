@@ -42759,6 +42759,12 @@
       "label": "Set the provisioned member's role from DefaultOrganizationRole or ResolveOrganizationRole",
       "test": "adapters/sqlstore/sso_organization_role_test.go",
       "marker": "t.Fatal(\"ResolveOrganizationRole did not set the provisioned role\", role(\"chosen@acme.example\"))"
+    },
+    {
+      "label": "Join a social sign-in to the one organization a verified email domain selects, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_domain_org_test.go",
+      "marker": "t.Fatal(\"a domain two organizations serve assigned one\", got)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/sso/index.mdx#L25/DNS domain verification": [
@@ -43252,6 +43258,12 @@
       "label": "Default the provisioned role to member and choose admin through DefaultOrganizationRole",
       "test": "adapters/sqlstore/sso_organization_role_test.go",
       "marker": "t.Fatal(\"DefaultOrganizationRole did not set the provisioned role\", role(\"lead@acme.example\"))"
+    },
+    {
+      "label": "Join a social sign-in with a verified email to the one organization whose DNS-proved providers serve its domain, with the default or chosen role, and skip unverified emails, pending invitations, existing members and a domain two organizations serve, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_domain_org_test.go",
+      "marker": "t.Fatal(\"a verified email in a verified domain did not join the organization as a member\", got)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/sso/reference.mdx#L494/`POST /sso/register`": [

@@ -619,9 +619,10 @@
       - [x] Resolve OIDC users to a chosen account before the sign-in transaction ([test](../../../adapters/sqlstore/sso_resolve_user_test.go#L124))
       - [x] Run provisioning code after an enterprise sign-in commits ([test](../../../adapters/sqlstore/sso_provision_user_test.go#L95))
       - [x] Hand ProvisionUser the resolver-linked user after the sign-in commits, with ProvisionUserOnEveryLogin, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_resolve_user_test.go#L116))
-    - [ ] Organization provisioning
+    - [x] Organization provisioning ([test](../../../adapters/sqlstore/sso_domain_org_test.go#L153))
       - [x] Add a new enterprise user to the provider's organization with the member role ([test](../../../adapters/sqlstore/sso_browser_test.go#L313))
       - [x] Set the provisioned member's role from DefaultOrganizationRole or ResolveOrganizationRole ([test](../../../adapters/sqlstore/sso_organization_role_test.go#L96))
+      - [x] Join a social sign-in to the one organization a verified email domain selects, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_domain_org_test.go#L153))
     - [x] DNS domain verification ([test](../../../conformance/sso-domains.mjs#L57))
       - [x] Register, verify over DNS and sign in through a domain-verified provider on both runtimes ([test](../../../conformance/sso-domains.mjs#L57))
   - [ ] Register a provider
@@ -807,9 +808,10 @@
   - [x] Link a provider to an organization ([test](../../../adapters/sqlstore/sso_test.go#L244))
     - [x] Require organization membership (400) and an owner or admin role (403) to register a provider for an organization, and let current organization admins read it ([test](../../../adapters/sqlstore/sso_test.go#L175))
     - [x] Let an organization admin who did not register a provider change its domain and delete it, and refuse a plain member both with 403, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_test.go#L244))
-  - [ ] Organization provisioning
+  - [x] Organization provisioning ([test](../../../adapters/sqlstore/sso_domain_org_test.go#L133))
     - [x] Add a provider-linked sign-in as a member, keep an existing role and skip a user with a pending invitation ([test](../../../adapters/sqlstore/sso_browser_test.go#L333))
     - [x] Default the provisioned role to member and choose admin through DefaultOrganizationRole ([test](../../../adapters/sqlstore/sso_organization_role_test.go#L71))
+    - [x] Join a social sign-in with a verified email to the one organization whose DNS-proved providers serve its domain, with the default or chosen role, and skip unverified emails, pending invitations, existing members and a domain two organizations serve, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_domain_org_test.go#L133))
 
 ## SSO reference
 

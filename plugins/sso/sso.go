@@ -559,6 +559,9 @@ func New(o Options) (auth.Plugin, error) {
 		{Method: "GET", Path: "/sso/callback", Handler: o.finish},
 		callback}}
 	if opt := o.DomainVerification; opt != nil {
+		if !o.DisableOrganizationProvisioning {
+			plugin.Hooks.After = append(plugin.Hooks.After, auth.EndpointHook{Run: o.assignDomainOrganization})
+		}
 		request := endpoint("/sso/request-domain-verification", "POST", opt.request)
 		request.SuccessStatus = 201
 		verify := endpoint("/sso/verify-domain", "POST", opt.verify)
