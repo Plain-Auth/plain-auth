@@ -107,8 +107,13 @@ export async function compareIDTokens(t, reference, goFixture, customClaims = fa
       const claims = JSON.stringify({id_token:{acr:{values:["1"]},email:{essential:true}},userinfo:{email:null,name:null}});
       const consent = await authorize({claims, acr_values:"1",prompt:"consent"});
       assert.equal(consent.pathname, "/consent");
-      const elevated = await post("/oauth2/consent", {oauth_query:consent.search.slice(1),accept:true,claims:{userinfo:{picture:null}}});
-      assert.equal(elevated.status,400);
+      // Consent can only narrow the requested claims, given as an object
+      // or as a JSON string, and the refusal leaves the prompt usable.
+      for (const widened of [{userinfo:{picture:null}}, JSON.stringify({userinfo:{email:null,picture:null}})]) {
+        const elevated = await post("/oauth2/consent", {oauth_query:consent.search.slice(1),accept:true,claims:widened});
+        assert.equal(elevated.status,400);
+        assert.deepEqual(await elevated.json(), {error:"invalid_request", error_description:"Claim not originally requested"});
+      }
       const approved = await destination(await post("/oauth2/consent", {oauth_query:consent.search.slice(1),accept:true,claims:{userinfo:{email:null}}}));
       assert.equal(approved.origin + approved.pathname,callback);
       assert.equal(approved.searchParams.get("state"),state);

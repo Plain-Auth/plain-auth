@@ -18,7 +18,8 @@ import (
 // Without scope options a registration takes the issuer's scopes, and
 // without generators its client ID and secret are 32 ASCII letters. An
 // initial access token whose authorization names nobody registers a client
-// without an owner, and a configured secret generator also serves rotation.
+// without an owner, one naming a reference attaches only that reference,
+// and configured generators serve registration and rotation.
 func TestDefaultOAuthRegistration(t *testing.T) {
 	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
 		t.Run(dialect, func(t *testing.T) {
@@ -46,7 +47,10 @@ func TestDefaultOAuthRegistration(t *testing.T) {
 				must(err)
 				return c
 			}
-			anonymous := func(context.Context, string, http.Header, op.RegistrationMetadata) (*op.InitialAuthorization, error) {
+			anonymous := func(_ context.Context, token string, _ http.Header, _ op.RegistrationMetadata) (*op.InitialAuthorization, error) {
+				if token == "tenant-token" {
+					return &op.InitialAuthorization{ReferenceID: "tenant"}, nil
+				}
 				return &op.InitialAuthorization{}, nil
 			}
 			plain := host(op.RegistrationOptions{Enabled: true, ValidateInitialToken: anonymous})
@@ -71,10 +75,24 @@ func TestDefaultOAuthRegistration(t *testing.T) {
 			if ownerless.UserID != "" || ownerless.ReferenceID != "" {
 				t.Fatal("an initial access token naming nobody registered an owned client", ownerless.UserID, ownerless.ReferenceID)
 			}
-			generated := host(op.RegistrationOptions{Enabled: true, GenerateClientSecret: func() (string, error) { return "rotated-by-generator", nil }})
+			tenantBearer, err := sdk(plain).WithBearerToken("tenant-token")
+			must(err)
+			tenant, err := tenantBearer.RegisterOAuthClient(ctx, m)
+			must(err)
+			var storedUser, storedReference *string
+			must(s.db.QueryRowContext(ctx, s.bind(`SELECT "userId","referenceId" FROM "oauthClient" WHERE "clientId"=?`), tenant.ClientID).Scan(&storedUser, &storedReference))
+			if tenant.UserID != "" || tenant.ReferenceID != "tenant" || storedUser != nil || storedReference == nil || *storedReference != "tenant" {
+				t.Fatal("an initial access token's reference was not attached to the client alone", tenant.UserID, tenant.ReferenceID, storedUser, storedReference)
+			}
+			generated := host(op.RegistrationOptions{Enabled: true, GenerateClientID: func() (string, error) { return "configured-client-id", nil },
+				GenerateClientSecret: func() (string, error) { return "rotated-by-generator", nil }})
 			rotator := sdk(generated)
 			_, err = rotator.SignInEmail(ctx, client.SignInRequest{Email: "owner@defaults.test", Password: "safe local test password"})
 			must(err)
+			configured, err := rotator.RegisterOAuthClient(ctx, m)
+			if err != nil || configured.ClientID != "configured-client-id" || configured.ClientSecret != "rotated-by-generator" {
+				t.Fatal("registration did not use the configured ID and secret generators", configured.ClientID, configured.ClientSecret, err)
+			}
 			rotated, err := rotator.RotateOAuthClientSecret(ctx, app.ClientID)
 			if err != nil || rotated.ClientSecret != "rotated-by-generator" {
 				t.Fatal("rotation did not use the configured secret generator", rotated.ClientSecret, err)

@@ -181,7 +181,7 @@ func TestEndpointRateLimitDefaults(t *testing.T) {
 		return out
 	}
 	got := limits(Options{Registration: RegistrationOptions{Enabled: true}})
-	for path, max := range map[string]int{"/oauth2/token": 20, "/oauth2/authorize": 30, "/oauth2/introspect": 100, "/oauth2/revoke": 30, "/oauth2/register": 5, keyRotationPath: 5} {
+	for path, max := range map[string]int{"/oauth2/token": 20, "/oauth2/authorize": 30, "/oauth2/introspect": 100, "/oauth2/revoke": 30, "/oauth2/register": 5, keyRotationPath: 5, "/oauth2/userinfo": 60} {
 		if rule := got[path]; rule == nil || rule.Max != max || rule.Window != time.Minute {
 			t.Fatal("a route lacks its default rate limit", path, rule)
 		}
@@ -192,5 +192,19 @@ func TestEndpointRateLimitDefaults(t *testing.T) {
 	}
 	if got["/oauth2/introspect"] != nil {
 		t.Fatal("an empty rate limit did not leave the host's global limit", got["/oauth2/introspect"])
+	}
+	// An empty rule on any route leaves the host's global limit.
+	empty := func() *auth.RateLimitRule { return &auth.RateLimitRule{} }
+	got = limits(Options{
+		Tokens:        TokenOptions{RateLimit: empty(), IntrospectionRateLimit: empty(), RevocationRateLimit: empty()},
+		Registration:  RegistrationOptions{Enabled: true, RateLimit: empty()},
+		Authorization: BrowserAuthorizationOptions{RateLimit: empty()},
+		UserInfo:      UserInfoOptions{RateLimit: empty()},
+		Assertions:    AssertionOptions{KeyRotationRateLimit: empty()},
+	})
+	for _, path := range []string{"/oauth2/token", "/oauth2/authorize", "/oauth2/introspect", "/oauth2/revoke", "/oauth2/register", keyRotationPath, "/oauth2/userinfo"} {
+		if rule, ok := got[path]; !ok || rule != nil {
+			t.Fatal("an empty rate limit did not leave the host's global limit", path, rule, ok)
+		}
 	}
 }

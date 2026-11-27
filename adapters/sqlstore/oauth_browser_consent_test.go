@@ -121,6 +121,37 @@ func TestInteractiveBrowserConsent(t *testing.T) {
 			if w := post(b, sign, "", "A", true, "read"); w.Code != 401 {
 				t.Fatalf("anonymous approval returned %d", w.Code)
 			}
+			// As in another runtime, a present signed query is verified first,
+			// then the body's types, then the session, then a missing query.
+			send := func(body map[string]any, owner string) *httptest.ResponseRecorder {
+				encoded, _ := json.Marshal(body)
+				r := httptest.NewRequest("POST", base+"/api/auth/oauth2/consent", bytes.NewReader(encoded))
+				r.Header.Set("Origin", base)
+				r.Header.Set("Content-Type", "application/json")
+				r.Header.Set("X-Test-Tenant", "A")
+				if owner != "" {
+					r.AddCookie(b.SessionCookie(owner, true))
+				}
+				w := httptest.NewRecorder()
+				b.ServeHTTP(w, r)
+				return w
+			}
+			for _, tc := range []struct {
+				body   map[string]any
+				owner  string
+				status int
+				want   string
+			}{
+				{map[string]any{"accept": "yes", "oauth_query": sign + "&tampered=1"}, "", 400, `"error":"invalid_signature"`},
+				{map[string]any{"accept": "yes", "oauth_query": sign}, "", 400, `"message":"[body.accept] Invalid input: expected boolean, received string"`},
+				{map[string]any{"oauth_query": sign, "scope": 1, "claims": []any{}}, "owner", 400, `"message":"[body.accept] Invalid input: expected boolean, received undefined; [body.scope] Invalid input: expected string, received number; [body.claims] Invalid input"`},
+				{map[string]any{"accept": true}, "", 401, ""},
+				{map[string]any{"accept": true}, "owner", 400, `"error_description":"missing oauth query"`},
+			} {
+				if w := send(tc.body, tc.owner); w.Code != tc.status || !strings.Contains(w.Body.String(), tc.want) {
+					t.Fatal("a consent decision was not checked in another runtime's order", tc.body, tc.owner, w.Code, w.Body.String())
+				}
+			}
 			for _, v := range []struct{ user, tenant string }{{"other", "A"}, {"owner", "B"}} {
 				if w := post(b, sign, v.user, v.tenant, true, "read"); w.Code != 400 {
 					t.Fatalf("mismatched prompt binding returned %d", w.Code)
@@ -138,6 +169,11 @@ func TestInteractiveBrowserConsent(t *testing.T) {
 				t.Fatal("expired consent was accepted")
 			}
 			sign = prompt("A")
+			// A scope outside the original request is refused before any
+			// write, and the same prompt still completes below.
+			if w := post(a, sign, "owner", "A", true, "read write"); w.Code != 400 || !strings.Contains(w.Body.String(), `"error_description":"Scope not originally requested"`) {
+				t.Fatal("a scope outside the request was accepted", w.Code, w.Body.String())
+			}
 			failHash = true
 			if w := post(a, sign, "owner", "A", true, "read"); w.Code != 500 || count(`SELECT COUNT(*) FROM "oauthConsent"`) != 0 {
 				t.Fatal("failed code callback committed approval")

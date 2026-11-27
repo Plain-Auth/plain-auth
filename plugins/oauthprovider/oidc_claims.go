@@ -103,7 +103,7 @@ func (opts Options) consentClaims(request string, selection any) (string, error)
 	}
 	if request == "" {
 		if len(selected) != 0 {
-			return "", registrationProblem(400, "invalid_request", "claim not originally requested")
+			return "", registrationProblem(400, "invalid_request", "Claim not originally requested")
 		}
 		return "", nil
 	}
@@ -117,7 +117,7 @@ func (opts Options) consentClaims(request string, selection any) (string, error)
 	}
 	for _, name := range selected {
 		if !slices.Contains(requested, name) {
-			return "", registrationProblem(400, "invalid_request", "claim not originally requested")
+			return "", registrationProblem(400, "invalid_request", "Claim not originally requested")
 		}
 	}
 	return filterUserInfoClaims(doc, selected), nil

@@ -57,7 +57,9 @@ func TestOAuthImmutableClients(t *testing.T) {
 			must(err)
 			headers := http.Header{}
 			headers.Add("Cookie", h.SessionCookie(*account.Token, true).String())
-			_, err = manager.SetClientCredentialsScopes(ctx, headers, "operator", []string{"reports"})
+			// Clearing the grant needs no approval, so only the immutability
+			// check can refuse it.
+			_, err = manager.SetClientCredentialsScopes(ctx, headers, "operator", []string{})
 			refused("scope update", err)
 			var secret, machineScopes string
 			must(s.db.QueryRowContext(ctx, s.bind(`SELECT "clientSecret","clientCredentialsScopes" FROM "oauthClient" WHERE "clientId"=?`), "operator").Scan(&secret, &machineScopes))

@@ -80,6 +80,12 @@ export async function exerciseMachineTokens({ server, issuer, db, credentials, c
     assert.equal(token.scope, scope);
     assert.equal(token.expires_in, ttl);
   }
+  // The defaulted client authenticates with a Basic header.
+  await setMachineScopes(defaulted.client_id, ["reports"]);
+  const defaultedToken = await request(grant, { authorization: basic(defaulted.client_id, defaulted.client_secret) });
+  assert.equal(defaultedToken.status, 200);
+  assert.equal((await defaultedToken.json()).scope, "reports");
+  await error(grant, 401, "invalid_client", { authorization: basic(defaulted.client_id, "wrong") }, "Basic");
   await error({}, 400, "invalid_request", {}, undefined, "grant_type is required");
   await error({ grant_type: "unknown" }, 400, "unsupported_grant_type");
   await error(grant, 400, "invalid_request", {}, undefined, "Missing required client_id");

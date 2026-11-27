@@ -118,13 +118,21 @@ func TestBrowserLoginContinuation(t *testing.T) {
 			if w := post(h, "oauth2/continue", map[string]any{"created": true, "oauth_query": signupQuery}, nil, nil); w.Code != 401 {
 				t.Fatal("account creation continued without a browser session", w.Code)
 			}
-			// As in another runtime, the body's types come first, then the
-			// session, then the account step and its signed query.
+			// As in another runtime, a present signed query is verified first,
+			// then the body's types, then the session, then the account step.
 			if w := post(h, "oauth2/continue", map[string]any{"created": false, "oauth_query": signupQuery}, nil, nil); w.Code != 401 {
 				t.Fatal("a sessionless continuation was not refused with 401", w.Code)
 			}
-			if w := post(h, "oauth2/continue", map[string]any{"selected": "yes"}, nil, nil); w.Code != 400 || !strings.Contains(w.Body.String(), "VALIDATION_ERROR") {
-				t.Fatal("a mistyped continuation was not refused in the body validation form", w.Code, w.Body.String())
+			for _, body := range []map[string]any{{"created": true, "oauth_query": signupQuery + "&tampered=1"}, {"selected": "yes", "oauth_query": signupQuery + "&tampered=1"}, {"created": true, "oauth_query": 5}} {
+				if w := post(h, "oauth2/continue", body, nil, nil); w.Code != 400 || !strings.Contains(w.Body.String(), `"error":"invalid_signature"`) {
+					t.Fatal("a sessionless continuation with a bad signed query was not refused first", body, w.Code, w.Body.String())
+				}
+			}
+			if w := post(h, "oauth2/continue", map[string]any{"created": true, "oauth_query": ""}, nil, nil); w.Code != 401 {
+				t.Fatal("an empty signed query was verified rather than treated as absent", w.Code, w.Body.String())
+			}
+			if w := post(h, "oauth2/continue", map[string]any{"selected": "yes", "created": 1}, nil, nil); w.Code != 400 || !strings.Contains(w.Body.String(), `"message":"[body.selected] Invalid input: expected boolean, received string; [body.created] Invalid input: expected boolean, received number"`) {
+				t.Fatal("a mistyped continuation did not list every mismatch in the body validation form", w.Code, w.Body.String())
 			}
 			signedIn := http.Header{"Cookie": {h.SessionCookie(who.Session.Token, true).String()}}
 			for _, body := range []map[string]any{{"created": false, "oauth_query": signupQuery}, {"selected": true}, {}, {"created": true}} {

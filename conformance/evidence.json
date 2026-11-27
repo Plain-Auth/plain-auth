@@ -18430,10 +18430,9 @@
       "marker": "t.Fatal(\"the configured UserInfo claims were not advertised exactly\", doc.ClaimsSupported)"
     },
     {
-      "label": "Advertise exactly the configured scopes, claims and client authentication methods, in order, in both discovery documents",
+      "label": "Advertise exactly the configured scopes and client authentication methods, in order, in both discovery documents, and the configured claims in the OpenID document",
       "test": "plugins/oauthprovider/openid_metadata_test.go",
-      "marker": "t.Fatal(\"the advertised metadata did not appear exactly as configured\", openid, server)",
-      "complete": true
+      "marker": "t.Fatal(\"the advertised metadata did not appear exactly as configured\", openid, server)"
     }
   ],
   "docs/content/docs/plugins/oauth-provider/tokens.mdx#L8": [
@@ -18753,6 +18752,11 @@
       "label": "An accepted consent runs the code's verification create hooks; a declined code still records the consent and spends the prompt",
       "test": "adapters/sqlstore/oauth_code_hooks_test.go",
       "marker": "// A declined code at consent still records the consent."
+    },
+    {
+      "label": "Verify a present signed query, then the decision's body types with every mismatch listed, then the browser session, leaving the prompt usable, on both runtimes",
+      "test": "conformance/oauth-browser-authorization.mjs",
+      "marker": "const forged = await json(\"/oauth2/consent\", { accept: \"yes\", oauth_query: ordered + \"&tampered=1\" });"
     }
   ],
   "docs/content/docs/plugins/oauth-provider/reference.mdx#L319/`POST /oauth2/consent`": [
@@ -18787,6 +18791,11 @@
       "label": "Require a consent form to record an approval and send an earlier selector form back through the remaining steps",
       "test": "conformance/oauth-post-login.mjs",
       "marker": "const misplaced = await destination("
+    },
+    {
+      "label": "Verify a present signed query, then the decision's body types with every mismatch listed, then the browser session, leaving the prompt usable, on both runtimes",
+      "test": "conformance/oauth-browser-authorization.mjs",
+      "marker": "const forged = await json(\"/oauth2/consent\", { accept: \"yes\", oauth_query: ordered + \"&tampered=1\" });"
     }
   ],
   "docs/content/docs/plugins/oauth-provider/sign-in-flow.mdx#L44": [
@@ -18863,6 +18872,11 @@
       "label": "Use the Go client to distinguish explicitly granting zero scopes from granting the original scope list",
       "test": "adapters/sqlstore/oauth_browser_consent_test.go",
       "marker": "SDK lost distinction between omitted and explicit empty scopes"
+    },
+    {
+      "label": "Refuse a scope outside the original request with Scope not originally requested before any write and keep the prompt usable, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_browser_consent_test.go",
+      "marker": "t.Fatal(\"a scope outside the request was accepted\", w.Code, w.Body.String())"
     }
   ],
   "docs/content/docs/plugins/oauth-provider/sign-in-flow.mdx#L113/Parameter `oauth_query` (optional)": [
@@ -19062,9 +19076,9 @@
       "marker": "const picked = await destination("
     },
     {
-      "label": "Check the continuation's body types first, then the browser session with 401, then the completed step and signed query with 400, on SQLite, PostgreSQL and MySQL",
+      "label": "Verify a present signed query first, then the continuation's body types with every mismatch listed, then the browser session with 401, then the completed step and signed query with 400, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_browser_login_test.go",
-      "marker": "t.Fatal(\"a sessionless continuation was not refused with 401\", w.Code)",
+      "marker": "t.Fatal(\"a sessionless continuation with a bad signed query was not refused first\"",
       "complete": true
     }
   ],
@@ -48115,8 +48129,18 @@
     {
       "label": "Register a client with a 32-letter client ID by default, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_registration_defaults_test.go",
-      "marker": "t.Fatal(\"a default registration did not take the issuer's scopes and 32-letter credentials\", app.ClientID, app.Scope, scopes)",
+      "marker": "t.Fatal(\"a default registration did not take the issuer's scopes and 32-letter credentials\", app.ClientID, app.Scope, scopes)"
+    },
+    {
+      "label": "Register clients with 32-letter IDs and secrets by default and with the configured ID and secret generators, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_registration_defaults_test.go",
+      "marker": "t.Fatal(\"registration did not use the configured ID and secret generators\"",
       "complete": true
+    },
+    {
+      "label": "Use the configured ID generator and keep a single complete registration after a collision",
+      "test": "adapters/sqlstore/oauth_registration_test.go",
+      "marker": "colliding registrations did not leave one complete client"
     }
   ],
   "plugin-symbol/mcp/McpOptions/generateOpaqueAccessToken": [
@@ -48352,7 +48376,12 @@
     {
       "label": "Register a client without an owner when the initial access token's authorization names nobody, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_registration_defaults_test.go",
-      "marker": "t.Fatal(\"an initial access token naming nobody registered an owned client\", ownerless.UserID, ownerless.ReferenceID)",
+      "marker": "t.Fatal(\"an initial access token naming nobody registered an owned client\", ownerless.UserID, ownerless.ReferenceID)"
+    },
+    {
+      "label": "Register a client without an owner when the initial access token's authorization names nobody, and attach only the named reference otherwise, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_registration_defaults_test.go",
+      "marker": "t.Fatal(\"an initial access token's reference was not attached to the client alone\"",
       "complete": true
     }
   ],
@@ -48360,15 +48389,25 @@
     {
       "label": "Issue a 32-letter client secret by default and rotate through a configured secret generator, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_registration_defaults_test.go",
-      "marker": "t.Fatal(\"rotation did not use the configured secret generator\", rotated.ClientSecret, err)",
+      "marker": "t.Fatal(\"rotation did not use the configured secret generator\", rotated.ClientSecret, err)"
+    },
+    {
+      "label": "Register clients with 32-letter IDs and secrets by default and with the configured ID and secret generators, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_registration_defaults_test.go",
+      "marker": "t.Fatal(\"registration did not use the configured ID and secret generators\"",
       "complete": true
+    },
+    {
+      "label": "Issue the generated secret and store its digest on all SQL engines",
+      "test": "adapters/sqlstore/oauth_registration_test.go",
+      "marker": "incorrect registration at rest"
     }
   ],
   "plugin-symbol/mcp/McpOptions/rateLimit": [
     {
-      "label": "Give token 20, authorize 30, introspect 100, revoke 30, register 5 and key rotation 5 requests a minute by default, replace a default with a configured rule and leave the global limit for an empty one",
+      "label": "Give token 20, authorize 30, introspect 100, revoke 30, register 5, key rotation 5 and userinfo 60 requests a minute by default, replace a default with a configured rule and leave the host's global limit for an empty rule on every route",
       "test": "plugins/oauthprovider/machine_token_test.go",
-      "marker": "t.Fatal(\"a route lacks its default rate limit\", path, rule)",
+      "marker": "t.Fatal(\"an empty rate limit did not leave the host's global limit\", path, rule, ok)",
       "complete": true
     }
   ],
@@ -48399,16 +48438,15 @@
     {
       "label": "Default a confidential registration without a method to client_secret_basic and authenticate it with a Basic header, refusing a wrong secret with a Basic challenge, on both runtimes",
       "test": "conformance/oauth-machine-tokens.mjs",
-      "marker": "assert.equal(defaulted.token_endpoint_auth_method, \"client_secret_basic\");",
+      "marker": "const defaultedToken = await request(grant, { authorization: basic(defaulted.client_id, defaulted.client_secret) });",
       "complete": true
     }
   ],
   "plugin-symbol/mcp/McpOptions/advertisedMetadata": [
     {
-      "label": "Advertise exactly the configured scopes, claims and client authentication methods, in order, in both discovery documents",
+      "label": "Advertise exactly the configured scopes and client authentication methods, in order, in both discovery documents, and the configured claims in the OpenID document",
       "test": "plugins/oauthprovider/openid_metadata_test.go",
-      "marker": "t.Fatal(\"the advertised metadata did not appear exactly as configured\", openid, server)",
-      "complete": true
+      "marker": "t.Fatal(\"the advertised metadata did not appear exactly as configured\", openid, server)"
     }
   ],
   "plugin-symbol/oauth-provider/getIssuer": [
@@ -48422,6 +48460,26 @@
       "label": "Publish discovery for an issuer with a query and trailing slash at its normalized paths",
       "test": "plugins/oauthprovider/issuer_metadata_test.go",
       "marker": "t.Fatal(\"the issuer was not published without its query, fragment and trailing slash\", tc.issuer, a.OAuthIssuer())"
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/rateLimit": [
+    {
+      "label": "Give token 20, authorize 30, introspect 100, revoke 30, register 5, key rotation 5 and userinfo 60 requests a minute by default, replace a default with a configured rule and leave the host's global limit for an empty rule on every route",
+      "test": "plugins/oauthprovider/machine_token_test.go",
+      "marker": "t.Fatal(\"an empty rate limit did not leave the host's global limit\", path, rule, ok)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/sign-in-flow.mdx#L109/Parameter `claims` (optional)": [
+    {
+      "label": "Narrow the requested UserInfo claims at consent, refuse a widened selection given as an object or a JSON string with Claim not originally requested, and redeem a code for the narrowed claims, on both runtimes",
+      "test": "conformance/oauth-id-tokens.mjs",
+      "marker": "for (const widened of [{userinfo:{picture:null}}, JSON.stringify({userinfo:{email:null,picture:null}})]) {"
+    },
+    {
+      "label": "Keep a narrowed claim selection and refuse claims outside the request or a request without claims with 400 invalid_request",
+      "test": "plugins/oauthprovider/oidc_claims_test.go",
+      "marker": "func TestConsentClaimNarrowing("
     }
   ]
 }

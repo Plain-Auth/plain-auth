@@ -79,6 +79,12 @@ func userOps(raw []any) ([]patchOp, error) {
 		for key := range item.(map[string]any) {
 			o.hasValue = o.hasValue || strings.EqualFold(key, "value")
 		}
+		switch nullOpField(item.(map[string]any)) {
+		case "op":
+			return nil, invalid("invalidSyntax", "Expected a patch operation")
+		case "path":
+			return nil, invalid("invalidPath", "Expected an attribute path")
+		}
 		if v["op"] != nil {
 			name, ok := v["op"].(string)
 			if !ok {
@@ -104,6 +110,17 @@ func userOps(raw []any) ([]patchOp, error) {
 		ops = append(ops, o)
 	}
 	return ops, nil
+}
+
+// nullOpField names an operation's op or path given as null, which another
+// runtime's body schema refuses as a non-string rather than omitted.
+func nullOpField(raw map[string]any) string {
+	for k, v := range raw {
+		if name := field(k, []string{"op", "path"}); name != "" && v == nil {
+			return name
+		}
+	}
+	return ""
 }
 
 // readOnlyUserPath reports id, schemas and meta, which a PATCH cannot change.

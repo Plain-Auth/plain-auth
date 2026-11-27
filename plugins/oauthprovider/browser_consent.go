@@ -87,6 +87,21 @@ func (opts Options) openConsentPage(c auth.EndpointContext, original url.Values,
 func (opts Options) browserConsent(c auth.EndpointContext) (any, error) {
 	c.ResponseHeader.Set("Cache-Control", "no-store")
 	c.ResponseHeader.Set("Pragma", "no-cache")
+	// As in another runtime, a present signed query is verified first, then
+	// the body's types and the session, then the decision itself. A claims
+	// selection's content is checked with the decision, after the session,
+	// where another runtime checks it with the body.
+	if err := checkBodyQuery(c); err != nil {
+		return nil, err
+	}
+	if err := checkBodyTypes(c.Body, bodyField{"accept", "boolean", true}, bodyField{"scope", "string", false},
+		bodyField{"claims", "string|object", false}, bodyField{"oauth_query", "string", false}); err != nil {
+		return nil, err
+	}
+	session, err := requireBrowserOwner(c)
+	if err != nil {
+		return nil, err
+	}
 	raw, _ := c.Body["oauth_query"].(string)
 	if raw == "" {
 		return nil, registrationProblem(400, "invalid_request", "missing oauth query")
@@ -95,16 +110,10 @@ func (opts Options) browserConsent(c auth.EndpointContext) (any, error) {
 	if err != nil {
 		return nil, registrationProblem(400, "invalid_signature", "invalid or expired oauth query")
 	}
-	accept, ok := c.Body["accept"].(bool)
-	if !ok {
-		return nil, registrationProblem(400, "invalid_request", "accept must be a boolean")
-	}
+	accept := c.Body["accept"].(bool)
 	// A selector page can only restart the remaining steps. It cannot grant
 	// consent until the issuer has actually presented a bound consent form.
 	if accept && opts.Authorization.PostLogin != nil && !q.Has("pa_consent") && q.Get("pa_post") == c.Auth.OAuthIssuer() && len(q["pa_client"]) == 1 && q.Get("pa_client") != "" {
-		if _, err := requireBrowserOwner(c); err != nil {
-			return nil, err
-		}
 		q.Set("prompt", "consent")
 		next := accountAuthorizationRequest(c, q, false)
 		next.Header.Set("Accept", "application/json")
@@ -114,12 +123,15 @@ func (opts Options) browserConsent(c auth.EndpointContext) (any, error) {
 		return nil, consentDecisionError(ErrBrowserConsentExpired)
 	}
 	decision := browserConsentDecision{store: c.Store().(BrowserConsentStore), clientFingerprint: q.Get("pa_client"), accept: accept, request: BrowserConsentPrompt{ID: q.Get("pa_consent")}}
-	if raw, present := c.Body["scope"]; present {
-		value, ok := raw.(string)
-		if !ok {
-			return nil, registrationProblem(400, "invalid_request", "scope must be a space-separated string")
-		}
+	// Scopes are narrowed before claims, as in another runtime.
+	requested := distinct(strings.Split(q.Get("scope"), " "))
+	if value, present := c.Body["scope"].(string); present {
 		decision.scopes = distinct(strings.Split(value, " "))
+		for _, scope := range decision.scopes {
+			if !slices.Contains(requested, scope) {
+				return nil, registrationProblem(400, "invalid_request", "Scope not originally requested")
+			}
+		}
 	}
 	if selection, present := c.Body["claims"]; present {
 		if !slices.Contains(strings.Fields(q.Get("scope")), "openid") {
@@ -135,19 +147,9 @@ func (opts Options) browserConsent(c auth.EndpointContext) (any, error) {
 			q.Set("claims", filtered)
 		}
 	}
-	session, err := requireBrowserOwner(c)
-	if err != nil {
-		return nil, err
-	}
 	decision.session = session
 	if q.Get("pa_post_issuer") == c.Auth.OAuthIssuer() {
 		decision.clearedSession = q.Get("ba_pl")
-	}
-	requested := distinct(strings.Split(q.Get("scope"), " "))
-	for _, scope := range decision.scopes {
-		if !slices.Contains(requested, scope) {
-			return nil, registrationProblem(400, "invalid_request", "Scope not originally requested")
-		}
 	}
 	if !accept {
 		// Consume the user's refusal even when the application has since been

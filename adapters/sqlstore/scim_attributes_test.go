@@ -801,6 +801,14 @@ func TestSCIMUserSelectionOverHTTP(t *testing.T) {
 			if !jsonEqual(list["Resources"].([]any)[0], map[string]any{"schemas": []any{scim.UserSchema}, "id": id, "name": map[string]any{"familyName": "Ection"}}) {
 				t.Fatal("a collection ignored a nested selection", list["Resources"])
 			}
+			// Repeated projection keys are merged into one list.
+			merged := call("GET", "Users?attributes=userName&attributes=name.familyName", nil, 200, "a repeated attributes key was refused")
+			if !jsonEqual(merged["Resources"].([]any)[0], map[string]any{"schemas": []any{scim.UserSchema}, "id": id, "userName": "sel@example.test", "name": map[string]any{"familyName": "Ection"}}) {
+				t.Fatal("repeated attributes keys were not merged", merged["Resources"])
+			}
+			if got := call("GET", "Users/"+id+"?excludedAttributes=name&excludedAttributes=emails", nil, 200, "a repeated excludedAttributes key was refused"); got["name"] != nil || got["emails"] != nil || got["userName"] == nil {
+				t.Fatal("repeated excludedAttributes keys were not merged", got)
+			}
 			if body := call("GET", "Users?attributes=userName&excludedAttributes=title", nil, 400, "a collection accepted both selection parameters"); body["scimType"] != "invalidValue" {
 				t.Fatal("combined selection parameters were not invalidValue", body)
 			}

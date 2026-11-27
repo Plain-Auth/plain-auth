@@ -85,6 +85,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			route += "/:userId"
 		}
 	}
+	// The bearer token and its scopes are checked before the media type and
+	// body, where another runtime's request hook answers 415 or 400 first, so
+	// an unauthenticated caller learns nothing about how a body is read.
 	identity, err := h.authorize(r, scope, route)
 	if err != nil {
 		writeError(w, err)
@@ -95,10 +98,11 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// A read or deletion checks the connection's binding before its query,
 	// as another runtime's authentication middleware does; a write checks it
 	// once its body is valid.
-	// A repeated page, filter or projection key fails another runtime's query
-	// schema, which runs before its binding check; a deletion takes no query.
-	if r.Method != http.MethodDelete {
-		for _, k := range []string{"filter", "startIndex", "count", "attributes", "excludedAttributes"} {
+	// A repeated page or filter key fails another runtime's collection query
+	// schema, which runs before its binding check. Other routes ignore those
+	// keys, and repeated projection keys are merged as one list everywhere.
+	if r.Method == http.MethodGet && !single {
+		for _, k := range []string{"filter", "startIndex", "count"} {
 			if len(r.URL.Query()[k]) > 1 {
 				writeError(w, invalid("invalidValue", "Expected one "+k))
 				return

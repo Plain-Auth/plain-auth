@@ -70,7 +70,20 @@ export async function exerciseBrowserAuthorization({ server, issuer, db }) {
   const unsigned = await json("/oauth2/consent", { accept: true }, { cookie });
   assert.equal(unsigned.status, 400);
   assert.deepEqual(await unsigned.json(), { error: "invalid_request", error_description: "missing oauth query" });
-  const denied = await decide(await consentPage(), { accept: false });
+  // A present signed query is verified first, then the body's types, then
+  // the session, and the checks leave the prompt usable.
+  const ordered = await consentPage();
+  const forged = await json("/oauth2/consent", { accept: "yes", oauth_query: ordered + "&tampered=1" });
+  assert.equal(forged.status, 400);
+  assert.equal((await forged.json()).error, "invalid_signature");
+  const mistyped = await json("/oauth2/consent", { accept: "yes", oauth_query: ordered });
+  assert.equal(mistyped.status, 400);
+  assert.deepEqual(await mistyped.json(), { code: "VALIDATION_ERROR", message: "[body.accept] Invalid input: expected boolean, received string" });
+  const incomplete = await json("/oauth2/consent", { oauth_query: ordered, scope: 1 }, { cookie });
+  assert.equal(incomplete.status, 400);
+  assert.deepEqual(await incomplete.json(), { code: "VALIDATION_ERROR", message: "[body.accept] Invalid input: expected boolean, received undefined; [body.scope] Invalid input: expected string, received number" });
+  assert.equal((await json("/oauth2/consent", { accept: true, oauth_query: ordered })).status, 401);
+  const denied = await decide(ordered, { accept: false });
   assert.equal(denied.status, 200);
   assert.equal(denied.body.redirect, true);
   const denial = new URL(denied.body.url);

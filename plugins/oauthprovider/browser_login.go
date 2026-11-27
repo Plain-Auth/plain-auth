@@ -174,21 +174,64 @@ func (opts Options) prepareLogin(c auth.EndpointContext, raw string) (auth.OAuth
 	}, nil
 }
 
+// checkBodyQuery verifies a truthy oauth_query before anything else reads
+// the body, as another runtime's plugin hook does before body validation
+// and the session check; a non-string value never verifies.
+func checkBodyQuery(c auth.EndpointContext) error {
+	raw := c.Body["oauth_query"]
+	if !jsjson.Truthy(raw) {
+		return nil
+	}
+	if s, ok := raw.(string); ok {
+		if _, err := c.Auth.VerifyOAuthQuery(s); err == nil {
+			return nil
+		}
+	}
+	return registrationProblem(400, "invalid_signature", "invalid or expired oauth query")
+}
+
+// bodyField names a body field, its JSON type and whether it is required.
+// The type "string|object" accepts a string or a non-array object.
+type bodyField struct {
+	name, want string
+	required   bool
+}
+
+// checkBodyTypes checks the fields' JSON types in schema order and reports
+// every mismatch together, in another runtime's body validation form.
+func checkBodyTypes(body map[string]any, fields ...bodyField) error {
+	var issues []string
+	for _, f := range fields {
+		raw, ok := body[f.name]
+		received := "undefined"
+		if ok {
+			received = jsjson.TypeName(raw)
+		}
+		switch {
+		case !ok && !f.required, received == f.want:
+		case f.want == "string|object":
+			if received != "string" && received != "object" {
+				issues = append(issues, "[body."+f.name+"] Invalid input")
+			}
+		default:
+			issues = append(issues, "[body."+f.name+"] Invalid input: expected "+f.want+", received "+received)
+		}
+	}
+	if len(issues) > 0 {
+		return &auth.APIError{Status: 400, Code: "VALIDATION_ERROR", Message: strings.Join(issues, "; ")}
+	}
+	return nil
+}
+
 func (opts Options) continueAccount(c auth.EndpointContext) (any, error) {
-	// As in another runtime, the body's types are checked first, then the
-	// session, then the account step and its signed query.
-	for _, name := range []string{"selected", "created", "postLogin", "oauth_query"} {
-		raw, ok := c.Body[name]
-		if !ok {
-			continue
-		}
-		want := "boolean"
-		if name == "oauth_query" {
-			want = "string"
-		}
-		if received := jsjson.TypeName(raw); received != want {
-			return nil, &auth.APIError{Status: 400, Code: "VALIDATION_ERROR", Message: "[body." + name + "] Invalid input: expected " + want + ", received " + received}
-		}
+	// As in another runtime, a present signed query is verified first, then
+	// the body's types, the session, and the account step and its query.
+	if err := checkBodyQuery(c); err != nil {
+		return nil, err
+	}
+	if err := checkBodyTypes(c.Body, bodyField{"selected", "boolean", false}, bodyField{"created", "boolean", false},
+		bodyField{"postLogin", "boolean", false}, bodyField{"oauth_query", "string", false}); err != nil {
+		return nil, err
 	}
 	if _, err := requireBrowserOwner(c); err != nil {
 		return nil, err

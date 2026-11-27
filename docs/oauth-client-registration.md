@@ -57,7 +57,7 @@ The plugin also installs application lookup and the signed-in user's consent man
 | `ValidateInitialToken` and an `Authorization: Bearer` header | The host validates its own initial access token. Returning an `InitialAuthorization` admits the request and can assign a trusted reference ID. Returning `nil, nil` denies it. |
 | `AllowUnauthenticated: true` | A caller without credentials can register a client. Requesting a machine-to-machine grant still requires authentication. An invalid bearer token is rejected. |
 
-When authentication is required, a request without credentials receives HTTP 401 and a `WWW-Authenticate: Bearer` challenge. An invalid initial token receives 401 with `invalid_token`. A malformed bearer header receives 400. With host rate limiting enabled, the route accepts five requests per minute per client IP by default. Set `Registration.RateLimit` to override the route rule.
+When authentication is required, a request without credentials receives HTTP 401 and a `WWW-Authenticate: Bearer` challenge. An invalid initial token receives 401 with `invalid_token`. A malformed bearer header receives 400. With host rate limiting enabled, the route accepts five requests per minute per client IP by default. Set `Registration.RateLimit` to override the route rule, or an empty rule to use the host's global limit.
 
 ## Register from a browser or Go
 

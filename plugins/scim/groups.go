@@ -258,6 +258,12 @@ func groupOpShape(raw any) (m map[string]any, op, path string, e error) {
 	if m, e = object(record, []string{"op", "path", "value"}); e != nil {
 		return nil, "", "", e
 	}
+	switch nullOpField(record) {
+	case "op":
+		return nil, "", "", invalid("invalidSyntax", "Unknown Group patch operation")
+	case "path":
+		return nil, "", "", invalid("invalidPath", "Expected a Group attribute path")
+	}
 	op = "replace"
 	if m["op"] != nil {
 		str, _ := m["op"].(string)

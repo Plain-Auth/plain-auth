@@ -108,7 +108,9 @@ type RegistrationOptions struct {
 	MayCreate            func(context.Context, RegistrationAccess) (bool, error)
 	ClientReference      func(context.Context, RegistrationAccess) (string, error)
 	AllowHTTPRedirect    func(*url.URL) bool
-	RateLimit            *auth.RateLimitRule
+	// RateLimit applies to registration and defaults to 5 per minute. An
+	// empty rule uses the host's global limit.
+	RateLimit *auth.RateLimitRule
 }
 
 type Options struct {
@@ -219,10 +221,7 @@ func New(opts Options) (auth.Plugin, error) {
 	if r.GenerateClientSecret == nil {
 		r.GenerateClientSecret = randomClientCredential
 	}
-	limit := auth.RateLimitRule{Window: time.Minute, Max: 5}
-	if r.RateLimit != nil {
-		limit = *r.RateLimit
-	}
+	limit := tokenRouteLimit(r.RateLimit, 5)
 	p := ConsentManagement(ConsentOptions{Scopes: opts.Scopes})
 	p.WellKnown = opts.issuerDocuments
 	validateConsent := p.ValidateStore
@@ -257,7 +256,7 @@ func New(opts Options) (auth.Plugin, error) {
 			return nil
 		}
 	}
-	p.Endpoints = append(p.Endpoints, auth.Endpoint{Method: http.MethodPost, Path: "/oauth2/register", SuccessStatus: 201, RateLimit: &limit, Handler: opts.register})
+	p.Endpoints = append(p.Endpoints, auth.Endpoint{Method: http.MethodPost, Path: "/oauth2/register", SuccessStatus: 201, RateLimit: limit, Handler: opts.register})
 	for _, action := range []string{"get-client", "get-clients", "public-client"} {
 		p.Endpoints = append(p.Endpoints, opts.clientEndpoint(action))
 	}

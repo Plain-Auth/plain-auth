@@ -35,7 +35,9 @@ type TokenOptions struct {
 	OpaquePrefix          string
 	GenerateOpaqueToken   func(context.Context) (string, error)
 	HashOpaqueToken       func(context.Context, string) (string, error)
-	RateLimit             *auth.RateLimitRule
+	// RateLimit applies to the token endpoint and defaults to 20 per minute.
+	// An empty rule uses the host's global limit.
+	RateLimit *auth.RateLimitRule
 	// IntrospectionRateLimit defaults to 100 per minute. An empty rule
 	// selects the host's global rate limit for this endpoint.
 	IntrospectionRateLimit *auth.RateLimitRule
@@ -88,11 +90,7 @@ func (opts *TokenOptions) defaults() error {
 			return errors.New("oauthprovider: scope lifetime must be a positive whole number of seconds")
 		}
 	}
-	rule := auth.RateLimitRule{Window: time.Minute, Max: 20}
-	if opts.RateLimit != nil {
-		rule = *opts.RateLimit
-	}
-	opts.RateLimit = &rule
+	opts.RateLimit = tokenRouteLimit(opts.RateLimit, 20)
 	opts.IntrospectionRateLimit = tokenRouteLimit(opts.IntrospectionRateLimit, 100)
 	opts.RevocationRateLimit = tokenRouteLimit(opts.RevocationRateLimit, 30)
 	return nil

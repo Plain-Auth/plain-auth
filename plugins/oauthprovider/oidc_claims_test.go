@@ -1,9 +1,12 @@
 package oauthprovider
 
 import (
+	"errors"
 	"net/url"
 	"testing"
 	"time"
+
+	auth "github.com/Plain-Org/plain-auth"
 )
 
 func TestOpenIDClaimRequirements(t *testing.T) {
@@ -27,6 +30,28 @@ func TestOpenIDClaimRequirements(t *testing.T) {
 	_, err := (Options{}).browserGrant(client, url.Values{"response_type": {"code"}, "claims": {`{"id_token":{"acr":{"essential":true,"value":"2"}}}`}})
 	if err == nil || err.Code != "access_denied" {
 		t.Fatalf("unexpected authorization error: %v", err)
+	}
+}
+
+// Consent may narrow the requested UserInfo claims but never widen them.
+func TestConsentClaimNarrowing(t *testing.T) {
+	opts := Options{Scopes: []string{"openid", "profile", "email"}}
+	request := `{"userinfo":{"email":null,"name":{"essential":true}}}`
+	if got, err := opts.consentClaims(request, map[string]any{"userinfo": map[string]any{"email": nil}}); err != nil || got != `{"userinfo":{"email":null}}` {
+		t.Fatal("a narrowed claim selection was refused or kept other claims", got, err)
+	}
+	for _, tc := range []struct {
+		request   string
+		selection any
+	}{
+		{request, map[string]any{"userinfo": map[string]any{"email": nil, "picture": nil}}},
+		{"", map[string]any{"userinfo": map[string]any{"email": nil}}},
+	} {
+		_, err := opts.consentClaims(tc.request, tc.selection)
+		var problem *auth.OAuthError
+		if !errors.As(err, &problem) || problem.Status != 400 || problem.Code != "invalid_request" || problem.Description != "Claim not originally requested" {
+			t.Errorf("widening the claims of %q answered %v", tc.request, err)
+		}
 	}
 }
 

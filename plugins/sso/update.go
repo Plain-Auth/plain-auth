@@ -54,7 +54,10 @@ func (o Options) updateProvider(c auth.EndpointContext, store Store, actor Actor
 	}
 	var issuer, domain *string
 	if raw, ok := c.Body["issuer"]; ok {
-		// Checked and normalized as at registration.
+		// Checked and normalized as at registration. The session is checked
+		// first and only the first invalid field is reported, where another
+		// runtime validates the whole body before the session and lists
+		// every issue.
 		value, ok := raw.(string)
 		if !ok {
 			return nil, &auth.APIError{Status: 400, Code: "VALIDATION_ERROR", Message: "[body.issuer] Invalid input: expected string, received " + jsjson.TypeName(raw)}

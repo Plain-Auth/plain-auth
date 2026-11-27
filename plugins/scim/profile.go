@@ -310,7 +310,10 @@ func normalizeDocument(input any) (p Profile, err error) {
 		}
 	}
 	// Bound both the parsed document and the canonical payload a second
-	// directory server will read from serializedAttributes.
+	// directory server will read from serializedAttributes. Another runtime
+	// checks the canonical payload only when it stores it and answers 500;
+	// this one answers 400 invalidValue with the other body checks, before
+	// the binding.
 	for _, document := range []map[string]any{parsed, p.Attributes} {
 		encoded, err := jsjson.Marshal(document)
 		if err != nil || len(utf16.Encode([]rune(string(encoded)))) > 65_535 {

@@ -65,3 +65,23 @@ func TypeName(value any) string {
 		return "object"
 	}
 }
+
+// Truthy reports whether a decoded JSON value is truthy in JavaScript: a
+// non-empty string, a non-zero number, true, or any object or array.
+func Truthy(value any) bool {
+	switch v := value.(type) {
+	case nil:
+		return false
+	case bool:
+		return v
+	case string:
+		return v != ""
+	case float64:
+		return v != 0
+	case json.Number:
+		f, err := v.Float64()
+		return err != nil || f != 0
+	default:
+		return true
+	}
+}

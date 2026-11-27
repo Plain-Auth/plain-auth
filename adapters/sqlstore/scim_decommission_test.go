@@ -325,6 +325,8 @@ func TestSCIMStaticDecommission(t *testing.T) {
 			// A PATCH operation's shape and a repeated query key fail the body or
 			// query schema first; a blank member only fails after the binding.
 			move := map[string]any{"schemas": []string{scim.PatchSchema}, "Operations": []any{map[string]any{"op": "move", "path": "active", "value": false}}}
+			nullOp := map[string]any{"schemas": []string{scim.PatchSchema}, "Operations": []any{map[string]any{"op": nil, "path": "displayName", "value": "Renamed"}}}
+			nullPath := map[string]any{"schemas": []string{scim.PatchSchema}, "Operations": []any{map[string]any{"op": "replace", "path": nil, "value": map[string]any{"displayName": "Renamed"}}}}
 			for _, req := range []struct {
 				method, path string
 				body         map[string]any
@@ -332,6 +334,15 @@ func TestSCIMStaticDecommission(t *testing.T) {
 			}{
 				{"PATCH", "Users/" + created.ID, move, 400},
 				{"GET", "Users?filter=a&filter=b", nil, 400},
+				// A null op or path fails the body schema, which wants a string.
+				{"PATCH", "Users/" + created.ID, nullOp, 400}, {"PATCH", "Users/" + created.ID, nullPath, 400},
+				{"PATCH", "Groups/missing", nullOp, 400}, {"PATCH", "Groups/missing", nullPath, 400},
+				// Only a collection read refuses a repeated page or filter key,
+				// and repeated projection keys are merged, so these reach the
+				// binding.
+				{"GET", "Users/" + created.ID + "?count=1&count=2", nil, 401},
+				{"GET", "Users?attributes=userName&attributes=emails", nil, 401},
+				{"POST", "Users?filter=a&filter=b", map[string]any{"schemas": []string{scim.UserSchema}, "userName": "late@example.test"}, 401},
 				{"POST", "Groups", map[string]any{"schemas": []string{scim.GroupSchema}, "displayName": "Blank", "members": []any{map[string]any{"value": "   "}}}, 401},
 			} {
 				if w := scimRequest(h, req.method, req.path, "static-token", req.body); w.Code != req.status {

@@ -69,21 +69,25 @@
     - [ ] `customIdTokenClaims`
     - [ ] `customAccessTokenClaims`
     - [ ] `customTokenResponseFields`
-    - [x] `advertisedMetadata` ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L282))
-      - [x] Advertise exactly the configured scopes, claims and client authentication methods, in order, in both discovery documents ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L282))
+    - [ ] `advertisedMetadata`
+      - [x] Advertise exactly the configured scopes and client authentication methods, in order, in both discovery documents, and the configured claims in the OpenID document ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L282))
     - [ ] `prefix`
-    - [x] `generateClientId` ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L65))
+    - [x] `generateClientId` ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L94))
       - [x] Generate a default client ID of 32 ASCII letters ([test](../../../plugins/oauthprovider/machine_token_test.go#L123))
-      - [x] Register a client with a 32-letter client ID by default, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L65))
-    - [x] `generateClientSecret` ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L80))
-      - [x] Issue a 32-letter client secret by default and rotate through a configured secret generator, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L80))
+      - [x] Register a client with a 32-letter client ID by default, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L69))
+      - [x] Register clients with 32-letter IDs and secrets by default and with the configured ID and secret generators, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L94))
+      - [x] Use the configured ID generator and keep a single complete registration after a collision ([test](../../../adapters/sqlstore/oauth_registration_test.go#L164))
+    - [x] `generateClientSecret` ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L94))
+      - [x] Issue a 32-letter client secret by default and rotate through a configured secret generator, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L98))
+      - [x] Register clients with 32-letter IDs and secrets by default and with the configured ID and secret generators, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L94))
+      - [x] Issue the generated secret and store its digest on all SQL engines ([test](../../../adapters/sqlstore/oauth_registration_test.go#L96))
     - [x] `generateOpaqueAccessToken` ([test](../../../plugins/oauthprovider/machine_token_test.go#L155))
       - [x] Generate a default opaque access token of 32 letters and use a configured generator instead ([test](../../../plugins/oauthprovider/machine_token_test.go#L155))
     - [ ] `generateRefreshToken`
       - [x] Generate a default refresh token of 32 letters and use a configured generator instead ([test](../../../plugins/oauthprovider/machine_token_test.go#L158))
     - [ ] `disableJwtPlugin`
-    - [x] `rateLimit` ([test](../../../plugins/oauthprovider/machine_token_test.go#L186))
-      - [x] Give token 20, authorize 30, introspect 100, revoke 30, register 5 and key rotation 5 requests a minute by default, replace a default with a configured rule and leave the global limit for an empty one ([test](../../../plugins/oauthprovider/machine_token_test.go#L186))
+    - [x] `rateLimit` ([test](../../../plugins/oauthprovider/machine_token_test.go#L207))
+      - [x] Give token 20, authorize 30, introspect 100, revoke 30, register 5, key rotation 5 and userinfo 60 requests a minute by default, replace a default with a configured rule and leave the host's global limit for an empty rule on every route ([test](../../../plugins/oauthprovider/machine_token_test.go#L207))
     - [ ] `pairwiseSecret`
     - [ ] `requestUriResolver`
     - [ ] `dpop`
