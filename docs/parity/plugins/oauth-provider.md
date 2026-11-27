@@ -379,10 +379,10 @@
       - [x] Limit an opaque delegated token to its approved scope's lifetime ([test](../../../conformance/oauth-authorization-code.mjs#L26))
       - [x] Cap a token at the shortest of its base lifetime, each scope's relative lifetime and the whole seconds left until each scope's instant, and refuse a scope whose instant has passed with invalid_scope, a documented deviation ([test](../../../plugins/oauthprovider/machine_token_test.go#L216))
       - [x] Apply the shortest scope lifetime to a refreshed access token and refuse a refresh for a scope whose instant has passed without spending the grant, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_refresh_grant_test.go#L173))
-    - [x] `assertionMaxLifetime` ([test](../../../plugins/oauthprovider/client_assertion_test.go#L27))
-      - [x] Apply the configured lifetime and skew to expiry, not-before and issued-at claims, including exact boundaries ([test](../../../plugins/oauthprovider/client_assertion_test.go#L27))
-    - [x] `assertionClockTolerance` ([test](../../../plugins/oauthprovider/client_assertion_test.go#L27))
-      - [x] Apply the configured lifetime and skew to expiry, not-before and issued-at claims, including exact boundaries ([test](../../../plugins/oauthprovider/client_assertion_test.go#L27))
+    - [x] `assertionMaxLifetime` ([test](../../../plugins/oauthprovider/client_assertion_test.go#L28))
+      - [x] Apply the configured lifetime and skew to expiry, not-before and issued-at claims, including exact boundaries ([test](../../../plugins/oauthprovider/client_assertion_test.go#L28))
+    - [x] `assertionClockTolerance` ([test](../../../plugins/oauthprovider/client_assertion_test.go#L28))
+      - [x] Apply the configured lifetime and skew to expiry, not-before and issued-at claims, including exact boundaries ([test](../../../plugins/oauthprovider/client_assertion_test.go#L28))
     - [x] `allowClientKeyRotation` ([test](../../../plugins/oauthprovider/key_rotation_test.go#L14))
       - [x] Reject rotation by default and require atomic single-use assertion storage at startup when enabled ([test](../../../plugins/oauthprovider/key_rotation_test.go#L14))
       - [x] Return access_denied when a client requests rotation from an issuer that has kept the default ([test](../../../conformance/oauth-registration.mjs#L105))
@@ -543,9 +543,9 @@
     - [x] Validate absolute URI and URN audience identifiers and reject fragments, unsafe schemes and malformed escapes ([test](../../../plugins/oauthprovider/resource_test.go#L11))
   - [ ] `ClientRegistrationRequest`
     - [x] Apply application metadata while keeping ownership, credentials and privilege fields under server control ([test](../../../conformance/oauth-registration.mjs#L207))
-  - [x] `consumeClientAssertion` ([test](../../../plugins/oauthprovider/client_assertion_test.go#L313))
-    - [x] Check a verified assertion payload's audience, exp, iat, nbf and jti with the provider's lifetime and clock tolerance, spend the jti once per namespace with private_key_jwt's digest, and refuse without a replay store ([test](../../../plugins/oauthprovider/client_assertion_test.go#L313))
-    - [x] Spend a strategy's assertion jti once across token requests and store pools on one database, per client namespace, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_extension_auth_test.go#L145))
+  - [x] `consumeClientAssertion` ([test](../../../plugins/oauthprovider/client_assertion_test.go#L314))
+    - [x] Check a verified assertion payload's audience, exp, iat, nbf and jti with the provider's lifetime and clock tolerance, spend the jti once per namespace with private_key_jwt's digest, and refuse without a replay store ([test](../../../plugins/oauthprovider/client_assertion_test.go#L314))
+    - [x] Spend a strategy's assertion jti once across token requests and store pools on one database, per client namespace, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_extension_auth_test.go#L168))
   - [x] `verifyOAuthQueryParams` ([test](../../../oauth_signed_query_test.go#L11))
     - [x] Verify browser form signatures, repeated fields, UTF-16 ordering, signature alphabets, rotation and the expiration boundary ([test](../../../oauth_signed_query_test.go#L11))
     - [x] Validate the form in an independently implemented OAuth provider before presenting the user’s choice ([test](../../../conformance/oauth-browser-authorization.mjs#L61))
@@ -705,8 +705,8 @@
     - [x] Apply the same HTTPS rule alone at authorize, with AllowHTTPRedirect ([test](../../../plugins/oauthprovider/registration_test.go#L127))
   - [ ] Private key JWT
     - [x] Authenticate issuance, introspection and revocation with independently signed assertions and reject replay across issuers ([test](../../../conformance/oauth-client-assertions.mjs#L5))
-    - [x] Verify signatures with all ten asymmetric signing algorithms and enforce registered key restrictions ([test](../../../plugins/oauthprovider/client_assertion_test.go#L82))
-    - [x] Refresh a registered remote key set after rotation and enforce trust, media type, size and stale-key limits ([test](../../../plugins/oauthprovider/client_assertion_test.go#L164))
+    - [x] Verify signatures with all ten asymmetric signing algorithms and enforce registered key restrictions ([test](../../../plugins/oauthprovider/client_assertion_test.go#L83))
+    - [x] Refresh a registered remote key set after rotation and enforce trust, media type, size and stale-key limits ([test](../../../plugins/oauthprovider/client_assertion_test.go#L165))
     - [x] Allow one concurrent use across independent SQL connections and recheck the registered key before issuing a token ([test](../../../adapters/sqlstore/oauth_client_assertion_test.go#L30))
     - [x] `iss` ([test](../../../conformance/oauth-client-assertions.mjs#L51))
       - [x] Require the registered client as issuer ([test](../../../conformance/oauth-client-assertions.mjs#L51))
@@ -714,14 +714,14 @@
       - [x] Require a signed subject equal to the registered client, even when issuer identifies the key ([test](../../../conformance/oauth-client-assertions.mjs#L51))
     - [x] `aud` ([test](../../../conformance/oauth-client-assertions.mjs#L46))
       - [x] Accept the issuer or receiving endpoint and reject an assertion addressed to a different endpoint ([test](../../../conformance/oauth-client-assertions.mjs#L46))
-    - [x] `exp` ([test](../../../plugins/oauthprovider/client_assertion_test.go#L27))
-      - [x] Enforce expiry and the maximum remaining lifetime with bounded clock skew ([test](../../../plugins/oauthprovider/client_assertion_test.go#L27))
-    - [x] `nbf` ([test](../../../plugins/oauthprovider/client_assertion_test.go#L27))
-      - [x] Enforce the not-before claim using the configured clock tolerance ([test](../../../plugins/oauthprovider/client_assertion_test.go#L27))
+    - [x] `exp` ([test](../../../plugins/oauthprovider/client_assertion_test.go#L28))
+      - [x] Enforce expiry and the maximum remaining lifetime with bounded clock skew ([test](../../../plugins/oauthprovider/client_assertion_test.go#L28))
+    - [x] `nbf` ([test](../../../plugins/oauthprovider/client_assertion_test.go#L28))
+      - [x] Enforce the not-before claim using the configured clock tolerance ([test](../../../plugins/oauthprovider/client_assertion_test.go#L28))
     - [x] `jti` ([test](../../../adapters/sqlstore/oauth_client_assertion_test.go#L30))
       - [x] Require a unique signed identifier and reject simultaneous reuse across connections on all three engines ([test](../../../adapters/sqlstore/oauth_client_assertion_test.go#L30))
-    - [x] `iat` ([test](../../../plugins/oauthprovider/client_assertion_test.go#L27))
-      - [x] Limit the age of an optional issued-at claim including the configured tolerance ([test](../../../plugins/oauthprovider/client_assertion_test.go#L27))
+    - [x] `iat` ([test](../../../plugins/oauthprovider/client_assertion_test.go#L28))
+      - [x] Limit the age of an optional issued-at claim including the configured tolerance ([test](../../../plugins/oauthprovider/client_assertion_test.go#L28))
     - [x] Rotating client keys ([test](../../../conformance/oauth-key-rotation.mjs#L5))
       - [x] Rotate without a user session, overlap old and new keys, and confirm their acceptance and retirement at an independent issuer ([test](../../../conformance/oauth-key-rotation.mjs#L5))
       - [x] Serialize competing replacements, roll back the replay identifier on write failure, and allow an unchanged signed retry on three SQL engines ([test](../../../adapters/sqlstore/oauth_key_rotation_test.go#L43))
@@ -747,8 +747,8 @@
       - [x] Resolve public and confidential client PKCE requirements, including offline scopes, OIDC nonces and explicit registration policy ([test](../../../plugins/oauthprovider/authorization_code_test.go#L15))
       - [x] Sign in and register a public client, then obtain a code by GET or form POST and redeem it at either issuer with S256 PKCE ([test](../../../conformance/oauth-browser-authorization.mjs#L5))
     - [ ] Redirect URIs
-    - [x] Client authentication ([test](../../../adapters/sqlstore/oauth_extension_auth_test.go#L30))
-      - [x] Authenticate with client_secret_basic, client_secret_post, private_key_jwt, none and extension assertion methods, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_extension_auth_test.go#L30))
+    - [ ] Client authentication
+      - [x] Authenticate clients with an extension assertion method at the token, introspection and revocation endpoints, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_extension_auth_test.go#L30))
     - [ ] Client registration
     - [x] Resource indicators ([test](../../../adapters/sqlstore/oauth_code_resources_test.go#L27))
       - [x] Accept resource indicators at authorize, the code exchange, refresh and client credentials, for linked resources only by default, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_code_resources_test.go#L27))
@@ -973,8 +973,8 @@
     - [ ] `authorization`
     - [ ] `url`
     - [ ] `replayStore`
-    - [x] Client authentication obligations ([test](../../../adapters/sqlstore/oauth_extension_auth_test.go#L145))
-      - [x] A strategy proves the client, the provider loads and authorizes its registration, and ConsumeClientAssertion binds the audience, bounds the lifetime and refuses a replayed jti, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_extension_auth_test.go#L145))
+    - [x] Client authentication obligations ([test](../../../adapters/sqlstore/oauth_extension_auth_test.go#L168))
+      - [x] A strategy proves the client, the provider loads and authorizes its registration, and ConsumeClientAssertion binds the audience, bounds the lifetime and refuses a replayed jti, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_extension_auth_test.go#L168))
     - [ ] Claim precedence
       - [ ] Access token
       - [ ] ID token
@@ -1129,8 +1129,8 @@
       - [x] Authenticate a client_secret_post client from body credentials and reject a wrong body secret ([test](../../../conformance/oauth-machine-tokens.mjs#L93))
     - [x] `private_key_jwt` ([test](../../../conformance/oauth-client-assertions.mjs#L5))
       - [x] Authenticate issuance, introspection and revocation with independently signed assertions and reject replay across issuers ([test](../../../conformance/oauth-client-assertions.mjs#L5))
-      - [x] Verify signatures with all ten asymmetric signing algorithms and enforce registered key restrictions ([test](../../../plugins/oauthprovider/client_assertion_test.go#L82))
-      - [x] Refresh a registered remote key set after rotation and enforce trust, media type, size and stale-key limits ([test](../../../plugins/oauthprovider/client_assertion_test.go#L164))
+      - [x] Verify signatures with all ten asymmetric signing algorithms and enforce registered key restrictions ([test](../../../plugins/oauthprovider/client_assertion_test.go#L83))
+      - [x] Refresh a registered remote key set after rotation and enforce trust, media type, size and stale-key limits ([test](../../../plugins/oauthprovider/client_assertion_test.go#L165))
       - [x] Allow one concurrent use across independent SQL connections and recheck the registered key before issuing a token ([test](../../../adapters/sqlstore/oauth_client_assertion_test.go#L30))
     - [ ] `none`
   - [ ] Scopes
@@ -1215,8 +1215,8 @@
     - [x] `codeExpiresIn` ([test](../../../adapters/sqlstore/oauth_browser_authorization_test.go#L151))
       - [x] Expire authorization codes after the configured whole-second lifetime on all three SQL engines ([test](../../../adapters/sqlstore/oauth_browser_authorization_test.go#L151))
       - [x] Check the default ten-minute lifetime on a code issued to a registered browser client ([test](../../../conformance/oauth-browser-authorization.mjs#L130))
-    - [x] `assertionMaxLifetime` ([test](../../../plugins/oauthprovider/client_assertion_test.go#L27))
-      - [x] Apply the configured lifetime and skew to expiry, not-before and issued-at claims, including exact boundaries ([test](../../../plugins/oauthprovider/client_assertion_test.go#L27))
+    - [x] `assertionMaxLifetime` ([test](../../../plugins/oauthprovider/client_assertion_test.go#L28))
+      - [x] Apply the configured lifetime and skew to expiry, not-before and issued-at claims, including exact boundaries ([test](../../../plugins/oauthprovider/client_assertion_test.go#L28))
   - [x] Refresh tokens ([test](../../../adapters/sqlstore/oauth_refresh_replay_test.go#L26))
     - [x] Apply offline and session-bound grants across session expiry, deletion and revocation while preserving the issuing application’s ownership ([test](../../../conformance/oauth-refresh-introspection.mjs#L44))
     - [x] Issue an offline token pair, rotate the refresh token at an independent issuer after session expiry and remove the rotated tokens on code replay ([test](../../../conformance/oauth-authorization-code.mjs#L67))

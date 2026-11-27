@@ -163,6 +163,7 @@ func (s *Store) readRefreshParent(ctx context.Context, tx *sql.Tx, clientID, dig
 		parent.AuthTime = parent.authTime.UTC()
 	}
 	parent.Replayed = parent.revoked != nil && (parent.rotatedAt == nil || parent.replayUntil == nil || time.Now().After(*parent.replayUntil))
+	parent.Rotated = parent.revoked != nil && !parent.Replayed
 	// A jkt confirmation is a DPoP binding; any other kind cannot be proven here.
 	if len(confirmation) > 0 && string(confirmation) != "null" {
 		var bound struct {

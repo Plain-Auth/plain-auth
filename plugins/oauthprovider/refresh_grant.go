@@ -23,9 +23,11 @@ type RefreshGrant struct {
 	SessionLive, SenderBound bool
 	// Replayed marks a rotated token presented outside its reuse
 	// interval: the store ends the family once prepare accepts the request.
-	Replayed bool
-	UserID   string
-	AuthTime time.Time
+	// Rotated marks one presented inside it: the store answers with the
+	// response sealed at rotation once prepare accepts the request.
+	Replayed, Rotated bool
+	UserID            string
+	AuthTime          time.Time
 }
 
 // RefreshGrantDigests contains only the storage keys of the credentials issued
@@ -113,8 +115,9 @@ func (opts Options) exchangeRefreshGrant(c auth.EndpointContext, in tokenRequest
 	// A DPoP proof is verified before the grant is read, so its jti is
 	// spent outside the store's transaction, and its key binds the
 	// replacements, which keep the family's key. A failed proof is the
-	// answer only once reuse detection has run, as in another runtime,
-	// which checks the proof when it issues.
+	// answer only after reuse detection, the resources' policy and the
+	// session check, as in another runtime, which checks the proof when it
+	// issues.
 	thumb, proofErr := opts.machineThumbprint(c, in, false)
 	digest, err := opts.Tokens.storedTokenDigest(ctx, form.Get("refresh_token"), StoredRefreshToken)
 	if err != nil {
@@ -156,12 +159,6 @@ func (opts Options) exchangeRefreshGrant(c auth.EndpointContext, in tokenRequest
 		if grant.Replayed {
 			return DelegatedAccessRecord{}, grant.sessionBound(grant.Scopes)
 		}
-		if proofErr != nil {
-			return DelegatedAccessRecord{}, proofErr
-		}
-		if err := grant.checkBinding(client, in.proof, thumb); err != nil {
-			return DelegatedAccessRecord{}, err
-		}
 		ttl, err := opts.Tokens.scopeLifetime(opts.Tokens.AccessLifetime, scopes, now)
 		if err != nil {
 			return DelegatedAccessRecord{}, err
@@ -179,7 +176,7 @@ func (opts Options) exchangeRefreshGrant(c auth.EndpointContext, in tokenRequest
 			if err != nil {
 				return DelegatedAccessRecord{}, err
 			}
-			if granted.bound && thumb == "" {
+			if granted.bound && thumb == "" && proofErr == nil {
 				return DelegatedAccessRecord{}, proofError("DPoP proof header is required")
 			}
 			if opts.signsResourceTokens(c) {
@@ -187,7 +184,20 @@ func (opts Options) exchangeRefreshGrant(c auth.EndpointContext, in tokenRequest
 			}
 			scopes, ttl, refreshLifetime = granted.scopes, granted.lifetime, granted.refreshLifetime(refreshLifetime)
 		}
-		if err := grant.sessionBound(scopes); err != nil {
+		// A retry inside the reuse interval is judged by the family's own
+		// scopes, as another runtime checks the session before reuse; the
+		// narrowed scopes matter only to a new rotation.
+		sessionScopes := scopes
+		if grant.Rotated {
+			sessionScopes = grant.Scopes
+		}
+		if err := grant.sessionBound(sessionScopes); err != nil {
+			return DelegatedAccessRecord{}, err
+		}
+		if proofErr != nil {
+			return DelegatedAccessRecord{}, proofErr
+		}
+		if err := grant.checkBinding(client, in.proof, thumb); err != nil {
 			return DelegatedAccessRecord{}, err
 		}
 		result.MachineToken = machineResponse("", thumb, scopes, now, ttl)

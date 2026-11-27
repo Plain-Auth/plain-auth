@@ -145,6 +145,19 @@ func TestRefreshReuseInterval(t *testing.T) {
 			if status, body := refresh(parent, "", key.proof(t, tokenURL)); status != 200 || body["access_token"] != first["access_token"] {
 				t.Fatal("the same key was not replayed", status, body)
 			}
+			// A retry inside the interval is judged by the family's own
+			// scopes: after the session ends, a narrowed rotation still replays.
+			parent = grant("")
+			status, first = refresh(parent, "openid reports", "")
+			if status != 200 {
+				t.Fatal("the narrowed rotation failed", status, first)
+			}
+			write(`UPDATE "session" SET "expiresAt"=? WHERE "id"='sid'`, s.date(now.Add(-time.Minute)))
+			status, again = refresh(parent, "openid reports", "")
+			write(`UPDATE "session" SET "expiresAt"=? WHERE "id"='sid'`, s.date(now.Add(time.Hour)))
+			if status != 200 || again["access_token"] != first["access_token"] {
+				t.Fatal("a narrowed retry after the session ended was not replayed", status, again)
+			}
 			// Without an interval, any reuse ends the family.
 			h = host(0)
 			parent = grant("")
@@ -180,13 +193,18 @@ func TestRefreshReuseInterval(t *testing.T) {
 				t.Fatal("an unknown token with a failed proof was not invalid_grant", status, body)
 			}
 			// Reuse after the session ended, with scopes narrowed past
-			// offline_access, still ends an offline family.
+			// offline_access, still ends an offline family; a live token
+			// narrowed so is refused for the session before a failed proof.
 			parent = grant("")
 			status, first = refresh(parent, "", "")
 			if status != 200 {
 				t.Fatal("the rotation failed", status, first)
 			}
+			live := grant("")
 			write(`UPDATE "session" SET "expiresAt"=? WHERE "id"='sid'`, s.date(now.Add(-time.Minute)))
+			if status, body := refresh(live, "reports", "not-a-proof"); status != 400 || body["error"] != "invalid_grant" {
+				t.Fatal("a narrowed exchange after the session ended was not refused first", status, body)
+			}
 			if status, body := refresh(parent, "reports", ""); status != 400 || body["error"] != "invalid_grant" {
 				t.Fatal("narrowed reuse after the session ended was not refused", status, body)
 			}

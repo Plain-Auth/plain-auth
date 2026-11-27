@@ -10,6 +10,7 @@ import (
 	"math"
 	"net/http"
 	"slices"
+	"strconv"
 	"time"
 
 	auth "github.com/Plain-Org/plain-auth"
@@ -153,11 +154,15 @@ func assertionDigest(namespace, jti string) string {
 	return base64.RawURLEncoding.EncodeToString(sum[:24])
 }
 
-// claimNumber reads a JSON number claim. Null and other types are absent.
+// claimNumber reads a JSON number claim. Null and other types are absent,
+// and an out-of-range number is infinite, as another runtime reads it.
 func claimNumber(raw json.RawMessage) (float64, bool) {
-	var value float64
-	ok := len(raw) > 0 && string(raw) != "null" && json.Unmarshal(raw, &value) == nil
-	return value, ok
+	var n json.Number
+	if len(raw) == 0 || raw[0] == '"' || json.Unmarshal(raw, &n) != nil {
+		return 0, false
+	}
+	value, err := strconv.ParseFloat(string(n), 64)
+	return value, err == nil || errors.Is(err, strconv.ErrRange)
 }
 
 func (opts AssertionOptions) checkClaims(data []byte, id string, now time.Time, accepted ...string) (string, time.Time, error) {

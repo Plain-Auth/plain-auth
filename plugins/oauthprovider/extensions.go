@@ -84,7 +84,8 @@ type ClientAuthenticationInput struct {
 // the jti once under namespace, such as the method and client. It applies
 // the provider's MaxLifetime and ClockTolerance, as private_key_jwt does.
 // It also refuses an nbf in the future, which another runtime leaves to the
-// strategy (safety).
+// strategy, and an empty namespace, which another runtime spends as
+// ":"+jti, so one client's jti cannot block another's (safety).
 func (in ClientAuthenticationInput) ConsumeClientAssertion(ctx context.Context, namespace string, payload []byte) error {
 	if namespace == "" {
 		return errors.New("oauthprovider: ConsumeClientAssertion needs a namespace")
@@ -163,15 +164,19 @@ func (opts Options) clientAuthStrategy(assertionType string) (string, ClientAuth
 	return "", ClientAuthenticationStrategy{}, false
 }
 
-// extensionAuthMethods lists the extensions' authentication methods.
+// extensionAuthMethods lists the extensions' authentication methods in
+// extension order, as another runtime does, and sorted within one
+// extension, since a map has no order.
 func (opts Options) extensionAuthMethods() []string {
 	var methods []string
 	for _, extension := range opts.Extensions {
+		own := make([]string, 0, len(extension.ClientAuthentication))
 		for method := range extension.ClientAuthentication {
-			methods = append(methods, method)
+			own = append(own, method)
 		}
+		slices.Sort(own)
+		methods = append(methods, own...)
 	}
-	slices.Sort(methods)
 	return methods
 }
 

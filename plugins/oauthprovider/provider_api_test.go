@@ -45,3 +45,16 @@ func TestTokenOperationGrants(t *testing.T) {
 		}
 	}
 }
+
+// Extension authentication methods are listed in extension order, sorted
+// within one extension.
+func TestExtensionAuthMethodOrder(t *testing.T) {
+	strategy := ClientAuthenticationStrategy{}
+	opts := Options{Extensions: []Extension{
+		{ClientAuthentication: map[string]ClientAuthenticationStrategy{"zeta": strategy, "beta": strategy}},
+		{ClientAuthentication: map[string]ClientAuthenticationStrategy{"alpha": strategy}},
+	}}
+	if got := opts.extensionAuthMethods(); !slices.Equal(got, []string{"beta", "zeta", "alpha"}) {
+		t.Fatal("extension authentication methods were out of order", got)
+	}
+}

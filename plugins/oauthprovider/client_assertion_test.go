@@ -14,6 +14,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -339,15 +340,20 @@ func TestConsumeClientAssertion(t *testing.T) {
 		return problem.Description
 	}
 	for description, claims := range map[string][]byte{
-		"client assertion aud does not match the endpoint":         payload(map[string]any{"aud": []any{"https://other.example.test", 7}}),
-		"client assertion must include exp claim":                  payload(map[string]any{"exp": "soon"}),
-		"client assertion has expired":                             payload(map[string]any{"exp": now - 61}),
-		"client assertion exp is too far in the future (max 300s)": payload(map[string]any{"exp": now + 400}),
-		"client assertion iat is too far in the past (max 300s)":   payload(map[string]any{"iat": now - 400}),
-		"client assertion is not yet valid":                        payload(map[string]any{"nbf": now + 120}),
-		"client assertion must include jti claim":                  payload(map[string]any{"jti": nil}),
+		"client assertion aud does not match the endpoint":          payload(map[string]any{"aud": []any{"https://other.example.test", 7}}),
+		"client assertion must include exp claim":                   payload(map[string]any{"exp": "soon"}),
+		"client assertion has expired":                              payload(map[string]any{"exp": now - 61}),
+		"client assertion exp is too far in the future (max 300s)":  payload(map[string]any{"exp": now + 400}),
+		"client assertion iat is too far in the past (max 300s)":    payload(map[string]any{"iat": now - 400}),
+		"client assertion is not yet valid":                         payload(map[string]any{"nbf": now + 120}),
+		"client assertion must include jti claim":                   payload(map[string]any{"jti": nil}),
+		"client assertion exp is too far in the future (max 300s) ": []byte(`{"aud":"` + audience + `","exp":1e400,"jti":"one"}`),
+		"client assertion has expired ":                             []byte(`{"aud":"` + audience + `","exp":-1e400,"jti":"one"}`),
+		"client assertion iat is too far in the past (max 300s) ":   []byte(`{"aud":"` + audience + `","exp":` + strconv.FormatInt(now+60, 10) + `,"iat":-1e400,"jti":"one"}`),
+		"client assertion must include exp claim ":                  []byte(`{"aud":"` + audience + `","exp":"` + strconv.FormatInt(now+60, 10) + `","jti":"one"}`),
 	} {
-		if got := described(in.ConsumeClientAssertion(t.Context(), "urn:test", claims)); got != description {
+		// A trailing space only keeps the map keys apart.
+		if got := described(in.ConsumeClientAssertion(t.Context(), "urn:test", claims)); got != strings.TrimSpace(description) {
 			t.Errorf("wanted %q, got %q", description, got)
 		}
 	}
@@ -369,6 +375,13 @@ func TestConsumeClientAssertion(t *testing.T) {
 	}
 	if expires := store[assertionDigest("urn:test", "one")]; !expires.Equal(time.Unix(now+60+30, 0)) {
 		t.Fatal("the spend did not last until exp plus the tolerance", expires)
+	}
+	// The clock tolerance admits a just-expired exp and an old iat.
+	if err := in.ConsumeClientAssertion(t.Context(), "urn:tolerance", payload(map[string]any{"exp": now - 5, "iat": now - 310})); err != nil {
+		t.Fatal("the clock tolerance was not applied", err)
+	}
+	if expires := store[assertionDigest("urn:tolerance", "one")]; !expires.Equal(time.Unix(now+25, 0)) {
+		t.Fatal("a tolerated spend did not last until exp plus the tolerance", expires)
 	}
 	if err := in.ConsumeClientAssertion(t.Context(), "private_key_jwt:app", payload(nil)); err != nil {
 		t.Fatal(err)

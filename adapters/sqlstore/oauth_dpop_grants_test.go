@@ -205,6 +205,17 @@ func TestDPoPBoundDelegatedGrants(t *testing.T) {
 			if status, body := exchange("app", raw, key.proof(t, tokenURL)); status != 200 || body["token_type"] != "DPoP" {
 				t.Fatal("a DPoP-required resource did not bind", status, body)
 			}
+			// A refused resource is the answer before a failed proof.
+			raw = code("app", nil, map[string]any{"resource": []string{"urn:bound"}})
+			status, body = exchange("app", raw, key.proof(t, tokenURL))
+			if status != 200 {
+				t.Fatal("the bound resource exchange failed", status, body)
+			}
+			write(`UPDATE "oauthResource" SET "disabled"=? WHERE "identifier"='urn:bound'`, true)
+			if status, body := refresh("app", body["refresh_token"].(string), "not-a-proof"); status != 400 || body["error"] != "invalid_target" {
+				t.Fatal("a disabled resource was not refused before the proof", status, body)
+			}
+			write(`UPDATE "oauthResource" SET "disabled"=? WHERE "identifier"='urn:bound'`, false)
 			// An unbound exchange gets Bearer tokens.
 			if status, body := exchange("app", code("app", nil, nil), ""); status != 200 || body["token_type"] != "Bearer" || confirmation("oauthAccessToken", body["access_token"].(string)) != "" {
 				t.Fatal("an unbound exchange was bound", status, body)

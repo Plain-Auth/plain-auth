@@ -118,6 +118,28 @@ func TestExtensionClientAuthentication(t *testing.T) {
 			if status, body, _ := post("/oauth2/token", assertion(url.Values{"grant_type": {"client_credentials"}, "client_id": {"other"}}, "assertion:"+id), http.Header{}); status != 400 || body["error"] != "invalid_client" {
 				t.Fatal("a mismatched client_id was accepted", status, body)
 			}
+			// The pairing, repetition and one-method rules apply before the strategy runs.
+			mu.Lock()
+			calls := len(audiences)
+			mu.Unlock()
+			for description, form := range map[string]url.Values{
+				"client_assertion and client_assertion_type must both be provided": {"grant_type": {"client_credentials"}, "client_assertion_type": {assertionType}},
+				"client_assertion must not be repeated":                            {"grant_type": {"client_credentials"}, "client_assertion_type": {assertionType}, "client_assertion": {"assertion:" + id, "assertion:" + id}},
+				"A request must use only one client authentication method":         assertion(url.Values{"grant_type": {"client_credentials"}, "client_secret": {"secret"}}, "assertion:"+id),
+			} {
+				if status, body, _ := post("/oauth2/token", form, http.Header{}); status == 200 || body["error_description"] != description {
+					t.Fatal("a malformed extension assertion was not refused", description, status, body)
+				}
+			}
+			if status, body, _ := post("/oauth2/token", assertion(url.Values{"grant_type": {"client_credentials"}}, "assertion:"+id), http.Header{"Authorization": {"Basic " + base64.StdEncoding.EncodeToString([]byte(id+":secret"))}}); status != 400 || body["error_description"] != "A request must use only one client authentication method" {
+				t.Fatal("an extension assertion with Basic was accepted", status, body)
+			}
+			mu.Lock()
+			strategyCalls := len(audiences)
+			mu.Unlock()
+			if strategyCalls != calls {
+				t.Fatal("the strategy ran for a malformed request", strategyCalls, calls)
+			}
 			if status, body, _ := post("/oauth2/token", url.Values{"grant_type": {"client_credentials"}}, http.Header{"Authorization": {"Basic " + base64.StdEncoding.EncodeToString([]byte(id+":secret"))}}); status != 401 || !strings.Contains(body["error_description"].(string), "cannot use client_secret_basic") {
 				t.Fatal("Basic was accepted for an extension client", status, body)
 			}
@@ -138,10 +160,11 @@ func TestExtensionClientAuthentication(t *testing.T) {
 	}
 }
 
-// A strategy that calls ConsumeClientAssertion spends each jti once: a
-// second token request with it is refused with 400 invalid_client, another
-// pool on the same database sees the spend, and the same jti for another
-// client is accepted.
+// A strategy that calls ConsumeClientAssertion binds the audience and
+// bounds the lifetime before it spends each jti once: a second token
+// request with it is refused with 400 invalid_client, another pool on the
+// same database sees the spend, and the same jti for another client is
+// accepted. The provider still refuses an unregistered client.
 func TestExtensionAssertionReplay(t *testing.T) {
 	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
 		t.Run(dialect, func(t *testing.T) {
@@ -186,9 +209,13 @@ func TestExtensionAssertionReplay(t *testing.T) {
 				must(err)
 			}
 			tokenURL := origin + "/api/auth/oauth2/token"
-			exchange := func(client, jti string) (int, map[string]any) {
+			exchangeWith := func(client, jti string, overrides map[string]any) (int, map[string]any) {
 				t.Helper()
-				claims, _ := json.Marshal(map[string]any{"sub": client, "aud": tokenURL, "exp": time.Now().Unix() + 60, "jti": jti})
+				payload := map[string]any{"sub": client, "aud": tokenURL, "exp": time.Now().Unix() + 60, "jti": jti}
+				for k, v := range overrides {
+					payload[k] = v
+				}
+				claims, _ := json.Marshal(payload)
 				form := url.Values{"grant_type": {"client_credentials"}, "client_assertion_type": {assertionType}, "client_assertion": {string(claims)}}
 				req := httptest.NewRequest("POST", tokenURL, strings.NewReader(form.Encode()))
 				req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -197,6 +224,26 @@ func TestExtensionAssertionReplay(t *testing.T) {
 				var body map[string]any
 				_ = json.Unmarshal(out.Body.Bytes(), &body)
 				return out.Code, body
+			}
+			exchange := func(client, jti string) (int, map[string]any) {
+				t.Helper()
+				return exchangeWith(client, jti, nil)
+			}
+			// The audience and lifetime are checked before the jti is spent.
+			now := time.Now().Unix()
+			for description, overrides := range map[string]map[string]any{
+				"client assertion aud does not match the endpoint":         {"aud": origin + "/api/auth/oauth2/introspect"},
+				"client assertion has expired":                             {"exp": now - 61},
+				"client assertion exp is too far in the future (max 300s)": {"exp": now + 400},
+				"client assertion iat is too far in the past (max 300s)":   {"iat": now - 400},
+			} {
+				if status, body := exchangeWith("one", "first", overrides); status != 400 || body["error"] != "invalid_client" || body["error_description"] != description {
+					t.Fatal("a bad assertion was not refused", description, status, body)
+				}
+			}
+			// The provider still refuses a client it will not authorize.
+			if status, body := exchange("three", "unregistered"); status != 400 || body["error"] != "invalid_client" || body["error_description"] != "client not found" {
+				t.Fatal("an unregistered client was authenticated", status, body)
 			}
 			if status, body := exchange("one", "first"); status != 200 {
 				t.Fatal("the first assertion was refused", status, body)
