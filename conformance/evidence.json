@@ -48343,5 +48343,13 @@
       "marker": "const removed = await json(\"/oauth2/delete-consent\", { id: grant.id }, { cookie });",
       "complete": true
     }
+  ],
+  "docs/content/docs/plugins/oauth-provider/index.mdx#L146": [
+    {
+      "label": "Send a browser without a session or prompt to the login page with a verified signed query, on both runtimes",
+      "test": "conformance/oauth-browser-login.mjs",
+      "marker": "const plain = await start();",
+      "complete": true
+    }
   ]
 }

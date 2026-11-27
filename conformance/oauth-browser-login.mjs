@@ -33,6 +33,11 @@ export async function exerciseBrowserLogin({ server, db, created, cookie, reques
   }
   const silent = await start({ prompt: "none" });
   assert.equal(silent.searchParams.get("error"), "login_required");
+  // Without a session or a prompt the browser goes to the login page with
+  // a signed query.
+  const plain = await start();
+  assert.equal(plain.pathname, "/login");
+  await signed(plain);
   const page = await start({ prompt: "login consent", max_age: "0" });
   assert.equal(page.pathname, "/login");
   const q = await signed(page);
