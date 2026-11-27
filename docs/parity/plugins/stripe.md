@@ -486,15 +486,20 @@
         - [x] Notify after a signed deletion, including redeliveries after an earlier terminal update ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L592))
         - [x] Preserve the organization’s local subscription identity across concurrent signed deletion deliveries ([test](../../../adapters/sqlstore/stripe_lifecycle_callbacks_test.go#L169))
       - [ ] Plan Configuration
-        - [ ] `name`
+        - [x] `name` ([test](../../../plugins/stripe/plans_test.go#L64))
           - [x] Match a configured mixed-case plan name case-insensitively when starting Checkout on three SQL engines ([test](../../../adapters/sqlstore/subscriptions_test.go#L161))
+          - [x] Trim plan names and compare them in lowercase, refusing empty and duplicate names at startup ([test](../../../plugins/stripe/plans_test.go#L64))
+          - [x] Store a padded plan name in lowercase and match a request naming it in another case on three SQL engines ([test](../../../adapters/sqlstore/stripe_plan_rules_test.go#L114))
         - [ ] `priceId`
           - [x] Send the plan's configured monthly price to Checkout and refuse a client-supplied price on three SQL engines ([test](../../../adapters/sqlstore/subscriptions_test.go#L344))
+          - [x] Require a monthly price ID on every plan, refuse malformed IDs and a price shared by two plans or intervals, at startup ([test](../../../plugins/stripe/plans_test.go#L64))
+          - [x] Refuse a plan price that is not monthly with an interval count of one before reserving a purchase on three SQL engines ([test](../../../adapters/sqlstore/stripe_plan_rules_test.go#L129))
         - [ ] `lookupKey`
-        - [ ] `annualDiscountPriceId`
+        - [x] `annualDiscountPriceId` ([test](../../../adapters/sqlstore/stripe_plan_rules_test.go#L123))
           - [x] Pair an annual base and a separate yearly member price through the public client and retain annual terms after membership changes ([test](../../../conformance/stripe-organization-fixture.mjs#L219))
           - [x] Charge a single yearly item at the organization member count and synchronize that same item after a member joins or leaves ([test](../../../conformance/stripe-organization-fixture.mjs#L217))
           - [x] Send the configured annual price for an annual checkout, keep it on retries from a second server and list that annual price for the yearly subscription on three SQL engines ([test](../../../adapters/sqlstore/subscriptions_test.go#L255))
+          - [x] Answer an annual purchase of a plan without an annual price with 400 before Stripe, and list the monthly price for its yearly subscription, on three SQL engines ([test](../../../adapters/sqlstore/stripe_plan_rules_test.go#L123))
         - [ ] `annualDiscountLookupKey`
         - [x] `limits` ([test](../../../adapters/sqlstore/stripe_options_test.go#L376))
           - [x] Return numbers, booleans, arrays and nested objects from plan limits on personal and organization lists, unaffected by later changes to the host's map, on three SQL engines ([test](../../../adapters/sqlstore/stripe_options_test.go#L376))

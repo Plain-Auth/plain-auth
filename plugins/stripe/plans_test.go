@@ -57,3 +57,42 @@ func TestPlanProrationBehavior(t *testing.T) {
 		}
 	}
 }
+
+// Plan names are trimmed and compared in lowercase, and each needs a
+// monthly price ID; an annual price ID is optional, and one price names
+// exactly one plan and interval.
+func TestPlanNamesAndPrices(t *testing.T) {
+	start := func(plans ...stripeplugin.Plan) error {
+		_, err := authn.New(authn.Options{Store: memory.New(), BaseURL: "http://auth.test", Secret: "test-secret-0123456789-abcdefghijk",
+			Plugins: []authn.Plugin{stripeplugin.New(stripeplugin.Options{WebhookSecret: "whsec_local", Subscriptions: &stripeplugin.SubscriptionOptions{
+				Client: stripesdk.NewClient("sk_test_local"), Plans: plans}})}})
+		return err
+	}
+	const invalid = "stripe: invalid or duplicate subscription plan"
+	const shared = "stripe: a recurring price must identify a single subscription plan and interval"
+	for name, plans := range map[string][]stripeplugin.Plan{
+		"empty name":     {{Name: "", PriceID: "price_a"}},
+		"blank name":     {{Name: "   ", PriceID: "price_a"}},
+		"duplicate name": {{Name: "Pro", PriceID: "price_a"}, {Name: "pro", PriceID: "price_b"}},
+		"no price":       {{Name: "pro"}},
+		"bare price":     {{Name: "pro", PriceID: "price_"}},
+		"product":        {{Name: "pro", PriceID: "prod_x"}},
+		"bare annual":    {{Name: "pro", PriceID: "price_a", AnnualPriceID: "price_"}},
+		"legacy annual":  {{Name: "pro", PriceID: "price_a", AnnualPriceID: "plan_x"}},
+	} {
+		if err := start(plans...); err == nil || err.Error() != invalid {
+			t.Error("an invalid plan was accepted", name, err)
+		}
+	}
+	for name, plans := range map[string][]stripeplugin.Plan{
+		"two plans":     {{Name: "pro", PriceID: "price_a"}, {Name: "team", PriceID: "price_a"}},
+		"two intervals": {{Name: "pro", PriceID: "price_a", AnnualPriceID: "price_a"}},
+	} {
+		if err := start(plans...); err == nil || err.Error() != shared {
+			t.Error("a shared price was accepted", name, err)
+		}
+	}
+	if err := start(stripeplugin.Plan{Name: " Pro ", PriceID: "price_a", AnnualPriceID: "price_b"}); err != nil && (err.Error() == invalid || err.Error() == shared) {
+		t.Error("a padded plan name was refused", err)
+	}
+}

@@ -61,6 +61,10 @@ A purchase whose stored reservation would exceed 56 KiB, such as one with very l
 
 A checkout expires after 23 hours. Its signed expiration event releases the reservation. If an outcome remains ambiguous, the server keeps the reservation and returns `CHECKOUT_RECONCILIATION_REQUIRED`. Inspect the matching Stripe Checkout Session and redeliver its completion or expiration event before starting a replacement. For a reservation that never reached Stripe, verify the absence of the remote checkout before clearing the incomplete reservation administratively.
 
+### Name plans and their prices
+
+Plan names are trimmed and stored in lowercase, and a request names a plan in any case. Every plan needs a monthly `PriceID`; `AnnualPriceID` is optional, and an annual purchase of a plan without one answers 400 "Price ID not found for the selected plan" before Stripe is called, as in another runtime. Each price names exactly one plan and interval, and a duplicate name or a malformed price ID stops startup. `PriceID` must be a monthly price and `AnnualPriceID` a yearly price, each with an interval count of one, where another runtime accepts any recurring price: a plan models a month and a year, and that interval drives the list, plan changes and Checkout. Another price answers 409 `UNSUPPORTED_SUBSCRIPTION_ITEM` before any purchase is reserved. A yearly subscription of a plan without an annual price lists the monthly price ID, as in another runtime. [Plan rule tests](../plugins/stripe/plans_test.go) · [Price rule tests](../adapters/sqlstore/stripe_plan_rules_test.go)
+
 ## Customize the Checkout Session
 
 Set `CheckoutSessionParams` to add Stripe Checkout Session parameters to a new purchase, as another runtime's `getCheckoutSessionParams` does:

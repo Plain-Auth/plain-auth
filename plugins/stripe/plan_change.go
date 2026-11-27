@@ -149,6 +149,10 @@ func licensedAtInterval(p *sdk.Price, interval string) bool {
 	return recurringAtInterval(p, interval, sdk.PriceRecurringUsageTypeLicensed)
 }
 
+// recurringAtInterval accepts only a monthly or yearly price with an
+// interval count of one, where another runtime accepts any recurring price:
+// a plan models a month and a year, and the interval drives the list, plan
+// changes and Checkout's same-interval rule.
 func recurringAtInterval(p *sdk.Price, interval string, usage sdk.PriceRecurringUsageType) bool {
 	return (interval == "month" || interval == "year") && p != nil && p.Recurring != nil &&
 		string(p.Recurring.Interval) == interval && p.Recurring.IntervalCount == 1 &&

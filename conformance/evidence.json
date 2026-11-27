@@ -12337,6 +12337,12 @@
       "label": "Send the configured annual price for an annual checkout, keep it on retries from a second server and list that annual price for the yearly subscription on three SQL engines",
       "test": "adapters/sqlstore/subscriptions_test.go",
       "marker": "t.Fatalf(\"unexpected active subscriptions: %+v %v\", rows, err)"
+    },
+    {
+      "label": "Answer an annual purchase of a plan without an annual price with 400 before Stripe, and list the monthly price for its yearly subscription, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_plan_rules_test.go",
+      "marker": "// An annual purchase without an annual price answers 400 with no code.",
+      "complete": true
     }
   ],
   "plugin/sso/POST /sso/request-domain-verification": [
@@ -51438,6 +51444,17 @@
       "label": "Match a configured mixed-case plan name case-insensitively when starting Checkout on three SQL engines",
       "test": "adapters/sqlstore/subscriptions_test.go",
       "marker": "body := map[string]any{\"plan\": \"PRO\", \"seats\": quantity, \"annual\": true, \"successUrl\": \"/success\", \"cancelUrl\": \"/cancel\", \"disableRedirect\": true}"
+    },
+    {
+      "label": "Trim plan names and compare them in lowercase, refusing empty and duplicate names at startup",
+      "test": "plugins/stripe/plans_test.go",
+      "marker": "func TestPlanNamesAndPrices(t *testing.T) {",
+      "complete": true
+    },
+    {
+      "label": "Store a padded plan name in lowercase and match a request naming it in another case on three SQL engines",
+      "test": "adapters/sqlstore/stripe_plan_rules_test.go",
+      "marker": "// A padded name matches the request in any case and is stored in lowercase."
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L874/`priceId`": [
@@ -51445,6 +51462,16 @@
       "label": "Send the plan's configured monthly price to Checkout and refuse a client-supplied price on three SQL engines",
       "test": "adapters/sqlstore/subscriptions_test.go",
       "marker": "if activePrice != \"price_month\" || customerRequests != 1 {"
+    },
+    {
+      "label": "Require a monthly price ID on every plan, refuse malformed IDs and a price shared by two plans or intervals, at startup",
+      "test": "plugins/stripe/plans_test.go",
+      "marker": "func TestPlanNamesAndPrices(t *testing.T) {"
+    },
+    {
+      "label": "Refuse a plan price that is not monthly with an interval count of one before reserving a purchase on three SQL engines",
+      "test": "adapters/sqlstore/stripe_plan_rules_test.go",
+      "marker": "// Weekly and quarterly prices are refused before any row."
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L1091/How it works:": [
