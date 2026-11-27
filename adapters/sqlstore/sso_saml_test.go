@@ -114,7 +114,7 @@ func runEnterpriseSAMLBrowser(t *testing.T, encrypted, logout bool) {
 			issuer, e := oauthprovider.New(oauthprovider.Options{Scopes: []string{"read"}, Authorization: oauthprovider.BrowserAuthorizationOptions{LoginPage: "/login"}})
 			must(e)
 			host := func(s *Store, encryption *sso.SAMLEncryption, policy sso.SAMLDirectoryPolicy, disableSignup bool, hooks ...auth.DatabaseHooks) *auth.Auth {
-				plug, e := sso.New(sso.Options{DisableImplicitSignUp: disableSignup, SAML: &sso.SAMLOptions{EnableSingleLogout: logout, EnableIDPInitiatedLogout: logout, AllowIDPInitiated: policy, IDPInitiatedCallbackURL: "/global-portal", Encryption: encryption, RequestSigner: spKey, RequestCertificate: spCert, TrustEmailVerified: true}, DomainVerification: &sso.DomainVerificationOptions{Resolver: dns}})
+				plug, e := sso.New(sso.Options{DisableImplicitSignUp: disableSignup, SAML: &sso.SAMLOptions{EnableSingleLogout: logout, EnableIDPInitiatedLogout: logout, LogoutRequestTTL: 2 * time.Minute, AllowIDPInitiated: policy, IDPInitiatedCallbackURL: "/global-portal", Encryption: encryption, RequestSigner: spKey, RequestCertificate: spCert, TrustEmailVerified: true}, DomainVerification: &sso.DomainVerificationOptions{Resolver: dns}})
 				must(e)
 				o := auth.Options{BaseURL: app.URL, BasePath: "/identity", Secret: strings.Repeat("s", 40), Store: s, RateLimit: new(bool), EmailAndPassword: true, Plugins: []auth.Plugin{plug, issuer}}
 				if len(hooks) > 0 {
@@ -748,6 +748,14 @@ func runEnterpriseSAMLBrowser(t *testing.T, encrypted, logout bool) {
 			}
 			if pass != 1 || denied != 1 {
 				t.Fatal("an SP-initiated assertion replay was not reported as replay_detected", pathsOut)
+			}
+			// A later sign-in reusing the assertion ID is a replay too.
+			late := newBrowser()
+			lateRequest, e := start(late)
+			must(e)
+			_, lateHead, _ := post(late, form(lateRequest, "same-employee", "shared@staff.example", func(a *saml.Assertion) { a.ID = "_oneAssertionAcrossRequests" }), acs)
+			if !strings.Contains(lateHead.Get("Location"), "error=replay_detected") {
+				t.Fatal("a later reuse of an assertion ID was not reported as a replay", lateHead.Get("Location"))
 			}
 			t.Run("inline metadata registration and signing key rotation", func(t *testing.T) {
 				outsider := sdk(newBrowser())

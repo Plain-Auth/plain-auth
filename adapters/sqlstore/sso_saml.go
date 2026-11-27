@@ -21,6 +21,8 @@ func (s *Store) consumeSAMLAssertion(ctx context.Context, tx *sql.Tx, p sso.Brow
 	if !p.SAML.MetadataValidAt(now) || r.ID == "" || len(r.ID) > 512 || r.Issuer != p.SAML.IdentityProviderEntityID() {
 		return sso.ErrInvalidSAML
 	}
+	// The receipt is scoped to the IdP and kept for 24 hours; another
+	// runtime keys it by assertion ID alone until NotOnOrAfter plus skew.
 	key, _ := json.Marshal([]string{"saml-assertion", r.Issuer, r.ID})
 	err := s.claimIDToken(ctx, tx, p.ProviderID, sha256.Sum256(key), now, now.Add(24*time.Hour))
 	if errors.Is(err, auth.ErrIDTokenUsed) {

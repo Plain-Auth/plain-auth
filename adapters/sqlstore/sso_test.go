@@ -236,6 +236,17 @@ func TestEnterpriseProviderManagement(t *testing.T) {
 				t.Fatal(read)
 			}
 			check(call(one, single+"corp", member, nil), 403)
+			// An organization admin who did not register a provider can change
+			// and delete it; a plain member cannot.
+			check(call(one, "sso/update-provider", member, map[string]any{"providerId": "corp", "domain": "member.example"}), 403)
+			check(call(one, "sso/delete-provider", member, map[string]any{"providerId": "corp"}), 403)
+			if changed := check(call(two, "sso/update-provider", other, map[string]any{"providerId": "corp", "domain": "admin.example.net"}), 200); changed["domain"] != "admin.example.net" {
+				t.Fatal("an organization admin could not change the provider's domain", changed)
+			}
+			check(call(one, "sso/update-provider", owner, map[string]any{"providerId": "corp", "domain": "example.com,subs.example.org"}), 200)
+			check(call(one, path, owner, makeBody("corp-spare", orgID, "/discovery")), 200)
+			check(call(two, "sso/delete-provider", other, map[string]any{"providerId": "corp-spare"}), 200)
+			check(call(one, single+"corp-spare", owner, nil), 404)
 			check(call(one, single+"CORP", owner, nil), 404)
 			check(call(two, path, other, makeBody("corp", "", "/discovery")), 422)
 			check(call(two, path, owner, makeBody("wrong", "", "/mismatch")), 400)

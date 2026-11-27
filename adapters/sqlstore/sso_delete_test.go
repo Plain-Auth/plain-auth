@@ -159,6 +159,10 @@ func TestEnterpriseProviderDeletion(t *testing.T) {
 			if during != nil {
 				t.Fatal("a sign-in waited on or failed during a guard that should run outside the transaction", during)
 			}
+			// Deleting a provider ends no session, as in another runtime.
+			if count(`SELECT COUNT(*) FROM "session" WHERE "id"='during-guard'`) != 1 {
+				t.Fatal("deleting a provider ended a session it issued")
+			}
 			_, _, err = first.CompleteEnterpriseLogin(ctx, browser.Reference, "member", "corp", "one", auth.OAuthTokens{}, auth.User{ID: "unused", Email: bob.Email, Name: "returned", CreatedAt: now, UpdatedAt: now}, auth.StoredSession{Session: auth.Session{ID: "post-deletion", Token: "post-deletion-token", CreatedAt: now, UpdatedAt: now, ExpiresAt: now.Add(time.Hour)}}, auth.OAuthLoginOptions{})
 			if !errors.Is(err, sso.ErrChanged) {
 				t.Fatalf("stale login returned %v", err)

@@ -12005,6 +12005,11 @@
       "label": "Answer 404 when deleting a provider that was already deleted, through the released client on both runtimes",
       "test": "conformance/sso-providers.mjs",
       "marker": "assert.equal((await other.sso.deleteProvider({providerId})).error.status,404);"
+    },
+    {
+      "label": "Let an organization admin delete the organization's provider and refuse a plain member with 403, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_test.go",
+      "marker": "check(call(two, \"sso/delete-provider\", other, map[string]any{\"providerId\": \"corp-spare\"}), 200)"
     }
   ],
   "plugin-symbol/sso/SSOOptions/guardProviderMutation": [
@@ -42433,7 +42438,7 @@
     {
       "label": "Run SP-initiated SAML sign-in, single logout and reviewed IdP portal sign-in under the plugin's SAML options on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/sso_saml_test.go",
-      "marker": "SAML: &sso.SAMLOptions{EnableSingleLogout: logout, EnableIDPInitiatedLogout: logout, AllowIDPInitiated: policy"
+      "marker": "SAML: &sso.SAMLOptions{EnableSingleLogout: logout, EnableIDPInitiatedLogout: logout, LogoutRequestTTL: 2 * time.Minute, AllowIDPInitiated: policy"
     },
     {
       "label": "Default the inline IdP metadata limit to 100 KiB and reject a negative limit or one above 1 MiB",
@@ -42894,6 +42899,12 @@
       "label": "Delete a provider by ID with its account links, keep another provider's links and the caller's session, on both runtimes",
       "test": "conformance/sso-providers.mjs",
       "marker": "assert.deepEqual(success(await other.sso.deleteProvider("
+    },
+    {
+      "label": "Keep a session the deleted provider issued while the guard ran, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_delete_test.go",
+      "marker": "t.Fatal(\"deleting a provider ended a session it issued\")",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/sso/index.mdx#L329/`action`": [
@@ -43155,6 +43166,12 @@
       "label": "Require organization membership (400) and an owner or admin role (403) to register a provider for an organization, and let current organization admins read it",
       "test": "adapters/sqlstore/sso_test.go",
       "marker": "check(call(one, path, member, makeBody(\"member-reg\", orgID, \"/discovery\")), 403)"
+    },
+    {
+      "label": "Let an organization admin who did not register a provider change its domain and delete it, and refuse a plain member both with 403, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_test.go",
+      "marker": "t.Fatal(\"an organization admin could not change the provider's domain\", changed)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/sso/provisioning.mdx#L181": [
@@ -43377,6 +43394,12 @@
       "label": "Store a started SAML sign-in as one oauth-state verification record keyed by its RelayState",
       "test": "adapters/sqlstore/sso_saml_test.go",
       "marker": "t.Fatal(\"the RelayState's create hooks saw\", recs)"
+    },
+    {
+      "label": "Keep the stored SAML sign-in request for five minutes by default and refuse its response once the record has expired, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_defaults_test.go",
+      "marker": "t.Fatal(\"a SAML response after the request lifetime signed in\", done.Code, done.Header().Get(\"Location\"))",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/sso/reference.mdx#L558/`saml-used-assertion:`": [
@@ -43384,6 +43407,12 @@
       "label": "Let only one of two concurrent SAML sign-ins that reuse one assertion ID succeed",
       "test": "adapters/sqlstore/sso_saml_test.go",
       "marker": "t.Fatal(\"an SP-initiated assertion replay was not reported as replay_detected\", pathsOut)"
+    },
+    {
+      "label": "Report a later sign-in reusing an assertion ID as replay_detected; the receipt is scoped to the IdP and kept for 24 hours, a documented deviation, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "t.Fatal(\"a later reuse of an assertion ID was not reported as a replay\", lateHead.Get(\"Location\"))",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/sso/reference.mdx#L559/`saml-session:`": [
@@ -43927,6 +43956,12 @@
       "label": "Reject a LogoutResponse once its stored logout request has expired",
       "test": "adapters/sqlstore/sso_saml_logout_test.go",
       "marker": "t.Fatal(\"expired logout accepted\", status)"
+    },
+    {
+      "label": "Give the logout binding cookie and the stored logout request a two-minute LogoutRequestTTL, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_logout_test.go",
+      "marker": "t.Fatal(\"the stored logout request does not last LogoutRequestTTL\", lifetime)",
+      "complete": true
     }
   ],
   "plugin-symbol/scim/SCIMAuthorizationSource": [
@@ -45779,6 +45814,17 @@
       "label": "Return zero from the per-user quota for everyone but administrators",
       "test": "adapters/sqlstore/sso_limit_test.go",
       "marker": "t.Fatal(\"the resolver's zero limit did not disable registration\", err)"
+    },
+    {
+      "label": "Let an organization admin change a linked provider's domain, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_test.go",
+      "marker": "t.Fatal(\"an organization admin could not change the provider's domain\", changed)"
+    },
+    {
+      "label": "Block a domain change with GuardProviderMutation, answering 409 SSO_PROVIDER_MUTATION_REJECTED and keeping the domain, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_update_test.go",
+      "marker": "t.Fatal(\"the guard did not block a domain change\", w.Code, w.Body.String())",
+      "complete": true
     }
   ],
   "plugin-symbol/sso/needsRuntimeDiscovery": [

@@ -209,6 +209,17 @@ func TestEnterpriseProviderUpdate(t *testing.T) {
 			if _, cfg := stored(); cfg.PKCE == nil || !*cfg.PKCE {
 				t.Fatal("a rejected update was stored", cfg.PKCE)
 			}
+			// The guard also blocks a domain change.
+			var domainBefore string
+			must(store.db.QueryRowContext(ctx, store.bind(`SELECT "domain" FROM "ssoProvider" WHERE "providerId"=?`), "acme").Scan(&domainBefore))
+			if w := update(owner, map[string]any{"domain": "blocked.example"}); w.Code != 409 || code(w) != "SSO_PROVIDER_MUTATION_REJECTED:SSO provider mutation is not allowed" {
+				t.Fatal("the guard did not block a domain change", w.Code, w.Body.String())
+			}
+			var domainAfter string
+			must(store.db.QueryRowContext(ctx, store.bind(`SELECT "domain" FROM "ssoProvider" WHERE "providerId"=?`), "acme").Scan(&domainAfter))
+			if domainAfter != domainBefore {
+				t.Fatal("a blocked domain change was stored", domainAfter)
+			}
 			mu.Lock()
 			refuse = false
 			mu.Unlock()

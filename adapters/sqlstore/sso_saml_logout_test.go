@@ -286,7 +286,7 @@ func testSAMLLogout(t *testing.T, first, second *Store, idp *saml.IdentityProvid
 	login(t, h, "employee", nil)
 	startURL := mustTestURL(t, api+"/sso/saml2/logout/work")
 	launchCookies := h.Jar.Cookies(startURL)
-	replies := make(chan int, 2)
+	replies := make(chan *httptest.ResponseRecorder, 2)
 	launch := make(chan struct{})
 	for _, handler := range []http.Handler{node, peer} {
 		go func() {
@@ -300,14 +300,29 @@ func testSAMLLogout(t *testing.T, first, second *Store, idp *saml.IdentityProvid
 			}
 			w := httptest.NewRecorder()
 			handler.ServeHTTP(w, r)
-			replies <- w.Code
+			replies <- w
 		}()
 	}
 	close(launch)
-	statuses = []int{<-replies, <-replies}
+	r1, r2 := <-replies, <-replies
+	statuses = []int{r1.Code, r2.Code}
 	slices.Sort(statuses)
 	if statuses[0] != 302 || statuses[1] < 400 || statuses[1] >= 500 {
 		t.Fatal("concurrent sign-out starts", statuses)
+	}
+	// The logout binding cookie and the stored request live for
+	// LogoutRequestTTL, two minutes here.
+	started := r1
+	if r2.Code == 302 {
+		started = r2
+	}
+	if !strings.Contains(strings.Join(started.Header().Values("Set-Cookie"), "\n"), "Max-Age=120") {
+		t.Fatal("the logout binding cookie does not last LogoutRequestTTL", started.Header().Values("Set-Cookie"))
+	}
+	var created, expires time.Time
+	must(first.db.QueryRowContext(ctx, first.bind(`SELECT "createdAt","expiresAt" FROM "verification" WHERE "identifier"=? ORDER BY "createdAt" DESC LIMIT 1`), "saml-logout-request").Scan(&created, &expires))
+	if lifetime := expires.Sub(created); lifetime < 2*time.Minute-time.Second || lifetime > 2*time.Minute+time.Second {
+		t.Fatal("the stored logout request does not last LogoutRequestTTL", lifetime)
 	}
 
 }
