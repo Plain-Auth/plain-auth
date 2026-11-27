@@ -3,6 +3,7 @@ package sso
 import (
 	"context"
 	"encoding/json"
+	"github.com/Plain-Org/plain-auth/internal/jsjson"
 	"maps"
 
 	auth "github.com/Plain-Org/plain-auth"
@@ -53,9 +54,14 @@ func (o Options) updateProvider(c auth.EndpointContext, store Store, actor Actor
 	}
 	var issuer, domain *string
 	if raw, ok := c.Body["issuer"]; ok {
+		// Checked and normalized as at registration.
 		value, ok := raw.(string)
 		if !ok {
-			return nil, apiError(400, "Invalid issuer")
+			return nil, &auth.APIError{Status: 400, Code: "VALIDATION_ERROR", Message: "[body.issuer] Invalid input: expected string, received " + jsjson.TypeName(raw)}
+		}
+		value, err := issuerURL(value)
+		if err != nil {
+			return nil, err
 		}
 		if _, err := endpointURL(value); err != nil {
 			return nil, err

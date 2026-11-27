@@ -322,6 +322,22 @@ func TestSCIMStaticDecommission(t *testing.T) {
 			if unsupported.Code != 415 {
 				t.Fatal("a retired connection's unsupported body was not refused before its binding", unsupported.Code, unsupported.Body.String())
 			}
+			// A PATCH operation's shape and a repeated query key fail the body or
+			// query schema first; a blank member only fails after the binding.
+			move := map[string]any{"schemas": []string{scim.PatchSchema}, "Operations": []any{map[string]any{"op": "move", "path": "active", "value": false}}}
+			for _, req := range []struct {
+				method, path string
+				body         map[string]any
+				status       int
+			}{
+				{"PATCH", "Users/" + created.ID, move, 400},
+				{"GET", "Users?filter=a&filter=b", nil, 400},
+				{"POST", "Groups", map[string]any{"schemas": []string{scim.GroupSchema}, "displayName": "Blank", "members": []any{map[string]any{"value": "   "}}}, 401},
+			} {
+				if w := scimRequest(h, req.method, req.path, "static-token", req.body); w.Code != req.status {
+					t.Fatal("a retired connection's request was not answered in another runtime's order", req.method, req.path, w.Code, w.Body.String())
+				}
+			}
 			for _, table := range []string{"scimUser", "scimGroup", "scimGroupMember"} {
 				var n int
 				must(s.db.QueryRowContext(ctx, s.bind(`SELECT COUNT(*) FROM "`+table+`"`)).Scan(&n))

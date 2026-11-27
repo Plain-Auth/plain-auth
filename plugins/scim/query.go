@@ -42,6 +42,9 @@ func query(values url.Values, equality *regexp.Regexp) (Query, error) {
 	}
 	q.Offset = max(1, page[0].value) - 1
 	q.Count = min(100, max(0, page[1].value))
+	if len(values["filter"]) > 1 {
+		return q, invalid("invalidValue", "Expected one filter")
+	}
 	f := strings.TrimSpace(values.Get("filter"))
 	for f != "" {
 		match := equality.FindStringSubmatch(f)

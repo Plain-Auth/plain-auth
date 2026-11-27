@@ -159,8 +159,8 @@ func TestEnterpriseDomainOrganizationAssignment(t *testing.T) {
 			if len(resolved) != 0 {
 				t.Fatal("ResolveOrganizationRole ran for a member or a pending invitee", resolved)
 			}
-			signIn(chooser, "chosen@acme.example", true)
-			if len(resolved) != 1 || resolved[0].User.Email != "chosen@acme.example" || !resolved[0].User.EmailVerified || resolved[0].UserInfo.Email != "" || resolved[0].Token != nil || resolved[0].Provider.ProviderID != "acme" {
+			chosen := signIn(chooser, "chosen@acme.example", true)
+			if len(resolved) != 1 || resolved[0].UserID != chosen || resolved[0].User.Email != "chosen@acme.example" || !resolved[0].User.EmailVerified || resolved[0].UserInfo.Email != "" || resolved[0].Token != nil || resolved[0].Provider.ProviderID != "acme" {
 				t.Fatal("ResolveOrganizationRole did not receive the stored user and an empty profile", resolved)
 			}
 			register("beta", "beta-org")

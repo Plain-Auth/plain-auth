@@ -71,7 +71,7 @@ func (o Options) assignDomainOrganization(c *auth.HookContext) error {
 	}
 	// The role input carries the stored user and, as in another runtime, no
 	// provider profile or token.
-	role, err := o.organizationRoleFor(ctx, found.Provider, OrganizationRoleInput{User: ProviderUser{Email: u.Email, EmailVerified: u.EmailVerified, Name: u.Name, Image: u.Image}, Provider: found.Provider})
+	role, err := o.organizationRoleFor(ctx, found.Provider, OrganizationRoleInput{UserID: u.ID, User: ProviderUser{Email: u.Email, EmailVerified: u.EmailVerified, Name: u.Name, Image: u.Image}, Provider: found.Provider})
 	if err != nil {
 		logger.ErrorContext(ctx, "sso: ResolveOrganizationRole failed")
 		return nil

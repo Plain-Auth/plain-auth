@@ -209,6 +209,10 @@ func TestEnterpriseProviderUpdate(t *testing.T) {
 			if _, cfg := stored(); cfg.PKCE == nil || !*cfg.PKCE {
 				t.Fatal("a rejected update was stored", cfg.PKCE)
 			}
+			// An issuer is checked as at registration.
+			if w := update(owner, map[string]any{"issuer": "https://idp.example.test:70000/x"}); w.Code != 400 || code(w) != "VALIDATION_ERROR:[body.issuer] Invalid URL" {
+				t.Fatal("an update accepted an issuer that is not a URL", w.Code, w.Body.String())
+			}
 			// The guard also blocks a domain change.
 			var domainBefore string
 			must(store.db.QueryRowContext(ctx, store.bind(`SELECT "domain" FROM "ssoProvider" WHERE "providerId"=?`), "acme").Scan(&domainBefore))

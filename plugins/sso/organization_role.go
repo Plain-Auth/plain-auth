@@ -11,7 +11,11 @@ import (
 // runs before the sign-in transaction, so User is the provider's view of
 // the user.
 type OrganizationRoleInput struct {
-	User ProviderUser
+	// UserID is the stored user's ID for an assignment by verified email
+	// domain after a social sign-in; it is empty for a provider sign-in,
+	// whose user may not be stored yet.
+	UserID string
+	User   ProviderUser
 	// UserInfo is the mapped provider profile, with the raw claims or SAML
 	// attributes in Data.
 	UserInfo auth.OAuthProfile

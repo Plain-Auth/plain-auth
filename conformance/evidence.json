@@ -9940,6 +9940,11 @@
       "test": "adapters/sqlstore/scim_users_contract_test.go",
       "marker": "call(\"PATCH\", lowerPath, \"second\", map[string]any{\"schemas\": []string{scim.PatchSchema}, \"Operations\": []map[string]any{{\"op\": \"replace\", \"path\": \"displayName\", \"value\": \"Elsewhere\"}}}, 404, \"\")",
       "complete": true
+    },
+    {
+      "label": "Refuse a retired connection's PATCH with an unsupported operation before the binding, and answer its blank Group member after the binding, as another runtime orders its body schema and handler, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_decommission_test.go",
+      "marker": "t.Fatal(\"a retired connection's request was not answered in another runtime's order\", req.method, req.path, w.Code, w.Body.String())"
     }
   ],
   "plugin/scim/DELETE /scim/v2/Users/:userId": [
@@ -13384,6 +13389,11 @@
       "test": "adapters/sqlstore/sso_update_test.go",
       "marker": "t.Fatal(\"a SAML identity change was accepted while accounts are linked\"",
       "complete": true
+    },
+    {
+      "label": "Refuse an update issuer that does not parse as a URL in another runtime's body validation form, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_update_test.go",
+      "marker": "t.Fatal(\"an update accepted an issuer that is not a URL\", w.Code, w.Body.String())"
     }
   ],
   "docs/content/docs/reference/options.mdx#L327/`onExistingUserSignUp`": [

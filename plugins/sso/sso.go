@@ -241,6 +241,12 @@ func issuerInput(body map[string]any) (string, error) {
 		}
 		return "", &auth.APIError{Status: 400, Code: "VALIDATION_ERROR", Message: "[body.issuer] Invalid input: expected string, received " + received}
 	}
+	return issuerURL(v)
+}
+
+// issuerURL normalizes an issuer string and refuses one that does not parse
+// as an absolute URL, in another runtime's body validation form.
+func issuerURL(v string) (string, error) {
 	v = strings.NewReplacer("\t", "", "\n", "", "\r", "").Replace(jsjson.TrimSpace(v))
 	u, err := url.Parse(v)
 	special := err == nil && slices.Contains([]string{"http", "https", "ws", "wss", "ftp"}, strings.ToLower(u.Scheme))

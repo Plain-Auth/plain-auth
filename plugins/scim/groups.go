@@ -66,8 +66,10 @@ func members(raw any) ([]string, error) {
 		if e != nil {
 			return nil, e
 		}
+		// Only an empty value fails the body schema; a blank one is refused
+		// by blankMembers after the binding, as in another runtime.
 		id, ok := m["value"].(string)
-		if !ok || strings.TrimSpace(id) == "" {
+		if !ok || id == "" {
 			return nil, ErrInvalidMember
 		}
 		if m["type"] != nil {
@@ -83,6 +85,18 @@ func members(raw any) ([]string, error) {
 	}
 	return result, nil
 }
+
+// blankMembers refuses a member value made only of whitespace. Creation
+// checks it after the binding and replacement after the Group lookup.
+func blankMembers(p GroupProfile) error {
+	for _, id := range p.MemberIDs {
+		if strings.TrimSpace(id) == "" {
+			return ErrInvalidMember
+		}
+	}
+	return nil
+}
+
 func parseGroup(input map[string]any, allowLegacy bool) (GroupProfile, error) {
 	var p GroupProfile
 	// Like another runtime, refuse two spellings of a declared attribute,
@@ -187,6 +201,9 @@ func (g *groupPatch) attribute(path, op string, val any, provided bool) error {
 		// Null subattributes of added or replaced entries are omitted, as
 		// another runtime strips them.
 		entries, e := members(stripNulls(val, 0))
+		if e == nil {
+			e = blankMembers(GroupProfile{MemberIDs: entries})
+		}
 		if e != nil {
 			return e
 		}
@@ -231,40 +248,58 @@ func (g *groupPatch) attribute(path, op string, val any, provided bool) error {
 	}
 	return nil
 }
+
+// groupOpShape reads one Group operation's object, op and path.
+func groupOpShape(raw any) (m map[string]any, op, path string, e error) {
+	record, ok := raw.(map[string]any)
+	if !ok {
+		return nil, "", "", invalid("invalidSyntax", "Expected a Group patch operation")
+	}
+	if m, e = object(record, []string{"op", "path", "value"}); e != nil {
+		return nil, "", "", e
+	}
+	op = "replace"
+	if m["op"] != nil {
+		str, _ := m["op"].(string)
+		op = strings.ToLower(str)
+	}
+	if op != "remove" && op != "replace" && op != "add" {
+		return nil, "", "", invalid("invalidSyntax", "Unknown Group patch operation")
+	}
+	if m["path"] != nil {
+		var ok bool
+		if path, ok = m["path"].(string); !ok {
+			return nil, "", "", invalid("invalidPath", "Expected a Group attribute path")
+		}
+		path = strings.TrimSpace(path)
+	}
+	return m, op, path, nil
+}
+
+// groupOpShapes checks each operation's shape on the request body, before
+// the binding and the Group lookup, as another runtime's body schema does.
+func groupOpShapes(ops []any) error {
+	for _, raw := range ops {
+		if _, _, _, e := groupOpShape(raw); e != nil {
+			return e
+		}
+	}
+	return nil
+}
+
 func applyGroupPatch(current Group, ops []any) (GroupChange, error) {
 	g := groupPatch{group: GroupProfile{DisplayName: current.DisplayName, ExternalID: current.ExternalID}, ids: map[string]bool{}, validate: map[string]bool{}}
 	for _, m := range current.Members {
 		g.ids[m.ID] = true
 	}
 	for _, raw := range ops {
-		record, ok := raw.(map[string]any)
-		if !ok {
-			return GroupChange{}, invalid("invalidSyntax", "Expected a Group patch operation")
-		}
-		m, e := object(record, []string{"op", "path", "value"})
+		_, op, path, e := groupOpShape(raw)
 		if e != nil {
 			return GroupChange{}, e
 		}
-		op := "replace"
-		if m["op"] != nil {
-			str, _ := m["op"].(string)
-			op = strings.ToLower(str)
-		}
-		if op != "remove" && op != "replace" && op != "add" {
-			return GroupChange{}, invalid("invalidSyntax", "Unknown Group patch operation")
-		}
-		path := ""
-		if m["path"] != nil {
-			var ok bool
-			path, ok = m["path"].(string)
-			if !ok {
-				return GroupChange{}, invalid("invalidPath", "Expected a Group attribute path")
-			}
-			path = strings.TrimSpace(path)
-		}
 		var val any
 		provided := false
-		for k, v := range record {
+		for k, v := range raw.(map[string]any) {
 			if strings.EqualFold(k, "value") {
 				val = v
 				provided = true

@@ -344,6 +344,7 @@
     - [x] Serialize independent role updates across connections while preserving application and organization authority ([test](../../../adapters/sqlstore/scim_roles_test.go#L131))
     - [x] Withdraw inactive source grants and restore the same provenance on reactivation ([test](../../../conformance/scim-contract.mjs#L237))
     - [x] Refuse a PATCH to another User's userName in another case with 409 uniqueness and answer 404 to another directory, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_users_contract_test.go#L92))
+    - [x] Refuse a retired connection's PATCH with an unsupported operation before the binding, and answer its blank Group member after the binding, as another runtime orders its body schema and handler, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_decommission_test.go#L338))
   - [x] `DELETE /scim/v2/Users/:userId` ([test](../../../adapters/sqlstore/scim_projection_test.go#L435))
     - [x] Revoke existing sessions, retain the stable external identity and isolate another directory ([test](../../../adapters/sqlstore/scim_test.go#L34))
     - [x] Remove a deleted User from its Group while keeping the Group and its other members ([test](../../../adapters/sqlstore/scim_groups_test.go#L165))
@@ -383,8 +384,8 @@
     - [x] Withdraw the roles after a role mapping change by replaying the domain, and restore them on the next replay from the other instance, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_projection_test.go#L368))
   - [x] Rotate a credential ([test](../../../adapters/sqlstore/scim_users_contract_test.go#L80))
     - [x] Accept a credential before its expiry beside the current one, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_users_contract_test.go#L80))
-  - [x] Decommission a connection ([test](../../../adapters/sqlstore/scim_decommission_test.go#L329))
-    - [x] Retire a connection with a User and a Group, reconciling one User in one batch and keeping the SCIM rows, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_decommission_test.go#L329))
+  - [x] Decommission a connection ([test](../../../adapters/sqlstore/scim_decommission_test.go#L345))
+    - [x] Retire a connection with a User and a Group, reconciling one User in one batch and keeping the SCIM rows, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_decommission_test.go#L345))
 
 ## System for Cross-domain Identity Management (SCIM)
 

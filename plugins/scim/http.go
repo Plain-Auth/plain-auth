@@ -95,6 +95,16 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// A read or deletion checks the connection's binding before its query,
 	// as another runtime's authentication middleware does; a write checks it
 	// once its body is valid.
+	// A repeated page, filter or projection key fails another runtime's query
+	// schema, which runs before its binding check; a deletion takes no query.
+	if r.Method != http.MethodDelete {
+		for _, k := range []string{"filter", "startIndex", "count", "attributes", "excludedAttributes"} {
+			if len(r.URL.Query()[k]) > 1 {
+				writeError(w, invalid("invalidValue", "Expected one "+k))
+				return
+			}
+		}
+	}
 	if r.Method == http.MethodGet || r.Method == http.MethodDelete {
 		if err := h.bound(r.Context(), d, nil); err != nil {
 			writeError(w, err)
@@ -156,6 +166,11 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				// Refuse two spellings of one attribute before the User is
 				// looked up, as another runtime does on the request body.
 				err = opsDuplicates(ops)
+			}
+			if err == nil {
+				// Each operation's shape is checked on the body, before the
+				// binding and the lookup, as another runtime's schema does.
+				_, err = userOps(ops)
 			}
 			if err == nil {
 				err = h.bound(ctx, d, selectErr)

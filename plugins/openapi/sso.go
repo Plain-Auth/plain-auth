@@ -131,14 +131,11 @@ func describeSSORequest(op object, route plainauth.HTTPRoute, info plainauth.HTT
 		op["description"] = "Begin sign-in in a browser. Open the returned authorization URL in the same browser."
 		callback := object{"type": "string", "minLength": 1, "description": "A trusted absolute URL or application path."}
 		schema := responseObject(object{"providerId": providerID, "organizationSlug": text, "domain": text, "email": text,
-			"callbackURL": callback, "newUserCallbackURL": callback, "errorCallbackURL": callback, "providerType": object{"enum": []string{"oidc", ""}},
+			"callbackURL": callback, "newUserCallbackURL": callback, "errorCallbackURL": callback, "providerType": object{"type": "string", "enum": []string{"oidc", "saml"}},
 			"loginHint": text, "requestSignUp": object{"type": "boolean"}, "scopes": array(object{"type": "string", "minLength": 1}),
 			"additionalParams": object{"type": "object", "additionalProperties": text, "description": "Additional authorization parameters. Protocol parameters are reserved."}}, "callbackURL")
 		if info.OAuthLoginContinuation {
 			schema["properties"].(object)["oauth_query"] = object{"type": "string", "description": "Verified issuer login query to resume after an OIDC sign-in."}
-		}
-		if info.SAMLStateCookie != "" {
-			schema["properties"].(object)["providerType"] = object{"enum": []string{"oidc", "saml", ""}}
 		}
 		schema["anyOf"] = []object{{"required": []string{"providerId"}}, {"required": []string{"organizationSlug"}}, {"required": []string{"domain"}}, {"required": []string{"email"}}}
 		body(schema)

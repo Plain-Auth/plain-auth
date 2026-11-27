@@ -80,6 +80,9 @@ func (h *Handler) serveGroups(w http.ResponseWriter, r *http.Request, d Director
 				e = groupOpsDuplicates(ops)
 			}
 			if e == nil {
+				e = groupOpShapes(ops)
+			}
+			if e == nil {
 				e = h.bound(ctx, d, selectErr)
 			}
 			if e == nil {
@@ -95,9 +98,17 @@ func (h *Handler) serveGroups(w http.ResponseWriter, r *http.Request, d Director
 				break
 			}
 			if r.Method == http.MethodPost {
+				if e = blankMembers(v); e != nil {
+					break
+				}
 				g, e = h.groups.SCIMCreateGroup(ctx, d, v)
 			} else {
-				g, e = h.groups.SCIMUpdateGroup(ctx, d, id, func(Group) (GroupChange, error) { return GroupChange{GroupProfile: v}, nil })
+				g, e = h.groups.SCIMUpdateGroup(ctx, d, id, func(Group) (GroupChange, error) {
+					if e := blankMembers(v); e != nil {
+						return GroupChange{}, e
+					}
+					return GroupChange{GroupProfile: v}, nil
+				})
 			}
 		}
 	}
