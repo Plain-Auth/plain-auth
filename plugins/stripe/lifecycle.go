@@ -200,10 +200,10 @@ func (s *subscriptions) subscriptionChange(sub *sdk.Subscription, deleted bool, 
 			}
 			price, _ := s.priceOf(item.Price)
 			plan := s.plans[price.plan]
-			if len(plan.MeteredPriceIDs) == 0 {
+			if len(plan.extras()) == 0 {
 				continue
 			}
-			if matchesAddonSubscription(sub.Items, item, plan.MeteredPriceIDs, price.interval) {
+			if matchesAddonSubscription(sub.Items, item, plan.extras(), price.interval) {
 				change.Plan, change.Interval = plan.Name, price.interval
 				change.PeriodStart, change.PeriodEnd, change.Seats = item.CurrentPeriodStart, item.CurrentPeriodEnd, item.Quantity
 			}

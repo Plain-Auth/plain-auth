@@ -39,3 +39,14 @@ func TestPlanCloneIsolatesRetiredPrices(t *testing.T) {
 		t.Fatal("a clone changed the installed plan's retired prices", installed.RetiredPriceIDs)
 	}
 }
+
+// A plan with line items needs a store with subscription lifecycle storage.
+func TestLineItemsNeedLifecycleStorage(t *testing.T) {
+	catalog, err := newPlanCatalog([]Plan{{Name: "pro", PriceID: "price_pro", LineItems: []LineItem{{Price: "price_support", Quantity: 2}}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := catalog.check(nil, nil); err == nil || err.Error() != "stripe: checkout line items require subscription lifecycle storage" {
+		t.Fatal("line items were accepted without lifecycle storage", err)
+	}
+}

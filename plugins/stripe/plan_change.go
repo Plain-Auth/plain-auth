@@ -24,7 +24,7 @@ func (s *subscriptions) changePlan(c auth.EndpointContext, selection billingSele
 		return nil, ErrExistingSubscription
 	}
 	from := s.plans[local.Plan]
-	if len(from.MeteredPriceIDs) > 0 || len(to.MeteredPriceIDs) > 0 {
+	if len(from.extras()) > 0 || len(to.extras()) > 0 {
 		return nil, errUnsupportedItem
 	}
 	if selection.organization {

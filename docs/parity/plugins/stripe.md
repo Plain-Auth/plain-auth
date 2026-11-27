@@ -122,6 +122,7 @@
   - [x] `CheckoutSessionLocale` ([test](../../../adapters/sqlstore/stripe_checkout_release_test.go#L327))
     - [x] Send the requested Checkout locale, keep the stored one on a retry, omit an empty one and refuse a non-string or over-long one before Stripe, on three SQL engines ([test](../../../adapters/sqlstore/stripe_checkout_release_test.go#L327))
   - [ ] `CheckoutSessionLineItem`
+    - [x] Accept configured line items with optional fixed quantities and refuse duplicates, shared prices, out-of-range quantities and membership plans at startup ([test](../../../plugins/stripe/plans_test.go#L216))
   - [ ] `StripePlan`
   - [ ] `Subscription`
     - [x] Record the plan, reference, status, trial, billing period, interval, seats, cancellation, schedule and end dates from signed subscription events on three SQL engines ([test](../../../adapters/sqlstore/stripe_lifecycle_test.go#L23))
@@ -531,6 +532,7 @@
           - [x] Configure up to 19 separate metered add-ons, validate price roles and isolate the installed plan from later host mutations ([test](../../../plugins/stripe/metered_addons_test.go#L11))
           - [x] Validate the add-on price intervals and retain the original price IDs and ordering across a configuration change ([test](../../../adapters/sqlstore/stripe_addons_test.go#L154))
           - [x] Keep personal and organization billing separate through a licensed purchase with two metered additions on three SQL engines ([test](../../../adapters/sqlstore/stripe_addons_test.go#L237))
+          - [x] Send a plan's fixed and metered line items after the base in Checkout, keep them across retries, check receipts exactly and unmap a subscription missing an item, on three SQL engines ([test](../../../adapters/sqlstore/stripe_line_items_test.go#L104))
         - [x] `freeTrial` ([test](../../../adapters/sqlstore/stripe_trial_callbacks_test.go#L21))
           - [x] Offer the configured trial only for a new personal or organization billing reference with no trial history across plans ([test](../../../conformance/stripe-organization-fixture.mjs#L425))
           - [x] Claim trial conversion and expiration once across replicas and preserve general webhook delivery after callback failures ([test](../../../adapters/sqlstore/stripe_trial_callbacks_test.go#L21))

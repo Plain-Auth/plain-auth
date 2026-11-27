@@ -192,7 +192,24 @@ An upgrade request chooses the plan and its licensed seat quantity. Checkout sen
 
 A pending reservation keeps its original ordered price IDs and quantities across retries, including after a plan configuration edit. Signed events and hosted returns verify the original Checkout receipt. The subscription list then reads the current base’s quantity and period regardless of item order. If a required meter disappears or an unrecognized price appears, an existing subscription becomes `unmapped` until its configured prices return. Custom stores must round-trip `CheckoutAttempt.MeteredPriceIDs`. Deploy all billing nodes before offering a plan with add-ons. [Persistence and account-isolation tests](../adapters/sqlstore/stripe_addons_test.go)
 
-Metered add-ons on membership-managed plans, add-ons with fixed quantities or inline prices, and changes to active add-on plans remain open. The application reports usage to its Stripe meters. [Stripe usage reporting](https://docs.stripe.com/billing/subscriptions/usage-based/recording-usage)
+### Add fixed line items
+
+Use `LineItems` instead of `MeteredPriceIDs` to add configured prices after the base line in Checkout, as another runtime adds a plan's line items: an item with a `Quantity` is a licensed price at that fixed quantity, and one without is a metered price sent without a quantity. `MeteredPriceIDs` is shorthand for items without quantities, and a plan sets one or the other.
+
+```go
+stripeplugin.Plan{
+    Name:    "platform",
+    PriceID: "price_platform_monthly",
+    LineItems: []stripeplugin.LineItem{
+        {Price: "price_support_monthly", Quantity: 2},
+        {Price: "price_requests_monthly"},
+    },
+}
+```
+
+Every item must be active at the selected interval: a fixed one licensed and a metered one metered, or the purchase answers 409 `UNSUPPORTED_SUBSCRIPTION_ITEM` before it is reserved. The items are stored with the purchase, so a retry, even after a configuration edit, sends what the first request sent, and signed events and the hosted return check the receipt's prices and quantities exactly. After the purchase, the subscription keeps its plan while it holds the base and every configured item, a fixed item at any quantity of at least one; a missing or unknown item makes it `unmapped`, where another runtime maps it from the base alone. Its seats are the base quantity. A plan with line items needs a store with subscription lifecycle storage, checked at startup for fixed plans, and custom stores must round-trip `CheckoutAttempt.LineItems`. Upgrade every billing node before configuring `LineItems`. [Line item tests](../adapters/sqlstore/stripe_line_items_test.go) · [Line item configuration tests](../plugins/stripe/plans_test.go)
+
+Only a configured price ID with an optional fixed quantity is supported, with no inline prices, adjustable quantities, tax rates or item metadata, where another runtime accepts any Checkout line, so every purchased line can be checked against the configuration. Items are refused on membership-managed plans, since seat updates and membership matching verify an exact base and seat basket, and beside a metered base, whose quantity defines no seats. Each item's price must be separate from every base, seat and retired price. Changes to active plans with add-ons or line items remain open. The application reports usage to its Stripe meters. [Stripe usage reporting](https://docs.stripe.com/billing/subscriptions/usage-based/recording-usage)
 
 ## Bill an organization
 

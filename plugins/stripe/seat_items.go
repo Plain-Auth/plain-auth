@@ -18,10 +18,23 @@ func (a CheckoutAttempt) checkoutLines() []*sdk.CheckoutSessionCreateLineItemPar
 		base.Quantity = sdk.Int64(1)
 		lines = append(lines, &sdk.CheckoutSessionCreateLineItemParams{Price: sdk.String(a.SeatPrice), Quantity: sdk.Int64(a.Quantity())})
 	}
-	for _, id := range a.MeteredPriceIDs {
-		lines = append(lines, &sdk.CheckoutSessionCreateLineItemParams{Price: sdk.String(id)})
+	for _, item := range a.extras() {
+		line := &sdk.CheckoutSessionCreateLineItemParams{Price: sdk.String(item.Price)}
+		if item.Quantity > 0 {
+			line.Quantity = sdk.Int64(item.Quantity)
+		}
+		lines = append(lines, line)
 	}
 	return lines
+}
+
+// extras returns the reservation's items after the base.
+func (a CheckoutAttempt) extras() []LineItem {
+	return Plan{MeteredPriceIDs: a.MeteredPriceIDs, LineItems: a.LineItems}.extras()
+}
+
+func (a CheckoutAttempt) hasExtras() bool {
+	return len(a.MeteredPriceIDs) > 0 || len(a.LineItems) > 0
 }
 
 func (a CheckoutAttempt) matchesLines(actual []*sdk.LineItem) bool {
@@ -50,7 +63,7 @@ func (a CheckoutAttempt) matchesLines(actual []*sdk.LineItem) bool {
 		if line.Quantity != *expected.Quantity || line.Price.Recurring != nil && line.Price.Recurring.UsageType == sdk.PriceRecurringUsageTypeMetered {
 			return false
 		}
-		if len(a.MeteredPriceIDs) > 0 && !licensedAtInterval(line.Price, a.Interval) {
+		if a.hasExtras() && !licensedAtInterval(line.Price, a.Interval) {
 			return false
 		}
 	}
@@ -77,16 +90,19 @@ func (s *subscriptions) prepareCheckoutPrices(ctx context.Context, a *CheckoutAt
 	if !a.Metered && !licensedAtInterval(price, a.Interval) {
 		return billingError(409, errUnsupportedItem.Code, "Checkout requires an active recurring price with the selected interval")
 	}
-	if a.Metered && len(a.MeteredPriceIDs) > 0 {
+	if a.Metered && a.hasExtras() {
 		return billingError(409, errUnsupportedItem.Code, "Metered add-ons require a licensed base price")
 	}
-	for _, id := range a.MeteredPriceIDs {
-		addon, err := s.checkoutPrice(ctx, id)
+	for _, item := range a.extras() {
+		addon, err := s.checkoutPrice(ctx, item.Price)
 		if err != nil {
 			return err
 		}
-		if !recurringAtInterval(addon, a.Interval, sdk.PriceRecurringUsageTypeMetered) {
+		if item.Quantity == 0 && !recurringAtInterval(addon, a.Interval, sdk.PriceRecurringUsageTypeMetered) {
 			return billingError(409, errUnsupportedItem.Code, "Each add-on must be a metered price with the selected billing interval")
+		}
+		if item.Quantity > 0 && !licensedAtInterval(addon, a.Interval) {
+			return billingError(409, errUnsupportedItem.Code, "Each fixed-quantity line item must be a licensed price with the selected billing interval")
 		}
 	}
 	a.PriceVerified = true

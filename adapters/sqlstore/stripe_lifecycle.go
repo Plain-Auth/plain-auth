@@ -273,7 +273,7 @@ func (s *Store) applyCurrentSubscription(ctx context.Context, tx *sql.Tx, key bi
 		if a.Seats > 0 && !c.Deleted {
 			purchase := key.Purchase
 			if purchase == nil || purchase.Attempt.ID != a.ID || purchase.Attempt.LocalSubscription != claim || purchase.Attempt.Owner != a.Owner ||
-				purchase.RemoteID != key.RemoteID || purchase.Attempt.Customer != key.CustomerID || purchase.Price != a.Price || purchase.Attempt.Metered != a.Metered || !slices.Equal(purchase.Attempt.MeteredPriceIDs, a.MeteredPriceIDs) || purchase.SeatPrice != a.SeatPrice || purchase.Quantity != a.Quantity() ||
+				purchase.RemoteID != key.RemoteID || purchase.Attempt.Customer != key.CustomerID || purchase.Price != a.Price || purchase.Attempt.Metered != a.Metered || !slices.Equal(purchase.Attempt.MeteredPriceIDs, a.MeteredPriceIDs) || !slices.Equal(purchase.Attempt.LineItems, a.LineItems) || purchase.SeatPrice != a.SeatPrice || purchase.Quantity != a.Quantity() ||
 				purchase.CheckoutID == "" || a.CheckoutID != "" && a.CheckoutID != purchase.CheckoutID {
 				return billing.ErrCheckoutReconcile
 			}

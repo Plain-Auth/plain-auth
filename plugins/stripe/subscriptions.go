@@ -36,6 +36,12 @@ type Plan struct {
 	ProrationBehavior string
 	// MeteredPriceIDs adds fixed metered prices to a licensed base at the same interval.
 	MeteredPriceIDs []string
+	// LineItems follow the base line in Checkout, in this order, as another
+	// runtime adds a plan's line items. Set LineItems or MeteredPriceIDs;
+	// MeteredPriceIDs is shorthand for items without a quantity. Upgrade every
+	// node that creates Checkout sessions or processes billing webhooks
+	// before configuring LineItems.
+	LineItems []LineItem `json:",omitempty"`
 	// Limits is application data for the plan, such as {"projects": 5}. The
 	// list endpoint returns it with each subscription of the plan, and
 	// callbacks receive it on Plan. The plugin keeps a JSON copy of at most
@@ -61,6 +67,29 @@ type Plan struct {
 	LookupKey string `json:",omitempty"`
 	// AnnualLookupKey selects the annual price in the same way.
 	AnnualLookupKey string `json:",omitempty"`
+}
+
+// LineItem adds a configured recurring price to a plan's Checkout. A zero
+// Quantity sends no quantity, for a metered price; any other is a fixed
+// licensed quantity. Only a configured price ID is supported, where another
+// runtime accepts any Checkout line, so every purchased line can be checked
+// against the configuration.
+type LineItem struct {
+	Price    string `json:"price"`
+	Quantity int64  `json:"quantity,omitempty"`
+}
+
+// extras returns a plan's items after the base: its LineItems, or its
+// MeteredPriceIDs without quantities.
+func (p Plan) extras() []LineItem {
+	if len(p.LineItems) > 0 {
+		return p.LineItems
+	}
+	items := make([]LineItem, len(p.MeteredPriceIDs))
+	for i, id := range p.MeteredPriceIDs {
+		items[i] = LineItem{Price: id}
+	}
+	return items
 }
 
 // maxLookupKeyBytes bounds a lookup key.
@@ -106,6 +135,7 @@ func jsonLimits(in map[string]any) (map[string]any, error) {
 func (p Plan) clone() Plan {
 	p.MeteredPriceIDs = slices.Clone(p.MeteredPriceIDs)
 	p.RetiredPriceIDs = slices.Clone(p.RetiredPriceIDs)
+	p.LineItems = slices.Clone(p.LineItems)
 	if p.FreeTrial != nil {
 		trial := *p.FreeTrial
 		p.FreeTrial = &trial
@@ -193,6 +223,8 @@ type CheckoutAttempt struct {
 	PriceVerified bool `json:"priceVerified,omitempty"`
 	// MeteredPriceIDs preserves the ordered add-on prices sent to Checkout.
 	MeteredPriceIDs []string `json:"meteredPriceIds,omitempty"`
+	// LineItems preserves the ordered line items sent to Checkout after the base.
+	LineItems []LineItem `json:"lineItems,omitempty"`
 	// Metered reservations omit quantity from the original Checkout line.
 	Metered bool `json:"metered,omitempty"`
 	// TrialDays is the immutable trial term approved for this purchase.
@@ -359,6 +391,7 @@ func newPlanCatalog(plans []Plan) (*planCatalog, error) {
 		}
 		p.MeteredPriceIDs = slices.Clone(p.MeteredPriceIDs)
 		p.RetiredPriceIDs = slices.Clone(p.RetiredPriceIDs)
+		p.LineItems = slices.Clone(p.LineItems)
 		limits, err := jsonLimits(p.Limits)
 		if err != nil {
 			return nil, err
@@ -404,6 +437,11 @@ func (s *planCatalog) check(store auth.Store, org *OrganizationOptions) error {
 		}
 	}
 	for _, plan := range s.plans {
+		if len(plan.LineItems) > 0 {
+			if _, ok := store.(SubscriptionLifecycleStore); !ok {
+				return errors.New("stripe: checkout line items require subscription lifecycle storage")
+			}
+		}
 		if plan.FreeTrial != nil {
 			if _, ok := store.(TrialCheckoutStore); !ok {
 				return errors.New("stripe: free trials require a store with reservation-bound trial eligibility")
@@ -505,7 +543,7 @@ func (s *subscriptions) resolvePrice(ctx context.Context, p Plan, interval strin
 // itemPrice reports a price the catalog uses as a seat or metered add-on.
 func (s *planCatalog) itemPrice(id string) bool {
 	for _, plan := range s.plans {
-		if plan.SeatPriceID == id && plan.PriceID != id && plan.AnnualPriceID != id || slices.Contains(plan.MeteredPriceIDs, id) {
+		if plan.SeatPriceID == id && plan.PriceID != id && plan.AnnualPriceID != id || slices.ContainsFunc(plan.extras(), func(item LineItem) bool { return item.Price == id }) {
 			return true
 		}
 	}
@@ -535,8 +573,8 @@ func (s *planCatalog) configureRetiredPrices() error {
 	}
 	for _, p := range s.plans {
 		used[p.SeatPriceID] = true
-		for _, price := range p.MeteredPriceIDs {
-			used[price] = true
+		for _, item := range p.extras() {
+			used[item.Price] = true
 		}
 	}
 	for _, p := range s.plans {
@@ -711,7 +749,7 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 		return s.changePlan(c, selection, selected, p, interval, price, returnURL, quantity)
 	}
 	store := c.Store().(SubscriptionStore)
-	want := CheckoutAttempt{Locale: locale, CheckPrice: true, RetainCompletion: s.onComplete != nil || p.FreeTrial != nil && p.FreeTrial.OnTrialStart != nil, MeteredPriceIDs: slices.Clone(p.MeteredPriceIDs), AutomaticSeats: automatic, Seats: quantity, Owner: selection.reference, Plan: p.Name, Interval: interval, Price: price, SuccessURL: success, CancelURL: cancel}
+	want := CheckoutAttempt{Locale: locale, CheckPrice: true, RetainCompletion: s.onComplete != nil || p.FreeTrial != nil && p.FreeTrial.OnTrialStart != nil, MeteredPriceIDs: slices.Clone(p.MeteredPriceIDs), LineItems: slices.Clone(p.LineItems), AutomaticSeats: automatic, Seats: quantity, Owner: selection.reference, Plan: p.Name, Interval: interval, Price: price, SuccessURL: success, CancelURL: cancel}
 	if automatic && p.SeatPriceID != price {
 		want.SeatPrice = p.SeatPriceID
 	}
@@ -757,7 +795,7 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 		if want.CheckoutParams, err = s.newCheckoutParams(c, input); err != nil {
 			return nil, err
 		}
-		if _, supported := store.(SubscriptionLifecycleStore); (want.Metered || len(want.MeteredPriceIDs) > 0) && !supported {
+		if _, supported := store.(SubscriptionLifecycleStore); (want.Metered || want.hasExtras()) && !supported {
 			return nil, billingError(409, "METERED_CHECKOUT_UNAVAILABLE", "Metered checkout requires subscription lifecycle storage")
 		}
 		a, err = reserve(ctx, selection.reference, ss.Session.Token, want, time.Now().UTC())

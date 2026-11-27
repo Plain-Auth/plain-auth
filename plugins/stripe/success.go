@@ -171,7 +171,7 @@ func (s *subscriptions) checkoutReceipt(c auth.EndpointContext, a CheckoutAttemp
 	ctx := c.Request.Context()
 	remote, live := checkout.Subscription.ID, checkout.Livemode
 	lifecycle, supportsLifecycle := c.Store().(SubscriptionLifecycleStore)
-	if (a.Metered || len(a.MeteredPriceIDs) > 0) && !supportsLifecycle {
+	if (a.Metered || a.hasExtras()) && !supportsLifecycle {
 		return CheckoutReceipt{}, ErrCheckoutReconcile
 	}
 	if supportsLifecycle && a.Seats > 0 {

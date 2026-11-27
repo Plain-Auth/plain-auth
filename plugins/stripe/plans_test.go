@@ -209,3 +209,40 @@ func TestPlanLookupKeyConfiguration(t *testing.T) {
 		t.Error("a key-only plan was refused", err)
 	}
 }
+
+// Line items need a manually quantified base and at most 19 distinct
+// prices used nowhere else, with quantities from 0 to 2147483647, and not
+// beside MeteredPriceIDs.
+func TestPlanLineItemConfiguration(t *testing.T) {
+	start := func(plans ...stripeplugin.Plan) error {
+		_, err := authn.New(authn.Options{Store: memory.New(), BaseURL: "http://auth.test", Secret: "test-secret-0123456789-abcdefghijk",
+			Plugins: []authn.Plugin{stripeplugin.New(stripeplugin.Options{WebhookSecret: "whsec_local",
+				Organization:  &stripeplugin.OrganizationOptions{AuthorizeReference: func(stripeplugin.ReferenceAuthorization) bool { return true }},
+				Subscriptions: &stripeplugin.SubscriptionOptions{Client: stripesdk.NewClient("sk_test_local"), Plans: plans}})}})
+		return err
+	}
+	const distinct = "stripe: each line item must name a distinct price separate from all base and seat prices, with a quantity from 0 to 2147483647"
+	support := stripeplugin.LineItem{Price: "price_support", Quantity: 2}
+	twenty := make([]stripeplugin.LineItem, 20)
+	for i := range twenty {
+		twenty[i] = stripeplugin.LineItem{Price: "price_item_" + strings.Repeat("x", i+1)}
+	}
+	for name, tc := range map[string]struct {
+		plans []stripeplugin.Plan
+		want  string
+	}{
+		"both kinds":   {[]stripeplugin.Plan{{Name: "pro", PriceID: "price_pro", MeteredPriceIDs: []string{"price_usage"}, LineItems: []stripeplugin.LineItem{support}}}, "stripe: set LineItems or MeteredPriceIDs, not both"},
+		"negative":     {[]stripeplugin.Plan{{Name: "pro", PriceID: "price_pro", LineItems: []stripeplugin.LineItem{{Price: "price_support", Quantity: -1}}}}, distinct},
+		"too large":    {[]stripeplugin.Plan{{Name: "pro", PriceID: "price_pro", LineItems: []stripeplugin.LineItem{{Price: "price_support", Quantity: 1 << 31}}}}, distinct},
+		"duplicate":    {[]stripeplugin.Plan{{Name: "pro", PriceID: "price_pro", LineItems: []stripeplugin.LineItem{support, support}}}, distinct},
+		"base":         {[]stripeplugin.Plan{{Name: "pro", PriceID: "price_pro", LineItems: []stripeplugin.LineItem{{Price: "price_pro"}}}}, distinct},
+		"another base": {[]stripeplugin.Plan{{Name: "pro", PriceID: "price_pro", LineItems: []stripeplugin.LineItem{{Price: "price_team"}}}, {Name: "team", PriceID: "price_team"}}, distinct},
+		"retired":      {[]stripeplugin.Plan{{Name: "pro", PriceID: "price_pro", LineItems: []stripeplugin.LineItem{support}, RetiredPriceIDs: []string{"price_support"}}}, "stripe: each retired price must be a distinct price ID configured nowhere else"},
+		"twenty":       {[]stripeplugin.Plan{{Name: "pro", PriceID: "price_pro", LineItems: twenty}}, "stripe: line items require a manually quantified base and at most 19 items"},
+		"membership":   {[]stripeplugin.Plan{{Name: "team", PriceID: "price_team", SeatPriceID: "price_team", LineItems: []stripeplugin.LineItem{support}}}, "stripe: line items require a manually quantified base and at most 19 items"},
+	} {
+		if err := start(tc.plans...); err == nil || err.Error() != tc.want {
+			t.Error("line items were handled wrongly", name, err)
+		}
+	}
+}

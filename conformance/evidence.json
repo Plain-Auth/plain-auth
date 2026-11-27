@@ -14004,6 +14004,11 @@
       "label": "Keep personal and organization billing separate through a licensed purchase with two metered additions on three SQL engines",
       "test": "adapters/sqlstore/stripe_addons_test.go",
       "marker": "organization purchase appeared on personal account"
+    },
+    {
+      "label": "Send a plan's fixed and metered line items after the base in Checkout, keep them across retries, check receipts exactly and unmap a subscription missing an item, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_line_items_test.go",
+      "marker": "func TestStripeCheckoutLineItems(t *testing.T) {"
     }
   ],
   "docs/content/docs/reference/options.mdx#L282/`autoSignInAfterVerification`": [
@@ -52355,6 +52360,13 @@
       "test": "integrations/polar/customer_test.go",
       "marker": "func TestSignUpCustomer(t *testing.T) {",
       "complete": true
+    }
+  ],
+  "plugin-symbol/stripe/CheckoutSessionLineItem": [
+    {
+      "label": "Accept configured line items with optional fixed quantities and refuse duplicates, shared prices, out-of-range quantities and membership plans at startup",
+      "test": "plugins/stripe/plans_test.go",
+      "marker": "func TestPlanLineItemConfiguration(t *testing.T) {"
     }
   ]
 }
