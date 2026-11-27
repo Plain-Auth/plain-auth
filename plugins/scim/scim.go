@@ -64,6 +64,13 @@ type Record struct {
 	ID                   string
 	CreatedAt, UpdatedAt time.Time
 }
+
+// BindingStore records a connection's first-use provisioning domain and
+// refuses a request from a connection bound to another domain or retired,
+// before the request is read.
+type BindingStore interface {
+	SCIMBind(context.Context, Directory) error
+}
 type Filter struct{ Attribute, Value string }
 type Query struct {
 	Filters       []Filter

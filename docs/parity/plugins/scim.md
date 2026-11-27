@@ -6,9 +6,9 @@
 
 - [ ] SCIM provisioning endpoints, types and options
   - [ ] `SCIMAuthenticationOptions`
-    - [x] `verifyBearerToken` ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L232))
+    - [x] `verifyBearerToken` ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L234))
       - [x] Verify callback credentials per request with scoped identities and prospective revocation ([test](../../../conformance/scim-contract.mjs#L154))
-      - [x] Refuse a token on both instances once the application verifier stops accepting it ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L232))
+      - [x] Refuse a token on both instances once the application verifier stops accepting it ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L234))
   - [ ] `SCIMAuthorizationSource`
     - [x] Hand each SCIM Group to the role mapper with its externalId, which selects the mapped roles ([test](../../../adapters/sqlstore/scim_projection_test.go#L80))
     - [x] Hand the mapper the Group's ID, display name and empty externalId, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_projection_test.go#L672))
@@ -327,6 +327,8 @@
     - [x] Select only the requested role subattributes when listing User resources ([test](../../../adapters/sqlstore/scim_roles_test.go#L71))
     - [x] List Users in creation order and filter by id, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_users_contract_test.go#L73))
     - [x] Check a list's page and filter before its projection on both runtimes ([test](../../../conformance/scim-contract.mjs#L116))
+    - [x] Check a connection's binding before its query, so a retired connection answers 401 and a remapped one 409 to a malformed list, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_decommission_test.go#L308))
+    - [x] Parse startIndex before count with an optional minus sign and ASCII digits after JavaScript trimming, within the safe integer range ([test](../../../plugins/scim/selection_test.go#L102))
   - [x] `PUT /scim/v2/Users/:userId` ([test](../../../adapters/sqlstore/scim_test.go#L206))
     - [x] Replace a User and reset its verified flag when the managed email changes ([test](../../../adapters/sqlstore/scim_test.go#L34))
     - [x] Validate role count, primary flags, unique defined types and Unicode field limits before replacing a profile ([test](../../../plugins/scim/roles_test.go#L17))
@@ -379,8 +381,8 @@
     - [x] Withdraw the roles after a role mapping change by replaying the domain, and restore them on the next replay from the other instance, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_projection_test.go#L368))
   - [x] Rotate a credential ([test](../../../adapters/sqlstore/scim_users_contract_test.go#L80))
     - [x] Accept a credential before its expiry beside the current one, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_users_contract_test.go#L80))
-  - [x] Decommission a connection ([test](../../../adapters/sqlstore/scim_decommission_test.go#L309))
-    - [x] Retire a connection with a User and a Group, reconciling one User in one batch and keeping the SCIM rows, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_decommission_test.go#L309))
+  - [x] Decommission a connection ([test](../../../adapters/sqlstore/scim_decommission_test.go#L315))
+    - [x] Retire a connection with a User and a Group, reconciling one User in one batch and keeping the SCIM rows, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_decommission_test.go#L315))
 
 ## System for Cross-domain Identity Management (SCIM)
 

@@ -16,23 +16,32 @@ var equality = regexp.MustCompile(`(?i)^(?:urn:ietf:params:scim:schemas:core:2\.
 
 var groupEquality = regexp.MustCompile(`(?i)^(?:urn:ietf:params:scim:schemas:core:2\.0:group:)?(id|displayName|externalId)\s+eq\s+("(?:[^"\\]|\\.)*")(?:\s+(and)\s+|$)`)
 
+// pageInteger matches another runtime's page parameter grammar: an optional
+// minus sign and ASCII digits, after JavaScript trimming.
+var pageInteger = regexp.MustCompile(`^-?[0-9]+$`)
+
 func query(values url.Values, equality *regexp.Regexp) (Query, error) {
 	var q Query
-	page := map[string]int{"startIndex": 1, "count": 100}
-	for k := range page {
-		if list, ok := values[k]; ok {
+	// startIndex is checked before count, as another runtime checks them.
+	page := []struct {
+		name  string
+		value int
+	}{{"startIndex", 1}, {"count", 100}}
+	for i, p := range page {
+		if list, ok := values[p.name]; ok {
 			if len(list) != 1 {
-				return q, invalid("invalidValue", "Expected one "+k)
+				return q, invalid("invalidValue", "Expected one "+p.name)
 			}
-			n, err := strconv.ParseInt(strings.TrimSpace(list[0]), 10, 53)
-			if err != nil {
-				return q, invalid("invalidValue", k+" must be an integer")
+			v := jsjson.TrimSpace(list[0])
+			n, err := strconv.ParseInt(v, 10, 64)
+			if !pageInteger.MatchString(v) || err != nil || n > 1<<53-1 || n < -(1<<53-1) {
+				return q, invalid("invalidValue", p.name+" must be an integer")
 			}
-			page[k] = int(n)
+			page[i].value = int(n)
 		}
 	}
-	q.Offset = max(1, page["startIndex"]) - 1
-	q.Count = min(100, max(0, page["count"]))
+	q.Offset = max(1, page[0].value) - 1
+	q.Count = min(100, max(0, page[1].value))
 	f := strings.TrimSpace(values.Get("filter"))
 	for f != "" {
 		match := equality.FindStringSubmatch(f)

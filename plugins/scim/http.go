@@ -92,6 +92,15 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	r = r.WithContext(context.WithValue(r.Context(), principalKey{}, identity))
 	d := identity.Directory
+	// The connection's binding is recorded and checked before the request
+	// is read, as another runtime's authentication middleware does, so a
+	// retired or remapped connection is refused before its query or body.
+	if b, ok := h.store.(BindingStore); ok {
+		if err := b.SCIMBind(r.Context(), d); err != nil {
+			writeError(w, err)
+			return
+		}
+	}
 	if isGroup {
 		h.serveGroups(w, r, d, id, single)
 		return

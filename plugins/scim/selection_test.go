@@ -82,3 +82,32 @@ func TestUnsupportedFilterOperators(t *testing.T) {
 		t.Fatal("an and of equalities was refused", err)
 	}
 }
+
+// Page parameters follow another runtime's grammar and order: startIndex
+// is reported before count, a plus sign or a non-JavaScript space is
+// refused, a BOM is trimmed and any safe integer is accepted.
+func TestQueryPageParameters(t *testing.T) {
+	for _, c := range []struct {
+		values url.Values
+		detail string
+	}{
+		{url.Values{"startIndex": {"x"}, "count": {"y"}}, "startIndex must be an integer"},
+		{url.Values{"startIndex": {"+2"}}, "startIndex must be an integer"},
+		{url.Values{"startIndex": {"\u00852"}}, "startIndex must be an integer"},
+		{url.Values{"count": {"9007199254740992"}}, "count must be an integer"},
+		{url.Values{"count": {"1.5"}}, "count must be an integer"},
+	} {
+		for range 20 {
+			if _, err := query(c.values, equality); err == nil || err.Error() != c.detail {
+				t.Fatal("a page parameter was not refused with its name", c.values, err)
+			}
+		}
+	}
+	q, err := query(url.Values{"startIndex": {"\uFEFF2"}, "count": {"4503599627370496"}}, equality)
+	if err != nil || q.Offset != 1 || q.Count != 100 {
+		t.Fatal("a trimmed or large safe page parameter was refused", q, err)
+	}
+	if q, err = query(url.Values{"startIndex": {"-5"}, "count": {"-0"}}, equality); err != nil || q.Offset != 0 || q.Count != 0 {
+		t.Fatal("negative page parameters were not clamped", q, err)
+	}
+}

@@ -43,10 +43,15 @@ func TestEnterpriseSAMLResolveUser(t *testing.T) {
 				return decision, resolveErr
 			}
 			var provisioned []sso.Provisioning
-			provision := func(_ context.Context, pr sso.Provisioning) error {
+			var provisionReadErr error
+			provision := func(pc context.Context, pr sso.Provisioning) error {
+				// The sign-in has committed, so the store answers at once.
+				read, cancel := context.WithTimeout(pc, 2*time.Second)
+				defer cancel()
+				_, e := p.store.FindAccountUser(read, "provisioned@example.test")
 				mu.Lock()
 				defer mu.Unlock()
-				provisioned = append(provisioned, pr)
+				provisioned, provisionReadErr = append(provisioned, pr), e
 				return nil
 			}
 			h := p.pluginHost(sso.Options{SAML: &sso.SAMLOptions{}, ResolveUser: resolve, ProvisionUser: provision, ProvisionUserOnEveryLogin: true}, nil)
@@ -111,7 +116,11 @@ func TestEnterpriseSAMLResolveUser(t *testing.T) {
 
 			mu.Lock()
 			calls := append([]sso.Provisioning(nil), provisioned...)
+			provisionErr := provisionReadErr
 			mu.Unlock()
+			if provisionErr != nil {
+				t.Fatal("ProvisionUser ran inside the sign-in transaction", provisionErr)
+			}
 			if len(calls) != 1 || calls[0].Token != nil || calls[0].UserInfo.Subject != "employee" || calls[0].User.ID != "selected" {
 				t.Fatal("ProvisionUser received OIDC tokens or no profile for a SAML sign-in", calls)
 			}

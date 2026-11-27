@@ -9859,6 +9859,16 @@
       "label": "Check a list's page and filter before its projection on both runtimes",
       "test": "conformance/scim-contract.mjs",
       "marker": "assert.equal((await call(\"GET\",collection+\"?filter=bogus&attributes=a%20b\",400)).scimType,\"invalidFilter\");"
+    },
+    {
+      "label": "Check a connection's binding before its query, so a retired connection answers 401 and a remapped one 409 to a malformed list, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_decommission_test.go",
+      "marker": "t.Fatal(\"a retired connection's malformed request was read before its binding\", req, w.Code, w.Body.String())"
+    },
+    {
+      "label": "Parse startIndex before count with an optional minus sign and ASCII digits after JavaScript trimming, within the safe integer range",
+      "test": "plugins/scim/selection_test.go",
+      "marker": "t.Fatal(\"a page parameter was not refused with its name\", c.values, err)"
     }
   ],
   "plugin/scim/PUT /scim/v2/Users/:userId": [
@@ -11440,6 +11450,11 @@
       "label": "Name the size limit for an oversized IdP metadata document at registration and update, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/sso_saml_defaults_test.go",
       "marker": "t.Fatal(\"an oversized IdP metadata registration did not name the limit\""
+    },
+    {
+      "label": "Fail an issuer that is not a URL with VALIDATION_ERROR [body.issuer] Invalid URL on both runtimes",
+      "test": "conformance/sso-domains.mjs",
+      "marker": "assert.equal(unparsed.status,400);assert.equal(unparsed.code,\"VALIDATION_ERROR\");assert.equal(unparsed.message,\"[body.issuer] Invalid URL\");"
     }
   ],
   "plugin/sso/GET /sso/providers": [
@@ -11764,6 +11779,11 @@
       "label": "Answer 404 No provider found for the issuer for an unknown providerId on both runtimes",
       "test": "conformance/sso-domains.mjs",
       "marker": "assert.equal(absent.status,404);assert.equal(absent.message,\"No provider found for the issuer\");"
+    },
+    {
+      "label": "On a host without SAML, name the protocol a found provider lacks, answer an unknown provider 404 and fail an unknown providerType in another runtime's body validation form, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_browser_test.go",
+      "marker": "t.Fatal(\"a providerType on a host without SAML was not answered as another runtime answers it\", c.body, w.Code, w.Body.String())"
     }
   ],
   "plugin/sso/ /sso/callback/:providerId": [
@@ -42810,9 +42830,9 @@
       "marker": "check(call(two, path, owner, makeBody(\"wrong\", \"\", \"/mismatch\")), 400)"
     },
     {
-      "label": "Refuse a SAML registration whose issuer is not an HTTP or HTTPS URL, a documented deviation for urn: issuers, and store nothing, on SQLite, PostgreSQL and MySQL",
+      "label": "Refuse a SAML registration whose issuer is missing or not a URL with VALIDATION_ERROR in another runtime's body validation form, and a non-HTTP one with discovery_invalid_url, a documented deviation for urn: issuers, storing nothing, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/sso_saml_defaults_test.go",
-      "marker": "t.Fatal(\"a SAML registration accepted an issuer that is not a URL\", issuer, w.Code, w.Body.String())",
+      "marker": "t.Fatal(\"a SAML registration accepted an issuer that is not a URL\", c.issuer, w.Code, w.Body.String())",
       "complete": true
     }
   ],
@@ -45401,10 +45421,9 @@
   ],
   "plugin-symbol/sso/OIDCConfig/mapping": [
     {
-      "label": "Read the email, name and image claims named by oidcConfig.mapping from the UserInfo answer; mapping.emailVerified is accepted and ignored and extraFields values must name one claim, documented deviations",
+      "label": "Read the email, name and image claims named by oidcConfig.mapping from the UserInfo answer",
       "test": "plugins/sso/identity_test.go",
-      "marker": "mapping.email did not select the mapped email claim",
-      "complete": true
+      "marker": "mapping.email did not select the mapped email claim"
     },
     {
       "label": "Read email, name and picture when no mapping is set",
@@ -45415,6 +45434,17 @@
       "label": "Take the first nonempty address from a mapped email list",
       "test": "plugins/sso/identity_test.go",
       "marker": "a mapped email list did not yield its first nonempty address"
+    },
+    {
+      "label": "Refuse a mapping value that does not name one claim, a documented deviation for extraFields",
+      "test": "plugins/sso/identity_test.go",
+      "marker": "an invalid OIDC mapping was accepted"
+    },
+    {
+      "label": "Ignore mapping.emailVerified for an OIDC user, a documented deviation, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_claim_mapping_test.go",
+      "marker": "mapping.emailVerified was trusted for an OIDC user",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/sso/saml-security.mdx#L11/One assertion": [

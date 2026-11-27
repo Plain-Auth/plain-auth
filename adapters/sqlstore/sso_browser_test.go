@@ -324,6 +324,24 @@ func TestEnterpriseOIDCBrowser(t *testing.T) {
 			if w := call(one, "POST", "sign-in/sso", "", map[string]any{"organizationSlug": "missing", "callbackURL": "/home"}); w.Code != 400 || !strings.Contains(w.Body.String(), "providerId, orgId or domain is required") {
 				t.Fatal("a sign-in naming only an unknown organization was not refused", w.Code, w.Body.String())
 			}
+			// Without SAML a found provider names the protocol it lacks, an
+			// unknown one is not found and an unknown type fails validation.
+			for _, c := range []struct {
+				body   map[string]any
+				status int
+				text   string
+			}{
+				{map[string]any{"providerId": "acme", "providerType": "saml", "callbackURL": "/home"}, 400, "SAML provider is not configured"},
+				{map[string]any{"providerId": "absent", "providerType": "saml", "callbackURL": "/home"}, 404, "No provider found for the issuer"},
+				{map[string]any{"providerId": "acme", "providerType": "ldap", "callbackURL": "/home"}, 400, `[body.providerType] Invalid option: expected one of "oidc"|"saml"`},
+			} {
+				w := call(one, "POST", "sign-in/sso", "", c.body)
+				var e struct{ Message string }
+				json.Unmarshal(w.Body.Bytes(), &e)
+				if w.Code != c.status || e.Message != c.text {
+					t.Fatal("a providerType on a host without SAML was not answered as another runtime answers it", c.body, w.Code, w.Body.String())
+				}
+			}
 			if count(`SELECT COUNT(*) FROM "member" WHERE "userId"=? AND "role"='admin'`, session.User.ID) != 1 {
 				t.Fatal("existing role changed")
 			}

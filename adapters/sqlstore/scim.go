@@ -43,9 +43,10 @@ func (s *Store) scimTx(ctx context.Context, d scim.Directory, fn func(*sql.Tx) e
 func (s *Store) scimWriteTx(ctx context.Context, d scim.Directory, fn func(*sql.Tx) error) error {
 	return s.scimTxMode(ctx, d, true, fn)
 }
-func (s *Store) scimTxMode(ctx context.Context, d scim.Directory, write bool, fn func(*sql.Tx) error) error {
+
+// ensureSCIMBinding records a connection's first-use binding.
+func (s *Store) ensureSCIMBinding(ctx context.Context, d scim.Directory) error {
 	key := scimKey("scim-connection", d.ID)
-	query := `SELECT "connectionId","provisioningDomainId","decommissionStatus" FROM "scimConnectionBinding" WHERE "connectionKey"=?`
 	var exists string
 	err := s.db.QueryRowContext(ctx, s.bind(`SELECT "id" FROM "scimConnectionBinding" WHERE "connectionKey"=?`), key).Scan(&exists)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -57,7 +58,39 @@ func (s *Store) scimTxMode(ctx context.Context, d scim.Directory, write bool, fn
 		}
 		_, err = s.db.ExecContext(ctx, s.bind(q), rand.Text(), d.ID, key, d.ProvisioningDomainID, s.date(time.Now()))
 	}
-	if err != nil {
+	return err
+}
+
+const scimBindingQuery = `SELECT "connectionId","provisioningDomainId","decommissionStatus" FROM "scimConnectionBinding" WHERE "connectionKey"=?`
+
+// checkSCIMBinding refuses a binding to another domain or a retired one.
+func checkSCIMBinding(d scim.Directory, connection, domain, status string) error {
+	if connection != d.ID || domain != d.ProvisioningDomainID {
+		return scim.ErrDomain
+	}
+	if status != "active" {
+		return scim.ErrDecommissioned
+	}
+	return nil
+}
+
+// SCIMBind records and checks a connection's binding before a request is
+// read, as another runtime's authentication middleware does; each resource
+// operation checks it again in its own transaction.
+func (s *Store) SCIMBind(ctx context.Context, d scim.Directory) error {
+	if err := s.ensureSCIMBinding(ctx, d); err != nil {
+		return err
+	}
+	var connection, domain, status string
+	if err := s.db.QueryRowContext(ctx, s.bind(scimBindingQuery), scimKey("scim-connection", d.ID)).Scan(&connection, &domain, &status); err != nil {
+		return err
+	}
+	return checkSCIMBinding(d, connection, domain, status)
+}
+
+func (s *Store) scimTxMode(ctx context.Context, d scim.Directory, write bool, fn func(*sql.Tx) error) error {
+	key := scimKey("scim-connection", d.ID)
+	if err := s.ensureSCIMBinding(ctx, d); err != nil {
 		return err
 	}
 	tx, finish, err := s.beginSCIMTransaction(ctx, d.ProvisioningDomainID, write)
@@ -76,14 +109,11 @@ func (s *Store) scimTxMode(ctx context.Context, d scim.Directory, write bool, fn
 		}
 	}
 	var connection, domain, status string
-	if err = tx.QueryRowContext(ctx, s.readForUpdate(query), key).Scan(&connection, &domain, &status); err != nil {
+	if err = tx.QueryRowContext(ctx, s.readForUpdate(scimBindingQuery), key).Scan(&connection, &domain, &status); err != nil {
 		return err
 	}
-	if connection != d.ID || domain != d.ProvisioningDomainID {
-		return scim.ErrDomain
-	}
-	if status != "active" {
-		return scim.ErrDecommissioned
+	if err = checkSCIMBinding(d, connection, domain, status); err != nil {
+		return err
 	}
 	if err = fn(tx); err != nil {
 		if duplicateConstraint(err) {

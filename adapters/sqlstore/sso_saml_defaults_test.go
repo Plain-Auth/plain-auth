@@ -90,12 +90,24 @@ func TestEnterpriseSAMLDefaults(t *testing.T) {
 				must(store.db.QueryRowContext(ctx, store.bind(`SELECT COUNT(*) FROM "ssoProvider" WHERE "providerId"=?`), id).Scan(&n))
 				return n
 			}
-			// A SAML issuer must be a URL, as in another runtime.
-			for _, issuer := range []string{"not a url", "urn:example:idp"} {
+			// A SAML issuer must be a URL, checked in another runtime's body
+			// validation form, and an HTTP or HTTPS one, a documented deviation
+			// for urn: issuers.
+			for _, c := range []struct {
+				issuer any
+				code   string
+				text   string
+			}{{"not a url", "VALIDATION_ERROR", "[body.issuer] Invalid URL"}, {nil, "VALIDATION_ERROR", "[body.issuer] Invalid input: expected string, received undefined"},
+				{7, "VALIDATION_ERROR", "[body.issuer] Invalid input: expected string, received number"}, {"urn:example:idp", "discovery_invalid_url", ""}} {
 				body := keyed("bad-issuer", func(map[string]any) {})
-				body["issuer"] = issuer
-				if w := call("POST", "sso/register", owner, body); w.Code != 400 || rows("bad-issuer") != 0 {
-					t.Fatal("a SAML registration accepted an issuer that is not a URL", issuer, w.Code, w.Body.String())
+				if body["issuer"] = c.issuer; c.issuer == nil {
+					delete(body, "issuer")
+				}
+				w := call("POST", "sso/register", owner, body)
+				var e struct{ Code, Message string }
+				json.Unmarshal(w.Body.Bytes(), &e)
+				if w.Code != 400 || e.Code != c.code || c.text != "" && e.Message != c.text || rows("bad-issuer") != 0 {
+					t.Fatal("a SAML registration accepted an issuer that is not a URL", c.issuer, w.Code, w.Body.String())
 				}
 			}
 			const keyRefusal = "SAML private keys are not accepted in a provider registration; configure the request signing and decryption keys on the server"

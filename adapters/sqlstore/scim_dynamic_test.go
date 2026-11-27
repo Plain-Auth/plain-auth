@@ -227,6 +227,8 @@ func TestSCIMDynamicBearer(t *testing.T) {
 				t.Fatal("scoped request identity", p)
 			}
 			call(a, "GET", "Users", "remap", nil, 409)
+			// The binding is checked before the query is read.
+			call(a, "GET", "Users?filter=bogus", "remap", nil, 409)
 			_, e = first.db.ExecContext(ctx, first.bind(`DELETE FROM "appDirectoryCredentials" WHERE "digest"=?`), digest("active"))
 			must(e)
 			call(b, "GET", "Users", "active", nil, 401)

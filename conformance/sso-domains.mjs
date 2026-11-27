@@ -85,6 +85,9 @@ export async function compareSSODomains(t, {goFixture,instrument}) {
     assert.equal(ok(await api.sso.requestDomainVerification({providerId})).domainVerificationToken,token);
     const req=seen.at(-1);assert.equal(req[1],201);
     assert.equal((await api.signIn.sso({providerId,callbackURL:"/home"})).error.status,401);
+    // An issuer that is not a URL fails the body validation on both runtimes.
+    const unparsed=(await api.sso.register({providerId:"unparsed-"+index,issuer:"not a url",domain:"unparsed.example",oidcConfig:{skipDiscovery:true,clientId:"owned-client",clientSecret:"fixture-client-secret",authorizationEndpoint:issuer+"/authorize",tokenEndpoint:issuer+"/token",jwksEndpoint:issuer+"/keys"}})).error;
+    assert.equal(unparsed.status,400);assert.equal(unparsed.code,"VALIDATION_ERROR");assert.equal(unparsed.message,"[body.issuer] Invalid URL");
     const absent=(await api.signIn.sso({providerId:"absent-"+index,callbackURL:"/home"})).error;
     assert.equal(absent.status,404);assert.equal(absent.message,"No provider found for the issuer");
     const names=domain.split(",").map(d=>label+"."+d);

@@ -302,6 +302,12 @@ func TestSCIMStaticDecommission(t *testing.T) {
 			if w := scimRequest(h, "GET", "Users", "static-token", nil); w.Code != 401 {
 				t.Fatal("a retired connection's token still works", w.Code)
 			}
+			// A retired connection is refused before its query or body is read.
+			for _, req := range []struct{ method, path string }{{"GET", "Users?filter=bogus"}, {"GET", "Groups?startIndex=x"}, {"POST", "Users?attributes=a%20b"}} {
+				if w := scimRequest(h, req.method, req.path, "static-token", map[string]any{"schemas": []string{scim.UserSchema}, "userName": "late@example.test"}); w.Code != 401 || w.Header().Get("WWW-Authenticate") == "" {
+					t.Fatal("a retired connection's malformed request was read before its binding", req, w.Code, w.Body.String())
+				}
+			}
 			for _, table := range []string{"scimUser", "scimGroup", "scimGroupMember"} {
 				var n int
 				must(s.db.QueryRowContext(ctx, s.bind(`SELECT COUNT(*) FROM "`+table+`"`)).Scan(&n))

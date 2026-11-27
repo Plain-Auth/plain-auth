@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/Plain-Org/plain-auth/internal/jsjson"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -224,6 +225,28 @@ var slug = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$`)
 var label = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$`)
 var reserved = []string{"credential", "email-otp", "magic-link", "phone-number", "anonymous", "siwe"}
 
+// issuerInput refuses a registration issuer that is not a string or does
+// not parse as an absolute URL, as another runtime's body schema does. An
+// absolute URL that is not HTTP or HTTPS is refused later, with
+// discovery_invalid_url.
+func issuerInput(body map[string]any) error {
+	raw, present := body["issuer"]
+	v, ok := raw.(string)
+	if !ok {
+		received := "undefined"
+		if present {
+			received = jsjson.TypeName(raw)
+		}
+		return &auth.APIError{Status: 400, Code: "VALIDATION_ERROR", Message: "[body.issuer] Invalid input: expected string, received " + received}
+	}
+	u, err := url.Parse(jsjson.TrimSpace(v))
+	special := err == nil && slices.Contains([]string{"http", "https", "ws", "wss", "ftp"}, strings.ToLower(u.Scheme))
+	if err != nil || u.Scheme == "" || special && u.Host == "" && u.Opaque == "" {
+		return &auth.APIError{Status: 400, Code: "VALIDATION_ERROR", Message: "[body.issuer] Invalid URL"}
+	}
+	return nil
+}
+
 func domains(value string) (string, error) {
 	var list []string
 	for _, entry := range strings.Split(value, ",") {
@@ -319,6 +342,11 @@ func New(o Options) (auth.Plugin, error) {
 		}}
 	}
 	register := func(c auth.EndpointContext, store Store, actor Actor) (any, error) {
+		// The issuer is checked with the body, before the route's own checks,
+		// in another runtime's body validation form.
+		if err := issuerInput(c.Body); err != nil {
+			return nil, err
+		}
 		limit, err := o.providerLimit(c.Request.Context(), actor.user, limit)
 		if err != nil {
 			return nil, err

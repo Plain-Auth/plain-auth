@@ -70,8 +70,8 @@ func (o Options) start(c auth.EndpointContext) (any, error) {
 		}
 	}
 	kind := read("providerType")
-	if kind != "" && kind != "oidc" && (kind != "saml" || o.SAML == nil) {
-		return nil, apiError(400, "OIDC provider is not configured")
+	if kind != "" && kind != "oidc" && kind != "saml" {
+		return nil, &auth.APIError{Status: 400, Code: "VALIDATION_ERROR", Message: `[body.providerType] Invalid option: expected one of "oidc"|"saml"`}
 	}
 	sel := Selector{ProviderID: read("providerId"), OrganizationSlug: read("organizationSlug"), Domain: read("domain")}
 	sel.Protocol = kind
@@ -102,6 +102,19 @@ func (o Options) start(c auth.EndpointContext) (any, error) {
 	find := store.FindBrowserProvider
 	if o.DomainVerification != nil {
 		find = store.(DomainStore).FindVerifiedBrowserProvider
+	}
+	// A host without SAML names the protocol a found provider lacks, and
+	// answers a provider it cannot find as not found, as another runtime
+	// does for an OIDC-only provider.
+	if kind == "saml" && o.SAML == nil {
+		any := sel
+		any.Protocol = ""
+		if p, e := find(c.Request.Context(), any); e == nil && available(c, p) || errors.Is(e, ErrDomainUnverified) {
+			return nil, apiError(400, "SAML provider is not configured")
+		} else if e != nil && !errors.Is(e, ErrMissing) {
+			return nil, e
+		}
+		return nil, errNoProvider
 	}
 	p, err := find(c.Request.Context(), sel)
 	if errors.Is(err, ErrMissing) && kind != "" {
