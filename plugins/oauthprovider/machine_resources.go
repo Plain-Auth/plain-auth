@@ -160,7 +160,13 @@ func (opts Options) issueResourceMachineToken(c auth.EndpointContext, store Mach
 	signed := c.Auth.HasPlugin("jwt") && !opts.Tokens.OpaqueResourceTokens
 	var issued, stored string
 	if signed {
-		issued, err = policy.sign(c, in.id, audiences, thumb, now)
+		// Contributed claims are resolved outside the store's transactions.
+		var extra map[string]any
+		extra, err = opts.accessTokenClaims(c, TokenClaimsInput{ClientID: in.id, Scopes: policy.scopes, GrantType: "client_credentials", Resources: in.resources, Metadata: first.Metadata})
+		if err != nil {
+			return MachineToken{}, err
+		}
+		issued, err = policy.sign(c, in.id, audiences, thumb, now, extra)
 	} else {
 		issued, stored, err = opts.Tokens.newOpaqueToken(ctx)
 	}
@@ -198,12 +204,16 @@ func (opts Options) issueResourceMachineToken(c auth.EndpointContext, store Mach
 	return token, nil
 }
 
-func (p machineResourcePolicy) sign(c auth.EndpointContext, client string, audiences []string, thumb string, now time.Time) (string, error) {
+func (p machineResourcePolicy) sign(c auth.EndpointContext, client string, audiences []string, thumb string, now time.Time, extra map[string]any) (string, error) {
 	jti, err := randomClientCredential()
 	if err != nil {
 		return "", err
 	}
-	claims := map[string]any{"jti": jti, "client_id": client, "azp": client, "scope": strings.Join(p.scopes, " ")}
+	claims := maps.Clone(extra)
+	if claims == nil {
+		claims = map[string]any{}
+	}
+	claims["jti"], claims["client_id"], claims["azp"], claims["scope"] = jti, client, client, strings.Join(p.scopes, " ")
 	addResourceClaims(claims, p.claims)
 	if thumb != "" {
 		claims["cnf"] = map[string]string{"jkt": thumb}

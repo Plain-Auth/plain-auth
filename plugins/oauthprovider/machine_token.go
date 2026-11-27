@@ -36,6 +36,10 @@ type TokenOptions struct {
 	// ScopeExpiresAt caps a token carrying the scope at that instant. A
 	// request for a scope whose instant has passed answers invalid_scope.
 	ScopeExpiresAt map[string]time.Time
+	// CustomAccessTokenClaims adds application claims to signed access
+	// tokens, above extension claims and below a resource's claims. Claims
+	// the issuer owns are never taken from it.
+	CustomAccessTokenClaims TokenClaimsFunc
 	// CustomTokenResponseFields adds fields to code, refresh and
 	// client_credentials responses. The standard response fields are never
 	// taken from it.

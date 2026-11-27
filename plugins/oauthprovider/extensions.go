@@ -17,6 +17,9 @@ type Extension struct {
 	// provider defines is never replaced, and an earlier extension's field
 	// wins over a later one's. A nil Metadata adds nothing.
 	Metadata func(MetadataInput) map[string]any
+	// AccessTokenClaims contributes claims to signed access tokens, below the
+	// host's CustomAccessTokenClaims and the resource's claims.
+	AccessTokenClaims TokenClaimsFunc
 }
 
 // The discovery document types an Extension's Metadata is called for.

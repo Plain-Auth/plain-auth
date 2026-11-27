@@ -68,6 +68,14 @@ func TestMachineResourceIssuance(t *testing.T) {
 						}
 						return "generated", nil
 					}}, Registration: op.RegistrationOptions{VerifySecret: func(_ context.Context, raw, stored string) (bool, error) { return raw == stored, nil }}}
+				// Contributed claims sit below the resource's claims, and the
+				// issuer's own claims are never taken from them.
+				opts.Tokens.CustomAccessTokenClaims = func(_ context.Context, in op.TokenClaimsInput) (map[string]any, error) {
+					return map[string]any{"tier": "host", "plan": "host", "scope": "forged", "client": in.ClientID + " " + in.GrantType}, nil
+				}
+				opts.Extensions = []op.Extension{{AccessTokenClaims: func(context.Context, op.TokenClaimsInput) (map[string]any, error) {
+					return map[string]any{"tier": "extension", "region": "eu", "jti": "forged"}, nil
+				}}}
 				p, err := op.New(opts)
 				must(err)
 				plugins := []auth.Plugin{p}
@@ -128,6 +136,9 @@ func TestMachineResourceIssuance(t *testing.T) {
 			must(err)
 			if claims["scope"] != "read" || response["expires_in"] != float64(8) {
 				t.Fatal("unexpected signed grant", claims)
+			}
+			if claims["plan"] != "host" || claims["region"] != "eu" || claims["tier"] != "host" || claims["client"] != id+" client_credentials" || claims["jti"] == "forged" {
+				t.Fatal("the contributed access token claims were not layered", claims)
 			}
 			write(`UPDATE "oauthResource" SET "signingKeyId"='missing'`)
 			request(signed, res, 500, "")

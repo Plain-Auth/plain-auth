@@ -48786,5 +48786,12 @@
       "test": "conformance/oauth-extensions.mjs",
       "marker": "export async function compareExtensionMetadata("
     }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/customAccessTokenClaims": [
+    {
+      "label": "Layer extension and host claims into signed resource access tokens below the issuer's own claims, on SQLite, PostgreSQL and MySQL; opaque introspection does not add them yet",
+      "test": "adapters/sqlstore/oauth_machine_resources_test.go",
+      "marker": "t.Fatal(\"the contributed access token claims were not layered\", claims)"
+    }
   ]
 }

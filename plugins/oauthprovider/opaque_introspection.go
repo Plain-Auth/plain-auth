@@ -63,11 +63,9 @@ func opaqueAccessClaims(token *OpaqueAccessTokenRecord, digest, issuer, userInfo
 // optional fields absent from a particular grant, belong to the issuer.
 func addResourceClaims(claims map[string]any, policy map[string]json.RawMessage) {
 	for name, raw := range policy {
-		switch name {
-		case "active", "iss", "sub", "aud", "exp", "iat", "jti", "client_id", "azp", "scope", "auth_time", "acr", "amr", "cnf", "sid", "token_type":
-			continue
+		if !providerClaim(name) {
+			claims[name] = raw
 		}
-		claims[name] = raw
 	}
 }
 
