@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/netip"
 	"net/url"
 	"regexp"
 	"strconv"
@@ -251,7 +250,7 @@ func checkOrigins(clientIDURL string, doc oauthprovider.ClientMetadataDocument, 
 	if err != nil {
 		return errors.New("client_id is not a valid URL")
 	}
-	clientOrigin, ok := origin(clientID)
+	clientOrigin, ok := publicnet.Origin(clientID)
 	if !ok {
 		return errors.New("client_id is not a valid URL")
 	}
@@ -298,38 +297,12 @@ func checkOrigins(clientIDURL string, doc oauthprovider.ClientMetadataDocument, 
 				continue
 			}
 			// An opaque origin is empty and never matches.
-			if o, _ := origin(u); o != clientOrigin && !(redirect && web && publicnet.Loopback(u.Hostname())) {
+			if o, _ := publicnet.Origin(u); o != clientOrigin && !(redirect && web && publicnet.Loopback(u.Hostname())) {
 				return fmt.Errorf(`%s value "%s" must have the same origin as client_id (%s)`, key, raw, clientOrigin)
 			}
 		}
 	}
 	return nil
-}
-
-// origin is an HTTP(S) URL's web origin as a browser serializes it: the
-// scheme, the host in ASCII and a port other than the default, without
-// credentials. ok is false for a URL without one, whose origin is opaque.
-func origin(u *url.URL) (string, bool) {
-	host := u.Hostname()
-	if u.Scheme != "http" && u.Scheme != "https" || host == "" {
-		return "", false
-	}
-	if ip, err := netip.ParseAddr(host); err == nil {
-		host = ip.String()
-		if ip.Is6() {
-			host = "[" + host + "]"
-		}
-	} else {
-		ascii, err := publicnet.HostASCII(host)
-		if err != nil {
-			return "", false
-		}
-		host = strings.ToLower(ascii)
-	}
-	if port := u.Port(); port != "" && !(u.Scheme == "http" && port == "80" || u.Scheme == "https" && port == "443") {
-		host += ":" + port
-	}
-	return u.Scheme + "://" + host, true
 }
 
 var reverseDomainScheme = regexp.MustCompile(`(?i)^[a-z](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$`)

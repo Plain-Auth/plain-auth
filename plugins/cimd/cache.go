@@ -123,10 +123,8 @@ func freshness(h cacheHeaders, interval time.Duration, now time.Time) (bool, tim
 	}
 	age, _ := seconds(h.Age)
 	date := now
-	if h.Date != "" {
-		if parsed, err := http.ParseTime(h.Date); err == nil {
-			date = parsed
-		}
+	if parsed, ok := parseDate(h.Date); ok {
+		date = parsed
 	}
 	current := max(now.Sub(date), age, 0)
 	lifetime := operator
@@ -150,8 +148,11 @@ func freshness(h cacheHeaders, interval time.Duration, now time.Time) (bool, tim
 		// section 5.3), where another runtime keeps the interval for a value
 		// its date parser refuses.
 		lifetime = 0
-		if expires, err := http.ParseTime(h.Expires); err == nil {
-			lifetime = min(operator, max(expires.Sub(date)-current, 0))
+		if expires, ok := parseDate(h.Expires); ok {
+			// Subtracting only a smaller age cannot wrap around.
+			if remaining := expires.Sub(date); remaining > current {
+				lifetime = min(operator, remaining-current)
+			}
 		}
 	}
 	return true, now.Add(lifetime)
@@ -168,4 +169,19 @@ func mergeHeaders(previous, revalidated cacheHeaders) cacheHeaders {
 	}
 	return cacheHeaders{pick(revalidated.CacheControl, previous.CacheControl), pick(revalidated.Vary, previous.Vary), pick(revalidated.Expires, previous.Expires),
 		pick(revalidated.Date, previous.Date), pick(revalidated.Age, previous.Age), pick(revalidated.ETag, previous.ETag), pick(revalidated.LastModified, previous.LastModified)}
+}
+
+// parseDate reads an HTTP date, also in the RFC 1123 forms with a zone name
+// or a numeric zone and in RFC 3339, which another runtime's date parser
+// accepts too.
+func parseDate(value string) (time.Time, bool) {
+	if t, err := http.ParseTime(value); err == nil {
+		return t, true
+	}
+	for _, layout := range []string{time.RFC1123, time.RFC1123Z, time.RFC3339} {
+		if t, err := time.Parse(layout, value); err == nil {
+			return t, true
+		}
+	}
+	return time.Time{}, false
 }

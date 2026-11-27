@@ -70,11 +70,33 @@ func (h *harness) resolve(ctx context.Context, existing *oauthprovider.Discovere
 		}})
 }
 
+// waitFor waits until a number of requests share the client's fetch.
+func (h *harness) waitFor(t *testing.T, waiters int) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		h.r.mu.Lock()
+		n := 0
+		if f := h.r.flights[id]; f != nil {
+			n = f.waiters
+		}
+		h.r.mu.Unlock()
+		if n >= waiters {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("the requests did not share one fetch", n)
+		}
+		time.Sleep(time.Millisecond)
+	}
+}
+
 // Concurrent resolutions of one client share one fetch, which spends the
-// budget once, and each saves; a fresh hit spends none.
+// budget and asks the URL policy once, and each saves; a fresh hit spends
+// none.
 func TestResolverSharesFetches(t *testing.T) {
-	var arrived atomic.Int32
-	h := newHarness(t, Options{AllowMetadataURL: func(context.Context, string) (bool, error) { arrived.Add(1); return true, nil }})
+	var asked atomic.Int32
+	h := newHarness(t, Options{AllowMetadataURL: func(context.Context, string) (bool, error) { asked.Add(1); return true, nil }})
 	clock := time.Date(2026, 11, 27, 12, 0, 0, 0, time.UTC)
 	h.r.now = func() time.Time { return clock }
 	release := make(chan struct{})
@@ -87,12 +109,7 @@ func TestResolverSharesFetches(t *testing.T) {
 	for i := range 5 {
 		wg.Go(func() { _, errs[i] = h.resolve(t.Context(), nil) })
 	}
-	// Every resolution has passed its URL check before the fetch answers; a
-	// late one finds the fetched document cached.
-	deadline := time.Now().Add(5 * time.Second)
-	for arrived.Load() < 5 && time.Now().Before(deadline) {
-		time.Sleep(time.Millisecond)
-	}
+	h.waitFor(t, 5)
 	close(release)
 	wg.Wait()
 	for _, err := range errs {
@@ -103,8 +120,8 @@ func TestResolverSharesFetches(t *testing.T) {
 	h.r.mu.Lock()
 	starts, active := len(h.r.governor.starts), h.r.governor.active
 	h.r.mu.Unlock()
-	if h.fetches.Load() != 1 || h.register.Load() != 5 || starts != 1 || active != 0 {
-		t.Fatal("concurrent resolutions did not share one fetch and save each", h.fetches.Load(), h.register.Load(), starts, active)
+	if h.fetches.Load() != 1 || h.register.Load() != 5 || starts != 1 || active != 0 || asked.Load() != 1 {
+		t.Fatal("concurrent resolutions did not share one fetch and save each", h.fetches.Load(), h.register.Load(), starts, active, asked.Load())
 	}
 	if _, err := h.resolve(t.Context(), nil); err != nil || len(h.r.governor.starts) != 1 || h.fetches.Load() != 1 {
 		t.Fatal("a fresh hit spent the budget", err, len(h.r.governor.starts))
@@ -127,49 +144,126 @@ func TestResolverSaveFailure(t *testing.T) {
 	if _, err := h.resolve(t.Context(), nil); !governorRefusal(err) {
 		t.Fatal("a failed save did not pace the client", err)
 	}
-	both := newHarness(t, Options{FetchPolicy: FetchPolicy{MinimumFetchInterval: -1}})
+	both := newHarness(t, Options{})
 	both.saveErr = func(n int32) error {
 		if n == 1 {
 			return errors.New("store down")
 		}
 		return nil
 	}
+	release := make(chan struct{})
+	both.respond = func(*http.Request) (*http.Response, error) {
+		<-release
+		return answer(200, "application/json", `{"client_id":"`+id+`"}`), nil
+	}
 	var wg sync.WaitGroup
 	errs := make([]error, 2)
 	for i := range 2 {
 		wg.Go(func() { _, errs[i] = both.resolve(t.Context(), nil) })
 	}
+	both.waitFor(t, 2)
+	close(release)
 	wg.Wait()
-	if (errs[0] == nil) == (errs[1] == nil) {
-		t.Fatal("one failed save decided another waiter's answer", errs)
+	if (errs[0] == nil) == (errs[1] == nil) || both.fetches.Load() != 1 {
+		t.Fatal("one failed save decided another waiter's answer", errs, both.fetches.Load())
+	}
+	// A request that ends mid-save keeps the entry cached and paces nothing.
+	ended := newHarness(t, Options{})
+	ctx, cancel := context.WithCancel(t.Context())
+	ended.saveErr = func(n int32) error {
+		if n == 1 {
+			cancel()
+			return context.Canceled
+		}
+		return nil
+	}
+	if _, err := ended.resolve(ctx, nil); !errors.Is(err, context.Canceled) || ended.r.cache.peek(id) == nil {
+		t.Fatal("an ended request's save dropped the cached document", err)
+	}
+	if _, err := ended.resolve(t.Context(), nil); err != nil || ended.fetches.Load() != 1 {
+		t.Fatal("an ended request's save paced the client or spent a fetch", err, ended.fetches.Load())
 	}
 }
 
-// A URL the policy refuses, or a policy error, spends no fetch and no
-// budget; a fresh document cached while the URL was checked answers without
-// a fetch.
+// The host's URL policy runs inside the shared fetch, as another runtime's
+// does: a refusal or an error makes no request, spends one fetch start,
+// paces the client and answers every request sharing the fetch; it sees the
+// starting request's context values but not its cancellation.
 func TestResolverURLPolicy(t *testing.T) {
+	type key struct{}
 	for name, tc := range map[string]struct {
 		allowed bool
 		err     error
 	}{"refused": {false, nil}, "error": {true, errors.New("policy down")}} {
-		h := newHarness(t, Options{AllowMetadataURL: func(context.Context, string) (bool, error) { return tc.allowed, tc.err }})
-		_, err := h.resolve(t.Context(), nil)
-		if err == nil || tc.err != nil && !errors.Is(err, tc.err) || h.fetches.Load() != 0 || len(h.r.governor.starts) != 0 || h.r.governor.active != 0 {
-			t.Fatal("a refused URL spent a fetch or the budget", name, err, h.fetches.Load(), len(h.r.governor.starts))
+		var asked atomic.Int32
+		release := make(chan struct{})
+		var h *harness
+		h = newHarness(t, Options{AllowMetadataURL: func(ctx context.Context, url string) (bool, error) {
+			asked.Add(1)
+			if ctx.Value(key{}) != "starter" || url != id {
+				t.Error("the policy did not see the starting request", ctx.Value(key{}), url)
+			}
+			<-release
+			return tc.allowed, tc.err
+		}})
+		var wg sync.WaitGroup
+		errs := make([]error, 2)
+		wg.Go(func() { _, errs[0] = h.resolve(context.WithValue(t.Context(), key{}, "starter"), nil) })
+		h.waitFor(t, 1)
+		wg.Go(func() { _, errs[1] = h.resolve(t.Context(), nil) })
+		h.waitFor(t, 2)
+		close(release)
+		wg.Wait()
+		for _, err := range errs {
+			if err == nil || tc.err != nil && !errors.Is(err, tc.err) || tc.err == nil && !strings.Contains(err.Error(), "not permitted by the server's fetch policy") {
+				t.Fatal("a refused URL was not refused for every sharing request", name, errs)
+			}
+		}
+		h.r.mu.Lock()
+		starts, active := len(h.r.governor.starts), h.r.governor.active
+		h.r.mu.Unlock()
+		if asked.Load() != 1 || h.fetches.Load() != 0 || starts != 1 || active != 0 {
+			t.Fatal("a refused URL made a request or spent the budget more than once", name, asked.Load(), h.fetches.Load(), starts)
+		}
+		if _, err := h.resolve(t.Context(), nil); !governorRefusal(err) {
+			t.Fatal("a refused URL did not pace the client", name, err)
 		}
 	}
-	var h *harness
-	h = newHarness(t, Options{AllowMetadataURL: func(context.Context, string) (bool, error) {
-		h.r.mu.Lock()
-		entry := &cacheEntry{expires: time.Now().Add(time.Hour)}
-		entry.doc.ClientID = id
-		h.r.cache.put(id, entry)
-		h.r.mu.Unlock()
+	// An invalid URL is refused before the policy, a fetch or the budget.
+	invalid := newHarness(t, Options{AllowMetadataURL: func(context.Context, string) (bool, error) {
+		t.Error("the policy was asked about an invalid URL")
 		return true, nil
 	}})
-	if got, err := h.resolve(t.Context(), nil); err != nil || got.ClientID != id || h.fetches.Load() != 0 || len(h.r.governor.starts) != 0 || h.register.Load() != 1 {
-		t.Fatal("a document cached during the URL check was fetched again", err, h.fetches.Load(), len(h.r.governor.starts))
+	var problem *auth.OAuthError
+	_, err := invalid.r.resolve(t.Context(), oauthprovider.DiscoveryRequest{Auth: invalid.auth, ClientID: "https://user@app.example.test/client.json"})
+	if !errors.As(err, &problem) || problem.Description != ValidateClientIDURL("https://user@app.example.test/client.json").Error() || invalid.fetches.Load() != 0 || len(invalid.r.governor.starts) != 0 {
+		t.Fatal("an invalid URL was not refused before any fetch", err)
+	}
+	// A request cancelled while the policy runs does not cancel the policy
+	// or the fetch, whose document a later request finds cached.
+	var cancelled atomic.Bool
+	entered, release := make(chan struct{}), make(chan struct{})
+	h := newHarness(t, Options{AllowMetadataURL: func(ctx context.Context, _ string) (bool, error) {
+		close(entered)
+		<-release
+		cancelled.Store(ctx.Err() != nil)
+		return true, nil
+	}})
+	ctx, cancel := context.WithCancel(t.Context())
+	done := make(chan error)
+	go func() { _, err := h.resolve(ctx, nil); done <- err }()
+	<-entered
+	cancel()
+	if err := <-done; !errors.Is(err, context.Canceled) {
+		t.Fatal("a cancelled request did not end", err)
+	}
+	close(release)
+	deadline := time.Now().Add(5 * time.Second)
+	for h.fetches.Load() == 0 && time.Now().Before(deadline) {
+		time.Sleep(time.Millisecond)
+	}
+	if got, err := h.resolve(t.Context(), nil); err != nil || got.ClientID != id || cancelled.Load() || h.fetches.Load() != 1 {
+		t.Fatal("a cancelled request cancelled its shared fetch", err, cancelled.Load(), h.fetches.Load())
 	}
 }
 

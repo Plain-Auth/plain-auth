@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/url"
 	"os"
 	"syscall"
 	"testing"
@@ -28,7 +29,8 @@ func TestTransient(t *testing.T) {
 		"host": {dial(syscall.EHOSTUNREACH), true}, "network": {dial(syscall.ENETUNREACH), true}, "pipe": {fmt.Errorf("write: %w", syscall.EPIPE), true},
 		"dns temporary": {&net.DNSError{Err: "server misbehaving", IsTemporary: true}, true}, "dns timeout": {&net.DNSError{Err: "i/o timeout", IsTimeout: true}, true},
 		"dns not found": {&net.DNSError{Err: "no such host", IsNotFound: true}, false}, "timeout": {timeout{}, true}, "eof": {io.ErrUnexpectedEOF, true},
-		"tls": {&net.OpError{Op: "remote error", Err: errors.New("tls: handshake failure")}, false}, "files": {dial(syscall.EMFILE), false}, "other": {errors.New("x"), false},
+		"closed": {&url.Error{Op: "Get", URL: "https://example.com", Err: io.EOF}, true},
+		"tls":    {&net.OpError{Op: "remote error", Err: errors.New("tls: handshake failure")}, false}, "files": {dial(syscall.EMFILE), false}, "other": {errors.New("x"), false},
 	} {
 		if got := Transient(tc.err); got != tc.want {
 			t.Error("wrong transient answer", name, got)

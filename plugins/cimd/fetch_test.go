@@ -52,22 +52,19 @@ func TestFetchDocument(t *testing.T) {
 	if sent.Header.Get("Accept") != "application/json" || sent.Header.Get("If-None-Match") != `"v1"` || sent.Header.Get("If-Modified-Since") == "" {
 		t.Fatal("the request headers were wrong", sent.Header)
 	}
-	// A refused URL makes no request.
-	sent = nil
+	// A refused URL is refused with invalid_client; a policy error is
+	// returned as is.
 	refuse := Options{AllowMetadataURL: func(context.Context, string) (bool, error) { return false, nil }}
-	if err := refuse.checkURL(t.Context(), id); err == nil || err.Error() == "" || sent != nil {
-		t.Fatal("a refused URL was fetched", err)
-	}
 	var problem *auth.OAuthError
-	if err := refuse.checkURL(t.Context(), id); !errors.As(err, &problem) || problem.Description != "client_id URL is not permitted by the server's fetch policy" {
+	if err := refuse.allowURL(t.Context(), id); !errors.As(err, &problem) || problem.Description != "client_id URL is not permitted by the server's fetch policy" {
 		t.Fatal("wrong refusal", err)
 	}
 	hookErr := errors.New("policy down")
-	if err := (Options{AllowMetadataURL: func(context.Context, string) (bool, error) { return true, hookErr }}).checkURL(t.Context(), id); !errors.Is(err, hookErr) {
+	if err := (Options{AllowMetadataURL: func(context.Context, string) (bool, error) { return true, hookErr }}).allowURL(t.Context(), id); !errors.Is(err, hookErr) {
 		t.Fatal("a policy error was not returned as is", err)
 	}
-	if err := opts.checkURL(t.Context(), "http://app.example.test/c"); !errors.As(err, &problem) || problem.Description != "client_id URL must use HTTPS" {
-		t.Fatal("an invalid URL was not refused", err)
+	if err := opts.allowURL(t.Context(), id); err != nil {
+		t.Fatal("no policy refused a URL", err)
 	}
 	// Failures and their kinds.
 	cases := map[string]struct {
@@ -109,6 +106,15 @@ func TestFetchDocument(t *testing.T) {
 			return r, nil
 		}, "", terminalFailure, 400, "Metadata document exceeds 5KB size limit"},
 		"invalid JSON": {func(*http.Request) (*http.Response, error) { return answer(200, "application/json", "{"), nil }, "", terminalFailure, 400, "Metadata document is not valid JSON"},
+		// The byte order mark counts toward the size.
+		"5KB with BOM": {func(*http.Request) (*http.Response, error) {
+			return answer(200, "application/json", "\xEF\xBB\xBF"+valid+strings.Repeat(" ", 5<<10-len(valid)-2)), nil
+		}, "", terminalFailure, 400, "Metadata document exceeds 5KB size limit"},
+		"two media lines": {func(*http.Request) (*http.Response, error) {
+			r := answer(200, "application/json", valid)
+			r.Header.Add("Content-Type", "text/html")
+			return r, nil
+		}, "", terminalFailure, 400, `Metadata document must be JSON (got Content-Type "application/json, text/html")`},
 		"invalid document": {func(*http.Request) (*http.Response, error) {
 			return answer(200, "application/json", `{"client_id":"x"}`), nil
 		}, "", terminalFailure, 400, `client_id "x" does not match the metadata document URL`},
@@ -127,6 +133,16 @@ func TestFetchDocument(t *testing.T) {
 	}
 	if _, err := opts.fetchDocument(t.Context(), client, id, "", "", logger); err != nil {
 		t.Fatal("a document with a byte order mark was refused", err)
+	}
+	// Repeated caching headers read as their lines joined.
+	respond = func(*http.Request) (*http.Response, error) {
+		r := answer(200, "application/json", valid)
+		r.Header["Cache-Control"] = []string{"public, max-age=3600", "no-store"}
+		r.Header["Vary"] = []string{"Accept-Encoding", "*"}
+		return r, nil
+	}
+	if got, err := opts.fetchDocument(t.Context(), client, id, "", "", logger); err != nil || got.headers.CacheControl != "public, max-age=3600, no-store" || got.headers.Vary != "Accept-Encoding, *" {
+		t.Fatal("repeated caching headers were not joined", err, got.headers)
 	}
 	// Accepted media types, a conditional 304 and warnings.
 	for _, media := range []string{"application/json;charset=utf-8", "application/client+json", "APPLICATION/JSON"} {

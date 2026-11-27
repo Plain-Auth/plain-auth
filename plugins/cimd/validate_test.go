@@ -5,6 +5,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/Plain-Org/plain-auth/internal/publicnet"
 )
 
 func TestIsClientIDURLCandidate(t *testing.T) {
@@ -147,16 +149,27 @@ func TestValidateMetadata(t *testing.T) {
 	if _, _, err := ValidateMetadata(idn, idnDoc("https://évil.example/bye"), ValidationOptions{}); err == nil || !strings.Contains(err.Error(), "(https://xn--bcher-kva.example)") {
 		t.Fatal("another IDN host passed origin binding", err)
 	}
-	for _, same := range []string{"https://xn--bcher-kva.example/bye", "https://BÜCHER.example:443/bye"} {
+	for _, same := range []string{"https://xn--bcher-kva.example/bye", "https://BÜCHER.example:443/bye", "https://bücher.example:0443/bye"} {
 		if _, _, err := ValidateMetadata(idn, idnDoc(same), ValidationOptions{}); err != nil {
 			t.Fatal("the same origin was refused", same, err)
 		}
 	}
-	if o, ok := origin(&url.URL{Scheme: "myapp", Host: "x"}); ok || o != "" {
+	if o, ok := publicnet.Origin(&url.URL{Scheme: "myapp", Host: "x"}); ok || o != "" {
 		t.Fatal("an opaque origin was serialized", o)
 	}
 	if idOrigin(idn) != "https://xn--bcher-kva.example" || idOrigin("https://évil.example/c") == idOrigin(idn) {
 		t.Fatal("IDN client IDs share a fetch budget", idOrigin(idn))
+	}
+	// A port spelled with leading zeros is the same origin, and so the same
+	// fetch budget.
+	if idOrigin("https://app.example.test:0443/c") != "https://app.example.test" || idOrigin("https://app.example.test:08443/c") != "https://app.example.test:8443" {
+		t.Fatal("a zero-padded port split the origin", idOrigin("https://app.example.test:0443/c"))
+	}
+	// Hyphens anywhere in a label are allowed, as in browsers.
+	for _, hyphens := range []string{"https://my--app.example/client.json", "https://r1---sn-abc.example.com/c.json", "https://-app.example/c.json"} {
+		if err := ValidateClientIDURL(hyphens); err != nil {
+			t.Fatal("a hyphenated host was refused", hyphens, err)
+		}
 	}
 	bound := ValidationOptions{OriginBoundFields: []string{"redirect_uris"}}
 	if _, _, err := ValidateMetadata(id, doc(`"redirect_uris":["myapp://other.example/cb","http://127.0.0.1:9/cb"]`), bound); err != nil {

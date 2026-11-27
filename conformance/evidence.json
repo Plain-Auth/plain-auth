@@ -50487,7 +50487,7 @@
   ],
   "plugin-symbol/cimd/CimdOptions/isMetadataDocumentUrlAllowed": [
     {
-      "label": "Refuse a client ID URL the host's policy refuses before any fetch or fetch budget, returning the policy's own error as is",
+      "label": "Ask the host's URL policy once inside the shared fetch with the starting request's context values: a refusal or an error makes no request, spends one fetch start, paces the client and answers every sharing request, the error as is",
       "test": "plugins/cimd/resolver_test.go",
       "marker": "func TestResolverURLPolicy(",
       "complete": true
@@ -50495,7 +50495,7 @@
   ],
   "docs/content/docs/plugins/cimd.mdx#L159/`cimdOptionsType.isMetadataDocumentUrlAllowed`": [
     {
-      "label": "Refuse a client ID URL the host's policy refuses before any fetch or fetch budget",
+      "label": "Ask the host's URL policy once inside the shared fetch with the starting request's context values: a refusal or an error makes no request, spends one fetch start, paces the client and answers every sharing request, the error as is",
       "test": "plugins/cimd/resolver_test.go",
       "marker": "func TestResolverURLPolicy(",
       "complete": true
@@ -50562,10 +50562,15 @@
   ],
   "plugin-symbol/cimd/CimdOptions/metadataFetchPolicy": [
     {
-      "label": "Spend the fetch budget once per shared fetch and none on a fresh hit, pacing a client after a failed save",
+      "label": "Apply the configured fetch policy to resolutions: one budget spend per shared fetch and none on a fresh hit",
       "test": "plugins/cimd/resolver_test.go",
       "marker": "func TestResolverSharesFetches(",
       "complete": true
+    },
+    {
+      "label": "Pace a client after a failed save and drop its cached document, but not after a request that ended mid-save",
+      "test": "plugins/cimd/resolver_test.go",
+      "marker": "func TestResolverSaveFailure("
     }
   ],
   "plugin-symbol/cimd/CimdOptions/maxCacheEntries": [

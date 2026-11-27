@@ -100,14 +100,32 @@ const (
 
 var errFetchKeys = errors.New("failed to fetch client JWKS")
 
+// keyFetchTimeout bounds a key set fetch, headers and body; tests shorten it.
+var keyFetchTimeout = 5 * time.Second
+
 type cachedClientKeys struct {
 	keys    assertionKeys
 	fetched time.Time
 	// retry paces refetches while the set answers after a failed refresh.
 	retry time.Time
-	// transient is when a transient failure last left the set answering.
+	// When the last transient failure happened, and whether a refused
+	// response stopped a discovery's stale answers until a fetch succeeds.
 	transient time.Time
+	terminal  bool
 }
+
+// keyFailure classifies a failed key fetch: a transient failure may pass on
+// retry, a transport failure retrieved nothing, a capacity refusal says
+// nothing about the keys, and a terminal one retrieved a response and
+// refused it.
+type keyFailure int
+
+const (
+	keyTerminal keyFailure = iota
+	keyTransient
+	keyTransport
+	keyCapacity
+)
 
 // keySource is where a client's remote keys come from: the cache key, which
 // separates a discovery's clients from managed ones, the fetching client,
@@ -134,8 +152,11 @@ type clientKeyCache struct {
 	pending     map[string]*keyFetch
 }
 
+// keyClient fetches key sets without following redirects; fetchKeySet
+// bounds each fetch with a context deadline, which a custom transport must
+// honour.
 func keyClient(transport http.RoundTripper) *http.Client {
-	return &http.Client{Transport: transport, Timeout: 5 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	return &http.Client{Transport: transport, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 }
 
 func newClientKeyCache(transport http.RoundTripper, discoveries []*ClientDiscovery) *clientKeyCache {
@@ -233,39 +254,54 @@ func (cache *clientKeyCache) load(ctx context.Context, src keySource, previous *
 }
 
 // refresh replaces a set. A failure leaves the set answering for twice its
-// lifetime, unless the response was an invalid key set, and for a
-// discovery's JWKSStaleIfError after the last success when the failure is
-// transient; while it answers, refetches wait a minute. Any other failure
-// drops the set.
+// lifetime unless the response was an invalid key set; while it answers,
+// refetches wait a minute. A discovery's keys also answer up to its
+// JWKSStaleIfError after the last success through a transient failure, and
+// through a capacity refusal within five minutes of one, unless a refused
+// response came since, as in another runtime. A refused response past twice
+// the lifetime, or an invalid key set, drops the set; any other failure
+// keeps it for a later fetch.
 func (cache *clientKeyCache) refresh(ctx context.Context, src keySource, f *keyFetch) {
-	keys, transient, invalid, err := cache.fetch(ctx, src)
+	keys, kind, invalid, err := cache.fetch(ctx, src)
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
 	defer close(f.done)
 	delete(cache.pending, src.key)
 	old := cache.sets[src.key]
-	if err != nil {
-		capacity := errors.Is(err, ErrFetchCapacity)
-		stale := old != nil && time.Since(old.fetched) < src.stale
+	if err != nil && old != nil {
+		now := time.Now()
+		// Each outcome is recorded, as another runtime records it for a
+		// discovery: a transient failure's time, a refused response that
+		// ends stale answers until a fetch succeeds, and a transport failure
+		// that ends the transient record; a capacity refusal records
+		// nothing.
+		switch kind {
+		case keyTransient:
+			old.transient = now
+		case keyTransport:
+			old.transient = time.Time{}
+		case keyTerminal:
+			old.terminal = true
+		}
+		age := now.Sub(old.fetched)
+		stale := !old.terminal && age < src.stale
 		switch {
-		case old != nil && !invalid && time.Since(old.fetched) < 2*clientKeysTTL:
-		case stale && transient:
-			old.transient = time.Now()
+		case !invalid && age < 2*clientKeysTTL:
+		case stale && kind == keyTransient, stale && kind == keyCapacity && now.Sub(old.transient) <= 5*time.Minute:
 			src.logger.WarnContext(ctx, "oauth-provider is verifying client "+src.clientID+" with cached keys from "+src.uri+" because refreshing them failed: "+err.Error())
-		case stale && capacity && time.Since(old.transient) <= 5*time.Minute:
-			src.logger.WarnContext(ctx, "oauth-provider is verifying client "+src.clientID+" with cached keys from "+src.uri+" because refreshing them failed: "+err.Error())
-		case capacity:
-			// A refusal at a local limit says nothing about the keys, so
-			// they are kept for a later fetch.
-			f.err = err
-			return
 		default:
-			delete(cache.sets, src.key)
+			if kind == keyTerminal {
+				delete(cache.sets, src.key)
+			}
 			f.err = err
 			return
 		}
-		old.retry = time.Now().Add(time.Minute)
+		old.retry = now.Add(time.Minute)
 		f.value = old
+		return
+	}
+	if err != nil {
+		f.err = err
 		return
 	}
 	if old == nil && len(cache.sets) >= maxClientKeySets {
@@ -281,51 +317,68 @@ func (cache *clientKeyCache) refresh(ctx context.Context, src keySource, f *keyF
 	cache.sets[src.key] = f.value
 }
 
-// fetch reads a key set and reports whether a failure may pass on retry and
-// whether the response was an invalid key set.
-func (cache *clientKeyCache) fetch(ctx context.Context, src keySource) (assertionKeys, bool, bool, error) {
-	raw, transient, err := fetchKeySet(ctx, src.http, src.uri)
+// fetch reads a key set and classifies a failure, reporting whether the
+// response was an invalid key set.
+func (cache *clientKeyCache) fetch(ctx context.Context, src keySource) (assertionKeys, keyFailure, bool, error) {
+	raw, kind, err := fetchKeySet(ctx, src.http, src.uri)
 	if err != nil {
-		return nil, transient, false, err
+		return nil, kind, false, err
 	}
 	keys, err := decodeAssertionKeys(raw)
 	if err != nil {
-		return nil, false, true, fmt.Errorf("%w: invalid key set", errFetchKeys)
+		return nil, keyTerminal, true, fmt.Errorf("%w: invalid key set", errFetchKeys)
 	}
-	return keys, false, false, nil
+	return keys, 0, false, nil
 }
 
-// fetchKeySet reads a JWKS document: status 200, a JSON media type and at
-// most 64 KiB. It reports whether a failure may pass on retry: a 500, 502,
-// 503 or 504 answer, a timeout or a connection failure.
-func fetchKeySet(ctx context.Context, client *http.Client, uri string) ([]byte, bool, error) {
+// fetchKeySet reads a JWKS document in five seconds: status 200, a JSON
+// media type and at most 64 KiB. A failure is transient for a 500, 502, 503
+// or 504 answer, a timeout or a connection failure, a capacity refusal when
+// the transport wraps ErrFetchCapacity, a transport failure for another one
+// that retrieved nothing, such as a lookup the deadline ended, and terminal
+// for a response it refuses.
+func fetchKeySet(ctx context.Context, client *http.Client, uri string) ([]byte, keyFailure, error) {
+	ctx, cancel := context.WithTimeout(ctx, keyFetchTimeout)
+	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, uri, nil)
 	if err != nil {
-		return nil, false, errFetchKeys
+		return nil, keyTerminal, errFetchKeys
 	}
 	req.Header.Set("Accept", "application/jwk-set+json, application/json")
+	classify := func(err error) keyFailure {
+		switch {
+		case errors.Is(err, ErrFetchCapacity):
+			return keyCapacity
+		case publicnet.Transient(err):
+			return keyTransient
+		}
+		return keyTransport
+	}
 	res, err := client.Do(req)
 	if err != nil {
-		return nil, publicnet.Transient(err), fmt.Errorf("%w: %w", errFetchKeys, err)
+		return nil, classify(err), fmt.Errorf("%w: %w", errFetchKeys, err)
 	}
 	defer res.Body.Close()
 	if res.StatusCode != 200 {
-		transient := res.StatusCode == 500 || res.StatusCode == 502 || res.StatusCode == 503 || res.StatusCode == 504
-		return nil, transient, fmt.Errorf("%w: status %d", errFetchKeys, res.StatusCode)
+		kind := keyTerminal
+		if res.StatusCode == 500 || res.StatusCode == 502 || res.StatusCode == 503 || res.StatusCode == 504 {
+			kind = keyTransient
+		}
+		return nil, kind, fmt.Errorf("%w: status %d", errFetchKeys, res.StatusCode)
 	}
 	media, _, err := mime.ParseMediaType(res.Header.Get("Content-Type"))
 	if err != nil || (media != "application/json" && !(strings.HasPrefix(media, "application/") && strings.HasSuffix(media, "+json"))) {
-		return nil, false, fmt.Errorf("%w: media type %q", errFetchKeys, res.Header.Get("Content-Type"))
+		return nil, keyTerminal, fmt.Errorf("%w: media type %q", errFetchKeys, res.Header.Get("Content-Type"))
 	}
 	if res.ContentLength > maxClientKeyBytes {
-		return nil, false, fmt.Errorf("%w: too large", errFetchKeys)
+		return nil, keyTerminal, fmt.Errorf("%w: too large", errFetchKeys)
 	}
 	raw, err := io.ReadAll(io.LimitReader(res.Body, maxClientKeyBytes+1))
 	if err != nil {
-		return nil, publicnet.Transient(err), fmt.Errorf("%w: %w", errFetchKeys, err)
+		return nil, classify(err), fmt.Errorf("%w: %w", errFetchKeys, err)
 	}
 	if len(raw) > maxClientKeyBytes {
-		return nil, false, fmt.Errorf("%w: too large", errFetchKeys)
+		return nil, keyTerminal, fmt.Errorf("%w: too large", errFetchKeys)
 	}
-	return raw, false, nil
+	return raw, 0, nil
 }

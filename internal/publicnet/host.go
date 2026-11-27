@@ -3,6 +3,7 @@ package publicnet
 import (
 	"errors"
 	"net/netip"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -10,8 +11,8 @@ import (
 )
 
 // hosts maps a host as a browser's URL parser does, which allows characters
-// outside RFC 1034 such as "_".
-var hosts = idna.New(idna.MapForLookup(), idna.StrictDomainName(false))
+// outside RFC 1034 such as "_" and hyphens anywhere in a label.
+var hosts = idna.New(idna.MapForLookup(), idna.StrictDomainName(false), idna.CheckHyphens(false))
 
 var errForbiddenHost = errors.New("publicnet: forbidden host character")
 
@@ -64,4 +65,37 @@ func AmbiguousHost(name string) bool {
 	}
 	_, err := strconv.ParseUint(tail, 10, 64)
 	return err == nil || strings.HasPrefix(strings.ToLower(tail), "0x")
+}
+
+// Origin is an HTTP(S) URL's web origin as a browser serializes it: the
+// scheme, the host in ASCII, and the port as a number unless it is the
+// scheme's default, without credentials. ok is false for a URL without
+// one, whose origin is opaque.
+func Origin(u *url.URL) (string, bool) {
+	host := u.Hostname()
+	if u.Scheme != "http" && u.Scheme != "https" || host == "" {
+		return "", false
+	}
+	if ip, err := netip.ParseAddr(host); err == nil {
+		host = ip.String()
+		if ip.Is6() {
+			host = "[" + host + "]"
+		}
+	} else {
+		ascii, err := HostASCII(host)
+		if err != nil {
+			return "", false
+		}
+		host = strings.ToLower(ascii)
+	}
+	if port := u.Port(); port != "" {
+		n, err := strconv.ParseUint(port, 10, 16)
+		if err != nil {
+			return "", false
+		}
+		if !(u.Scheme == "http" && n == 80 || u.Scheme == "https" && n == 443) {
+			host += ":" + strconv.FormatUint(n, 10)
+		}
+	}
+	return u.Scheme + "://" + host, true
 }

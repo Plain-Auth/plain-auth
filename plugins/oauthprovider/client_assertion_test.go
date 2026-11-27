@@ -296,12 +296,16 @@ func TestDiscoveredClientKeys(t *testing.T) {
 	}
 	status := 200
 	capacity := false
+	var fail error
 	var managed, discovered atomic.Int32
 	serve := func(counter *atomic.Int32) assertionTransport {
 		return func(r *http.Request) (*http.Response, error) {
 			counter.Add(1)
 			if capacity {
 				return nil, fmt.Errorf("lookup limit: %w", ErrFetchCapacity)
+			}
+			if fail != nil {
+				return nil, fail
 			}
 			return &http.Response{StatusCode: status, Header: http.Header{"Content-Type": {"application/json"}}, Body: io.NopCloser(strings.NewReader(string(raw)))}, nil
 		}
@@ -420,6 +424,54 @@ func TestDiscoveredClientKeys(t *testing.T) {
 			t.Fatal("stale keys returned after a terminal failure", terminal)
 		}
 	}
+	// A transient failure within twice the lifetime is recorded, so a
+	// capacity refusal just past it still serves the keys.
+	status = 200
+	if err := key("cimd", uri); err != nil {
+		t.Fatal(err)
+	}
+	age(6 * time.Minute)
+	status = 503
+	if err := key("cimd", uri); err != nil {
+		t.Fatal("a transient failure within twice the lifetime dropped the keys", err)
+	}
+	status, capacity = 200, true
+	age(11 * time.Minute)
+	if err := key("cimd", uri); err != nil {
+		t.Fatal("a capacity refusal after an early transient failure dropped the keys", err)
+	}
+	// A failure that retrieved nothing ends the transient record but keeps
+	// the keys for a later transient failure.
+	capacity, fail = false, errors.New("remote error: tls: internal error")
+	age(30 * time.Minute)
+	if err := key("cimd", uri); err == nil {
+		t.Fatal("a transport failure served stale keys")
+	}
+	fail, capacity = nil, true
+	if err := key("cimd", uri); err == nil {
+		t.Fatal("a capacity refusal served keys after a transport failure")
+	}
+	capacity, status = false, 503
+	if err := key("cimd", uri); err != nil {
+		t.Fatal("a transport failure discarded the keys", err)
+	}
+	// A refused response within twice the lifetime still answers there but
+	// stops stale answers after it.
+	status = 200
+	if err := key("cimd", uri); err != nil {
+		t.Fatal(err)
+	}
+	age(6 * time.Minute)
+	status = 404
+	if err := key("cimd", uri); err != nil {
+		t.Fatal("a refused response within twice the lifetime dropped the keys", err)
+	}
+	age(30 * time.Minute)
+	status = 503
+	if err := key("cimd", uri); err == nil {
+		t.Fatal("stale keys answered after a refused response")
+	}
+	status = 200
 	// The stale bound is never negative and at most a day.
 	never := func(string) bool { return false }
 	resolve := func(context.Context, DiscoveryRequest) (*DiscoveredClient, error) { return nil, nil }
@@ -427,6 +479,51 @@ func TestDiscoveredClientKeys(t *testing.T) {
 		{ID: "high", Matches: never, Resolve: resolve, JWKSStaleIfError: 48 * time.Hour}}}}}
 	if err := bounded.collectDiscoveries(); err != nil || bounded.discoveries[0].JWKSStaleIfError != 0 || bounded.discoveries[1].JWKSStaleIfError != 24*time.Hour {
 		t.Fatal("the stale bound was not clamped", err)
+	}
+}
+
+// abortedLookup is a lookup a deadline ended, as a discovery's transport
+// reports one, with no Timeout method of its own.
+type abortedLookup struct{ err error }
+
+func (e abortedLookup) Error() string { return "lookup aborted: " + e.err.Error() }
+func (e abortedLookup) Unwrap() error { return e.err }
+
+// Key fetches are bounded by a deadline and classify their failures: a
+// timeout or a closed connection may pass on retry, a lookup the deadline
+// ended or a TLS failure retrieved nothing, a capacity refusal says nothing,
+// and a refused response is terminal.
+func TestKeyFetchFailures(t *testing.T) {
+	defer func(d time.Duration) { keyFetchTimeout = d }(keyFetchTimeout)
+	keyFetchTimeout = 50 * time.Millisecond
+	for name, tc := range map[string]struct {
+		rt   assertionTransport
+		want keyFailure
+	}{
+		"timeout": {func(r *http.Request) (*http.Response, error) { <-r.Context().Done(); return nil, r.Context().Err() }, keyTransient},
+		"lookup": {func(r *http.Request) (*http.Response, error) {
+			<-r.Context().Done()
+			return nil, abortedLookup{r.Context().Err()}
+		}, keyTransport},
+		"closed": {func(*http.Request) (*http.Response, error) { return nil, io.EOF }, keyTransient},
+		"tls": {func(*http.Request) (*http.Response, error) {
+			return nil, errors.New("remote error: tls: internal error")
+		}, keyTransport},
+		"limit": {func(*http.Request) (*http.Response, error) {
+			return nil, fmt.Errorf("lookup limit: %w", ErrFetchCapacity)
+		}, keyCapacity},
+		"refused": {func(*http.Request) (*http.Response, error) {
+			return &http.Response{StatusCode: 404, Body: io.NopCloser(strings.NewReader(""))}, nil
+		}, keyTerminal},
+		"busy": {func(*http.Request) (*http.Response, error) {
+			return &http.Response{StatusCode: 503, Body: io.NopCloser(strings.NewReader(""))}, nil
+		}, keyTransient},
+	} {
+		start := time.Now()
+		_, kind, err := fetchKeySet(t.Context(), keyClient(tc.rt), "https://app.example.test/jwks")
+		if err == nil || kind != tc.want || time.Since(start) > time.Second {
+			t.Error("wrong key fetch failure", name, kind, err, time.Since(start))
+		}
 	}
 }
 

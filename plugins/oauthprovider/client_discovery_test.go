@@ -140,13 +140,17 @@ func TestRegisterMetadataDocument(t *testing.T) {
 		return err
 	}
 	asked = nil
-	for _, uri := range []string{"https://app.example.test/jwks", "https://APP.example.test:443/jwks", "https://keys.example.test/jwks"} {
+	for _, uri := range []string{"https://app.example.test/jwks", "https://APP.example.test:443/jwks", "https://app.example.test:0443/jwks", "https://keys.example.test/jwks"} {
 		if err := keys(uri); err != nil {
 			t.Fatal("a same-origin or trusted jwks_uri was refused", uri, err)
 		}
 	}
 	if len(asked) != 0 {
 		t.Fatal("the hook was asked about a same-origin or trusted jwks_uri", asked)
+	}
+	// Origins compare with hosts in ASCII.
+	if !sameOrigin("https://bücher.example/app", "https://xn--bcher-kva.example/jwks.json") || sameOrigin("https://bücher.example/app", "https://bucher.example/jwks.json") {
+		t.Fatal("an IDN client's own origin was not matched in ASCII")
 	}
 	if err := keys("https://cdn.example.test/allowed/jwks"); err != nil || len(asked) != 1 {
 		t.Fatal("an allowed cross-origin jwks_uri was refused", err, asked)

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/internal/publicnet"
 	"github.com/Plain-Org/plain-auth/plugins/oauthprovider"
 )
 
@@ -40,6 +41,8 @@ type flight struct {
 	doc   oauthprovider.ClientMetadataDocument
 	entry *cacheEntry
 	err   error
+	// waiters counts the requests sharing the fetch.
+	waiters int
 }
 
 type resolver struct {
@@ -106,68 +109,52 @@ func (r *resolver) resolve(ctx context.Context, req oauthprovider.DiscoveryReque
 		return nil, nil
 	}
 	logger := req.Auth.Logger()
-	for {
-		r.mu.Lock()
-		entry := r.cache.get(id)
-		if entry != nil && r.now().Before(entry.expires) {
-			saved := entry.saved
-			r.mu.Unlock()
-			if req.Existing != nil && saved {
-				return req.Existing, nil
-			}
-			return r.save(ctx, req, entry.doc, entry, logger)
-		}
-		// After a transient failure the stored client answers for a minute
-		// without another fetch.
-		if record, ok := r.transients[id]; ok && r.now().Sub(record.at) < staleRefetch {
-			if stored := r.storedLocked(req); stored != nil {
-				r.mu.Unlock()
-				return r.serveStale(ctx, logger, stored, record.reason), nil
-			}
-		}
-		r.mu.Unlock()
-		doc, entry, cached, err := r.shared(ctx, id, logger)
-		if err != nil {
-			return r.refused(ctx, req, err, logger)
-		}
-		// A fetch that finished while the URL was checked cached a fresh
-		// document, which the cache path answers without another fetch.
-		if cached {
-			continue
-		}
-		return r.save(ctx, req, doc, entry, logger)
+	// An invalid URL is refused before any fetch budget is spent.
+	if err := ValidateClientIDURL(id); err != nil {
+		return r.refused(ctx, req, fetchFailure(terminalFailure, err.Error()), logger)
 	}
-}
-
-// shared checks the URL and joins or starts the client's fetch; cached
-// reports a fresh document cached meanwhile, which needs no fetch.
-func (r *resolver) shared(ctx context.Context, id string, logger *slog.Logger) (doc oauthprovider.ClientMetadataDocument, entry *cacheEntry, cached bool, err error) {
-	if err := r.opts.checkURL(ctx, id); err != nil {
-		return doc, nil, false, err
-	}
+	// The cache check and joining a fetch share one lock, so a request
+	// never misses a fetch that settles meanwhile.
 	r.mu.Lock()
-	if e := r.cache.peek(id); e != nil && r.now().Before(e.expires) {
+	entry := r.cache.get(id)
+	if entry != nil && r.now().Before(entry.expires) {
+		saved := entry.saved
 		r.mu.Unlock()
-		return doc, nil, true, nil
+		if req.Existing != nil && saved {
+			return req.Existing, nil
+		}
+		return r.save(ctx, req, entry.doc, entry, logger)
+	}
+	// After a transient failure the stored client answers for a minute
+	// without another fetch.
+	if record, ok := r.transients[id]; ok && r.now().Sub(record.at) < staleRefetch {
+		if stored := r.storedLocked(req); stored != nil {
+			r.mu.Unlock()
+			return r.serveStale(ctx, logger, stored, record.reason), nil
+		}
 	}
 	f := r.flights[id]
 	if f == nil {
 		release, err := r.governor.acquire(id, idOrigin(id), r.now())
 		if err != nil {
 			r.mu.Unlock()
-			return doc, nil, false, err
+			return r.refused(ctx, req, err, logger)
 		}
 		f = &flight{done: make(chan struct{})}
 		r.flights[id] = f
 		go r.fetch(context.WithoutCancel(ctx), id, f, r.cache.peek(id), release, logger)
 	}
+	f.waiters++
 	r.mu.Unlock()
 	select {
 	case <-ctx.Done():
-		return doc, nil, false, ctx.Err()
+		return nil, ctx.Err()
 	case <-f.done:
 	}
-	return f.doc, f.entry, false, f.err
+	if f.err != nil {
+		return r.refused(ctx, req, f.err, logger)
+	}
+	return r.save(ctx, req, f.doc, f.entry, logger)
 }
 
 // refused decides whether the stored client stands in for a failed refresh:
@@ -186,18 +173,9 @@ func (r *resolver) refused(ctx context.Context, req oauthprovider.DiscoveryReque
 		r.recordLocked(r.transients, id, staleRecord{now, describe(err)})
 		r.mu.Unlock()
 		return r.serveStale(ctx, logger, stored, describe(err)), nil
-	case stored != nil && fetched && kind == terminalFailure:
+	case stored != nil && (fetched && kind == terminalFailure || errors.As(err, &policy)):
+		// A URL policy error stops stale serving like a refusal.
 		r.terminalLocked(id, now)
-	case errors.As(err, &policy):
-		// A URL policy error stops stale serving and paces the client, as
-		// a refusal inside the fetch does in another runtime.
-		delete(r.transients, id)
-		if stored != nil {
-			r.terminalLocked(id, now)
-		}
-		r.mu.Unlock()
-		r.governor.pace(id, now)
-		return nil, err
 	}
 	record, recent := r.transients[id]
 	if stored != nil && recent && now.Sub(record.at) <= staleRefusal && (governorRefusal(err) || fetched && kind == capacityFailure) {
@@ -278,15 +256,20 @@ func describe(err error) string {
 	return err.Error()
 }
 
-// fetch runs one shared fetch, revalidating an expired entry with its
-// validators, caches the document when its response allows, and settles the
-// fetch budget.
+// fetch runs one shared fetch: it asks the host's URL policy with the
+// starting request's context values, not its cancellation, then revalidates
+// an expired entry with its validators, caches the document when its
+// response allows, and settles the fetch budget.
 func (r *resolver) fetch(ctx context.Context, id string, f *flight, expired *cacheEntry, release func(fetchOutcome, time.Time), logger *slog.Logger) {
 	var etag, lastModified string
 	if expired != nil {
 		etag, lastModified = expired.headers.ETag, expired.headers.LastModified
 	}
-	got, err := r.opts.fetchDocument(ctx, r.http, id, etag, lastModified, logger)
+	var got fetchedDocument
+	err := r.opts.allowURL(ctx, id)
+	if err == nil {
+		got, err = r.opts.fetchDocument(ctx, r.http, id, etag, lastModified, logger)
+	}
 	doc, headers := got.doc, got.headers
 	// A 304 answers only the validators of the expired entry it revalidates,
 	// which another runtime may have evicted meanwhile; here the fetch holds it.
@@ -306,8 +289,9 @@ func (r *resolver) fetch(ctx context.Context, id string, f *flight, expired *cac
 	delete(r.flights, id)
 	f.doc, f.err = doc, err
 	// A success ends both failure records; a failure that is neither
-	// transient nor a capacity refusal ends the transient one.
-	if kind, failed := failureKind(err); !failed {
+	// transient nor a capacity refusal ends the transient one. A URL policy
+	// error has no kind and counts as terminal.
+	if kind, _ := failureKind(err); err == nil {
 		delete(r.transients, id)
 		delete(r.terminals, id)
 	} else if kind == terminalFailure || kind == transportFailure {
@@ -328,6 +312,11 @@ func (r *resolver) fetch(ctx context.Context, id string, f *flight, expired *cac
 // notifies the host. A failed save drops its entry and paces the client.
 func (r *resolver) save(ctx context.Context, req oauthprovider.DiscoveryRequest, doc oauthprovider.ClientMetadataDocument, entry *cacheEntry, logger *slog.Logger) (*oauthprovider.DiscoveredClient, error) {
 	result, err := req.Register(ctx, doc)
+	if err != nil && ctx.Err() != nil {
+		// A request that ended mid-save says nothing about the document or
+		// the store, so the entry stays cached for the next request to save.
+		return nil, err
+	}
 	r.mu.Lock()
 	current := r.cache.peek(req.ClientID)
 	if err != nil {
@@ -369,7 +358,7 @@ func (r *resolver) save(ctx context.Context, req oauthprovider.DiscoveryRequest,
 // idOrigin is a client ID URL's origin, which the fetch budgets share.
 func idOrigin(id string) string {
 	if u, err := url.Parse(id); err == nil {
-		if o, ok := origin(u); ok {
+		if o, ok := publicnet.Origin(u); ok {
 			return o
 		}
 	}

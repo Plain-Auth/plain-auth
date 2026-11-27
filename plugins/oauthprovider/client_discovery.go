@@ -8,7 +8,7 @@ import (
 	"time"
 
 	auth "github.com/Plain-Org/plain-auth"
-	"github.com/Plain-Org/plain-auth/internal/httporigin"
+	"github.com/Plain-Org/plain-auth/internal/publicnet"
 )
 
 // ClientDiscovery resolves OAuth clients the provider has not registered,
@@ -118,8 +118,8 @@ func (d *ClientDiscovery) allowsJWKSURI(ctx context.Context, a *auth.Auth, clien
 	return ok
 }
 
-// sameOrigin compares the origins of two HTTP URLs: scheme, lowercased host
-// and port, with the default port dropped.
+// sameOrigin compares the web origins of two HTTP(S) URLs: scheme, host in
+// ASCII and numeric port, with the default port dropped.
 func sameOrigin(a, b string) bool {
 	ua, err := url.Parse(a)
 	if err != nil {
@@ -129,6 +129,7 @@ func sameOrigin(a, b string) bool {
 	if err != nil {
 		return false
 	}
-	origin := httporigin.Canonical(ua)
-	return origin != "" && origin == httporigin.Canonical(ub)
+	origin, ok := publicnet.Origin(ua)
+	other, _ := publicnet.Origin(ub)
+	return ok && origin == other
 }

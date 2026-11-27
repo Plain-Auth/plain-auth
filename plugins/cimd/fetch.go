@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	auth "github.com/Plain-Org/plain-auth"
@@ -80,20 +81,19 @@ type policyError struct{ err error }
 func (e policyError) Error() string { return e.err.Error() }
 func (e policyError) Unwrap() error { return e.err }
 
-// checkURL refuses a client ID URL before it is fetched: one that is not a
-// valid metadata document URL, or one the host refuses.
-func (o Options) checkURL(ctx context.Context, clientIDURL string) error {
-	if err := ValidateClientIDURL(clientIDURL); err != nil {
-		return fetchFailure(terminalFailure, err.Error())
+// allowURL asks the host's URL policy inside the shared fetch, before the
+// request, as another runtime does: false refuses the URL and an error is
+// returned as is.
+func (o Options) allowURL(ctx context.Context, clientIDURL string) error {
+	if o.AllowMetadataURL == nil {
+		return nil
 	}
-	if o.AllowMetadataURL != nil {
-		allowed, err := o.AllowMetadataURL(ctx, clientIDURL)
-		if err != nil {
-			return policyError{err}
-		}
-		if !allowed {
-			return fetchFailure(terminalFailure, "client_id URL is not permitted by the server's fetch policy")
-		}
+	allowed, err := o.AllowMetadataURL(ctx, clientIDURL)
+	if err != nil {
+		return policyError{err}
+	}
+	if !allowed {
+		return fetchFailure(terminalFailure, "client_id URL is not permitted by the server's fetch policy")
 	}
 	return nil
 }
@@ -136,8 +136,10 @@ func (o Options) fetchDocument(ctx context.Context, client *http.Client, clientI
 		return fetchedDocument{}, fetchFailure(transportFailure, networkFailure)
 	}
 	defer res.Body.Close()
-	headers := cacheHeaders{res.Header.Get("Cache-Control"), res.Header.Get("Vary"), res.Header.Get("Expires"), res.Header.Get("Date"),
-		res.Header.Get("Age"), res.Header.Get("ETag"), res.Header.Get("Last-Modified")}
+	// A repeated header reads as its lines joined, as fetch's Headers.get
+	// does.
+	get := func(name string) string { return strings.Join(res.Header.Values(name), ", ") }
+	headers := cacheHeaders{get("Cache-Control"), get("Vary"), get("Expires"), get("Date"), get("Age"), get("ETag"), get("Last-Modified")}
 	if res.StatusCode == http.StatusNotModified {
 		if etag == "" && lastModified == "" {
 			return fetchedDocument{}, fetchFailure(terminalFailure, "Metadata document returned 304 without a conditional validator")
@@ -152,7 +154,7 @@ func (o Options) fetchDocument(ctx context.Context, client *http.Client, clientI
 		}
 		return fetchedDocument{}, fetchFailure(kind, "Metadata document fetch returned HTTP "+strconv.Itoa(res.StatusCode))
 	}
-	if media := res.Header.Get("Content-Type"); !jsonMedia.MatchString(media) {
+	if media := get("Content-Type"); !jsonMedia.MatchString(media) {
 		if media == "" {
 			media = "(none)"
 		}
@@ -163,8 +165,6 @@ func (o Options) fetchDocument(ctx context.Context, client *http.Client, clientI
 		return fetchedDocument{}, tooLarge
 	}
 	body, err := io.ReadAll(io.LimitReader(res.Body, maxDocumentBytes+1))
-	// A UTF-8 byte order mark is dropped, as a browser's text decoder does.
-	body = bytes.TrimPrefix(body, []byte("\xEF\xBB\xBF"))
 	switch {
 	case err != nil && timedOut():
 		return fetchedDocument{}, fetchFailure(transientFailure, timeoutFailure)
@@ -174,7 +174,11 @@ func (o Options) fetchDocument(ctx context.Context, client *http.Client, clientI
 		return fetchedDocument{}, fetchFailure(transportFailure, networkFailure)
 	case len(body) > maxDocumentBytes:
 		return fetchedDocument{}, tooLarge
-	case !json.Valid(body):
+	}
+	// A UTF-8 byte order mark counts toward the size and is then dropped, as
+	// a browser's text decoder does.
+	body = bytes.TrimPrefix(body, []byte("\xEF\xBB\xBF"))
+	if !json.Valid(body) {
 		return fetchedDocument{}, fetchFailure(terminalFailure, "Metadata document is not valid JSON")
 	}
 	doc, warnings, err := ValidateMetadata(clientIDURL, body, ValidationOptions{OriginBoundFields: o.OriginBoundFields, Profile: o.Profile})
