@@ -71,7 +71,7 @@ func (s *Store) exchangeRefresh(ctx context.Context, clientID, digest string, ch
 	if parent.revoked != nil {
 		// Other issuers may have an active response-reuse interval. Never
 		// clear the family within it, even if this issuer cannot replay it.
-		if parent.rotatedAt == nil || parent.replayUntil == nil || time.Now().After(*parent.replayUntil) {
+		if parent.Replayed {
 			param := s.exactSQLValue("?")
 			if _, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "oauthRefreshToken" WHERE "clientId"=`+param+` AND "userId"=`+param), clientID, parent.UserID); err != nil {
 				return err
@@ -162,6 +162,7 @@ func (s *Store) readRefreshParent(ctx context.Context, tx *sql.Tx, clientID, dig
 	if parent.authTime != nil {
 		parent.AuthTime = parent.authTime.UTC()
 	}
+	parent.Replayed = parent.revoked != nil && (parent.rotatedAt == nil || parent.replayUntil == nil || time.Now().After(*parent.replayUntil))
 	// A jkt confirmation is a DPoP binding; any other kind cannot be proven here.
 	if len(confirmation) > 0 && string(confirmation) != "null" {
 		var bound struct {

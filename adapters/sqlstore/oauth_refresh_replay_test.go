@@ -51,7 +51,9 @@ func TestRefreshReuseInterval(t *testing.T) {
 			host := func(interval time.Duration) *auth.Auth {
 				t.Helper()
 				p, err := op.New(op.Options{Scopes: []string{"openid", "reports", "offline_access"}, Tokens: op.TokenOptions{RefreshReuseInterval: interval,
-					CustomTokenResponseFields: func(context.Context, op.TokenResponseInput) (map[string]any, error) { return map[string]any{"tenant": "acme"}, nil }}})
+					CustomTokenResponseFields: func(context.Context, op.TokenResponseInput) (map[string]any, error) {
+						return map[string]any{"tenant": "acme"}, nil
+					}}})
 				must(err)
 				signing, err := auth.NewJWT(auth.JWTOptions{})
 				must(err)

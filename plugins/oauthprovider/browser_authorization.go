@@ -302,9 +302,15 @@ func (opts Options) runBrowserAuthorization(c auth.EndpointContext, q url.Values
 		return reject("invalid_request", "ID token issuance is unavailable")
 	}
 	// Requested resources must pass their policy before any page is shown,
-	// as in another runtime; the token endpoint checks them again.
+	// as in another runtime; the token endpoint checks them again. After
+	// consent, the policy is checked on the approved scopes, as another
+	// runtime authorizes again with them.
 	if len(issue.Resources) > 0 {
-		if err := opts.checkAuthorizationResources(c, issue); err != nil {
+		checked := issue
+		if decision != nil && decision.scopes != nil {
+			checked.Scopes = decision.scopes
+		}
+		if err := opts.checkAuthorizationResources(c, checked); err != nil {
 			var problem *auth.OAuthError
 			if errors.As(err, &problem) && problem.Status < 500 {
 				return reject(problem.Code, problem.Description)

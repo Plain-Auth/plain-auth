@@ -272,6 +272,10 @@ func (opts Options) redeemAuthorizationCode(c auth.EndpointContext, in tokenRequ
 			return DelegatedAccessRecord{}, err
 		}
 		signingUser = code.UserID
+		// The refresh token follows the code's own scopes, as in another
+		// runtime: resources may narrow away offline_access, leaving a
+		// session-bound refresh token.
+		offline := slices.Contains(scopes, "offline_access")
 		effective, authorized, err := code.resources(in.resources)
 		if err != nil {
 			return DelegatedAccessRecord{}, err
@@ -341,7 +345,7 @@ func (opts Options) redeemAuthorizationCode(c auth.EndpointContext, in tokenRequ
 				record.IDTokenUserFields = c.TrustedUserFields()
 			}
 		}
-		if slices.Contains(scopes, "offline_access") {
+		if offline {
 			if !canIssueRefresh {
 				return DelegatedAccessRecord{}, &auth.APIError{Status: 501, Code: "OAUTH_REFRESH_STORE_UNAVAILABLE", Message: "The configured store does not support offline grants"}
 			}

@@ -19552,8 +19552,7 @@
     {
       "label": "Publish end_session_endpoint and the back-channel logout flags, the fields the OpenID document lacked, and leave the endpoint out for a store that cannot read the hinted session (a documented deviation), on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_end_session_test.go",
-      "marker": "doc.EndSessionEndpoint != mount",
-      "complete": true
+      "marker": "doc.EndSessionEndpoint != mount"
     }
   ],
   "docs/content/docs/plugins/oauth-provider/reference.mdx#L317/`GET /.well-known/openid-configuration`": [
@@ -19565,8 +19564,7 @@
     {
       "label": "Publish end_session_endpoint and the back-channel logout flags, the fields the OpenID document lacked, and leave the endpoint out for a store that cannot read the hinted session (a documented deviation), on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_end_session_test.go",
-      "marker": "doc.EndSessionEndpoint != mount",
-      "complete": true
+      "marker": "doc.EndSessionEndpoint != mount"
     }
   ],
   "plugin-symbol/oauth-provider/oidcServerMetadata": [
@@ -19578,8 +19576,7 @@
     {
       "label": "Publish end_session_endpoint and the back-channel logout flags, the fields the OpenID document lacked, and leave the endpoint out for a store that cannot read the hinted session (a documented deviation), on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_end_session_test.go",
-      "marker": "doc.EndSessionEndpoint != mount",
-      "complete": true
+      "marker": "doc.EndSessionEndpoint != mount"
     }
   ],
   "plugin-symbol/oauth-provider/oauthProviderOpenIdConfigMetadata": [
@@ -19604,8 +19601,7 @@
     {
       "label": "Publish end_session_endpoint and the back-channel logout flags, the fields the OpenID document lacked, and leave the endpoint out for a store that cannot read the hinted session (a documented deviation), on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_end_session_test.go",
-      "marker": "doc.EndSessionEndpoint != mount",
-      "complete": true
+      "marker": "doc.EndSessionEndpoint != mount"
     }
   ],
   "docs/content/docs/plugins/oauth-provider/openid-connect.mdx#L20": [

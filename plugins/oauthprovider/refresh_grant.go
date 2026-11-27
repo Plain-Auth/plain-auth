@@ -21,8 +21,11 @@ type RefreshGrant struct {
 	// another kind of binding, which this issuer cannot prove.
 	Thumbprint               string
 	SessionLive, SenderBound bool
-	UserID                   string
-	AuthTime                 time.Time
+	// Replayed marks a rotated token presented outside its reuse
+	// interval: the store ends the family once prepare accepts the request.
+	Replayed bool
+	UserID   string
+	AuthTime time.Time
 }
 
 // RefreshGrantDigests contains only the storage keys of the credentials issued
@@ -142,14 +145,20 @@ func (opts Options) exchangeRefreshGrant(c auth.EndpointContext, in tokenRequest
 		if err != nil {
 			return DelegatedAccessRecord{}, err
 		}
-		if grant.Thumbprint != "" && thumb != grant.Thumbprint {
-			return DelegatedAccessRecord{}, proofError("DPoP proof key does not match the bound token")
-		}
-		ttl, err := opts.Tokens.scopeLifetime(opts.Tokens.AccessLifetime, scopes, now)
+		effective, kept, err := grant.refreshResources(in.resources)
 		if err != nil {
 			return DelegatedAccessRecord{}, err
 		}
-		effective, kept, err := grant.refreshResources(in.resources)
+		// Reuse outside the interval ends the family before the binding and
+		// the resources' policy are checked, as in another runtime; a grant
+		// whose session ended is refused first and keeps the family.
+		if grant.Replayed {
+			return DelegatedAccessRecord{}, grant.sessionBound(scopes)
+		}
+		if err := grant.checkBinding(client, in.proof, thumb); err != nil {
+			return DelegatedAccessRecord{}, err
+		}
+		ttl, err := opts.Tokens.scopeLifetime(opts.Tokens.AccessLifetime, scopes, now)
 		if err != nil {
 			return DelegatedAccessRecord{}, err
 		}
@@ -300,13 +309,22 @@ func (grant RefreshGrant) scopesForRefresh(client AuthorizationCodeClient, in to
 			return nil, registrationProblem(400, "invalid_scope", "client does not allow scope "+scope)
 		}
 	}
-	if grant.SenderBound {
-		return nil, registrationProblem(501, "server_error", "sender-bound refresh issuance is unavailable")
-	}
-	if (client.RequireDPoP || grant.Thumbprint != "") && in.proof == "" {
-		return nil, proofError("DPoP proof header is required")
-	}
 	return scopes, nil
+}
+
+// checkBinding requires a proof by the family's DPoP key, or by any key for
+// a client that requires DPoP.
+func (grant RefreshGrant) checkBinding(client AuthorizationCodeClient, proof, thumb string) error {
+	if grant.SenderBound {
+		return registrationProblem(501, "server_error", "sender-bound refresh issuance is unavailable")
+	}
+	if (client.RequireDPoP || grant.Thumbprint != "") && proof == "" {
+		return proofError("DPoP proof header is required")
+	}
+	if grant.Thumbprint != "" && thumb != grant.Thumbprint {
+		return proofError("DPoP proof key does not match the bound token")
+	}
+	return nil
 }
 
 // sessionBound refuses a grant whose session ended unless the scopes it

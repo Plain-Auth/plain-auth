@@ -54,7 +54,7 @@ func TestAuthorizationCodeResources(t *testing.T) {
 				allowed         any
 				access, refresh any
 				linked          bool
-			}{{"urn:reports", `["openid","reports","offline_access"]`, 120, 600, true}, {"urn:audit", nil, nil, nil, true}, {"urn:loose", nil, nil, nil, false}} {
+			}{{"urn:reports", `["openid","reports","offline_access"]`, 120, 600, true}, {"urn:audit", nil, nil, nil, true}, {"urn:loose", nil, nil, nil, false}, {"urn:narrow", `["reports"]`, nil, nil, true}} {
 				write(`INSERT INTO "oauthResource" ("id","identifier","name","allowedScopes","accessTokenTtl","refreshTokenTtl") VALUES (?,?,?,?,?,?)`, r.id, r.id, r.id, r.allowed, r.access, r.refresh)
 				if r.linked {
 					write(`INSERT INTO "oauthClientResource" ("id","resourceId","clientId") VALUES (?,?,'app')`, "link-"+r.id, r.id)
@@ -62,9 +62,9 @@ func TestAuthorizationCodeResources(t *testing.T) {
 			}
 			const origin = "https://issuer.example.test"
 			// The opaque tokens show the stored resources; signed ones follow.
-			newHost := func(opaque bool) *auth.Auth {
+			newHost := func(opaque bool, allowUnlinked ...bool) *auth.Auth {
 				t.Helper()
-				p, err := op.New(op.Options{Scopes: []string{"openid", "reports", "billing", "offline_access"}, Tokens: op.TokenOptions{OpaqueResourceTokens: opaque}})
+				p, err := op.New(op.Options{Scopes: []string{"openid", "reports", "billing", "offline_access"}, Tokens: op.TokenOptions{OpaqueResourceTokens: opaque, AllowUnlinkedResources: len(allowUnlinked) > 0}})
 				must(err)
 				signing, err := auth.NewJWT(auth.JWTOptions{})
 				must(err)
@@ -195,8 +195,25 @@ func TestAuthorizationCodeResources(t *testing.T) {
 				t.Fatal("a disabled resource did not refuse the refresh", status, reply)
 			}
 			write(`UPDATE "oauthResource" SET "disabled"=? WHERE "identifier"='urn:reports'`, false)
-			if status, reply := rotate(family); status != 200 {
-				t.Fatal("a refused refresh spent the parent", status, reply)
+			// An unlinked family resource refuses the refresh too.
+			write(`DELETE FROM "oauthClientResource" WHERE "id"='link-urn:audit'`)
+			if status, reply := rotate(family); status != 400 || reply["error"] != "invalid_target" || !strings.Contains(reply["error_description"].(string), "not linked") {
+				t.Fatal("an unlinked family resource did not refuse the refresh", status, reply)
+			}
+			write(`INSERT INTO "oauthClientResource" ("id","resourceId","clientId") VALUES ('link-urn:audit','urn:audit','app')`)
+			status, body = rotate(family)
+			if status != 200 {
+				t.Fatal("a refused refresh spent the parent", status, body)
+			}
+			// Reuse of the rotated parent ends the family even when the
+			// resources' policy would refuse it.
+			write(`UPDATE "oauthResource" SET "disabled"=? WHERE "identifier"='urn:audit'`, true)
+			if status, reply := rotate(family); status != 400 || reply["error"] != "invalid_grant" {
+				t.Fatal("reuse under a refusing policy was not treated as reuse", status, reply)
+			}
+			write(`UPDATE "oauthResource" SET "disabled"=? WHERE "identifier"='urn:audit'`, false)
+			if status, reply := rotate(body["refresh_token"].(string)); status != 400 {
+				t.Fatal("reuse did not end the family", status, reply)
 			}
 			// A resource the code did not authorize, a disabled or an unlinked
 			// one is refused, and the code stays usable.
@@ -303,6 +320,31 @@ func TestAuthorizationCodeResources(t *testing.T) {
 			if status, body := exchange(code("reports", map[string]any{"legacy": "urn:audit"})); status != 200 ||
 				!sameJSON(stored("oauthAccessToken", "resources", body["access_token"].(string)), `["urn:audit"]`) {
 				t.Fatal("a legacy query.resource was not read", status, body)
+			}
+			// AllowUnlinkedResources admits an unlinked resource at the code
+			// exchange and at refresh.
+			h = newHost(true, true)
+			status, body = exchange(code("reports offline_access", map[string]any{"resource": []string{"urn:loose"}}))
+			if status != 200 {
+				t.Fatal("an allowed unlinked resource was refused at the exchange", status, body)
+			}
+			if status, reply := rotate(body["refresh_token"].(string)); status != 200 {
+				t.Fatal("an allowed unlinked resource was refused at refresh", status, reply)
+			}
+			// A resource that narrows away offline_access still gets the code a
+			// refresh token, bound to the session, as in another runtime.
+			h = newHost(true)
+			status, body = exchange(code("reports offline_access", map[string]any{"resource": []string{"urn:narrow"}}))
+			if status != 200 || body["scope"] != "reports" || body["refresh_token"] == nil || !sameJSON(stored("oauthRefreshToken", "scopes", body["refresh_token"].(string)), `["reports"]`) {
+				t.Fatal("a narrowing resource dropped the refresh token", status, body)
+			}
+			bound := body["refresh_token"].(string)
+			if status, reply := rotate(bound); status != 200 || reply["refresh_token"] != nil {
+				t.Fatal("a session-bound refresh token did not refresh without rotating", status, reply)
+			}
+			write(`DELETE FROM "session" WHERE "id"='sid'`)
+			if status, reply := rotate(bound); status != 400 || reply["error"] != "invalid_grant" {
+				t.Fatal("a session-bound refresh token outlived its session", status, reply)
 			}
 		})
 	}

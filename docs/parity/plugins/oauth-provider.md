@@ -39,7 +39,7 @@
   - [x] `oauthProviderOpenIdConfigMetadata` ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L286))
     - [x] Read the mounted OpenID provider document from Go, including host page capabilities and the configured claim list ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L75))
     - [x] Serve the OpenID document as JSON with the default cache rule, or with the configured headers ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L286))
-  - [x] `oidcServerMetadata` ([test](../../../adapters/sqlstore/oauth_end_session_test.go#L173))
+  - [ ] `oidcServerMetadata`
     - [x] Start from a custom issuer URL, discover the endpoints, complete PKCE sign-in and verify the ID token, access-token hash and UserInfo subject using an independent Go client ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L23))
     - [x] Publish end_session_endpoint and the back-channel logout flags, the fields the OpenID document lacked, and leave the endpoint out for a store that cannot read the hinted session (a documented deviation), on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_end_session_test.go#L173))
   - [x] `publicSessionMiddleware` ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L171))
@@ -68,7 +68,7 @@
   - [ ] `GET /.well-known/oauth-authorization-server` (server API only)
     - [x] Discover endpoints and capabilities for the machine grant, then register a client, verify a signed token and revoke an opaque token ([test](../../../conformance/oauth-issuer-metadata.mjs#L97))
     - [x] Mount both issuer discovery paths through ServeMux, chi, Gorilla Mux, Gin, Echo and Fiber and read them with GET and HEAD ([test](../../../integrations/routers/routers_test.go#L169))
-  - [x] `GET /.well-known/openid-configuration` (server API only) ([test](../../../adapters/sqlstore/oauth_end_session_test.go#L173))
+  - [ ] `GET /.well-known/openid-configuration` (server API only)
     - [x] Start from a custom issuer URL, discover the endpoints, complete PKCE sign-in and verify the ID token, access-token hash and UserInfo subject using an independent Go client ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L23))
     - [x] Serve the public provider document through ServeMux, chi, Gorilla Mux, Gin, Echo and Fiber and honor HEAD ([test](../../../integrations/routers/routers_test.go#L172))
     - [x] Publish end_session_endpoint and the back-channel logout flags, the fields the OpenID document lacked, and leave the endpoint out for a store that cannot read the hinted session (a documented deviation), on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_end_session_test.go#L173))
@@ -325,9 +325,9 @@
       - [x] Cancel a waiting caller without interrupting another startup ([test](../../../plugins/oauthprovider/resource_seed_test.go#L12))
       - [x] Retry rejected entries when a second manager supplies a different validator ([test](../../../adapters/sqlstore/oauth_resource_seed_test.go#L169))
     - [ ] `cachedResources`
-    - [x] `enforcePerClientResources` ([test](../../../adapters/sqlstore/oauth_code_resources_test.go#L221))
+    - [x] `enforcePerClientResources` ([test](../../../adapters/sqlstore/oauth_code_resources_test.go#L238))
       - [x] Require links to every machine-token audience and recheck concurrent unlink, scope, binding and signing policy changes on three engines ([test](../../../adapters/sqlstore/oauth_machine_resources_test.go#L30))
-      - [x] Refuse a resource not linked to the client at authorize, at the code exchange and at refresh unless AllowUnlinkedResources is set, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_code_resources_test.go#L221))
+      - [x] Refuse a resource not linked to the client at authorize, at the code exchange and at refresh unless AllowUnlinkedResources is set, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_code_resources_test.go#L238))
       - [x] Refuse an unlinked resource at authorize and admit it with AllowUnlinkedResources ([test](../../../adapters/sqlstore/oauth_browser_resources_test.go#L24))
     - [ ] `clientRegistrationDefaultResources`
       - [x] Link the configured default resources once per dynamic registration ([test](../../../conformance/oauth-registration.mjs#L140))
@@ -502,14 +502,14 @@
   - [ ] `OAuthClientResource`
   - [x] `StoredAuthorizationQuery` ([test](../../../adapters/sqlstore/oauth_dpop_grants_test.go#L64))
     - [x] Redeem a stored code that carries a dpop_jkt or resources, requiring a proof by that key, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_dpop_grants_test.go#L64))
-  - [x] `VerificationValue` ([test](../../../adapters/sqlstore/oauth_code_resources_test.go#L305))
-    - [x] Write a code's resources in its top-level resource list and read them back at redemption, falling back to a legacy query.resource, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_code_resources_test.go#L305))
+  - [x] `VerificationValue` ([test](../../../adapters/sqlstore/oauth_code_resources_test.go#L322))
+    - [x] Write a code's resources in its top-level resource list and read them back at redemption, falling back to a legacy query.resource, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_code_resources_test.go#L322))
     - [x] Carry the resources through the signed consent page into the code value ([test](../../../adapters/sqlstore/oauth_browser_resources_test.go#L24))
   - [ ] `SchemaClient`
   - [x] `OAuthOpaqueAccessToken` ([test](../../../adapters/sqlstore/oauth_dpop_grants_test.go#L182))
     - [x] Store a delegated opaque token's resources and DPoP confirmation, which introspection names as aud and cnf, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_dpop_grants_test.go#L182))
-  - [x] `OAuthRefreshToken` ([test](../../../adapters/sqlstore/oauth_refresh_replay_test.go#L112))
-    - [x] Store a refresh token's resources, DPoP confirmation and sealed rotation response with its replay expiry, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_refresh_replay_test.go#L112))
+  - [x] `OAuthRefreshToken` ([test](../../../adapters/sqlstore/oauth_refresh_replay_test.go#L114))
+    - [x] Store a refresh token's resources, DPoP confirmation and sealed rotation response with its replay expiry, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_refresh_replay_test.go#L114))
   - [x] `OAuthConsent` ([test](../../../adapters/sqlstore/oauth_browser_resources_test.go#L151))
     - [x] Record the approved resources on a consent, keep them when an approval names none, and require them to cover every requested resource, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_browser_resources_test.go#L151))
   - [ ] `OAuthClient`
@@ -522,7 +522,7 @@
   - [ ] `BearerMethodsSupported`
   - [ ] `Confirmation`
   - [ ] `GrantType`
-  - [x] `OIDCMetadata` ([test](../../../adapters/sqlstore/oauth_end_session_test.go#L173))
+  - [ ] `OIDCMetadata`
     - [x] Read identical OpenID and OAuth aliases, discover signing keys and validate claims and subjects for each supported signing algorithm ([test](../../../conformance/oauth-id-tokens.mjs#L33))
     - [x] Publish end_session_endpoint and the back-channel logout flags, the fields the OpenID document lacked, and leave the endpoint out for a store that cannot read the hinted session (a documented deviation), on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_end_session_test.go#L173))
   - [ ] `TokenEndpointAuthMethod`
@@ -737,8 +737,8 @@
     - [ ] Client registration
     - [x] Resource indicators ([test](../../../adapters/sqlstore/oauth_code_resources_test.go#L27))
       - [x] Accept resource indicators at authorize, the code exchange, refresh and client credentials, for linked resources only by default, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_code_resources_test.go#L27))
-    - [x] Access tokens ([test](../../../adapters/sqlstore/oauth_code_resources_test.go#L239))
-      - [x] Sign an at+jwt access token for a resource-targeted code or refresh exchange with the jwt plugin, keep it opaque with OpaqueResourceTokens, and issue opaque tokens otherwise, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_code_resources_test.go#L239))
+    - [x] Access tokens ([test](../../../adapters/sqlstore/oauth_code_resources_test.go#L256))
+      - [x] Sign an at+jwt access token for a resource-targeted code or refresh exchange with the jwt plugin, keep it opaque with OpaqueResourceTokens, and issue opaque tokens otherwise, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_code_resources_test.go#L256))
     - [x] Sender-constrained tokens ([test](../../../adapters/sqlstore/oauth_dpop_grants_test.go#L64))
       - [x] Bind code, refresh and client credentials tokens to a DPoP key, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_dpop_grants_test.go#L64))
     - [x] Introspection and revocation ([test](../../../conformance/oauth-client-assertions.mjs#L48))
@@ -759,7 +759,7 @@
     - [x] Sign in and consent ([test](../../../conformance/oauth-browser-login.mjs#L78))
       - [x] Sign in on the login page, approve on the consent page and return the code with state and issuer to the callback ([test](../../../conformance/oauth-browser-login.mjs#L78))
     - [ ] Exchange the code for tokens
-      - [x] Exchange a code for an at+jwt for its resource, with an ID token whose at_hash covers it, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_code_resources_test.go#L263))
+      - [x] Exchange a code for an at+jwt for its resource, with an ID token whose at_hash covers it, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_code_resources_test.go#L280))
     - [x] Check the token ([test](../../../conformance/oauth-userinfo.mjs#L71))
       - [x] Call UserInfo with a bearer access token from a code flow and receive the user's subject and name ([test](../../../conformance/oauth-userinfo.mjs#L71))
 
@@ -817,7 +817,7 @@
       - [x] Discover endpoints and capabilities for the machine grant, then register a client, verify a signed token and revoke an opaque token ([test](../../../conformance/oauth-issuer-metadata.mjs#L97))
       - [x] Retrieve the native issuer document, preserve escaped issuer paths and omit disabled endpoints and unavailable store capabilities ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L66))
       - [x] Publish the same grant, response type, scope, authentication method, DPoP and back-channel logout fields as another runtime for a machine-only issuer ([test](../../../conformance/oauth-issuer-metadata.mjs#L67))
-    - [x] `GET /.well-known/openid-configuration` (server API only) ([test](../../../adapters/sqlstore/oauth_end_session_test.go#L173))
+    - [ ] `GET /.well-known/openid-configuration` (server API only)
       - [x] Start from a custom issuer URL, discover the endpoints, complete PKCE sign-in and verify the ID token, access-token hash and UserInfo subject using an independent Go client ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L23))
       - [x] Publish end_session_endpoint and the back-channel logout flags, the fields the OpenID document lacked, and leave the endpoint out for a store that cannot read the hinted session (a documented deviation), on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_end_session_test.go#L173))
     - [x] `GET / POST /oauth2/authorize` ([test](../../../adapters/sqlstore/oauth_browser_resources_test.go#L24))
@@ -1130,7 +1130,7 @@
       - [x] Issue a refresh token on a code exchange for a client registered without grant types, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_offline_code_test.go#L137))
   - [ ] Resources
     - [x] Issue delegated tokens for registered resources, which introspection names as aud, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_code_resources_test.go#L27))
-    - [x] Sign delegated access tokens for registered resources with the resources as aud, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_code_resources_test.go#L239))
+    - [x] Sign delegated access tokens for registered resources with the resources as aud, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_code_resources_test.go#L256))
     - [x] `name` ([test](../../../conformance/resource-seeds.mjs#L53))
       - [x] Persist and return the configured display name across restarts ([test](../../../conformance/resource-seeds.mjs#L53))
     - [x] `allowedScopes` ([test](../../../conformance/oauth-resource-machine-tokens.mjs#L88))
@@ -1224,11 +1224,11 @@
       - [x] Merge host fields under the standard fields of code, refresh and client_credentials responses, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_token_response_test.go#L27))
   - [ ] Revocation
     - [x] Handle stored access and refresh tokens, linked access tokens, self-contained JWTs and repeated requests ([test](../../../conformance/oauth-revocation.mjs#L71))
-    - [x] Leave a signed access token active after the refresh token that issued it is revoked, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_code_resources_test.go#L294))
+    - [x] Leave a signed access token active after the refresh token that issued it is revoked, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_code_resources_test.go#L311))
     - [x] Opaque access token ([test](../../../adapters/sqlstore/oauth_revocation_test.go#L130))
       - [x] Delete a revoked opaque access token and keep the refresh token of its grant ([test](../../../adapters/sqlstore/oauth_revocation_test.go#L130))
     - [ ] Refresh token
-      - [x] Revoke a refresh token and leave the signed access tokens it issued active, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_code_resources_test.go#L294))
+      - [x] Revoke a refresh token and leave the signed access tokens it issued active, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_code_resources_test.go#L311))
     - [ ] JWT access token
   - [ ] Without the JWT plugin
     - [x] Sign ID tokens with the client secret, give a public client no ID token and store secrets encrypted by default, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_secret_id_token_test.go#L27))

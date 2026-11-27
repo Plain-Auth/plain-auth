@@ -150,6 +150,34 @@ func TestBrowserAuthorizationResources(t *testing.T) {
 			if !sameJSON(resources, `["urn:audit"]`) {
 				t.Fatal("accepted consent did not record the resources", resources)
 			}
+			// Consent that narrows the scopes is checked against the policy
+			// again: a resource that allows none of them is refused at the
+			// callback instead of getting a code that cannot be redeemed.
+			q := url.Values{"client_id": {"app"}, "response_type": {"code"}, "redirect_uri": {"http://127.0.0.1:41234/cb"}, "scope": {"reports billing"}, "state": {"saved"},
+				"code_challenge": {challenge}, "code_challenge_method": {"S256"}, "resource": {"urn:reports"}}
+			req = httptest.NewRequest("GET", base+"/api/auth/oauth2/authorize?"+q.Encode(), nil)
+			req.AddCookie(h.SessionCookie("browser", true))
+			out = httptest.NewRecorder()
+			h.ServeHTTP(out, req)
+			narrowPage, err := url.Parse(out.Header().Get("Location"))
+			must(err)
+			if narrowPage.Path != "/consent" {
+				t.Fatal("no consent page for the wider request", out.Code, narrowPage)
+			}
+			body, _ = json.Marshal(map[string]any{"accept": true, "scope": "billing", "oauth_query": narrowPage.RawQuery})
+			req = httptest.NewRequest("POST", base+"/api/auth/oauth2/consent", strings.NewReader(string(body)))
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("Origin", base)
+			req.AddCookie(h.SessionCookie("browser", true))
+			out = httptest.NewRecorder()
+			h.ServeHTTP(out, req)
+			var narrowed struct {
+				URL string `json:"url"`
+			}
+			must(json.Unmarshal(out.Body.Bytes(), &narrowed))
+			result, err := url.Parse(narrowed.URL)
+			must(err)
+			refused(result, "invalid_scope")
 		})
 	}
 }
