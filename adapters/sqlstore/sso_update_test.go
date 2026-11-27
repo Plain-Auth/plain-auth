@@ -330,6 +330,7 @@ func TestEnterpriseProviderUpdate(t *testing.T) {
 				text  string
 			}{
 				{map[string]any{"signatureAlgorithm": "rsa-sha1"}, "SAML_DEPRECATED_CONFIG_ALGORITHM"},
+				{map[string]any{"digestAlgorithm": "sha1"}, "SAML config uses deprecated digest algorithm: sha1"},
 				{map[string]any{"spMetadata": map[string]any{"privateKey": "PEM"}}, "SAML private keys are not accepted"},
 				{map[string]any{"unknown": true}, "Unsupported SAML update field"},
 				{map[string]any{"entryPoint": nil}, "Invalid or unsupported SAML configuration"},

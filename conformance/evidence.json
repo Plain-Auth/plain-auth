@@ -41770,7 +41770,8 @@
     {
       "label": "Resolve relative endpoints with extra leading slashes against an issuer path ending in a slash, and write absolute ones as another runtime's URL parser does",
       "test": "plugins/sso/discovery_test.go",
-      "marker": "t.Fatal(\"discovered endpoints were not resolved and normalized as another runtime does\", cfg.AuthorizationEndpoint, cfg.TokenEndpoint, cfg.JWKSEndpoint)"
+      "marker": "t.Fatal(\"discovered endpoints were not resolved and normalized as another runtime does\", cfg.AuthorizationEndpoint, cfg.TokenEndpoint, cfg.JWKSEndpoint)",
+      "complete": true
     }
   ],
   "plugin-symbol/sso/selectTokenEndpointAuthMethod": [
@@ -42042,7 +42043,8 @@
     {
       "label": "Reject an enterprise ID token whose issuer differs from the provider issuer, among other invalid ID tokens",
       "test": "adapters/sqlstore/sso_browser_test.go",
-      "marker": "for _, mode := range []string{\"azp\", \"nonce\", \"future\", \"expired\", \"mismatch\", \"missing-sub\", \"signature\"} {"
+      "marker": "for _, mode := range []string{\"azp\", \"nonce\", \"future\", \"expired\", \"mismatch\", \"missing-sub\", \"signature\"} {",
+      "complete": true
     },
     {
       "label": "Reject a discovery document whose issuer differs from the provider issuer",
@@ -42106,6 +42108,12 @@
       "label": "Require a client secret for client_secret_basic and none for private_key_jwt",
       "test": "adapters/sqlstore/sso_private_key_test.go",
       "marker": "t.Fatal(\"client_secret_basic registered without a client secret\", w.Code, w.Body.String())"
+    },
+    {
+      "label": "Refuse a client_secret_post registration without a client secret, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_private_key_test.go",
+      "marker": "t.Fatal(\"client_secret_post registered without a client secret\", w.Code, w.Body.String())",
+      "complete": true
     }
   ],
   "plugin-symbol/sso/OIDCConfig/authorizationEndpoint": [
@@ -42127,7 +42135,8 @@
     {
       "label": "Keep a configured authorization endpoint while discovery fills the token and key endpoints",
       "test": "plugins/sso/discovery_test.go",
-      "marker": "t.Fatal(\"discovery did not fill only the missing endpoints\""
+      "marker": "t.Fatal(\"discovery did not fill only the missing endpoints\"",
+      "complete": true
     }
   ],
   "plugin-symbol/sso/OIDCConfig/discoveryEndpoint": [
@@ -42672,7 +42681,8 @@
     {
       "label": "Refuse an RSA-SHA1-signed response with saml_deprecated_algorithm, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/sso_saml_policy_test.go",
-      "marker": "t.Fatal(\"an RSA-SHA1 response did not fail with saml_deprecated_algorithm\", location)"
+      "marker": "t.Fatal(\"an RSA-SHA1 response did not fail with saml_deprecated_algorithm\", location)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/sso/index.mdx#L22/SAML Single Logout": [
@@ -45614,7 +45624,8 @@
     {
       "label": "Refuse a directory with an ECDSA certificate and store nothing; directory certificates must be RSA, a documented deviation, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/sso_saml_policy_test.go",
-      "marker": "t.Fatal(\"a directory with an ECDSA certificate was registered\", status)"
+      "marker": "t.Fatal(\"a directory with an ECDSA certificate was registered\", status)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/sso/saml-security.mdx#L94/Digest": [
@@ -45632,6 +45643,17 @@
       "label": "Accept a response signed with a SHA-384 digest",
       "test": "adapters/sqlstore/sso_saml_policy_test.go",
       "marker": "an RSA-SHA384 response was refused"
+    },
+    {
+      "label": "Accept sha384 and sha512 as a directory's digestAlgorithm and refuse sha1 with another runtime's message, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "t.Fatal(\"registration refused a strong digestAlgorithm\", digest, status, code, message)",
+      "complete": true
+    },
+    {
+      "label": "Refuse a deprecated digestAlgorithm in a SAML update, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_update_test.go",
+      "marker": "{map[string]any{\"digestAlgorithm\": \"sha1\"}, \"SAML config uses deprecated digest algorithm: sha1\"},"
     }
   ],
   "docs/content/docs/plugins/sso/saml-security.mdx#L101/`\"reject\"`": [
@@ -45649,6 +45671,12 @@
       "label": "Refuse a deprecated signatureAlgorithm in a SAML update, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/sso_update_test.go",
       "marker": "{map[string]any{\"signatureAlgorithm\": \"rsa-sha1\"}, \"SAML_DEPRECATED_CONFIG_ALGORITHM\"},"
+    },
+    {
+      "label": "Refuse a deprecated digestAlgorithm in a SAML update, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_update_test.go",
+      "marker": "{map[string]any{\"digestAlgorithm\": \"sha1\"}, \"SAML config uses deprecated digest algorithm: sha1\"},",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/sso/saml-security.mdx#L127/`SAML_UNKNOWN_ALGORITHM`": [
@@ -45730,6 +45758,12 @@
       "label": "Refuse a deprecated algorithm rather than warn: an RSA-SHA1 response fails with saml_deprecated_algorithm",
       "test": "adapters/sqlstore/sso_saml_policy_test.go",
       "marker": "an RSA-SHA1 response did not fail with saml_deprecated_algorithm"
+    },
+    {
+      "label": "Refuse a deprecated signature or digest algorithm in a SAML update too, rather than warn, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_update_test.go",
+      "marker": "{map[string]any{\"digestAlgorithm\": \"sha1\"}, \"SAML config uses deprecated digest algorithm: sha1\"},",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/sso/saml-security.mdx#L102/`\"allow\"`": [

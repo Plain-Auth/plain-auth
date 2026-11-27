@@ -146,6 +146,9 @@ func TestEnterpriseOIDCPrivateKeyJWT(t *testing.T) {
 			if w := withKey.register(owner, provider("weak", func(c map[string]any) { c["privateKeyAlgorithm"] = "HS256" })); w.Code != 400 {
 				t.Fatal("an unsupported private key algorithm was registered", w.Code, w.Body.String())
 			}
+			if w := withKey.register(owner, provider("secretless-post", func(c map[string]any) { c["tokenEndpointAuthentication"] = "client_secret_post" })); w.Code != 400 {
+				t.Fatal("client_secret_post registered without a client secret", w.Code, w.Body.String())
+			}
 			if w := withKey.register(owner, provider("secretless", func(c map[string]any) { c["tokenEndpointAuthentication"] = "client_secret_basic" })); w.Code != 400 {
 				t.Fatal("client_secret_basic registered without a client secret", w.Code, w.Body.String())
 			}

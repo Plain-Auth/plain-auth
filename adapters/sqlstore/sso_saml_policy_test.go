@@ -666,8 +666,13 @@ func TestEnterpriseSAMLResponsePolicy(t *testing.T) {
 				if status, code, message := register(def, "bad-sig", map[string]any{"signatureAlgorithm": "rsa-sha1"}); status != 400 || code != "SAML_DEPRECATED_CONFIG_ALGORITHM" || message != "SAML config uses deprecated signature algorithm: rsa-sha1. Consider using SHA-256 or stronger." {
 					t.Fatal("registration accepted a deprecated signatureAlgorithm", status, code, message)
 				}
-				if status, code, _ := register(def, "bad-digest", map[string]any{"digestAlgorithm": "sha1"}); status != 400 || code != "SAML_DEPRECATED_CONFIG_ALGORITHM" {
-					t.Fatal("registration accepted a deprecated digestAlgorithm", status, code)
+				if status, code, message := register(def, "bad-digest", map[string]any{"digestAlgorithm": "sha1"}); status != 400 || code != "SAML_DEPRECATED_CONFIG_ALGORITHM" || message != "SAML config uses deprecated digest algorithm: sha1. Consider using SHA-256 or stronger." {
+					t.Fatal("registration accepted a deprecated digestAlgorithm", status, code, message)
+				}
+				for _, digest := range []string{"sha384", "sha512"} {
+					if status, code, message := register(def, "digest-"+digest, map[string]any{"digestAlgorithm": digest}); status != 200 {
+						t.Fatal("registration refused a strong digestAlgorithm", digest, status, code, message)
+					}
 				}
 				// An ECDSA directory certificate is refused, a documented deviation.
 				ecKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
