@@ -38,6 +38,13 @@ export async function exerciseAuthorizationCode({ server, issuer, db }) {
     assert.equal(res.status, 400);
     assert.equal((await res.json()).error, error);
   }
+  // A code redeemed with another client's credentials is an invalid grant.
+  const other = await authorizationCodeClient(issuer, db, {
+    name: "Other client owner", email: "code-other-client@issuer.test", scopes: ["reports"], callback: "https://reports.example.test/other",
+  });
+  const foreign = await exchange({ ...(await authorizeCode()), ...other.fields });
+  assert.equal(foreign.status, 400);
+  assert.equal((await foreign.json()).error, "invalid_grant");
   const token = await redeem(original);
   const second = await redeem(await authorizeCode());
   const observed = await inspect(token);
@@ -76,6 +83,20 @@ export async function exerciseOfflineCode({ server, issuer, db }) {
   // The response carries exactly these fields, and expires_at agrees with expires_in.
   assert.deepEqual(Object.keys(pair).sort(), ["access_token", "expires_at", "expires_in", "refresh_token", "scope", "token_type"]);
   assert.ok(Math.abs(pair.expires_at - Math.floor(Date.now() / 1000) - pair.expires_in) <= 5, JSON.stringify(pair));
+  // A refresh token issued to another client, or past its expiry, is an invalid grant.
+  const other = await authorizationCodeClient(issuer, db, {
+    name: "Other offline owner", email: "offline-other-client@issuer.test", scopes: ["reports", "offline_access"], callback: "https://reports.example.test/offline-other",
+  });
+  const fresh = await (await server.send(post(mount, "token", await authorizeCode()))).json();
+  for (const values of [{ ...other.fields, grant_type: "refresh_token", refresh_token: fresh.refresh_token }]) {
+    const res = await server.send(post(mount, "token", values));
+    assert.equal(res.status, 400);
+    assert.equal((await res.json()).error, "invalid_grant");
+  }
+  db.prepare("UPDATE oauthRefreshToken SET expiresAt=? WHERE token=?").run(new Date(Date.now() - 60000).toISOString(), createHash("sha256").update(fresh.refresh_token).digest("base64url"));
+  const expired = await server.send(post(mount, "token", { ...fields, grant_type: "refresh_token", refresh_token: fresh.refresh_token }));
+  assert.equal(expired.status, 400);
+  assert.equal((await expired.json()).error, "invalid_grant");
   const digest = s => createHash("sha256").update(s).digest("base64url");
   const refresh = db.prepare("SELECT * FROM oauthRefreshToken WHERE token=?").get(digest(pair.refresh_token));
   const access = db.prepare("SELECT * FROM oauthAccessToken WHERE refreshId=?").get(refresh.id);

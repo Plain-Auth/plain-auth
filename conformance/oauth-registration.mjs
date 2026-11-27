@@ -211,6 +211,8 @@ export async function compareClientRegistration(t, reference, goFixture) {
         const app = await created(input, { cookie, authorization: "Bearer invalid" });
         assert.equal(app.user_id, user.id);
         assert.equal(app.reference_id, undefined);
+        // Without linked resources the response names none.
+        assert.equal(app.resources, undefined);
         assert.deepEqual(app.grant_types, ["authorization_code", "client_credentials"]);
         assert.deepEqual(app.response_types, ["code"]);
         assert.equal(app.client_secret_expires_at, 0);

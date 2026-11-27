@@ -47938,5 +47938,21 @@
       "marker": "assert.deepEqual(Object.keys(pair).sort(), [\"access_token\", \"expires_at\", \"expires_in\", \"refresh_token\", \"scope\", \"token_type\"]);",
       "complete": true
     }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L378/`invalid_grant`": [
+    {
+      "label": "Refuse a code redeemed with another client's credentials and a refresh token that belongs to another client or has expired with invalid_grant, on both runtimes",
+      "test": "conformance/oauth-authorization-code.mjs",
+      "marker": "const foreign = await exchange({ ...(await authorizeCode()), ...other.fields });",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthClientRegistrationResponse": [
+    {
+      "label": "Name no resources in a registration response for a client without linked resources, on both runtimes",
+      "test": "conformance/oauth-registration.mjs",
+      "marker": "assert.equal(app.resources, undefined);",
+      "complete": true
+    }
   ]
 }
