@@ -32,10 +32,23 @@ var (
 	errKeysUnavailable = errors.New("oauthprovider: the issuer's signing keys are unavailable")
 )
 
-// resourceKeySet is one fetched set; a pointer names one fetch.
+// resourceKeySet is one fetched set; a pointer names one fetch. An invalid
+// set is a response the issuer gave that is not a usable JWKS: it is cached
+// like any other and fails every token as an outage, as another runtime
+// caches what the issuer answered.
 type resourceKeySet struct {
-	keys assertionKeys
-	kids []string
+	keys    assertionKeys
+	kids    []string
+	invalid bool
+}
+
+// answered keeps a refused key set as an invalid one, so it is not a
+// failed fetch that lets an expired set keep serving.
+func answered(set *resourceKeySet, err error) (*resourceKeySet, error) {
+	if err != nil {
+		return &resourceKeySet{invalid: true}, nil
+	}
+	return set, nil
 }
 
 type resourceKeyFetch struct {
@@ -71,7 +84,7 @@ func newResourceKeys(uri string, source func(context.Context) (jose.JSONWebKeySe
 			if err != nil {
 				return nil, err
 			}
-			return decodeResourceKeys(raw)
+			return answered(decodeResourceKeys(raw))
 		}
 		return k
 	}
@@ -84,7 +97,7 @@ func newResourceKeys(uri string, source func(context.Context) (jose.JSONWebKeySe
 		if err != nil {
 			return nil, err
 		}
-		return decodeResourceKeys(raw)
+		return answered(decodeResourceKeys(raw))
 	}
 	return k
 }
@@ -130,6 +143,9 @@ func decodeResourceKeys(raw []byte) (*resourceKeySet, error) {
 
 // verify checks a token's signature with exactly one usable key.
 func (set *resourceKeySet) verify(signed *jose.JSONWebSignature) ([]byte, error) {
+	if set.invalid {
+		return nil, errKeysUnavailable
+	}
 	key, count := set.keys.match(signed.Signatures[0].Protected)
 	switch {
 	case count == 0:
@@ -183,10 +199,10 @@ func (k *resourceKeys) resolve(ctx context.Context, kid string) (*resourceKeySet
 	// verification error.
 	refreshStale := func(failed *resourceKeySet) (*resourceKeySet, error) {
 		set, err := refresh(failed)
-		if err != nil {
+		if err != nil && ctx.Err() == nil {
 			return nil, nil
 		}
-		return set, nil
+		return set, err
 	}
 	cached := func(set *resourceKeySet) (*resourceKeySet, func(*resourceKeySet) (*resourceKeySet, error), error) {
 		if kid == "" || slices.Contains(set.kids, kid) {
@@ -226,6 +242,10 @@ func (k *resourceKeys) resolve(ctx context.Context, kid string) (*resourceKeySet
 	set, err := k.fetch(ctx)
 	if err == nil {
 		return set, nil, nil
+	}
+	// A caller that stopped waiting has not seen the fetch fail.
+	if ctx.Err() != nil {
+		return nil, nil, err
 	}
 	failedAt := k.now()
 	k.refetchedAt = failedAt

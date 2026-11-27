@@ -657,11 +657,11 @@ func TestExtensionGrantUserTokens(t *testing.T) {
 // ValidateAccessToken, inside an extension grant, sees an opaque or signed
 // access token as the issuer does without a client, and as a client does at
 // introspection with one: the issuer and a client linked to the token's
-// resource see it active, another client inactive. A refresh token and an
-// unknown token are inactive; RequireActiveAccessToken refuses inactive
-// tokens with 401 invalid_token and a Bearer challenge. A pairwise client's
-// subject is presented pairwise, and a DPoP token's key is returned
-// without a proof.
+// resource see it active, another or an unregistered client inactive. A
+// refresh token and an unknown token are inactive; RequireActiveAccessToken
+// refuses inactive tokens with 401 invalid_token and a Bearer challenge. The
+// subject is the account ID, and a DPoP token's key is returned without a
+// proof.
 func TestExtensionGrantValidateTokens(t *testing.T) {
 	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
 		t.Run(dialect, func(t *testing.T) {
@@ -780,13 +780,13 @@ func TestExtensionGrantValidateTokens(t *testing.T) {
 					t.Fatal("the token validated wrong", c.caller, c.active, payload)
 				}
 			}
-			// A pairwise client's subject is presented pairwise, to the
-			// issuer's view and to the client's, opaque or signed.
+			// The subject is the account ID even for a pairwise client, as
+			// another runtime returns it, opaque or signed.
 			pairwiseOpaque := issue("pairwise", url.Values{"scope": {"reports"}}, "")["access_token"].(string)
 			pairwiseSigned := issue("pairwise", url.Values{"scope": {"reports"}, "resource": {"urn:api"}}, "")["access_token"].(string)
 			for _, c := range [][2]string{{pairwiseOpaque, ""}, {pairwiseOpaque, "pairwise"}, {pairwiseSigned, ""}, {pairwiseSigned, "pairwise"}} {
-				if payload := validate(c[0], c[1]); payload["active"] != true || payload["sub"] == "owner" || payload["sub"] == nil {
-					t.Fatal("the pairwise subject was not presented", c[1], payload)
+				if payload := validate(c[0], c[1]); payload["active"] != true || payload["sub"] != "owner" {
+					t.Fatal("the subject was not the account ID", c[1], payload)
 				}
 			}
 			// A DPoP token's key is returned without a proof.
@@ -801,16 +801,18 @@ func TestExtensionGrantValidateTokens(t *testing.T) {
 			for _, token := range []string{opaque["access_token"].(string), "unknown"} {
 				status, body, header := post(url.Values{"grant_type": {checkGrant}, "token": {token}, "require": {"yes"}}, "")
 				if status != 401 || body["error"] != "invalid_token" || body["error_description"] != "Invalid access token" ||
-					header.Get("WWW-Authenticate") != `Bearer error="invalid_token", error_description="Invalid access token"` {
+					header.Get("WWW-Authenticate") != `Bearer error="invalid_token", error_description="Invalid access token"` || header.Get("Access-Control-Expose-Headers") != "WWW-Authenticate" {
 					t.Fatal("an inactive token was not refused", status, body, header)
 				}
 			}
 			if status, body, _ := post(url.Values{"grant_type": {checkGrant}, "token": {signed["access_token"].(string)}, "require": {"yes"}}, ""); status != 200 || body["payload"].(map[string]any)["active"] != true {
 				t.Fatal("an active token was refused", status, body)
 			}
-			// An unknown caller is refused.
-			if status, body, _ := post(url.Values{"grant_type": {checkGrant}, "token": {signed["access_token"].(string)}, "caller": {"missing"}}, ""); status != 400 || body["error"] != "invalid_client" {
-				t.Fatal("an unknown caller was accepted", status, body)
+			// An unregistered caller sees tokens inactive.
+			for _, token := range []string{signed["access_token"].(string), bound["access_token"].(string)} {
+				if payload := validate(token, "missing"); payload["active"] != false {
+					t.Fatal("an unregistered caller saw a token active", payload)
+				}
 			}
 		})
 	}

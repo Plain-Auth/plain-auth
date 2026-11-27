@@ -1,16 +1,20 @@
 package oauthprovider
 
 import (
+	"errors"
+
 	auth "github.com/Plain-Org/plain-auth"
 )
 
 // ValidateAccessToken returns an access token's introspection payload,
-// which may be inactive, as another runtime's validateAccessToken does. A
+// which may be inactive, as another runtime's validateAccessToken does: its
+// sub is the account ID, not the pairwise subject introspection presents. A
 // non-empty clientID sees the token as that client would at the
 // introspection endpoint, the issuer or a client linked to one of its
-// resources, without authenticating it; an empty one sees it as the issuer
-// does. A refresh token is never active here, and an unknown token is
-// inactive, where another runtime refuses it (simplicity).
+// resources, without authenticating it, and an unregistered one sees it
+// inactive; an empty one sees it as the issuer does. A refresh token is
+// never active here, and an unknown token is inactive, where another
+// runtime refuses it (simplicity).
 func (p *ProviderAPI) ValidateAccessToken(token, clientID string) (map[string]any, error) {
 	if clientID == "" {
 		return p.issuerView(token)
@@ -30,13 +34,16 @@ func (p *ProviderAPI) ValidateAccessToken(token, clientID string) (map[string]an
 			return inactive, nil
 		}
 		_, owner, err := store.InspectSignedAccessGrant(ctx, clientID, userInfoURL, grant)
+		if errors.Is(err, ErrClientNotFound) {
+			return inactive, nil
+		}
 		if err != nil || owner == nil {
 			return inactive, err
 		}
 		claims["active"], claims["client_id"], claims["token_type"] = true, grant.ClientID, "Bearer"
-		sub, _ := claims["sub"].(string)
 		cnf, _ := claims["cnf"].(map[string]any)
-		return opts.addTokenIdentity(claims, grant.ClientID, sub, owner.SubjectType, owner.RedirectURIs, cnf)
+		addTokenConfirmation(claims, cnf)
+		return claims, nil
 	}
 	store, ok := c.Store().(OpaqueAccessIntrospectionStore)
 	if !ok {
@@ -47,14 +54,13 @@ func (p *ProviderAPI) ValidateAccessToken(token, clientID string) (map[string]an
 		return inactive, err
 	}
 	_, access, _, err := store.InspectOpaqueAccessToken(ctx, clientID, digest, userInfoURL)
+	if errors.Is(err, ErrClientNotFound) {
+		return inactive, nil
+	}
 	if err != nil {
 		return nil, err
 	}
-	claims = opaqueAccessClaims(access, digest, c.Auth.OAuthIssuer(), userInfoURL)
-	if claims["active"] != true {
-		return claims, nil
-	}
-	return opts.addTokenIdentity(claims, access.ClientID, access.UserID, access.SubjectType, access.RedirectURIs, nil)
+	return opaqueAccessClaims(access, digest, c.Auth.OAuthIssuer(), userInfoURL), nil
 }
 
 // issuerView validates a token through the issuer's own lookup, the one
@@ -69,12 +75,7 @@ func (p *ProviderAPI) issuerView(token string) (map[string]any, error) {
 	if err != nil || record == nil {
 		return map[string]any{"active": false}, err
 	}
-	if access := record.Opaque; access != nil {
-		return opts.addTokenIdentity(claims, access.ClientID, access.UserID, access.SubjectType, access.RedirectURIs, nil)
-	}
-	client, _ := claims["client_id"].(string)
-	sub, _ := claims["sub"].(string)
-	return opts.addTokenIdentity(claims, client, sub, record.Issuer.SubjectType, record.Issuer.RedirectURIs, nil)
+	return claims, nil
 }
 
 // RequireActiveAccessToken returns an active token's payload, as
@@ -86,7 +87,9 @@ func (p *ProviderAPI) RequireActiveAccessToken(token, clientID string) (map[stri
 		return nil, err
 	}
 	if claims["active"] != true {
-		p.c.ResponseHeader.Set("WWW-Authenticate", `Bearer error="invalid_token", error_description="Invalid access token"`)
+		h := p.c.ResponseHeader
+		h.Set("WWW-Authenticate", `Bearer error="invalid_token", error_description="Invalid access token"`)
+		h.Add("Access-Control-Expose-Headers", "WWW-Authenticate")
 		return nil, registrationProblem(401, "invalid_token", "Invalid access token")
 	}
 	return claims, nil

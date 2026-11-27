@@ -16147,7 +16147,7 @@
       "marker": "func TestAccessTokenVerifier("
     },
     {
-      "label": "Verify bearer and DPoP-bound access token requests, scopes, schemes, proofs and replays with the same answers as the other runtime, each runtime with its own replay store",
+      "label": "Verify bearer and DPoP-bound access token requests, schemes, proofs and replays with the same answers as the other runtime, each runtime with its own replay store",
       "test": "conformance/resource-verifier.mjs",
       "marker": "// Requests: both runtimes check the scheme and the sender binding alike,",
       "complete": true
@@ -49550,9 +49550,9 @@
   ],
   "docs/content/docs/plugins/oauth-provider/resource-server.mdx#L150/How the API verifies it": [
     {
-      "label": "Verify signed tokens locally with the issuer's keys and opaque ones through introspection, on both runtimes",
-      "test": "conformance/resource-verifier.mjs",
-      "marker": "export async function compareRemoteVerifier(",
+      "label": "Verify a signed token locally with the issuer keys and then by introspection, and an opaque token by introspection alone",
+      "test": "plugins/oauthprovider/access_token_verifier_test.go",
+      "marker": "func TestAccessTokenVerifierRemote(",
       "complete": true
     }
   ],

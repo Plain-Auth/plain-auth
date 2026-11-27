@@ -180,11 +180,13 @@ type ResourceRequest struct {
 	URL string
 }
 
-// ResourceRequestFrom reads a request's first Authorization and DPoP
-// headers and its method, with origin, the API's public origin, before the
-// request URI.
+// ResourceRequestFrom reads a request's Authorization and DPoP headers and
+// its method, with origin, the API's public origin, before the request
+// URI. A repeated header is joined with ", ", as a fetch request reads it,
+// so two proofs fail as one malformed proof.
 func ResourceRequestFrom(r *http.Request, origin string) ResourceRequest {
-	return ResourceRequest{Authorization: r.Header.Get("Authorization"), DPoP: r.Header.Get("DPoP"), Method: r.Method, URL: strings.TrimRight(origin, "/") + r.URL.RequestURI()}
+	return ResourceRequest{Authorization: strings.Join(r.Header.Values("Authorization"), ", "), DPoP: strings.Join(r.Header.Values("DPoP"), ", "),
+		Method: r.Method, URL: strings.TrimRight(origin, "/") + r.URL.RequestURI()}
 }
 
 // authorizationScheme matches an Authorization header's scheme and value.
@@ -283,7 +285,8 @@ func (v *AccessTokenVerifier) verify(ctx context.Context, token string, required
 	if claims == nil {
 		return nil, invalidToken("no token payload")
 	}
-	granted, err := grantedScopes(claims["scope"])
+	scope, present := claims["scope"]
+	granted, err := grantedScopes(scope, present)
 	if err != nil {
 		return nil, err
 	}
@@ -305,10 +308,10 @@ func (v *AccessTokenVerifier) verify(ctx context.Context, token string, required
 }
 
 // grantedScopes reads a scope claim: absent is none, and anything but
-// space-separated scope tokens is invalid.
-func grantedScopes(claim any) (map[string]bool, error) {
+// space-separated scope tokens, null included, is invalid.
+func grantedScopes(claim any, present bool) (map[string]bool, error) {
 	granted := map[string]bool{}
-	if claim == nil {
+	if !present {
 		return granted, nil
 	}
 	scope, ok := claim.(string)
@@ -338,6 +341,10 @@ func (v *AccessTokenVerifier) verifyLocal(ctx context.Context, token string) (ma
 		return nil, errOpaqueToken
 	}
 	invalid := invalidToken("invalid access token")
+	// An empty kid names no key, where it would otherwise read as none.
+	if kid, ok := header["kid"]; ok && kid == "" {
+		return nil, invalid
+	}
 	signed, err := jose.ParseSigned(token, assertionAlgorithms)
 	if err != nil {
 		return nil, invalid

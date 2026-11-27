@@ -355,3 +355,55 @@ func TestResourceKeyFetchOrder(t *testing.T) {
 		t.Fatal("a refresh of a replaced set did not use the newer one", got, err)
 	}
 }
+
+// A caller that stops waiting for a refetch of an expired set gets its
+// context's error rather than the stale set, and the cooldown is not
+// spent. A refused key set the issuer answers with is cached and fails
+// tokens as an outage, rather than letting an expired set keep serving.
+func TestResourceKeyStaleEdges(t *testing.T) {
+	issuer := newIssuerKeys(t)
+	signer := issuer.publish("one")["one"]
+	keys := newResourceKeys(issuer.server.URL, nil, issuer.server.Client().Transport)
+	clock := time.Now()
+	var clockMu sync.Mutex
+	keys.now = func() time.Time { clockMu.Lock(); defer clockMu.Unlock(); return clock }
+	advance := func(d time.Duration) { clockMu.Lock(); clock = clock.Add(d); clockMu.Unlock() }
+	if _, err := keys.verify(t.Context(), signed(t, signer, "one")); err != nil {
+		t.Fatal(err)
+	}
+	advance(resourceKeysTTL + time.Minute)
+	issuer.mu.Lock()
+	issuer.hold = make(chan struct{})
+	issuer.mu.Unlock()
+	ctx, cancel := context.WithCancel(t.Context())
+	go func() {
+		for issuer.fetches.Load() < 2 {
+			time.Sleep(time.Millisecond)
+		}
+		cancel()
+	}()
+	if _, err := keys.verify(ctx, signed(t, signer, "one")); !errors.Is(err, context.Canceled) {
+		t.Fatal("a cancelled wait was served the stale set", err)
+	}
+	keys.mu.Lock()
+	spent := !keys.refetchedAt.IsZero()
+	keys.mu.Unlock()
+	if spent {
+		t.Fatal("a cancelled wait spent the cooldown")
+	}
+	issuer.mu.Lock()
+	close(issuer.hold)
+	issuer.hold = nil
+	issuer.mu.Unlock()
+	// A refused answer replaces the expired set and fails as an outage.
+	fresh := newResourceKeys(issuer.server.URL, nil, issuer.server.Client().Transport)
+	fresh.now = keys.now
+	if _, err := fresh.verify(t.Context(), signed(t, signer, "one")); err != nil {
+		t.Fatal(err)
+	}
+	advance(resourceKeysTTL + time.Minute)
+	issuer.set(200, `{"error":"maintenance"}`)
+	if _, err := fresh.verify(t.Context(), signed(t, signer, "one")); !errors.Is(err, errKeysUnavailable) {
+		t.Fatal("an expired set served after a refused answer", err)
+	}
+}

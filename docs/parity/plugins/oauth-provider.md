@@ -20,8 +20,8 @@
     - [x] Derive protected-resource discovery from a local auth mount and issuer or from standalone configuration ([test](../../../conformance/resource-discovery.mjs#L7))
     - [x] Protect a route with the resource verifier, answering missing, failed, DPoP-bound and under-scoped requests with the same challenges, expose header and bodies as the other runtime's resource client, and passing verified requests through ([test](../../../conformance/resource-verifier.mjs#L130))
     - [x] Default a verifier's issuer and keys from the local auth instance, in process or from its remote key set, and its introspection endpoint ([test](../../../conformance/goapi/resource_verifier_test.go#L29))
-  - [x] `VerifyAccessTokenRemote` ([test](../../../plugins/oauthprovider/access_token_verifier_test.go#L316))
-    - [x] Introspect access tokens with the API's credentials, refusing inactive, audience-less, foreign, expired and wrongly issued answers, accepting a missing aud only when allowed, skipping the local check with Force, and failing closed as a server error ([test](../../../plugins/oauthprovider/access_token_verifier_test.go#L316))
+  - [x] `VerifyAccessTokenRemote` ([test](../../../plugins/oauthprovider/access_token_verifier_test.go#L342))
+    - [x] Introspect access tokens with the API's credentials, refusing inactive, audience-less, foreign, expired and wrongly issued answers, accepting a missing aud only when allowed, skipping the local check with Force, and failing closed as a server error ([test](../../../plugins/oauthprovider/access_token_verifier_test.go#L342))
     - [x] Introspect with the same form and headers, and answer each response alike, on both runtimes ([test](../../../conformance/resource-verifier.mjs#L181))
     - [x] Introspect an opaque resource token through the issuer's endpoint as a linked client and see it inactive once revoked, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_resource_verifier_test.go#L84))
   - [ ] `oauthProviderClient`
@@ -1028,12 +1028,12 @@
     - [x] Check authenticated token binding, request method, public URL and proof-of-possession errors on a protected HTTP route ([test](../../../conformance/dpop-proofs.mjs#L67))
     - [x] Verify bearer access tokens against the issuer's JWKS with the same status, error, description and missing scopes as the other runtime; requiring at+jwt and exp is a documented deviation ([test](../../../conformance/resource-verifier.mjs#L12))
     - [x] Refuse a wrong typ, issuer or audience, a missing claim, an expired or not yet valid token, symmetric and unsigned tokens, malformed scope claims and DPoP-bound tokens, and report every missing scope at once ([test](../../../plugins/oauthprovider/access_token_verifier_test.go#L28))
-    - [x] Verify bearer and DPoP-bound access token requests, scopes, schemes, proofs and replays with the same answers as the other runtime, each runtime with its own replay store ([test](../../../conformance/resource-verifier.mjs#L72))
+    - [x] Verify bearer and DPoP-bound access token requests, schemes, proofs and replays with the same answers as the other runtime, each runtime with its own replay store ([test](../../../conformance/resource-verifier.mjs#L72))
     - [x] Spend a DPoP proof once across two verifiers sharing the SQL store, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_resource_verifier_test.go#L26))
   - [ ] JWT or opaque tokens
     - [x] Introspect a resource-bound JWT minted by an independent issuer and preserve the claims originally signed for the grant ([test](../../../conformance/oauth-signed-introspection.mjs#L49))
-    - [x] How the API verifies it ([test](../../../conformance/resource-verifier.mjs#L181))
-      - [x] Verify signed tokens locally with the issuer's keys and opaque ones through introspection, on both runtimes ([test](../../../conformance/resource-verifier.mjs#L181))
+    - [x] How the API verifies it ([test](../../../plugins/oauthprovider/access_token_verifier_test.go#L342))
+      - [x] Verify a signed token locally with the issuer keys and then by introspection, and an opaque token by introspection alone ([test](../../../plugins/oauthprovider/access_token_verifier_test.go#L342))
     - [ ] Cost per request
     - [ ] Claims
   - [ ] Introspection
@@ -1046,8 +1046,8 @@
     - [x] Introspect a resource-bound JWT minted by an independent issuer and preserve the claims originally signed for the grant ([test](../../../conformance/oauth-signed-introspection.mjs#L49))
     - [x] Distinguish an expired or malformed signed JWT from an unrecognized token that still matches an independently stored refresh grant ([test](../../../conformance/oauth-signed-introspection.mjs#L84))
     - [x] Recheck current credentials, session and resource state and surface key-store failures on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_signed_introspection_test.go#L41))
-  - [x] Scopes and permissions ([test](../../../plugins/oauthprovider/access_token_verifier_test.go#L167))
-    - [x] Match required scopes exactly or with a host matcher over the de-duplicated granted scopes, reporting every missing scope as insufficient_scope ([test](../../../plugins/oauthprovider/access_token_verifier_test.go#L167))
+  - [x] Scopes and permissions ([test](../../../plugins/oauthprovider/access_token_verifier_test.go#L185))
+    - [x] Match required scopes exactly or with a host matcher over the de-duplicated granted scopes, reporting every missing scope as insufficient_scope ([test](../../../plugins/oauthprovider/access_token_verifier_test.go#L185))
   - [x] Protected resource metadata ([test](../../../conformance/resource-discovery.mjs#L7))
     - [x] Publish a path-specific HTTPS document with local issuer defaults, explicit issuers, filtered scopes and empty capabilities ([test](../../../conformance/resource-discovery.mjs#L7))
     - [x] Preserve escaped paths and query identity and serve public GET, HEAD and preflight over TLS ([test](../../../plugins/oauthprovider/discovery_test.go#L15))

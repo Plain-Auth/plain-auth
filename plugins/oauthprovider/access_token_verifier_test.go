@@ -137,6 +137,24 @@ func TestAccessTokenVerifier(t *testing.T) {
 		refused(err, 401, "invalid_token", c.description)
 		_ = name
 	}
+	// An empty kid and a null scope claim are refused, as another runtime
+	// refuses them.
+	emptySigner, _ := jose.NewSigner(jose.SigningKey{Algorithm: jose.ES256, Key: ec}, new(jose.SignerOptions).WithHeader("kid", "").WithType("at+jwt"))
+	emptyPayload, _ := json.Marshal(base(nil))
+	emptyObject, _ := emptySigner.Sign(emptyPayload)
+	emptyKid, _ := emptyObject.CompactSerialize()
+	if raw, _ := base64.RawURLEncoding.DecodeString(strings.Split(emptyKid, ".")[0]); !strings.Contains(string(raw), `"kid":""`) {
+		t.Fatal("the token did not carry an empty kid", string(raw))
+	}
+	_, err = v.VerifyBearer(ctx, emptyKid)
+	refused(err, 401, "invalid_token", "invalid access token")
+	nullScope, _ := jose.NewSigner(jose.SigningKey{Algorithm: jose.ES256, Key: ec}, new(jose.SignerOptions).WithHeader("kid", "ec").WithType("at+jwt"))
+	nullPayload, _ := json.Marshal(base(nil))
+	nullPayload = []byte(strings.Replace(string(nullPayload), `"scope":"read write"`, `"scope":null`, 1))
+	nullObject, _ := nullScope.Sign(nullPayload)
+	nullToken, _ := nullObject.CompactSerialize()
+	_, err = v.VerifyBearer(ctx, nullToken)
+	refused(err, 401, "invalid_token", "access token scope claim is invalid")
 	if _, err := v.VerifyBearer(ctx, ""); failure(err).Status != 401 || failure(err).Code != "" || failure(err).Message != "missing authorization header" {
 		t.Fatal("a missing token was not refused", err)
 	}
@@ -270,6 +288,14 @@ func TestAccessTokenVerifierRequests(t *testing.T) {
 		if !errors.As(err, &f) || f.Status != 401 || f.Code != c.code || c.description != "" && f.Description != c.description {
 			t.Error("a request was not refused", name, err)
 		}
+	}
+	// Two DPoP headers fail as one malformed proof.
+	r := httptest.NewRequest("GET", target, nil)
+	r.Header.Set("Authorization", "DPoP "+bound)
+	r.Header.Add("DPoP", proof(bound, "GET", target, proofKey, public))
+	r.Header.Add("DPoP", proof(bound, "GET", target, proofKey, public))
+	if _, err := v.VerifyRequest(ctx, ResourceRequestFrom(r, aud)); !errors.As(err, new(*ResourceFailure)) || err.(*ResourceFailure).Code != "invalid_dpop_proof" {
+		t.Fatal("two DPoP headers were accepted", err)
 	}
 	// A proof is spent once.
 	once := proof(bound, "GET", target, proofKey, public)
