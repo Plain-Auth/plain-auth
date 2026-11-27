@@ -11423,7 +11423,8 @@
     {
       "label": "Import the issuer, Redirect service and signing anchors from one submitted IdP XML document through the published client on both runtimes",
       "test": "conformance/sso-saml.mjs",
-      "marker": "if (inline) assert.equal(registration.samlConfig.idpMetadata.metadata"
+      "marker": "if (inline) assert.equal(registration.samlConfig.idpMetadata.metadata",
+      "complete": true
     },
     {
       "label": "Require host-managed recipient credentials for encrypted directory registrations on each SQL engine",
@@ -11562,7 +11563,8 @@
     {
       "label": "Accept any 2xx discovery document and answer an empty 204 with discovery_invalid_json",
       "test": "plugins/sso/discovery_test.go",
-      "marker": "t.Fatal(\"a 201 discovery document was refused\", err)"
+      "marker": "t.Fatal(\"a 201 discovery document was refused\", err)",
+      "complete": true
     }
   ],
   "published/sso/.": [
@@ -11891,7 +11893,8 @@
     {
       "label": "Give a provisioned member DefaultOrganizationRole or the role ResolveOrganizationRole chooses before the sign-in transaction, fail the sign-in on an error, panic or other role, and skip it when provisioning is off, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/sso_organization_role_test.go",
-      "marker": "func TestEnterpriseOrganizationRole("
+      "marker": "func TestEnterpriseOrganizationRole(",
+      "complete": true
     }
   ],
   "plugin-symbol/sso/SSOOptions/redirectURI": [
@@ -13062,7 +13065,8 @@
     {
       "label": "Answer 404 'No provider found for the given providerId' for an unknown provider and serve the XML under a sandboxing Content-Security-Policy, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/sso_saml_defaults_test.go",
-      "marker": "t.Fatal(\"SP metadata for an unknown provider did not answer 404\""
+      "marker": "t.Fatal(\"SP metadata for an unknown provider did not answer 404\"",
+      "complete": true
     },
     {
       "label": "Answer 400 'Invalid SAML configuration' for an OIDC provider's SP metadata, on SQLite, PostgreSQL and MySQL",
@@ -13144,7 +13148,8 @@
     {
       "label": "Sign in from a JSON SAML response and answer a GET by returning a signed-in browser to a trusted RelayState, the origin otherwise, and others to the error page",
       "test": "adapters/sqlstore/sso_saml_defaults_test.go",
-      "marker": "t.Fatal(\"a GET to the ACS did not return the browser as another runtime does\", c.relay, w.Code, w.Header().Get(\"Location\"))"
+      "marker": "t.Fatal(\"a GET to the ACS did not return the browser as another runtime does\", c.relay, w.Code, w.Header().Get(\"Location\"))",
+      "complete": true
     },
     {
       "label": "Read JSON SAML responses by exact key, so a lowercased SAMLResponse is not taken for an unsolicited response",
@@ -13991,7 +13996,8 @@
     {
       "label": "Redirect a logout request with neither message with missing_logout_data before any provider lookup, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/sso_saml_logout_test.go",
-      "marker": "t.Fatal(\"a logout request without a message did not redirect with missing_logout_data\""
+      "marker": "t.Fatal(\"a logout request without a message did not redirect with missing_logout_data\"",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/test-utils.mdx#L77": [
@@ -41851,7 +41857,8 @@
     {
       "label": "Name the missing required fields and both issuers in the discovery errors",
       "test": "plugins/sso/discovery_test.go",
-      "marker": "t.Fatal(\"an incomplete discovery document did not name its missing fields\", err)"
+      "marker": "t.Fatal(\"an incomplete discovery document did not name its missing fields\", err)",
+      "complete": true
     }
   ],
   "plugin-symbol/sso/validateDiscoveryUrl": [
@@ -42327,7 +42334,8 @@
     {
       "label": "Send the AuthnRequest to a manual idpMetadata.singleSignOnService Redirect entry instead of entryPoint, accept a response from its origin, and refuse a list without a Redirect entry, with a plain HTTP or query location, or with two Redirect entries, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/sso_saml_policy_test.go",
-      "marker": "t.Fatal(\"the AuthnRequest did not go to the listed sign-in service\""
+      "marker": "t.Fatal(\"the AuthnRequest did not go to the listed sign-in service\"",
+      "complete": true
     }
   ],
   "plugin-symbol/sso/SAMLConfig/spMetadata": [
@@ -42339,7 +42347,8 @@
     {
       "label": "Refuse spMetadata.metadata with 400 SAML_INVALID_SP_METADATA and store spMetadata.binding; this host generates its SP metadata, a documented deviation, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/sso_saml_defaults_test.go",
-      "marker": "t.Fatal(\"a registration with SP metadata XML was not refused\""
+      "marker": "t.Fatal(\"a registration with SP metadata XML was not refused\"",
+      "complete": true
     }
   ],
   "plugin-symbol/sso/SAMLConfig/wantAssertionsSigned": [
@@ -42415,7 +42424,8 @@
     {
       "label": "Refuse unusable manual sign-in services at registration, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/sso_saml_policy_test.go",
-      "marker": "t.Fatal(\"an unusable manual sign-in service was accepted\""
+      "marker": "t.Fatal(\"an unusable manual sign-in service was accepted\"",
+      "complete": true
     }
   ],
   "plugin-symbol/sso/SSOOIDCUserResolutionInput": [
@@ -42497,7 +42507,8 @@
     {
       "label": "Keep the SAML sign-in state for RequestTTL, five minutes by default, while an OIDC attempt keeps ten, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/sso_saml_defaults_test.go",
-      "marker": "t.Fatal(\"a sign-in state did not last its lifetime\""
+      "marker": "t.Fatal(\"a sign-in state did not last its lifetime\"",
+      "complete": true
     }
   ],
   "plugin-symbol/sso/SSOProvider": [
@@ -43304,7 +43315,8 @@
     {
       "label": "Redirect a logout request with neither message to a trusted RelayState or the application origin with missing_logout_data; logout uses HTTP-Redirect only, a documented deviation, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/sso_saml_logout_test.go",
-      "marker": "t.Fatal(\"a logout request without a message did not redirect with missing_logout_data\""
+      "marker": "t.Fatal(\"a logout request without a message did not redirect with missing_logout_data\"",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/sso/reference.mdx#L501/`POST /sso/saml2/logout/:providerId`": [
@@ -43628,7 +43640,8 @@
     {
       "label": "Refuse a response to another request of the same browser with Unknown or expired request ID, where another runtime accepts it while that request is outstanding",
       "test": "adapters/sqlstore/sso_saml_test.go",
-      "marker": "t.Fatal(\"a response to another request was not reported as an unknown request\", status, hd.Get(\"Location\"))"
+      "marker": "t.Fatal(\"a response to another request was not reported as an unknown request\", status, hd.Get(\"Location\"))",
+      "complete": true
     },
     {
       "label": "Redirect a response naming a request nobody sent with invalid_saml_response and Unknown or expired request ID",
@@ -43668,7 +43681,8 @@
     {
       "label": "Redirect a response for a directory changed during the sign-in with invalid_state and sso_provider_changed_during_authentication",
       "test": "adapters/sqlstore/sso_saml_test.go",
-      "marker": "t.Fatal(\"changed provider accepted response\", head)"
+      "marker": "t.Fatal(\"changed provider accepted response\", head)",
+      "complete": true
     },
     {
       "label": "Redirect with error=invalid_state for a request started before a certificate rotation",
@@ -44964,7 +44978,8 @@
     {
       "label": "Retire a bound connection without a domain in its bound domain and refuse a never-bound connection, configured or not, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/scim_decommission_test.go",
-      "marker": "func TestSCIMRetirementWithoutDomain("
+      "marker": "func TestSCIMRetirementWithoutDomain(",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L522/Nested Groups or non-User Group members": [
@@ -47558,6 +47573,22 @@
       "label": "Create an account for an explicit create decision whose name and email then follow the source, which owns its profile, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/scim_identity_test.go",
       "marker": "t.Fatal(\"an explicitly created account did not follow its source's profile\", name, email, profileSource)",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/sso/deriveSAMLServiceProviderPolicy": [
+    {
+      "label": "Refuse SP metadata XML with 400 SAML_INVALID_SP_METADATA, so the SP policy comes from the directory's own settings; this host generates its SP metadata, a documented deviation, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_defaults_test.go",
+      "marker": "t.Fatal(\"a registration with SP metadata XML was not refused\"",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/sso/SAMLServiceProviderPolicy": [
+    {
+      "label": "Refuse SP metadata XML with 400 SAML_INVALID_SP_METADATA, so the SP policy comes from the directory's own settings; this host generates its SP metadata, a documented deviation, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_defaults_test.go",
+      "marker": "t.Fatal(\"a registration with SP metadata XML was not refused\"",
       "complete": true
     }
   ]

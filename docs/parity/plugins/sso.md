@@ -33,7 +33,7 @@
     - [x] Keep configured endpoints and fill the others from the discovered document ([test](../../../plugins/sso/discovery_test.go#L328))
     - [x] Keep configured authorization, token and key endpoints and client authentication method over the discovered ones, and fill only the missing endpoints ([test](../../../plugins/sso/discovery_test.go#L407))
     - [x] Write an untrusted discovery URL as another runtime's URL parser does: lowercase scheme and host, no default port and "/" for an empty path ([test](../../../plugins/sso/discovery_test.go#L350))
-  - [ ] `fetchDiscoveryDocument`
+  - [x] `fetchDiscoveryDocument` ([test](../../../plugins/sso/discovery_test.go#L175))
     - [x] Require an exact discovery origin and enforce the deadline, issuer match and bounded response ([test](../../../plugins/sso/discovery_test.go#L20))
     - [x] Fail a registration with 400 after a single request when the discovery endpoint answers with a redirect ([test](../../../adapters/sqlstore/sso_test.go#L261))
     - [x] Reject a JSON null discovery document with discovery_invalid_json ([test](../../../plugins/sso/discovery_test.go#L65))
@@ -57,7 +57,7 @@
     - [x] Select private_key_jwt when the discovery document advertises only that method ([test](../../../adapters/sqlstore/sso_private_key_test.go#L162))
     - [x] Keep an unset method as client_secret_basic at runtime discovery though the IdP advertises only client_secret_post ([test](../../../adapters/sqlstore/sso_runtime_discovery_test.go#L69))
     - [x] Choose client_secret_basic without advertised or usable methods, the advertised post or private_key_jwt otherwise, and keep a configured method ([test](../../../plugins/sso/discovery_test.go#L340))
-  - [ ] `validateDiscoveryDocument`
+  - [x] `validateDiscoveryDocument` ([test](../../../plugins/sso/discovery_test.go#L181))
     - [x] Reject a discovery document missing a required field with discovery_incomplete ([test](../../../plugins/sso/discovery_test.go#L214))
     - [x] Reject a discovery document whose issuer differs from the configured issuer with issuer_mismatch ([test](../../../plugins/sso/discovery_test.go#L66))
     - [x] Name the missing required fields and both issuers in the discovery errors ([test](../../../plugins/sso/discovery_test.go#L181))
@@ -125,8 +125,10 @@
     - [x] Take the IdP entity ID from a registration that supplies only IdP metadata XML ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L62))
     - [x] Reject a signed assertion whose issuer differs from the manually configured IdP entity ID ([test](../../../adapters/sqlstore/sso_saml_test.go#L593))
     - [x] Refuse a SAML configuration whose IdP metadata names no entity ID and carries no metadata XML ([test](../../../plugins/sso/saml_test.go#L578))
-  - [ ] `deriveSAMLServiceProviderPolicy`
-  - [ ] `SAMLServiceProviderPolicy`
+  - [x] `deriveSAMLServiceProviderPolicy` ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L137))
+    - [x] Refuse SP metadata XML with 400 SAML_INVALID_SP_METADATA, so the SP policy comes from the directory's own settings; this host generates its SP metadata, a documented deviation, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L137))
+  - [x] `SAMLServiceProviderPolicy` ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L137))
+    - [x] Refuse SP metadata XML with 400 SAML_INVALID_SP_METADATA, so the SP policy comes from the directory's own settings; this host generates its SP metadata, a documented deviation, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L137))
   - [x] `GET /sso/providers` ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L171))
     - [x] List personal registrations with masked client IDs and omit other owners’ registrations ([test](../../../conformance/sso-providers.mjs#L12))
     - [x] Grant organization visibility to current administrators and remove it after demotion ([test](../../../adapters/sqlstore/sso_test.go#L23))
@@ -154,14 +156,14 @@
     - [x] Answer 404 when deleting a provider that was already deleted, through the released client on both runtimes ([test](../../../conformance/sso-providers.mjs#L111))
     - [x] Let an organization admin delete the organization's provider and refuse a plain member with 403, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_test.go#L248))
     - [x] Refuse a deletion without a string providerId with 400 and answer 404 for one never registered, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_test.go#L251))
-  - [ ] `GET /sso/saml2/sp/metadata`
+  - [x] `GET /sso/saml2/sp/metadata` ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L193))
     - [x] Read public XML metadata with the configured entity ID and mounted HTTP-POST ACS on both runtimes ([test](../../../conformance/sso-saml.mjs#L225))
     - [x] Publish the host signing certificate and verify the resulting RSA-SHA256 Redirect at a local IdP ([test](../../../adapters/sqlstore/sso_saml_test.go#L252))
     - [x] Advertise the public SP recipient certificate, AES-256-GCM and explicit RSA-OAEP SHA-256 parameters when a directory requires encryption ([test](../../../adapters/sqlstore/sso_saml_test.go#L217))
     - [x] Advertise a single HTTP-Redirect logout service and the signed request key for a configured directory ([test](../../../adapters/sqlstore/sso_saml_test.go#L196))
     - [x] Answer 404 'No provider found for the given providerId' for an unknown provider and serve the XML under a sandboxing Content-Security-Policy, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L193))
     - [x] Answer 400 'Invalid SAML configuration' for an OIDC provider's SP metadata, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L246))
-  - [ ] `POST /sso/register`
+  - [x] `POST /sso/register` ([test](../../../conformance/sso-saml.mjs#L205))
     - [x] Register manually configured and discovered OIDC clients and read the other implementation’s canonical provider record ([test](../../../conformance/sso-providers.mjs#L12))
     - [x] Enforce direct owner sessions, organization roles and creator quota during concurrent registrations ([test](../../../adapters/sqlstore/sso_test.go#L23))
     - [x] Deny enterprise registration from an impersonated session on an instance opened before the administrative migration ([test](../../../adapters/sqlstore/admin_live_schema_test.go#L108))
@@ -203,7 +205,7 @@
   - [ ] `/sso/callback`
     - [x] Authenticate using the shared callback on both servers and preserve the canonical linked account in SQLite ([test](../../../conformance/sso-browser.mjs#L59))
     - [x] Resume the original client authorization with the enterprise employee’s new session and redeem the code after consent ([test](../../../conformance/oauth-enterprise-authorization.mjs#L43))
-  - [ ] `GET / POST /sso/saml2/sp/acs/:providerId`
+  - [x] `GET / POST /sso/saml2/sp/acs/:providerId` ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L429))
     - [x] POST a separately signed browser assertion, receive the application session and reuse the original account ([test](../../../conformance/sso-saml.mjs#L291))
     - [x] Validate a signed issuer, audience, recipient, request and validity window on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_test.go#L591))
     - [x] Consume an assertion once across independent instances and maintain the live DNS boundary on automatic linking ([test](../../../adapters/sqlstore/sso_saml_test.go#L750))
@@ -221,7 +223,7 @@
     - [x] Sign in from a JSON SAML response and answer a GET by returning a signed-in browser to a trusted RelayState, the origin otherwise, and others to the error page ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L429))
     - [x] Read JSON SAML responses by exact key, so a lowercased SAMLResponse is not taken for an unsolicited response ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L453))
     - [x] Redirect a SAML failure to the error page when the sign-in named no error callback, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_test.go#L637))
-  - [ ] `GET / POST /sso/saml2/sp/slo/:providerId`
+  - [x] `GET / POST /sso/saml2/sp/slo/:providerId` ([test](../../../adapters/sqlstore/sso_saml_logout_test.go#L147))
     - [x] Accept a signed HTTP-Redirect acknowledgement once across replicas and preserve a newer login during the round trip ([test](../../../adapters/sqlstore/sso_saml_logout_test.go#L265))
     - [x] Complete the strict Go Redirect return with an independent IdP and capture the pinned reference’s signed-response rejection ([test](../../../conformance/core.test.mjs#L1638))
     - [x] Accept a signed directory LogoutRequest once across replicas, revoke sessions for the exact qualified NameID and SessionIndex, and preserve another immutable registration on three SQL engines ([test](../../../adapters/sqlstore/sso_saml_idp_logout_test.go#L231))
@@ -384,11 +386,11 @@
       - [x] Land a portal sign-in on the directory's relative idpInitiatedCallbackUrl, and on the host-wide landing page when the directory names an untrusted absolute URL, on both runtimes ([test](../../../conformance/sso-saml.mjs#L251))
       - [x] Use a trusted absolute URL as the portal landing page ([test](../../../plugins/sso/saml_unsolicited_test.go#L29))
       - [x] Land an approved portal sign-in on the directory's relative landing page and return a refused one there with error=signup_disabled, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_portal_test.go#L80))
-    - [ ] `idpMetadata`
+    - [x] `idpMetadata` ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L557))
       - [x] Take the IdP entity ID from a registration that supplies only IdP metadata XML ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L62))
       - [x] Return the submitted IdP metadata XML in the registration on both runtimes ([test](../../../conformance/sso-saml.mjs#L205))
       - [x] Send the AuthnRequest to a manual idpMetadata.singleSignOnService Redirect entry instead of entryPoint, accept a response from its origin, and refuse a list without a Redirect entry, with a plain HTTP or query location, or with two Redirect entries, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L557))
-    - [ ] `spMetadata`
+    - [x] `spMetadata` ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L137))
       - [x] Publish SP metadata under spMetadata.entityID ([test](../../../adapters/sqlstore/sso_saml_test.go#L190))
       - [x] Refuse spMetadata.metadata with 400 SAML_INVALID_SP_METADATA and store spMetadata.binding; this host generates its SP metadata, a documented deviation, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L137))
     - [x] `wantAssertionsSigned` ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L532))
@@ -416,7 +418,7 @@
       - [x] Fill the user name from the displayName attribute by default on both runtimes ([test](../../../conformance/sso-saml.mjs#L297))
       - [x] A SAML profile carries the raw attributes, one value as a string and several as a list, with the email lower-cased ([test](../../../plugins/sso/saml_test.go#L184))
       - [x] Fall back to the NameID for a missing mapped email or name, keep default attributes for keys a mapping omits, and never verify a false value ([test](../../../plugins/sso/saml_test.go#L222))
-  - [ ] `SAMLIdentityProviderMetadata`
+  - [x] `SAMLIdentityProviderMetadata` ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L599))
     - [x] Use the entity ID from submitted IdP metadata XML ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L62))
     - [x] Reject an assertion from an issuer other than the manually configured entityID ([test](../../../adapters/sqlstore/sso_saml_test.go#L593))
     - [x] Accept idpMetadata.singleSignOnService and read its Redirect and POST locations ([test](../../../plugins/sso/saml_test.go#L30))
@@ -446,7 +448,7 @@
       - [x] Answer 500 for a panicking ProvisionUser and remove its session ([test](../../../adapters/sqlstore/sso_provision_user_test.go#L113))
     - [x] `provisionUserOnEveryLogin` ([test](../../../adapters/sqlstore/sso_provision_user_test.go#L103))
       - [x] Run ProvisionUser only for a new user by default and for every sign-in with ProvisionUserOnEveryLogin ([test](../../../adapters/sqlstore/sso_provision_user_test.go#L103))
-    - [ ] `organizationProvisioning`
+    - [x] `organizationProvisioning` ([test](../../../adapters/sqlstore/sso_organization_role_test.go#L20))
       - [x] Preserve existing roles and pending invitations, serialize competing removal and roll back new identities at capacity ([test](../../../adapters/sqlstore/sso_browser_test.go#L474))
       - [x] Add a new enterprise user to the provider's organization with the member role ([test](../../../adapters/sqlstore/sso_browser_test.go#L313))
       - [x] Give a provisioned member DefaultOrganizationRole or the role ResolveOrganizationRole chooses before the sign-in transaction, fail the sign-in on an error, panic or other role, and skip it when provisioning is off, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_organization_role_test.go#L20))
@@ -482,7 +484,7 @@
       - [x] Resolve the signing key before each code exchange with the provider's record, tenant, key ID and issuer, refuse private_key_jwt without a resolver, and fail the callback before any token request when no key is returned, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_private_key_test.go#L23))
       - [x] Take the resolved key's ID and algorithm, sign a JWK, default to RS256, pass the organization, and fail closed on a resolver error or an unsupported resolved algorithm ([test](../../../adapters/sqlstore/sso_private_key_test.go#L189))
       - [x] Pass the provider's organization to the key resolver ([test](../../../adapters/sqlstore/sso_private_key_test.go#L219))
-    - [ ] `saml`
+    - [x] `saml` ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L390))
       - [x] Run SP-initiated SAML sign-in, single logout and reviewed IdP portal sign-in under the plugin's SAML options on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_test.go#L117))
       - [x] Default the inline IdP metadata limit to 100 KiB and reject a negative limit or one above 1 MiB ([test](../../../plugins/sso/saml_test.go#L65))
       - [x] Keep the SAML sign-in state for RequestTTL, five minutes by default, while an OIDC attempt keeps ten, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L390))
@@ -844,7 +846,7 @@
       - [x] Return the browser from a GET to the ACS as another runtime does, beside the posted form and JSON responses, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_defaults_test.go#L429))
     - [x] `GET /sso/saml2/sp/metadata?providerId=` ([test](../../../adapters/sqlstore/sso_saml_test.go#L185))
       - [x] Serve a provider's SP metadata as application/xml to a request without a session ([test](../../../adapters/sqlstore/sso_saml_test.go#L185))
-    - [ ] `GET / POST /sso/saml2/sp/slo/:providerId`
+    - [x] `GET / POST /sso/saml2/sp/slo/:providerId` ([test](../../../adapters/sqlstore/sso_saml_logout_test.go#L147))
       - [x] Accept a signed IdP LogoutRequest at the SLO route exactly once across two instances ([test](../../../adapters/sqlstore/sso_saml_idp_logout_test.go#L231))
       - [x] Accept a signed LogoutResponse at the SLO route exactly once across two instances ([test](../../../adapters/sqlstore/sso_saml_logout_test.go#L265))
       - [x] Redirect a logout request with neither message to a trusted RelayState or the application origin with missing_logout_data; logout uses HTTP-Redirect only, a documented deviation, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_logout_test.go#L147))
@@ -934,7 +936,7 @@
   - [ ] InResponseTo validation
     - [x] Redirect with error=invalid_saml_response for a correlated response posted without its RelayState ([test](../../../adapters/sqlstore/sso_saml_test.go#L493))
     - [x] Reject an unsolicited response whose assertion cites a request ID ([test](../../../adapters/sqlstore/sso_saml_portal_test.go#L96))
-    - [ ] `invalid_saml_response`
+    - [x] `invalid_saml_response` ([test](../../../adapters/sqlstore/sso_saml_test.go#L670))
       - [x] Redirect with error=invalid_saml_response when the assertion's bearer confirmation answers another request ID ([test](../../../adapters/sqlstore/sso_saml_test.go#L601))
       - [x] Redirect with error=invalid_saml_response for a correlated response posted without its RelayState ([test](../../../adapters/sqlstore/sso_saml_test.go#L493))
       - [x] Refuse a response to another request of the same browser with Unknown or expired request ID, where another runtime accepts it while that request is outstanding ([test](../../../adapters/sqlstore/sso_saml_test.go#L670))
@@ -945,7 +947,7 @@
       - [x] Refuse a portal response with unsolicited_response and IdP-initiated SSO not allowed when portal sign-in is off or the host declines it ([test](../../../adapters/sqlstore/sso_saml_portal_test.go#L73))
       - [x] Redirect a browser-bound response without InResponseTo with unsolicited_response and IdP-initiated SSO not allowed ([test](../../../adapters/sqlstore/sso_saml_test.go#L654))
       - [x] Return a refused or replayed portal response to the directory's landing page, as another runtime does, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_portal_test.go#L128))
-    - [ ] `invalid_state`
+    - [x] `invalid_state` ([test](../../../adapters/sqlstore/sso_saml_test.go#L795))
       - [x] Redirect a response for a directory changed during the sign-in with invalid_state and sso_provider_changed_during_authentication ([test](../../../adapters/sqlstore/sso_saml_test.go#L795))
       - [x] Redirect with error=invalid_state for a request started before a certificate rotation ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L103))
   - [ ] Assertion replay protection

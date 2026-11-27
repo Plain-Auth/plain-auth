@@ -696,7 +696,7 @@
     - [x] `reconcileSCIMProjection` ([test](../../../adapters/sqlstore/scim_projection_test.go#L507))
       - [x] Replay a trusted policy for its complete domain on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_projection_test.go#L364))
       - [x] Report the domain, reconciled users and committed batches of a replay, and answer 409 without a policy, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_projection_test.go#L507))
-    - [ ] `decommissionSCIMConnection`
+    - [x] `decommissionSCIMConnection` ([test](../../../adapters/sqlstore/scim_decommission_test.go#L209))
       - [x] Refuse retiring a static connection under a different provisioning domain, then retire it before first use so its token answers 401 ([test](../../../adapters/sqlstore/scim_decommission_test.go#L74))
       - [x] Report a never-used directory retired by one runtime as complete with no batches from the other ([test](../../../conformance/scim-managed.mjs#L146))
       - [x] Retire a bound connection without a domain in its bound domain and refuse a never-bound connection, configured or not, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_decommission_test.go#L209))
