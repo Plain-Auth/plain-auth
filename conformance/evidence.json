@@ -16449,6 +16449,12 @@
       "label": "Narrow machine grants to the intersection of API scopes and reject an empty intersection",
       "test": "conformance/oauth-resource-machine-tokens.mjs",
       "marker": "await expect(issue([a], \"reports\"), 400, \"invalid_scope\");"
+    },
+    {
+      "label": "Narrow a multi-resource grant to the allowed scopes every resource shares",
+      "test": "conformance/oauth-resource-machine-tokens.mjs",
+      "marker": "assert.equal(token.scope, \"extra\");",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/oauth-provider/tokens.mdx#L71/`signingAlgorithm`": [
@@ -16509,6 +16515,12 @@
       "label": "Reject disabled resources at issuance while preserving outstanding machine grants until a resource is deleted",
       "test": "conformance/oauth-resource-machine-tokens.mjs",
       "marker": "assert.equal((await inspect(token.access_token)).tier, opaque ? \"updated\" : \"files\");"
+    },
+    {
+      "label": "Report an outstanding token for a disabled resource as active at introspection",
+      "test": "conformance/oauth-opaque-introspection.mjs",
+      "marker": "assert.deepEqual(await check(resourceCredentials), bound);",
+      "complete": true
     }
   ],
   "plugin/oauth-provider/GET /oauth2/get-consent": [
@@ -16600,6 +16612,12 @@
       "label": "Change the scopes of locally registered clients and preserve grant identity, resources and requested claims",
       "test": "conformance/oauth-consent.mjs",
       "marker": "assert.deepEqual(result, { ...initial, scopes: valid.update.scopes"
+    },
+    {
+      "label": "Reject a scope the client may not use with 400 invalid_request and leave the grant unchanged",
+      "test": "conformance/oauth-consent.mjs",
+      "marker": "\"unable to provide scopes to department\"",
+      "complete": true
     }
   ],
   "plugin/oauth-provider/POST /oauth2/delete-consent": [
@@ -16654,6 +16672,12 @@
       "label": "Change the scopes of locally registered clients and preserve grant identity, resources and requested claims",
       "test": "conformance/oauth-consent.mjs",
       "marker": "assert.deepEqual(result, { ...initial, scopes: valid.update.scopes"
+    },
+    {
+      "label": "Change an owned consent's scopes and refuse signed-out, foreign, unknown, disallowed and malformed updates",
+      "test": "conformance/oauth-consent.mjs",
+      "marker": "await problem(update, { id, update: { scopes: [\"reports\",\"profile\"] } }, 400, \"invalid_request\", \"unable to provide scopes to department\");",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/oauth-provider/reference.mdx#L342/`POST /oauth2/delete-consent`": [
@@ -16875,6 +16899,12 @@
       "label": "Resolve tenant membership for shared registrations and keep owner lookups independent of tenant callback failures",
       "test": "adapters/sqlstore/oauth_client_directory_test.go",
       "marker": "ownership reassignment was stale"
+    },
+    {
+      "label": "Keep the signed-in account as the owner when no tenant is assigned",
+      "test": "conformance/oauth-registration.mjs",
+      "marker": "assert.equal(app.user_id, user.id);",
+      "complete": true
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/generateClientId": [
@@ -16882,6 +16912,12 @@
       "label": "Use the configured ID generator and keep a single complete registration after a collision",
       "test": "adapters/sqlstore/oauth_registration_test.go",
       "marker": "colliding registrations did not leave one complete client"
+    },
+    {
+      "label": "Default to 32-letter client IDs in both runtimes",
+      "test": "conformance/oauth-registration.mjs",
+      "marker": "assert.match(body.client_id, /^[a-zA-Z]{32}$/);",
+      "complete": true
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/generateClientSecret": [
@@ -16894,6 +16930,12 @@
       "label": "Reuse the configured generator for rotation and reject an ineffective repeated digest",
       "test": "adapters/sqlstore/oauth_secret_rotation_test.go",
       "marker": "failed generation changed an active credential"
+    },
+    {
+      "label": "Default to 32-letter client secrets in both runtimes",
+      "test": "conformance/oauth-registration.mjs",
+      "marker": "assert.match(app.client_secret, /^fixture_[a-zA-Z]{32}$/);",
+      "complete": true
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/storeClientSecret": [
@@ -16918,6 +16960,12 @@
       "label": "Generate and hash the raw refresh token, encode it for its session, then apply the public prefix",
       "test": "adapters/sqlstore/oauth_offline_code_test.go",
       "marker": "unexpected refresh format or access lifetime"
+    },
+    {
+      "label": "Return prefixed opaque access tokens that introspection accepts while storing only the unprefixed digest",
+      "test": "conformance/oauth-authorization-code.mjs",
+      "marker": "assert.ok(token.access_token.startsWith(\"access_\"));",
+      "complete": true
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/grantTypes": [
@@ -17041,6 +17089,12 @@
       "label": "Read locally registered owner metadata and omit internal fields and the shared secret",
       "test": "conformance/oauth-client-directory.mjs",
       "marker": "assert.deepEqual(privateView, expected);"
+    },
+    {
+      "label": "Read a personally or tenant-owned registration and refuse a missing session, another owner or a denied read",
+      "test": "conformance/oauth-client-directory.mjs",
+      "marker": "[get(shared.client_id), individual, {}],",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/oauth-provider/reference.mdx#L331/`GET /oauth2/get-client`": [
@@ -17055,6 +17109,12 @@
       "label": "Expose only display metadata for an enabled local registration to a signed-in user",
       "test": "conformance/oauth-client-directory.mjs",
       "marker": "assert.deepEqual(publicView, {"
+    },
+    {
+      "label": "Require a session, return only display fields and treat disabled, unknown or discovered registrations as not found",
+      "test": "conformance/oauth-client-directory.mjs",
+      "marker": "for (const path of [display(personal.client_id), display(\"absent\"), get(\"absent\")]) {",
+      "complete": true
     }
   ],
   "plugin-symbol/oauth-provider/getOAuthClientPublic": [
@@ -17062,6 +17122,12 @@
       "label": "Expose only display metadata for an enabled local registration to a signed-in user",
       "test": "conformance/oauth-client-directory.mjs",
       "marker": "assert.deepEqual(publicView, {"
+    },
+    {
+      "label": "Require a session, return only display fields and treat disabled, unknown or discovered registrations as not found",
+      "test": "conformance/oauth-client-directory.mjs",
+      "marker": "for (const path of [display(personal.client_id), display(\"absent\"), get(\"absent\")]) {",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/oauth-provider/clients.mdx#L59/`getOAuthClientPublic`": [
@@ -17069,6 +17135,12 @@
       "label": "Expose only display metadata for an enabled local registration to a signed-in user",
       "test": "conformance/oauth-client-directory.mjs",
       "marker": "assert.deepEqual(publicView, {"
+    },
+    {
+      "label": "Return display fields to any signed-in user, require a session and hide disabled or unknown registrations behind 404",
+      "test": "conformance/oauth-client-directory.mjs",
+      "marker": "for (const path of [list, get(personal.client_id), display(shared.client_id)]) {",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/oauth-provider/reference.mdx#L332/`GET /oauth2/public-client`": [
@@ -17076,6 +17148,12 @@
       "label": "Expose only display metadata for an enabled local registration to a signed-in user",
       "test": "conformance/oauth-client-directory.mjs",
       "marker": "assert.deepEqual(publicView, {"
+    },
+    {
+      "label": "Show only display metadata to any signed-in user and hide disabled, unknown or unresolved registrations",
+      "test": "conformance/oauth-client-directory.mjs",
+      "marker": "const publicView = await ok(display(personal.client_id), other.cookie, { \"X-Deny-Action\": \"read\" });",
+      "complete": true
     }
   ],
   "plugin/oauth-provider/GET /oauth2/get-clients": [
@@ -17170,6 +17248,12 @@
       "label": "Replace a shared secret for its owner and immediately authenticate only the replacement at an independent issuer",
       "test": "conformance/oauth-registration.mjs",
       "marker": "assert.ok((await issuedAfterRotation.json()).access_token);"
+    },
+    {
+      "label": "Rotate personal and tenant shared secrets and refuse signed-out, foreign, denied, unknown, operator-managed, key-based and public clients",
+      "test": "conformance/oauth-registration.mjs",
+      "marker": "await t.test(\"rotate shared client secrets and invalidate the original credential\", async () => {",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/oauth-provider/clients.mdx#L64/`rotateClientSecret`": [
@@ -17239,6 +17323,12 @@
       "label": "Delete personally owned or tenant-owned registrations with an empty success response and enforce the session, privilege and immutable-client rules",
       "test": "conformance/oauth-client-directory.mjs",
       "marker": "await t.test(\"owners delete personal and tenant registrations\""
+    },
+    {
+      "label": "Delete personal and tenant registrations once with an empty response and refuse signed-out, foreign, denied, malformed and operator-managed requests",
+      "test": "conformance/oauth-client-directory.mjs",
+      "marker": "await t.test(\"owners delete personal and tenant registrations\", async () => {",
+      "complete": true
     }
   ],
   "plugin/oauth-provider/PATCH /admin/oauth2/update-client": [
@@ -17472,6 +17562,12 @@
       "label": "Use a host token generator, credential verifier and digest function without storing cleartext tokens",
       "test": "adapters/sqlstore/oauth_machine_token_test.go",
       "marker": "machine token persistence or lifetime incorrect"
+    },
+    {
+      "label": "Default to 32-letter opaque access tokens in both runtimes",
+      "test": "conformance/oauth-machine-tokens.mjs",
+      "marker": "assert.match(issued.access_token, /^access_[A-Za-z]{32}$/);",
+      "complete": true
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/storeTokens": [
@@ -17504,6 +17600,12 @@
       "label": "Apply a custom lifetime and code digest and redeem the stored browser grant on a second server",
       "test": "adapters/sqlstore/oauth_browser_authorization_test.go",
       "marker": "stored code lost lifetime, scope, or bound browser context"
+    },
+    {
+      "label": "Store default SHA-256 digests of authorization codes, opaque access tokens and refresh tokens in both runtimes",
+      "test": "conformance/oauth-authorization-code.mjs",
+      "marker": "assert.equal(row.token, createHash(\"sha256\").update(token.slice(\"access_\".length)).digest(\"base64url\"));",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/oauth-provider/tokens.mdx#L125/`m2mAccessTokenExpiresIn`": [
@@ -17705,6 +17807,12 @@
       "label": "Accept registered shared-secret and public clients while preserving token ownership",
       "test": "conformance/oauth-revocation.mjs",
       "marker": "await success({ client_id: other.client_id, token });"
+    },
+    {
+      "label": "Revoke owned opaque and refresh tokens, refuse signed access tokens and reject missing tokens and failed client authentication",
+      "test": "conformance/oauth-revocation.mjs",
+      "marker": "export async function exerciseRevocation(",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/oauth-provider/tokens.mdx#L273": [
@@ -17742,6 +17850,12 @@
       "label": "Exchange refresh tokens through the Go OAuth client and verify atomic replacement, callback failures and concurrent reuse on all three engines",
       "test": "adapters/sqlstore/oauth_refresh_grant_test.go",
       "marker": "func TestRefreshGrantExchange("
+    },
+    {
+      "label": "Decode custom refresh values at introspection, report unknown encodings as inactive and fail closed on decoder errors",
+      "test": "adapters/sqlstore/oauth_refresh_introspection_test.go",
+      "marker": "call(\"app\", \"token-failed\", hint, 500)",
+      "complete": true
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/cachedTrustedClients": [
@@ -18367,6 +18481,12 @@
       "label": "Restart the configured refresh lifetime on rotation and preserve original authentication time, session and authorization code",
       "test": "adapters/sqlstore/oauth_refresh_grant_test.go",
       "marker": "replacement lifetime or grant lineage changed"
+    },
+    {
+      "label": "Default offline refresh tokens to a thirty-day lifetime in both runtimes",
+      "test": "conformance/oauth-authorization-code.mjs",
+      "marker": "assert.equal(Date.parse(refresh.expiresAt) - Date.parse(refresh.createdAt), 30 * 24 * 3600 * 1000);",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/oauth-provider/tokens.mdx#L127/`refreshTokenExpiresIn`": [
@@ -18379,6 +18499,12 @@
       "label": "Restart the configured refresh lifetime on rotation and preserve original authentication time, session and authorization code",
       "test": "adapters/sqlstore/oauth_refresh_grant_test.go",
       "marker": "replacement lifetime or grant lineage changed"
+    },
+    {
+      "label": "Default the refresh token lifetime to 30 days on an offline code exchange",
+      "test": "conformance/oauth-authorization-code.mjs",
+      "marker": "30 * 24 * 3600 * 1000",
+      "complete": true
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/generateRefreshToken": [
@@ -18386,6 +18512,12 @@
       "label": "Generate and hash the raw refresh token, encode it for its session, then apply the public prefix",
       "test": "adapters/sqlstore/oauth_offline_code_test.go",
       "marker": "unexpected refresh format or access lifetime"
+    },
+    {
+      "label": "Default to 32-letter refresh tokens in both runtimes",
+      "test": "conformance/oauth-authorization-code.mjs",
+      "marker": "assert.match(pair.refresh_token, /^[a-zA-Z]{32}$/);",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/oauth-provider/tokens.mdx#L23": [
@@ -18516,6 +18648,12 @@
       "label": "The code's verification record expires with the stored code",
       "test": "adapters/sqlstore/oauth_code_hooks_test.go",
       "marker": "func TestVerificationHooksAroundAuthorizationCodes(t *testing.T) {"
+    },
+    {
+      "label": "Default authorization codes to a ten-minute lifetime in both runtimes",
+      "test": "conformance/oauth-browser-authorization.mjs",
+      "marker": "assert.equal(Date.parse(record.expiresAt) - Date.parse(record.updatedAt), 600_000);",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/oauth-provider/tokens.mdx#L128/`codeExpiresIn`": [
@@ -18880,6 +19018,12 @@
       "label": "Resume after the user activates a membership and distinguish an explicit continuation from a cookie reissued by an organization switch",
       "test": "conformance/oauth-post-login.mjs",
       "marker": "const picked = await destination("
+    },
+    {
+      "label": "Reject a continuation whose signed query was altered",
+      "test": "conformance/oauth-account-selection.mjs",
+      "marker": "const invalid = await request(\"oauth2/continue\", { selected: true, oauth_query: modified.toString() }, headers);",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/oauth-provider/sign-in-flow.mdx#L221/Parameter `created` (optional)": [
@@ -19106,6 +19250,12 @@
       "label": "Return signed ID tokens with a client-specific subject for OpenID scopes on untargeted grants and omit them when the scope is dropped",
       "test": "conformance/oauth-id-tokens.mjs",
       "marker": "assert.equal(reduced.id_token,undefined);"
+    },
+    {
+      "label": "Return only the subject at UserInfo for an openid-only token",
+      "test": "conformance/oauth-userinfo.mjs",
+      "marker": "await ok(await call(\"GET\", \"Bearer \" + token), { sub });",
+      "complete": true
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/idTokenExpiresIn": [
@@ -47952,6 +48102,150 @@
       "label": "Name no resources in a registration response for a client without linked resources, on both runtimes",
       "test": "conformance/oauth-registration.mjs",
       "marker": "assert.equal(app.resources, undefined);",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/index.mdx#L235": [
+    {
+      "label": "Call UserInfo with a bearer access token from a code flow and receive the user's subject and name",
+      "test": "conformance/oauth-userinfo.mjs",
+      "marker": "await ok(await call(\"GET\", \"Bearer \" + signed.issued.access_token), {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/tokens.mdx#L32/`offline_access`": [
+    {
+      "label": "Return a refresh token only when offline_access is granted on the code exchange",
+      "test": "conformance/oauth-authorization-code.mjs",
+      "marker": "assert.equal(pair.scope, \"reports offline_access\");",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/removePromptFromQuery": [
+    {
+      "label": "Remove a satisfied prompt value and delete the parameter when none remain",
+      "test": "conformance/oauth-browser-login.mjs",
+      "marker": "assert.equal(consent.searchParams.get(\"prompt\"), \"consent\");",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/index.mdx#L27/Introspection and revocation": [
+    {
+      "label": "Introspect an active token, revoke it and then report it inactive at the issuer's own endpoints",
+      "test": "conformance/oauth-client-assertions.mjs",
+      "marker": "assert.deepEqual(await (await send(\"introspect\", await sign(), inspect)).json(), { active: false });",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L379/`invalid_user`": [
+    {
+      "label": "Refuse a code whose approving user no longer exists with invalid_user",
+      "test": "adapters/sqlstore/oauth_authorization_code_test.go",
+      "marker": "check(call(first, \"bad-user\", \"client\", \"\", verifier), 400, \"invalid_user\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/mcp.mdx#L95/Dynamic registration (when explicitly enabled)": [
+    {
+      "label": "Reject dynamic registrations until the host enables them",
+      "test": "conformance/oauth-registration.mjs",
+      "marker": "await problem(standard, {}, 403,",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/mcp.mdx#L325/`mcpOauthOptionsType.idTokenExpiresIn`": [
+    {
+      "label": "Apply the ten-hour default or configured whole-second lifetime to signed ID tokens on code and refresh exchanges",
+      "test": "conformance/oauth-id-tokens.mjs",
+      "marker": "assert.equal(payload.exp - payload.iat, pairwise ? 120 : 36000);",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/removeMaxAgeFromQuery": [
+    {
+      "label": "Remove max_age from the continued request after a fresh sign-in",
+      "test": "conformance/oauth-browser-login.mjs",
+      "marker": "assert.equal(consent.searchParams.has(\"max_age\"), false);",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/clients.mdx#L189/HTTPS on a non-loopback host": [
+    {
+      "label": "Accept HTTPS redirects on non-loopback hosts for web and native clients",
+      "test": "plugins/oauthprovider/registration_test.go",
+      "marker": "{\"native\", \"https://app.example/cb\", true}",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/index.mdx#L30/OpenID Connect": [
+    {
+      "label": "Issue verified ID tokens, answer UserInfo, apply the claims parameter and derive pairwise subjects",
+      "test": "conformance/oauth-id-tokens.mjs",
+      "marker": "assert.equal(payload.sub === user.id, !pairwise);",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/tokens.mdx#L30/`profile`": [
+    {
+      "label": "Return name, given and family names and picture for profile, and email and email_verified for email at UserInfo",
+      "test": "adapters/sqlstore/oauth_userinfo_test.go",
+      "marker": "t.Fatal(\"profile and email\", result)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/tokens.mdx#L277/Opaque access token": [
+    {
+      "label": "Delete a revoked opaque access token and keep the refresh token of its grant",
+      "test": "adapters/sqlstore/oauth_revocation_test.go",
+      "marker": "revoke(\"Reports\", \"at_linked\", \"\", 200)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/mcp.mdx#L96/UserInfo": [
+    {
+      "label": "Read scoped profile claims over GET and form POST and match the subject of an independently issued ID token for signed and opaque grants",
+      "test": "conformance/oauth-userinfo.mjs",
+      "marker": "const sub = decodeJwt(issued.id_token).sub;",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/clients.mdx#L14/Public or confidential": [
+    {
+      "label": "Register a public client without a secret and confidential clients that use a shared secret or a signed assertion",
+      "test": "conformance/oauth-registration.mjs",
+      "marker": "assert.equal(pub.client_secret, undefined);",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/clients.mdx#L191/Reverse-domain private-use scheme (RFC 8252 §7.1)": [
+    {
+      "label": "Register a reverse-domain private-use redirect for a native client and reject it for a web client",
+      "test": "conformance/oauth-registration.mjs",
+      "marker": "[{ redirect_uris: [\"com.example:/cb\"], application_type: \"web\" }, \"invalid_redirect_uri\"],",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/index.mdx#L211": [
+    {
+      "label": "Sign in on the login page, approve on the consent page and return the code with state and issuer to the callback",
+      "test": "conformance/oauth-browser-login.mjs",
+      "marker": "assert.equal(success.searchParams.get(\"iss\"), base);",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/tokens.mdx#L15/`client_secret_post`": [
+    {
+      "label": "Authenticate a client_secret_post client from body credentials and reject a wrong body secret",
+      "test": "conformance/oauth-machine-tokens.mjs",
+      "marker": "await error({ ...grant, ...bodyClient, client_secret: \"bad\" }, 400, \"invalid_client\");",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/tokens.mdx#L31/`email`": [
+    {
+      "label": "Return email and email_verified for the email scope at UserInfo",
+      "test": "adapters/sqlstore/oauth_userinfo_test.go",
+      "marker": "t.Fatal(\"profile and email\", result)",
       "complete": true
     }
   ]

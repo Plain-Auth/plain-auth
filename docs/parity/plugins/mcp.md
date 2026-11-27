@@ -100,8 +100,10 @@
   - [ ] Endpoints
     - [ ] Authorization
     - [ ] Token
-    - [ ] Dynamic registration (when explicitly enabled)
-    - [ ] UserInfo
+    - [x] Dynamic registration (when explicitly enabled) ([test](../../../conformance/oauth-registration.mjs#L99))
+      - [x] Reject dynamic registrations until the host enables them ([test](../../../conformance/oauth-registration.mjs#L99))
+    - [x] UserInfo ([test](../../../conformance/oauth-userinfo.mjs#L40))
+      - [x] Read scoped profile claims over GET and form POST and match the subject of an independently issued ID token for signed and opaque grants ([test](../../../conformance/oauth-userinfo.mjs#L40))
   - [ ] Usage
     - [ ] Add device authorization for your own CLI
     - [ ] Protected Resource Metadata
@@ -116,7 +118,8 @@
     - [ ] `mcpOauthOptionsType.resources`
     - [x] `mcpOauthOptionsType.accessTokenExpiresIn` ([test](../../../plugins/oauthprovider/machine_token_test.go#L108))
       - [x] Default the access token lifetime to an hour ([test](../../../plugins/oauthprovider/machine_token_test.go#L108))
-    - [ ] `mcpOauthOptionsType.idTokenExpiresIn`
+    - [x] `mcpOauthOptionsType.idTokenExpiresIn` ([test](../../../conformance/oauth-id-tokens.mjs#L77))
+      - [x] Apply the ten-hour default or configured whole-second lifetime to signed ID tokens on code and refresh exchanges ([test](../../../conformance/oauth-id-tokens.mjs#L77))
     - [x] `mcpOauthOptionsType.refreshTokenExpiresIn` ([test](../../../plugins/oauthprovider/machine_token_test.go#L108))
       - [x] Default the refresh token lifetime to thirty days ([test](../../../plugins/oauthprovider/machine_token_test.go#L108))
     - [ ] `mcpOauthOptionsType.refreshTokenReuseInterval`
