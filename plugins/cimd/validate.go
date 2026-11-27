@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/netip"
 	"net/url"
 	"regexp"
 	"strconv"
@@ -11,7 +12,6 @@ import (
 	"unicode"
 
 	auth "github.com/Plain-Org/plain-auth"
-	"github.com/Plain-Org/plain-auth/internal/httporigin"
 	"github.com/Plain-Org/plain-auth/internal/publicnet"
 	"github.com/Plain-Org/plain-auth/plugins/oauthprovider"
 )
@@ -120,7 +120,7 @@ func ValidateMetadata(clientIDURL string, raw []byte, opts ValidationOptions) (o
 		return none, nil, err
 	}
 	if field != "" {
-		return none, nil, fmt.Errorf("metadata document MUST NOT contain %q", field)
+		return none, nil, fmt.Errorf(`metadata document MUST NOT contain "%s"`, field)
 	}
 	doc, err := oauthprovider.ParseClientMetadataDocument(raw)
 	if err != nil {
@@ -132,7 +132,7 @@ func ValidateMetadata(clientIDURL string, raw []byte, opts ValidationOptions) (o
 	}
 	doc.Extensions = nil
 	if doc.ClientID != clientIDURL {
-		return none, nil, fmt.Errorf("client_id %q does not match the metadata document URL", doc.ClientID)
+		return none, nil, fmt.Errorf(`client_id "%s" does not match the metadata document URL`, doc.ClientID)
 	}
 	if opts.Profile == ProfileMCP20260728 && (doc.Name == nil || strings.TrimSpace(*doc.Name) == "") {
 		return none, nil, errors.New("client_name must be a non-empty string")
@@ -146,7 +146,7 @@ func ValidateMetadata(clientIDURL string, raw []byte, opts ValidationOptions) (o
 	if method := doc.TokenEndpointAuthMethod; method != "" {
 		switch {
 		case symmetricMethods[method]:
-			return none, nil, fmt.Errorf("symmetric auth method %q is prohibited for Client ID Metadata Document clients", method)
+			return none, nil, fmt.Errorf(`symmetric auth method "%s" is prohibited for Client ID Metadata Document clients`, method)
 		case method != "none" && method != "private_key_jwt":
 			return none, nil, errors.New(`token_endpoint_auth_method must be "none" or "private_key_jwt" for Client ID Metadata Document clients`)
 		case method == "private_key_jwt" && doc.JWKS == nil && doc.JWKSURI == nil:
@@ -251,7 +251,10 @@ func checkOrigins(clientIDURL string, doc oauthprovider.ClientMetadataDocument, 
 	if err != nil {
 		return errors.New("client_id is not a valid URL")
 	}
-	clientOrigin := origin(clientID)
+	clientOrigin, ok := origin(clientID)
+	if !ok {
+		return errors.New("client_id is not a valid URL")
+	}
 	encoded, err := json.Marshal(doc)
 	if err != nil {
 		return err
@@ -284,7 +287,7 @@ func checkOrigins(clientIDURL string, doc oauthprovider.ClientMetadataDocument, 
 		for _, raw := range values {
 			u, err := url.Parse(raw)
 			if err != nil || !u.IsAbs() {
-				return fmt.Errorf("%s contains an invalid URL: %q", key, raw)
+				return fmt.Errorf(`%s contains an invalid URL: "%s"`, key, raw)
 			}
 			web := u.Scheme == "http" || u.Scheme == "https"
 			native := redirect && privateUse(u)
@@ -294,21 +297,39 @@ func checkOrigins(clientIDURL string, doc oauthprovider.ClientMetadataDocument, 
 			if native && (key == "redirect_uris" || reverseDomain(u)) {
 				continue
 			}
-			if origin(u) != clientOrigin && !(redirect && web && publicnet.Loopback(u.Hostname())) {
-				return fmt.Errorf("%s value %q must have the same origin as client_id (%s)", key, raw, clientOrigin)
+			// An opaque origin is empty and never matches.
+			if o, _ := origin(u); o != clientOrigin && !(redirect && web && publicnet.Loopback(u.Hostname())) {
+				return fmt.Errorf(`%s value "%s" must have the same origin as client_id (%s)`, key, raw, clientOrigin)
 			}
 		}
 	}
 	return nil
 }
 
-// origin is a URL's web origin, or "null" for one without, as a browser
-// serializes it.
-func origin(u *url.URL) string {
-	if o := httporigin.Canonical(u); o != "" {
-		return o
+// origin is an HTTP(S) URL's web origin as a browser serializes it: the
+// scheme, the host in ASCII and a port other than the default, without
+// credentials. ok is false for a URL without one, whose origin is opaque.
+func origin(u *url.URL) (string, bool) {
+	host := u.Hostname()
+	if u.Scheme != "http" && u.Scheme != "https" || host == "" {
+		return "", false
 	}
-	return "null"
+	if ip, err := netip.ParseAddr(host); err == nil {
+		host = ip.String()
+		if ip.Is6() {
+			host = "[" + host + "]"
+		}
+	} else {
+		ascii, err := publicnet.HostASCII(host)
+		if err != nil {
+			return "", false
+		}
+		host = strings.ToLower(ascii)
+	}
+	if port := u.Port(); port != "" && !(u.Scheme == "http" && port == "80" || u.Scheme == "https" && port == "443") {
+		host += ":" + port
+	}
+	return u.Scheme + "://" + host, true
 }
 
 var reverseDomainScheme = regexp.MustCompile(`(?i)^[a-z](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$`)

@@ -2,6 +2,7 @@ package cimd
 
 import (
 	"container/list"
+	"math"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -95,7 +96,8 @@ func seconds(value string) (time.Duration, bool) {
 	if err != nil || n > 1<<53-1 {
 		return 0, false
 	}
-	return time.Duration(n) * time.Second, true
+	// Lifetimes beyond what a Duration holds are capped there.
+	return time.Duration(min(n, int64(math.MaxInt64/time.Second))) * time.Second, true
 }
 
 // freshness computes when a fetched document expires, as another runtime's
@@ -144,6 +146,10 @@ func freshness(h cacheHeaders, interval time.Duration, now time.Time) (bool, tim
 		}
 		lifetime = min(operator, max(maxAge-current, 0))
 	case h.Expires != "":
+		// An invalid date, such as "0", means already expired (RFC 9111
+		// section 5.3), where another runtime keeps the interval for a value
+		// its date parser refuses.
+		lifetime = 0
 		if expires, err := http.ParseTime(h.Expires); err == nil {
 			lifetime = min(operator, max(expires.Sub(date)-current, 0))
 		}

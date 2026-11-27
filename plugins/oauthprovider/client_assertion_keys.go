@@ -11,7 +11,6 @@ import (
 	"io"
 	"log/slog"
 	"mime"
-	"net"
 	"net/http"
 	"slices"
 	"strings"
@@ -106,6 +105,8 @@ type cachedClientKeys struct {
 	fetched time.Time
 	// retry paces refetches while the set answers after a failed refresh.
 	retry time.Time
+	// transient is when a transient failure last left the set answering.
+	transient time.Time
 }
 
 // keySource is where a client's remote keys come from: the cache key, which
@@ -244,10 +245,20 @@ func (cache *clientKeyCache) refresh(ctx context.Context, src keySource, f *keyF
 	delete(cache.pending, src.key)
 	old := cache.sets[src.key]
 	if err != nil {
+		capacity := errors.Is(err, ErrFetchCapacity)
+		stale := old != nil && time.Since(old.fetched) < src.stale
 		switch {
 		case old != nil && !invalid && time.Since(old.fetched) < 2*clientKeysTTL:
-		case old != nil && transient && time.Since(old.fetched) < src.stale:
+		case stale && transient:
+			old.transient = time.Now()
 			src.logger.WarnContext(ctx, "oauth-provider is verifying client "+src.clientID+" with cached keys from "+src.uri+" because refreshing them failed: "+err.Error())
+		case stale && capacity && time.Since(old.transient) <= 5*time.Minute:
+			src.logger.WarnContext(ctx, "oauth-provider is verifying client "+src.clientID+" with cached keys from "+src.uri+" because refreshing them failed: "+err.Error())
+		case capacity:
+			// A refusal at a local limit says nothing about the keys, so
+			// they are kept for a later fetch.
+			f.err = err
+			return
 		default:
 			delete(cache.sets, src.key)
 			f.err = err
@@ -295,11 +306,7 @@ func fetchKeySet(ctx context.Context, client *http.Client, uri string) ([]byte, 
 	req.Header.Set("Accept", "application/jwk-set+json, application/json")
 	res, err := client.Do(req)
 	if err != nil {
-		var netErr net.Error
-		transient := errors.As(err, &netErr) && netErr.Timeout()
-		var op *net.OpError
-		transient = transient || errors.As(err, &op)
-		return nil, transient, fmt.Errorf("%w: %v", errFetchKeys, err)
+		return nil, publicnet.Transient(err), fmt.Errorf("%w: %w", errFetchKeys, err)
 	}
 	defer res.Body.Close()
 	if res.StatusCode != 200 {
@@ -315,8 +322,7 @@ func fetchKeySet(ctx context.Context, client *http.Client, uri string) ([]byte, 
 	}
 	raw, err := io.ReadAll(io.LimitReader(res.Body, maxClientKeyBytes+1))
 	if err != nil {
-		var netErr net.Error
-		return nil, errors.As(err, &netErr) && netErr.Timeout(), fmt.Errorf("%w: %v", errFetchKeys, err)
+		return nil, publicnet.Transient(err), fmt.Errorf("%w: %w", errFetchKeys, err)
 	}
 	if len(raw) > maxClientKeyBytes {
 		return nil, false, fmt.Errorf("%w: too large", errFetchKeys)

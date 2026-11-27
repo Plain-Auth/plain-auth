@@ -11,6 +11,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -294,10 +295,14 @@ func TestDiscoveredClientKeys(t *testing.T) {
 		t.Fatal(err)
 	}
 	status := 200
+	capacity := false
 	var managed, discovered atomic.Int32
 	serve := func(counter *atomic.Int32) assertionTransport {
 		return func(r *http.Request) (*http.Response, error) {
 			counter.Add(1)
+			if capacity {
+				return nil, fmt.Errorf("lookup limit: %w", ErrFetchCapacity)
+			}
 			return &http.Response{StatusCode: status, Header: http.Header{"Content-Type": {"application/json"}}, Body: io.NopCloser(strings.NewReader(string(raw)))}, nil
 		}
 	}
@@ -371,6 +376,27 @@ func TestDiscoveredClientKeys(t *testing.T) {
 	if err := key("cimd", uri); err != nil || discovered.Load() != fetches {
 		t.Fatal("stale keys were refetched within a minute", err)
 	}
+	// A refusal at a local limit keeps the keys within five minutes of a
+	// transient failure, and keeps them cached after.
+	capacity = true
+	age(30 * time.Minute)
+	if err := key("cimd", uri); err != nil {
+		t.Fatal("a capacity refusal after a transient failure dropped the keys", err)
+	}
+	age(30 * time.Minute)
+	cache.mu.Lock()
+	cache.sets["cimd:"+uri].transient = time.Now().Add(-6 * time.Minute)
+	cache.mu.Unlock()
+	if err := key("cimd", uri); err == nil {
+		t.Fatal("a capacity refusal long after a transient failure served the keys")
+	}
+	cache.mu.Lock()
+	_, kept := cache.sets["cimd:"+uri]
+	cache.mu.Unlock()
+	if !kept {
+		t.Fatal("a capacity refusal discarded the cached keys")
+	}
+	capacity = false
 	age(2 * time.Hour)
 	if err := key("cimd", uri); err == nil {
 		t.Fatal("keys were served beyond the stale bound")

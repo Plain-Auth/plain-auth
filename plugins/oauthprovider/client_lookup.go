@@ -122,6 +122,12 @@ func (opts Options) discoverRequestClient(c auth.EndpointContext, clientID strin
 	return c, nil
 }
 
+// ErrFetchCapacity is wrapped by a discovery transport's refusal of a fetch
+// at a local capacity limit, which says nothing about the resource or its
+// host: cached keys keep answering such a refusal within five minutes of a
+// transient failure.
+var ErrFetchCapacity = errors.New("oauthprovider: fetch refused at a local capacity limit")
+
 // UnresolvedClientError is a store's answer for a read that reached a
 // client a discovery owns, through a token or a consent, that the request
 // has not resolved. The provider resolves the client outside the store's

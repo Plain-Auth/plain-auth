@@ -70,45 +70,133 @@ func (h *harness) resolve(ctx context.Context, existing *oauthprovider.Discovere
 		}})
 }
 
-// Concurrent resolutions of one client share one fetch and each saves; one
-// failed save does not fail the others, drops the entry and paces the
-// client.
+// Concurrent resolutions of one client share one fetch, which spends the
+// budget once, and each saves; a fresh hit spends none.
 func TestResolverSharesFetches(t *testing.T) {
-	h := newHarness(t, Options{})
+	var arrived atomic.Int32
+	h := newHarness(t, Options{AllowMetadataURL: func(context.Context, string) (bool, error) { arrived.Add(1); return true, nil }})
+	clock := time.Date(2026, 11, 27, 12, 0, 0, 0, time.UTC)
+	h.r.now = func() time.Time { return clock }
 	release := make(chan struct{})
 	h.respond = func(*http.Request) (*http.Response, error) {
 		<-release
 		return answer(200, "application/json", `{"client_id":"`+id+`","client_name":"App"}`), nil
-	}
-	h.saveErr = func(n int32) error {
-		if n == 1 {
-			return errors.New("store down")
-		}
-		return nil
 	}
 	var wg sync.WaitGroup
 	errs := make([]error, 5)
 	for i := range 5 {
 		wg.Go(func() { _, errs[i] = h.resolve(t.Context(), nil) })
 	}
-	time.Sleep(20 * time.Millisecond)
+	// Every resolution has passed its URL check before the fetch answers; a
+	// late one finds the fetched document cached.
+	deadline := time.Now().Add(5 * time.Second)
+	for arrived.Load() < 5 && time.Now().Before(deadline) {
+		time.Sleep(time.Millisecond)
+	}
 	close(release)
 	wg.Wait()
-	failed := 0
 	for _, err := range errs {
 		if err != nil {
-			failed++
+			t.Fatal(err)
 		}
 	}
-	if h.fetches.Load() != 1 || h.register.Load() != 5 || failed != 1 {
-		t.Fatal("concurrent resolutions did not share one fetch and save each", h.fetches.Load(), h.register.Load(), failed)
+	h.r.mu.Lock()
+	starts, active := len(h.r.governor.starts), h.r.governor.active
+	h.r.mu.Unlock()
+	if h.fetches.Load() != 1 || h.register.Load() != 5 || starts != 1 || active != 0 {
+		t.Fatal("concurrent resolutions did not share one fetch and save each", h.fetches.Load(), h.register.Load(), starts, active)
 	}
-	// The failed save dropped the entry and paced the client.
+	if _, err := h.resolve(t.Context(), nil); err != nil || len(h.r.governor.starts) != 1 || h.fetches.Load() != 1 {
+		t.Fatal("a fresh hit spent the budget", err, len(h.r.governor.starts))
+	}
+}
+
+// A failed save drops the entry and paces the client, and one waiter's
+// failed save does not fail another's.
+func TestResolverSaveFailure(t *testing.T) {
+	h := newHarness(t, Options{})
+	clock := time.Date(2026, 11, 27, 12, 0, 0, 0, time.UTC)
+	h.r.now = func() time.Time { return clock }
+	h.saveErr = func(int32) error { return errors.New("store down") }
+	if _, err := h.resolve(t.Context(), nil); err == nil {
+		t.Fatal("a failed save was accepted")
+	}
 	if h.r.cache.peek(id) != nil {
 		t.Fatal("a failed save left its entry cached")
 	}
 	if _, err := h.resolve(t.Context(), nil); !governorRefusal(err) {
 		t.Fatal("a failed save did not pace the client", err)
+	}
+	both := newHarness(t, Options{FetchPolicy: FetchPolicy{MinimumFetchInterval: -1}})
+	both.saveErr = func(n int32) error {
+		if n == 1 {
+			return errors.New("store down")
+		}
+		return nil
+	}
+	var wg sync.WaitGroup
+	errs := make([]error, 2)
+	for i := range 2 {
+		wg.Go(func() { _, errs[i] = both.resolve(t.Context(), nil) })
+	}
+	wg.Wait()
+	if (errs[0] == nil) == (errs[1] == nil) {
+		t.Fatal("one failed save decided another waiter's answer", errs)
+	}
+}
+
+// A URL the policy refuses, or a policy error, spends no fetch and no
+// budget; a fresh document cached while the URL was checked answers without
+// a fetch.
+func TestResolverURLPolicy(t *testing.T) {
+	for name, tc := range map[string]struct {
+		allowed bool
+		err     error
+	}{"refused": {false, nil}, "error": {true, errors.New("policy down")}} {
+		h := newHarness(t, Options{AllowMetadataURL: func(context.Context, string) (bool, error) { return tc.allowed, tc.err }})
+		_, err := h.resolve(t.Context(), nil)
+		if err == nil || tc.err != nil && !errors.Is(err, tc.err) || h.fetches.Load() != 0 || len(h.r.governor.starts) != 0 || h.r.governor.active != 0 {
+			t.Fatal("a refused URL spent a fetch or the budget", name, err, h.fetches.Load(), len(h.r.governor.starts))
+		}
+	}
+	var h *harness
+	h = newHarness(t, Options{AllowMetadataURL: func(context.Context, string) (bool, error) {
+		h.r.mu.Lock()
+		entry := &cacheEntry{expires: time.Now().Add(time.Hour)}
+		entry.doc.ClientID = id
+		h.r.cache.put(id, entry)
+		h.r.mu.Unlock()
+		return true, nil
+	}})
+	if got, err := h.resolve(t.Context(), nil); err != nil || got.ClientID != id || h.fetches.Load() != 0 || len(h.r.governor.starts) != 0 || h.register.Load() != 1 {
+		t.Fatal("a document cached during the URL check was fetched again", err, h.fetches.Load(), len(h.r.governor.starts))
+	}
+}
+
+// The defaults, and the options the provider's discovery and the fetch
+// receive.
+func TestResolverOptions(t *testing.T) {
+	r, err := newResolver(Options{})
+	if err != nil || r.opts.MetadataRevalidationInterval != time.Hour || r.cache.max != 1000 || r.governor.entries != 1000 {
+		t.Fatal("wrong defaults", err, r.opts.MetadataRevalidationInterval, r.cache.max, r.governor.entries)
+	}
+	var asked []string
+	d, err := NewClientDiscovery(Options{AllowCrossOriginJWKSURI: func(_ context.Context, clientID, jwksURI string) (bool, error) {
+		asked = append(asked, clientID+" "+jwksURI)
+		return true, nil
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ok, err := d.AllowCrossOriginJWKSURI(t.Context(), id, "https://keys.example.test/jwks"); !ok || err != nil || len(asked) != 1 || asked[0] != id+" https://keys.example.test/jwks" {
+		t.Fatal("the cross-origin hook did not reach the discovery", ok, err, asked)
+	}
+	bound := newHarness(t, Options{OriginBoundFields: []string{"client_uri"}})
+	bound.respond = func(*http.Request) (*http.Response, error) {
+		return answer(200, "application/json", `{"client_id":"`+id+`","client_uri":"https://www.example.test/"}`), nil
+	}
+	if _, err := bound.resolve(t.Context(), nil); err == nil || !strings.Contains(err.Error(), "client_uri value") {
+		t.Fatal("the origin-bound fields did not reach the fetch", err)
 	}
 }
 
@@ -206,14 +294,19 @@ func TestResolverNotModified(t *testing.T) {
 func TestResolverNotifications(t *testing.T) {
 	var created []ClientCreatedEvent
 	var refreshed []ClientRefreshedEvent
-	h := newHarness(t, Options{MetadataRevalidationInterval: -1,
+	var h *harness
+	h = newHarness(t, Options{MetadataRevalidationInterval: -1,
 		OnClientCreated: func(_ context.Context, e ClientCreatedEvent) error {
+			// Notifications run after the save.
+			if h.register.Load() == 0 {
+				return errors.New("notified before the save")
+			}
 			created = append(created, e)
 			return errors.New("hook down")
 		},
 		OnClientRefreshed: func(_ context.Context, e ClientRefreshedEvent) error {
 			refreshed = append(refreshed, e)
-			return nil
+			return errors.New("refresh hook down")
 		}})
 	h.created = true
 	got, err := h.resolve(t.Context(), nil)
@@ -225,8 +318,13 @@ func TestResolverNotifications(t *testing.T) {
 	}
 	h.created = false
 	previous := oauthprovider.DiscoveredClient{RowID: "old"}
-	if _, err := h.resolve(t.Context(), &previous); err != nil || len(refreshed) != 1 || refreshed[0].PreviousClient.RowID != "old" || refreshed[0].Client.RowID != "row" {
+	saves := h.register.Load()
+	if _, err := h.resolve(t.Context(), &previous); err != nil || len(refreshed) != 1 || refreshed[0].PreviousClient.RowID != "old" || refreshed[0].Client.RowID != "row" ||
+		refreshed[0].Document.ClientID != id || refreshed[0].Header.Get("X-Request") != "1" || h.register.Load() != saves+1 {
 		t.Fatal("the refreshed event was wrong", err, refreshed)
+	}
+	if !strings.Contains(h.logs.String(), "cimd onClientRefreshed notification failed") {
+		t.Fatal("a refresh callback error was not logged", h.logs.String())
 	}
 	// A refused resolution notifies nobody.
 	h.respond = func(*http.Request) (*http.Response, error) { return answer(404, "application/json", ""), nil }

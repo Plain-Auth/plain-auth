@@ -176,8 +176,9 @@ func TestTransportLookupLimit(t *testing.T) {
 	for range maxLookups {
 		ctx, cancel := context.WithTimeout(t.Context(), 10*time.Millisecond)
 		r, _ := http.NewRequestWithContext(ctx, http.MethodGet, "https://example.com/c", nil)
-		if _, err := tr.RoundTrip(r); !errors.Is(err, context.DeadlineExceeded) {
-			t.Fatal("a stalled lookup did not stop on cancel", err)
+		var aborted lookupAborted
+		if _, err := tr.RoundTrip(r); !errors.Is(err, context.DeadlineExceeded) || !errors.As(err, &aborted) {
+			t.Fatal("a stalled lookup did not stop on cancel as an aborted lookup", err)
 		}
 		cancel()
 	}

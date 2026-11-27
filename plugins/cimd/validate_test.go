@@ -1,6 +1,7 @@
 package cimd
 
 import (
+	"net/url"
 	"slices"
 	"strings"
 	"testing"
@@ -136,6 +137,26 @@ func TestValidateMetadata(t *testing.T) {
 	}
 	if _, _, err := ValidateMetadata(id, doc(`"post_logout_redirect_uris":["https://other.example.test/bye"]`), ValidationOptions{OriginBoundFields: []string{}}); err != nil {
 		t.Fatal("an empty list did not disable binding", err)
+	}
+	// Origins compare in ASCII with the default port dropped; an opaque one never
+	// matches.
+	const idn = "https://bücher.example/client.json"
+	idnDoc := func(logout string) []byte {
+		return []byte(`{"client_id":"` + idn + `","post_logout_redirect_uris":["` + logout + `"]}`)
+	}
+	if _, _, err := ValidateMetadata(idn, idnDoc("https://évil.example/bye"), ValidationOptions{}); err == nil || !strings.Contains(err.Error(), "(https://xn--bcher-kva.example)") {
+		t.Fatal("another IDN host passed origin binding", err)
+	}
+	for _, same := range []string{"https://xn--bcher-kva.example/bye", "https://BÜCHER.example:443/bye"} {
+		if _, _, err := ValidateMetadata(idn, idnDoc(same), ValidationOptions{}); err != nil {
+			t.Fatal("the same origin was refused", same, err)
+		}
+	}
+	if o, ok := origin(&url.URL{Scheme: "myapp", Host: "x"}); ok || o != "" {
+		t.Fatal("an opaque origin was serialized", o)
+	}
+	if idOrigin(idn) != "https://xn--bcher-kva.example" || idOrigin("https://évil.example/c") == idOrigin(idn) {
+		t.Fatal("IDN client IDs share a fetch budget", idOrigin(idn))
 	}
 	bound := ValidationOptions{OriginBoundFields: []string{"redirect_uris"}}
 	if _, _, err := ValidateMetadata(id, doc(`"redirect_uris":["myapp://other.example/cb","http://127.0.0.1:9/cb"]`), bound); err != nil {

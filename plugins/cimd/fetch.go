@@ -1,27 +1,30 @@
 package cimd
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"log/slog"
-	"net"
 	"net/http"
 	"regexp"
 	"strconv"
 	"time"
 
 	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/internal/publicnet"
 	"github.com/Plain-Org/plain-auth/plugins/oauthprovider"
 )
 
 const (
-	fetchTimeout     = 5 * time.Second
 	maxDocumentBytes = 5 << 10
 	networkFailure   = "Failed to fetch metadata document (network error or redirect blocked)"
+	timeoutFailure   = "Metadata document fetch timed out after 5000ms"
 )
+
+// fetchTimeout bounds a document fetch, headers and body; tests shorten it.
+var fetchTimeout = 5 * time.Second
 
 var jsonMedia = regexp.MustCompile(`(?i)^application/(?:[-\w.]+\+)?json\s*(?:;|$)`)
 
@@ -70,6 +73,13 @@ type fetchedDocument struct {
 	headers     cacheHeaders
 }
 
+// policyError is an error the host's URL policy returned, which the
+// request answers with as is and which stops stale serving like a refusal.
+type policyError struct{ err error }
+
+func (e policyError) Error() string { return e.err.Error() }
+func (e policyError) Unwrap() error { return e.err }
+
 // checkURL refuses a client ID URL before it is fetched: one that is not a
 // valid metadata document URL, or one the host refuses.
 func (o Options) checkURL(ctx context.Context, clientIDURL string) error {
@@ -79,7 +89,7 @@ func (o Options) checkURL(ctx context.Context, clientIDURL string) error {
 	if o.AllowMetadataURL != nil {
 		allowed, err := o.AllowMetadataURL(ctx, clientIDURL)
 		if err != nil {
-			return err
+			return policyError{err}
 		}
 		if !allowed {
 			return fetchFailure(terminalFailure, "client_id URL is not permitted by the server's fetch policy")
@@ -96,7 +106,6 @@ func (o Options) fetchDocument(ctx context.Context, client *http.Client, clientI
 	ctx, cancel := context.WithTimeout(ctx, fetchTimeout)
 	defer cancel()
 	timedOut := func() bool { return errors.Is(ctx.Err(), context.DeadlineExceeded) }
-	timeout := fmt.Sprintf("Metadata document fetch timed out after %dms", fetchTimeout.Milliseconds())
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, clientIDURL, nil)
 	if err != nil {
 		return fetchedDocument{}, fetchFailure(terminalFailure, networkFailure)
@@ -110,12 +119,18 @@ func (o Options) fetchDocument(ctx context.Context, client *http.Client, clientI
 	}
 	res, err := client.Do(req)
 	if err != nil {
+		var aborted lookupAborted
 		switch {
-		case errors.Is(err, errLookupLimit):
+		case errors.Is(err, oauthprovider.ErrFetchCapacity):
 			return fetchedDocument{}, fetchError{&auth.OAuthError{Status: 429, Code: "temporarily_unavailable", Description: "metadata DNS lookup capacity exceeded"}, capacityFailure}
+		case errors.As(err, &aborted) && timedOut():
+			// A timeout during the lookup says nothing about the host. A
+			// custom transport's timeouts count as reaching the host, where
+			// another runtime asks such a transport to report it.
+			return fetchedDocument{}, fetchFailure(transportFailure, timeoutFailure)
 		case timedOut():
-			return fetchedDocument{}, fetchFailure(transientFailure, timeout)
-		case transientNetwork(err):
+			return fetchedDocument{}, fetchFailure(transientFailure, timeoutFailure)
+		case publicnet.Transient(err):
 			return fetchedDocument{}, fetchFailure(transientFailure, networkFailure)
 		}
 		return fetchedDocument{}, fetchFailure(transportFailure, networkFailure)
@@ -141,17 +156,19 @@ func (o Options) fetchDocument(ctx context.Context, client *http.Client, clientI
 		if media == "" {
 			media = "(none)"
 		}
-		return fetchedDocument{}, fetchFailure(terminalFailure, fmt.Sprintf("Metadata document must be JSON (got Content-Type %q)", media))
+		return fetchedDocument{}, fetchFailure(terminalFailure, `Metadata document must be JSON (got Content-Type "`+media+`")`)
 	}
 	tooLarge := fetchFailure(terminalFailure, "Metadata document exceeds 5KB size limit")
 	if res.ContentLength > maxDocumentBytes {
 		return fetchedDocument{}, tooLarge
 	}
 	body, err := io.ReadAll(io.LimitReader(res.Body, maxDocumentBytes+1))
+	// A UTF-8 byte order mark is dropped, as a browser's text decoder does.
+	body = bytes.TrimPrefix(body, []byte("\xEF\xBB\xBF"))
 	switch {
 	case err != nil && timedOut():
-		return fetchedDocument{}, fetchFailure(transientFailure, timeout)
-	case err != nil && transientNetwork(err):
+		return fetchedDocument{}, fetchFailure(transientFailure, timeoutFailure)
+	case err != nil && publicnet.Transient(err):
 		return fetchedDocument{}, fetchFailure(transientFailure, networkFailure)
 	case err != nil:
 		return fetchedDocument{}, fetchFailure(transportFailure, networkFailure)
@@ -168,12 +185,4 @@ func (o Options) fetchDocument(ctx context.Context, client *http.Client, clientI
 		logger.WarnContext(ctx, "cimd metadata document warning: "+warning)
 	}
 	return fetchedDocument{doc: doc, headers: headers}, nil
-}
-
-// transientNetwork reports a failure that may pass on retry: a timeout or a
-// connection failure, where another runtime reads Node error codes.
-func transientNetwork(err error) bool {
-	var netErr net.Error
-	var op *net.OpError
-	return errors.As(err, &netErr) && netErr.Timeout() || errors.As(err, &op) || errors.Is(err, io.ErrUnexpectedEOF)
 }

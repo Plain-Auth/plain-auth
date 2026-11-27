@@ -8,7 +8,9 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"os"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -75,9 +77,18 @@ func TestFetchDocument(t *testing.T) {
 		status      int
 		description string
 	}{
-		"network": {func(*http.Request) (*http.Response, error) {
-			return nil, &net.OpError{Op: "dial", Err: errors.New("refused")}
+		"refused": {func(*http.Request) (*http.Response, error) {
+			return nil, &net.OpError{Op: "dial", Err: os.NewSyscallError("connect", syscall.ECONNREFUSED)}
 		}, "", transientFailure, 400, networkFailure},
+		"dns temporary": {func(*http.Request) (*http.Response, error) {
+			return nil, &net.DNSError{Err: "server misbehaving", IsTemporary: true}
+		}, "", transientFailure, 400, networkFailure},
+		"dns not found": {func(*http.Request) (*http.Response, error) {
+			return nil, &net.DNSError{Err: "no such host", IsNotFound: true}
+		}, "", transportFailure, 400, networkFailure},
+		"tls": {func(*http.Request) (*http.Response, error) {
+			return nil, &net.OpError{Op: "remote error", Err: errors.New("tls: handshake failure")}
+		}, "", transportFailure, 400, networkFailure},
 		"transport": {func(*http.Request) (*http.Response, error) { return nil, errPrivate }, "", transportFailure, 400, networkFailure},
 		"capacity":  {func(*http.Request) (*http.Response, error) { return nil, errLookupLimit }, "", capacityFailure, 429, "metadata DNS lookup capacity exceeded"},
 		"304 bare":  {func(*http.Request) (*http.Response, error) { return answer(304, "", ""), nil }, "", terminalFailure, 400, "Metadata document returned 304 without a conditional validator"},
@@ -85,7 +96,10 @@ func TestFetchDocument(t *testing.T) {
 		"404":       {func(*http.Request) (*http.Response, error) { return answer(404, "application/json", ""), nil }, "", terminalFailure, 400, "Metadata document fetch returned HTTP 404"},
 		"302":       {func(*http.Request) (*http.Response, error) { return answer(302, "", ""), nil }, "", terminalFailure, 400, "Metadata document fetch returned HTTP 302"},
 		"text/json": {func(*http.Request) (*http.Response, error) { return answer(200, "text/json", valid), nil }, "", terminalFailure, 400, `Metadata document must be JSON (got Content-Type "text/json")`},
-		"no media":  {func(*http.Request) (*http.Response, error) { return answer(200, "", valid), nil }, "", terminalFailure, 400, `Metadata document must be JSON (got Content-Type "(none)")`},
+		"quoted media": {func(*http.Request) (*http.Response, error) {
+			return answer(200, `text/html; charset="utf-8"`, valid), nil
+		}, "", terminalFailure, 400, `Metadata document must be JSON (got Content-Type "text/html; charset="utf-8"")`},
+		"no media": {func(*http.Request) (*http.Response, error) { return answer(200, "", valid), nil }, "", terminalFailure, 400, `Metadata document must be JSON (got Content-Type "(none)")`},
 		"streamed 6KB": {func(*http.Request) (*http.Response, error) {
 			return answer(200, "application/json", strings.Repeat(" ", 6<<10)+valid), nil
 		}, "", terminalFailure, 400, "Metadata document exceeds 5KB size limit"},
@@ -106,6 +120,13 @@ func TestFetchDocument(t *testing.T) {
 		if !ok || kind != tc.kind || !errors.As(err, &problem) || problem.Status != tc.status || problem.Description != tc.description {
 			t.Error("wrong failure for", name, err, kind)
 		}
+	}
+	// A leading byte order mark is dropped.
+	respond = func(*http.Request) (*http.Response, error) {
+		return answer(200, "application/json", "\xEF\xBB\xBF"+valid), nil
+	}
+	if _, err := opts.fetchDocument(t.Context(), client, id, "", "", logger); err != nil {
+		t.Fatal("a document with a byte order mark was refused", err)
 	}
 	// Accepted media types, a conditional 304 and warnings.
 	for _, media := range []string{"application/json;charset=utf-8", "application/client+json", "APPLICATION/JSON"} {
@@ -151,6 +172,29 @@ func TestFetchDocument(t *testing.T) {
 	_, err = opts.fetchDocument(early, client, id, "", "", logger)
 	if kind, _ := failureKind(err); kind != transientFailure || !errors.As(err, &problem) || problem.Description != "Metadata document fetch timed out after 5000ms" {
 		t.Fatal("a header deadline was not a transient timeout", err)
+	}
+	// The fetch's own five-second bound applies without a caller deadline,
+	// as a shared fetch has none.
+	saved := fetchTimeout
+	fetchTimeout = 20 * time.Millisecond
+	defer func() { fetchTimeout = saved }()
+	respond = func(r *http.Request) (*http.Response, error) {
+		res := answer(200, "application/json", "")
+		res.Body = stalled{r.Context()}
+		return res, nil
+	}
+	_, err = opts.fetchDocument(context.WithoutCancel(t.Context()), client, id, "", "", logger)
+	if kind, _ := failureKind(err); kind != transientFailure || !errors.As(err, &problem) || problem.Description != "Metadata document fetch timed out after 5000ms" {
+		t.Fatal("the fetch's own bound did not apply", err)
+	}
+	// A timeout during the lookup says nothing about the host.
+	respond = func(r *http.Request) (*http.Response, error) {
+		<-r.Context().Done()
+		return nil, lookupAborted{r.Context().Err()}
+	}
+	_, err = opts.fetchDocument(context.WithoutCancel(t.Context()), client, id, "", "", logger)
+	if kind, _ := failureKind(err); kind != transportFailure || !errors.As(err, &problem) || problem.Description != "Metadata document fetch timed out after 5000ms" {
+		t.Fatal("a lookup timeout was transient", err)
 	}
 	if _, ok := (Options{}).transport().(*transport); !ok {
 		t.Fatal("a nil Transport did not select the pinned transport")

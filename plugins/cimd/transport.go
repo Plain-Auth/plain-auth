@@ -9,16 +9,31 @@ import (
 	"time"
 
 	"github.com/Plain-Org/plain-auth/internal/publicnet"
+	"github.com/Plain-Org/plain-auth/plugins/oauthprovider"
 )
 
 // maxLookups bounds the DNS lookups one transport runs at once.
 const maxLookups = 16
 
+// capacityError is a refusal at a local limit, which wraps the provider's
+// ErrFetchCapacity.
+type capacityError string
+
+func (e capacityError) Error() string { return string(e) }
+func (capacityError) Unwrap() error   { return oauthprovider.ErrFetchCapacity }
+
+// lookupAborted is a lookup the request's context ended, which says nothing
+// about the host, so it is never a transient failure.
+type lookupAborted struct{ err error }
+
+func (e lookupAborted) Error() string { return "metadata DNS lookup aborted: " + e.err.Error() }
+func (e lookupAborted) Unwrap() error { return e.err }
+
 var (
-	errLookupLimit = errors.New("metadata DNS lookup limit exceeded")
-	errNoAddress   = errors.New("metadata hostname returned no DNS addresses")
-	errPrivate     = errors.New("metadata hostname must resolve only to public-routable addresses")
-	errUpgrade     = errors.New("metadata server answered with a protocol upgrade")
+	errLookupLimit error = capacityError("metadata DNS lookup limit exceeded")
+	errNoAddress         = errors.New("metadata hostname returned no DNS addresses")
+	errPrivate           = errors.New("metadata hostname must resolve only to public-routable addresses")
+	errUpgrade           = errors.New("metadata server answered with a protocol upgrade")
 )
 
 type pinnedKey struct{}
@@ -120,7 +135,7 @@ func (t *transport) resolve(ctx context.Context, host string) ([]netip.Addr, err
 	}()
 	select {
 	case <-ctx.Done():
-		return nil, ctx.Err()
+		return nil, lookupAborted{ctx.Err()}
 	case a := <-done:
 		if a.err != nil {
 			return nil, a.err

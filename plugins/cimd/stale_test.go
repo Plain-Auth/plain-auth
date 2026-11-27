@@ -189,3 +189,43 @@ func TestStaleWatermark(t *testing.T) {
 		t.Fatal("the stale bound did not reach the key cache", err)
 	}
 }
+
+// A transport's capacity refusal serves the stored client within five
+// minutes of a transient failure, keeps the transient record and paces
+// nothing; a URL policy error stops stale serving and paces the client.
+func TestStaleCapacityAndPolicy(t *testing.T) {
+	h, clock, stored, _ := staleHarness(t, time.Hour, 100)
+	h.r.governor.policy.MinimumFetchInterval = time.Second
+	if got, err := h.resolve(t.Context(), stored); err != nil || got != stored {
+		t.Fatal(err)
+	}
+	*clock = clock.Add(70 * time.Second)
+	h.respond = func(*http.Request) (*http.Response, error) { return nil, errLookupLimit }
+	if got, err := h.resolve(t.Context(), stored); err != nil || got != stored {
+		t.Fatal("a capacity refusal after a transient failure was not served stale", err)
+	}
+	if _, paced := h.r.governor.paced[id]; paced {
+		t.Fatal("a capacity refusal paced the client")
+	}
+	if _, kept := h.r.transients[id]; !kept {
+		t.Fatal("a capacity refusal dropped the transient record")
+	}
+	*clock = clock.Add(5 * time.Minute)
+	var problem *auth.OAuthError
+	if _, err := h.resolve(t.Context(), stored); !errors.As(err, &problem) || problem.Status != 429 {
+		t.Fatal("a capacity refusal long after a transient failure was served stale", err)
+	}
+	policy, _, policyStored, _ := staleHarness(t, time.Hour, 100)
+	policy.r.governor.policy.MinimumFetchInterval = time.Second
+	hookErr := errors.New("policy down")
+	policy.r.opts.AllowMetadataURL = func(context.Context, string) (bool, error) { return false, hookErr }
+	if _, err := policy.resolve(t.Context(), policyStored); !errors.Is(err, hookErr) {
+		t.Fatal("a policy error was not the answer", err)
+	}
+	if _, terminal := policy.r.terminals[id]; !terminal {
+		t.Fatal("a policy error did not stop stale serving")
+	}
+	if _, paced := policy.r.governor.paced[id]; !paced {
+		t.Fatal("a policy error did not pace the client")
+	}
+}
