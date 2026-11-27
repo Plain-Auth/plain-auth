@@ -22,7 +22,7 @@ const clientDetailsSelect = `SELECT ` + clientDisplayColumns + `,"userId","refer
 	"softwareId","softwareVersion","softwareStatement","jwks","jwksUri",
 	"redirectUris","postLogoutRedirectUris","backchannelLogoutUri","backchannelLogoutSessionRequired",
 	"tokenEndpointAuthMethod","grantTypes","responseTypes","applicationType","subjectType",
-	"disabled","skipConsent","enableEndSession","requirePKCE","dpopBoundAccessTokens","scopes","metadata"
+	"disabled","skipConsent","enableEndSession","requirePKCE","dpopBoundAccessTokens","scopes","metadata","clientCredentialsScopes"
 	FROM "oauthClient"`
 
 func (s *Store) PublicOAuthClient(ctx context.Context, id string) (op.PublicClient, error) {
@@ -48,13 +48,13 @@ func (s *Store) PublicOAuthClient(ctx context.Context, id string) (op.PublicClie
 func scanClientDetails(row rowScanner) (op.ClientDetails, error) {
 	var c op.ClientDetails
 	var issued *time.Time
-	var contacts, scopes, redirects, logoutRedirects, grants, responses, keys, metadata []byte
+	var contacts, scopes, redirects, logoutRedirects, grants, responses, keys, metadata, machine []byte
 	err := row.Scan(&c.ClientID, &c.Name, &c.URI, &c.LogoURI, &contacts, &c.TermsURI, &c.PolicyURI,
 		&c.UserID, &c.ReferenceID, &issued, &c.SecretExpiresAt,
 		&c.SoftwareID, &c.SoftwareVersion, &c.SoftwareStatement, &keys, &c.JWKSURI,
 		&redirects, &logoutRedirects, &c.BackchannelLogoutURI, &c.BackchannelLogoutSessionRequired,
 		&c.TokenEndpointAuthMethod, &grants, &responses, &c.ApplicationType, &c.SubjectType,
-		&c.Disabled, &c.SkipConsent, &c.EnableEndSession, &c.RequirePKCE, &c.DPoPBoundAccessTokens, &scopes, &metadata)
+		&c.Disabled, &c.SkipConsent, &c.EnableEndSession, &c.RequirePKCE, &c.DPoPBoundAccessTokens, &scopes, &metadata, &machine)
 	if errors.Is(err, sql.ErrNoRows) {
 		return c, op.ErrClientNotFound
 	}
@@ -71,6 +71,7 @@ func scanClientDetails(row rowScanner) (op.ClientDetails, error) {
 		dest *[]string
 	}{
 		{contacts, &c.Contacts}, {redirects, &c.RedirectURIs}, {logoutRedirects, &c.PostLogoutRedirectURIs}, {grants, &c.GrantTypes}, {responses, &c.ResponseTypes}, {scopes, &scopeList},
+		{machine, &c.ClientCredentialsScopes},
 	} {
 		if f.raw != nil {
 			if err := json.Unmarshal(f.raw, f.dest); err != nil {

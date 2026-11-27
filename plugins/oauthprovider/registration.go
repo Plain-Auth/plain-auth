@@ -215,7 +215,34 @@ func (opts Options) clientManagementOptions() Options {
 	if opts.Registration.GenerateClientSecret == nil {
 		opts.Registration.GenerateClientSecret = randomClientCredential
 	}
+	// As in another runtime, secrets are hashed when the jwt plugin signs ID
+	// tokens and encrypted when they are signed with the client secret.
+	r := &opts.Registration
+	if opts.DisableJWTPlugin && r.SecretStorage == "" && r.StoreSecret == nil {
+		r.SecretStorage = "encrypted"
+	}
 	return opts
+}
+
+// checkSecretStorage refuses secret storage settings the token endpoint
+// could not verify.
+func (opts Options) checkSecretStorage() error {
+	r := opts.Registration
+	switch {
+	case opts.DisableJWTPlugin && (r.SecretStorage == "hashed" || r.StoreSecret != nil && r.DecryptSecret == nil):
+		return errors.New("oauthprovider: DisableJWTPlugin signs ID tokens with client secrets, which must be stored encrypted")
+	case !opts.DisableJWTPlugin && (r.SecretStorage == "encrypted" || r.DecryptSecret != nil):
+		return errors.New("oauthprovider: encrypted client secrets require DisableJWTPlugin")
+	case r.SecretStorage != "" && r.SecretStorage != "hashed" && r.SecretStorage != "encrypted":
+		return fmt.Errorf("oauthprovider: unknown client secret storage %q", r.SecretStorage)
+	case r.StoreSecret != nil && r.SecretStorage == "encrypted":
+		return errors.New("oauthprovider: StoreSecret replaces the encrypted secret storage")
+	case r.DecryptSecret != nil && r.StoreSecret == nil:
+		return errors.New("oauthprovider: DecryptSecret requires StoreSecret")
+	case r.DecryptSecret != nil && r.VerifySecret != nil:
+		return errors.New("oauthprovider: use DecryptSecret or VerifySecret, not both")
+	}
+	return nil
 }
 
 // New installs the OAuth consent, client management and dynamic registration endpoints.
@@ -314,24 +341,8 @@ func New(opts Options) (auth.Plugin, error) {
 		v := *r.RequirePKCE
 		r.RequirePKCE = &v
 	}
-	// As in another runtime, secrets are hashed when the jwt plugin signs ID
-	// tokens and encrypted when they are signed with the client secret.
-	if opts.DisableJWTPlugin && r.SecretStorage == "" && r.StoreSecret == nil {
-		r.SecretStorage = "encrypted"
-	}
-	switch {
-	case opts.DisableJWTPlugin && (r.SecretStorage == "hashed" || r.StoreSecret != nil && r.DecryptSecret == nil):
-		return auth.Plugin{}, errors.New("oauthprovider: DisableJWTPlugin signs ID tokens with client secrets, which must be stored encrypted")
-	case !opts.DisableJWTPlugin && (r.SecretStorage == "encrypted" || r.DecryptSecret != nil):
-		return auth.Plugin{}, errors.New("oauthprovider: encrypted client secrets require DisableJWTPlugin")
-	case r.SecretStorage != "" && r.SecretStorage != "hashed" && r.SecretStorage != "encrypted":
-		return auth.Plugin{}, fmt.Errorf("oauthprovider: unknown client secret storage %q", r.SecretStorage)
-	case r.StoreSecret != nil && r.SecretStorage == "encrypted":
-		return auth.Plugin{}, errors.New("oauthprovider: StoreSecret replaces the encrypted secret storage")
-	case r.DecryptSecret != nil && r.StoreSecret == nil:
-		return auth.Plugin{}, errors.New("oauthprovider: DecryptSecret requires StoreSecret")
-	case r.DecryptSecret != nil && r.VerifySecret != nil:
-		return auth.Plugin{}, errors.New("oauthprovider: use DecryptSecret or VerifySecret, not both")
+	if err := opts.checkSecretStorage(); err != nil {
+		return auth.Plugin{}, err
 	}
 	if r.SecretLifetime < 0 || r.SecretLifetime%time.Second != 0 {
 		return auth.Plugin{}, errors.New("oauthprovider: registration secret lifetime must be zero or a positive whole number of seconds")

@@ -28,30 +28,33 @@ type PublicClient struct {
 // ClientDetails is the owner view of a registration. It never carries a client secret.
 type ClientDetails struct {
 	PublicClient
-	Scope                            *string                    `json:"scope,omitempty"`
-	UserID                           *string                    `json:"user_id,omitempty"`
-	ReferenceID                      *string                    `json:"reference_id,omitempty"`
-	IssuedAt                         *int64                     `json:"client_id_issued_at,omitempty"`
-	SecretExpiresAt                  *int64                     `json:"client_secret_expires_at,omitempty"`
-	SoftwareID                       *string                    `json:"software_id,omitempty"`
-	SoftwareVersion                  *string                    `json:"software_version,omitempty"`
-	SoftwareStatement                *string                    `json:"software_statement,omitempty"`
-	JWKS                             json.RawMessage            `json:"jwks,omitempty"`
-	JWKSURI                          *string                    `json:"jwks_uri,omitempty"`
-	PostLogoutRedirectURIs           []string                   `json:"post_logout_redirect_uris,omitzero"`
-	BackchannelLogoutURI             *string                    `json:"backchannel_logout_uri,omitempty"`
-	BackchannelLogoutSessionRequired *bool                      `json:"backchannel_logout_session_required,omitempty"`
-	TokenEndpointAuthMethod          *string                    `json:"token_endpoint_auth_method,omitempty"`
-	GrantTypes                       []string                   `json:"grant_types,omitzero"`
-	ResponseTypes                    []string                   `json:"response_types,omitzero"`
-	ApplicationType                  *string                    `json:"application_type,omitempty"`
-	SubjectType                      *string                    `json:"subject_type,omitempty"`
-	Disabled                         *bool                      `json:"disabled,omitempty"`
-	SkipConsent                      *bool                      `json:"skip_consent,omitempty"`
-	EnableEndSession                 *bool                      `json:"enable_end_session,omitempty"`
-	RequirePKCE                      *bool                      `json:"require_pkce,omitempty"`
-	DPoPBoundAccessTokens            *bool                      `json:"dpop_bound_access_tokens,omitempty"`
-	Extensions                       map[string]json.RawMessage `json:"-"`
+	Scope                            *string         `json:"scope,omitempty"`
+	UserID                           *string         `json:"user_id,omitempty"`
+	ReferenceID                      *string         `json:"reference_id,omitempty"`
+	IssuedAt                         *int64          `json:"client_id_issued_at,omitempty"`
+	SecretExpiresAt                  *int64          `json:"client_secret_expires_at,omitempty"`
+	SoftwareID                       *string         `json:"software_id,omitempty"`
+	SoftwareVersion                  *string         `json:"software_version,omitempty"`
+	SoftwareStatement                *string         `json:"software_statement,omitempty"`
+	JWKS                             json.RawMessage `json:"jwks,omitempty"`
+	JWKSURI                          *string         `json:"jwks_uri,omitempty"`
+	PostLogoutRedirectURIs           []string        `json:"post_logout_redirect_uris,omitzero"`
+	BackchannelLogoutURI             *string         `json:"backchannel_logout_uri,omitempty"`
+	BackchannelLogoutSessionRequired *bool           `json:"backchannel_logout_session_required,omitempty"`
+	TokenEndpointAuthMethod          *string         `json:"token_endpoint_auth_method,omitempty"`
+	GrantTypes                       []string        `json:"grant_types,omitzero"`
+	ResponseTypes                    []string        `json:"response_types,omitzero"`
+	ApplicationType                  *string         `json:"application_type,omitempty"`
+	SubjectType                      *string         `json:"subject_type,omitempty"`
+	Disabled                         *bool           `json:"disabled,omitempty"`
+	SkipConsent                      *bool           `json:"skip_consent,omitempty"`
+	EnableEndSession                 *bool           `json:"enable_end_session,omitempty"`
+	RequirePKCE                      *bool           `json:"require_pkce,omitempty"`
+	DPoPBoundAccessTokens            *bool           `json:"dpop_bound_access_tokens,omitempty"`
+	// ClientCredentialsScopes is the stored machine scope ceiling. Only
+	// administrative responses name it.
+	ClientCredentialsScopes []string                   `json:"-"`
+	Extensions              map[string]json.RawMessage `json:"-"`
 }
 
 // Split canonical and internal names from opaque extensions even when the stored

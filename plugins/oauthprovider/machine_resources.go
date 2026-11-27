@@ -218,7 +218,7 @@ func (p machineResourcePolicy) sign(c auth.EndpointContext, client string, audie
 		claims = map[string]any{}
 	}
 	for name, raw := range p.claims {
-		if !reservedAccessClaim(name) {
+		if !signedAccessClaim(name) {
 			claims[name] = raw
 		}
 	}

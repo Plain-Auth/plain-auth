@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"slices"
 	"strings"
 	"testing"
 
@@ -75,7 +76,7 @@ func TestAdminClientCreation(t *testing.T) {
 			must(err)
 			raw, err := json.Marshal(created)
 			must(err)
-			if !strings.Contains(string(raw), `"client_credentials_scopes":["reports"]`) || created.ClientSecret == "" {
+			if !strings.Contains(string(raw), `"client_credentials_scopes":["reports"]`) || !strings.Contains(string(raw), `"tier":"gold"`) || strings.Contains(string(raw), `"clientSecret"`) || created.ClientSecret == "" {
 				t.Fatal("the administrative response lost the machine scopes", string(raw))
 			}
 			var storedScopes, metadata sql.NullString
@@ -149,8 +150,9 @@ func TestAdminClientCreation(t *testing.T) {
 				h.ServeHTTP(out, req)
 				return out.Code
 			}
-			if _, err := manager.UpdateClient(ctx, headers, created.ClientID, op.ClientAdminUpdate{Disabled: &yes}); err != nil || token() == 200 {
-				t.Fatal("a disabled client still got a token", err)
+			// The response names the stored machine scopes the update kept.
+			if disabled, err := manager.UpdateClient(ctx, headers, created.ClientID, op.ClientAdminUpdate{Disabled: &yes}); err != nil || token() == 200 || !slices.Equal(disabled.ClientCredentialsScopes, []string{"reports"}) {
+				t.Fatal("a disabled client still got a token or lost its machine scopes", err, disabled.ClientCredentialsScopes)
 			}
 			if _, err := manager.UpdateClient(ctx, headers, created.ClientID, op.ClientAdminUpdate{Disabled: &no}); err != nil || token() != 200 {
 				t.Fatal("an enabled client got no token", err)
@@ -162,6 +164,40 @@ func TestAdminClientCreation(t *testing.T) {
 			must(s.db.QueryRowContext(ctx, s.bind(`SELECT "name","metadata","skipConsent" FROM "oauthClient" WHERE "clientId"=?`), app.ClientID).Scan(&name, &meta, &skip))
 			if name.String != "Admin named" || !sameJSON(meta.String, `{"tier":"silver"}`) || skip.Bool || updated.SkipConsent == nil || *updated.SkipConsent {
 				t.Fatal("the administrator update was not stored", name, meta, skip)
+			}
+			if raw, err := json.Marshal(updated); err != nil || !strings.Contains(string(raw), `"tier":"silver"`) {
+				t.Fatal("the update response lost the metadata", string(raw), err)
+			}
+			// Machine scopes for a client left without the grant are refused.
+			var problem *auth.OAuthError
+			if _, err := manager.UpdateClient(ctx, headers, created.ClientID, op.ClientAdminUpdate{Fields: map[string]any{"grant_types": []string{"authorization_code"}, "redirect_uris": []string{"https://app.example.test/cb"}},
+				ClientCredentialsScopes: []string{"reports"}}); !errors.As(err, &problem) || problem.Description != "client_credentials_scopes requires the client_credentials grant" {
+				t.Fatal("machine scopes were accepted for a client without the grant", err)
+			}
+			// With DisableJWTPlugin, a created client's secret is stored
+			// encrypted, so the token endpoint accepts it.
+			hsOpts := op.Options{Scopes: []string{"openid", "reports"}, DisableJWTPlugin: true, ClientPrivileges: func(context.Context, op.ClientAccess) (bool, error) { return true, nil }}
+			hsPlugin, err := op.New(hsOpts)
+			must(err)
+			hs, err := auth.New(auth.Options{BaseURL: origin, Secret: strings.Repeat("d", 40), Store: s, EmailAndPassword: true, Plugins: []auth.Plugin{hsPlugin}, RateLimit: &off})
+			must(err)
+			hsManager, err := op.NewClientManager(hs, s, hsOpts)
+			must(err)
+			hsClient, err := hsManager.CreateClient(ctx, headers, op.ClientCreation{RegistrationMetadata: op.RegistrationMetadata{GrantTypes: []string{"client_credentials"}, TokenEndpointAuthMethod: "client_secret_post"},
+				ClientCredentialsScopes: []string{"reports"}})
+			must(err)
+			hsForm := url.Values{"grant_type": {"client_credentials"}, "client_id": {hsClient.ClientID}, "client_secret": {hsClient.ClientSecret}}
+			hsReq := httptest.NewRequest("POST", origin+"/api/auth/oauth2/token", strings.NewReader(hsForm.Encode()))
+			hsReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			hsOut := httptest.NewRecorder()
+			hs.ServeHTTP(hsOut, hsReq)
+			var hsSecret string
+			must(s.db.QueryRowContext(ctx, s.bind(`SELECT "clientSecret" FROM "oauthClient" WHERE "clientId"=?`), hsClient.ClientID).Scan(&hsSecret))
+			if hsOut.Code != 200 || !strings.HasPrefix(hsSecret, "authn.v1.") {
+				t.Fatal("a client created with DisableJWTPlugin could not authenticate or was not stored encrypted", hsOut.Code, hsOut.Body.String())
+			}
+			if _, err := op.NewClientManager(hs, s, op.Options{DisableJWTPlugin: true, Registration: op.RegistrationOptions{SecretStorage: "hashed"}}); err == nil {
+				t.Fatal("a client manager accepted hashed secrets with DisableJWTPlugin")
 			}
 			// A scopes-only update goes through SetClientCredentialsScopes.
 			if scoped, err := manager.UpdateClient(ctx, headers, created.ClientID, op.ClientAdminUpdate{ClientCredentialsScopes: []string{}}); err != nil || len(scoped.ClientCredentialsScopes) != 0 {

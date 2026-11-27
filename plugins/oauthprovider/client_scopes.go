@@ -64,7 +64,11 @@ func NewClientManager(a *auth.Auth, store ClientCredentialsScopeStore, opts Opti
 	if a == nil || store == nil {
 		return nil, errors.New("oauthprovider: client management requires auth and a client scope store")
 	}
-	return &ClientManager{auth: a, store: store, opts: opts.clientManagementOptions()}, nil
+	opts = opts.clientManagementOptions()
+	if err := opts.checkSecretStorage(); err != nil {
+		return nil, err
+	}
+	return &ClientManager{auth: a, store: store, opts: opts}, nil
 }
 
 // SetClientCredentialsScopes replaces the client's machine scope ceiling. Owners

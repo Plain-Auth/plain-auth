@@ -17433,7 +17433,7 @@
     {
       "label": "Update a client from server code: change owner fields, consent skipping and metadata, disable and enable it with tokens refused meanwhile, and clear machine scopes through the scopes-only path, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_client_admin_test.go",
-      "marker": "t.Fatal(\"a disabled client still got a token\", err)"
+      "marker": "t.Fatal(\"a disabled client still got a token or lost its machine scopes\", err, disabled.ClientCredentialsScopes)"
     }
   ],
   "docs/content/docs/plugins/oauth-provider/clients.mdx#L63/`adminUpdateOAuthClient`": [
@@ -17476,7 +17476,7 @@
     {
       "label": "Update a client from server code: change owner fields, consent skipping and metadata, disable and enable it with tokens refused meanwhile, and clear machine scopes through the scopes-only path, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_client_admin_test.go",
-      "marker": "t.Fatal(\"a disabled client still got a token\", err)"
+      "marker": "t.Fatal(\"a disabled client still got a token or lost its machine scopes\", err, disabled.ClientCredentialsScopes)"
     }
   ],
   "plugin/oauth-provider/POST /oauth2/token": [
@@ -48943,21 +48943,21 @@
     {
       "label": "Update a client from server code: change owner fields, consent skipping and metadata, disable and enable it with tokens refused meanwhile, and clear machine scopes through the scopes-only path, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_client_admin_test.go",
-      "marker": "t.Fatal(\"a disabled client still got a token\", err)"
+      "marker": "t.Fatal(\"a disabled client still got a token or lost its machine scopes\", err, disabled.ClientCredentialsScopes)"
     }
   ],
   "docs/content/docs/plugins/oauth-provider/clients.mdx#L82/`disabled`": [
     {
       "label": "Update a client from server code: change owner fields, consent skipping and metadata, disable and enable it with tokens refused meanwhile, and clear machine scopes through the scopes-only path, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_client_admin_test.go",
-      "marker": "t.Fatal(\"a disabled client still got a token\", err)"
+      "marker": "t.Fatal(\"a disabled client still got a token or lost its machine scopes\", err, disabled.ClientCredentialsScopes)"
     }
   ],
   "docs/content/docs/plugins/oauth-provider/clients.mdx#L83/`metadata`": [
     {
       "label": "Update a client from server code: change owner fields, consent skipping and metadata, disable and enable it with tokens refused meanwhile, and clear machine scopes through the scopes-only path, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_client_admin_test.go",
-      "marker": "t.Fatal(\"a disabled client still got a token\", err)"
+      "marker": "t.Fatal(\"a disabled client still got a token or lost its machine scopes\", err, disabled.ClientCredentialsScopes)"
     }
   ],
   "docs/content/docs/plugins/oauth-provider/clients.mdx#L380": [

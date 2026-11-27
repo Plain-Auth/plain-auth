@@ -47,10 +47,30 @@ type MetadataInput struct {
 	OpenID *OpenIDProviderMetadata
 }
 
-// providerMetadataFields lists every JSON field the provider's discovery
-// types declare, so an extension cannot add one the provider omitted, such
-// as the endpoint of a route it does not serve.
-var providerMetadataFields = sync.OnceValue(func() map[string]bool {
+// providerMetadataFields lists every JSON field the served document's type
+// declares, so an extension cannot add one the provider omitted, such as the
+// endpoint of a route it does not serve. Another runtime keeps the keys its
+// document object holds, including ones left undefined.
+func providerMetadataFields(openID bool) map[string]bool {
+	if openID {
+		return openIDMetadataFields()
+	}
+	return serverMetadataFields()
+}
+
+var serverMetadataFields = sync.OnceValue(func() map[string]bool {
+	return metadataFields(reflect.TypeFor[AuthorizationServerMetadata]())
+})
+
+var openIDMetadataFields = sync.OnceValue(func() map[string]bool {
+	fields := metadataFields(reflect.TypeFor[OpenIDProviderMetadata]())
+	// Another runtime always publishes this in the OpenID document, which
+	// does not declare it yet.
+	fields["end_session_endpoint"] = true
+	return fields
+})
+
+func metadataFields(t reflect.Type) map[string]bool {
 	fields := map[string]bool{}
 	var collect func(reflect.Type)
 	collect = func(t reflect.Type) {
@@ -65,14 +85,12 @@ var providerMetadataFields = sync.OnceValue(func() map[string]bool {
 			}
 		}
 	}
-	collect(reflect.TypeFor[OpenIDProviderMetadata]())
-	// Fields another runtime always publishes, which these types do not
-	// declare yet, belong to the provider too.
-	for _, name := range []string{"end_session_endpoint", "backchannel_logout_supported", "backchannel_logout_session_supported"} {
-		fields[name] = true
-	}
+	collect(t)
+	// Another runtime always publishes the back-channel logout flags, which
+	// these types do not declare yet.
+	fields["backchannel_logout_supported"], fields["backchannel_logout_session_supported"] = true, true
 	return fields
-})
+}
 
 // extendMetadata adds the extensions' fields to a served document. Each
 // extension sees the base document, not the running result.
@@ -94,7 +112,7 @@ func (opts Options) extendMetadata(a *auth.Auth, document any, input MetadataInp
 			continue
 		}
 		for name, value := range extension.Metadata(input) {
-			if providerMetadataFields()[name] {
+			if providerMetadataFields(input.OpenID != nil)[name] {
 				continue
 			}
 			if added[name] {

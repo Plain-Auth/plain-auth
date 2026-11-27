@@ -30,9 +30,12 @@ type AdministrativeClient struct {
 	RegisteredClient
 	SkipConsent, EnableEndSession *bool
 	ClientCredentialsScopes       []string
+	// Metadata is the client's stored metadata object.
+	Metadata map[string]json.RawMessage
 }
 
-// MarshalJSON always writes client_credentials_scopes, as another runtime's
+// MarshalJSON always writes client_credentials_scopes and spreads the
+// metadata object under the registration fields, as another runtime's
 // administrative response does.
 func (c AdministrativeClient) MarshalJSON() ([]byte, error) {
 	raw, err := json.Marshal(c.RegisteredClient)
@@ -42,6 +45,11 @@ func (c AdministrativeClient) MarshalJSON() ([]byte, error) {
 	var body map[string]json.RawMessage
 	if err := json.Unmarshal(raw, &body); err != nil {
 		return nil, err
+	}
+	for name, value := range c.Metadata {
+		if _, taken := body[name]; !taken && clientExtension(name) {
+			body[name] = value
+		}
 	}
 	scopes := c.ClientCredentialsScopes
 	if scopes == nil {
@@ -112,26 +120,11 @@ func (m *ClientManager) CreateClient(ctx context.Context, headers http.Header, i
 	if err := m.opts.prepareMetadata(m.auth, &md, managedClient); err != nil {
 		return AdministrativeClient{}, err
 	}
-	scopes, err := normalizeScopeField("body.client_credentials_scopes", in.ClientCredentialsScopes)
+	scopes, err := m.opts.machineScopes("body.client_credentials_scopes", in.ClientCredentialsScopes, md)
 	if err != nil {
 		return AdministrativeClient{}, err
 	}
 	if len(scopes) > 0 {
-		if !slices.Contains(md.GrantTypes, "client_credentials") {
-			return AdministrativeClient{}, metadataProblem("client_credentials_scopes requires the client_credentials grant")
-		}
-		if md.TokenEndpointAuthMethod == "none" {
-			return AdministrativeClient{}, metadataProblem("public clients cannot be assigned client_credentials scopes")
-		}
-		var invalid []string
-		for _, scope := range scopes {
-			if userDelegatedScope(scope) || !slices.Contains(m.opts.Scopes, scope) {
-				invalid = append(invalid, scope)
-			}
-		}
-		if len(invalid) > 0 {
-			return AdministrativeClient{}, registrationProblem(400, "invalid_scope", "The following client_credentials scopes are invalid: "+strings.Join(invalid, ", "))
-		}
 		if err := m.opts.allowClient(ctx, access, "configure-client-credentials-scopes", ""); err != nil {
 			return AdministrativeClient{}, err
 		}
@@ -171,7 +164,33 @@ func (m *ClientManager) CreateClient(ctx context.Context, headers http.Header, i
 	if err != nil {
 		return AdministrativeClient{}, err
 	}
-	return AdministrativeClient{RegisteredClient: created, SkipConsent: in.SkipConsent, EnableEndSession: in.EnableEndSession, ClientCredentialsScopes: scopes}, nil
+	return AdministrativeClient{RegisteredClient: created, SkipConsent: in.SkipConsent, EnableEndSession: in.EnableEndSession, ClientCredentialsScopes: scopes, Metadata: extensions}, nil
+}
+
+// machineScopes normalizes requested client_credentials scopes and checks
+// them against the client's grants, authentication method and the
+// issuer's scopes, as another runtime's validateClientCredentialsScopes does.
+func (opts Options) machineScopes(field string, requested []string, md RegistrationMetadata) ([]string, error) {
+	scopes, err := normalizeScopeField(field, requested)
+	if err != nil || len(scopes) == 0 {
+		return scopes, err
+	}
+	if !slices.Contains(md.GrantTypes, "client_credentials") {
+		return nil, metadataProblem("client_credentials_scopes requires the client_credentials grant")
+	}
+	if md.TokenEndpointAuthMethod == "none" {
+		return nil, metadataProblem("public clients cannot be assigned client_credentials scopes")
+	}
+	var invalid []string
+	for _, scope := range scopes {
+		if userDelegatedScope(scope) || !slices.Contains(opts.Scopes, scope) {
+			invalid = append(invalid, scope)
+		}
+	}
+	if len(invalid) > 0 {
+		return nil, registrationProblem(400, "invalid_scope", "The following client_credentials scopes are invalid: "+strings.Join(invalid, ", "))
+	}
+	return scopes, nil
 }
 
 // ClientAdminUpdate is the server-only input to ClientManager.UpdateClient.
@@ -203,7 +222,7 @@ func (m *ClientManager) UpdateClient(ctx context.Context, headers http.Header, i
 		if err != nil {
 			return AdministrativeClient{}, scopeManagementError(err)
 		}
-		return AdministrativeClient{RegisteredClient: registeredView(current), SkipConsent: current.SkipConsent, EnableEndSession: current.EnableEndSession, ClientCredentialsScopes: scopes}, nil
+		return AdministrativeClient{RegisteredClient: registeredView(current), SkipConsent: current.SkipConsent, EnableEndSession: current.EnableEndSession, ClientCredentialsScopes: scopes, Metadata: current.Extensions}, nil
 	}
 	session, err := m.auth.GetSession(ctx, headers)
 	if err != nil {
@@ -259,32 +278,28 @@ func (m *ClientManager) UpdateClient(ctx context.Context, headers http.Header, i
 			change.Extensions[name] = value
 		}
 	}
-	if in.ClientCredentialsScopes != nil && !change.ClearMachineScopes {
-		scopes, err := normalizeScopeField("body.update.client_credentials_scopes", in.ClientCredentialsScopes)
+	// Requested machine scopes are checked against the merged client, so a
+	// client left without the grant refuses them instead of dropping them.
+	if in.ClientCredentialsScopes != nil {
+		scopes, err := m.opts.machineScopes("body.update.client_credentials_scopes", in.ClientCredentialsScopes, change.Metadata)
 		if err != nil {
 			return AdministrativeClient{}, err
-		}
-		var invalid []string
-		for _, scope := range scopes {
-			if userDelegatedScope(scope) || !slices.Contains(m.opts.Scopes, scope) {
-				invalid = append(invalid, scope)
-			}
-		}
-		if len(invalid) > 0 {
-			return AdministrativeClient{}, registrationProblem(400, "invalid_scope", "The following client_credentials scopes are invalid: "+strings.Join(invalid, ", "))
 		}
 		if len(scopes) > 0 {
 			if err := m.opts.allowClient(ctx, access, "configure-client-credentials-scopes", id); err != nil {
 				return AdministrativeClient{}, err
 			}
 		}
-		change.MachineScopes = scopes
+		if !change.ClearMachineScopes {
+			change.MachineScopes = scopes
+		}
 	}
 	updated, err := applyClientChange(ctx, store, change)
 	if err != nil {
 		return AdministrativeClient{}, err
 	}
-	return AdministrativeClient{RegisteredClient: registeredView(updated), SkipConsent: updated.SkipConsent, EnableEndSession: updated.EnableEndSession, ClientCredentialsScopes: change.MachineScopes}, nil
+	return AdministrativeClient{RegisteredClient: registeredView(updated), SkipConsent: updated.SkipConsent, EnableEndSession: updated.EnableEndSession,
+		ClientCredentialsScopes: updated.ClientCredentialsScopes, Metadata: updated.Extensions}, nil
 }
 
 // registeredView presents stored client details in the registration

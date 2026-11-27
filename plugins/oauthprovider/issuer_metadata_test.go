@@ -354,6 +354,11 @@ func TestExtensionMetadata(t *testing.T) {
 	if len(seen) != 1 || seen[0].Type != op.MetadataAuthorizationServer || seen[0].OpenID != nil || !strings.Contains(string(raw), `"credential_issuer":"`+base+`/oauth-authorization-server"`) {
 		t.Fatal("extensions did not see the authorization-server document", seen, string(raw))
 	}
+	// That document does not declare an end-session endpoint, so an
+	// extension may add one, as in another runtime, but not the logout flags.
+	if !strings.Contains(string(raw), `"end_session_endpoint":"forged"`) || strings.Contains(string(raw), "backchannel_logout_supported") || strings.Contains(string(raw), `"registration_endpoint"`) {
+		t.Fatal("the authorization-server document took the wrong extension fields", string(raw))
+	}
 	if !strings.Contains(logs.String(), "OAuth provider extensions supplied the same discovery field") || !strings.Contains(logs.String(), "field=shared") {
 		t.Fatal("a shared extension field was not logged", logs.String())
 	}

@@ -75,7 +75,7 @@ func TestMachineResourceIssuance(t *testing.T) {
 					return map[string]any{"tier": "host", "plan": "host", "scope": "forged", "client": in.ClientID + " " + in.GrantType}, nil
 				}
 				opts.Extensions = []op.Extension{{AccessTokenClaims: func(context.Context, op.TokenClaimsInput) (map[string]any, error) {
-					return map[string]any{"tier": "extension", "region": "eu", "jti": "forged", "active": "extension", "token_type": "extension", "sid": "forged", "azp": "forged"}, nil
+					return map[string]any{"tier": "extension", "region": "eu", "jti": "forged", "active": "extension", "token_type": "extension", "sid": "forged", "azp": "forged", "nbf": 1}, nil
 				}}}
 				if withFields {
 					opts.Tokens.CustomTokenResponseFields = func(context.Context, op.TokenResponseInput) (map[string]any, error) { return nil, nil }
@@ -158,7 +158,7 @@ func TestMachineResourceIssuance(t *testing.T) {
 				t.Fatal("unexpected signed grant", claims)
 			}
 			if claims["plan"] != "host" || claims["region"] != "eu" || claims["tier"] != "host" || claims["client"] != id+" client_credentials" || claims["jti"] == "forged" ||
-				claims["active"] != "extension" || claims["token_type"] != "extension" || claims["sid"] != nil || claims["azp"] != id {
+				claims["active"] != "extension" || claims["token_type"] != "extension" || claims["sid"] != nil || claims["azp"] != id || claims["nbf"] != nil {
 				t.Fatal("the contributed access token claims were not layered", claims)
 			}
 			write(`UPDATE "oauthResource" SET "signingKeyId"='missing'`)
