@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"maps"
+	"math"
 	"reflect"
 	"slices"
 	"strings"
@@ -47,7 +48,16 @@ func (opts TokenOptions) machineResourcePolicy(client MachineClient, scopes, ide
 	if err != nil {
 		return machineResourcePolicy{}, err
 	}
-	p := machineResourcePolicy{scopes: scopes, lifetime: lifetime, bound: client.RequireDPoP}
+	return opts.resourcePolicy(client.ClientID, client.RequireDPoP, scopes, identifiers, rows, lifetime)
+}
+
+// resourcePolicy applies the requested resources' policies to a grant, as
+// another runtime's resolveResourcePolicy does: each must be configured,
+// enabled and linked to the client unless AllowUnlinkedResources is set,
+// their allowed scopes narrow the request, the shortest access lifetime
+// applies, and their signing pins must agree.
+func (opts TokenOptions) resourcePolicy(clientID string, bound bool, scopes, identifiers []string, rows map[string]MachineResource, lifetime time.Duration) (machineResourcePolicy, error) {
+	p := machineResourcePolicy{scopes: scopes, lifetime: lifetime, bound: bound}
 	var unlinked []string
 	for _, id := range identifiers {
 		row, ok := rows[id]
@@ -62,7 +72,7 @@ func (opts TokenOptions) machineResourcePolicy(client MachineClient, scopes, ide
 		}
 	}
 	if len(unlinked) > 0 {
-		return p, registrationProblem(400, "invalid_target", "client "+client.ClientID+" is not linked to resource(s) "+strings.Join(unlinked, ", "))
+		return p, registrationProblem(400, "invalid_target", "client "+clientID+" is not linked to resource(s) "+strings.Join(unlinked, ", "))
 	}
 	var algConflict, kidConflict bool
 	for _, id := range identifiers {
@@ -231,5 +241,27 @@ func (p machineResourcePolicy) sign(c auth.EndpointContext, client string, audie
 	return c.Auth.SignJWT(c.Request.Context(), client, auth.JWTSignOptions{
 		Type: "at+jwt", Issuer: c.Auth.OAuthIssuer(), Audience: audiences, Algorithm: p.algorithm, KeyID: p.keyID,
 		IssuedAt: now, ExpiresAt: now.Add(p.lifetime), Claims: claims,
+	})
+}
+
+// checkAuthorizationResources checks the requested resources' policies at
+// authorize, before any page is shown. The UserInfo URL is an implicit
+// audience, not a registered resource.
+func (opts Options) checkAuthorizationResources(c auth.EndpointContext, issue BrowserCodeIssue) error {
+	store, ok := c.Store().(ResourceMachineTokenStore)
+	if !ok {
+		return registrationProblem(400, "invalid_target", "resource-targeted browser authorization is unavailable")
+	}
+	if err := opts.seedResources(c); err != nil {
+		return err
+	}
+	userInfo := c.Auth.PublicURL() + "/oauth2/userinfo"
+	ids := slices.DeleteFunc(slices.Clone(issue.Resources), func(id string) bool { return id == userInfo })
+	if len(ids) == 0 {
+		return nil
+	}
+	return store.WithMachineResources(c.Request.Context(), issue.Client.ClientID, ids, func(client MachineClient, rows map[string]MachineResource) (*ResourceMachineTokenRecord, error) {
+		_, err := opts.Tokens.resourcePolicy(client.ClientID, false, issue.Scopes, ids, rows, math.MaxInt64)
+		return nil, err
 	})
 }

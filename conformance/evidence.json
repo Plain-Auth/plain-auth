@@ -18873,6 +18873,12 @@
       "label": "Consume a decision once across two servers, isolate sessions and tenants, and roll back consent when code storage fails",
       "test": "adapters/sqlstore/oauth_browser_consent_test.go",
       "marker": "func TestInteractiveBrowserConsent("
+    },
+    {
+      "label": "Record the requested resources when consent is accepted, and ask again when a later request names one the consent lacks, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_browser_resources_test.go",
+      "marker": "t.Fatal(\"accepted consent did not record the resources\", resources)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/oauth-provider/sign-in-flow.mdx#L95/`POST /oauth2/consent`": [
@@ -18955,6 +18961,11 @@
       "label": "Return a silent interaction error, ignore a supplied clearance on a new request and sign only a completed session’s consent page",
       "test": "conformance/oauth-post-login.mjs",
       "marker": "const gate = await begin("
+    },
+    {
+      "label": "Check resource indicators at authorize before any page, send refusals to the callback with state and iss, and carry the resources through the signed consent page to the code, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_browser_resources_test.go",
+      "marker": "func TestBrowserAuthorizationResources("
     }
   ],
   "docs/content/docs/plugins/oauth-provider/sign-in-flow.mdx#L101/Parameter `accept`": [
@@ -49111,6 +49122,14 @@
       "label": "Apply the same HTTPS rule alone at authorize, with AllowHTTPRedirect",
       "test": "plugins/oauthprovider/registration_test.go",
       "marker": "func TestRedirectTransportPolicy("
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthConsent": [
+    {
+      "label": "Record the approved resources on a consent, keep them when an approval names none, and require them to cover every requested resource, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_browser_resources_test.go",
+      "marker": "t.Fatal(\"accepted consent did not record the resources\", resources)",
+      "complete": true
     }
   ]
 }

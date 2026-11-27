@@ -304,7 +304,7 @@
       - [x] Default the scopes to openid, profile, email and offline_access and refuse registration scopes outside them ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L234))
     - [x] `requireOpenId` ([test](../../../conformance/oauth-require-openid.mjs#L41))
       - [x] Refuse an authorization request whose scope parameter is missing, empty or omits openid with invalid_scope at the client's callback with its state and issuer, and send one naming openid to the login page, on both runtimes ([test](../../../conformance/oauth-require-openid.mjs#L41))
-      - [x] Refuse the option without openid in the issuer's scopes and ignore the client's default scopes ([test](../../../plugins/oauthprovider/browser_authorization_test.go#L124))
+      - [x] Refuse the option without openid in the issuer's scopes and ignore the client's default scopes ([test](../../../plugins/oauthprovider/browser_authorization_test.go#L137))
     - [ ] `validateRedirectUri`
       - [x] Apply host callback policy after validating transport and reject policy errors before redirecting ([test](../../../adapters/sqlstore/oauth_browser_authorization_test.go#L179))
       - [x] Check the redirect syntax and HTTPS policy before the host callback, never call it for credentials, let its answer replace the registered match in both directions, send later errors to a callback only it accepted, and fail closed on an error, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_redirect_transport_test.go#L134))
@@ -500,7 +500,8 @@
   - [ ] `SchemaClient`
   - [ ] `OAuthOpaqueAccessToken`
   - [ ] `OAuthRefreshToken`
-  - [ ] `OAuthConsent`
+  - [x] `OAuthConsent` ([test](../../../adapters/sqlstore/oauth_browser_resources_test.go#L151))
+    - [x] Record the approved resources on a consent, keep them when an approval names none, and require them to cover every requested resource, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_browser_resources_test.go#L151))
   - [ ] `OAuthClient`
     - [x] Represent owner metadata, display data, extension values and optional fields in the Go SDK ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L111))
   - [x] `ResourceServerMetadata` ([test](../../../conformance/resource-discovery.mjs#L28))
@@ -563,8 +564,8 @@
   - [ ] `ExtractedCredentials`
   - [ ] `destructureCredentials`
   - [ ] `extractClientCredentials`
-  - [x] `parsePrompt` ([test](../../../plugins/oauthprovider/browser_authorization_test.go#L61))
-    - [x] Accept each supported prompt and drop repeats and extra spaces from a prompt list ([test](../../../plugins/oauthprovider/browser_authorization_test.go#L61))
+  - [x] `parsePrompt` ([test](../../../plugins/oauthprovider/browser_authorization_test.go#L74))
+    - [x] Accept each supported prompt and drop repeats and extra spaces from a prompt list ([test](../../../plugins/oauthprovider/browser_authorization_test.go#L74))
   - [ ] `resolveSubjectIdentifier`
   - [x] `getConsentReferenceId` ([test](../../../adapters/sqlstore/oauth_post_login_test.go#L209))
     - [x] Resolve the approval reference for the requested or accepted scopes and support personal approval when the host returns an empty reference ([test](../../../adapters/sqlstore/oauth_post_login_test.go#L209))
@@ -716,7 +717,7 @@
   - [ ] What the provider supports
     - [ ] Grants
     - [ ] Authorization requests
-      - [x] Accept the none, login, consent, select_account and create prompts with the query response mode ([test](../../../plugins/oauthprovider/browser_authorization_test.go#L57))
+      - [x] Accept the none, login, consent, select_account and create prompts with the query response mode ([test](../../../plugins/oauthprovider/browser_authorization_test.go#L70))
     - [ ] PKCE
       - [x] Exchange a browser-issued S256 code, verify the delegated access token with an independent issuer and isolate replay cleanup to that code ([test](../../../conformance/oauth-authorization-code.mjs#L5))
       - [x] Resolve public and confidential client PKCE requirements, including offline scopes, OIDC nonces and explicit registration policy ([test](../../../plugins/oauthprovider/authorization_code_test.go#L15))
@@ -811,9 +812,10 @@
       - [x] Apply host account-selection policy to an initial request, honor silent errors and preserve consent after selection ([test](../../../conformance/oauth-account-selection.mjs#L36))
       - [x] Return an interaction error for silent onboarding and wait for the host’s stored update before exposing consent ([test](../../../conformance/oauth-signup-policy.mjs#L45))
       - [x] Return a silent interaction error, ignore a supplied clearance on a new request and sign only a completed session’s consent page ([test](../../../conformance/oauth-post-login.mjs#L87))
-    - [ ] `POST /oauth2/consent`
+    - [x] `POST /oauth2/consent` ([test](../../../adapters/sqlstore/oauth_browser_resources_test.go#L151))
       - [x] Visit a host consent page, verify the signed query independently, deny a first request or exchange a code approved for fewer scopes ([test](../../../conformance/oauth-browser-authorization.mjs#L57))
       - [x] Consume a decision once across two servers, isolate sessions and tenants, and roll back consent when code storage fails ([test](../../../adapters/sqlstore/oauth_browser_consent_test.go#L25))
+      - [x] Record the requested resources when consent is accepted, and ask again when a later request names one the consent lacks, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_browser_resources_test.go#L151))
     - [x] `POST /oauth2/continue` ([test](../../../adapters/sqlstore/oauth_browser_login_test.go#L140))
       - [x] Use the signed signup page query and the new browser session to complete the account-creation step ([test](../../../conformance/oauth-browser-login.mjs#L114))
       - [x] Resume the signed chooser with the selected browser account and preserve forced consent without repeating selection ([test](../../../conformance/oauth-account-selection.mjs#L44))
@@ -1002,6 +1004,7 @@
     - [x] Apply host account-selection policy to an initial request, honor silent errors and preserve consent after selection ([test](../../../conformance/oauth-account-selection.mjs#L36))
     - [x] Return an interaction error for silent onboarding and wait for the host’s stored update before exposing consent ([test](../../../conformance/oauth-signup-policy.mjs#L45))
     - [x] Return a silent interaction error, ignore a supplied clearance on a new request and sign only a completed session’s consent page ([test](../../../conformance/oauth-post-login.mjs#L87))
+    - [x] Check resource indicators at authorize before any page, send refusals to the callback with state and iss, and carry the resources through the signed consent page to the code, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_browser_resources_test.go#L24))
   - [ ] Login page
     - [x] Continue from the external provider by browser redirect or JSON and enforce consent for the original request ([test](../../../conformance/oauth-social-authorization.mjs#L122))
     - [x] Take a signed-out user through local login, consent and PKCE redemption and require fresh credentials when requested ([test](../../../conformance/oauth-browser-login.mjs#L41))

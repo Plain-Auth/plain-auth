@@ -28,6 +28,9 @@ func interactionFields(original url.Values, issue BrowserCodeIssue) url.Values {
 	fields.Set("client_id", issue.Client.ClientID)
 	fields.Set("response_type", "code")
 	fields.Set("scope", strings.Join(issue.Scopes, " "))
+	if len(issue.Resources) > 0 {
+		fields["resource"] = slices.Clone(issue.Resources)
+	}
 	if original.Has("max_age") {
 		fields.Set("max_age", original.Get("max_age"))
 	}

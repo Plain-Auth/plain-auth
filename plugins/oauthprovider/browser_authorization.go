@@ -102,8 +102,11 @@ type BrowserCodeIssue struct {
 	Query                                                    map[string]string
 	Scopes                                                   []string
 	RequestedUserInfoClaims                                  []string
-	MaxAge                                                   *int64
-	Lifetime                                                 time.Duration
+	// Resources are the requested resource indicators, in request order.
+	// Approved consent must cover every one.
+	Resources []string
+	MaxAge    *int64
+	Lifetime  time.Duration
 }
 
 func (i BrowserCodeIssue) SessionFresh(created, now time.Time) bool {
@@ -114,13 +117,21 @@ func (i BrowserCodeIssue) SessionFresh(created, now time.Time) bool {
 	return *i.MaxAge > 0 && (elapsed <= 0 || (elapsed-1)/1000 < *i.MaxAge)
 }
 
+// resourceList is a list that encodes as [] when empty.
+func resourceList(ids []string) []string {
+	if ids == nil {
+		return []string{}
+	}
+	return ids
+}
+
 func (i BrowserCodeIssue) VerificationValue(created time.Time) ([]byte, error) {
 	query := maps.Clone(i.Query)
 	if query == nil {
 		return nil, errors.New("oauthprovider: missing authorization query")
 	}
 	query["response_type"], query["client_id"], query["scope"] = "code", i.Client.ClientID, strings.Join(i.Scopes, " ")
-	value := map[string]any{"type": "authorization_code", "query": query, "userId": i.UserID, "sessionId": i.SessionID, "authTime": created.UnixMilli(), "resource": []string{}}
+	value := map[string]any{"type": "authorization_code", "query": query, "userId": i.UserID, "sessionId": i.SessionID, "authTime": created.UnixMilli(), "resource": resourceList(i.Resources)}
 	if i.ReferenceID != "" {
 		value["referenceId"] = i.ReferenceID
 	}
@@ -289,6 +300,17 @@ func (opts Options) runBrowserAuthorization(c auth.EndpointContext, q url.Values
 	issue := grant.BrowserCodeIssue
 	if slices.Contains(issue.Scopes, "openid") && !opts.canIssueIDToken(c) {
 		return reject("invalid_request", "ID token issuance is unavailable")
+	}
+	// Requested resources must pass their policy before any page is shown,
+	// as in another runtime; the token endpoint checks them again.
+	if len(issue.Resources) > 0 {
+		if err := opts.checkAuthorizationResources(c, issue); err != nil {
+			var problem *auth.OAuthError
+			if errors.As(err, &problem) && problem.Status < 500 {
+				return reject(problem.Code, problem.Description)
+			}
+			return nil, err
+		}
 	}
 	var session *auth.SessionResult
 	if decision != nil {

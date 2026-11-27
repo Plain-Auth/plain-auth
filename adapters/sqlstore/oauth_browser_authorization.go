@@ -129,6 +129,12 @@ func (s *Store) finishBrowserCode(ctx context.Context, input op.BrowserCodeIssue
 					return op.ErrBrowserConsentRequired
 				}
 			}
+			// Approval must also cover every requested resource.
+			for _, resource := range input.Resources {
+				if !slices.Contains(approval.Resources, resource) {
+					return op.ErrBrowserConsentRequired
+				}
+			}
 		}
 	}
 	if action == saveApprovalOnly {

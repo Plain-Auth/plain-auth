@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"slices"
+	"strconv"
 	"testing"
 	"time"
 
@@ -41,13 +42,25 @@ func TestBrowserAuthorizationRules(t *testing.T) {
 		{"scope", "write", "invalid_scope"}, {"prompt", "none consent", "invalid_request"}, {"prompt", "unknown", "invalid_request"},
 		{"prompt", "login\tconsent", "invalid_request"}, {"prompt", "consent\u0085", "invalid_request"},
 		{"max_age", "-1", "invalid_request"}, {"code_challenge_method", "plain", "invalid_request"}, {"claims", "{}", "invalid_request"},
-		{"resource", "urn:api", "invalid_target"}, {"dpop_jkt", "binding", "invalid_request"},
+		{"resource", "https://api.example.test/#frag", "invalid_request"}, {"dpop_jkt", "binding", "invalid_request"},
 	} {
 		q := url.Values{"response_type": {"code"}, "code_challenge": {"digest"}, "code_challenge_method": {"S256"}}
 		q.Set(tc.k, tc.v)
 		if _, err := opts.browserGrant(base, q); err == nil || err.Code != tc.code {
 			t.Errorf("%s: %v", tc.k, err)
 		}
+	}
+	// Resource indicators keep their request order without repeats, up to 64.
+	indicators := url.Values{"response_type": {"code"}, "code_challenge": {"digest"}, "code_challenge_method": {"S256"}, "resource": {"urn:b", "urn:a", "urn:b"}}
+	if request, err := opts.browserGrant(base, indicators); err != nil || !slices.Equal(request.Resources, []string{"urn:b", "urn:a"}) {
+		t.Fatal("resource indicators were not kept in order without repeats", request.Resources, err)
+	}
+	indicators["resource"] = make([]string, 65)
+	for i := range indicators["resource"] {
+		indicators["resource"][i] = "urn:r" + strconv.Itoa(i)
+	}
+	if _, err := opts.browserGrant(base, indicators); err == nil || err.Code != "invalid_target" {
+		t.Fatal("more than 64 resource indicators were accepted", err)
 	}
 	// Each supported prompt and the query response mode are accepted, and a
 	// prompt list loses its repeats and extra spaces.

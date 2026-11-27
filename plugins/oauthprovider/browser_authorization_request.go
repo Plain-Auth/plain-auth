@@ -90,9 +90,17 @@ func (opts Options) browserGrant(client BrowserClient, q url.Values) (browserAut
 	if (challenge != "" || method != "") && (challenge == "" || method != "S256") {
 		return fail("invalid_request", "PKCE requires a challenge and the S256 method")
 	}
-	if q.Has("resource") {
-		return fail("invalid_target", "resource-targeted browser authorization is unavailable")
+	// Resource indicators are checked against the resource registry after
+	// these request checks, where another runtime checks them first.
+	if len(q["resource"]) > 64 {
+		return fail("invalid_target", "at most 64 resource parameters are supported")
 	}
+	for _, id := range q["resource"] {
+		if !ValidResourceIdentifier(id) {
+			return fail("invalid_request", "resource must be an absolute URI without a fragment")
+		}
+	}
+	request.Resources = distinct(q["resource"])
 	if q.Has("dpop_jkt") || client.RequireDPoP {
 		return fail("invalid_request", "this authorization request requires an unsupported token binding")
 	}

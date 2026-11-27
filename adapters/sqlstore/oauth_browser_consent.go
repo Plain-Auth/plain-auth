@@ -68,14 +68,28 @@ func (s *Store) writeBrowserConsent(ctx context.Context, tx *sql.Tx, input op.Br
 		return err
 	}
 	when := s.date(now.UTC().Truncate(time.Second))
+	// Approved resources are recorded when the request names any; an update
+	// without resources keeps the ones approved before, as in another runtime.
+	var resources any
+	if len(input.Resources) > 0 {
+		raw, err := json.Marshal(input.Resources)
+		if err != nil {
+			return err
+		}
+		resources = string(raw)
+	}
 	if existingID != "" {
-		_, err = tx.ExecContext(ctx, s.bind(`UPDATE "oauthConsent" SET "scopes"=?,"resources"=NULL,"requestedUserInfoClaims"=?,"updatedAt"=? WHERE "id"=?`), string(data), string(approved), when, existingID)
+		if resources != nil {
+			_, err = tx.ExecContext(ctx, s.bind(`UPDATE "oauthConsent" SET "scopes"=?,"resources"=?,"requestedUserInfoClaims"=?,"updatedAt"=? WHERE "id"=?`), string(data), resources, string(approved), when, existingID)
+		} else {
+			_, err = tx.ExecContext(ctx, s.bind(`UPDATE "oauthConsent" SET "scopes"=?,"requestedUserInfoClaims"=?,"updatedAt"=? WHERE "id"=?`), string(data), string(approved), when, existingID)
+		}
 		return err
 	}
 	var ref any
 	if input.ReferenceID != "" {
 		ref = input.ReferenceID
 	}
-	_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "oauthConsent" ("id","userId","clientId","referenceId","scopes","requestedUserInfoClaims","createdAt","updatedAt") VALUES (?,?,?,?,?,?,?,?)`), rand.Text(), input.UserID, input.Client.ClientID, ref, string(data), string(approved), when, when)
+	_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "oauthConsent" ("id","userId","clientId","referenceId","scopes","resources","requestedUserInfoClaims","createdAt","updatedAt") VALUES (?,?,?,?,?,?,?,?,?)`), rand.Text(), input.UserID, input.Client.ClientID, ref, string(data), resources, string(approved), when, when)
 	return err
 }
