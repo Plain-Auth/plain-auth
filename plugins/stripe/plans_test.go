@@ -32,3 +32,28 @@ func TestPlanMetadataConfiguration(t *testing.T) {
 		t.Error("limits of exactly 8 KiB were refused")
 	}
 }
+
+// Every plan's proration behavior is checked at startup: licensed, metered
+// add-on and membership plans accept the three Stripe values or none, and
+// refuse any other.
+func TestPlanProrationBehavior(t *testing.T) {
+	const message = "stripe: unknown proration behavior"
+	plans := map[string]stripeplugin.Plan{
+		"licensed": {Name: "pro", PriceID: "price_pro"},
+		"metered":  {Name: "pro", PriceID: "price_pro", MeteredPriceIDs: []string{"price_usage"}},
+		"seats":    {Name: "pro", PriceID: "price_pro", SeatPriceID: "price_pro"},
+	}
+	for kind, plan := range plans {
+		for _, behavior := range []string{"", "create_prorations", "always_invoice", "none", "invalid"} {
+			plan.ProrationBehavior = behavior
+			_, err := authn.New(authn.Options{Store: memory.New(), BaseURL: "http://auth.test", Secret: "test-secret-0123456789-abcdefghijk",
+				Plugins: []authn.Plugin{stripeplugin.New(stripeplugin.Options{WebhookSecret: "whsec_local",
+					Organization:  &stripeplugin.OrganizationOptions{AuthorizeReference: func(stripeplugin.ReferenceAuthorization) bool { return true }},
+					Subscriptions: &stripeplugin.SubscriptionOptions{Client: stripesdk.NewClient("sk_test_local"), Plans: []stripeplugin.Plan{plan}}})}})
+			refused := err != nil && err.Error() == message
+			if refused != (behavior == "invalid") {
+				t.Error("a proration behavior was handled wrongly", kind, behavior, err)
+			}
+		}
+	}
+}

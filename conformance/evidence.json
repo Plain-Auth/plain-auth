@@ -12208,6 +12208,11 @@
       "label": "Configure monthly seat proration and reject unknown behavior or an unsupported plan shape",
       "test": "plugins/stripe/seats_test.go",
       "marker": "func TestMembershipPriceConfiguration("
+    },
+    {
+      "label": "Validate the proration behavior of licensed, metered add-on and membership plans at startup, defaulting to create_prorations",
+      "test": "plugins/stripe/plans_test.go",
+      "marker": "func TestPlanProrationBehavior(t *testing.T) {"
     }
   ],
   "plugin/sso/POST /sso/delete-provider": [

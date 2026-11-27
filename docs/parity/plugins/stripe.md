@@ -513,6 +513,7 @@
         - [ ] `prorationBehavior`
           - [x] Update the existing Stripe item when an invitation is accepted or a member is removed, using default proration ([test](../../../conformance/stripe-organization-fixture.mjs#L244))
           - [x] Configure monthly seat proration and reject unknown behavior or an unsupported plan shape ([test](../../../plugins/stripe/seats_test.go#L9))
+          - [x] Validate the proration behavior of licensed, metered add-on and membership plans at startup, defaulting to create_prorations ([test](../../../plugins/stripe/plans_test.go#L39))
         - [ ] `lineItems`
           - [x] Configure up to 19 separate metered add-ons, validate price roles and isolate the installed plan from later host mutations ([test](../../../plugins/stripe/metered_addons_test.go#L11))
           - [x] Validate the add-on price intervals and retain the original price IDs and ordering across a configuration change ([test](../../../adapters/sqlstore/stripe_addons_test.go#L154))

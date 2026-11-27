@@ -278,6 +278,10 @@ Enable subscription updates and add the target prices to the Stripe customer por
 
 Plan changes support one configured monthly or yearly licensed item. To change only the quantity, send the current plan and its new `seats` value. An omitted or zero quantity proposes one seat on the hosted page. To keep an existing multi-seat quantity when switching prices, send its current `seats` value. The subscription keeps its current quantity until Stripe confirms the change. Repeating an active subscription’s current price and quantity returns `ALREADY_SUBSCRIBED_PLAN`. Resolve any cancellation, attached schedule, pending update or collection pause before requesting a change. Metered and multi-item subscriptions remain outside the supported flow. [Plan change tests](../adapters/sqlstore/stripe_plan_change_test.go)
 
+### Choose a proration behavior
+
+Set `ProrationBehavior` on a plan to `create_prorations`, the default, `always_invoice` or `none` for the plugin's own updates to that plan's subscriptions, such as membership seat changes. Every plan's value is checked at startup, and another value stops it, where another runtime sends any value to Stripe when it is used. Callbacks report the effective value, so an unset one reads `create_prorations`. A plan change confirmed on Stripe's portal follows the portal configuration's proration instead. [Proration tests](../plugins/stripe/plans_test.go)
+
 ## Schedule a change for the next billing period
 
 Pass `scheduleAtPeriodEnd: true` to keep the current plan through its paid period. This uses the same endpoint, session, configured price IDs and trusted return URL as an immediate change. The successful response points back to the application. The Go client exposes the option as `stripeclient.Checkout.ScheduleAtPeriodEnd`.

@@ -28,7 +28,12 @@ type Plan struct {
 	FreeTrial                    *FreeTrial `json:",omitempty"`
 	// SeatPriceID opts organization checkout into membership-based billing.
 	// Use the base price for seat-only billing, or a distinct seat price matching the selected base interval.
-	SeatPriceID, ProrationBehavior string
+	SeatPriceID string
+	// ProrationBehavior is create_prorations, always_invoice or none, for
+	// the plugin's own subscription updates such as seat changes; empty
+	// means create_prorations, which callbacks then report. Another value
+	// stops startup, where another runtime sends it to Stripe at use.
+	ProrationBehavior string
 	// MeteredPriceIDs adds fixed metered prices to a licensed base at the same interval.
 	MeteredPriceIDs []string
 	// Limits is application data for the plan, such as {"projects": 5}. The
@@ -262,13 +267,14 @@ func configureSubscriptions(o *SubscriptionOptions) (*subscriptions, error) {
 			if p.AnnualPriceID != "" && p.SeatPriceID == p.PriceID {
 				return nil, errors.New("stripe: an organization plan with an annual base requires a separate licensed seat price")
 			}
-			switch p.ProrationBehavior {
-			case "":
-				p.ProrationBehavior = "create_prorations"
-			case "create_prorations", "always_invoice", "none":
-			default:
-				return nil, errors.New("stripe: unknown seat proration behavior")
-			}
+		}
+		// Every plan's proration is checked here, at startup.
+		switch p.ProrationBehavior {
+		case "":
+			p.ProrationBehavior = "create_prorations"
+		case "create_prorations", "always_invoice", "none":
+		default:
+			return nil, errors.New("stripe: unknown proration behavior")
 		}
 		p.MeteredPriceIDs = slices.Clone(p.MeteredPriceIDs)
 		limits, err := jsonLimits(p.Limits)
