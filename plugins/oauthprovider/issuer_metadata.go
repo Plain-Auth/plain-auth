@@ -126,7 +126,7 @@ func (opts Options) discoveryGrants(store auth.Store, authorizeURL string) []str
 		"refresh_token":      refresh,
 		"client_credentials": machine,
 	}
-	return slices.DeleteFunc(slices.Clone(opts.GrantTypes), func(grant string) bool { return !available[grant] })
+	return slices.DeleteFunc(opts.supportedGrants(), func(grant string) bool { return !available[grant] && opts.grantHandler(grant) == nil })
 }
 
 func (opts Options) issuerDocuments(a *auth.Auth, store auth.Store) (map[string]auth.WellKnownDocument, error) {

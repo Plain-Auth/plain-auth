@@ -267,6 +267,7 @@
     - [x] Preserve application headers and JSON descriptions while formatting challenges for HTTP over TLS ([test](../../../plugins/oauthprovider/challenge_test.go#L13))
     - [x] Reject invalid configuration and leave the response untouched for unhandled errors ([test](../../../plugins/oauthprovider/challenge_test.go#L63))
   - [ ] `getOAuthProviderApi`
+    - [x] Bind the provider API to an extension grant's request and grant type; it is not offered outside a grant, as a documented deviation, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_extension_grant_test.go#L123))
   - [ ] `StoreTokenType`
   - [ ] `Scope`
   - [x] `OAuthClientRegistrationResponse` ([test](../../../conformance/oauth-registration.mjs#L211))
@@ -277,20 +278,27 @@
   - [ ] `AuthorizePrompt`
   - [ ] `ClientMetadataResourceFetch`
   - [ ] `ClientDiscovery`
-  - [ ] `OAuthAuthenticatedClient`
-  - [ ] `OAuthClientAuthenticationRequest`
+  - [x] `OAuthAuthenticatedClient` ([test](../../../adapters/sqlstore/oauth_extension_grant_test.go#L147))
+    - [x] Return the authenticated client's ID, registration and method from AuthenticateClient, refusing missing, wrong or unauthorized credentials, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_extension_grant_test.go#L147))
+  - [x] `OAuthClientAuthenticationRequest` ([test](../../../adapters/sqlstore/oauth_extension_grant_test.go#L152))
+    - [x] Check requested scopes against the client's registered scopes and accept a public client only when the grant allows one, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_extension_grant_test.go#L152))
   - [ ] `OAuthTokenIssueParams`
-  - [ ] `OAuthTokenResponse`
+  - [x] `OAuthTokenResponse` ([test](../../../plugins/oauthprovider/extension_auth_test.go#L81))
     - [x] Return exactly access_token, expires_at, expires_in, refresh_token, scope and token_type for an offline code exchange, with expires_at matching expires_in, on both runtimes ([test](../../../conformance/oauth-authorization-code.mjs#L84))
+    - [x] Write the standard token response members, keeping them over added fields and leaving out an empty refresh or ID token ([test](../../../plugins/oauthprovider/extension_auth_test.go#L81))
   - [ ] `ActiveAccessTokenPayload`
   - [ ] `OAuthProviderApi`
-  - [ ] `OAuthExtensionGrantHandlerInput`
-  - [ ] `OAuthExtensionGrantHandler`
+    - [x] Authenticate clients, look clients up and hash tokens through the provider API inside an extension grant, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_extension_grant_test.go#L127))
+  - [x] `OAuthExtensionGrantHandlerInput` ([test](../../../adapters/sqlstore/oauth_extension_grant_test.go#L47))
+    - [x] Give an extension grant handler the endpoint, the parsed form, its grant type and the provider API bound to it, on SQLite, PostgreSQL and MySQL; the handler closes over its options as a documented deviation ([test](../../../adapters/sqlstore/oauth_extension_grant_test.go#L47))
+  - [x] `OAuthExtensionGrantHandler` ([test](../../../adapters/sqlstore/oauth_extension_grant_test.go#L28))
+    - [x] Dispatch an extension grant to its handler before reading credentials and answer with its token response, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_extension_grant_test.go#L28))
+    - [x] Refuse a relative, built-in, handlerless or repeated extension grant type ([test](../../../plugins/oauthprovider/extension_auth_test.go#L55))
   - [ ] `OAuthClientAuthenticationInput`
   - [ ] `OAuthClientAuthenticationResult`
   - [x] `OAuthClientAuthenticationStrategy` ([test](../../../adapters/sqlstore/oauth_extension_auth_test.go#L30))
     - [x] Authenticate clients registered for an extension method with its strategy at the token, introspection and revocation endpoints, with each endpoint as the audience, before any store call, on SQLite, PostgreSQL and MySQL; requiring a matching form client_id is a documented deviation ([test](../../../adapters/sqlstore/oauth_extension_auth_test.go#L30))
-    - [x] Refuse reserved, empty or repeated extension methods, a missing Authenticate, and relative, jwt-bearer, empty or repeated assertion types ([test](../../../plugins/oauthprovider/extension_auth_test.go#L13))
+    - [x] Refuse reserved, empty or repeated extension methods, a missing Authenticate, and relative, jwt-bearer, empty or repeated assertion types ([test](../../../plugins/oauthprovider/extension_auth_test.go#L15))
   - [x] `OAuthMetadataExtensionInput` ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L294))
     - [x] Pass each served discovery document's type and assembled fields to an extension, add its fields without replacing the provider's, keep the first extension's value for a shared field with a warning, and fail the host for a field that cannot be encoded; the static input is a documented deviation ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L294))
     - [x] Add an extension's discovery field to the OpenID configuration without replacing the issuer or token endpoint, on both runtimes ([test](../../../conformance/oauth-extensions.mjs#L12))
@@ -731,6 +739,7 @@
 - [ ] OAuth 2.1 Provider
   - [ ] What the provider supports
     - [ ] Grants
+      - [x] Accept extension grants at the token endpoint, in registration and in discovery, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_extension_grant_test.go#L158))
     - [ ] Authorization requests
       - [x] Accept the none, login, consent, select_account and create prompts with the query response mode ([test](../../../plugins/oauthprovider/browser_authorization_test.go#L76))
     - [ ] PKCE

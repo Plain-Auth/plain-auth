@@ -56,3 +56,27 @@ After verifying the signature, a strategy should bind the audience, bound the li
 - `jti` must be a non-empty string, spent once under the namespace until `exp` plus the tolerance.
 
 Each refusal is 400 `invalid_client` with another runtime's description, and a replay is "client assertion jti has already been used". Name the namespace after the method and the client, such as `"workload_identity:" + id`, so the same `jti` may recur under another method or client but never within one; `private_key_jwt` spends under `"private_key_jwt:" + clientID` in the same table. The store must implement `oauthprovider.ClientAssertionReplayStore`, which the SQL adapter does with one insert into `oauthClientAssertion`, shared by every instance on the database; otherwise the call returns 501 `OAUTH_ASSERTION_STORE_UNAVAILABLE`. [Claim checks](../plugins/oauthprovider/client_assertion_test.go) · [Replay test](../adapters/sqlstore/oauth_extension_auth_test.go)
+
+## Add a grant
+
+An extension's `Grants` adds token endpoint grant types, keyed by absolute URI, such as `urn:ietf:params:oauth:grant-type:token-exchange`. A token request for one is handed to its `GrantHandler` after the form, `grant_type` and `resource` checks and before any credential is read, with `Cache-Control: no-store` already set. The handler runs in the endpoint, outside store transactions. Its `TokenResponse` is the answer: `Fields` adds members but never replaces `access_token`, `token_type`, `expires_in`, `expires_at`, `scope`, `refresh_token` or `id_token`, and an empty refresh or ID token is left out. An `*plainauth.OAuthError` it returns is the error answer, with `WWW-Authenticate` for a 401 `invalid_client`.
+
+```go
+extension := oauthprovider.Extension{Grants: map[string]oauthprovider.GrantHandler{
+    "urn:example:grant": func(in oauthprovider.GrantInput) (oauthprovider.TokenResponse, error) {
+        client, err := in.Provider.AuthenticateClient(oauthprovider.ClientAuthenticationRequest{Scopes: strings.Fields(in.Form.Get("scope"))})
+        if err != nil {
+            return oauthprovider.TokenResponse{}, err
+        }
+        return mintFor(in.Endpoint.Request.Context(), client, in.Form)
+    },
+}}
+```
+
+`in.Provider` is bound to the request and its grant type:
+
+- `AuthenticateClient` reads the client's credentials as the built-in grants do, with the token endpoint as an assertion's audience, so a secret, `private_key_jwt` or an extension assertion works. It refuses a request without `client_id` (400 `invalid_request` "Missing required client_id") or without credentials (400 `invalid_client` "Missing required client credentials"), unless `AllowPublic` accepts a client registered for `none`. It then checks `Scopes` against the client's registered scopes (`invalid_scope` "client does not allow scope X"), where a client without registered scopes allows any, and requires the grant in the client's grant types (`unauthorized_client`), where none registered means `authorization_code` only.
+- `Client(id)` returns a registered client, or nil when there is none.
+- `HashToken(token, kind)` returns the stored form of a token the provider issued, so a handler can find or revoke one by its value.
+
+`New` refuses a grant type that is not an absolute URI, has no handler, or is defined by two extensions; the built-in grant names are not URIs, so they cannot be replaced. Discovery's `grant_types_supported` and the token endpoint's OpenAPI `grant_type` list the extension grants after the configured ones, and client registration accepts them; `redirect_uris` stay required only with `authorization_code`. The provider API exists only inside a dispatched grant, where another runtime also offers it to other endpoints, since a Go plugin cannot reach another plugin's options at request time; `AllowPublic` is the Go form of turning `requireCredentials` off, and a handler closes over the options it needs rather than receiving them. [Grant tests](../adapters/sqlstore/oauth_extension_grant_test.go) · [Option checks](../plugins/oauthprovider/extension_auth_test.go)

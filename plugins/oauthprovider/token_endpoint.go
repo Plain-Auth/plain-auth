@@ -74,6 +74,16 @@ func (opts Options) token(c auth.EndpointContext) (any, error) {
 			return nil, registrationProblem(400, "invalid_request", "resource must be an absolute URI without a fragment")
 		}
 	}
+	// An extension grant gets the request before any credential is read,
+	// as in another runtime.
+	if handler := opts.grantHandler(grant); handler != nil {
+		provider := &ProviderAPI{opts: opts, c: c, form: form, grant: grant}
+		response, err := handler(GrantInput{Endpoint: c, Form: form, GrantType: grant, Provider: provider})
+		if err != nil {
+			return nil, tokenEndpointError(c.ResponseHeader, provider.challenge, err)
+		}
+		return response, nil
+	}
 	if !slices.Contains(opts.GrantTypes, grant) || (grant != "client_credentials" && grant != "authorization_code" && grant != "refresh_token") {
 		return nil, registrationProblem(400, "unsupported_grant_type", "unsupported grant_type "+grant)
 	}

@@ -269,6 +269,9 @@ func New(opts Options) (auth.Plugin, error) {
 	if err := opts.checkClientAuthentication(); err != nil {
 		return auth.Plugin{}, err
 	}
+	if err := opts.checkGrants(); err != nil {
+		return auth.Plugin{}, err
+	}
 	if err := opts.Metadata.prepare(opts.Scopes, opts.extensionAuthMethods()); err != nil {
 		return auth.Plugin{}, err
 	}
@@ -433,7 +436,7 @@ func New(opts Options) (auth.Plugin, error) {
 		auth.Endpoint{Method: http.MethodGet, Path: endSessionPath, Handler: opts.endSession, OpenAPI: json.RawMessage(endSessionOperation(http.MethodGet))},
 		auth.Endpoint{Method: http.MethodPost, Path: endSessionPath, RawBody: true, Handler: opts.endSession, OpenAPI: json.RawMessage(endSessionOperation(http.MethodPost))},
 		auth.Endpoint{Method: http.MethodPost, Path: endSessionConfirmPath, RawBody: true, Handler: opts.confirmEndSession, OpenAPI: json.RawMessage(endSessionConfirmOperation)})
-	p.Endpoints = append(p.Endpoints, auth.Endpoint{Method: http.MethodPost, Path: "/oauth2/token", RawBody: true, OpenAPI: json.RawMessage(machineTokenOperation), RateLimit: opts.Tokens.RateLimit, Handler: opts.token})
+	p.Endpoints = append(p.Endpoints, auth.Endpoint{Method: http.MethodPost, Path: "/oauth2/token", RawBody: true, OpenAPI: opts.tokenOperation(), RateLimit: opts.Tokens.RateLimit, Handler: opts.token})
 	if slices.Contains(opts.GrantTypes, "authorization_code") {
 		if opts.Authorization.LoginPage != "" || opts.Authorization.SignupPage != "" {
 			p.PrepareOAuthLogin = opts.prepareLogin

@@ -40,6 +40,10 @@ type Extension struct {
 	// method name, whose clients authenticate with a client assertion the
 	// strategy checks.
 	ClientAuthentication map[string]ClientAuthenticationStrategy
+	// Grants adds token endpoint grant types, keyed by absolute URI. A
+	// request for one is handed to its handler before any credential is
+	// read, and discovery and registration accept it.
+	Grants map[string]GrantHandler
 }
 
 // Confirmation is an RFC 7800 sender constraint. Exactly one member is set.

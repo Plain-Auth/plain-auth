@@ -135,7 +135,8 @@ func (o Options) prepareMetadata(host *auth.Auth, m *RegistrationMetadata, kind 
 		m.GrantTypes = []string{"authorization_code"}
 	} else if kind != managedClient {
 		requested := m.GrantTypes
-		m.GrantTypes = slices.DeleteFunc(slices.Clone(requested), func(v string) bool { return !slices.Contains(o.GrantTypes, v) })
+		supported := o.supportedGrants()
+		m.GrantTypes = slices.DeleteFunc(slices.Clone(requested), func(v string) bool { return !slices.Contains(supported, v) })
 		if len(m.GrantTypes) == 0 {
 			return metadataProblem("no mutually supported grant_type among " + strings.Join(requested, ", "))
 		}
@@ -199,7 +200,7 @@ func (o Options) prepareMetadata(host *auth.Auth, m *RegistrationMetadata, kind 
 	// here as in another runtime; nothing is dropped.
 	if kind == managedClient {
 		for _, grant := range m.GrantTypes {
-			if !slices.Contains(o.GrantTypes, grant) {
+			if !slices.Contains(o.supportedGrants(), grant) {
 				return metadataProblem("unsupported grant_type " + grant)
 			}
 		}

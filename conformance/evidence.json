@@ -48411,6 +48411,12 @@
       "label": "Return exactly access_token, expires_at, expires_in, refresh_token, scope and token_type for an offline code exchange, with expires_at matching expires_in, on both runtimes",
       "test": "conformance/oauth-authorization-code.mjs",
       "marker": "assert.deepEqual(Object.keys(pair).sort(), [\"access_token\", \"expires_at\", \"expires_in\", \"refresh_token\", \"scope\", \"token_type\"]);"
+    },
+    {
+      "label": "Write the standard token response members, keeping them over added fields and leaving out an empty refresh or ID token",
+      "test": "plugins/oauthprovider/extension_auth_test.go",
+      "marker": "func TestTokenResponseFields(",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/oauth-provider/reference.mdx#L378/`invalid_grant`": [
@@ -49364,6 +49370,64 @@
       "test": "adapters/sqlstore/oauth_extension_auth_test.go",
       "marker": "func TestExtensionAssertionReplay(",
       "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthExtensionGrantHandler": [
+    {
+      "label": "Dispatch an extension grant to its handler before reading credentials and answer with its token response, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_extension_grant_test.go",
+      "marker": "func TestExtensionGrantDispatch(",
+      "complete": true
+    },
+    {
+      "label": "Refuse a relative, built-in, handlerless or repeated extension grant type",
+      "test": "plugins/oauthprovider/extension_auth_test.go",
+      "marker": "func TestExtensionGrantOptions("
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthExtensionGrantHandlerInput": [
+    {
+      "label": "Give an extension grant handler the endpoint, the parsed form, its grant type and the provider API bound to it, on SQLite, PostgreSQL and MySQL; the handler closes over its options as a documented deviation",
+      "test": "adapters/sqlstore/oauth_extension_grant_test.go",
+      "marker": "if in.GrantType != grant || in.Form.Get(\"grant_type\") != grant {",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthClientAuthenticationRequest": [
+    {
+      "label": "Check requested scopes against the client's registered scopes and accept a public client only when the grant allows one, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_extension_grant_test.go",
+      "marker": "t.Fatal(\"a public client was refused with AllowPublic\", status, body)",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthAuthenticatedClient": [
+    {
+      "label": "Return the authenticated client's ID, registration and method from AuthenticateClient, refusing missing, wrong or unauthorized credentials, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_extension_grant_test.go",
+      "marker": "refusal(status, body, \"unauthorized_client\", \"client is not authorized to use grant type \"+grant)",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthProviderApi": [
+    {
+      "label": "Authenticate clients, look clients up and hash tokens through the provider API inside an extension grant, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_extension_grant_test.go",
+      "marker": "t.Fatal(\"HashToken did not return the stored form\", hashed)"
+    }
+  ],
+  "plugin-symbol/oauth-provider/getOAuthProviderApi": [
+    {
+      "label": "Bind the provider API to an extension grant's request and grant type; it is not offered outside a grant, as a documented deviation, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_extension_grant_test.go",
+      "marker": "t.Fatal(\"the provider's client lookup was wrong\", lookups)"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/index.mdx#L18/Grants": [
+    {
+      "label": "Accept extension grants at the token endpoint, in registration and in discovery, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_extension_grant_test.go",
+      "marker": "t.Fatal(\"discovery did not list the extension grant\", doc.GrantTypesSupported)"
     }
   ]
 }
