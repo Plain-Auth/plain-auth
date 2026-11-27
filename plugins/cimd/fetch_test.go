@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net"
@@ -15,6 +16,7 @@ import (
 	"time"
 
 	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/plugins/oauthprovider"
 )
 
 type roundTrip func(*http.Request) (*http.Response, error)
@@ -213,14 +215,20 @@ func TestFetchDocument(t *testing.T) {
 	if kind, _ := failureKind(err); kind != transientFailure || !errors.As(err, &problem) || problem.Description != "Metadata document fetch timed out after 5000ms" {
 		t.Fatal("the fetch's own bound did not apply", err)
 	}
-	// A timeout during the lookup says nothing about the host.
-	respond = func(r *http.Request) (*http.Response, error) {
-		<-r.Context().Done()
-		return nil, lookupAborted{r.Context().Err()}
-	}
-	_, err = opts.fetchDocument(context.WithoutCancel(t.Context()), client, id, "", "", logger)
-	if kind, _ := failureKind(err); kind != transportFailure || !errors.As(err, &problem) || problem.Description != "Metadata document fetch timed out after 5000ms" {
-		t.Fatal("a lookup timeout was transient", err)
+	// A timeout during the lookup says nothing about the host, whether the
+	// pinned transport or a custom one reports it.
+	for _, aborted := range []func(error) error{
+		func(err error) error { return lookupAborted{err} },
+		func(err error) error { return fmt.Errorf("resolver: %w: %w", oauthprovider.ErrLookupAborted, err) },
+	} {
+		respond = func(r *http.Request) (*http.Response, error) {
+			<-r.Context().Done()
+			return nil, aborted(r.Context().Err())
+		}
+		_, err = opts.fetchDocument(context.WithoutCancel(t.Context()), client, id, "", "", logger)
+		if kind, _ := failureKind(err); kind != transportFailure || !errors.As(err, &problem) || problem.Description != "Metadata document fetch timed out after 5000ms" {
+			t.Fatal("a lookup timeout was transient", err)
+		}
 	}
 	if _, ok := (Options{}).transport().(*transport); !ok {
 		t.Fatal("a nil Transport did not select the pinned transport")

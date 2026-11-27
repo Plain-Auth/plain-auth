@@ -3,6 +3,7 @@ package cimd
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -284,7 +285,7 @@ func (r *resolver) fetch(ctx context.Context, id string, f *flight, expired *cac
 	if expired != nil {
 		etag, lastModified = expired.headers.ETag, expired.headers.LastModified
 	}
-	got, err := r.opts.fetchDocument(ctx, r.http, id, etag, lastModified, logger)
+	got, err := r.fetchGuarded(ctx, id, etag, lastModified, logger)
 	doc, headers := got.doc, got.headers
 	// A 304 answers only the validators of the expired entry it revalidates,
 	// which another runtime may have evicted meanwhile; here the fetch holds it.
@@ -326,6 +327,19 @@ func (r *resolver) fetch(ctx context.Context, id string, f *flight, expired *cac
 		}
 	}
 	close(f.done)
+}
+
+// fetchGuarded fetches a document, turning a panic in a custom Transport
+// into a transport failure, so the shared fetch always settles and the
+// process survives.
+func (r *resolver) fetchGuarded(ctx context.Context, id, etag, lastModified string, logger *slog.Logger) (got fetchedDocument, err error) {
+	defer func() {
+		if p := recover(); p != nil {
+			logger.ErrorContext(ctx, "cimd metadata document transport panicked", "panic", fmt.Sprint(p))
+			got, err = fetchedDocument{}, fetchFailure(transportFailure, networkFailure)
+		}
+	}()
+	return r.opts.fetchDocument(ctx, r.http, id, etag, lastModified, logger)
 }
 
 // save stores a document through the provider's registration rules and

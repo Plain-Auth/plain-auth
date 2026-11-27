@@ -156,6 +156,9 @@ type keyFetch struct {
 	done    chan struct{}
 	value   *cachedClientKeys
 	err     error
+	// stale is the failure the value answers through past twice its
+	// lifetime.
+	stale string
 }
 
 type clientKeyCache struct {
@@ -219,40 +222,48 @@ func (cache *clientKeyCache) verificationKey(c auth.EndpointContext, client Mach
 		src.key, src.http, src.stale = id+":"+uri, keyClient(d.Transport), d.JWKSStaleIfError
 	}
 	arrival := time.Now()
-	set, err := cache.load(ctx, src, nil, time.Time{})
+	set, stale, err := cache.load(ctx, src, nil, time.Time{})
 	if err != nil {
 		return nil, invalidClient(errFetchKeys.Error())
 	}
 	key, count := set.keys.match(h)
 	if count == 0 {
-		if refreshed, err := cache.load(ctx, src, set, arrival); err == nil {
+		if refreshed, reason, err := cache.load(ctx, src, set, arrival); err == nil {
 			key, count = refreshed.keys.match(h)
+			stale = reason
 		}
 	}
 	if count != 1 {
 		return nil, failedAssertion()
 	}
+	// Each answer from keys past twice their lifetime is logged, outside
+	// the cache's lock, as another runtime logs it.
+	if stale != "" {
+		src.warnStale(ctx, stale)
+	}
 	return key, nil
 }
 
-// previous requests a refresh only if another caller has not already replaced that set.
-func (cache *clientKeyCache) load(ctx context.Context, src keySource, previous *cachedClientKeys, after time.Time) (*cachedClientKeys, error) {
+// load returns a usable set and, when it answers past twice its lifetime,
+// the failure it answers through. previous requests a refresh only if
+// another caller has not already replaced that set.
+func (cache *clientKeyCache) load(ctx context.Context, src keySource, previous *cachedClientKeys, after time.Time) (*cachedClientKeys, string, error) {
 	for {
 		cache.mu.Lock()
 		cached := cache.sets[src.key]
 		if cached != nil && cached != previous && !cached.fetched.Before(after) && (time.Since(cached.fetched) < clientKeysTTL || time.Now().Before(cached.retry)) {
-			// Each stale answer is logged, as another runtime logs it.
+			var stale string
 			if time.Since(cached.fetched) >= 2*clientKeysTTL {
-				src.warnStale(ctx, cached.reason)
+				stale = cached.reason
 			}
 			cache.mu.Unlock()
-			return cached, nil
+			return cached, stale, nil
 		}
 		f := cache.pending[src.key]
 		if f == nil {
 			if len(cache.pending) >= maxClientKeySets {
 				cache.mu.Unlock()
-				return nil, errFetchKeys
+				return nil, "", errFetchKeys
 			}
 			f = &keyFetch{started: time.Now(), done: make(chan struct{})}
 			cache.pending[src.key] = f
@@ -261,11 +272,11 @@ func (cache *clientKeyCache) load(ctx context.Context, src keySource, previous *
 		cache.mu.Unlock()
 		select {
 		case <-ctx.Done():
-			return nil, ctx.Err()
+			return nil, "", ctx.Err()
 		case <-f.done:
 			// A fetch that predates a missing key may have missed its publication.
 			if !f.started.Before(after) {
-				return f.value, f.err
+				return f.value, f.stale, f.err
 			}
 		}
 	}
@@ -314,6 +325,9 @@ func (cache *clientKeyCache) refresh(ctx context.Context, src keySource, f *keyF
 		case stale && kind == keyCapacity && now.Sub(old.transient) <= 5*time.Minute:
 			until = minTime(old.fetched.Add(src.stale), old.transient.Add(5*time.Minute))
 		default:
+			// A set that does not answer this failure stops answering
+			// without a refetch.
+			old.retry = time.Time{}
 			if kind == keyTerminal {
 				delete(cache.sets, src.key)
 			}
@@ -321,7 +335,7 @@ func (cache *clientKeyCache) refresh(ctx context.Context, src keySource, f *keyF
 			return
 		}
 		if age >= 2*clientKeysTTL {
-			src.warnStale(ctx, err.Error())
+			f.stale = err.Error()
 		}
 		old.retry, old.reason = minTime(now.Add(time.Minute), until), err.Error()
 		f.value = old

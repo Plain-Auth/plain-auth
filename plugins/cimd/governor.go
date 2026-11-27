@@ -149,11 +149,14 @@ func (g *governor) settle(clientID string, state *originState, outcome fetchOutc
 	defer g.mu.Unlock()
 	g.active--
 	state.active--
-	// A failure paces the client from when it settles. A success leaves
-	// nothing to clear: acquire dropped the expired record, and concurrent
-	// fetches of one client share a single fetch.
-	if outcome == fetchFailed {
+	// A failure paces the client from when it settles; a success clears a
+	// pace another request's refusal wrote meanwhile, as another runtime
+	// clears it on success.
+	switch outcome {
+	case fetchFailed:
 		g.paceLocked(clientID, now)
+	case fetchSucceeded:
+		delete(g.paced, clientID)
 	}
 }
 

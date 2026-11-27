@@ -294,8 +294,16 @@ func TestDiscoveredClientKeys(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	pub2, _, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rotatedKeys, err := json.Marshal(jose.JSONWebKeySet{Keys: []jose.JSONWebKey{{Key: pub, KeyID: "k", Algorithm: "EdDSA"}, {Key: pub2, KeyID: "k2", Algorithm: "EdDSA"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
 	status := 200
-	capacity := false
+	capacity, rotated := false, false
 	var fail error
 	var managed, discovered atomic.Int32
 	serve := func(counter *atomic.Int32) assertionTransport {
@@ -307,7 +315,11 @@ func TestDiscoveredClientKeys(t *testing.T) {
 			if fail != nil {
 				return nil, fail
 			}
-			return &http.Response{StatusCode: status, Header: http.Header{"Content-Type": {"application/json"}}, Body: io.NopCloser(strings.NewReader(string(raw)))}, nil
+			body := raw
+			if rotated {
+				body = rotatedKeys
+			}
+			return &http.Response{StatusCode: status, Header: http.Header{"Content-Type": {"application/json"}}, Body: io.NopCloser(strings.NewReader(string(body)))}, nil
 		}
 	}
 	allow := map[string]bool{"https://cdn.example.test/allowed": true, "https://10.0.0.1/allowed": true}
@@ -419,6 +431,40 @@ func TestDiscoveredClientKeys(t *testing.T) {
 		t.Fatal("a capacity refusal answered past five minutes from the transient failure")
 	}
 	capacity = false
+	// A refresh forced by an unknown key that the stale set cannot answer
+	// logs nothing; one that retrieved nothing ends the minute without
+	// refetches.
+	unknown := func() error {
+		_, err := cache.verificationKey(request("cimd"), MachineClient{ClientID: id, JWKSURI: uri}, jose.Header{KeyID: "missing", Algorithm: "EdDSA"})
+		return err
+	}
+	age(30 * time.Minute)
+	if err := key("cimd", uri); err != nil {
+		t.Fatal(err)
+	}
+	warned = strings.Count(logs.String(), "because refreshing them failed")
+	if err := unknown(); err == nil || strings.Count(logs.String(), "because refreshing them failed") != warned {
+		t.Fatal("an unknown key was logged as a stale answer", err)
+	}
+	fail = errors.New("remote error: tls: internal error")
+	if err := unknown(); err == nil {
+		t.Fatal("an unknown key verified")
+	}
+	fail, fetches = nil, discovered.Load()
+	if err := key("cimd", uri); err != nil || discovered.Load() != fetches+1 {
+		t.Fatal("keys kept answering without a refetch after a failure that retrieved nothing", err, discovered.Load()-fetches)
+	}
+	// A rotated key a refresh finds in a fresh set is no stale answer.
+	status, rotated = 200, true
+	warned = strings.Count(logs.String(), "because refreshing them failed")
+	if _, err := cache.verificationKey(request("cimd"), MachineClient{ClientID: id, JWKSURI: uri}, jose.Header{KeyID: "k2", Algorithm: "EdDSA"}); err != nil || strings.Count(logs.String(), "because refreshing them failed") != warned {
+		t.Fatal("a fresh set's rotated key was logged as a stale answer", err)
+	}
+	rotated, status = false, 503
+	age(30 * time.Minute)
+	if err := key("cimd", uri); err != nil {
+		t.Fatal(err)
+	}
 	// A refusal at a local limit keeps the keys within five minutes of a
 	// transient failure, and keeps them cached after.
 	capacity = true
@@ -597,11 +643,11 @@ func TestClientKeyFetchSharesRequestsAndRespectsCancellation(t *testing.T) {
 	src := keySource{key: uri, uri: uri, http: cache.http, logger: slog.Default()}
 	ctx, cancel := context.WithCancel(t.Context())
 	first := make(chan error, 1)
-	go func() { _, err := cache.load(ctx, src, nil, time.Time{}); first <- err }()
+	go func() { _, _, err := cache.load(ctx, src, nil, time.Time{}); first <- err }()
 	<-started
 	results := make(chan error, 8)
 	for range 8 {
-		go func() { _, err := cache.load(t.Context(), src, nil, time.Time{}); results <- err }()
+		go func() { _, _, err := cache.load(t.Context(), src, nil, time.Time{}); results <- err }()
 	}
 	cancel()
 	if err := <-first; !errors.Is(err, context.Canceled) {

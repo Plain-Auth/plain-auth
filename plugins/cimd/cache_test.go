@@ -55,6 +55,9 @@ func TestFreshness(t *testing.T) {
 		"est expires":            {cacheHeaders{Expires: zoned(5*time.Minute, -5, "EST"), Date: date(0)}, time.Hour, true, 5 * time.Minute},
 		"pdt date":               {cacheHeaders{CacheControl: "max-age=600", Date: zoned(-200*time.Second, -7, "PDT")}, time.Hour, true, 400 * time.Second},
 		"unknown zone expires":   {cacheHeaders{Expires: zoned(5*time.Minute, 1, "CET"), Date: date(0)}, time.Hour, true, 0},
+		"rfc 850 est expires":    {cacheHeaders{Expires: now.Add(5*time.Minute).In(time.FixedZone("", -5*3600)).Format("Monday, 02-Jan-06 15:04:05") + " EST", Date: date(0)}, time.Hour, true, 5 * time.Minute},
+		"rfc 850 cet expires":    {cacheHeaders{Expires: now.Add(5*time.Minute).In(time.FixedZone("", 3600)).Format("Monday, 02-Jan-06 15:04:05") + " CET", Date: date(0)}, time.Hour, true, 0},
+		"asctime expires":        {cacheHeaders{Expires: now.Add(5 * time.Minute).Format(time.ANSIC), Date: date(0)}, time.Hour, true, 5 * time.Minute},
 	} {
 		cacheable, expires := freshness(tc.h, tc.interval, now)
 		if cacheable != tc.cacheable || (cacheable && expires.Sub(now) != tc.lifetime) {

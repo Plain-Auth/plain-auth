@@ -216,17 +216,31 @@ func TestResolverURLPolicy(t *testing.T) {
 	if !errors.As(err, &problem) || problem.Description != ValidateClientIDURL("https://user@app.example.test/client.json").Error() || invalid.fetches.Load() != 0 || len(invalid.r.governor.starts) != 0 {
 		t.Fatal("an invalid URL was not refused before any fetch", err)
 	}
-	// A request that ends during the check: its context's error is returned
-	// and nothing is recorded or paced.
-	ctx, cancel := context.WithCancel(t.Context())
+	// A request that ends during the check: its context's error is returned,
+	// whatever the policy answered, and nothing is recorded, paced or fetched.
+	var answer struct {
+		allowed bool
+		err     bool
+	}
+	var cancel context.CancelFunc
 	ended := newHarness(t, Options{MetadataStaleIfError: time.Hour, AllowMetadataURL: func(ctx context.Context, _ string) (bool, error) {
 		cancel()
-		return false, ctx.Err()
+		if answer.err {
+			return false, ctx.Err()
+		}
+		return answer.allowed, nil
 	}})
 	stored := &oauthprovider.DiscoveredClient{UpdatedAt: time.Now()}
 	stored.ClientID = id
-	if _, err := ended.resolve(ctx, stored); !errors.Is(err, context.Canceled) {
-		t.Fatal("an ended request's check was not its own error", err)
+	for _, a := range []struct{ allowed, err bool }{{false, true}, {false, false}, {true, false}} {
+		answer.allowed, answer.err = a.allowed, a.err
+		ctx, stop := context.WithCancel(t.Context())
+		cancel = stop
+		_, err := ended.resolve(ctx, stored)
+		stop()
+		if !errors.Is(err, context.Canceled) || ended.fetches.Load() != 0 {
+			t.Fatal("an ended request's check was not its own error", a, err, ended.fetches.Load())
+		}
 	}
 	ended.r.mu.Lock()
 	_, terminal := ended.r.terminals[id]
@@ -250,6 +264,23 @@ func TestResolverURLPolicy(t *testing.T) {
 	}})
 	if got, err := h.resolve(t.Context(), nil); err != nil || got.ClientID != id || h.fetches.Load() != 0 || len(h.r.governor.starts) != 0 || h.register.Load() != 1 {
 		t.Fatal("a document cached during the URL check was fetched again", err, h.fetches.Load(), len(h.r.governor.starts))
+	}
+}
+
+// A custom Transport that panics settles the shared fetch with a transport
+// failure for every waiter and frees its permits.
+func TestResolverTransportPanic(t *testing.T) {
+	h := newHarness(t, Options{})
+	h.respond = func(*http.Request) (*http.Response, error) { panic("transport bug") }
+	var problem *auth.OAuthError
+	if _, err := h.resolve(t.Context(), nil); !errors.As(err, &problem) || problem.Description != networkFailure {
+		t.Fatal("a panicking transport did not fail the fetch", err)
+	}
+	h.r.mu.Lock()
+	flights := len(h.r.flights)
+	h.r.mu.Unlock()
+	if flights != 0 || h.r.governor.active != 0 || !strings.Contains(h.logs.String(), "transport panicked") {
+		t.Fatal("a panicking transport left the fetch unsettled", flights, h.r.governor.active, h.logs.String())
 	}
 }
 

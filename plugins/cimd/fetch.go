@@ -93,8 +93,9 @@ func (o Options) checkURL(ctx context.Context, clientIDURL string) error {
 	}
 	allowed, err := o.AllowMetadataURL(ctx, clientIDURL)
 	switch {
-	case err != nil && ctx.Err() != nil:
-		return err
+	case ctx.Err() != nil:
+		// Whatever the host answered, the request ended.
+		return ctx.Err()
 	case err != nil:
 		return policyError{err}
 	case !allowed:
@@ -124,14 +125,13 @@ func (o Options) fetchDocument(ctx context.Context, client *http.Client, clientI
 	}
 	res, err := client.Do(req)
 	if err != nil {
-		var aborted lookupAborted
 		switch {
 		case errors.Is(err, oauthprovider.ErrFetchCapacity):
 			return fetchedDocument{}, fetchError{&auth.OAuthError{Status: 429, Code: "temporarily_unavailable", Description: "metadata DNS lookup capacity exceeded"}, capacityFailure}
-		case errors.As(err, &aborted) && timedOut():
+		case errors.Is(err, oauthprovider.ErrLookupAborted) && timedOut():
 			// A timeout during the lookup says nothing about the host. A
-			// custom transport's timeouts count as reaching the host, where
-			// another runtime asks such a transport to report it.
+			// custom transport reports one by wrapping ErrLookupAborted;
+			// its other timeouts count as reaching the host.
 			return fetchedDocument{}, fetchFailure(transportFailure, timeoutFailure)
 		case timedOut():
 			return fetchedDocument{}, fetchFailure(transientFailure, timeoutFailure)

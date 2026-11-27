@@ -56,6 +56,16 @@ func TestGovernorPacing(t *testing.T) {
 	} else {
 		release(fetchSucceeded, now.Add(4*time.Second))
 	}
+	// A success clears a pace another request's refusal wrote while the
+	// fetch ran.
+	release, _ = g.acquire("a", "https://a.test", now.Add(10*time.Second))
+	g.pace("a", now.Add(10*time.Second))
+	release(fetchSucceeded, now.Add(10*time.Second))
+	if release, err := g.acquire("a", "https://a.test", now.Add(10*time.Second)); err != nil {
+		t.Fatal("a pace written during a successful fetch outlived it", err)
+	} else {
+		release(fetchSucceeded, now.Add(10*time.Second))
+	}
 	off, _ := newGovernor(FetchPolicy{MinimumFetchInterval: -1}, 10)
 	release, _ = off.acquire("a", "https://a.test", now)
 	release(fetchFailed, now)
