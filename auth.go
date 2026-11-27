@@ -18,6 +18,7 @@ import (
 	"regexp"
 	"runtime"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -1084,6 +1085,10 @@ func (a *Auth) oauthIssuerAccepted(iss string) bool {
 	return iss == a.OAuthIssuer() || iss == a.configuredOAuthIssuer()
 }
 
+// whatwgHosts converts host names to ASCII with the WHATWG URL flags.
+var whatwgHosts = idna.New(idna.MapForLookup(), idna.BidiRule(), idna.CheckJoiners(true), idna.Transitional(false),
+	idna.StrictDomainName(false), idna.CheckHyphens(false))
+
 // normalizeIssuer serializes an absolute URL as a WHATWG URL is, with an
 // ASCII lowercase host, a canonical IP literal, no default or empty port and
 // its dot segments resolved, then drops its query, fragment and one trailing
@@ -1099,8 +1104,16 @@ func normalizeIssuer(raw string) string {
 		host, port := strings.ToLower(u.Hostname()), u.Port()
 		if addr, err := netip.ParseAddr(host); err == nil {
 			host = addr.String()
-		} else if ascii, err := idna.Lookup.ToASCII(host); err == nil {
+			if addr.Is4In6() {
+				// A WHATWG URL writes the mapped IPv4 part in hex.
+				b := addr.As16()
+				host = fmt.Sprintf("::ffff:%x:%x", uint16(b[12])<<8|uint16(b[13]), uint16(b[14])<<8|uint16(b[15]))
+			}
+		} else if ascii, err := whatwgHosts.ToASCII(host); err == nil {
 			host = ascii
+		}
+		if n, err := strconv.ParseUint(port, 10, 16); err == nil {
+			port = strconv.FormatUint(n, 10)
 		}
 		if u.Scheme == "https" && port == "443" || u.Scheme == "http" && port == "80" {
 			port = ""

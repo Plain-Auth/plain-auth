@@ -19,6 +19,9 @@ func TestOAuthIssuerSpellings(t *testing.T) {
 		"https://idp.example.test:/base/":           "https://idp.example.test/base",
 		"https://Bücher.example/x":                  "https://xn--bcher-kva.example/x",
 		"https://[0:0::1]:443/x":                    "https://[::1]/x",
+		"https://[::ffff:127.0.0.1]/x":              "https://[::ffff:7f00:1]/x",
+		"https://h.test:0443/x":                     "https://h.test/x",
+		"https://h.test:08443/x":                    "https://h.test:8443/x",
 	} {
 		a := &Auth{serviceJWT: &JWTOptions{Issuer: configured}}
 		if got := a.OAuthIssuer(); got != published {

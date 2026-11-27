@@ -158,6 +158,12 @@ func TestOAuthClientDirectory(t *testing.T) {
 				{h, map[string]any{"client_id": 5, "oauth_query": signed}, 400, `"message":"[body.client_id] Invalid input: expected string, received number"`},
 				{closed, map[string]any{"client_id": owned.ClientID, "oauth_query": signed}, 400, ""},
 				{h, map[string]any{"client_id": owned.ClientID}, 401, `"error":"invalid_signature"`},
+				// Combined failures pin the order: a present query before the
+				// option and the body's types, the types before the option.
+				{closed, map[string]any{"client_id": 5, "oauth_query": signed + "&scope=altered"}, 400, `"error":"invalid_signature"`},
+				{h, map[string]any{"client_id": 5, "oauth_query": signed + "&scope=altered"}, 400, `"error":"invalid_signature"`},
+				{closed, map[string]any{"client_id": 5, "oauth_query": signed}, 400, `"message":"[body.client_id] Invalid input: expected string, received number"`},
+				{closed, map[string]any{"client_id": owned.ClientID}, 400, ""},
 				{h, map[string]any{"client_id": owned.ClientID, "oauth_query": sign(shared.ClientID, time.Now().Add(time.Minute))}, 401, `"error":"invalid_client","error_description":"client_id does not match the signed oauth_query"`},
 			} {
 				w := prelogin(tc.host, tc.body)

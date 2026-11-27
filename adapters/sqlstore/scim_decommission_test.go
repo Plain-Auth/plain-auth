@@ -370,6 +370,27 @@ func TestSCIMStaticDecommission(t *testing.T) {
 					}
 				}
 			}
+			// The envelope's exact keys are read, so a lowercase operations
+			// key is missing and an extra SCHEMAS key is ignored, and two
+			// spellings of one attribute are refused before the envelope.
+			for _, path := range []string{"Users/" + created.ID, "Groups/missing"} {
+				for _, tc := range []struct {
+					body     map[string]any
+					status   int
+					scimType string
+				}{
+					{map[string]any{"schemas": []string{scim.PatchSchema}, "operations": []any{map[string]any{"op": "replace", "path": "displayName", "value": "X"}}}, 400, "invalidValue"},
+					{map[string]any{"schemas": []string{scim.PatchSchema}, "SCHEMAS": []string{scim.PatchSchema}, "Operations": []any{}}, 401, ""},
+					{map[string]any{"schemas": []string{scim.UserSchema}, "Operations": []any{map[string]any{"op": "replace", "value": map[string]any{"displayName": "A", "DisplayName": "B"}}}}, 400, "invalidSyntax"},
+				} {
+					w := scimRequest(h, "PATCH", path, "static-token", tc.body)
+					var problem struct{ ScimType string }
+					_ = json.Unmarshal(w.Body.Bytes(), &problem)
+					if w.Code != tc.status || problem.ScimType != tc.scimType {
+						t.Fatal("a PatchOp envelope was not read as another runtime reads it", path, tc.body, w.Code, w.Body.String())
+					}
+				}
+			}
 			for _, table := range []string{"scimUser", "scimGroup", "scimGroupMember"} {
 				var n int
 				must(s.db.QueryRowContext(ctx, s.bind(`SELECT COUNT(*) FROM "`+table+`"`)).Scan(&n))

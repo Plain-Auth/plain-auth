@@ -120,6 +120,25 @@ func TestPushedAuthorizationRequests(t *testing.T) {
 			if out := authorize(url.Values{"client_id": {"app"}, "request_uri": {"urn:par:fail"}}, true); out.Code != 500 {
 				t.Fatal("a failing resolver did not stop authorization", out.Code, out.Body.String())
 			}
+			asked = nil
+			if u := location(authorize(url.Values{"client_id": {"app"}, "request_uri": {"urn:par:good", "urn:par:gone"}}, true)); !refused(u, "invalid_request", "request_uri must not appear more than once") || len(asked) != 0 {
+				t.Fatal("a repeated request_uri was resolved", u, asked)
+			}
+			location(authorize(url.Values{"client_id": {"app"}, "request_uri": {"urn:par:gone"}}, true))
+			if len(asked) != 1 || asked[0] != "urn:par:gone app" {
+				t.Fatal("the resolver did not receive the URI and the URL's client", asked)
+			}
+			// Without a resolver a pushed request is not supported.
+			plainPlugin, err := op.New(op.Options{Scopes: []string{"reports", "extra"}, Authorization: op.BrowserAuthorizationOptions{LoginPage: "/login"}})
+			must(err)
+			plain, err := auth.New(auth.Options{BaseURL: base, Secret: strings.Repeat("t", 40), Plugins: []auth.Plugin{plainPlugin}, Store: s, RateLimit: &off})
+			must(err)
+			req = httptest.NewRequest("GET", base+"/api/auth/oauth2/authorize?"+url.Values{"client_id": {"app"}, "request_uri": {"urn:par:good"}}.Encode(), nil)
+			out = httptest.NewRecorder()
+			plain.ServeHTTP(out, req)
+			if u := location(out); !refused(u, "request_uri_not_supported", "request_uri not supported") {
+				t.Fatal("a pushed request without a resolver was not refused as unsupported", u)
+			}
 		})
 	}
 }

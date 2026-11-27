@@ -6,10 +6,12 @@ import (
 	"strings"
 )
 
+// patchOperations reads a PatchOp envelope's exact schemas and Operations
+// keys, as another runtime's body schema does; other spellings are ignored.
 func patchOperations(input any) ([]any, error) {
-	m, err := object(input, []string{"schemas", "Operations"})
-	if err != nil {
-		return nil, err
+	m, ok := input.(map[string]any)
+	if !ok {
+		return nil, invalid("invalidValue", "Expected an object")
 	}
 	schemas, ok := m["schemas"].([]any)
 	if !ok || len(schemas) != 1 || schemas[0] != PatchSchema {

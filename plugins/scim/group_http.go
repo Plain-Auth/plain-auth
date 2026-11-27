@@ -72,12 +72,13 @@ func (h *Handler) serveGroups(w http.ResponseWriter, r *http.Request, d Director
 			break
 		}
 		if r.Method == http.MethodPatch {
-			var ops []any
-			ops, e = groupOperations(input)
+			// Two spellings are refused first, whatever the envelope's
+			// schemas say, as another runtime's request hook does before its
+			// body schema; then the envelope itself.
+			ops, _ := input["Operations"].([]any)
+			e = groupOpsDuplicates(ops)
 			if e == nil {
-				// Two spellings are refused before the Group is looked up, as
-				// another runtime does on the request body.
-				e = groupOpsDuplicates(ops)
+				ops, e = groupOperations(input)
 			}
 			if e == nil {
 				e = groupOpShapes(ops)

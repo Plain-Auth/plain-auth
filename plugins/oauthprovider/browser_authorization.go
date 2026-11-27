@@ -169,10 +169,19 @@ func (opts Options) runBrowserAuthorization(c auth.EndpointContext, q url.Values
 	// A pushed request is resolved first, as in another runtime: every
 	// parameter but client_id comes from the stored request. Failures go to
 	// the error page, where that runtime may use the URL's redirect_uri,
-	// which is not part of the pushed request.
-	if resolve := opts.Authorization.RequestURIResolver; resolve != nil && q.Has("request_uri") && !q.Has("request") {
+	// which is not part of the pushed request. request and request_uri are
+	// dropped from the result, where that runtime keeps them and resolves
+	// again when the flow resumes.
+	if q.Has("request_uri") && !q.Has("request") {
+		if len(q["request_uri"]) != 1 {
+			return serverError("invalid_request", "request_uri must not appear more than once")
+		}
 		if len(q["client_id"]) != 1 || q.Get("client_id") == "" {
 			return serverError("invalid_request", "client_id is required")
+		}
+		resolve := opts.Authorization.RequestURIResolver
+		if resolve == nil {
+			return serverError("request_uri_not_supported", "request_uri not supported")
 		}
 		resolved, err := resolve(c.Request.Context(), q.Get("request_uri"), q.Get("client_id"))
 		if err != nil {
@@ -190,6 +199,16 @@ func (opts Options) runBrowserAuthorization(c auth.EndpointContext, q url.Values
 		next.Set("client_id", q.Get("client_id"))
 		q = next
 	}
+	// A present redirect_uri passes another runtime's query schema before
+	// the other checks. It is used exactly as sent, where that schema trims
+	// surrounding whitespace first.
+	if redirects := q["redirect_uri"]; len(redirects) > 1 {
+		return serverError("invalid_request", "redirect_uri must not appear more than once")
+	} else if len(redirects) == 1 {
+		if problem := redirectSyntax(redirects[0]); problem != "" {
+			return serverError("invalid_request", "redirect_uri: "+problem)
+		}
+	}
 	selection := opts.Authorization.SelectAccount
 	if selection.Page == "" && slices.Contains(promptValues(q.Get("prompt")), "select_account") {
 		return serverError("unsupported_prompt_select_account", "unsupported prompt type")
@@ -203,9 +222,6 @@ func (opts Options) runBrowserAuthorization(c auth.EndpointContext, q url.Values
 	}
 	if len(q["redirect_uri"]) != 1 {
 		return serverError("invalid_redirect", "invalid redirect uri")
-	}
-	if problem := redirectSyntax(q.Get("redirect_uri")); q.Get("redirect_uri") != "" && problem != "" {
-		return serverError("invalid_request", "redirect_uri: "+problem)
 	}
 	ctx := c.Request.Context()
 	client, err := store.LookupAuthorizationClient(ctx, q.Get("client_id"))

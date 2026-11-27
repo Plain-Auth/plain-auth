@@ -165,12 +165,13 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		if r.Method == http.MethodPatch {
-			var ops []any
-			ops, err = patchOperations(input)
+			// Two spellings of one attribute are refused first, whatever the
+			// envelope's schemas say, as another runtime's request hook does
+			// before its body schema; then the envelope itself.
+			ops, _ := input["Operations"].([]any)
+			err = opsDuplicates(ops)
 			if err == nil {
-				// Refuse two spellings of one attribute before the User is
-				// looked up, as another runtime does on the request body.
-				err = opsDuplicates(ops)
+				ops, err = patchOperations(input)
 			}
 			if err == nil {
 				// Each operation's shape is checked on the body, before the

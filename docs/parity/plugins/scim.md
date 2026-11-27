@@ -384,8 +384,8 @@
     - [x] Withdraw the roles after a role mapping change by replaying the domain, and restore them on the next replay from the other instance, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_projection_test.go#L368))
   - [x] Rotate a credential ([test](../../../adapters/sqlstore/scim_users_contract_test.go#L80))
     - [x] Accept a credential before its expiry beside the current one, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_users_contract_test.go#L80))
-  - [x] Decommission a connection ([test](../../../adapters/sqlstore/scim_decommission_test.go#L377))
-    - [x] Retire a connection with a User and a Group, reconciling one User in one batch and keeping the SCIM rows, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_decommission_test.go#L377))
+  - [x] Decommission a connection ([test](../../../adapters/sqlstore/scim_decommission_test.go#L398))
+    - [x] Retire a connection with a User and a Group, reconciling one User in one batch and keeping the SCIM rows, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_decommission_test.go#L398))
 
 ## System for Cross-domain Identity Management (SCIM)
 

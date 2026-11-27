@@ -42,8 +42,8 @@ type machineResourcePolicy struct {
 	bound            bool
 }
 
-func (opts TokenOptions) machineResourcePolicy(client MachineClient, scopes, identifiers []string, rows map[string]MachineResource) (machineResourcePolicy, error) {
-	lifetime, err := opts.machineLifetime(scopes, time.Now())
+func (opts TokenOptions) machineResourcePolicy(client MachineClient, scopes, identifiers []string, rows map[string]MachineResource, now time.Time) (machineResourcePolicy, error) {
+	lifetime, err := opts.machineLifetime(scopes, now)
 	if err != nil {
 		return machineResourcePolicy{}, err
 	}
@@ -125,6 +125,9 @@ func (opts Options) issueResourceMachineToken(c auth.EndpointContext, store Mach
 		}
 	}
 	ctx := c.Request.Context()
+	// One issuance instant serves both passes, so a lifetime capped at a
+	// scope's instant is the same when the policy is read again.
+	now := time.Now().UTC().Truncate(time.Second)
 	resolve := func(client MachineClient, rows map[string]MachineResource) (machineResourcePolicy, error) {
 		if err := in.recheckClient(first, client); err != nil {
 			return machineResourcePolicy{}, err
@@ -133,7 +136,7 @@ func (opts Options) issueResourceMachineToken(c auth.EndpointContext, store Mach
 		if err != nil {
 			return machineResourcePolicy{}, err
 		}
-		return opts.Tokens.machineResourcePolicy(client, scopes, identifiers, rows)
+		return opts.Tokens.machineResourcePolicy(client, scopes, identifiers, rows, now)
 	}
 	var policy machineResourcePolicy
 	err := resourceStore.WithMachineResources(ctx, in.id, identifiers, func(client MachineClient, rows map[string]MachineResource) (*ResourceMachineTokenRecord, error) {
@@ -154,7 +157,6 @@ func (opts Options) issueResourceMachineToken(c auth.EndpointContext, store Mach
 	if err != nil {
 		return MachineToken{}, err
 	}
-	now := time.Now().UTC().Truncate(time.Second)
 	signed := c.Auth.HasPlugin("jwt") && !opts.Tokens.OpaqueResourceTokens
 	var issued, stored string
 	if signed {
@@ -185,7 +187,6 @@ func (opts Options) issueResourceMachineToken(c auth.EndpointContext, store Mach
 			return nil, nil
 		}
 		policy = current
-		now = time.Now().UTC().Truncate(time.Second)
 		record := MachineTokenRecord{StoredToken: stored, Scopes: current.scopes, IssuedAt: now, ExpiresAt: now.Add(current.lifetime)}
 		return &ResourceMachineTokenRecord{MachineTokenRecord: record, Resources: in.resources, Thumbprint: thumb}, nil
 	})

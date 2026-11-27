@@ -48,7 +48,7 @@ export async function compareRequestURI(t, { reference, goFixture }) {
         [{ request_uri: "urn:par:good" }, "invalid_request", "client_id is required"],
       ]) {
         const refused = await authorize(params);
-        assert.notEqual(refused.origin + refused.pathname, pushedCallback);
+        assert.equal(refused.origin + refused.pathname, server.baseURL + "/api/auth/error");
         assert.equal(refused.searchParams.get("error"), error);
         assert.equal(refused.searchParams.get("error_description"), description);
       }

@@ -156,15 +156,13 @@ func groupOperations(raw map[string]any) ([]any, error) {
 			return nil, invalid("invalidValue", "The compatibility schema cannot contain attributes")
 		}
 	}
-	m, e := object(raw, []string{"schemas", "Operations"})
-	if e != nil {
-		return nil, e
-	}
-	schemas, ok := m["schemas"].([]any)
+	// The envelope's exact schemas and Operations keys are read, as another
+	// runtime's body schema does; other spellings are ignored.
+	schemas, ok := raw["schemas"].([]any)
 	if !ok || len(schemas) != 1 || schemas[0] != PatchSchema {
 		return nil, invalid("invalidValue", "The PatchOp schema is required")
 	}
-	ops, ok := m["Operations"].([]any)
+	ops, ok := raw["Operations"].([]any)
 	if !ok {
 		return nil, invalid("invalidValue", "Operations must be an array")
 	}

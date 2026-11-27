@@ -127,7 +127,7 @@ func TestAuthorizeRedirectTransport(t *testing.T) {
 			for _, tc := range []struct{ uri, code, description string }{
 				{"https://app.example/cb#part", "invalid_request", "redirect_uri: Redirect URI must not contain a fragment component"},
 				{"javascript:alert(1)", "invalid_request", "redirect_uri: URL cannot use javascript:, data:, or vbscript: scheme"},
-				{"relative/cb", "invalid_request", "redirect_uri: Invalid URL"},
+				{"relative/cb", "invalid_request", "redirect_uri: Invalid URL"}, {"", "invalid_request", "redirect_uri: Invalid URL"},
 				{"https://user@app.example/cb", "invalid_redirect", "invalid redirect uri"},
 			} {
 				if u := authorize(checked, "web-hook", tc.uri); !refused(u, tc.code, tc.description) || len(hooked) != 0 {

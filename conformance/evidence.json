@@ -48613,7 +48613,7 @@
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/clientRegistrationClientSecretExpiration": [
     {
-      "label": "Report a never-expiring secret by default, the configured lifetime from the issue time when set, and no expiry for a public client, on SQLite, PostgreSQL and MySQL; a fixed instant is a documented deviation",
+      "label": "Report a never-expiring secret by default, the configured lifetime from the issue time when set, and no expiry for a public client, on SQLite, PostgreSQL and MySQL; another runtime reports 0 in practice and accepts a fixed instant, documented deviations",
       "test": "adapters/sqlstore/oauth_registration_defaults_test.go",
       "marker": "t.Fatal(\"the configured secret lifetime was not reported\"",
       "complete": true
@@ -48626,7 +48626,7 @@
   ],
   "docs/content/docs/plugins/oauth-provider/clients.mdx#L158/`clientRegistrationClientSecretExpiration`": [
     {
-      "label": "Report a never-expiring secret by default, the configured lifetime from the issue time when set, and no expiry for a public client, on SQLite, PostgreSQL and MySQL; a fixed instant is a documented deviation",
+      "label": "Report a never-expiring secret by default, the configured lifetime from the issue time when set, and no expiry for a public client, on SQLite, PostgreSQL and MySQL; another runtime reports 0 in practice and accepts a fixed instant, documented deviations",
       "test": "adapters/sqlstore/oauth_registration_defaults_test.go",
       "marker": "t.Fatal(\"the configured secret lifetime was not reported\"",
       "complete": true
