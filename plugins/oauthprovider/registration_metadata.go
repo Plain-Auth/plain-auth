@@ -133,6 +133,9 @@ const (
 	openRegistration registrationKind = iota
 	authenticatedRegistration
 	managedClient
+	// metadataDocument is a client a client discovery publishes. Its
+	// jwks_uri origin rule runs in registerMetadataDocument.
+	metadataDocument
 )
 
 func (o Options) prepareMetadata(host *auth.Auth, m *RegistrationMetadata, kind registrationKind) error {
@@ -140,6 +143,14 @@ func (o Options) prepareMetadata(host *auth.Auth, m *RegistrationMetadata, kind 
 	authorized := kind != openRegistration
 	if m.GrantTypes == nil {
 		m.GrantTypes = []string{"authorization_code"}
+	} else if kind == metadataDocument {
+		// One document serves every issuer the client uses, so it declares a
+		// union: one mutual grant is enough, the whole list is stored and the
+		// token endpoint refuses the rest.
+		supported := o.supportedGrants()
+		if !slices.ContainsFunc(m.GrantTypes, func(v string) bool { return slices.Contains(supported, v) }) {
+			return metadataProblem("no mutually supported grant_type among " + strings.Join(m.GrantTypes, ", "))
+		}
 	} else if kind != managedClient {
 		requested := m.GrantTypes
 		supported := o.supportedGrants()
@@ -171,7 +182,7 @@ func (o Options) prepareMetadata(host *auth.Auth, m *RegistrationMetadata, kind 
 	if m.RedirectURIs == nil {
 		m.RedirectURIs = []string{}
 	}
-	if m.ApplicationType == "" {
+	if m.ApplicationType == "" && kind != metadataDocument {
 		m.ApplicationType = r.DefaultApplicationType
 		if kind == managedClient {
 			m.ApplicationType = "web"
@@ -190,6 +201,8 @@ func (o Options) prepareMetadata(host *auth.Auth, m *RegistrationMetadata, kind 
 			}
 		}
 	}
+	// A document may omit application_type, which stays empty; its redirect
+	// URIs then follow the native rule, the union of the web and native forms.
 	for _, raw := range m.RedirectURIs {
 		if err := r.validateRedirect(raw, m.ApplicationType); err != nil {
 			return err
@@ -212,7 +225,7 @@ func (o Options) prepareMetadata(host *auth.Auth, m *RegistrationMetadata, kind 
 			}
 		}
 	}
-	if code && !slices.Contains(o.GrantTypes, "authorization_code") {
+	if code && kind != metadataDocument && !slices.Contains(o.GrantTypes, "authorization_code") {
 		return metadataProblem("unsupported grant_type authorization_code")
 	}
 	if m.ResponseTypes == nil && code {
@@ -262,7 +275,11 @@ func (o Options) prepareMetadata(host *auth.Auth, m *RegistrationMetadata, kind 
 		}
 	}
 	if m.JWKSURI != nil {
-		if err := validateServerURI("jwks_uri", *m.JWKSURI, host); err != nil {
+		check := validateServerURI
+		if kind == metadataDocument {
+			check = publicServerURI
+		}
+		if err := check("jwks_uri", *m.JWKSURI, host); err != nil {
 			return err
 		}
 	}
@@ -425,6 +442,21 @@ func ambiguousHost(name string) bool {
 }
 
 func validateServerURI(field, raw string, host *auth.Auth) error {
+	if err := publicServerURI(field, raw, host); err != nil {
+		return err
+	}
+	if field == "jwks_uri" && !host.ExplicitlyTrustedOrigin(raw) {
+		return jwksURIOriginProblem()
+	}
+	return nil
+}
+
+func jwksURIOriginProblem() error {
+	return metadataProblem("jwks_uri must belong to a trusted origin or the Client ID Metadata Document origin")
+}
+
+// publicServerURI checks that a server URI is an HTTPS URL on a public host.
+func publicServerURI(field, raw string, _ *auth.Auth) error {
 	u, err := url.Parse(raw)
 	if err != nil || u.Hostname() == "" || strings.ContainsAny(raw, "\\ \t\r\n") {
 		return metadataProblem(field + " must be an absolute URL")
@@ -453,9 +485,6 @@ func validateServerURI(field, raw string, host *auth.Auth) error {
 		if err != nil || !strings.Contains(ascii, ".") || ambiguousHost(ascii) || loopback(ascii) || ascii == "metadata.goog" || strings.HasSuffix(ascii, ".internal") || strings.HasSuffix(ascii, ".local") {
 			return metadataProblem(field + " must not point to a private or reserved address")
 		}
-	}
-	if field == "jwks_uri" && !host.ExplicitlyTrustedOrigin(raw) {
-		return metadataProblem("jwks_uri must belong to a trusted origin or the Client ID Metadata Document origin")
 	}
 	return nil
 }

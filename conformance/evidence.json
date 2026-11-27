@@ -50245,5 +50245,28 @@
       "marker": "func TestDiscoveredOAuthClients(",
       "complete": true
     }
+  ],
+  "plugin-symbol/oauth-provider/registerClientMetadataDocument": [
+    {
+      "label": "Register a discovered client's document under the registration rules: refuse back-channel targets, shared secrets and another source's client, default the auth method to none, keep an omitted application type, store a grant union with one mutual grant, give the registration scopes and default resources, and admit a jwks_uri on the client ID's origin, a trusted origin or one the discovery allows",
+      "test": "plugins/oauthprovider/client_discovery_test.go",
+      "marker": "func TestRegisterMetadataDocument(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthClientRegistrationResult": [
+    {
+      "label": "Return the stored client, its default resources and whether the save created it; a document registration has no secret, as a documented deviation",
+      "test": "plugins/oauthprovider/client_discovery_test.go",
+      "marker": "if !result.Created || !slices.Equal(result.Resources",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/clients.mdx#L15/`application_type`": [
+    {
+      "label": "Keep an omitted application type empty for a metadata document and accept any web or native redirect URI form, refusing a loopback URI when it states web",
+      "test": "plugins/oauthprovider/client_discovery_test.go",
+      "marker": "// The defaults: auth method none, empty application type, code response,"
+    }
   ]
 }

@@ -265,10 +265,12 @@
     - [x] Create exactly one grant under concurrent requests on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_resources_test.go#L158))
   - [x] `adminUnlinkClientResource` ([test](../../../conformance/resource-registry.mjs#L89))
     - [x] Remove an existing client grant and permit a subsequent fresh link ([test](../../../conformance/resource-registry.mjs#L89))
-  - [ ] `OAuthClientRegistrationResult`
+  - [x] `OAuthClientRegistrationResult` ([test](../../../plugins/oauthprovider/client_discovery_test.go#L114))
+    - [x] Return the stored client, its default resources and whether the save created it; a document registration has no secret, as a documented deviation ([test](../../../plugins/oauthprovider/client_discovery_test.go#L114))
   - [x] `RegisterClientMetadataDocumentInput` ([test](../../../adapters/sqlstore/oauth_discovered_client_test.go#L21))
     - [x] Store a client discovery's document with its client ID, discovery and the row a refresh started from: create a client with no owner or secret and its default resource links, replace only the fields the document owns, refuse another source's client and a deleted row, and converge concurrent first saves, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_discovered_client_test.go#L21))
-  - [ ] `registerClientMetadataDocument`
+  - [x] `registerClientMetadataDocument` ([test](../../../plugins/oauthprovider/client_discovery_test.go#L51))
+    - [x] Register a discovered client's document under the registration rules: refuse back-channel targets, shared secrets and another source's client, default the auth method to none, keep an omitted application type, store a grant union with one mutual grant, give the registration scopes and default resources, and admit a jwks_uri on the client ID's origin, a trusted origin or one the discovery allows ([test](../../../plugins/oauthprovider/client_discovery_test.go#L51))
   - [x] `createResourceServerChallenge` ([test](../../../conformance/resource-challenges.mjs#L6))
     - [x] Compare Bearer and DPoP challenges, required scopes, public errors, metadata mappings and ordinary denials over HTTP ([test](../../../conformance/resource-challenges.mjs#L6))
     - [x] Preserve application headers and JSON descriptions while formatting challenges for HTTP over TLS ([test](../../../plugins/oauthprovider/challenge_test.go#L13))
@@ -636,6 +638,7 @@
     - [x] Public or confidential ([test](../../../conformance/oauth-registration.mjs#L254))
       - [x] Register a public client without a secret and confidential clients that use a shared secret or a signed assertion ([test](../../../conformance/oauth-registration.mjs#L254))
     - [ ] `application_type`
+      - [x] Keep an omitted application type empty for a metadata document and accept any web or native redirect URI form, refusing a loopback URI when it states web ([test](../../../plugins/oauthprovider/client_discovery_test.go#L102))
   - [ ] Manage clients
     - [ ] `POST /oauth2/create-client`
       - [x] Create a client for a signed-in owner with dynamic registration disabled, bound by the issuer's grants and scopes, without the registration ceiling or PKCE setting, dropping owner-only fields and refusing anonymous or denied callers, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_creation_test.go#L25))
