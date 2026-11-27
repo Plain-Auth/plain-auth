@@ -235,23 +235,42 @@ func (opts Options) issuerDocuments(a *auth.Auth, store auth.Store) (map[string]
 			doc.DPoPSigningAlgorithms = append(doc.DPoPSigningAlgorithms, string(alg))
 		}
 	}
-	paths := issuerAliases(u)
 	var metadata any = doc
+	input := MetadataInput{Type: MetadataAuthorizationServer, Server: doc}
 	if openid {
 		var userInfoURL string
 		if _, ok := store.(UserInfoStore); ok {
 			userInfoURL = endpoint(http.MethodGet, "/oauth2/userinfo")
 		}
-		metadata = opts.openIDMetadata(a, doc, userInfoURL, endpoint(http.MethodPost, "/oauth2/consent") != "")
-		paths = append(paths, openIDConfigPath(u))
+		openIDDoc := opts.openIDMetadata(a, doc, userInfoURL, endpoint(http.MethodPost, "/oauth2/consent") != "")
+		metadata, input.OpenID = openIDDoc, &openIDDoc
 	}
-	response, err := NewMetadataResponse(metadata, opts.Metadata.Headers)
-	if err != nil {
+	// Each served document gets its own extension fields: the
+	// authorization-server paths, which serve the OpenID document while
+	// OpenID is advertised, and the OpenID configuration path.
+	docs := make(map[string]auth.WellKnownDocument)
+	serve := func(paths []string, input MetadataInput) error {
+		extended, err := opts.extendMetadata(a, metadata, input)
+		if err != nil {
+			return err
+		}
+		response, err := NewMetadataResponse(extended, opts.Metadata.Headers)
+		if err != nil {
+			return err
+		}
+		for _, path := range paths {
+			docs[path] = response
+		}
+		return nil
+	}
+	if err := serve(issuerAliases(u), input); err != nil {
 		return nil, err
 	}
-	docs := make(map[string]auth.WellKnownDocument)
-	for _, path := range paths {
-		docs[path] = response
+	if openid {
+		input.Type = MetadataOpenIDConfiguration
+		if err := serve([]string{openIDConfigPath(u)}, input); err != nil {
+			return nil, err
+		}
 	}
 	return docs, nil
 }

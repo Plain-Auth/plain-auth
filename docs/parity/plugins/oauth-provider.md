@@ -8,7 +8,7 @@
   - [x] Enforce consent owner and client scope rules when a signed-in account manages its authorized applications ([test](../../../conformance/oauth-consent.mjs#L6))
   - [x] `getIssuer` ([test](../../../oauth_issuer_test.go#L28))
     - [x] Publish the issuer with an ASCII lowercase host, a canonical IP literal, no default or empty port and resolved dot segments, without its query, fragment and one trailing slash, and accept both the published and the configured spelling in the token issuer check; IPv4 shorthand is a documented deviation ([test](../../../oauth_issuer_test.go#L28))
-    - [x] Publish discovery for an issuer with a query and trailing slash at its normalized paths ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L115))
+    - [x] Publish discovery for an issuer with a query and trailing slash at its normalized paths ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L117))
     - [x] Sign machine access tokens with the published issuer when the configured issuer has a trailing slash, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_machine_resources_test.go#L127))
   - [x] `PublicClientJwksValidationResult` ([test](../../../plugins/oauthprovider/registration_test.go#L205))
     - [x] Return a validation error for unsupported algorithms and private key members ([test](../../../plugins/oauthprovider/registration_test.go#L149))
@@ -27,17 +27,17 @@
   - [ ] `extendOAuthProvider`
   - [ ] `authServerMetadata`
     - [x] Discover endpoints and capabilities for the machine grant, then register a client, verify a signed token and revoke an opaque token ([test](../../../conformance/oauth-issuer-metadata.mjs#L95))
-  - [x] `metadataResponse` ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L33))
-    - [x] Serialize the value once, preserve independent multi-value headers, honor custom cache rules and serve JSON ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L33))
+  - [x] `metadataResponse` ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L35))
+    - [x] Serialize the value once, preserve independent multi-value headers, honor custom cache rules and serve JSON ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L35))
   - [ ] `oauthAuthorizationServerMetadata`
     - [x] Discover endpoints and capabilities for the machine grant, then register a client, verify a signed token and revoke an opaque token ([test](../../../conformance/oauth-issuer-metadata.mjs#L95))
-  - [x] `oauthProviderAuthServerMetadata` ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L265))
+  - [x] `oauthProviderAuthServerMetadata` ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L267))
     - [x] Mount both issuer discovery paths through ServeMux, chi, Gorilla Mux, Gin, Echo and Fiber and read them with GET and HEAD ([test](../../../integrations/routers/routers_test.go#L169))
-    - [x] Retrieve the native issuer document, preserve escaped issuer paths and omit disabled endpoints and unavailable store capabilities ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L64))
-    - [x] Serve each mounted authorization server document as JSON with the configured headers or the default cache rule ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L265))
-  - [x] `oauthProviderOpenIdConfigMetadata` ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L284))
+    - [x] Retrieve the native issuer document, preserve escaped issuer paths and omit disabled endpoints and unavailable store capabilities ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L66))
+    - [x] Serve each mounted authorization server document as JSON with the configured headers or the default cache rule ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L267))
+  - [x] `oauthProviderOpenIdConfigMetadata` ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L286))
     - [x] Read the mounted OpenID provider document from Go, including host page capabilities and the configured claim list ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L75))
-    - [x] Serve the OpenID document as JSON with the default cache rule, or with the configured headers ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L284))
+    - [x] Serve the OpenID document as JSON with the default cache rule, or with the configured headers ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L286))
   - [ ] `oidcServerMetadata`
     - [x] Start from a custom issuer URL, discover the endpoints, complete PKCE sign-in and verify the ID token, access-token hash and UserInfo subject using an independent Go client ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L23))
   - [x] `publicSessionMiddleware` ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L171))
@@ -274,7 +274,9 @@
   - [ ] `OAuthClientAuthenticationInput`
   - [ ] `OAuthClientAuthenticationResult`
   - [ ] `OAuthClientAuthenticationStrategy`
-  - [ ] `OAuthMetadataExtensionInput`
+  - [x] `OAuthMetadataExtensionInput` ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L293))
+    - [x] Pass each served discovery document's type and assembled fields to an extension, add its fields without replacing the provider's, keep the first extension's value for a shared field with a warning, and fail the host for a field that cannot be encoded; the static input is a documented deviation ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L293))
+    - [x] Add an extension's discovery field to the OpenID configuration without replacing the issuer or token endpoint, on both runtimes ([test](../../../conformance/oauth-extensions.mjs#L12))
   - [ ] `OAuthClaimExtensionInput`
   - [ ] `OAuthUserInfoExtensionInput`
   - [ ] `OAuthProviderExtension`
@@ -431,7 +433,7 @@
       - [x] Merge host fields under the standard fields of code, refresh and client_credentials responses, pass the account, client metadata and code value, run outside the grant transaction even without a refresh token, and leave the code or refresh token usable when it fails, on SQLite, PostgreSQL and MySQL; the scope recheck is a documented deviation ([test](../../../adapters/sqlstore/oauth_token_response_test.go#L27))
     - [ ] `advertisedMetadata`
       - [x] Preserve configured discovery scope and authentication method order independently of introspection and revocation ([test](../../../conformance/oauth-issuer-metadata.mjs#L65))
-      - [x] Reject unknown scopes, unsupported machine authentication, duplicate methods and an explicitly empty method list ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L17))
+      - [x] Reject unknown scopes, unsupported machine authentication, duplicate methods and an explicitly empty method list ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L19))
       - [x] Explicitly advertise pre-provisioned public clients, preserve protected introspection and publish only supported delegated grants ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L158))
       - [x] Advertise exactly the configured UserInfo claims ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L237))
       - [x] Advertise exactly the configured scopes and client authentication methods, in order, in both discovery documents, and the configured claims in the OpenID document ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L282))
@@ -754,7 +756,7 @@
   - [ ] Endpoints
     - [ ] `GET /.well-known/oauth-authorization-server` (server API only)
       - [x] Discover endpoints and capabilities for the machine grant, then register a client, verify a signed token and revoke an opaque token ([test](../../../conformance/oauth-issuer-metadata.mjs#L95))
-      - [x] Retrieve the native issuer document, preserve escaped issuer paths and omit disabled endpoints and unavailable store capabilities ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L64))
+      - [x] Retrieve the native issuer document, preserve escaped issuer paths and omit disabled endpoints and unavailable store capabilities ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L66))
     - [ ] `GET /.well-known/openid-configuration` (server API only)
       - [x] Start from a custom issuer URL, discover the endpoints, complete PKCE sign-in and verify the ID token, access-token hash and UserInfo subject using an independent Go client ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L23))
     - [ ] `GET / POST /oauth2/authorize`

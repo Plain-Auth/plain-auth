@@ -1911,6 +1911,11 @@ test("machine clients obtain signed and opaque access tokens for their registere
   await compareResourceMachineTokens(t, { reference, goFixture });
 });
 
+test("a provider extension adds discovery fields without replacing the provider's", async t => {
+  const { compareExtensionMetadata } = await import("./oauth-extensions.mjs");
+  await compareExtensionMetadata(t, { reference, goFixture });
+});
+
 test("a pushed authorization request resolves through the host callback", async t => {
   const { compareRequestURI } = await import("./oauth-request-uri.mjs");
   await compareRequestURI(t, { reference, goFixture });

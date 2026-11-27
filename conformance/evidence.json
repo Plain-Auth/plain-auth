@@ -48773,5 +48773,18 @@
       "test": "adapters/sqlstore/oauth_token_response_test.go",
       "marker": "func TestTokenResponseFields("
     }
+  ],
+  "plugin-symbol/oauth-provider/OAuthMetadataExtensionInput": [
+    {
+      "label": "Pass each served discovery document's type and assembled fields to an extension, add its fields without replacing the provider's, keep the first extension's value for a shared field with a warning, and fail the host for a field that cannot be encoded; the static input is a documented deviation",
+      "test": "plugins/oauthprovider/issuer_metadata_test.go",
+      "marker": "func TestExtensionMetadata(",
+      "complete": true
+    },
+    {
+      "label": "Add an extension's discovery field to the OpenID configuration without replacing the issuer or token endpoint, on both runtimes",
+      "test": "conformance/oauth-extensions.mjs",
+      "marker": "export async function compareExtensionMetadata("
+    }
   ]
 }

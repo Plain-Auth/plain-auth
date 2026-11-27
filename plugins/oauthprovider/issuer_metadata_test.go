@@ -1,7 +1,9 @@
 package oauthprovider_test
 
 import (
+	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"slices"
@@ -282,5 +284,65 @@ func TestDiscoveryDefaultHeaders(t *testing.T) {
 	}
 	if w.Code != 200 || !strings.HasPrefix(w.Header().Get("Content-Type"), "application/json") || w.Header().Get("Cache-Control") != "no-store" || w.Header().Get("X-Discovery") != "openid" {
 		t.Fatal("the OpenID document did not take the configured headers", w.Code, w.Header(), a.WellKnownPaths())
+	}
+}
+
+// Extensions add discovery fields to each served document without
+// replacing the provider's own, the first extension wins a shared field,
+// and a field that cannot be encoded fails the host.
+func TestExtensionMetadata(t *testing.T) {
+	s, err := sqlstore.OpenWithOptions(t.Context(), "sqlite", ":memory:", []string{"oauth-provider", "jwt"}, schema.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { s.Close() })
+	const base = "https://extensions.example.test"
+	var seen []op.MetadataInput
+	first := op.Extension{Metadata: func(in op.MetadataInput) map[string]any {
+		seen = append(seen, in)
+		return map[string]any{"credential_issuer": base + "/" + in.Type, "issuer": "forged", "token_endpoint": "forged", "registration_endpoint": "forged", "shared": "first"}
+	}}
+	second := op.Extension{Metadata: func(op.MetadataInput) map[string]any { return map[string]any{"shared": "second"} }}
+	var logs strings.Builder
+	build := func(extensions ...op.Extension) (*auth.Auth, error) {
+		p, err := op.New(op.Options{Scopes: []string{"openid", "read"}, Extensions: extensions})
+		if err != nil {
+			t.Fatal(err)
+		}
+		signing, err := auth.NewJWT(auth.JWTOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return auth.New(auth.Options{BaseURL: base, Secret: strings.Repeat("e", 48), Store: s, Plugins: []auth.Plugin{p, signing},
+			Logger: slog.New(slog.NewTextHandler(&logs, nil))})
+	}
+	a, err := build(first, op.Extension{}, second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for path, kind := range map[string]string{"/.well-known/oauth-authorization-server/api/auth": op.MetadataAuthorizationServer, "/api/auth/.well-known/openid-configuration": op.MetadataOpenIDConfiguration} {
+		raw, ok := a.WellKnownJSON(path)
+		if !ok {
+			t.Fatal("no discovery document at", path)
+		}
+		var doc map[string]any
+		if err := json.Unmarshal(raw, &doc); err != nil {
+			t.Fatal(err)
+		}
+		if doc["credential_issuer"] != base+"/"+kind || doc["issuer"] != base+"/api/auth" || doc["token_endpoint"] != base+"/api/auth/oauth2/token" || doc["shared"] != "first" {
+			t.Fatal("an extension field was missing or replaced a provider field", path, doc)
+		}
+		if _, ok := doc["registration_endpoint"]; ok {
+			t.Fatal("an extension added an endpoint the provider does not serve", path)
+		}
+	}
+	if len(seen) != 2 || seen[0].Type != op.MetadataAuthorizationServer || seen[1].Type != op.MetadataOpenIDConfiguration || seen[1].OpenID == nil || seen[1].Server.Issuer != base+"/api/auth" {
+		t.Fatal("extensions did not see each served document", seen)
+	}
+	if !strings.Contains(logs.String(), "OAuth provider extensions supplied the same discovery field") || !strings.Contains(logs.String(), "field=shared") {
+		t.Fatal("a shared extension field was not logged", logs.String())
+	}
+	if _, err := build(op.Extension{Metadata: func(op.MetadataInput) map[string]any { return map[string]any{"broken": func() {}} }}); err == nil {
+		t.Fatal("an extension field that cannot be encoded was accepted")
 	}
 }

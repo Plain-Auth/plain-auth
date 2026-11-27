@@ -163,6 +163,12 @@ func registrationFixtureOptions() op.Options {
 		}
 	}
 	opts.Authorization.RequireOpenID = os.Getenv("CONFORMANCE_REQUIRE_OPENID") == "1"
+	if os.Getenv("CONFORMANCE_OAUTH_EXTENSIONS") == "1" {
+		// The contributor conformance/oauth-extensions.mjs registers.
+		opts.Extensions = []op.Extension{{Metadata: func(in op.MetadataInput) map[string]any {
+			return map[string]any{"credential_issuer": "https://wallet.example.test/" + in.Type, "issuer": "forged", "token_endpoint": "forged"}
+		}}}
+	}
 	if os.Getenv("CONFORMANCE_REQUEST_URI") == "1" {
 		// The pushed request conformance/oauth-request-uri.mjs stores.
 		opts.Authorization.RequestURIResolver = func(_ context.Context, requestURI, _ string) (url.Values, error) {

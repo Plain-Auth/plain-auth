@@ -89,6 +89,7 @@ Each guide explains one capability and links to the tests that prove it. New to 
 | Rotate a refresh token, narrow its scopes or check its session | [Refresh exchange](oauth-authorization-code.md#exchange-a-refresh-token) · [Refresh token introspection](machine-tokens.md#inspect-a-refresh-token) |
 | Connect a relying party using the issuer URL and discover its public signing keys | [OpenID Connect discovery](oauth-issuer-discovery.md#connect-a-relying-party-using-the-issuer-url) |
 | Discover machine grant endpoints, authentication methods and signing keys from an issuer URL | [Authorization-server discovery](oauth-issuer-discovery.md) |
+| Add discovery fields to the OAuth provider through an extension | [OAuth provider extensions](oauth-extensions.md) |
 | Read current OIDC profile and email claims using a signed or opaque access token | [OpenID Connect UserInfo](oauth-userinfo.md) |
 | Publish OAuth issuers and scopes, verify DPoP proofs and return authentication challenges from a protected API | [Resource discovery and challenges](oauth-resource-discovery.md) |
 | Register OAuth resources, change their policies, and link registered clients | [Resource management](oauth-resource-management.md) |

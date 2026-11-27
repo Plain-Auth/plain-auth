@@ -146,6 +146,8 @@ type Options struct {
 	// DPoP controls sender proofs at the token endpoint. The host SQL store
 	// shares reservations automatically when ReplayStore is omitted.
 	DPoP DPoPOptions
+	// Extensions add capabilities to the provider, such as discovery fields.
+	Extensions []Extension
 	// DisableJWTPlugin signs ID tokens with HS256 keyed by the client secret
 	// instead of the jwt plugin, which must not be installed. Access tokens
 	// stay opaque, clients without a secret get no ID token, and client
@@ -198,6 +200,7 @@ func (opts Options) clientManagementOptions() Options {
 // Dynamic registration is disabled until the host explicitly enables it.
 func New(opts Options) (auth.Plugin, error) {
 	opts = opts.clientManagementOptions()
+	opts.Extensions = slices.Clone(opts.Extensions)
 	if err := opts.Authorization.defaults(); err != nil {
 		return auth.Plugin{}, err
 	}
