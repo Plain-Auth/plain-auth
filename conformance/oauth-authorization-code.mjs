@@ -73,6 +73,9 @@ export async function exerciseOfflineCode({ server, issuer, db }) {
   assert.equal(pair.scope, "reports offline_access");
   assert.equal(pair.expires_in, 90);
   assert.match(pair.refresh_token, /^[a-zA-Z]{32}$/);
+  // The response carries exactly these fields, and expires_at agrees with expires_in.
+  assert.deepEqual(Object.keys(pair).sort(), ["access_token", "expires_at", "expires_in", "refresh_token", "scope", "token_type"]);
+  assert.ok(Math.abs(pair.expires_at - Math.floor(Date.now() / 1000) - pair.expires_in) <= 5, JSON.stringify(pair));
   const digest = s => createHash("sha256").update(s).digest("base64url");
   const refresh = db.prepare("SELECT * FROM oauthRefreshToken WHERE token=?").get(digest(pair.refresh_token));
   const access = db.prepare("SELECT * FROM oauthAccessToken WHERE refreshId=?").get(refresh.id);

@@ -89,6 +89,10 @@ export async function exerciseMachineTokens({ server, issuer, db, credentials, c
   await error(grant, 401, "invalid_client", { authorization: "Bearer example" }, "Bearer");
   await error({ ...grant, ...bodyClient }, 400, "invalid_request", authHeader);
   await error({ ...grant, client_id: credentials.client_id, client_assertion: "value" }, 400, "invalid_client");
+  // A secret and an assertion, in the body or with a Basic header, are two methods.
+  const assertion = { client_assertion: "value", client_assertion_type: "urn:ietf:params:oauth:client-assertion-type:jwt-bearer" };
+  await error({ ...grant, ...bodyClient, ...assertion }, 400, "invalid_request", {}, undefined, "A request must use only one client authentication method");
+  await error({ ...grant, ...assertion }, 400, "invalid_request", authHeader, undefined, "A request must use only one client authentication method");
   for (const key of ["client_id", "client_secret", "client_assertion", "client_assertion_type"]) {
     const form = new URLSearchParams(grant);
     form.append(key, "one");

@@ -157,7 +157,9 @@ export async function compareClientRegistration(t, reference, goFixture) {
         }
         for (const [bearer, status, code] of [
           ["Bearer", 400, "invalid_request"],
+          ["Bearer a b", 400, "invalid_request"],
           ["Bearer invalid", 401, "invalid_token"],
+          ["bearer invalid", 401, "invalid_token"],
         ]) {
           await problem(standard, { authorization: bearer }, status, code, 'Bearer error="' + code + '"');
         }
@@ -171,6 +173,8 @@ export async function compareClientRegistration(t, reference, goFixture) {
           return;
         }
         await problem(standard, {}, 401, undefined, "Bearer");
+        // Another scheme is no initial access token.
+        await problem(standard, { authorization: "Basic xyz" }, 401, undefined, "Bearer");
         const response = await request("sign-up/email", {
           name: "Owner",
           email: "owner@registration.test",

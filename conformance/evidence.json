@@ -47902,5 +47902,29 @@
       "marker": "t.Fatal(\"a hash function ran for another token kind\", calls)",
       "complete": true
     }
+  ],
+  "plugin-symbol/oauth-provider/parseBearerToken": [
+    {
+      "label": "Refuse a Bearer header with extra parts with invalid_request, read a lowercase scheme, and treat another scheme as no initial access token, on both runtimes",
+      "test": "conformance/oauth-registration.mjs",
+      "marker": "[\"Bearer a b\", 400, \"invalid_request\"],",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/normalizeClientAuthenticationParameters": [
+    {
+      "label": "Refuse a secret with an assertion, in the body or with a Basic header, as two client authentication methods, on both runtimes",
+      "test": "conformance/oauth-machine-tokens.mjs",
+      "marker": "await error({ ...grant, ...assertion }, 400, \"invalid_request\", authHeader, undefined, \"A request must use only one client authentication method\");",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthTokenResponse": [
+    {
+      "label": "Return exactly access_token, expires_at, expires_in, refresh_token, scope and token_type for an offline code exchange, with expires_at matching expires_in, on both runtimes",
+      "test": "conformance/oauth-authorization-code.mjs",
+      "marker": "assert.deepEqual(Object.keys(pair).sort(), [\"access_token\", \"expires_at\", \"expires_in\", \"refresh_token\", \"scope\", \"token_type\"]);",
+      "complete": true
+    }
   ]
 }
