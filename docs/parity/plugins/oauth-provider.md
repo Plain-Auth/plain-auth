@@ -155,6 +155,7 @@
     - [x] Require separate update and machine-scope privileges and reject user-delegated scopes, public clients and impersonation sessions on three SQL engines ([test](../../../adapters/sqlstore/oauth_client_scopes_test.go#L132))
     - [x] Reject an ownership or authentication-method change during authorization without overwriting the existing grant ([test](../../../adapters/sqlstore/oauth_client_scopes_test.go#L157))
   - [ ] `POST /oauth2/update-client`
+    - [x] Replace an owner's registration fields through the creation rules, ignore fields an owner cannot change, refuse another owner, trusted and unknown clients, and clear machine scopes without the machine grant, on SQLite, PostgreSQL and MySQL; the 409 on a concurrent change is a documented deviation ([test](../../../adapters/sqlstore/oauth_client_update_test.go#L21))
   - [x] `POST /oauth2/client/rotate-secret` ([test](../../../adapters/sqlstore/oauth_secret_rotation_test.go#L171))
     - [x] Replace a shared secret for its owner and immediately authenticate only the replacement at an independent issuer ([test](../../../conformance/oauth-registration.mjs#L486))
     - [x] Recheck the owner and credential type after host callbacks and roll back when the updated record cannot be returned ([test](../../../adapters/sqlstore/oauth_secret_rotation_test.go#L178))
@@ -188,6 +189,7 @@
     - [x] Grant, narrow and revoke machine access from server code and verify the changed scope ceiling at an independent issuer ([test](../../../conformance/oauth-registration.mjs#L407))
     - [x] Require separate update and machine-scope privileges and reject user-delegated scopes, public clients and impersonation sessions on three SQL engines ([test](../../../adapters/sqlstore/oauth_client_scopes_test.go#L132))
   - [ ] `updateOAuthClient`
+    - [x] Replace an owner's registration fields through the creation rules, ignore fields an owner cannot change, refuse another owner, trusted and unknown clients, and clear machine scopes without the machine grant, on SQLite, PostgreSQL and MySQL; the 409 on a concurrent change is a documented deviation ([test](../../../adapters/sqlstore/oauth_client_update_test.go#L21))
   - [x] `rotateClientSecret` ([test](../../../adapters/sqlstore/oauth_secret_rotation_test.go#L171))
     - [x] Replace a shared secret for its owner and immediately authenticate only the replacement at an independent issuer ([test](../../../conformance/oauth-registration.mjs#L486))
     - [x] Refuse to rotate a client without an owner with 401 and keep its secret, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_secret_rotation_test.go#L171))
@@ -610,6 +612,7 @@
     - [x] `getOAuthClients` ([test](../../../conformance/oauth-client-directory.mjs#L129))
       - [x] List personally or tenant-owned registrations with filtered metadata and return an empty list for a new owner ([test](../../../conformance/oauth-client-directory.mjs#L129))
     - [ ] `updateOAuthClient`
+      - [x] Replace an owner's registration fields through the creation rules, ignore fields an owner cannot change, refuse another owner, trusted and unknown clients, and clear machine scopes without the machine grant, on SQLite, PostgreSQL and MySQL; the 409 on a concurrent change is a documented deviation ([test](../../../adapters/sqlstore/oauth_client_update_test.go#L21))
     - [ ] `adminUpdateOAuthClient`
       - [x] Grant, narrow and revoke machine access from server code and verify the changed scope ceiling at an independent issuer ([test](../../../conformance/oauth-registration.mjs#L407))
     - [x] `rotateClientSecret` ([test](../../../conformance/oauth-registration.mjs#L486))
@@ -832,6 +835,7 @@
     - [x] `GET /oauth2/get-clients` ([test](../../../conformance/oauth-client-directory.mjs#L129))
       - [x] List personally or tenant-owned registrations with filtered metadata and return an empty list for a new owner ([test](../../../conformance/oauth-client-directory.mjs#L129))
     - [ ] `POST /oauth2/update-client`
+      - [x] Replace an owner's registration fields through the creation rules, ignore fields an owner cannot change, refuse another owner, trusted and unknown clients, and clear machine scopes without the machine grant, on SQLite, PostgreSQL and MySQL; the 409 on a concurrent change is a documented deviation ([test](../../../adapters/sqlstore/oauth_client_update_test.go#L21))
     - [x] `POST /oauth2/client/rotate-secret` ([test](../../../conformance/oauth-registration.mjs#L447))
       - [x] Replace a shared secret for its owner and immediately authenticate only the replacement at an independent issuer ([test](../../../conformance/oauth-registration.mjs#L486))
       - [x] Rotate personal and tenant shared secrets and refuse signed-out, foreign, denied, unknown, operator-managed, key-based and public clients ([test](../../../conformance/oauth-registration.mjs#L447))

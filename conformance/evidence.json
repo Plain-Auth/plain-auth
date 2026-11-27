@@ -48896,5 +48896,33 @@
       "test": "adapters/sqlstore/oauth_client_admin_test.go",
       "marker": "func TestAdminClientCreation("
     }
+  ],
+  "plugin/oauth-provider/POST /oauth2/update-client": [
+    {
+      "label": "Replace an owner's registration fields through the creation rules, ignore fields an owner cannot change, refuse another owner, trusted and unknown clients, and clear machine scopes without the machine grant, on SQLite, PostgreSQL and MySQL; the 409 on a concurrent change is a documented deviation",
+      "test": "adapters/sqlstore/oauth_client_update_test.go",
+      "marker": "func TestOAuthClientUpdate("
+    }
+  ],
+  "plugin-symbol/oauth-provider/updateOAuthClient": [
+    {
+      "label": "Replace an owner's registration fields through the creation rules, ignore fields an owner cannot change, refuse another owner, trusted and unknown clients, and clear machine scopes without the machine grant, on SQLite, PostgreSQL and MySQL; the 409 on a concurrent change is a documented deviation",
+      "test": "adapters/sqlstore/oauth_client_update_test.go",
+      "marker": "func TestOAuthClientUpdate("
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/clients.mdx#L62/`updateOAuthClient`": [
+    {
+      "label": "Replace an owner's registration fields through the creation rules, ignore fields an owner cannot change, refuse another owner, trusted and unknown clients, and clear machine scopes without the machine grant, on SQLite, PostgreSQL and MySQL; the 409 on a concurrent change is a documented deviation",
+      "test": "adapters/sqlstore/oauth_client_update_test.go",
+      "marker": "func TestOAuthClientUpdate("
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L335/`POST /oauth2/update-client`": [
+    {
+      "label": "Replace an owner's registration fields through the creation rules, ignore fields an owner cannot change, refuse another owner, trusted and unknown clients, and clear machine scopes without the machine grant, on SQLite, PostgreSQL and MySQL; the 409 on a concurrent change is a documented deviation",
+      "test": "adapters/sqlstore/oauth_client_update_test.go",
+      "marker": "func TestOAuthClientUpdate("
+    }
   ]
 }
