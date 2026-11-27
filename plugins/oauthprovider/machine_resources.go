@@ -190,7 +190,7 @@ func (opts Options) issueResourceMachineToken(c auth.EndpointContext, store Mach
 		if err != nil {
 			return MachineToken{}, err
 		}
-		issued, err = policy.sign(c, in.id, audiences, thumb, now, extra)
+		issued, err = policy.sign(c, in.id, in.id, "", audiences, thumb, now, extra)
 	} else {
 		issued, stored, err = opts.Tokens.newOpaqueToken(ctx)
 	}
@@ -232,7 +232,9 @@ func (opts Options) issueResourceMachineToken(c auth.EndpointContext, store Mach
 	return token, nil
 }
 
-func (p machineResourcePolicy) sign(c auth.EndpointContext, client string, audiences []string, thumb string, now time.Time, extra map[string]any) (string, error) {
+// sign issues an at+jwt for subject, a user or the client itself, with the
+// session's sid when it has one.
+func (p machineResourcePolicy) sign(c auth.EndpointContext, subject, client, sid string, audiences []string, thumb string, now time.Time, extra map[string]any) (string, error) {
 	jti, err := randomClientCredential()
 	if err != nil {
 		return "", err
@@ -246,13 +248,17 @@ func (p machineResourcePolicy) sign(c auth.EndpointContext, client string, audie
 			claims[name] = raw
 		}
 	}
-	// A client token has no session; the issuer stamps its own claims last.
+	// The issuer stamps its own claims last; a token without a live
+	// session carries no sid.
 	delete(claims, "sid")
+	if sid != "" {
+		claims["sid"] = sid
+	}
 	claims["jti"], claims["client_id"], claims["azp"], claims["scope"] = jti, client, client, strings.Join(p.scopes, " ")
 	if thumb != "" {
 		claims["cnf"] = map[string]string{"jkt": thumb}
 	}
-	return c.Auth.SignJWT(c.Request.Context(), client, auth.JWTSignOptions{
+	return c.Auth.SignJWT(c.Request.Context(), subject, auth.JWTSignOptions{
 		Type: "at+jwt", Issuer: c.Auth.OAuthIssuer(), Audience: audiences, Algorithm: p.algorithm, KeyID: p.keyID,
 		IssuedAt: now, ExpiresAt: now.Add(p.lifetime), Claims: claims,
 	})
@@ -278,4 +284,54 @@ func (opts Options) checkAuthorizationResources(c auth.EndpointContext, issue Br
 		_, err := opts.Tokens.resourcePolicy(client.ClientID, false, issue.Scopes, ids, rows, math.MaxInt64)
 		return nil, err
 	})
+}
+
+// signsResourceTokens reports whether resource-targeted delegated grants get
+// at+jwt access tokens, as another runtime issues them with the jwt plugin.
+func (opts Options) signsResourceTokens(c auth.EndpointContext) bool {
+	return c.Auth.HasPlugin("jwt") && !opts.Tokens.OpaqueResourceTokens && !opts.DisableJWTPlugin
+}
+
+// delegatedSigning is what an at+jwt for a user's grant needs once the
+// grant is validated: the resources' policy and audiences.
+type delegatedSigning struct {
+	policy    machineResourcePolicy
+	audiences []string
+	resources []string
+}
+
+// newDelegatedSigning keeps the policy and the audiences: the resources,
+// then UserInfo for openid.
+func newDelegatedSigning(c auth.EndpointContext, policy machineResourcePolicy, resources, requested []string) *delegatedSigning {
+	audiences := slices.Clone(resources)
+	if userInfo := c.Auth.PublicURL() + "/oauth2/userinfo"; slices.Contains(requested, "openid") && !slices.Contains(audiences, userInfo) {
+		audiences = append(audiences, userInfo)
+	}
+	return &delegatedSigning{policy: policy, audiences: audiences, resources: resources}
+}
+
+// signDelegated signs the access token in the issue phase, outside store
+// transactions, with the contributed and resource claims below the issuer's.
+func (opts Options) signDelegated(c auth.EndpointContext, s *delegatedSigning, grantType, clientID, userID, sid, snapshot string, now time.Time) (string, error) {
+	in := TokenClaimsInput{ClientID: clientID, Scopes: s.policy.scopes, GrantType: grantType, Resources: s.resources}
+	if snapshot != "" {
+		var claims IDTokenClaimsInput
+		if err := json.Unmarshal([]byte(snapshot), &claims); err == nil && claims.User.ID != "" {
+			in.User, in.Metadata = &claims.User, claims.Metadata
+		}
+	}
+	extra, err := opts.accessTokenClaims(c, in)
+	if err != nil {
+		return "", err
+	}
+	return s.policy.sign(c, userID, clientID, sid, s.audiences, "", now, extra)
+}
+
+// contributesAccessClaims reports access-token claim contributors, which
+// need the account's snapshot.
+func (opts Options) contributesAccessClaims() bool {
+	if opts.Tokens.CustomAccessTokenClaims != nil {
+		return true
+	}
+	return slices.ContainsFunc(opts.Extensions, func(e Extension) bool { return e.AccessTokenClaims != nil })
 }

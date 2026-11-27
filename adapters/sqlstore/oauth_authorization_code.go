@@ -189,6 +189,10 @@ func (s *Store) insertDelegatedTokens(ctx context.Context, tx *sql.Tx, clientID 
 			return err
 		}
 	}
+	// A signed access token is not stored.
+	if record.StoredToken == "" {
+		return nil
+	}
 	resources, err := resourceColumn(record.Resources)
 	if err != nil {
 		return err

@@ -18,6 +18,8 @@ type pendingRotation struct {
 	issue    op.DelegatedTokenIssue
 	scopes   []string
 	keys     op.RefreshGrantDigests
+	// issued marks the second pass; a signed access token has no digest.
+	issued bool
 }
 
 func (s *Store) ExchangeRefreshGrant(ctx context.Context, clientID, digest string, check func(op.MachineClient) error, prepare func(op.AuthorizationCodeClient, op.RefreshGrant) (op.DelegatedAccessRecord, error), issue func(string, bool) (op.RefreshGrantDigests, error)) error {
@@ -38,10 +40,10 @@ func (s *Store) ExchangeOpenIDRefresh(ctx context.Context, clientID, digest stri
 	if err != nil {
 		return err
 	}
-	if keys.Access == "" || pending.issue.Refresh != (keys.Refresh != "") {
+	if pending.issue.Refresh != (keys.Refresh != "") {
 		return errors.New("sqlstore: invalid replacement token digests")
 	}
-	pending.keys = keys
+	pending.keys, pending.issued = keys, true
 	return s.exchangeRefresh(ctx, clientID, digest, check, prepare, &pending)
 }
 
@@ -59,7 +61,7 @@ func (s *Store) exchangeRefresh(ctx context.Context, clientID, digest string, ch
 	if err != nil {
 		return err
 	}
-	if pending.keys.Access != "" && (pending.id != parent.id || pending.user != parent.UserID || pending.issue.SessionID != parent.SessionID) {
+	if pending.issued && (pending.id != parent.id || pending.user != parent.UserID || pending.issue.SessionID != parent.SessionID) {
 		return op.ErrInvalidRefreshToken
 	}
 	record, err := prepare(client, parent.RefreshGrant)
@@ -87,7 +89,7 @@ func (s *Store) exchangeRefresh(ctx context.Context, clientID, digest string, ch
 		}
 	}
 	grant := op.DelegatedTokenIssue{SessionID: parent.SessionID, Refresh: record.Refresh != nil, IDToken: record.IDToken}
-	if pending.keys.Access == "" {
+	if !pending.issued {
 		pending.id, pending.user, pending.issue = parent.id, parent.UserID, grant
 		pending.scopes = slices.Clone(record.Scopes)
 		return nil

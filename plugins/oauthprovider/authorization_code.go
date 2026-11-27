@@ -228,11 +228,15 @@ func (opts Options) redeemAuthorizationCode(c auth.EndpointContext, in tokenRequ
 	// resources prepare asked for.
 	var policy *codeResources
 	var needed []string
+	// signing is set when the grant's access token is an at+jwt, signed in
+	// the issue phase instead of stored.
+	var signing *delegatedSigning
+	var signingUser, signedAccess string
 	now := time.Now().UTC().Truncate(time.Second)
 	openidStore, supportsOpenID := store.(OpenIDGrantStore)
 	var codeValue json.RawMessage
 	prepare := func(client AuthorizationCodeClient, value json.RawMessage) (DelegatedAccessRecord, error) {
-		codeValue = slices.Clone(value)
+		codeValue, signing = slices.Clone(value), nil
 		var code storedAuthorizationCode
 		if err := json.Unmarshal(value, &code); err != nil || code.Type != "authorization_code" || code.Query.ClientID == "" ||
 			(code.Query.ResponseType != "" && code.Query.ResponseType != "code") {
@@ -250,6 +254,7 @@ func (opts Options) redeemAuthorizationCode(c auth.EndpointContext, in tokenRequ
 		if err != nil {
 			return DelegatedAccessRecord{}, err
 		}
+		signingUser = code.UserID
 		effective, authorized, err := code.resources(in.resources)
 		if err != nil {
 			return DelegatedAccessRecord{}, err
@@ -272,6 +277,9 @@ func (opts Options) redeemAuthorizationCode(c auth.EndpointContext, in tokenRequ
 					return DelegatedAccessRecord{}, proofError("DPoP proof header is required")
 				}
 				return DelegatedAccessRecord{}, registrationProblem(501, "server_error", "sender-bound authorization-code issuance is unavailable")
+			}
+			if supportsOpenID && opts.signsResourceTokens(c) {
+				signing = newDelegatedSigning(c, granted, effective, scopes)
 			}
 			scopes, lifetime = granted.scopes, granted.lifetime
 			refreshLifetime = granted.refreshLifetime(refreshLifetime)
@@ -301,6 +309,14 @@ func (opts Options) redeemAuthorizationCode(c auth.EndpointContext, in tokenRequ
 			record.IDToken, err = opts.idTokenGrant(client, code.UserID, code.SessionID, code.Query.Nonce, authTime)
 			if err != nil {
 				return DelegatedAccessRecord{}, err
+			}
+		}
+		// A signed access token is issued in the issue phase and not stored;
+		// its claim contributors read the account's snapshot.
+		if signing != nil {
+			record.StoredToken, record.Deferred = "", true
+			if opts.contributesAccessClaims() && record.IDTokenUserFields == nil {
+				record.IDTokenUserFields = c.TrustedUserFields()
 			}
 		}
 		// Host response fields run in the issue phase, from a claims
@@ -341,8 +357,17 @@ func (opts Options) redeemAuthorizationCode(c auth.EndpointContext, in tokenRequ
 				return "", err
 			}
 		}
+		// The ID token's at_hash covers the access token sent, signed or not.
+		access := issued
+		if signing != nil {
+			token, err := opts.signDelegated(c, signing, "authorization_code", in.id, signingUser, grant.SessionID, grant.IDToken.ClaimsInput, now)
+			if err != nil {
+				return "", err
+			}
+			signedAccess, access = token, token
+		}
 		if grant.IDToken.Subject != "" {
-			token, err := opts.Tokens.signIDToken(c, in.id, issued, grant.IDToken, now, opts.idTokenSecret(in), opts.idTokenContributors("authorization_code"))
+			token, err := opts.Tokens.signIDToken(c, in.id, access, grant.IDToken, now, opts.idTokenSecret(in), opts.idTokenContributors("authorization_code"))
 			if err != nil {
 				return "", err
 			}
@@ -401,6 +426,10 @@ func (opts Options) redeemAuthorizationCode(c auth.EndpointContext, in tokenRequ
 	}
 	if err != nil {
 		return DelegatedToken{}, err
+	}
+	// The second pass rebuilt the response; the token sent is the signed one.
+	if signedAccess != "" {
+		result.AccessToken = signedAccess
 	}
 	result.fields = fields
 	return result, nil

@@ -17928,6 +17928,11 @@
       "label": "Handle stored access and refresh tokens, linked access tokens, self-contained JWTs and repeated requests",
       "test": "conformance/oauth-revocation.mjs",
       "marker": "const foreignReplay = await revoke("
+    },
+    {
+      "label": "Leave a signed access token active after the refresh token that issued it is revoked, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_code_resources_test.go",
+      "marker": "t.Fatal(\"revoking the refresh token deactivated its signed access token\", status, reply)"
     }
   ],
   "docs/content/docs/plugins/oauth-provider/reference.mdx#L401/`revoke`": [
@@ -49162,7 +49167,7 @@
   ],
   "docs/content/docs/plugins/oauth-provider/index.mdx#L193": [
     {
-      "label": "Accept a resource at authorize and redeem the code into a token for it, with the resource's scopes and lifetimes, on SQLite, PostgreSQL and MySQL; the token is opaque so far",
+      "label": "Accept a resource at authorize and redeem the code into a token for it, with the resource's scopes and lifetimes, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_code_resources_test.go",
       "marker": "func TestAuthorizationCodeResources("
     }
@@ -49185,9 +49190,14 @@
   ],
   "docs/content/docs/plugins/oauth-provider/tokens.mdx#L42": [
     {
-      "label": "Issue delegated tokens for registered resources, which introspection names as aud, on SQLite, PostgreSQL and MySQL; signed resource tokens for delegated grants are not built yet",
+      "label": "Issue delegated tokens for registered resources, which introspection names as aud, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_code_resources_test.go",
       "marker": "func TestAuthorizationCodeResources("
+    },
+    {
+      "label": "Sign delegated access tokens for registered resources with the resources as aud, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_code_resources_test.go",
+      "marker": "t.Fatal(\"the signed access token had the wrong claims\", string(header), claims, body)"
     }
   ],
   "docs/content/docs/plugins/oauth-provider/tokens.mdx#L118": [
@@ -49195,6 +49205,28 @@
       "label": "Cap access and refresh lifetimes by the resources' lifetimes, defaulting to the provider's, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_code_resources_test.go",
       "marker": "func TestAuthorizationCodeResources("
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/index.mdx#L25/Access tokens": [
+    {
+      "label": "Sign an at+jwt access token for a resource-targeted code or refresh exchange with the jwt plugin, keep it opaque with OpaqueResourceTokens, and issue opaque tokens otherwise, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_code_resources_test.go",
+      "marker": "t.Fatal(\"the signed access token had the wrong claims\", string(header), claims, body)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/index.mdx#L217": [
+    {
+      "label": "Exchange a code for an at+jwt for its resource, with an ID token whose at_hash covers it, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_code_resources_test.go",
+      "marker": "t.Fatal(\"the ID token's at_hash did not cover the signed access token\", idClaims[\"at_hash\"])"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/tokens.mdx#L278/Refresh token": [
+    {
+      "label": "Revoke a refresh token and leave the signed access tokens it issued active, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_code_resources_test.go",
+      "marker": "t.Fatal(\"revoking the refresh token deactivated its signed access token\", status, reply)"
     }
   ]
 }

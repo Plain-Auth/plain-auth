@@ -76,8 +76,16 @@ func (opts Options) exchangeRefreshGrant(c auth.EndpointContext, in tokenRequest
 	// resources prepare asked for.
 	var policy *codeResources
 	var needed []string
+	// signing is set when the access token is an at+jwt, signed in the
+	// issue phase instead of stored, for the grant's user and live session.
+	var signing *delegatedSigning
+	var signingUser, signingSID string
 	openidStore, supportsOpenID := store.(OpenIDGrantStore)
 	prepare := func(client AuthorizationCodeClient, grant RefreshGrant) (DelegatedAccessRecord, error) {
+		signing, signingUser, signingSID = nil, grant.UserID, ""
+		if grant.SessionLive {
+			signingSID = grant.SessionID
+		}
 		scopes, err := grant.scopesForRefresh(client, in)
 		if err != nil {
 			return DelegatedAccessRecord{}, err
@@ -109,6 +117,9 @@ func (opts Options) exchangeRefreshGrant(c auth.EndpointContext, in tokenRequest
 				}
 				return DelegatedAccessRecord{}, registrationProblem(501, "server_error", "sender-bound refresh issuance is unavailable")
 			}
+			if opts.signsResourceTokens(c) {
+				signing = newDelegatedSigning(c, granted, effective, scopes)
+			}
 			scopes, ttl, refreshLifetime = granted.scopes, granted.lifetime, granted.refreshLifetime(refreshLifetime)
 		}
 		if err := grant.sessionBound(scopes); err != nil {
@@ -137,7 +148,7 @@ func (opts Options) exchangeRefreshGrant(c auth.EndpointContext, in tokenRequest
 			// lifetime counts from rotation.
 			record.Refresh = &InitialRefreshGrant{ExpiresAt: now.Add(refreshLifetime), Resources: kept}
 		}
-		if opts.Tokens.CustomTokenResponseFields != nil && record.IDTokenUserFields == nil {
+		if (opts.Tokens.CustomTokenResponseFields != nil || signing != nil && opts.contributesAccessClaims()) && record.IDTokenUserFields == nil {
 			record.IDTokenUserFields = c.TrustedUserFields()
 		}
 		return record, nil
@@ -153,22 +164,29 @@ func (opts Options) exchangeRefreshGrant(c auth.EndpointContext, in tokenRequest
 		}
 		return err
 	}
-	issue := func(sid string, rotate bool) (RefreshGrantDigests, error) {
+	// issueKeys issues the access token, signed and not stored, or opaque,
+	// and the rotated refresh token.
+	issueKeys := func(sid string, rotate bool, snapshot string) (RefreshGrantDigests, error) {
 		var keys RefreshGrantDigests
 		var err error
-		access, keys.Access, err = opts.Tokens.newOpaqueToken(ctx)
+		if signing != nil {
+			access, err = opts.signDelegated(c, signing, "refresh_token", in.id, signingUser, signingSID, snapshot, now)
+		} else {
+			access, keys.Access, err = opts.Tokens.newOpaqueToken(ctx)
+		}
 		if err == nil && rotate {
 			result.RefreshToken, keys.Refresh, err = opts.Tokens.issueRefreshToken(ctx, sid)
 		}
 		return keys, err
 	}
+	issue := func(sid string, rotate bool) (RefreshGrantDigests, error) { return issueKeys(sid, rotate, "") }
 	for range 3 {
 		if supportsOpenID {
 			err = openidStore.ExchangeOpenIDRefresh(ctx, in.id, digest, checkClient, prepare, func(grant DelegatedTokenIssue) (RefreshGrantDigests, error) {
 				if err := responseFields(grant); err != nil {
 					return RefreshGrantDigests{}, err
 				}
-				keys, err := issue(grant.SessionID, grant.Refresh)
+				keys, err := issueKeys(grant.SessionID, grant.Refresh, grant.IDToken.ClaimsInput)
 				if err == nil && grant.IDToken.Subject != "" {
 					result.IDToken, err = opts.Tokens.signIDToken(c, in.id, access, grant.IDToken, now, opts.idTokenSecret(in), opts.idTokenContributors("refresh_token"))
 				}

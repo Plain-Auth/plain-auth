@@ -3,8 +3,10 @@ package sqlstore
 import (
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/sha512"
 	"encoding/base64"
 	"encoding/json"
+	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
@@ -59,13 +61,19 @@ func TestAuthorizationCodeResources(t *testing.T) {
 				}
 			}
 			const origin = "https://issuer.example.test"
-			p, err := op.New(op.Options{Scopes: []string{"openid", "reports", "billing", "offline_access"}})
-			must(err)
-			signing, err := auth.NewJWT(auth.JWTOptions{})
-			must(err)
-			off := false
-			h, err := auth.New(auth.Options{BaseURL: origin, Secret: strings.Repeat("c", 40), Store: s, Plugins: []auth.Plugin{p, signing}, RateLimit: &off})
-			must(err)
+			// The opaque tokens show the stored resources; signed ones follow.
+			newHost := func(opaque bool) *auth.Auth {
+				t.Helper()
+				p, err := op.New(op.Options{Scopes: []string{"openid", "reports", "billing", "offline_access"}, Tokens: op.TokenOptions{OpaqueResourceTokens: opaque}})
+				must(err)
+				signing, err := auth.NewJWT(auth.JWTOptions{})
+				must(err)
+				off := false
+				h, err := auth.New(auth.Options{BaseURL: origin, Secret: strings.Repeat("c", 40), Store: s, Plugins: []auth.Plugin{p, signing}, RateLimit: &off})
+				must(err)
+				return h
+			}
+			h := newHost(true)
 			userInfo := origin + "/api/auth/oauth2/userinfo"
 			verifier := strings.Repeat("v", 64)
 			sum := sha256.Sum256([]byte(verifier))
@@ -211,6 +219,81 @@ func TestAuthorizationCodeResources(t *testing.T) {
 				t.Fatal("the code was spent by a refused redemption", status, body)
 			}
 			refused(code("reports", map[string]any{"resource": []string{"urn:loose"}}))
+			// With the jwt plugin and no OpaqueResourceTokens, the access
+			// token is an at+jwt for the resources and UserInfo, not stored,
+			// whose hash the ID token carries; UserInfo and introspection
+			// accept it, also after its refresh token is revoked.
+			h = newHost(false)
+			status, body = exchange(code("openid reports offline_access", map[string]any{"resource": []string{"urn:reports"}}))
+			if status != 200 {
+				t.Fatal("the signed exchange failed", status, body)
+			}
+			jwtAccess := body["access_token"].(string)
+			claims, err := h.VerifyJWT(ctx, jwtAccess, auth.JWTVerifyOptions{Issuer: h.OAuthIssuer(), Audience: "urn:reports", Subject: "owner"})
+			must(err)
+			header, err := base64.RawURLEncoding.DecodeString(strings.Split(jwtAccess, ".")[0])
+			must(err)
+			aud, _ := claims["aud"].([]any)
+			if !strings.Contains(string(header), `"typ":"at+jwt"`) || len(aud) != 2 || aud[0] != "urn:reports" || aud[1] != userInfo || claims["client_id"] != "app" ||
+				claims["azp"] != "app" || claims["scope"] != "openid reports offline_access" || claims["sid"] != "sid" || claims["jti"] == nil || body["expires_in"] != float64(120) {
+				t.Fatal("the signed access token had the wrong claims", string(header), claims, body)
+			}
+			var signedRows int
+			jwtDigest := sha256.Sum256([]byte(jwtAccess))
+			must(s.db.QueryRowContext(ctx, s.bind(`SELECT COUNT(*) FROM "oauthAccessToken" WHERE "token"=?`), base64.RawURLEncoding.EncodeToString(jwtDigest[:])).Scan(&signedRows))
+			if signedRows != 0 {
+				t.Fatal("a signed access token was stored")
+			}
+			idParts := strings.Split(body["id_token"].(string), ".")
+			idPayload, err := base64.RawURLEncoding.DecodeString(idParts[1])
+			must(err)
+			idHeader, err := base64.RawURLEncoding.DecodeString(idParts[0])
+			must(err)
+			var idClaims map[string]any
+			must(json.Unmarshal(idPayload, &idClaims))
+			var atHash []byte
+			if strings.Contains(string(idHeader), `"EdDSA"`) || strings.Contains(string(idHeader), `"ES512"`) {
+				sum := sha512.Sum512([]byte(jwtAccess))
+				atHash = sum[:32]
+			} else {
+				sum := sha256.Sum256([]byte(jwtAccess))
+				atHash = sum[:16]
+			}
+			if idClaims["at_hash"] != base64.RawURLEncoding.EncodeToString(atHash) {
+				t.Fatal("the ID token's at_hash did not cover the signed access token", idClaims["at_hash"])
+			}
+			call := func(req *http.Request) (int, map[string]any) {
+				t.Helper()
+				out := httptest.NewRecorder()
+				h.ServeHTTP(out, req)
+				var reply map[string]any
+				_ = json.Unmarshal(out.Body.Bytes(), &reply)
+				return out.Code, reply
+			}
+			profileReq := httptest.NewRequest("GET", origin+"/api/auth/oauth2/userinfo", nil)
+			profileReq.Header.Set("Authorization", "Bearer "+jwtAccess)
+			if status, profile := call(profileReq); status != 200 || profile["sub"] != "owner" {
+				t.Fatal("UserInfo refused the signed access token", status, profile)
+			}
+			introspect := func(token string) bool {
+				t.Helper()
+				form := url.Values{"token": {token}, "client_id": {"app"}, "client_secret": {secret}}
+				req := httptest.NewRequest("POST", origin+"/api/auth/oauth2/introspect", strings.NewReader(form.Encode()))
+				req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+				_, reply := call(req)
+				return reply["active"] == true
+			}
+			status, body = rotate(body["refresh_token"].(string))
+			if status != 200 || len(strings.Split(body["access_token"].(string), ".")) != 3 || !introspect(body["access_token"].(string)) {
+				t.Fatal("a signed refresh did not give an active at+jwt", status, body)
+			}
+			revokeForm := url.Values{"token": {body["refresh_token"].(string)}, "client_id": {"app"}, "client_secret": {secret}}
+			revokeReq := httptest.NewRequest("POST", origin+"/api/auth/oauth2/revoke", strings.NewReader(revokeForm.Encode()))
+			revokeReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			if status, reply := call(revokeReq); status != 200 || !introspect(body["access_token"].(string)) {
+				t.Fatal("revoking the refresh token deactivated its signed access token", status, reply)
+			}
+			h = newHost(true)
 			// A code without resources may name any linked resource, and a
 			// legacy query.resource is read.
 			if status, body := exchange(code("reports", map[string]any{"resource": []string{}}), "urn:audit"); status != 200 ||
