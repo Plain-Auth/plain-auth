@@ -334,13 +334,7 @@ func redirectURL(raw string) (*url.URL, error) {
 func exactLoopback(name string) bool {
 	return strings.EqualFold(name, "localhost") || name == "127.0.0.1" || name == "::1"
 }
-func loopback(name string) bool {
-	name = strings.ToLower(strings.TrimSuffix(name, "."))
-	if ip, err := netip.ParseAddr(name); err == nil {
-		return ip.Unmap().IsLoopback()
-	}
-	return name == "localhost" || strings.HasSuffix(name, ".localhost")
-}
+func loopback(name string) bool { return publicnet.Loopback(name) }
 func (r RegistrationOptions) allowsHTTP(u *url.URL) bool {
 	return r.AllowHTTPRedirect != nil && r.AllowHTTPRedirect(u)
 }
@@ -428,18 +422,7 @@ func (r RegistrationOptions) validateRedirect(raw, app string) error {
 
 // Browsers also interpret noncanonical numeric hosts as IP addresses. Accept
 // IP literals only in the unambiguous spelling parsed by netip.
-func ambiguousHost(name string) bool {
-	if _, err := netip.ParseAddr(name); err == nil {
-		return false
-	}
-	parts := strings.Split(strings.TrimSuffix(name, "."), ".")
-	tail := parts[len(parts)-1]
-	if tail == "" {
-		return true
-	}
-	_, err := strconv.ParseUint(tail, 10, 64)
-	return err == nil || strings.HasPrefix(strings.ToLower(tail), "0x")
-}
+func ambiguousHost(name string) bool { return publicnet.AmbiguousHost(name) }
 
 func validateServerURI(field, raw string, host *auth.Auth) error {
 	if err := publicServerURI(field, raw, host); err != nil {
@@ -475,16 +458,8 @@ func publicServerURI(field, raw string, _ *auth.Auth) error {
 	if strings.Contains(raw, "#") {
 		return metadataProblem(field + " must not include a fragment component")
 	}
-	name := strings.TrimSuffix(strings.ToLower(u.Hostname()), ".")
-	if ip, err := netip.ParseAddr(name); err == nil {
-		if !publicnet.Address(ip) {
-			return metadataProblem(field + " must not point to a private or reserved address")
-		}
-	} else {
-		ascii, err := idna.Lookup.ToASCII(name)
-		if err != nil || !strings.Contains(ascii, ".") || ambiguousHost(ascii) || loopback(ascii) || ascii == "metadata.goog" || strings.HasSuffix(ascii, ".internal") || strings.HasSuffix(ascii, ".local") {
-			return metadataProblem(field + " must not point to a private or reserved address")
-		}
+	if !publicnet.PublicHost(u.Hostname()) {
+		return metadataProblem(field + " must not point to a private or reserved address")
 	}
 	return nil
 }

@@ -2,16 +2,16 @@
 
 ## Verification progress
 
-**3,011 of 6,419 inventory entries are fully verified (46.9%).**
+**3,019 of 6,419 inventory entries are fully verified (47.0%).**
 
 | Inventory status | Entries |
 | --- | ---: |
-| Fully verified | 3,011 |
-| Partially verified | 1,509 |
-| No linked test evidence | 1,899 |
+| Fully verified | 3,019 |
+| Partially verified | 1,513 |
+| No linked test evidence | 1,887 |
 | Not applicable to a Go server | 606 |
 
-The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 7,917 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
+The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 7,926 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
 
 Entries that exist only for JavaScript clients, frameworks or runtimes are listed as not applicable, with the reason, and are left out of the totals. Backlog entries stay open on the roadmap but are not scheduled.
 
@@ -97,7 +97,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [API keys](plugins/api-key.md) | 513 | 99 | 1 |
 | [Bearer](plugins/bearer.md) | 30 | 0 | 0 |
 | [Captcha](plugins/captcha.md) | 153 | 26 | 0 |
-| [Client ID metadata documents](plugins/cimd.md) | 0 | 48 | 0 |
+| [Client ID metadata documents](plugins/cimd.md) | 17 | 40 | 0 |
 | [Custom session](plugins/custom-session.md) | 21 | 3 | 0 |
 | [Device authorization](plugins/device-authorization.md) | 176 | 41 | 3 |
 | [Electron](plugins/electron.md) | 0 | 12 | 40 |
