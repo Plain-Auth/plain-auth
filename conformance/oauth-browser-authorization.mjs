@@ -66,6 +66,10 @@ export async function exerciseBrowserAuthorization({ server, issuer, db }) {
     const res = await json("/oauth2/consent", { oauth_query: query, ...body }, { cookie });
     return { status: res.status, body: await res.json() };
   }
+  // A decision names the signed request it answers.
+  const unsigned = await json("/oauth2/consent", { accept: true }, { cookie });
+  assert.equal(unsigned.status, 400);
+  assert.deepEqual(await unsigned.json(), { error: "invalid_request", error_description: "missing oauth query" });
   const denied = await decide(await consentPage(), { accept: false });
   assert.equal(denied.status, 200);
   assert.equal(denied.body.redirect, true);

@@ -18855,6 +18855,12 @@
       "label": "Verify a signed page query before applying a decision and reject altered authorization parameters",
       "test": "conformance/oauth-browser-authorization.mjs",
       "marker": "altered.set(\"state\", \"changed\")"
+    },
+    {
+      "label": "Refuse a consent decision without oauth_query with 400 invalid_request missing oauth query, on both runtimes",
+      "test": "conformance/oauth-browser-authorization.mjs",
+      "marker": "assert.deepEqual(await unsigned.json(), { error: \"invalid_request\", error_description: \"missing oauth query\" });",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/oauth-provider/sign-in-flow.mdx#L34": [
