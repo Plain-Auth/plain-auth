@@ -534,8 +534,10 @@
       - [ ] `enabled`
         - [x] Refuse organization billing on every billing route before contacting Stripe when it is not enabled, matching the other runtime ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L218))
         - [x] Create the organization's own Stripe customer, named after it, once organization billing is enabled, on both runtimes ([test](../../../conformance/stripe-organization-fixture.mjs#L144))
-      - [ ] `getCustomerCreateParams`
-      - [ ] `onCustomerCreate`
+      - [x] `getCustomerCreateParams` ([test](../../../adapters/sqlstore/stripe_organization_customer_test.go#L152))
+        - [x] Merge the host's parameters beneath an organization's name and metadata for the customer its first purchase creates, skip them for a customer found in Stripe, and create nothing when the callback fails, on three SQL engines ([test](../../../adapters/sqlstore/stripe_organization_customer_test.go#L152))
+      - [x] `onCustomerCreate` ([test](../../../adapters/sqlstore/stripe_organization_customer_test.go#L194))
+        - [x] Report an organization customer once, only from the purchase that created and stored it, and answer UNABLE_TO_CREATE_CUSTOMER when the callback fails, on three SQL engines ([test](../../../adapters/sqlstore/stripe_organization_customer_test.go#L194))
   - [ ] Advanced Usage
     - [ ] Using with Organizations
       - [x] Apply signed checkout and renewal events to the organization and list its updated price through the browser client ([test](../../../conformance/stripe-organization-fixture.mjs#L173))

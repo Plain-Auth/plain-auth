@@ -51892,5 +51892,21 @@
       "marker": "// The host's parameters are kept beneath the user's email and name",
       "complete": true
     }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L903/`getCustomerCreateParams`": [
+    {
+      "label": "Merge the host's parameters beneath an organization's name and metadata for the customer its first purchase creates, skip them for a customer found in Stripe, and create nothing when the callback fails, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_organization_customer_test.go",
+      "marker": "// The first purchase merges the host's parameters beneath the",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L904/`onCustomerCreate`": [
+    {
+      "label": "Report an organization customer once, only from the purchase that created and stored it, and answer UNABLE_TO_CREATE_CUSTOMER when the callback fails, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_organization_customer_test.go",
+      "marker": "// A failing parameters callback creates nothing; a failing",
+      "complete": true
+    }
   ]
 }

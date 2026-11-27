@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"maps"
 	"strings"
 	"time"
 
@@ -66,21 +67,33 @@ func (s *subscriptions) checkoutCustomer(c auth.EndpointContext, selection billi
 			return "", err
 		}
 		if err != nil {
-			c.Auth.Logger().ErrorContext(ctx, "Stripe customer lookup failed", "error", err)
+			c.Auth.Logger().ErrorContext(ctx, "Stripe customer lookup failed", stripeErrorAttrs(err)...)
 			return "", ErrCustomerCreation
 		}
 		if _, err = c.Store().(OrganizationBillingStore).StripeOrganizationAccount(ctx, token, time.Now()); err != nil {
 			return "", err
 		}
+		in := NewOrganizationCustomer{OrganizationID: a.OrganizationID, Name: a.OrganizationName, User: ss.User, Request: c.RequestMetadata()}
 		created := customer == nil
 		if created {
-			params := &sdk.CustomerCreateParams{Name: sdk.String(a.OrganizationName), Metadata: map[string]string{"organizationId": a.OrganizationID, "customerType": "organization"}}
-			customer = s.createCustomer(c, params)
+			if customer, err = s.createOrganizationCustomer(c, in); err != nil {
+				return "", err
+			}
 		}
 		if customer == nil || customer.ID == "" || customer.Metadata["customerType"] != "organization" || customer.Metadata["organizationId"] != a.OrganizationID {
 			return "", ErrCustomerCreation
 		}
-		return s.bindCustomer(c, store, a, token, customer.ID, created)
+		id, err := s.bindCustomer(c, store, a, token, customer.ID, created)
+		// Only the request that bound the customer it created reports it,
+		// so a concurrent identical purchase never reports it twice.
+		if err != nil || !created || id != customer.ID || s.organization == nil || s.organization.OnCustomerCreate == nil {
+			return id, err
+		}
+		if err := s.organization.OnCustomerCreate(ctx, OrganizationCustomerCreated{NewOrganizationCustomer: in, Customer: customer}); err != nil {
+			c.Auth.Logger().ErrorContext(ctx, "Stripe organization OnCustomerCreate failed", "organization_id", a.OrganizationID, "customer_id", id)
+			return "", ErrCustomerCreation
+		}
+		return id, nil
 	}
 	// An unverified email is not looked up, so a lookup outage cannot block
 	// the purchase, where another runtime looks it up and discards the match.
@@ -108,6 +121,58 @@ func (s *subscriptions) checkoutCustomer(c auth.EndpointContext, selection billi
 		return "", ErrCustomerCreation
 	}
 	return s.bindCustomer(c, store, a, token, customer.ID, true)
+}
+
+// createOrganizationCustomer creates an organization's customer under its
+// name and metadata, over the host's CustomerCreateParams, as another
+// runtime merges them. A failed or refused callback creates nothing.
+func (s *subscriptions) createOrganizationCustomer(c auth.EndpointContext, in NewOrganizationCustomer) (*sdk.Customer, error) {
+	params := &sdk.CustomerCreateParams{Name: sdk.String(in.Name), Metadata: map[string]string{"organizationId": in.OrganizationID, "customerType": "organization"}}
+	if s.organization != nil && s.organization.CustomerCreateParams != nil {
+		host, err := s.organization.CustomerCreateParams(c.Request.Context(), in)
+		if err == nil {
+			params, err = mergeCustomerParams(params, host)
+		}
+		if err != nil {
+			c.Auth.Logger().ErrorContext(c.Request.Context(), "Stripe organization CustomerCreateParams failed", "organization_id", in.OrganizationID)
+			return nil, ErrCustomerCreation
+		}
+	}
+	return s.createCustomer(c, params), nil
+}
+
+// errCustomerOptions refuses host customer parameters with request
+// options: a connected account's customer could not be used by this
+// account's Checkout.
+var errCustomerOptions = errors.New("stripe: customer parameters name request options")
+
+// mergeCustomerParams lays the plugin's own customer fields over a host's
+// parameters, as another runtime merges them: own's email and name, when
+// set, and metadata keys win. The host's value is not changed.
+func mergeCustomerParams(own, host *sdk.CustomerCreateParams) (*sdk.CustomerCreateParams, error) {
+	if host == nil {
+		return own, nil
+	}
+	if host.StripeAccount != nil || host.StripeContext != nil || host.Headers != nil || host.Extra != nil {
+		return nil, errCustomerOptions
+	}
+	params := *host
+	meta := maps.Clone(host.Params.Metadata)
+	if meta == nil {
+		meta = map[string]string{}
+	}
+	maps.Copy(meta, host.Metadata)
+	maps.Copy(meta, own.Metadata)
+	params.Params = sdk.Params{}
+	params.UnsetFields = nil
+	params.Metadata = meta
+	if own.Email != nil {
+		params.Email = own.Email
+	}
+	if own.Name != nil {
+		params.Name = own.Name
+	}
+	return &params, nil
 }
 
 // createCustomer creates a Stripe customer, logging a failure and returning

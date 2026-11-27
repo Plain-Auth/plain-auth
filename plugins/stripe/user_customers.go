@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"log/slog"
-	"maps"
 	"sync"
 	"time"
 
@@ -218,27 +217,14 @@ func (h *userCustomers) createParams(ctx context.Context, log *slog.Logger, in N
 		return own, true
 	}
 	extra, err := h.opts.CustomerCreateParams(ctx, in)
-	switch {
-	case err != nil:
+	if err != nil {
 		log.ErrorContext(ctx, "Stripe CustomerCreateParams failed", "user_id", user.ID)
 		return nil, false
-	case extra == nil:
-		return own, true
-	case extra.StripeAccount != nil || extra.StripeContext != nil || extra.Headers != nil || extra.Extra != nil:
-		// A connected account's customer could not be used by this
-		// account's Checkout.
+	}
+	params, err := mergeCustomerParams(own, extra)
+	if err != nil {
 		log.ErrorContext(ctx, "Stripe CustomerCreateParams returned unsupported options", "user_id", user.ID)
 		return nil, false
 	}
-	params := *extra
-	meta := maps.Clone(extra.Params.Metadata)
-	if meta == nil {
-		meta = map[string]string{}
-	}
-	maps.Copy(meta, extra.Metadata)
-	maps.Copy(meta, own.Metadata)
-	params.Params = sdk.Params{}
-	params.UnsetFields = nil
-	params.Metadata, params.Email, params.Name = meta, own.Email, own.Name
-	return &params, true
+	return params, true
 }

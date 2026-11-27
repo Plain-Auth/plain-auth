@@ -23,6 +23,35 @@ type OrganizationOptions struct {
 	// the store opens the transaction that commits its effects, never inside
 	// it. Use a side-effect-free permission check.
 	AuthorizeReference func(ReferenceAuthorization) bool
+	// CustomerCreateParams adds parameters to the Stripe customer an
+	// organization's first purchase creates, once the purchaser's
+	// membership is rechecked. The organization's name and the plugin's
+	// metadata keys replace the host's; the host may set the email. An
+	// error, or request options (StripeAccount, StripeContext, Headers or
+	// Extra), answers UNABLE_TO_CREATE_CUSTOMER and creates nothing.
+	CustomerCreateParams func(context.Context, NewOrganizationCustomer) (*sdk.CustomerCreateParams, error)
+	// OnCustomerCreate runs once the purchase that created an organization's
+	// customer has stored it, never for a customer found in Stripe. An error
+	// answers UNABLE_TO_CREATE_CUSTOMER; the customer stays stored, and the
+	// next attempt continues with it without calling OnCustomerCreate again.
+	OnCustomerCreate func(context.Context, OrganizationCustomerCreated) error
+}
+
+// NewOrganizationCustomer describes the organization a purchase creates a
+// Stripe customer for.
+type NewOrganizationCustomer struct {
+	OrganizationID, Name string
+	// User is the member making the purchase.
+	User plainauth.User
+	// Request is a body-free copy of the upgrade request.
+	Request *http.Request
+}
+
+// OrganizationCustomerCreated reports the customer stored as the
+// organization's stripeCustomerId.
+type OrganizationCustomerCreated struct {
+	NewOrganizationCustomer
+	Customer *sdk.Customer
 }
 
 type OrganizationAccount struct{ Name, Customer string }
