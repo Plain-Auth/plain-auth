@@ -28,19 +28,25 @@ func (CustomerBoundError) Unwrap() error { return ErrCheckoutReconcile }
 
 // bindCustomer links a customer to the purchase. When a concurrent
 // identical request bound another first, the purchase continues with that
-// one, and a customer this request created is deleted.
+// one. A customer this request created but could not bind, because another
+// was bound first or the purchase was released or replaced meanwhile, is
+// deleted.
 func (s *subscriptions) bindCustomer(c auth.EndpointContext, store SubscriptionStore, a CheckoutAttempt, token, customer string, created bool) (string, error) {
-	err := store.BindStripeCheckoutCustomer(c.Request.Context(), a, token, customer, time.Now())
-	var bound CustomerBoundError
-	if !errors.As(err, &bound) {
-		return customer, err
+	ctx := c.Request.Context()
+	err := store.BindStripeCheckoutCustomer(ctx, a, token, customer, time.Now())
+	if err == nil {
+		return customer, nil
 	}
-	if created {
-		if _, err := s.client.V1Customers.Delete(c.Request.Context(), customer, nil); err != nil {
-			c.Auth.Logger().WarnContext(c.Request.Context(), "Stripe customer from a concurrent purchase was not deleted", "customer", customer, "error", err)
+	if created && errors.Is(err, ErrCheckoutReconcile) {
+		if _, err := s.client.V1Customers.Delete(ctx, customer, nil); err != nil {
+			c.Auth.Logger().WarnContext(ctx, "Stripe customer from a concurrent purchase was not deleted", "customer", customer, "error", err)
 		}
 	}
-	return bound.Customer, nil
+	var bound CustomerBoundError
+	if errors.As(err, &bound) {
+		return bound.Customer, nil
+	}
+	return customer, err
 }
 
 // checkoutCustomer links a Stripe customer to a new purchase and returns its

@@ -161,7 +161,7 @@ func (s *subscriptions) reconcile(ctx context.Context, store SubscriptionLifecyc
 			}
 		}
 		if key.NoticeType == sdk.EventTypeCustomerSubscriptionCreated && change.Plan != "" {
-			plan := s.plans[change.Plan]
+			plan := s.plans[change.Plan].clone()
 			key.CreatedPlan = &plan
 		}
 		if purchase := key.Purchase; purchase != nil {

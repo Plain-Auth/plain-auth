@@ -38,28 +38,49 @@ var errCheckoutParams = errors.New("stripe: Checkout Session parameters are unav
 var reservedMetadata = map[string]bool{"userId": true, "referenceId": true, "subscriptionId": true, "checkoutAttemptId": true, "customerType": true, "organizationId": true,
 	"__proto__": true, "constructor": true, "prototype": true}
 
-// hostCheckoutParams asks the host's hook for a new purchase's Checkout
-// parameters, outside any store transaction, and returns them encoded for
-// the reservation. An APIError refuses the purchase with its status; any
-// other failure is logged without its text and answers 500.
-func (s *subscriptions) hostCheckoutParams(c auth.EndpointContext, in CheckoutSessionInput) (json.RawMessage, error) {
+// newCheckoutParams builds a new purchase's stored Checkout parameters: the
+// host's hook's, asked outside any store transaction, and the default
+// customer_update. They are encoded for the reservation, so a retry, even
+// on a later release, sends what the first request sent. An APIError
+// refuses the purchase with its status; any other failure is logged
+// without its text and answers 500.
+func (s *subscriptions) newCheckoutParams(c auth.EndpointContext, in CheckoutSessionInput) (json.RawMessage, error) {
 	ctx := c.Request.Context()
-	params, err := s.checkoutParams(ctx, in)
-	var refusal *auth.APIError
-	switch {
-	case errors.As(err, &refusal):
-		return nil, err
-	case err != nil:
-		c.Auth.Logger().ErrorContext(ctx, "Stripe CheckoutSessionParams failed")
-		return nil, errCheckoutParams
-	case params == nil:
-		return nil, nil
+	params := &sdk.CheckoutSessionCreateParams{}
+	if s.checkoutParams != nil {
+		host, err := s.checkoutParams(ctx, in)
+		var refusal *auth.APIError
+		switch {
+		case errors.As(err, &refusal):
+			return nil, err
+		case err != nil:
+			c.Auth.Logger().ErrorContext(ctx, "Stripe CheckoutSessionParams failed")
+			return nil, errCheckoutParams
+		case host != nil:
+			params = host
+		}
 	}
 	// Request options cannot be replayed from a stored reservation, and a
 	// connected account's events are not reconciled.
 	if params.StripeAccount != nil || params.StripeContext != nil || params.Headers != nil || params.Extra != nil {
 		c.Auth.Logger().ErrorContext(ctx, "Stripe CheckoutSessionParams returned unsupported options")
 		return nil, errCheckoutParams
+	}
+	// The embedded Params' metadata and expansions have no JSON encoding, so
+	// they join the session's own, which win.
+	for k, v := range params.Params.Metadata {
+		if _, set := params.Metadata[k]; !set {
+			params.AddMetadata(k, v)
+		}
+	}
+	params.Expand = append(params.Expand, params.Params.Expand...)
+	// Checkout saves the buyer's address, and a person's name, onto the
+	// existing customer, as another runtime does, unless the host chose.
+	if params.CustomerUpdate == nil {
+		params.CustomerUpdate = &sdk.CheckoutSessionCreateCustomerUpdateParams{Address: sdk.String("auto")}
+		if !in.Organization {
+			params.CustomerUpdate.Name = sdk.String("auto")
+		}
 	}
 	raw, err := json.Marshal(params)
 	if err != nil || len(raw) > maxCheckoutParamsBytes {
@@ -103,14 +124,6 @@ func (a CheckoutAttempt) checkoutSessionParams(meta map[string]string, success s
 	}
 	if a.Locale != "" {
 		params.Locale = sdk.String(a.Locale)
-	}
-	// Checkout saves the buyer's address, and a person's name, onto the
-	// existing customer, as another runtime does, unless the host chose.
-	if params.CustomerUpdate == nil {
-		params.CustomerUpdate = &sdk.CheckoutSessionCreateCustomerUpdateParams{Address: sdk.String("auto")}
-		if a.OrganizationID == "" {
-			params.CustomerUpdate.Name = sdk.String("auto")
-		}
 	}
 	params.SetIdempotencyKey("auth-checkout-" + a.ID)
 	return params, nil

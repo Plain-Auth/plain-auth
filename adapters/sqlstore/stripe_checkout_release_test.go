@@ -340,6 +340,7 @@ func TestCheckoutLocale(t *testing.T) {
 			var mu sync.Mutex
 			var forms []url.Values
 			var posts int
+			lose := false
 			transport := localBillingTransport(func(r *http.Request) (*http.Response, error) {
 				mu.Lock()
 				defer mu.Unlock()
@@ -348,6 +349,10 @@ func TestCheckoutLocale(t *testing.T) {
 				}
 				if r.Method == "POST" {
 					posts++
+				}
+				if lose && r.URL.Path == "/v1/checkout/sessions" {
+					forms = append(forms, r.PostForm)
+					return stripeJSON(500, map[string]any{"error": map[string]string{"type": "api_error"}}), nil
 				}
 				switch {
 				case r.URL.Path == "/v1/prices/price_basic":
@@ -443,9 +448,36 @@ func TestCheckoutLocale(t *testing.T) {
 			if err := store.db.QueryRowContext(ctx, store.bind(`SELECT COUNT(*) FROM "subscription" WHERE "referenceId"=?`), freshID).Scan(&reserved); err != nil || reserved != 0 || posts != before {
 				t.Fatal("a refused request reached Stripe or reserved a purchase", reserved, posts-before, err)
 			}
-			// An empty locale is absent.
-			if status, out := call(fresh, "/subscription/upgrade", checkout(map[string]any{"locale": ""})); status != 200 || last().Has("locale") {
-				t.Fatal("an empty locale was sent", status, out, last())
+			// An empty locale asks for the browser's language.
+			if status, out := call(fresh, "/subscription/upgrade", checkout(map[string]any{"locale": ""})); status != 200 || last().Get("locale") != "auto" {
+				t.Fatal("an empty locale did not ask for the browser's language", status, out, last())
+			}
+			// The customer updates are stored with the purchase, so a retry
+			// after a lost response sends what the first request sent, and a
+			// purchase reserved by an earlier release, without them, sends none.
+			lost, lostID := newCookie()
+			mu.Lock()
+			lose = true
+			mu.Unlock()
+			if status, out := call(lost, "/subscription/upgrade", checkout(nil)); status != 502 || last().Get("customer_update[address]") != "auto" {
+				t.Fatal("a lost Checkout was not kept", status, out)
+			}
+			var value string
+			if err := store.db.QueryRowContext(ctx, store.bind(`SELECT "value" FROM "verification" WHERE "identifier"=?`), "stripe-checkout:"+lostID).Scan(&value); err != nil || !strings.Contains(value, `"customer_update"`) {
+				t.Fatal("the customer updates were not stored with the purchase", err, value)
+			}
+			var stored map[string]any
+			json.Unmarshal([]byte(value), &stored)
+			delete(stored, "checkoutParams")
+			earlier, _ := json.Marshal(stored)
+			if _, err := store.db.ExecContext(ctx, store.bind(`UPDATE "verification" SET "value"=? WHERE "identifier"=?`), string(earlier), "stripe-checkout:"+lostID); err != nil {
+				t.Fatal(err)
+			}
+			mu.Lock()
+			lose = false
+			mu.Unlock()
+			if status, out := call(lost, "/subscription/upgrade", checkout(nil)); status != 200 || last().Has("customer_update[address]") || last().Has("customer_update[name]") {
+				t.Fatal("an earlier release's purchase was sent with other parameters", status, out, last())
 			}
 			// An organization's Checkout saves only its address.
 			status, out := call(cookie, "/organization/create", map[string]any{"name": "Locale", "slug": "locale"})
@@ -464,9 +496,9 @@ func TestCheckoutLocale(t *testing.T) {
 }
 
 // The upgrade answers Stripe's Checkout Session with a redirect preference;
-// a retry of a pending purchase reads it again without a second creation,
-// answering the stored ID and URL when that read fails, and nothing from
-// Stripe is stored.
+// a retry of a pending purchase reads it again without a second creation
+// while it is open, answering the stored ID and URL once it is complete or
+// when that read fails, and nothing from Stripe is stored.
 func TestCheckoutSessionResponse(t *testing.T) {
 	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
 		t.Run(dialect, func(t *testing.T) {
@@ -482,9 +514,11 @@ func TestCheckoutSessionResponse(t *testing.T) {
 			t.Cleanup(func() { store.Close() })
 			var mu sync.Mutex
 			status, creates, reads := "open", 0, 0
+			var total float64 = 900
+			var hosted any = "https://checkout.stripe.test/full"
 			failRead := false
 			session := func() map[string]any {
-				return map[string]any{"id": "cs_full", "object": "checkout.session", "url": "https://checkout.stripe.test/full", "status": status, "mode": "subscription", "sentinel_field": "provider_only"}
+				return map[string]any{"id": "cs_full", "object": "checkout.session", "url": hosted, "status": status, "mode": "subscription", "amount_total": total, "sentinel_field": "provider_only"}
 			}
 			transport := localBillingTransport(func(r *http.Request) (*http.Response, error) {
 				mu.Lock()
@@ -545,25 +579,34 @@ func TestCheckoutSessionResponse(t *testing.T) {
 			if code != 200 || !reflect.DeepEqual(out, want) {
 				t.Fatal("the upgrade did not answer Stripe's Checkout Session", code, out)
 			}
-			// A retry on another replica reads the session again.
+			// A retry on another replica reads the open session again.
 			mu.Lock()
-			status = "complete"
+			total = 1200
 			mu.Unlock()
 			code, out = upgrade(a)
 			mu.Lock()
 			created, read := creates, reads
 			mu.Unlock()
-			if code != 200 || out["status"] != "complete" || out["redirect"] != true || created != 1 || read != 1 {
+			if code != 200 || out["amount_total"] != 1200.0 || out["redirect"] != true || created != 1 || read != 1 {
 				t.Fatal("a pending retry did not read the session again", code, out, created, read)
+			}
+			// A completed session, which has no URL and carries the buyer's
+			// details, and a failed read answer the stored ID and URL.
+			stored := map[string]any{"id": "cs_full", "url": "https://checkout.stripe.test/full", "redirect": true}
+			mu.Lock()
+			status, hosted = "complete", nil
+			mu.Unlock()
+			if code, out = upgrade(a); code != 200 || !reflect.DeepEqual(out, stored) {
+				t.Fatal("a completed session was answered whole", code, out)
 			}
 			mu.Lock()
 			failRead = true
 			mu.Unlock()
-			if code, out = upgrade(a); code != 200 || !reflect.DeepEqual(out, map[string]any{"id": "cs_full", "url": "https://checkout.stripe.test/full", "redirect": true}) {
+			if code, out = upgrade(a); code != 200 || !reflect.DeepEqual(out, stored) {
 				t.Fatal("a failed read did not answer the stored session", code, out)
 			}
-			var stored string
-			if err := store.db.QueryRowContext(ctx, store.bind(`SELECT "value" FROM "verification" WHERE "identifier"=?`), "stripe-checkout:"+hit.User.ID).Scan(&stored); err != nil || strings.Contains(stored, "provider_only") {
+			var value string
+			if err := store.db.QueryRowContext(ctx, store.bind(`SELECT "value" FROM "verification" WHERE "identifier"=?`), "stripe-checkout:"+hit.User.ID).Scan(&value); err != nil || strings.Contains(value, "provider_only") {
 				t.Fatal("Stripe's answer was stored with the purchase", err)
 			}
 		})
@@ -770,6 +813,30 @@ func TestCheckoutSessionParams(t *testing.T) {
 				if f, _ := last(); f.Get("locale") != "ko" || f.Get("metadata[planType]") != "changed" {
 					t.Error("a body locale did not win over the hook's", f.Get("locale"), f.Get("metadata[planType]"))
 				}
+				// The embedded Params' metadata reaches Checkout beneath the
+				// plugin's keys, a returned CustomerUpdate replaces the default
+				// whole, and an empty body locale asks for the browser's language
+				// over the hook's.
+				setHook(func(billing.CheckoutSessionInput) (*sdk.CheckoutSessionCreateParams, error) {
+					p := &sdk.CheckoutSessionCreateParams{Locale: sdk.String("de"), CustomerUpdate: &sdk.CheckoutSessionCreateCustomerUpdateParams{Name: sdk.String("auto")}}
+					p.Params.Metadata = map[string]string{"orderRef": "r1", "userId": "spoof"}
+					return p, nil
+				})
+				cookie3, _, body3 := newBuyer()
+				body3["locale"] = ""
+				if status, _ := upgrade(cookie3, body3); status != 200 {
+					t.Fatal("upgrade with an empty body locale", status)
+				}
+				if f, _ := last(); f.Get("locale") != "auto" || f.Get("metadata[orderRef]") != "r1" || f.Get("metadata[userId]") == "spoof" || f.Get("customer_update[name]") != "auto" || f.Has("customer_update[address]") {
+					t.Error("the hook's embedded metadata, customer updates or locale were wrong", f)
+				}
+				cookie4, _, body4 := newBuyer()
+				if status, _ := upgrade(cookie4, body4); status != 200 {
+					t.Fatal("upgrade without a body locale", status)
+				}
+				if f, _ := last(); f.Get("locale") != "de" {
+					t.Error("the hook's locale did not apply without a body locale", f.Get("locale"))
+				}
 				// Refusals and failures reserve nothing.
 				count := func(ref string) int {
 					var n int
@@ -817,5 +884,103 @@ func TestCheckoutSessionParams(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+// A customer a concurrent identical purchase created is deleted when the
+// purchase it would bind to was released meanwhile by a refused Checkout.
+func TestReleasedPurchaseDeletesUnboundCustomer(t *testing.T) {
+	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
+		t.Run(dialect, func(t *testing.T) {
+			ctx := t.Context()
+			ddl, err := schema.Generate(dialect, []string{"stripe-subscriptions"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			store, err := OpenWithSchema(ctx, dialect, organizationTestDSN(t, dialect), ddl)
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { store.Close() })
+			var mu sync.Mutex
+			var arrivals int
+			var deletes []string
+			both, firstDone := make(chan struct{}), make(chan struct{})
+			transport := localBillingTransport(func(r *http.Request) (*http.Response, error) {
+				if err := r.ParseForm(); err != nil {
+					return nil, err
+				}
+				switch {
+				case r.URL.Path == "/v1/prices/price_basic":
+					return stripeJSON(200, map[string]any{"id": "price_basic", "active": true, "recurring": map[string]any{"interval": "month", "interval_count": 1, "usage_type": "licensed"}}), nil
+				case r.URL.Path == "/v1/customers" && r.Method == "POST":
+					// Both purchases create a customer; the second answers only
+					// once the first purchase was refused and released.
+					mu.Lock()
+					arrivals++
+					n := arrivals
+					if n == 2 {
+						close(both)
+					}
+					mu.Unlock()
+					<-both
+					if n == 2 {
+						<-firstDone
+					}
+					return stripeJSON(200, map[string]any{"id": fmt.Sprintf("cus_race_%d", n), "object": "customer", "metadata": map[string]string{"userId": r.PostForm.Get("metadata[userId]"), "customerType": "user"}}), nil
+				case strings.HasPrefix(r.URL.Path, "/v1/customers/") && r.Method == "DELETE":
+					mu.Lock()
+					deletes = append(deletes, strings.TrimPrefix(r.URL.Path, "/v1/customers/"))
+					mu.Unlock()
+					return stripeJSON(200, map[string]any{"id": strings.TrimPrefix(r.URL.Path, "/v1/customers/"), "object": "customer", "deleted": true}), nil
+				case r.URL.Path == "/v1/checkout/sessions" && r.Method == "POST":
+					return stripeJSON(400, map[string]any{"error": map[string]string{"type": "invalid_request_error", "code": "parameter_invalid"}}), nil
+				}
+				return nil, fmt.Errorf("unexpected Stripe call %s %s", r.Method, r.URL.Path)
+			})
+			remote := sdk.NewClient("sk_test_local", sdk.WithBackends(sdk.NewBackendsWithConfig(&sdk.BackendConfig{HTTPClient: &http.Client{Transport: transport}, MaxNetworkRetries: sdk.Int64(0)})))
+			const origin = "https://billing.example"
+			off := false
+			a, err := plainauth.New(plainauth.Options{Store: store, Secret: strings.Repeat("s", 32), BaseURL: origin, EmailAndPassword: true, RateLimit: &off,
+				Plugins: []plainauth.Plugin{billing.New(billing.Options{WebhookSecret: "whsec_race", Subscriptions: &billing.SubscriptionOptions{Client: remote, Plans: []billing.Plan{{Name: "basic", PriceID: "price_basic"}}}})}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			hit, err := a.SignUpEmail(ctx, plainauth.SignUpInput{Name: "racer", Email: "racer@example.test", Password: "local fixture password"}, plainauth.RequestMeta{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			results := make(chan int, 2)
+			for range 2 {
+				go func() {
+					raw, _ := json.Marshal(map[string]any{"plan": "basic", "successUrl": "/done", "cancelUrl": "/cancel", "disableRedirect": true})
+					r := httptest.NewRequest("POST", origin+"/api/auth/subscription/upgrade", bytes.NewReader(raw))
+					r.Header.Set("Origin", origin)
+					r.Header.Set("Content-Type", "application/json")
+					r.AddCookie(a.SessionCookie(hit.Token, true))
+					w := httptest.NewRecorder()
+					a.ServeHTTP(w, r)
+					results <- w.Code
+				}()
+			}
+			wait := func() int {
+				t.Helper()
+				select {
+				case code := <-results:
+					return code
+				case <-time.After(30 * time.Second):
+					t.Fatal("a purchase did not finish")
+				}
+				return 0
+			}
+			first := wait()
+			close(firstDone)
+			second := wait()
+			mu.Lock()
+			defer mu.Unlock()
+			if first != 502 || second != 409 || len(deletes) != 1 || deletes[0] != "cus_race_2" {
+				t.Fatal("the customer created for a released purchase was not deleted", first, second, deletes)
+			}
+		})
 	}
 }

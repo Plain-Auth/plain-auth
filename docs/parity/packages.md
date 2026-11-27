@@ -330,7 +330,7 @@ Each row tracks the behavior exposed by a published entry point. The Go implemen
     - [x] Release a purchase Stripe definitively refused, deleting its unsent row, without asking the policy, and keep one after idempotency or lock failures for a retry with the same key, on three SQL engines ([test](../../adapters/sqlstore/stripe_checkout_release_test.go#L149))
     - [x] Refuse a reservation too large for every SQL store before any row or Stripe write, and store one just under the limit intact, on three SQL engines ([test](../../adapters/sqlstore/stripe_checkout_release_test.go#L230))
     - [x] Send the requested locale and default customer updates to Checkout, and refuse invalid locales and unknown fields before Stripe, on three SQL engines ([test](../../adapters/sqlstore/stripe_checkout_release_test.go#L327))
-    - [x] Answer Stripe's Checkout Session with a redirect preference, read it again on a pending retry without a second creation, and store nothing from Stripe, on three SQL engines ([test](../../adapters/sqlstore/stripe_checkout_release_test.go#L470))
+    - [x] Answer Stripe's Checkout Session with a redirect preference, read it again on a pending retry without a second creation, and store nothing from Stripe, on three SQL engines ([test](../../adapters/sqlstore/stripe_checkout_release_test.go#L502))
     - [x] Answer the same Checkout Session plus redirect through the browser client on both runtimes ([test](../../conformance/stripe-organization-fixture.mjs#L142))
   - [ ] Client integration (`./client`)
 

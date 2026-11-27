@@ -43,7 +43,7 @@
     - [x] Release a purchase Stripe definitively refused, deleting its unsent row, without asking the policy, and keep one after idempotency or lock failures for a retry with the same key, on three SQL engines ([test](../../../adapters/sqlstore/stripe_checkout_release_test.go#L149))
     - [x] Refuse a reservation too large for every SQL store before any row or Stripe write, and store one just under the limit intact, on three SQL engines ([test](../../../adapters/sqlstore/stripe_checkout_release_test.go#L230))
     - [x] Send the requested locale and default customer updates to Checkout, and refuse invalid locales and unknown fields before Stripe, on three SQL engines ([test](../../../adapters/sqlstore/stripe_checkout_release_test.go#L327))
-    - [x] Answer Stripe's Checkout Session with a redirect preference, read it again on a pending retry without a second creation, and store nothing from Stripe, on three SQL engines ([test](../../../adapters/sqlstore/stripe_checkout_release_test.go#L470))
+    - [x] Answer Stripe's Checkout Session with a redirect preference, read it again on a pending retry without a second creation, and store nothing from Stripe, on three SQL engines ([test](../../../adapters/sqlstore/stripe_checkout_release_test.go#L502))
     - [x] Answer the same Checkout Session plus redirect through the browser client on both runtimes ([test](../../../conformance/stripe-organization-fixture.mjs#L142))
   - [ ] `POST /subscription/cancel`
     - [x] Open a cancellation page scoped to the signed-in customer and selected subscription ([test](../../../adapters/sqlstore/stripe_management_test.go#L246))
@@ -145,8 +145,8 @@
     - [x] `onSubscriptionCreated` ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L572))
       - [x] Notify once for a new Dashboard subscription with its configured plan and committed owner reference ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L572))
       - [x] Exclude Checkout’s existing incomplete local row and claim concurrent Dashboard creation once ([test](../../../adapters/sqlstore/stripe_lifecycle_callbacks_test.go#L179))
-    - [x] `getCheckoutSessionParams` ([test](../../../adapters/sqlstore/stripe_checkout_release_test.go#L576))
-      - [x] Send the host's Checkout parameters to a new purchase once, beneath the plugin's owned fields and metadata keys, reuse them on a retry, and reserve nothing when the hook refuses or fails, for personal and organization purchases on three SQL engines ([test](../../../adapters/sqlstore/stripe_checkout_release_test.go#L576))
+    - [x] `getCheckoutSessionParams` ([test](../../../adapters/sqlstore/stripe_checkout_release_test.go#L619))
+      - [x] Send the host's Checkout parameters to a new purchase once, beneath the plugin's owned fields and metadata keys, reuse them on a retry, and reserve nothing when the hook refuses or fails, for personal and organization purchases on three SQL engines ([test](../../../adapters/sqlstore/stripe_checkout_release_test.go#L619))
   - [ ] `StripeOptions`
     - [ ] `stripeClient`
       - [x] Send every portal, cancellation, restoration and schedule-release request through the caller-supplied Stripe SDK client on three SQL engines ([test](../../../adapters/sqlstore/stripe_management_test.go#L179))
@@ -237,7 +237,7 @@
             - [x] Schedule the requested annual price at the current period boundary with no proration, answer with the return page instead of a hosted link and keep the current price listed, on both runtimes ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L297))
         - [ ] Simple Example:
           - [x] Accept the documented upgrade request with a locale for a person and an organization, on three SQL engines ([test](../../../adapters/sqlstore/stripe_checkout_release_test.go#L327))
-          - [x] Create a Checkout Session and answer it with a redirect preference, on three SQL engines ([test](../../../adapters/sqlstore/stripe_checkout_release_test.go#L470))
+          - [x] Create a Checkout Session and answer it with a redirect preference, on three SQL engines ([test](../../../adapters/sqlstore/stripe_checkout_release_test.go#L502))
       - [ ] Switching Plans
         - [x] Open monthly and annual confirmation pages for the owner’s existing subscription and preserve its price until Stripe confirms ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L272))
         - [x] Reject pending changes, unsupported recurring items, foreign customers and a session revoked during Stripe’s reply on three SQL engines ([test](../../../adapters/sqlstore/stripe_plan_change_test.go#L105))
@@ -455,8 +455,8 @@
       - [ ] `authorizeReference`
         - [x] Pass the current member role and action for organization checkout, listing and billing portal to the host's billing policy, outside any store transaction, and refuse disallowed roles, including after a role change during Stripe's reply, on three SQL engines ([test](../../../adapters/sqlstore/stripe_organization_test.go#L138))
         - [x] Pass upgrade-subscription, list-subscription, cancel-subscription, restore-subscription or billing-portal to the organization policy for each operation, on three SQL engines ([test](../../../adapters/sqlstore/stripe_organization_management_test.go#L193))
-      - [x] `getCheckoutSessionParams` ([test](../../../adapters/sqlstore/stripe_checkout_release_test.go#L576))
-        - [x] Send the host's Checkout parameters to a new purchase once, beneath the plugin's owned fields and metadata keys, reuse them on a retry, and reserve nothing when the hook refuses or fails, for personal and organization purchases on three SQL engines ([test](../../../adapters/sqlstore/stripe_checkout_release_test.go#L576))
+      - [x] `getCheckoutSessionParams` ([test](../../../adapters/sqlstore/stripe_checkout_release_test.go#L619))
+        - [x] Send the host's Checkout parameters to a new purchase once, beneath the plugin's owned fields and metadata keys, reuse them on a retry, and reserve nothing when the hook refuses or fails, for personal and organization purchases on three SQL engines ([test](../../../adapters/sqlstore/stripe_checkout_release_test.go#L619))
       - [x] `onSubscriptionComplete` ([test](../../../conformance/stripe-organization-fixture.mjs#L371))
         - [x] Deliver signed personal and organization Checkout events before the general callback, including retries that change the current plan, status and quantity ([test](../../../conformance/stripe-organization-fixture.mjs#L371))
         - [x] Bind completion to the settled purchaser, preserve the browser return window and isolate concurrent or failed deliveries ([test](../../../adapters/sqlstore/stripe_checkout_completion_test.go#L39))
@@ -548,14 +548,14 @@
         - [x] Create the organization customer without an email and never update it during checkout or renewal, on both runtimes ([test](../../../conformance/stripe-organization-fixture.mjs#L190))
     - [x] Handling user deletion ([test](../../../adapters/sqlstore/stripe_user_deletion_test.go#L26))
       - [x] Block account deletion from BeforeDeleteUser while Stripe reports any subscription other than canceled, incomplete or incomplete_expired across result pages, deny it when the lookup fails, and allow it otherwise, on three SQL engines ([test](../../../adapters/sqlstore/stripe_user_deletion_test.go#L26))
-    - [x] Custom Checkout Session Parameters ([test](../../../adapters/sqlstore/stripe_checkout_release_test.go#L576))
-      - [x] Send the host's Checkout parameters to a new purchase once, beneath the plugin's owned fields and metadata keys, reuse them on a retry, and reserve nothing when the hook refuses or fails, for personal and organization purchases on three SQL engines ([test](../../../adapters/sqlstore/stripe_checkout_release_test.go#L576))
-    - [x] Tax Collection ([test](../../../adapters/sqlstore/stripe_checkout_release_test.go#L576))
+    - [x] Custom Checkout Session Parameters ([test](../../../adapters/sqlstore/stripe_checkout_release_test.go#L619))
+      - [x] Send the host's Checkout parameters to a new purchase once, beneath the plugin's owned fields and metadata keys, reuse them on a retry, and reserve nothing when the hook refuses or fails, for personal and organization purchases on three SQL engines ([test](../../../adapters/sqlstore/stripe_checkout_release_test.go#L619))
+    - [x] Tax Collection ([test](../../../adapters/sqlstore/stripe_checkout_release_test.go#L619))
       - [x] Let Checkout save the buyer's address, and a person's name, onto the existing customer by default, on three SQL engines ([test](../../../adapters/sqlstore/stripe_checkout_release_test.go#L327))
-      - [x] Collect tax IDs through the host's Checkout parameters, on three SQL engines ([test](../../../adapters/sqlstore/stripe_checkout_release_test.go#L576))
-    - [x] Automatic Tax Calculation ([test](../../../adapters/sqlstore/stripe_checkout_release_test.go#L576))
+      - [x] Collect tax IDs through the host's Checkout parameters, on three SQL engines ([test](../../../adapters/sqlstore/stripe_checkout_release_test.go#L619))
+    - [x] Automatic Tax Calculation ([test](../../../adapters/sqlstore/stripe_checkout_release_test.go#L619))
       - [x] Let Checkout save the buyer's address, and a person's name, onto the existing customer by default, on three SQL engines ([test](../../../adapters/sqlstore/stripe_checkout_release_test.go#L327))
-      - [x] Enable automatic tax through the host's Checkout parameters, on three SQL engines ([test](../../../adapters/sqlstore/stripe_checkout_release_test.go#L576))
+      - [x] Enable automatic tax through the host's Checkout parameters, on three SQL engines ([test](../../../adapters/sqlstore/stripe_checkout_release_test.go#L619))
     - [ ] Trial Period Management
       - [x] Offer the configured trial only for a new personal or organization billing reference with no trial history across plans ([test](../../../conformance/stripe-organization-fixture.mjs#L412))
       - [x] Preserve the granted trial and provider idempotency key after lost responses and across replicas ([test](../../../adapters/sqlstore/stripe_trial_test.go#L81))

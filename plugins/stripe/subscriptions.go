@@ -338,6 +338,11 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 	// The locale is stored with the purchase before Stripe sees it, so one
 	// longer than any Stripe locale is refused; an empty one is absent.
 	locale, _ := c.Body["locale"].(string)
+	if _, sent := c.Body["locale"]; sent && locale == "" {
+		// An empty locale asks for the browser's language over the hook's,
+		// as another runtime sends it.
+		locale = "auto"
+	}
 	if len(locale) > 35 {
 		return nil, billingError(400, "VALIDATION_ERROR", "[body.locale] Invalid input")
 	}
@@ -432,14 +437,12 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 		}
 		// A new purchase asks the host for its Checkout parameters once,
 		// before it is reserved; a retry reuses the stored result.
-		if s.checkoutParams != nil {
-			input := CheckoutSessionInput{User: ss.User, Session: ss.Session, Plan: p.clone(), ReferenceID: selection.reference, Organization: selection.organization, Interval: interval, Request: c.RequestMetadata()}
-			if !automatic {
-				input.Seats = quantity
-			}
-			if want.CheckoutParams, err = s.hostCheckoutParams(c, input); err != nil {
-				return nil, err
-			}
+		input := CheckoutSessionInput{User: ss.User, Session: ss.Session, Plan: p.clone(), ReferenceID: selection.reference, Organization: selection.organization, Interval: interval, Request: c.RequestMetadata()}
+		if !automatic {
+			input.Seats = quantity
+		}
+		if want.CheckoutParams, err = s.newCheckoutParams(c, input); err != nil {
+			return nil, err
 		}
 		if _, supported := store.(SubscriptionLifecycleStore); (want.Metered || len(want.MeteredPriceIDs) > 0) && !supported {
 			return nil, billingError(409, "METERED_CHECKOUT_UNAVAILABLE", "Metered checkout requires subscription lifecycle storage")
@@ -543,10 +546,12 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 
 // pendingCheckoutBody reads a pending purchase's Checkout Session again, so
 // a retry answers its current state; nothing from Stripe is stored. A
-// failed read answers nil.
+// failed read, or a session no longer open, answers nil: a completed or
+// expired session has no URL, and a completed one carries the buyer's
+// details, which another member retrying the purchase must not see.
 func (s *subscriptions) pendingCheckoutBody(ctx context.Context, id string) []byte {
 	session, err := s.client.V1CheckoutSessions.Retrieve(ctx, id, nil)
-	if err != nil || session == nil || session.ID != id || session.LastResponse == nil {
+	if err != nil || session == nil || session.ID != id || session.LastResponse == nil || session.Status != sdk.CheckoutSessionStatusOpen || session.URL == "" {
 		return nil
 	}
 	return session.LastResponse.RawJSON
