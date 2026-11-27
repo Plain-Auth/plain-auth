@@ -130,7 +130,7 @@ func TestIssuerDiscoveryMounts(t *testing.T) {
 			r.Header.Set("Forwarded", "host=untrusted.example.test;proto=http")
 			w := httptest.NewRecorder()
 			mux.ServeHTTP(w, r)
-			if w.Code != 200 || w.Header().Get("X-Discovery") != "auth" || w.Header().Get("Cache-Control") != "private, max-age=5" ||
+			if w.Code != 200 || w.Header().Get("X-Discovery") != "auth" || w.Header().Get("Cache-Control") != "private, max-age=5" || !strings.HasPrefix(w.Header().Get("Content-Type"), "application/json") ||
 				w.Header().Get("Access-Control-Allow-Origin") != "" || strings.Contains(w.Body.String(), "changed") ||
 				strings.Contains(w.Body.String(), "untrusted") || w.Body.Bytes()[0] != '{' {
 				t.Fatalf("GET %s: %d %v %s", path, w.Code, w.Header(), w.Body.String())
@@ -222,5 +222,59 @@ func TestIssuerDiscoveryMounts(t *testing.T) {
 		if _, err := op.GetAuthorizationServerConfig(a); !errors.Is(err, auth.ErrNotFound) || len(a.WellKnownPaths()) != 0 {
 			t.Fatal("unexpected discovery document", err)
 		}
+	}
+}
+
+// Each mounted discovery document is JSON with the default cache rule when
+// Metadata.Headers sets none, for the authorization server and OpenID
+// documents alike.
+func TestDiscoveryDefaultHeaders(t *testing.T) {
+	s, err := sqlstore.OpenWithOptions(t.Context(), "sqlite", ":memory:", []string{"oauth-provider", "jwt"}, schema.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { s.Close() })
+	p, err := op.New(op.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sign, err := auth.NewJWT(auth.JWTOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	a, err := auth.New(auth.Options{BaseURL: "https://accounts.example.test", Secret: strings.Repeat("a", 48), Store: s, Plugins: []auth.Plugin{p, sign}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	paths := a.WellKnownPaths()
+	for _, want := range []string{"/.well-known/oauth-authorization-server/api/auth", "/.well-known/openid-configuration"} {
+		if !slices.ContainsFunc(paths, func(p string) bool { return strings.HasPrefix(p, want) || strings.HasSuffix(p, want) }) {
+			t.Fatal("a discovery document was not mounted", want, paths)
+		}
+	}
+	for _, path := range paths {
+		w := httptest.NewRecorder()
+		a.ServeHTTP(w, httptest.NewRequest(http.MethodGet, path, nil))
+		if w.Code != 200 || !strings.HasPrefix(w.Header().Get("Content-Type"), "application/json") || w.Header().Get("Cache-Control") != "public, max-age=15, stale-while-revalidate=15, stale-if-error=86400" {
+			t.Fatal("a discovery document lacks its JSON type or default cache rule", path, w.Code, w.Header())
+		}
+	}
+	// Metadata.Headers replaces the defaults on the OpenID document too.
+	custom, err := op.New(op.Options{Metadata: op.IssuerMetadataOptions{Headers: http.Header{"Cache-Control": {"no-store"}, "X-Discovery": {"openid"}}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	a, err = auth.New(auth.Options{BaseURL: "https://accounts.example.test", Secret: strings.Repeat("a", 48), Store: s, Plugins: []auth.Plugin{custom, sign}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	w := httptest.NewRecorder()
+	a.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/.well-known/openid-configuration/api/auth", nil))
+	if w.Code == 404 {
+		w = httptest.NewRecorder()
+		a.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/auth/.well-known/openid-configuration", nil))
+	}
+	if w.Code != 200 || !strings.HasPrefix(w.Header().Get("Content-Type"), "application/json") || w.Header().Get("Cache-Control") != "no-store" || w.Header().Get("X-Discovery") != "openid" {
+		t.Fatal("the OpenID document did not take the configured headers", w.Code, w.Header(), a.WellKnownPaths())
 	}
 }

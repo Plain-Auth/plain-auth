@@ -7,10 +7,11 @@
 - [ ] OAuth provider endpoints, types and options
   - [x] Enforce consent owner and client scope rules when a signed-in account manages its authorized applications ([test](../../../conformance/oauth-consent.mjs#L6))
   - [ ] `getIssuer`
-  - [ ] `PublicClientJwksValidationResult`
-    - [x] Return a validation error for unsupported algorithms and private key members ([test](../../../plugins/oauthprovider/registration_test.go#L35))
-  - [x] `validatePublicClientJwks` ([test](../../../plugins/oauthprovider/registration_test.go#L35))
-    - [x] Validate public RSA, EC and Ed25519 keys and compatible signing algorithms and reject private key material ([test](../../../plugins/oauthprovider/registration_test.go#L35))
+  - [x] `PublicClientJwksValidationResult` ([test](../../../plugins/oauthprovider/registration_test.go#L106))
+    - [x] Return a validation error for unsupported algorithms and private key members ([test](../../../plugins/oauthprovider/registration_test.go#L50))
+    - [x] Refuse each invalid public key set with invalid_client_metadata and the description naming its reason ([test](../../../plugins/oauthprovider/registration_test.go#L106))
+  - [x] `validatePublicClientJwks` ([test](../../../plugins/oauthprovider/registration_test.go#L50))
+    - [x] Validate public RSA, EC and Ed25519 keys and compatible signing algorithms and reject private key material ([test](../../../plugins/oauthprovider/registration_test.go#L50))
   - [ ] `isForbiddenCimdClientMetadataField`
   - [ ] `oauthProviderResourceClient`
     - [x] Derive protected-resource discovery from a local auth mount and issuer or from standalone configuration ([test](../../../conformance/resource-discovery.mjs#L7))
@@ -27,11 +28,13 @@
     - [x] Serialize the value once, preserve independent multi-value headers, honor custom cache rules and serve JSON ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L33))
   - [ ] `oauthAuthorizationServerMetadata`
     - [x] Discover endpoints and capabilities for the machine grant, then register a client, verify a signed token and revoke an opaque token ([test](../../../conformance/oauth-issuer-metadata.mjs#L95))
-  - [ ] `oauthProviderAuthServerMetadata`
+  - [x] `oauthProviderAuthServerMetadata` ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L259))
     - [x] Mount both issuer discovery paths through ServeMux, chi, Gorilla Mux, Gin, Echo and Fiber and read them with GET and HEAD ([test](../../../integrations/routers/routers_test.go#L169))
     - [x] Retrieve the native issuer document, preserve escaped issuer paths and omit disabled endpoints and unavailable store capabilities ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L64))
-  - [ ] `oauthProviderOpenIdConfigMetadata`
+    - [x] Serve each mounted authorization server document as JSON with the configured headers or the default cache rule ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L259))
+  - [x] `oauthProviderOpenIdConfigMetadata` ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L278))
     - [x] Read the mounted OpenID provider document from Go, including host page capabilities and the configured claim list ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L75))
+    - [x] Serve the OpenID document as JSON with the default cache rule, or with the configured headers ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L278))
   - [ ] `oidcServerMetadata`
     - [x] Start from a custom issuer URL, discover the endpoints, complete PKCE sign-in and verify the ID token, access-token hash and UserInfo subject using an independent Go client ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L23))
   - [ ] `publicSessionMiddleware`
@@ -118,7 +121,8 @@
   - [ ] `POST /oauth2/register`
     - [x] Register public and confidential clients and exchange both a shared secret and an ES256 assertion at an independent issuer ([test](../../../conformance/oauth-registration.mjs#L440))
     - [x] Commit the client and its resource links atomically across concurrent registrations on three SQL engines ([test](../../../adapters/sqlstore/oauth_registration_test.go#L23))
-  - [ ] `DEFAULT_OAUTH_SCOPES`
+  - [x] `DEFAULT_OAUTH_SCOPES` ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L234))
+    - [x] Advertise openid, profile, email and offline_access when no scopes are configured ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L234))
   - [ ] `getOAuthProviderState`
   - [ ] `oauthProvider`
   - [ ] `POST /admin/oauth2/create-client` (server API only)
@@ -252,7 +256,8 @@
   - [ ] `InitialAccessTokenAuthorization`
   - [ ] `OAuthOptions`
     - [ ] `schema`
-    - [ ] `scopes`
+    - [x] `scopes` ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L234))
+      - [x] Default the scopes to openid, profile, email and offline_access and refuse registration scopes outside them ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L234))
     - [ ] `requireOpenId`
     - [ ] `validateRedirectUri`
       - [x] Apply host callback policy after validating transport and reject policy errors before redirecting ([test](../../../adapters/sqlstore/oauth_browser_authorization_test.go#L179))
@@ -320,8 +325,9 @@
     - [ ] `extensions`
     - [ ] `clientRegistrationDefaultScopes`
       - [x] Apply the host registration ceiling even when a client requests a narrower subset ([test](../../../conformance/oauth-registration.mjs#L214))
-    - [ ] `clientRegistrationAllowedScopes`
+    - [x] `clientRegistrationAllowedScopes` ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L245))
       - [x] Persist the allowed registration scopes and reject a scope outside that set ([test](../../../conformance/oauth-registration.mjs#L240))
+      - [x] Refuse a registration scope outside the configured scopes when the plugin is built ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L245))
     - [x] `clientRegistrationRequirePKCE` ([test](../../../conformance/oauth-registration.mjs#L254))
       - [x] Allow a confidential registration to relax PKCE while retaining the public client requirement ([test](../../../conformance/oauth-registration.mjs#L254))
     - [x] `clientRegistrationDefaultApplicationType` ([test](../../../conformance/oauth-registration.mjs#L251))
@@ -336,6 +342,7 @@
       - [x] Enforce the rotate privilege on the authenticated session before replacing a tenant credential ([test](../../../conformance/oauth-registration.mjs#L460))
     - [ ] `grantTypes`
       - [x] Register only the mutually supported requested grant types ([test](../../../conformance/oauth-registration.mjs#L210))
+      - [x] Refuse refresh_token without authorization_code when the plugin is built ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L245))
     - [x] `loginPage` ([test](../../../conformance/oauth-browser-login.mjs#L64))
       - [x] Open the configured host page for signed-out and forced login and return an error for silent requests ([test](../../../conformance/oauth-browser-login.mjs#L64))
     - [x] `consentPage` ([test](../../../conformance/oauth-browser-authorization.mjs#L57))
@@ -374,6 +381,7 @@
       - [x] Preserve configured discovery scope and authentication method order independently of introspection and revocation ([test](../../../conformance/oauth-issuer-metadata.mjs#L65))
       - [x] Reject unknown scopes, unsupported machine authentication, duplicate methods and an explicitly empty method list ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L17))
       - [x] Explicitly advertise pre-provisioned public clients, preserve protected introspection and publish only supported delegated grants ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L158))
+      - [x] Advertise exactly the configured UserInfo claims ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L237))
     - [ ] `prefix`
       - [x] Return prefixed shared credentials accepted by an independent issuer ([test](../../../conformance/oauth-registration.mjs#L233))
       - [x] Generate and hash the raw refresh token, encode it for its session, then apply the public prefix ([test](../../../adapters/sqlstore/oauth_offline_code_test.go#L139))
@@ -392,10 +400,12 @@
     - [ ] `pairwiseSecret`
       - [x] Derive pairwise refresh subjects from the first redirect host with normalized international names, IPv6 literals and non-default ports ([test](../../../plugins/oauthprovider/pairwise_subject_test.go#L10))
       - [x] Keep a stored pairwise account identifier private if the required secret is missing ([test](../../../adapters/sqlstore/oauth_refresh_introspection_test.go#L123))
+      - [x] Refuse a pairwise secret shorter than 32 bytes when the plugin is built ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L245))
     - [ ] `requestUriResolver`
     - [ ] `dpop`
       - [x] Enforce issuer proof algorithms and shared replay storage during machine issuance on all three SQL engines ([test](../../../adapters/sqlstore/oauth_dpop_issuance_test.go#L39))
       - [x] Keep replay records with the verification records in the shared database when SecondaryStorage holds sessions, so a second issuer refuses a replay and the storage receives no reservation ([test](../../../adapters/sqlstore/dpop_secondary_storage_test.go#L26))
+      - [x] Bound the accepted DPoP proof age with ProofMaxAge, refusing a proof 61 seconds old under a one-minute limit and accepting one 59 seconds old ([test](../../../plugins/oauthprovider/dpop_test.go#L145))
   - [ ] `OAuthAuthorizationQuery`
   - [x] `OAuthResource` ([test](../../../conformance/resource-registry.mjs#L72))
     - [x] Round-trip the full persisted resource, including IDs, timestamps and nullable policy fields ([test](../../../conformance/resource-registry.mjs#L72))
@@ -464,7 +474,8 @@
   - [ ] `ExtractedCredentials`
   - [ ] `destructureCredentials`
   - [ ] `extractClientCredentials`
-  - [ ] `parsePrompt`
+  - [x] `parsePrompt` ([test](../../../plugins/oauthprovider/browser_authorization_test.go#L60))
+    - [x] Accept each supported prompt and drop repeats and extra spaces from a prompt list ([test](../../../plugins/oauthprovider/browser_authorization_test.go#L60))
   - [ ] `resolveSubjectIdentifier`
   - [x] `getConsentReferenceId` ([test](../../../adapters/sqlstore/oauth_post_login_test.go#L209))
     - [x] Resolve the approval reference for the requested or accepted scopes and support personal approval when the host returns an empty reference ([test](../../../adapters/sqlstore/oauth_post_login_test.go#L209))
@@ -477,7 +488,8 @@
   - [x] `isPKCERequired` ([test](../../../plugins/oauthprovider/authorization_code_test.go#L15))
     - [x] Resolve public and confidential client PKCE requirements, including offline scopes, OIDC nonces and explicit registration policy ([test](../../../plugins/oauthprovider/authorization_code_test.go#L15))
   - [ ] `isRedirectUriTransportAllowed`
-  - [ ] `isInsecureRedirectUriAllowed`
+  - [x] `isInsecureRedirectUriAllowed` ([test](../../../plugins/oauthprovider/registration_test.go#L46))
+    - [x] Refuse an HTTP callback with credentials even on an approved host, and accept an approved HTTP web callback ([test](../../../plugins/oauthprovider/registration_test.go#L46))
   - [ ] `getAuthEndpointUrl`
   - [ ] `isLocalCapacityRefusal`
   - [ ] `isTransientAbort`
@@ -538,10 +550,13 @@
       - [x] Link allowed resources in the same transaction as the new dynamic client ([test](../../../adapters/sqlstore/oauth_registration_test.go#L105))
     - [ ] Redirect URI forms
       - [x] Exercise HTTPS web, native private scheme and exact HTTP loopback redirects ([test](../../../plugins/oauthprovider/registration_test.go#L14))
+      - [x] Accept loopback and custom-scheme callbacks for native clients only ([test](../../../plugins/oauthprovider/registration_test.go#L31))
       - [ ] HTTPS on a non-loopback host
-      - [ ] HTTP loopback, any port (RFC 8252 §7.3)
+      - [x] HTTP loopback, any port (RFC 8252 §7.3) ([test](../../../plugins/oauthprovider/registration_test.go#L31))
+        - [x] Accept an HTTP loopback callback on any port for a native client and refuse it for a web client ([test](../../../plugins/oauthprovider/registration_test.go#L31))
       - [ ] Reverse-domain private-use scheme (RFC 8252 §7.1)
-      - [ ] Custom scheme with a host and a path
+      - [x] Custom scheme with a host and a path ([test](../../../plugins/oauthprovider/registration_test.go#L33))
+        - [x] Accept a custom scheme with a host and path for a native client and refuse it for a web client ([test](../../../plugins/oauthprovider/registration_test.go#L33))
   - [ ] Custom redirect URI validation
   - [ ] HTTP redirect URIs
   - [ ] Private key JWT
@@ -579,6 +594,7 @@
   - [ ] What the provider supports
     - [ ] Grants
     - [ ] Authorization requests
+      - [x] Accept the none, login, consent, select_account and create prompts with the query response mode ([test](../../../plugins/oauthprovider/browser_authorization_test.go#L56))
     - [ ] PKCE
       - [x] Exchange a browser-issued S256 code, verify the delegated access token with an independent issuer and isolate replay cleanup to that code ([test](../../../conformance/oauth-authorization-code.mjs#L5))
       - [x] Resolve public and confidential client PKCE requirements, including offline scopes, OIDC nonces and explicit registration policy ([test](../../../plugins/oauthprovider/authorization_code_test.go#L15))
@@ -605,8 +621,9 @@
 ## OpenID Connect and logout
 
 - [ ] OpenID Connect and logout
-  - [ ] Discovery metadata
+  - [x] Discovery metadata ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L237))
     - [x] Read identical OpenID and OAuth aliases, discover signing keys and validate claims and subjects for each supported signing algorithm ([test](../../../conformance/oauth-id-tokens.mjs#L33))
+    - [x] Advertise exactly the configured supported claims ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L237))
   - [ ] ID token claims
     - [x] Issue protocol claims with authentication context 0 and place individually consented email and profile fields at UserInfo ([test](../../../conformance/oauth-id-tokens.mjs#L78))
     - [x] Verify host-provided profile and application claims while protecting all sixteen issuer-owned names on code and refresh exchanges ([test](../../../conformance/oauth-id-tokens.mjs#L89))
@@ -987,7 +1004,7 @@
     - [x] Resolve public and confidential client PKCE requirements, including offline scopes, OIDC nonces and explicit registration policy ([test](../../../plugins/oauthprovider/authorization_code_test.go#L15))
     - [x] Sign in and register a public client, then obtain a code by GET or form POST and redeem it at either issuer with S256 PKCE ([test](../../../conformance/oauth-browser-authorization.mjs#L5))
   - [ ] DPoP
-    - [x] Verify signed DPoP proofs, their token hashes, permitted algorithms, normalized targets, validity windows and sender thumbprints ([test](../../../plugins/oauthprovider/dpop_test.go#L58))
+    - [x] Verify signed DPoP proofs, their token hashes, permitted algorithms, normalized targets, validity windows and sender thumbprints ([test](../../../plugins/oauthprovider/dpop_test.go#L59))
     - [x] Exchange proof reservations with an independent runtime and reject reuse in both directions ([test](../../../conformance/dpop-proofs.mjs#L39))
     - [x] Accept a proof only once across independent connections and expire reservations on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/verification_reservation_test.go#L12))
     - [x] Share proof reservations across independent Redis clients without extending their expiry ([test](../../../adapters/redis/storage_test.go#L435))

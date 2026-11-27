@@ -25,10 +25,25 @@ func TestRegistrationRedirectPolicy(t *testing.T) {
 		{"native", "http://localhost:80/cb", true}, {"native", "http://127.0.0.2/cb", false},
 		{"native", "http://localhost./cb", false}, {"native", "http://preview.localhost/cb", false},
 		{"native", "https://example.test/cb#", false}, {"web", "https://example.test:70000/cb", false},
+		// Credentials are refused even when the host is approved, and
+		// loopback and custom-scheme callbacks belong to native clients.
+		{"web", "http://user@dev.example.test/cb", false}, {"native", "http://user:pw@dev.example.test/cb", false},
+		{"web", "http://127.0.0.1:8787/callback", false}, {"native", "http://127.0.0.1:8787/callback", true},
+		{"web", "com.example.app:/callback", false}, {"native", "com.example.app:/callback", true},
+		{"web", "myapp://example.app/callback", false}, {"native", "myapp://example.app/callback", true},
+		{"web", "http://localhost:3000/cb", false},
 	} {
 		if err := r.validateRedirect(tc.uri, tc.app); (err == nil) != tc.ok {
 			t.Errorf("%s %s: %v", tc.app, tc.uri, err)
 		}
+	}
+	// An approved web host may use HTTP, but never with credentials.
+	local := RegistrationOptions{AllowHTTPRedirect: func(u *url.URL) bool { return u.Hostname() == "localhost" }}
+	if err := local.validateRedirect("http://localhost:3000/cb", "web"); err != nil {
+		t.Fatal("an approved HTTP web callback was refused", err)
+	}
+	if err := local.validateRedirect("http://user@localhost:3000/cb", "web"); err == nil {
+		t.Fatal("an approved HTTP web callback with credentials was accepted")
 	}
 }
 
@@ -75,9 +90,20 @@ func TestRegistrationPublicKeys(t *testing.T) {
 			delete(key, field)
 		}
 	}
-	for _, raw := range []string{`{}`, `[]`, `{"keys":[]}`, `{"keys":[null]}`, `{"keys":[{"kty":"oct"}]}`, `{"keys":[{"kty":"RSA","n":"n"}]}`, `{"keys":[{"kty":"EC","crv":"P-256","x":"x","y":"y","alg":"ES384"}]}`, `{"keys":[{"kty":"OKP","crv":"X25519","x":"x"}]}`} {
-		if ValidatePublicClientJWKS(json.RawMessage(raw)) == nil {
-			t.Fatal("accepted invalid public key set", raw)
+	// Each refusal names its reason, as another runtime's validation result
+	// does.
+	const (
+		set    = "jwks must be an RFC 7517 JWK Set object with a non-empty keys array"
+		public = "jwks must contain only public asymmetric keys"
+		params = "jwks keys must be supported public JWKs with required key parameters"
+		alg    = "jwks key alg must be supported for private_key_jwt and compatible with its key type and signing curve"
+	)
+	for raw, want := range map[string]string{`{}`: set, `[]`: set, `{"keys":[]}`: set, `{"keys":[null]}`: params, `{"keys":[{"kty":"oct"}]}`: public,
+		`{"keys":[{"kty":"RSA","n":"n","e":"AQAB","d":"d"}]}`: public, `{"keys":[{"kty":"RSA","n":"n"}]}`: params, `{"keys":[{"kty":"OKP","crv":"X25519","x":"x"}]}`: params,
+		`{"keys":[{"kty":"EC","crv":"P-256","x":"x","y":"y","alg":"ES384"}]}`: alg} {
+		var e *auth.OAuthError
+		if err := ValidatePublicClientJWKS(json.RawMessage(raw)); !errors.As(err, &e) || e.Code != "invalid_client_metadata" || e.Description != want {
+			t.Fatal("an invalid public key set was not refused with its reason", raw, err)
 		}
 	}
 }

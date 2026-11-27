@@ -107,7 +107,8 @@
     - [ ] `mcpPluginOptionsType.loginPage`
     - [ ] `mcpPluginOptionsType.consentPage`
     - [ ] `mcpPluginOptionsType.resource`
-    - [ ] `mcpOauthOptionsType.scopes`
+    - [x] `mcpOauthOptionsType.scopes` ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L234))
+      - [x] Advertise the four default scopes when none are configured ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L234))
     - [ ] `mcpOauthOptionsType.resources`
     - [ ] `mcpOauthOptionsType.accessTokenExpiresIn`
     - [ ] `mcpOauthOptionsType.idTokenExpiresIn`

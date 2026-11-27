@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"errors"
 	"maps"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -130,6 +131,19 @@ func TestDPoPProofValidation(t *testing.T) {
 	result, err = v.Verify(t.Context(), sign(changed), req)
 	if err != nil || result.IssuedAt.Nanosecond() != 500000000 {
 		t.Fatal("valid fractional time and 512-unit ID", err)
+	}
+	// ProofMaxAge narrows the accepted proof age.
+	short, err := NewDPoPVerifier(DPoPOptions{ProofMaxAge: time.Minute})
+	if err != nil {
+		t.Fatal(err)
+	}
+	short.now = func() time.Time { return time.Unix(epoch, 0) }
+	for _, age := range []int64{61, 59} {
+		c := maps.Clone(base)
+		c["iat"], c["jti"] = epoch-age, "aged-proof-"+strconv.FormatInt(age, 10)
+		if _, err := short.Verify(t.Context(), sign(c), req); (err == nil) != (age < 60) {
+			t.Fatal("ProofMaxAge did not bound the proof age", age, err)
+		}
 	}
 }
 

@@ -48,6 +48,17 @@ func TestBrowserAuthorizationRules(t *testing.T) {
 			t.Errorf("%s: %v", tc.k, err)
 		}
 	}
+	// Each supported prompt and the query response mode are accepted, and a
+	// prompt list loses its repeats and extra spaces.
+	for _, prompt := range []string{"none", "login", "consent", "select_account", "create"} {
+		q := url.Values{"response_type": {"code"}, "code_challenge": {"digest"}, "code_challenge_method": {"S256"}, "prompt": {prompt}, "response_mode": {"query"}}
+		if request, err := opts.browserGrant(base, q); err != nil || !slices.Equal(request.prompts, []string{prompt}) {
+			t.Fatal("a supported prompt was refused", prompt, err)
+		}
+	}
+	if request, err := opts.browserGrant(base, url.Values{"response_type": {"code"}, "code_challenge": {"digest"}, "code_challenge_method": {"S256"}, "prompt": {"login  consent login"}}); err != nil || !slices.Equal(request.prompts, []string{"login", "consent"}) {
+		t.Fatal("a prompt list kept its repeats", request.prompts, err)
+	}
 	q := url.Values{"response_type": {"code"}, "code_challenge": {"digest"}, "code_challenge_method": {"S256"}}
 	request, err := opts.browserGrant(base, q)
 	if err != nil || !slices.Equal(request.Scopes, opts.Scopes) {

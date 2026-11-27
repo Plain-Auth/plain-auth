@@ -200,3 +200,49 @@ func TestOpenIDMetadataCapabilities(t *testing.T) {
 		})
 	}
 }
+
+// Without options the provider advertises the four default scopes; the
+// configured UserInfo claims are advertised exactly; and option sets that
+// cannot work are refused at construction, as another runtime refuses them.
+func TestProviderOptionDefaultsAndRefusals(t *testing.T) {
+	store, err := sqlstore.OpenWithOptions(t.Context(), "sqlite", ":memory:", []string{"jwt", "oauth-provider"}, schema.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { store.Close() })
+	sign, err := auth.NewJWT(auth.JWTOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	config := func(opts op.Options) op.OpenIDProviderMetadata {
+		t.Helper()
+		p, err := op.New(opts)
+		if err != nil {
+			t.Fatal(err)
+		}
+		api, err := auth.New(auth.Options{BaseURL: "https://auth.example.test", Secret: strings.Repeat("s", 40), Store: store, Plugins: []auth.Plugin{p, sign}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		doc, err := op.GetOpenIDConfig(api)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return doc
+	}
+	if doc := config(op.Options{}); !slices.Equal(doc.ScopesSupported, []string{"openid", "profile", "email", "offline_access"}) {
+		t.Fatal("the default scopes were not advertised", doc.ScopesSupported)
+	}
+	if doc := config(op.Options{UserInfo: op.UserInfoOptions{SupportedClaims: []string{"sub", "locale"}}}); !slices.Equal(doc.ClaimsSupported, []string{"sub", "locale"}) {
+		t.Fatal("the configured UserInfo claims were not advertised exactly", doc.ClaimsSupported)
+	}
+	for name, opts := range map[string]op.Options{
+		"registration scope outside the scopes": {Scopes: []string{"read"}, Registration: op.RegistrationOptions{AllowedScopes: []string{"write"}}},
+		"refresh_token without a delegated grant": {GrantTypes: []string{"refresh_token"}},
+		"short pairwise secret":                   {PairwiseSecret: strings.Repeat("p", 31)},
+	} {
+		if _, err := op.New(opts); err == nil {
+			t.Fatal("an unusable provider configuration was accepted", name)
+		}
+	}
+}

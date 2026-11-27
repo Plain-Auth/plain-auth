@@ -16747,6 +16747,12 @@
       "label": "Return a validation error for unsupported algorithms and private key members",
       "test": "plugins/oauthprovider/registration_test.go",
       "marker": "func TestRegistrationPublicKeys("
+    },
+    {
+      "label": "Refuse each invalid public key set with invalid_client_metadata and the description naming its reason",
+      "test": "plugins/oauthprovider/registration_test.go",
+      "marker": "t.Fatal(\"an invalid public key set was not refused with its reason\", raw, err)",
+      "complete": true
     }
   ],
   "plugin-symbol/oauth-provider/ClientRegistrationRequest": [
@@ -16792,6 +16798,12 @@
       "label": "Persist the allowed registration scopes and reject a scope outside that set",
       "test": "conformance/oauth-registration.mjs",
       "marker": "assert.deepEqual(JSON.parse(row.scopes)"
+    },
+    {
+      "label": "Refuse a registration scope outside the configured scopes when the plugin is built",
+      "test": "plugins/oauthprovider/openid_metadata_test.go",
+      "marker": "t.Fatal(\"an unusable provider configuration was accepted\", name)",
+      "complete": true
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/clientRegistrationDefaultResources": [
@@ -16901,6 +16913,11 @@
       "label": "Register only the mutually supported requested grant types",
       "test": "conformance/oauth-registration.mjs",
       "marker": "assert.deepEqual(app.grant_types,"
+    },
+    {
+      "label": "Refuse refresh_token without authorization_code when the plugin is built",
+      "test": "plugins/oauthprovider/openid_metadata_test.go",
+      "marker": "t.Fatal(\"an unusable provider configuration was accepted\", name)"
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/allowInsecureRedirectUri": [
@@ -16954,6 +16971,12 @@
       "label": "Exercise HTTPS web, native private scheme and exact HTTP loopback redirects",
       "test": "plugins/oauthprovider/registration_test.go",
       "marker": "func TestRegistrationRedirectPolicy("
+    },
+    {
+      "label": "Accept loopback and custom-scheme callbacks for native clients only",
+      "test": "plugins/oauthprovider/registration_test.go",
+      "marker": "{\"web\", \"http://127.0.0.1:8787/callback\", false}, {\"native\", \"http://127.0.0.1:8787/callback\", true},",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/oauth-provider/reference.mdx#L402/`register`": [
@@ -17909,6 +17932,11 @@
       "label": "Keep a stored pairwise account identifier private if the required secret is missing",
       "test": "adapters/sqlstore/oauth_refresh_introspection_test.go",
       "marker": "pairwise client disclosed a public subject"
+    },
+    {
+      "label": "Refuse a pairwise secret shorter than 32 bytes when the plugin is built",
+      "test": "plugins/oauthprovider/openid_metadata_test.go",
+      "marker": "t.Fatal(\"an unusable provider configuration was accepted\", name)"
     }
   ],
   "docs/content/docs/plugins/oauth-provider/openid-connect.mdx#L181": [
@@ -17979,6 +18007,11 @@
       "label": "Keep replay records with the verification records in the shared database when SecondaryStorage holds sessions, so a second issuer refuses a replay and the storage receives no reservation",
       "test": "adapters/sqlstore/dpop_secondary_storage_test.go",
       "marker": "func TestDPoPProofsStayInDatabaseWithSecondaryStorage("
+    },
+    {
+      "label": "Bound the accepted DPoP proof age with ProofMaxAge, refusing a proof 61 seconds old under a one-minute limit and accepting one 59 seconds old",
+      "test": "plugins/oauthprovider/dpop_test.go",
+      "marker": "t.Fatal(\"ProofMaxAge did not bound the proof age\", age, err)"
     }
   ],
   "plugin/oauth-provider/GET / POST /oauth2/userinfo": [
@@ -18155,6 +18188,12 @@
       "label": "Retrieve the native issuer document, preserve escaped issuer paths and omit disabled endpoints and unavailable store capabilities",
       "test": "plugins/oauthprovider/issuer_metadata_test.go",
       "marker": "func TestIssuerDiscoveryMounts("
+    },
+    {
+      "label": "Serve each mounted authorization server document as JSON with the configured headers or the default cache rule",
+      "test": "plugins/oauthprovider/issuer_metadata_test.go",
+      "marker": "t.Fatal(\"a discovery document lacks its JSON type or default cache rule\", path, w.Code, w.Header())",
+      "complete": true
     }
   ],
   "plugin-symbol/oauth-provider/metadataResponse": [
@@ -18180,6 +18219,11 @@
       "label": "Explicitly advertise pre-provisioned public clients, preserve protected introspection and publish only supported delegated grants",
       "test": "plugins/oauthprovider/openid_metadata_test.go",
       "marker": "incorrect delegated-only public client metadata"
+    },
+    {
+      "label": "Advertise exactly the configured UserInfo claims",
+      "test": "plugins/oauthprovider/openid_metadata_test.go",
+      "marker": "t.Fatal(\"the configured UserInfo claims were not advertised exactly\", doc.ClaimsSupported)"
     }
   ],
   "docs/content/docs/plugins/oauth-provider/tokens.mdx#L8": [
@@ -19051,6 +19095,12 @@
       "label": "Read the mounted OpenID provider document from Go, including host page capabilities and the configured claim list",
       "test": "plugins/oauthprovider/openid_metadata_test.go",
       "marker": "native, err := op.GetOpenIDConfig(api)"
+    },
+    {
+      "label": "Serve the OpenID document as JSON with the default cache rule, or with the configured headers",
+      "test": "plugins/oauthprovider/issuer_metadata_test.go",
+      "marker": "t.Fatal(\"the OpenID document did not take the configured headers\", w.Code, w.Header(), a.WellKnownPaths())",
+      "complete": true
     }
   ],
   "plugin-symbol/oauth-provider/OIDCMetadata": [
@@ -19065,6 +19115,12 @@
       "label": "Read identical OpenID and OAuth aliases, discover signing keys and validate claims and subjects for each supported signing algorithm",
       "test": "conformance/oauth-id-tokens.mjs",
       "marker": "assert.deepEqual(metadata.id_token_signing_alg_values_supported, [alg]);"
+    },
+    {
+      "label": "Advertise exactly the configured supported claims",
+      "test": "plugins/oauthprovider/openid_metadata_test.go",
+      "marker": "t.Fatal(\"the configured UserInfo claims were not advertised exactly\", doc.ClaimsSupported)",
+      "complete": true
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/customIdTokenClaims": [
@@ -47632,6 +47688,69 @@
       "test": "adapters/sqlstore/sso_saml_defaults_test.go",
       "marker": "t.Fatal(\"a registration with SP metadata XML was not refused\"",
       "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/isInsecureRedirectUriAllowed": [
+    {
+      "label": "Refuse an HTTP callback with credentials even on an approved host, and accept an approved HTTP web callback",
+      "test": "plugins/oauthprovider/registration_test.go",
+      "marker": "t.Fatal(\"an approved HTTP web callback with credentials was accepted\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/clients.mdx#L190/HTTP loopback, any port (RFC 8252 §7.3)": [
+    {
+      "label": "Accept an HTTP loopback callback on any port for a native client and refuse it for a web client",
+      "test": "plugins/oauthprovider/registration_test.go",
+      "marker": "{\"web\", \"http://127.0.0.1:8787/callback\", false}, {\"native\", \"http://127.0.0.1:8787/callback\", true},",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/clients.mdx#L192/Custom scheme with a host and a path": [
+    {
+      "label": "Accept a custom scheme with a host and path for a native client and refuse it for a web client",
+      "test": "plugins/oauthprovider/registration_test.go",
+      "marker": "{\"web\", \"myapp://example.app/callback\", false}, {\"native\", \"myapp://example.app/callback\", true},",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/DEFAULT_OAUTH_SCOPES": [
+    {
+      "label": "Advertise openid, profile, email and offline_access when no scopes are configured",
+      "test": "plugins/oauthprovider/openid_metadata_test.go",
+      "marker": "t.Fatal(\"the default scopes were not advertised\", doc.ScopesSupported)",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/scopes": [
+    {
+      "label": "Default the scopes to openid, profile, email and offline_access and refuse registration scopes outside them",
+      "test": "plugins/oauthprovider/openid_metadata_test.go",
+      "marker": "t.Fatal(\"the default scopes were not advertised\", doc.ScopesSupported)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/mcp.mdx#L311/`mcpOauthOptionsType.scopes`": [
+    {
+      "label": "Advertise the four default scopes when none are configured",
+      "test": "plugins/oauthprovider/openid_metadata_test.go",
+      "marker": "t.Fatal(\"the default scopes were not advertised\", doc.ScopesSupported)",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/parsePrompt": [
+    {
+      "label": "Accept each supported prompt and drop repeats and extra spaces from a prompt list",
+      "test": "plugins/oauthprovider/browser_authorization_test.go",
+      "marker": "t.Fatal(\"a prompt list kept its repeats\", request.prompts, err)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/index.mdx#L19/Authorization requests": [
+    {
+      "label": "Accept the none, login, consent, select_account and create prompts with the query response mode",
+      "test": "plugins/oauthprovider/browser_authorization_test.go",
+      "marker": "t.Fatal(\"a supported prompt was refused\", prompt, err)"
     }
   ]
 }
