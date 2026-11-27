@@ -158,7 +158,8 @@ async function exercise(t, runtime, { reference, goFixture, instrument }) {
   const database = server.database ?? new DatabaseSync(server.databasePath);
   if (!server.database) t.after(() => database.close());
   const browser = () => instrument(server, [stripeClient({ subscription: true })]).client;
-  const owner = browser(), other = browser(), guest = browser();
+  const ownerSession = instrument(server, [stripeClient({ subscription: true })]);
+  const owner = ownerSession.client, other = browser(), guest = browser();
   const ownerSub = provider.subscriptions.get("sub_owner");
   async function register(user, key) {
     const res = ok(await user.signUp.email({ email: key + "@example.test", name: key, password: "offline-billing-password" }));
@@ -253,7 +254,7 @@ async function exercise(t, runtime, { reference, goFixture, instrument }) {
   assert.equal(samePlan.error.status, 400);
   assert.equal(samePlan.error.code, "ALREADY_SUBSCRIBED_PLAN");
   assert.equal(samePlan.error.message, "You're already subscribed to this plan");
-  const resize = ok(await owner.subscription.upgrade({ ...own, plan: "basic", seats: 6, returnUrl, disableRedirect: true }));
+  const resize = ok(await owner.subscription.upgrade({ ...own, customerType: "user", plan: "basic", seats: 6, returnUrl, disableRedirect: true }));
   assert.equal(resize.url, "https://billing.example.test/confirm");
   assert.equal(provider.calls.at(-1).form.get("flow_data[subscription_update_confirm][items][0][quantity]"), "6");
   assert.equal((await list(owner, ownerID, ownerSub.id)).seats, 1);
@@ -307,15 +308,19 @@ async function exercise(t, runtime, { reference, goFixture, instrument }) {
   assert.equal(future.priceId, basicPrice);
   assert.equal(future.stripeScheduleId, "sched_change");
   assert.equal(ok(await owner.subscription.restore(own)).schedule ?? null, null);
+  assert.ok(provider.calls.some(c => c.method === "POST" && c.path === "/v1/subscription_schedules/sched_change/release"));
+  const kept = await list(owner, ownerID, ownerSub.id);
+  assert.equal(kept.stripeScheduleId ?? null, null);
+  assert.deepEqual([kept.plan, kept.priceId], ["basic", basicPrice]);
 
-  assert.deepEqual(ok(await owner.subscription.billingPortal(portal)), { url: "https://billing.example.test/portal", redirect: false });
+  assert.deepEqual(ok(await owner.subscription.billingPortal({ ...portal, customerType: "user" })), { url: "https://billing.example.test/portal", redirect: false });
   const portalCall = provider.calls.at(-1);
   assert.equal(portalCall.path, "/v1/billing_portal/sessions");
   assert.equal(portalCall.form.get("customer"), ownerSub.customer);
   assert.equal(portalCall.form.get("return_url"), returnUrl);
   assert.equal(portalCall.form.get("locale"), "en");
 
-  assert.deepEqual(ok(await owner.subscription.cancel(cancel)), { url: "https://billing.example.test/cancel", redirect: false });
+  assert.deepEqual(ok(await owner.subscription.cancel({ ...cancel, customerType: "user" })), { url: "https://billing.example.test/cancel", redirect: false });
   const cancelCall = provider.calls.at(-1);
   assert.equal(cancelCall.path, "/v1/billing_portal/sessions");
   assert.equal(cancelCall.form.get("customer"), ownerSub.customer);
@@ -327,15 +332,25 @@ async function exercise(t, runtime, { reference, goFixture, instrument }) {
   ownerSub.cancel_at_period_end = true;
   await signedUpdate(server, provider, "evt_cancel", ownerSub);
   assert.equal((await list(owner, ownerID, ownerSub.id)).cancelAtPeriodEnd, true);
-  const restored = ok(await owner.subscription.restore(own));
+  assert.equal((await list(owner, ownerID, ownerSub.id)).cancelAt ?? null, null);
+  const restored = ok(await owner.subscription.restore({ ...own, customerType: "user" }));
   assert.equal(restored.id, ownerSub.id);
   const restoredWire = structuredClone(ownerSub);
   assert.equal(restored.cancel_at_period_end, false);
   assert.ok(provider.calls.some(c => c.method === "POST" && c.path === "/v1/subscriptions/" + ownerSub.id && c.form.get("cancel_at_period_end") === "false"));
   assert.equal((await list(owner, ownerID, ownerSub.id)).cancelAtPeriodEnd, false);
   assert.equal((await owner.subscription.restore(own)).error.code, "SUBSCRIPTION_NOT_PENDING_CHANGE");
+  // Calls without arguments are POST requests through the plugin's client,
+  // where a client without it sends GET.
+  assert.deepEqual(ok(await owner.subscription.billingPortal()), { url: "https://billing.example.test/portal", redirect: true });
+  assert.equal(ownerSession.requests.at(-1).method, "POST");
+  assert.equal((await owner.subscription.restore()).error.code, "SUBSCRIPTION_NOT_PENDING_CHANGE");
+  assert.equal(ownerSession.requests.at(-1).method, "POST");
+  const plain = instrument(server, []);
+  await plain.client.subscription.restore();
+  assert.equal(plain.requests.at(-1).method, "GET");
 
-  ownerSub.cancel_at = ownerSub.items.data[0].current_period_end;
+  ownerSub.cancel_at = ownerSub.items.data[0].current_period_end - 86_400;
   await signedUpdate(server, provider, "evt_cancel_at", ownerSub);
   assert.equal(Date.parse((await list(owner, ownerID, ownerSub.id)).cancelAt), ownerSub.cancel_at * 1000);
   assert.deepEqual(ok(await owner.subscription.restore(own)), ownerSub);
@@ -351,7 +366,9 @@ async function exercise(t, runtime, { reference, goFixture, instrument }) {
   const releasedWire = structuredClone(ownerSub);
   assert.equal(released.schedule ?? null, null);
   assert.ok(provider.calls.some(c => c.method === "POST" && c.path === "/v1/subscription_schedules/sched_owner/release"));
-  assert.equal((await list(owner, ownerID, ownerSub.id)).stripeScheduleId ?? null, null);
+  const releasedRow = await list(owner, ownerID, ownerSub.id);
+  assert.equal(releasedRow.stripeScheduleId ?? null, null);
+  assert.deepEqual([releasedRow.plan, releasedRow.priceId], ["basic", basicPrice]);
 
   const item = ownerSub.items.data[0];
   item.current_period_start = item.current_period_end;
@@ -439,6 +456,8 @@ export async function organizationManagement(t, { reference, goFixture, instrume
     const targeted = remote.calls.at(-1).form;
     assert.equal(targeted.get("customer"), remoteSub.customer);
     assert.equal(targeted.get("flow_data[subscription_cancel][subscription]"), remoteSub.id);
+    assert.deepEqual(ok(await buyer.subscription.billingPortal({ customerType: "organization", referenceId: group.id, returnUrl, disableRedirect: true })), { url: "https://billing.example.test/portal", redirect: false });
+    assert.equal(remote.calls.at(-1).form.get("customer"), remoteSub.customer);
     remoteSub.cancel_at_period_end = true;
     await signedUpdate(server, remote, "evt_org_cancel_confirmed", remoteSub);
     const list = async () => ok(await buyer.subscription.list({ query: { customerType: "organization" } }))[0];

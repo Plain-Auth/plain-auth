@@ -50988,7 +50988,7 @@
     {
       "label": "Open Stripe’s cancellation flow for the signed-in owner’s subscription with the trusted return page and return its link without a redirect, on both runtimes",
       "test": "conformance/stripe-lifecycle-fixture.mjs",
-      "marker": "assert.deepEqual(ok(await owner.subscription.cancel(cancel)), { url: \"https://billing.example.test/cancel\", redirect: false });"
+      "marker": "assert.deepEqual(ok(await owner.subscription.cancel({ ...cancel, customerType: \"user\" })), { url: \"https://billing.example.test/cancel\", redirect: false });"
     },
     {
       "label": "Synchronize a cancellation Stripe already scheduled, keep subscriptions Stripe reports ended as history and leave ones it reports missing unchanged without opening a portal, and relay coded refusals while answering other Stripe failures with HTTP 502, on three SQL engines",
@@ -51157,7 +51157,7 @@
     {
       "label": "Return redirect false when a portal request disables redirection, on both runtimes",
       "test": "conformance/stripe-lifecycle-fixture.mjs",
-      "marker": "assert.deepEqual(ok(await owner.subscription.billingPortal(portal)), { url: \"https://billing.example.test/portal\", redirect: false });"
+      "marker": "assert.deepEqual(ok(await owner.subscription.billingPortal({ ...portal, customerType: \"user\" })), { url: \"https://billing.example.test/portal\", redirect: false });"
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L590/`checkout.session.completed`": [
@@ -51527,6 +51527,12 @@
       "label": "Reject customer types other than user and organization on every billing route and refuse organizations when organization billing is off, matching the other runtime",
       "test": "conformance/stripe-lifecycle-fixture.mjs",
       "marker": "const invalidType = "
+    },
+    {
+      "label": "Accept an explicit user customer type on every billing route and the organization type on every route once organization billing is enabled, on both runtimes",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "const restored = ok(await owner.subscription.restore({ ...own, customerType: \"user\" }));",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L239/Parameter `referenceId` (optional)": [
@@ -51630,6 +51636,35 @@
       "label": "Block account deletion from BeforeDeleteUser while Stripe reports any subscription other than canceled, incomplete or incomplete_expired across result pages, deny it when the lookup fails, and allow it otherwise, on three SQL engines",
       "test": "adapters/sqlstore/stripe_user_deletion_test.go",
       "marker": "func TestStripeUserDeletionGuard(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/stripe/stripeClient": [
+    {
+      "label": "Send restore and billing-portal calls without arguments as POST through the published browser client on both runtimes, where a client without the plugin sends GET",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "assert.equal(plain.requests.at(-1).method, \"GET\");",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L485/Pending plan change": [
+    {
+      "label": "Release a pending scheduled plan change through the browser client and clear the stored schedule ID while the current plan stays in place, on both runtimes",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "assert.ok(provider.calls.some(c => c.method === \"POST\" && c.path === \"/v1/subscription_schedules/sched_owner/release\"));",
+      "complete": true
+    },
+    {
+      "label": "Release a schedule created by scheduleAtPeriodEnd and keep the current plan on both runtimes",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "assert.ok(provider.calls.some(c => c.method === \"POST\" && c.path === \"/v1/subscription_schedules/sched_change/release\"));"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L766/`stripeSubscriptionTableFields.cancelAt`": [
+    {
+      "label": "Store Stripe's cancel_at as reported, including none, and clear it after restoration on both runtimes",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "ownerSub.cancel_at = ownerSub.items.data[0].current_period_end - 86_400;",
       "complete": true
     }
   ]
