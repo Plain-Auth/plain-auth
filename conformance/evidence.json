@@ -50432,5 +50432,35 @@
       "marker": "func TestGovernorLimits(",
       "complete": true
     }
+  ],
+  "plugin-symbol/cimd/CimdOptions/isMetadataDocumentUrlAllowed": [
+    {
+      "label": "Refuse a client ID URL the host's policy refuses before any request, returning the policy's own error as is",
+      "test": "plugins/cimd/fetch_test.go",
+      "marker": "// A refused URL makes no request.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/cimd.mdx#L159/`cimdOptionsType.isMetadataDocumentUrlAllowed`": [
+    {
+      "label": "Refuse a client ID URL the host's policy refuses before any request",
+      "test": "plugins/cimd/fetch_test.go",
+      "marker": "// A refused URL makes no request.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/cimd.mdx#L119/`cimdOptionsType.fetchClientMetadataResource`": [
+    {
+      "label": "Fetch documents through the configured transport, the pinned one by default",
+      "test": "plugins/cimd/fetch_test.go",
+      "marker": "func TestFetchDocument("
+    }
+  ],
+  "docs/content/docs/plugins/cimd.mdx#L291": [
+    {
+      "label": "Fetch a document within five seconds, at most 5 KB of JSON or application/*+json, refusing redirects and classifying each failure",
+      "test": "plugins/cimd/fetch_test.go",
+      "marker": "func TestFetchDocument("
+    }
   ]
 }

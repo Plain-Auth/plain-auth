@@ -22,7 +22,8 @@
     - [ ] `metadataFetchPolicy`
     - [ ] `maxCacheEntries`
     - [ ] `originBoundFields`
-    - [ ] `isMetadataDocumentUrlAllowed`
+    - [x] `isMetadataDocumentUrlAllowed` ([test](../../../plugins/cimd/fetch_test.go#L53))
+      - [x] Refuse a client ID URL the host's policy refuses before any request, returning the policy's own error as is ([test](../../../plugins/cimd/fetch_test.go#L53))
     - [ ] `isCrossOriginJwksUriAllowed`
     - [ ] `onClientCreated`
     - [ ] `onClientRefreshed`
@@ -47,13 +48,15 @@
   - [ ] MCP configuration
   - [ ] Configuration
     - [ ] `cimdOptionsType.fetchClientMetadataResource`
+      - [x] Fetch documents through the configured transport, the pinned one by default ([test](../../../plugins/cimd/fetch_test.go#L38))
     - [ ] `cimdOptionsType.metadataProfile`
     - [ ] `cimdOptionsType.metadataRevalidationInterval`
     - [ ] `cimdOptionsType.metadataStaleIfError`
     - [ ] `cimdOptionsType.maxCacheEntries`
     - [ ] `cimdOptionsType.metadataFetchPolicy`
     - [ ] `cimdOptionsType.originBoundFields`
-    - [ ] `cimdOptionsType.isMetadataDocumentUrlAllowed`
+    - [x] `cimdOptionsType.isMetadataDocumentUrlAllowed` ([test](../../../plugins/cimd/fetch_test.go#L53))
+      - [x] Refuse a client ID URL the host's policy refuses before any request ([test](../../../plugins/cimd/fetch_test.go#L53))
     - [ ] `cimdOptionsType.isCrossOriginJwksUriAllowed`
     - [ ] `cimdOptionsType.onClientCreated`
     - [ ] `cimdOptionsType.onClientRefreshed`
@@ -65,4 +68,5 @@
   - [ ] Persistence and refresh
     - [ ] Transient refresh failures
   - [ ] Security boundary
+    - [x] Fetch a document within five seconds, at most 5 KB of JSON or application/*+json, refusing redirects and classifying each failure ([test](../../../plugins/cimd/fetch_test.go#L38))
   - [ ] Explicit discovery composition
