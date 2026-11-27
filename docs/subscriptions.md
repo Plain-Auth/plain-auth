@@ -138,7 +138,7 @@ Pass `customerType: "organization"` to start checkout, switch plans, list subscr
 
 The SQL adapter reads the member's role and calls the policy with it and the operation before it opens its transaction, so the policy never runs inside a database transaction, as in another runtime. It then rereads the session and membership under lock and refuses the operation if the role changed. A custom store calls `OrganizationScope.Authorize` before its transaction and rechecks the role under lock. The policy receives `upgrade-subscription`, `list-subscription`, `billing-portal`, `cancel-subscription` or `restore-subscription`. Both immediate and period-end plan changes use `upgrade-subscription`. Keep the callback free of side effects. A different authorized administrator can retry the same checkout after a purchaser loses their role. Stripe metadata retains the original purchaser’s ID and the organization’s billing reference. [Authorization and recovery tests](../adapters/sqlstore/stripe_organization_test.go)
 
-The organization receives its own Stripe customer. The server searches for an existing customer using organization metadata, with a paginated list fallback if search is unavailable. Customer creation uses the stored organization name. Signed checkout and subscription webhooks update the organization’s subscription even if the original purchaser has since left. Ambiguous personal and organization references or customer mappings require reconciliation. [Browser client and renewal tests](../conformance/stripe-organization-fixture.mjs)
+The organization receives its own Stripe customer, which only the server stores: its billing portal uses that customer alone, and answers `CUSTOMER_NOT_FOUND` before Stripe until the customer exists, where another runtime falls back to an active subscription's customer. The server searches for an existing customer using organization metadata, with a paginated list fallback if search is unavailable. Customer creation uses the stored organization name. Signed checkout and subscription webhooks update the organization’s subscription even if the original purchaser has since left. Ambiguous personal and organization references or customer mappings require reconciliation. [Browser client and renewal tests](../conformance/stripe-organization-fixture.mjs)
 
 An authorized member can open Stripe’s cancellation or plan confirmation page, request a different seat quantity, or undo a pending change. A single-seat subscription also supports price changes at the next billing boundary. The server rechecks the acting member’s current permission before disclosing a hosted link or sending a schedule change to Stripe. Signed webhooks record confirmed cancellations and new prices. These flows have local provider coverage on SQLite, PostgreSQL and MySQL. Multi-item plan changes and synchronization of organization name or deletion events remain open. [Organization management tests](../adapters/sqlstore/stripe_organization_management_test.go)
 
@@ -293,6 +293,36 @@ return showBillingLink(page.URL)
 
 The same client exposes `Upgrade`, `List`, `ListOrganization`, `Restore`, `RestoreOrganization` and `BillingPortal`. The general billing portal requires `stripeplugin.PortalOptions`. [Billing portal configuration](plugins.md)
 
+## Block account deletion during a subscription
+
+With `DeleteUserEnabled`, refuse to delete an account while Stripe reports a subscription that still bills, from `BeforeDeleteUser`. This recipe lets accounts without a Stripe customer go, denies the deletion when the lookup fails, and pages through every subscription of the customer:
+
+```go
+opts.BeforeDeleteUser = func(ctx context.Context, user plainauth.User, _ *http.Request) error {
+    customer, err := store.StripeCustomer(ctx, user.ID)
+    if errors.Is(err, plainauth.ErrNotFound) {
+        return nil
+    }
+    if err != nil {
+        return err
+    }
+    list := stripeClient.V1Subscriptions.List(ctx, &stripesdk.SubscriptionListParams{Customer: stripesdk.String(customer), Status: stripesdk.String("all")})
+    for sub, err := range list.All(ctx) {
+        if err != nil {
+            return err
+        }
+        switch sub.Status {
+        case stripesdk.SubscriptionStatusCanceled, stripesdk.SubscriptionStatusIncomplete, stripesdk.SubscriptionStatusIncompleteExpired:
+        default:
+            return &plainauth.APIError{Status: 400, Code: "ACTIVE_SUBSCRIPTION", Message: "Cancel your active subscription before deleting your account"}
+        }
+    }
+    return nil
+}
+```
+
+The hook runs before and outside the deletion's transaction, so a subscription created between the hook and the deletion is not caught. [Deletion guard tests](../adapters/sqlstore/stripe_user_deletion_test.go)
+
 ## Verify a hosted Checkout return
 
 Set `successUrl` on the upgrade request to the application page the customer should see, for example `/billing/complete?checkout={CHECKOUT_SESSION_ID}`. With a SQL adapter, the plugin sends Stripe a return URL under the configured auth mount. Stripe fills in the Checkout Session ID and sends the browser there. The handler resolves and checks the final callback before and after filling its template. [Stripe hosted Checkout redirects](https://docs.stripe.com/payments/checkout/custom-success-page?payment-ui=stripe-hosted)
@@ -301,4 +331,4 @@ For a signed-in customer, the handler first finds the local reservation belongin
 
 A signed-out or anonymous browser goes directly to the allowed callback with the original template. An open or unpaid Checkout Session, or a temporary Stripe lookup failure, leaves the purchase pending. The application can display the current status from the subscription list. Keep the signed webhook configured so the purchase can complete even if the customer closes the browser.
 
-The adapters keep an owner-bound return receipt for seven days after completion. Reopening a confirmed return from another server instance reuses that receipt. If the signed webhook arrives during the browser lookup, the stored webhook result takes precedence. Browser returns do not invoke the webhook’s `OnEvent` callback. Earlier pending attempts keep their original Stripe success URL and idempotency key when retried. Custom stores can opt into hosted return confirmation by implementing `stripeplugin.CheckoutReturnStore`. [Checkout return tests](../adapters/sqlstore/stripe_return_test.go)
+The adapters keep an owner-bound return receipt for seven days after completion. Reopening a confirmed return from another server instance reuses that receipt. If the signed webhook arrives during the browser lookup, the stored webhook result takes precedence. Browser returns do not invoke the webhook’s `OnEvent` callback. Earlier pending attempts keep their original Stripe success URL and idempotency key when retried. Custom stores can opt into hosted return confirmation by implementing `stripeplugin.CheckoutReturnStore`. An organization's Checkout appends `&organizationId=<id>` to Stripe's success URL; its return asks the organization policy with `upgrade-subscription` before reading Stripe and rechecks the member under lock before committing, and a refused return answers HTTP 401, 403 or 404 and never redirects, where another runtime checks no ownership and always redirects: a browser that does not own the purchase is not sent to the purchaser's page and commits nothing. [Checkout return tests](../adapters/sqlstore/stripe_return_test.go)

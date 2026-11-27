@@ -31,6 +31,7 @@ type managementFixture struct {
 	owner, peer     stripeclient.Client
 	ownerID, peerID string
 	events          int
+	host            *httptest.Server
 }
 
 func newManagementFixture(t *testing.T, kind string) *managementFixture {
@@ -59,6 +60,7 @@ func newManagementFixture(t *testing.T, kind string) *managementFixture {
 	host.Config.Handler = f.auth
 	host.StartTLS()
 	t.Cleanup(host.Close)
+	f.host = host
 	f.owner, f.ownerID = f.signUp(host, "owner@example.org")
 	f.peer, f.peerID = f.signUp(host, "peer@example.org")
 	f.exec(`UPDATE "user" SET "stripeCustomerId"=? WHERE "id"=?`, "cus_owner", f.ownerID)
@@ -426,6 +428,30 @@ func TestOwnerRestoreProviderStates(t *testing.T) {
 			f.expectError(err, 400, "SUBSCRIPTION_NOT_FOUND", "Subscription not found")
 			if _, _, now, _ := f.calls(); now != updates {
 				t.Fatal("a past due subscription was restored")
+			}
+		})
+	}
+}
+
+// A user without a stored customer gets the portal of an active
+// subscription's customer; once that ends, the portal answers
+// CUSTOMER_NOT_FOUND before Stripe.
+func TestUserPortalCustomerFallback(t *testing.T) {
+	for _, kind := range []string{"sqlite", "postgres", "mysql"} {
+		t.Run(kind, func(t *testing.T) {
+			ctx := t.Context()
+			f := newManagementFixture(t, kind)
+			user, id := f.signUp(f.host, "fallback@example.org")
+			f.addSubscription(id, "local_row", "sub_row", "cus_row", "active")
+			if _, err := user.BillingPortal(ctx, stripeclient.Portal{ReturnURL: "/billing"}); err != nil || f.p.form().Get("customer") != "cus_row" {
+				t.Fatal("the portal did not fall back to the subscription's customer", err, f.p.form())
+			}
+			f.exec(`UPDATE "subscription" SET "status"='canceled' WHERE "id"='local_row'`)
+			calls, _, _, _ := f.calls()
+			_, err := user.BillingPortal(ctx, stripeclient.Portal{ReturnURL: "/billing"})
+			f.expectError(err, 404, "CUSTOMER_NOT_FOUND", "Stripe customer not found for this user")
+			if now, _, _, _ := f.calls(); now != calls {
+				t.Fatal("a portal without a customer reached Stripe", now-calls)
 			}
 		})
 	}

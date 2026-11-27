@@ -35,6 +35,9 @@ func portalEndpoint(opts PortalOptions, organization *OrganizationOptions) auth.
 		if opts.Client == nil || (!selection.organization && opts.Customers == nil) {
 			return nil, errors.New("stripe: billing portal requires a client and customer store")
 		}
+		// An organization's portal uses only its stored customer, where
+		// another runtime falls back to an active subscription's customer:
+		// an organization has one billing binding.
 		customer := selection.account.Customer
 		if !selection.organization {
 			customer, err = opts.Customers.StripeCustomer(ctx, selection.reference)

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -48,10 +49,11 @@ func TestOrganizationSubscriptionManagement(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			stripePlugin := billing.New(billing.Options{WebhookSecret: "whsec_org_management", Organization: &billing.OrganizationOptions{AuthorizeReference: func(m billing.ReferenceAuthorization) bool {
+			actions := &referenceActions{}
+			stripePlugin := billing.New(billing.Options{WebhookSecret: "whsec_org_management", Organization: &billing.OrganizationOptions{AuthorizeReference: actions.wrap(func(m billing.ReferenceAuthorization) bool {
 				return m.Role == "owner" || m.Role == "change-only" && m.Action == "upgrade-subscription" ||
 					m.Role == "restore-only" && m.Action == "restore-subscription" || m.Role == "reader" && m.Action == "list-subscription"
-			}}, Subscriptions: &billing.SubscriptionOptions{Client: remote, Plans: []billing.Plan{{Name: "basic", PriceID: "price_month"}, {Name: "team", PriceID: "price_team", AnnualPriceID: "price_year"}}}})
+			})}, Portal: &billing.PortalOptions{Client: remote, Customers: store}, Subscriptions: &billing.SubscriptionOptions{Client: remote, Plans: []billing.Plan{{Name: "basic", PriceID: "price_month"}, {Name: "team", PriceID: "price_team", AnnualPriceID: "price_year"}}}})
 			off := false
 			auth, err := plainauth.New(plainauth.Options{Store: store, BaseURL: origin, Secret: strings.Repeat("s", 32), EmailAndPassword: true, RateLimit: &off, Plugins: []plainauth.Plugin{orgPlugin, stripePlugin}})
 			if err != nil {
@@ -118,7 +120,7 @@ func TestOrganizationSubscriptionManagement(t *testing.T) {
 				t.Fatal("revoked manager received a cancellation page")
 			}
 			role(bid, "owner")
-			page, err = buyer.Cancel(ctx, cancel)
+			actions.expect(t, "cancel-subscription", func() { page, err = buyer.Cancel(ctx, cancel) })
 			if err != nil || page.URL != "https://billing.example.test/subscription_cancel" || p.portalForm.Get("customer") != "cus_owner" || p.portalForm.Get("flow_data[subscription_cancel][subscription]") != "sub_owner" {
 				t.Fatal("organization cancellation target", page, err)
 			}
@@ -136,12 +138,14 @@ func TestOrganizationSubscriptionManagement(t *testing.T) {
 			}
 			p.atEnd = true
 			signed("evt_cancel")
-			rows, err := delegate.ListOrganization(ctx, group.ID)
+			var rows []billing.Subscription
+			actions.expect(t, "list-subscription", func() { rows, err = delegate.ListOrganization(ctx, group.ID) })
 			if err != nil || len(rows) != 1 || rows[0].CancelAtPeriodEnd == nil || !*rows[0].CancelAtPeriodEnd {
 				t.Fatal("confirmed organization cancellation", rows, err)
 			}
 			role(did, "restore-only")
-			sub, err := delegate.RestoreOrganization(ctx, group.ID, "sub_owner")
+			var sub *sdk.Subscription
+			actions.expect(t, "restore-subscription", func() { sub, err = delegate.RestoreOrganization(ctx, group.ID, "sub_owner") })
 			if err != nil || sub.CancelAtPeriodEnd || p.cancelUpdates != 1 {
 				t.Fatal("restore role could not clear cancellation", err)
 			}
@@ -162,7 +166,7 @@ func TestOrganizationSubscriptionManagement(t *testing.T) {
 				t.Fatal("revoked plan permission opened a confirmation")
 			}
 			role(did, "change-only")
-			page, err = delegate.Upgrade(ctx, change)
+			actions.expect(t, "upgrade-subscription", func() { page, err = delegate.Upgrade(ctx, change) })
 			if err != nil || page.URL != "https://billing.example.test/subscription_update_confirm" || p.portalForm.Get("flow_data[subscription_update_confirm][items][0][price]") != "price_year" || p.portalForm.Get("customer") != "cus_owner" {
 				t.Fatal("wrong organization plan confirmation", page, err)
 			}
@@ -178,13 +182,19 @@ func TestOrganizationSubscriptionManagement(t *testing.T) {
 			if page.URL != "" || p.updated != 0 {
 				t.Fatal("role downgrade during schedule read changed a future price")
 			}
-			page, err = buyer.Upgrade(ctx, deferred)
+			actions.expect(t, "upgrade-subscription", func() { page, err = buyer.Upgrade(ctx, deferred) })
 			if err != nil || page.URL != origin+"/billing" || p.created != 1 || p.updated != 1 || p.target != "price_year" {
 				t.Fatal("new authorized manager failed to resume the same schedule", page, err)
 			}
 			rows, err = buyer.ListOrganization(ctx, group.ID)
 			if err != nil || len(rows) != 1 || rows[0].PriceID != "price_month" || rows[0].ScheduleID == nil {
 				t.Fatal("current plan changed before billing boundary", rows, err)
+			}
+			actions.expect(t, "billing-portal", func() {
+				page, err = buyer.BillingPortal(ctx, stripeclient.Portal{CustomerType: "organization", ReferenceID: group.ID, ReturnURL: "/billing"})
+			})
+			if err != nil || page.URL == "" || p.portalForm.Get("customer") != "cus_owner" || p.portalForm.Has("flow_data[type]") {
+				t.Fatal("organization billing portal", page, err, p.portalForm)
 			}
 			role(did, "restore-only")
 			p.onScheduleRead = func() { role(did, "reader") }
@@ -230,5 +240,40 @@ func TestOrganizationSubscriptionManagement(t *testing.T) {
 				t.Fatal("organization operations changed personal billing", personal, err)
 			}
 		})
+	}
+}
+
+// referenceActions records the action of every organization policy check.
+type referenceActions struct {
+	mu   sync.Mutex
+	seen []string
+}
+
+func (r *referenceActions) wrap(policy func(billing.ReferenceAuthorization) bool) func(billing.ReferenceAuthorization) bool {
+	return func(m billing.ReferenceAuthorization) bool {
+		r.mu.Lock()
+		r.seen = append(r.seen, m.Action)
+		r.mu.Unlock()
+		return policy(m)
+	}
+}
+
+// expect clears the record, runs call, and fails unless at least one check
+// ran and every check named action.
+func (r *referenceActions) expect(t *testing.T, action string, call func()) {
+	t.Helper()
+	r.mu.Lock()
+	r.seen = nil
+	r.mu.Unlock()
+	call()
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if len(r.seen) == 0 {
+		t.Fatal("no policy check ran for", action)
+	}
+	for _, seen := range r.seen {
+		if seen != action {
+			t.Fatal("the policy received", seen, "for", action, r.seen)
+		}
 	}
 }

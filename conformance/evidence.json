@@ -1791,6 +1791,21 @@
       "label": "Recheck membership and active organization around Stripe responses, recover checkout under a different administrator, and refuse ambiguous customer ownership on three SQL engines",
       "test": "adapters/sqlstore/stripe_organization_test.go",
       "marker": "func TestOrganizationBillingIsolation("
+    },
+    {
+      "label": "Report a missing customer before contacting Stripe, a numeric locale as a validation error and a Stripe failure as UNABLE_TO_CREATE_BILLING_PORTAL, and redirect by default",
+      "test": "plugins/stripe/portal_test.go",
+      "marker": "t.Fatalf(\"portal failure responses: missing customer %d %s, %d calls\", w.Code, w.Body, calls)"
+    },
+    {
+      "label": "Fall back to an active subscription's customer for a user without one, through the route on three SQL engines",
+      "test": "adapters/sqlstore/stripe_cancel_restore_test.go",
+      "marker": "func TestUserPortalCustomerFallback("
+    },
+    {
+      "label": "Refuse an organization's portal with CUSTOMER_NOT_FOUND before contacting Stripe until the server stores its customer, even when it has an active subscription, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_organization_test.go",
+      "marker": "t.Fatal(\"organization portal used a subscription's customer\")"
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L488": [
@@ -8077,6 +8092,12 @@
       "label": "Require an owner-bound original receipt for the correct metered price and billing mode before granting the subscription",
       "test": "adapters/sqlstore/stripe_metered_test.go",
       "marker": "mismatched receipt changed metered subscription state"
+    },
+    {
+      "label": "Confirm an organization's paid Checkout from the hosted return for an authorized member without a webhook, and refuse another organization or a member demoted during Stripe's reply with HTTP errors before committing, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_return_test.go",
+      "marker": "func TestOrganizationCheckoutReturn(",
+      "complete": true
     }
   ],
   "plugin/stripe/POST /subscription/cancel": [
@@ -51097,6 +51118,11 @@
       "label": "Require a session on the portal endpoint and reject foreign references and invalid customer types without contacting Stripe, on both runtimes",
       "test": "conformance/stripe-lifecycle-fixture.mjs",
       "marker": "[\"body\", (client, fields) => client.subscription.billingPortal({ ...portal, ...fields })],"
+    },
+    {
+      "label": "Report a missing customer before contacting Stripe, a numeric locale as a validation error and a Stripe failure as UNABLE_TO_CREATE_BILLING_PORTAL, and redirect by default",
+      "test": "plugins/stripe/portal_test.go",
+      "marker": "t.Fatalf(\"portal failure responses: missing customer %d %s, %d calls\", w.Code, w.Body, calls)"
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L499/Parameter `locale` (optional)": [
@@ -51477,6 +51503,11 @@
       "label": "Pass the current member role and action for organization checkout, listing and billing portal to the host's billing policy, outside any store transaction, and refuse disallowed roles, including after a role change during Stripe's reply, on three SQL engines",
       "test": "adapters/sqlstore/stripe_organization_test.go",
       "marker": "Organization: &billing.OrganizationOptions{AuthorizeReference: func(policy billing.ReferenceAuthorization) bool {"
+    },
+    {
+      "label": "Pass upgrade-subscription, list-subscription, cancel-subscription, restore-subscription or billing-portal to the organization policy for each operation, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_organization_management_test.go",
+      "marker": "actions.expect(t, \"billing-portal\", func() {"
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L902/`enabled`": [
@@ -51550,6 +51581,11 @@
       "label": "Add the organization customer column to an existing organization table without losing rows, on three SQL engines",
       "test": "adapters/sqlstore/stripe_options_test.go",
       "marker": "t.Fatal(\"schema upgrade lost an existing organization\", err, customer)"
+    },
+    {
+      "label": "Ignore a client's attempt to set the organization customer column",
+      "test": "adapters/sqlstore/stripe_organization_test.go",
+      "marker": "t.Fatal(\"a client set the organization customer\", held, err, updateErr)"
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L431/Parameter `subscriptionId` (optional)": [
@@ -51579,6 +51615,22 @@
       "label": "Store Stripe's cancellation flag and dates from the retrieved subscription on Checkout confirmation, with no end time until Stripe reports one, on three SQL engines",
       "test": "adapters/sqlstore/stripe_return_test.go",
       "marker": "func TestCheckoutReturnCancellationFields("
+    }
+  ],
+  "plugin-symbol/stripe/AuthorizeReferenceAction": [
+    {
+      "label": "Pass upgrade-subscription, list-subscription, cancel-subscription, restore-subscription or billing-portal to the organization policy for each operation, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_organization_management_test.go",
+      "marker": "actions.expect(t, \"billing-portal\", func() {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L986": [
+    {
+      "label": "Block account deletion from BeforeDeleteUser while Stripe reports any subscription other than canceled, incomplete or incomplete_expired across result pages, deny it when the lookup fails, and allow it otherwise, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_user_deletion_test.go",
+      "marker": "func TestStripeUserDeletionGuard(",
+      "complete": true
     }
   ]
 }

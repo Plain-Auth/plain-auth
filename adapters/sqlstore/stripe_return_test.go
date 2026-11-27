@@ -383,3 +383,73 @@ func TestCheckoutReturnCancellationFields(t *testing.T) {
 		})
 	}
 }
+
+// An organization's hosted return confirms its paid Checkout for an
+// authorized member without a webhook, asking the policy, and refuses
+// another organization or a member demoted during Stripe's reply with HTTP
+// errors before committing.
+func TestOrganizationCheckoutReturn(t *testing.T) {
+	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
+		t.Run(dialect, func(t *testing.T) {
+			actions := &referenceActions{}
+			wrap := func(o *billing.Options) {
+				o.Organization.AuthorizeReference = actions.wrap(o.Organization.AuthorizeReference)
+			}
+			f := configuredReturnFixture(t, dialect, billing.Plan{Name: "pro", PriceID: "price_pro"}, true, (*returnFixture).provider, wrap)
+			owner, deputy := f.user("owner"), f.user("deputy")
+			cookie := f.a.SessionCookie(owner.Token, true)
+			create := func(slug string) string {
+				t.Helper()
+				w := f.hit(f.a, "/organization/create", strings.NewReader(`{"name":"`+slug+`","slug":"`+slug+`"}`), cookie)
+				var org struct{ ID string }
+				if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &org) != nil || org.ID == "" {
+					t.Fatal("organization create", w.Code, w.Body)
+				}
+				return org.ID
+			}
+			a, b := create("org-a"), create("org-b")
+			exec := func(q string, args ...any) {
+				t.Helper()
+				if _, err := f.store.db.ExecContext(t.Context(), f.store.bind(q), args...); err != nil {
+					t.Fatal(err)
+				}
+			}
+			exec(`UPDATE "organization" SET "stripeCustomerId"=? WHERE "id"=?`, "cus_group", a)
+			exec(`INSERT INTO "member" ("id","organizationId","userId","role","createdAt") VALUES(?,?,?,?,?)`, "deputy_member", a, deputy.User.ID, "owner", f.store.date(time.Now()))
+			raw, _ := json.Marshal(map[string]string{"plan": "pro", "successUrl": returnTemplate, "cancelUrl": "/cancel", "customerType": "organization", "referenceId": a})
+			var w *httptest.ResponseRecorder
+			actions.expect(t, "upgrade-subscription", func() { w = f.hit(f.a, "/subscription/upgrade", bytes.NewReader(raw), cookie) })
+			if w.Code != 200 {
+				t.Fatal("organization upgrade", w.Code, w.Body)
+			}
+			rec := f.sessions["cs_group"]
+			if rec.callback != returnOrigin+returnMount+"/subscription/success?callbackURL="+url.QueryEscape(returnTemplate)+"&checkoutSessionId={CHECKOUT_SESSION_ID}&organizationId="+a {
+				t.Fatal("Stripe received a different organization success URL", rec.callback)
+			}
+			filled := strings.ReplaceAll(returnTemplate, "{CHECKOUT_SESSION_ID}", rec.id)
+			back := func(org string, c *http.Cookie) *httptest.ResponseRecorder {
+				params := url.Values{"checkoutSessionId": {rec.id}, "callbackURL": {returnTemplate}, "organizationId": {org}}
+				return f.hit(f.b, "/subscription/success?"+params.Encode(), nil, c)
+			}
+			state := func() string {
+				var status string
+				if err := f.store.db.QueryRowContext(t.Context(), f.store.bind(`SELECT "status" FROM "subscription" WHERE "referenceId"=?`), a).Scan(&status); err != nil {
+					t.Fatal(err)
+				}
+				return status
+			}
+			if w := back(b, cookie); w.Code != 404 || w.Header().Get("Location") != "" {
+				t.Fatal("another organization's return was not refused", w.Code, w.Header().Get("Location"))
+			}
+			f.duringSubscriptionGet = func() { exec(`UPDATE "member" SET "role"='member' WHERE "userId"=?`, deputy.User.ID) }
+			if w := back(a, f.a.SessionCookie(deputy.Token, true)); w.Code != 401 || w.Header().Get("Location") != "" || state() != "incomplete" {
+				t.Fatal("a member demoted during Stripe's reply committed the return", w.Code, state())
+			}
+			f.duringSubscriptionGet = nil
+			actions.expect(t, "upgrade-subscription", func() { w = back(a, cookie) })
+			if w.Code != 302 || w.Header().Get("Location") != filled || state() != "active" || f.onEvent != 0 {
+				t.Fatal("an authorized organization return was not confirmed", w.Code, w.Header().Get("Location"), state(), f.onEvent)
+			}
+		})
+	}
+}

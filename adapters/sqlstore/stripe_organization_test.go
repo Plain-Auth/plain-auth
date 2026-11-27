@@ -3,6 +3,7 @@ package sqlstore
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -231,6 +232,20 @@ func TestOrganizationBillingIsolation(t *testing.T) {
 			if calls != 0 {
 				t.Fatal("unauthorized organizational purchase reached Stripe")
 			}
+			// A client cannot set the organization's customer, and the portal
+			// never falls back to a subscription's customer.
+			updateErr := buyer.Auth.Do(ctx, "POST", "/organization/update", map[string]any{"organizationId": group, "data": map[string]any{"name": "Fixture organization", "stripeCustomerId": "cus_client"}}, nil)
+			var held sql.NullString
+			if err := store.db.QueryRowContext(ctx, store.bind(`SELECT "stripeCustomerId" FROM "organization" WHERE "id"=?`), group).Scan(&held); err != nil || held.Valid {
+				t.Fatal("a client set the organization customer", held, err, updateErr)
+			}
+			exec(`INSERT INTO "subscription" ("id","plan","referenceId","stripeCustomerId","stripeSubscriptionId","status") VALUES('org_row','basic',?,'cus_row','sub_row','active')`, group)
+			portalPage, err := buyer.BillingPortal(ctx, stripeclient.Portal{CustomerType: "organization", ReferenceID: group, ReturnURL: "/billing"})
+			code(err, 404, "CUSTOMER_NOT_FOUND")
+			if portalPage.URL != "" || calls != 0 {
+				t.Fatal("organization portal used a subscription's customer")
+			}
+			exec(`DELETE FROM "subscription" WHERE "id"='org_row'`)
 			beforeCheckout = func() { exec(`UPDATE "member" SET "role"='member' WHERE "userId"=?`, actor) }
 			page, err := buyer.Upgrade(ctx, want)
 			code(err, 401, "UNAUTHORIZED")

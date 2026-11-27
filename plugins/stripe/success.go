@@ -91,6 +91,9 @@ func (s *subscriptions) checkoutSuccess(c auth.EndpointContext) (any, error) {
 		return nil, billingError(400, "CHECKOUT_RETURN_UNAVAILABLE", "Checkout return confirmation is unavailable")
 	}
 	reference := session.User.ID
+	// An organization's return is asked of the policy before Stripe is read
+	// and again under lock, and refused with an HTTP error, where another
+	// runtime checks no ownership and always redirects.
 	if id := q.Get("organizationId"); id != "" {
 		if s.organization == nil || s.organization.AuthorizeReference == nil {
 			return nil, ErrOrganizationBillingAccess
