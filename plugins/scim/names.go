@@ -144,6 +144,13 @@ func opsDuplicates(ops []any) error {
 		if !ok {
 			continue
 		}
+		// A present path that is not a string fails the body shape check
+		// instead, as another runtime leaves such an operation unread.
+		if p, present := op["path"]; present {
+			if _, isString := p.(string); !isString {
+				continue
+			}
+		}
 		var path, value any
 		for key, v := range op {
 			switch strings.ToLower(key) {
@@ -173,6 +180,13 @@ func groupOpsDuplicates(ops []any) error {
 		op, ok := item.(map[string]any)
 		if !ok {
 			continue
+		}
+		// A present path that is not a string fails the body shape check
+		// instead, as another runtime leaves such an operation unread.
+		if p, present := op["path"]; present {
+			if _, isString := p.(string); !isString {
+				continue
+			}
 		}
 		var path, value any
 		for key, v := range op {

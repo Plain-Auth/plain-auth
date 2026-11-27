@@ -126,6 +126,8 @@ func (opts Options) browserConsent(c auth.EndpointContext) (any, error) {
 	// Scopes are narrowed before claims, as in another runtime.
 	requested := distinct(strings.Split(q.Get("scope"), " "))
 	if value, present := c.Body["scope"].(string); present {
+		// Empty tokens are ignored, so "" approves no scopes, where another
+		// runtime refuses an empty token as not originally requested.
 		decision.scopes = distinct(strings.Split(value, " "))
 		for _, scope := range decision.scopes {
 			if !slices.Contains(requested, scope) {

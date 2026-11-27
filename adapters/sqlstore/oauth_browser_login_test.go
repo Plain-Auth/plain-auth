@@ -140,12 +140,35 @@ func TestBrowserLoginContinuation(t *testing.T) {
 					t.Fatal("account creation accepted an unfinished step or no signed query", body, w.Code, w.Body.String())
 				}
 			}
+			// Without a true flag the step is missing; the first true flag,
+			// selected before created and postLogin, picks the step, and each
+			// step accepts only a query signed for its own page.
+			for _, tc := range []struct {
+				body        map[string]any
+				description string
+			}{
+				{map[string]any{}, "Missing parameters"},
+				{map[string]any{"created": false, "selected": false, "postLogin": false, "oauth_query": signupQuery}, "Missing parameters"},
+				{map[string]any{"selected": true, "created": true, "oauth_query": signupQuery}, "signed query does not belong to the requested account step"},
+				{map[string]any{"postLogin": true, "oauth_query": signupQuery}, "signed query does not belong to the requested account step"},
+				{map[string]any{"created": true}, "missing oauth query"},
+			} {
+				if w := post(h, "oauth2/continue", tc.body, signedIn, nil); w.Code != 400 || !strings.Contains(w.Body.String(), `"error_description":"`+tc.description+`"`) {
+					t.Fatal("a continuation did not pick its step as another runtime does", tc.body, w.Code, w.Body.String())
+				}
+			}
 			location, err := browser.ContinueOAuthSignup(ctx, signupQuery)
 			must(err)
 			next, err := url.Parse(location)
 			must(err)
 			if next.Host != codeURL.Host || next.Query().Get("code") == "" || next.Query().Get("state") != q.Get("state") {
 				t.Fatal("Go client did not continue the authenticated signup")
+			}
+			// A login page's query resumes as a created step without asking
+			// for prompt=create, as in another runtime.
+			q.Del("prompt")
+			if w := post(h, "oauth2/continue", map[string]any{"created": true, "oauth_query": start()}, signedIn, nil); w.Code != 200 || !strings.Contains(w.Body.String(), "code=") {
+				t.Fatal("a created step from the login page did not resume to a code", w.Code, w.Body.String())
 			}
 			q.Set("prompt", "login")
 			q.Set("max_age", "0")

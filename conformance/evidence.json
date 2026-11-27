@@ -17022,6 +17022,11 @@
       "label": "Apply the HTTP redirect exception while enforcing native loopback address restrictions",
       "test": "plugins/oauthprovider/registration_test.go",
       "marker": "func TestRegistrationRedirectPolicy("
+    },
+    {
+      "label": "Authorize an HTTP web callback on an approved host on its exact registered port, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_redirect_transport_test.go",
+      "marker": "t.Fatal(\"a web client's callback matched another port\", u)"
     }
   ],
   "docs/content/docs/plugins/oauth-provider/clients.mdx#L156/`clientRegistrationDefaultScopes`": [
@@ -18671,6 +18676,12 @@
       "label": "Apply host callback policy after validating transport and reject policy errors before redirecting",
       "test": "adapters/sqlstore/oauth_browser_authorization_test.go",
       "marker": "host-approved redirect did not receive the code"
+    },
+    {
+      "label": "Check only the HTTPS policy before the host callback, never call it for a callback with credentials, a fragment or a script scheme, let it accept callbacks the registration rules would refuse, and fail closed on an error, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_redirect_transport_test.go",
+      "marker": "t.Fatal(\"the hook judged an unsafe callback\", uri, u, hooked)",
+      "complete": true
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/codeExpiresIn": [
@@ -18996,6 +19007,16 @@
       "label": "Resume after the user activates a membership and distinguish an explicit continuation from a cookie reissued by an organization switch",
       "test": "conformance/oauth-post-login.mjs",
       "marker": "const picked = await destination("
+    },
+    {
+      "label": "Refuse a continuation without a true step flag with Missing parameters before its query, on both runtimes",
+      "test": "conformance/oauth-browser-login.mjs",
+      "marker": "const unflagged = await request(\"oauth2/continue\""
+    },
+    {
+      "label": "Pick the first true flag in the order selected, created and postLogin, accept only a query signed for that step's page, and resume a created step from the login page without prompt=create, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_browser_login_test.go",
+      "marker": "t.Fatal(\"a continuation did not pick its step as another runtime does\""
     }
   ],
   "docs/content/docs/plugins/oauth-provider/reference.mdx#L320/`POST /oauth2/continue`": [
@@ -19080,6 +19101,16 @@
       "test": "adapters/sqlstore/oauth_browser_login_test.go",
       "marker": "t.Fatal(\"a sessionless continuation with a bad signed query was not refused first\"",
       "complete": true
+    },
+    {
+      "label": "Refuse a continuation without a true step flag with Missing parameters before its query, on both runtimes",
+      "test": "conformance/oauth-browser-login.mjs",
+      "marker": "const unflagged = await request(\"oauth2/continue\""
+    },
+    {
+      "label": "Pick the first true flag in the order selected, created and postLogin, accept only a query signed for that step's page, and resume a created step from the login page without prompt=create, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_browser_login_test.go",
+      "marker": "t.Fatal(\"a continuation did not pick its step as another runtime does\""
     }
   ],
   "docs/content/docs/plugins/oauth-provider/sign-in-flow.mdx#L229/Parameter `oauth_query` (optional)": [
@@ -48073,8 +48104,17 @@
     {
       "label": "Give an offline code exchange a thirty-day refresh token by default, on both runtimes",
       "test": "conformance/oauth-authorization-code.mjs",
-      "marker": "30 * 24 * 3600 * 1000",
-      "complete": true
+      "marker": "30 * 24 * 3600 * 1000"
+    },
+    {
+      "label": "Apply a configured refresh token lifetime to an offline grant, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_offline_code_test.go",
+      "marker": "offline grant bindings or lifetime were lost"
+    },
+    {
+      "label": "Apply a configured refresh token lifetime to each rotated refresh token, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_refresh_grant_test.go",
+      "marker": "replacement lifetime or grant lineage changed"
     }
   ],
   "docs/content/docs/plugins/mcp.mdx#L340/`mcpOauthOptionsType.codeExpiresIn`": [
@@ -48451,7 +48491,7 @@
   ],
   "plugin-symbol/oauth-provider/getIssuer": [
     {
-      "label": "Publish the issuer without its query, fragment and one trailing slash and accept tokens naming either spelling; signed tokens name the published issuer, a documented deviation",
+      "label": "Publish the issuer serialized as a WHATWG URL without its query, fragment and one trailing slash, and accept both the published and the configured spelling in the token issuer check",
       "test": "oauth_issuer_test.go",
       "marker": "t.Fatal(\"the issuer was not published normalized\", configured, got)",
       "complete": true
@@ -48460,6 +48500,11 @@
       "label": "Publish discovery for an issuer with a query and trailing slash at its normalized paths",
       "test": "plugins/oauthprovider/issuer_metadata_test.go",
       "marker": "t.Fatal(\"the issuer was not published without its query, fragment and trailing slash\", tc.issuer, a.OAuthIssuer())"
+    },
+    {
+      "label": "Sign machine access tokens with the published issuer when the configured issuer has a trailing slash, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_machine_resources_test.go",
+      "marker": "claims, err := signed.VerifyJWT(ctx, response[\"access_token\"].(string), auth.JWTVerifyOptions{Issuer: published, Audience: resource, Subject: id})"
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/rateLimit": [
@@ -48480,6 +48525,39 @@
       "label": "Keep a narrowed claim selection and refuse claims outside the request or a request without claims with 400 invalid_request",
       "test": "plugins/oauthprovider/oidc_claims_test.go",
       "marker": "func TestConsentClaimNarrowing("
+    }
+  ],
+  "plugin-symbol/oauth-provider/isRedirectUriTransportAllowed": [
+    {
+      "label": "Accept every scheme but http, http on a loopback host for a client that is not web or when the host approves it, and never http with credentials or an unparsable URL",
+      "test": "plugins/oauthprovider/registration_test.go",
+      "marker": "func TestRedirectTransportPolicy(",
+      "complete": true
+    },
+    {
+      "label": "Send a callback that fails the HTTPS policy to the error page with invalid_request and the insecure redirect message, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_redirect_transport_test.go",
+      "marker": "t.Fatal(\"an HTTP callback on a public host passed the transport check\", u)"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/clients.mdx#L200": [
+    {
+      "label": "Match a web callback exactly and a native loopback callback on any port of the same host name, check only the HTTPS policy before the host callback, and send refusals to the error page, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_redirect_transport_test.go",
+      "marker": "func TestAuthorizeRedirectTransport("
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/requireOpenId": [
+    {
+      "label": "Refuse an authorization request whose scope parameter is missing, empty or omits openid with invalid_scope at the client's callback with its state and issuer, and send one naming openid to the login page, on both runtimes",
+      "test": "conformance/oauth-require-openid.mjs",
+      "marker": "assert.equal(refused.searchParams.get(\"error_description\"), \"the openid scope is required\");",
+      "complete": true
+    },
+    {
+      "label": "Refuse the option without openid in the issuer's scopes and ignore the client's default scopes",
+      "test": "plugins/oauthprovider/browser_authorization_test.go",
+      "marker": "func TestRequireOpenIDAtAuthorization("
     }
   ]
 }

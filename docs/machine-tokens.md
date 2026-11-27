@@ -142,7 +142,7 @@ curl --request POST "$AUTH_URL/api/auth/oauth2/introspect" \
   --data-urlencode 'token_type_hint=access_token'
 ```
 
-An active access token returns the issuer in `iss`, the issuing application in `client_id` and `azp`, its space-separated `scope`, and Unix timestamps in `iat` and `exp`. Before authorizing an operation, check `active`, the intended audience, the required scopes, and any sender binding in `cnf`.
+An active access token returns the published issuer in `iss`, the same value discovery and signed tokens carry, where another runtime reports an opaque or refresh token's configured spelling, such as one with a trailing slash. It also returns the issuing application in `client_id` and `azp`, its space-separated `scope`, and Unix timestamps in `iat` and `exp`. Before authorizing an operation, check `active`, the intended audience, the required scopes, and any sender binding in `cnf`.
 
 An unknown, expired, revoked or unauthorized token returns HTTP 200 with only `{"active":false}`. Invalid client credentials produce an OAuth error. The optional `token_type_hint` can be omitted. The response uses `Cache-Control: no-store`.
 
@@ -162,7 +162,7 @@ The `aud` claim is a string for one audience and an array for several. For a res
 
 Enable `auth.NewJWT` alongside the OAuth provider and install the `jwt` and `oauth-provider` SQL profiles. Send the compact signed token to the same form-encoded introspection endpoint using the issuing application's credentials or a linked resource server's credentials. Set `token_type_hint=access_token` to limit the request to access tokens. [Signing keys and algorithms](jwt.md) · [Database profiles](databases.md)
 
-Plain Auth verifies the signature using its published keys and configured algorithms. The expected `iss` comes from `auth.JWTOptions.Issuer` when set and otherwise from the auth mount's public URL. The implicit UserInfo audience always uses the public mount, including a custom base path. A token can omit `kid` when exactly one eligible key matches the algorithm. A key-store outage or an ambiguous signing key returns a server error so the caller can retry.
+Plain Auth verifies the signature using its published keys and configured algorithms. The expected `iss` is the published issuer, from `auth.JWTOptions.Issuer` when set and otherwise from the auth mount's public URL, and a token naming the configured spelling, such as one with a trailing slash, is accepted too; another runtime checks only the configured spelling here. The implicit UserInfo audience always uses the public mount, including a custom base path. A token can omit `kid` when exactly one eligible key matches the algorithm. A key-store outage or an ambiguous signing key returns a server error so the caller can retry.
 
 The signed `azp` identifies the issuing client. It must still be enabled, every explicit resource audience must still exist, and any session named by `sid` must still be active. A resource server needs a current link to at least one explicit resource audience. The response retains claims from issuance, including custom claims. Introspection adds the current activity result, the issuing client ID, the binding type, and any applicable pairwise subject. Editing a resource's custom claims affects previously issued opaque tokens and newly minted JWTs. Existing JWTs retain their signed values.
 

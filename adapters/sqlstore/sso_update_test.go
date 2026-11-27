@@ -213,6 +213,22 @@ func TestEnterpriseProviderUpdate(t *testing.T) {
 			if w := update(owner, map[string]any{"issuer": "https://idp.example.test:70000/x"}); w.Code != 400 || code(w) != "VALIDATION_ERROR:[body.issuer] Invalid URL" {
 				t.Fatal("an update accepted an issuer that is not a URL", w.Code, w.Body.String())
 			}
+			// A missing or non-string providerId fails the body schema; a
+			// string naming no provider is not found.
+			for _, tc := range []struct {
+				body map[string]any
+				want string
+			}{
+				{map[string]any{"domain": "acme.example"}, "VALIDATION_ERROR:[body.providerId] Invalid input: expected string, received undefined"},
+				{map[string]any{"providerId": 7, "domain": "acme.example"}, "VALIDATION_ERROR:[body.providerId] Invalid input: expected string, received number"},
+			} {
+				if w := h.call("POST", "sso/update-provider", owner, tc.body); w.Code != 400 || code(w) != tc.want {
+					t.Fatal("a mistyped providerId was not refused in the body validation form", tc.body, w.Code, w.Body.String())
+				}
+			}
+			if w := h.call("POST", "sso/update-provider", owner, map[string]any{"providerId": "absent", "domain": "acme.example"}); w.Code != 404 {
+				t.Fatal("an unknown provider was not answered 404", w.Code, w.Body.String())
+			}
 			// The guard also blocks a domain change.
 			var domainBefore string
 			must(store.db.QueryRowContext(ctx, store.bind(`SELECT "domain" FROM "ssoProvider" WHERE "providerId"=?`), "acme").Scan(&domainBefore))

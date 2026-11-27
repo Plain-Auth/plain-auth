@@ -161,6 +161,7 @@ func registrationFixtureOptions() op.Options {
 			return claims, nil
 		}
 	}
+	opts.Authorization.RequireOpenID = os.Getenv("CONFORMANCE_REQUIRE_OPENID") == "1"
 	if mode == "resources" {
 		opts.Registration.DefaultResources = []string{"urn:reports"}
 		opts.Registration.AllowedResources = []string{"urn:billing", "urn:disabled", "urn:missing"}

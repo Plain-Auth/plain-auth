@@ -79,11 +79,8 @@ func userOps(raw []any) ([]patchOp, error) {
 		for key := range item.(map[string]any) {
 			o.hasValue = o.hasValue || strings.EqualFold(key, "value")
 		}
-		switch nullOpField(item.(map[string]any)) {
-		case "op":
-			return nil, invalid("invalidSyntax", "Expected a patch operation")
-		case "path":
-			return nil, invalid("invalidPath", "Expected an attribute path")
+		if nullOpField(item.(map[string]any)) {
+			return nil, invalid("invalidValue", "Expected a string op and path")
 		}
 		if v["op"] != nil {
 			name, ok := v["op"].(string)
@@ -112,15 +109,18 @@ func userOps(raw []any) ([]patchOp, error) {
 	return ops, nil
 }
 
-// nullOpField names an operation's op or path given as null, which another
-// runtime's body schema refuses as a non-string rather than omitted.
-func nullOpField(raw map[string]any) string {
-	for k, v := range raw {
-		if name := field(k, []string{"op", "path"}); name != "" && v == nil {
-			return name
+// nullOpField reports an operation whose op or path key holds null, which
+// another runtime's body schema refuses as a non-string (invalidValue). Its
+// schema reads those exact keys, so a null under another spelling is
+// ignored, as it strips unknown keys. Other operation keys are matched
+// without regard to case here, where it reads only op, path and value.
+func nullOpField(raw map[string]any) bool {
+	for _, k := range []string{"op", "path"} {
+		if v, present := raw[k]; present && v == nil {
+			return true
 		}
 	}
-	return ""
+	return false
 }
 
 // readOnlyUserPath reports id, schemas and meta, which a PATCH cannot change.

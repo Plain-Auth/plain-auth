@@ -303,6 +303,11 @@ func TestSCIMStaticDecommission(t *testing.T) {
 			if w := scimRequest(h, "GET", "Users", "static-token", nil); w.Code != 401 {
 				t.Fatal("a retired connection's token still works", w.Code)
 			}
+			// The token is checked before the query, so an unknown token gets
+			// 401 for a repeated filter.
+			if w := scimRequest(h, "GET", "Users?filter=a&filter=b", "unknown-token", nil); w.Code != 401 {
+				t.Fatal("a repeated filter was read before the bearer token", w.Code, w.Body.String())
+			}
 			// A retired connection is refused before its query is read and
 			// once its body is valid, as another runtime's middleware runs
 			// after body validation.
@@ -334,9 +339,10 @@ func TestSCIMStaticDecommission(t *testing.T) {
 			}{
 				{"PATCH", "Users/" + created.ID, move, 400},
 				{"GET", "Users?filter=a&filter=b", nil, 400},
-				// A null op or path fails the body schema, which wants a string.
-				{"PATCH", "Users/" + created.ID, nullOp, 400}, {"PATCH", "Users/" + created.ID, nullPath, 400},
-				{"PATCH", "Groups/missing", nullOp, 400}, {"PATCH", "Groups/missing", nullPath, 400},
+				// A null under another spelling of op is an unknown key, so the
+				// request reaches the binding.
+				{"PATCH", "Users/" + created.ID, map[string]any{"schemas": []string{scim.PatchSchema}, "Operations": []any{map[string]any{"Op": nil, "path": "displayName", "value": "Renamed"}}}, 401},
+				{"PATCH", "Groups/missing", map[string]any{"schemas": []string{scim.PatchSchema}, "Operations": []any{map[string]any{"op": "replace", "Path": nil, "value": map[string]any{"displayName": "Renamed"}}}}, 401},
 				// Only a collection read refuses a repeated page or filter key,
 				// and repeated projection keys are merged, so these reach the
 				// binding.
@@ -347,6 +353,21 @@ func TestSCIMStaticDecommission(t *testing.T) {
 			} {
 				if w := scimRequest(h, req.method, req.path, "static-token", req.body); w.Code != req.status {
 					t.Fatal("a retired connection's request was not answered in another runtime's order", req.method, req.path, w.Code, w.Body.String())
+				}
+			}
+			// A null op or path fails the body schema, which wants a string,
+			// with invalidValue, even where both are null or the value repeats
+			// a name.
+			both := map[string]any{"schemas": []string{scim.PatchSchema}, "Operations": []any{map[string]any{"op": nil, "path": nil, "value": "Renamed"}}}
+			repeated := map[string]any{"schemas": []string{scim.PatchSchema}, "Operations": []any{map[string]any{"op": "replace", "path": nil, "value": map[string]any{"displayName": "A", "DISPLAYNAME": "B"}}}}
+			for _, path := range []string{"Users/" + created.ID, "Groups/missing"} {
+				for _, body := range []map[string]any{nullOp, nullPath, both, repeated} {
+					w := scimRequest(h, "PATCH", path, "static-token", body)
+					var problem struct{ ScimType string }
+					_ = json.Unmarshal(w.Body.Bytes(), &problem)
+					if w.Code != 400 || problem.ScimType != "invalidValue" {
+						t.Fatal("a null op or path was not refused as invalidValue", path, body, w.Code, w.Body.String())
+					}
 				}
 			}
 			for _, table := range []string{"scimUser", "scimGroup", "scimGroupMember"} {

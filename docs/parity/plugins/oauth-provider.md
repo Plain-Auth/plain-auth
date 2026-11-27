@@ -6,14 +6,15 @@
 
 - [ ] OAuth provider endpoints, types and options
   - [x] Enforce consent owner and client scope rules when a signed-in account manages its authorized applications ([test](../../../conformance/oauth-consent.mjs#L6))
-  - [x] `getIssuer` ([test](../../../oauth_issuer_test.go#L17))
-    - [x] Publish the issuer without its query, fragment and one trailing slash and accept tokens naming either spelling; signed tokens name the published issuer, a documented deviation ([test](../../../oauth_issuer_test.go#L17))
+  - [x] `getIssuer` ([test](../../../oauth_issuer_test.go#L22))
+    - [x] Publish the issuer serialized as a WHATWG URL without its query, fragment and one trailing slash, and accept both the published and the configured spelling in the token issuer check ([test](../../../oauth_issuer_test.go#L22))
     - [x] Publish discovery for an issuer with a query and trailing slash at its normalized paths ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L115))
-  - [x] `PublicClientJwksValidationResult` ([test](../../../plugins/oauthprovider/registration_test.go#L134))
-    - [x] Return a validation error for unsupported algorithms and private key members ([test](../../../plugins/oauthprovider/registration_test.go#L78))
-    - [x] Refuse each invalid public key set with invalid_client_metadata and the description naming its reason ([test](../../../plugins/oauthprovider/registration_test.go#L134))
-  - [x] `validatePublicClientJwks` ([test](../../../plugins/oauthprovider/registration_test.go#L78))
-    - [x] Validate public RSA, EC and Ed25519 keys and compatible signing algorithms and reject private key material ([test](../../../plugins/oauthprovider/registration_test.go#L78))
+    - [x] Sign machine access tokens with the published issuer when the configured issuer has a trailing slash, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_machine_resources_test.go#L127))
+  - [x] `PublicClientJwksValidationResult` ([test](../../../plugins/oauthprovider/registration_test.go#L157))
+    - [x] Return a validation error for unsupported algorithms and private key members ([test](../../../plugins/oauthprovider/registration_test.go#L101))
+    - [x] Refuse each invalid public key set with invalid_client_metadata and the description naming its reason ([test](../../../plugins/oauthprovider/registration_test.go#L157))
+  - [x] `validatePublicClientJwks` ([test](../../../plugins/oauthprovider/registration_test.go#L101))
+    - [x] Validate public RSA, EC and Ed25519 keys and compatible signing algorithms and reject private key material ([test](../../../plugins/oauthprovider/registration_test.go#L101))
   - [ ] `isForbiddenCimdClientMetadataField`
   - [ ] `oauthProviderResourceClient`
     - [x] Derive protected-resource discovery from a local auth mount and issuer or from standalone configuration ([test](../../../conformance/resource-discovery.mjs#L7))
@@ -75,10 +76,12 @@
     - [x] An accepted consent runs the code's verification create hooks; a declined code still records the consent and spends the prompt ([test](../../../adapters/sqlstore/oauth_code_hooks_test.go#L290))
     - [x] Verify a present signed query, then the decision's body types with every mismatch listed, then the browser session, leaving the prompt usable, on both runtimes ([test](../../../conformance/oauth-browser-authorization.mjs#L76))
   - [ ] `POST /oauth2/continue`
-    - [x] Use the signed signup page query and the new browser session to complete the account-creation step ([test](../../../conformance/oauth-browser-login.mjs#L87))
+    - [x] Use the signed signup page query and the new browser session to complete the account-creation step ([test](../../../conformance/oauth-browser-login.mjs#L91))
     - [x] Resume the signed chooser with the selected browser account and preserve forced consent without repeating selection ([test](../../../conformance/oauth-account-selection.mjs#L44))
     - [x] Re-evaluate the account on a signed created continuation and exchange its code only after the host records completion ([test](../../../conformance/oauth-signup-policy.mjs#L79))
     - [x] Resume after the user activates a membership and distinguish an explicit continuation from a cookie reissued by an organization switch ([test](../../../conformance/oauth-post-login.mjs#L99))
+    - [x] Refuse a continuation without a true step flag with Missing parameters before its query, on both runtimes ([test](../../../conformance/oauth-browser-login.mjs#L88))
+    - [x] Pick the first true flag in the order selected, created and postLogin, accept only a query signed for that step's page, and resume a created step from the login page without prompt=create, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_browser_login_test.go#L157))
   - [ ] `POST /oauth2/token`
     - [x] Issue opaque bearer tokens with Basic or form authentication and verify their scope, expiry, introspection and revocation at an independent server ([test](../../../conformance/oauth-machine-tokens.mjs#L64))
     - [x] Recheck credential rotation, registered scopes, sender constraints and client deletion during issuance on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_machine_token_test.go#L154))
@@ -276,11 +279,15 @@
     - [ ] `schema`
     - [x] `scopes` ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L234))
       - [x] Default the scopes to openid, profile, email and offline_access and refuse registration scopes outside them ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L234))
-    - [ ] `requireOpenId`
-    - [ ] `validateRedirectUri`
+    - [x] `requireOpenId` ([test](../../../conformance/oauth-require-openid.mjs#L41))
+      - [x] Refuse an authorization request whose scope parameter is missing, empty or omits openid with invalid_scope at the client's callback with its state and issuer, and send one naming openid to the login page, on both runtimes ([test](../../../conformance/oauth-require-openid.mjs#L41))
+      - [x] Refuse the option without openid in the issuer's scopes and ignore the client's default scopes ([test](../../../plugins/oauthprovider/browser_authorization_test.go#L124))
+    - [x] `validateRedirectUri` ([test](../../../adapters/sqlstore/oauth_redirect_transport_test.go#L126))
       - [x] Apply host callback policy after validating transport and reject policy errors before redirecting ([test](../../../adapters/sqlstore/oauth_browser_authorization_test.go#L179))
+      - [x] Check only the HTTPS policy before the host callback, never call it for a callback with credentials, a fragment or a script scheme, let it accept callbacks the registration rules would refuse, and fail closed on an error, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_redirect_transport_test.go#L126))
     - [ ] `allowInsecureRedirectUri`
       - [x] Apply the HTTP redirect exception while enforcing native loopback address restrictions ([test](../../../plugins/oauthprovider/registration_test.go#L14))
+      - [x] Authorize an HTTP web callback on an approved host on its exact registered port, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_redirect_transport_test.go#L104))
     - [ ] `resources`
       - [x] Load string and object declarations and retry unfinished rows after a migration ([test](../../../adapters/sqlstore/oauth_resource_seed_test.go#L209))
       - [x] Keep a snapshot of configured scope lists, settings and JSON objects ([test](../../../plugins/oauthprovider/resource_seed_test.go#L36))
@@ -527,7 +534,9 @@
     - [x] Remove max_age from the continued request after a fresh sign-in ([test](../../../conformance/oauth-browser-login.mjs#L56))
   - [x] `isPKCERequired` ([test](../../../plugins/oauthprovider/authorization_code_test.go#L15))
     - [x] Resolve public and confidential client PKCE requirements, including offline scopes, OIDC nonces and explicit registration policy ([test](../../../plugins/oauthprovider/authorization_code_test.go#L15))
-  - [ ] `isRedirectUriTransportAllowed`
+  - [x] `isRedirectUriTransportAllowed` ([test](../../../plugins/oauthprovider/registration_test.go#L81))
+    - [x] Accept every scheme but http, http on a loopback host for a client that is not web or when the host approves it, and never http with credentials or an unparsable URL ([test](../../../plugins/oauthprovider/registration_test.go#L81))
+    - [x] Send a callback that fails the HTTPS policy to the error page with invalid_request and the insecure redirect message, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_redirect_transport_test.go#L110))
   - [x] `isInsecureRedirectUriAllowed` ([test](../../../plugins/oauthprovider/registration_test.go#L74))
     - [x] Refuse an HTTP callback with credentials even on an approved host, and accept an approved HTTP web callback ([test](../../../plugins/oauthprovider/registration_test.go#L74))
   - [ ] `getAuthEndpointUrl`
@@ -603,6 +612,7 @@
       - [x] Custom scheme with a host and a path ([test](../../../plugins/oauthprovider/registration_test.go#L33))
         - [x] Accept a custom scheme with a host and path for a native client and refuse it for a web client ([test](../../../plugins/oauthprovider/registration_test.go#L33))
   - [ ] Custom redirect URI validation
+    - [x] Match a web callback exactly and a native loopback callback on any port of the same host name, check only the HTTPS policy before the host callback, and send refusals to the error page, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_redirect_transport_test.go#L23))
   - [ ] HTTP redirect URIs
   - [ ] Private key JWT
     - [x] Authenticate issuance, introspection and revocation with independently signed assertions and reject replay across issuers ([test](../../../conformance/oauth-client-assertions.mjs#L5))
@@ -730,7 +740,7 @@
       - [x] Visit a host consent page, verify the signed query independently, deny a first request or exchange a code approved for fewer scopes ([test](../../../conformance/oauth-browser-authorization.mjs#L57))
       - [x] Consume a decision once across two servers, isolate sessions and tenants, and roll back consent when code storage fails ([test](../../../adapters/sqlstore/oauth_browser_consent_test.go#L25))
     - [x] `POST /oauth2/continue` ([test](../../../adapters/sqlstore/oauth_browser_login_test.go#L140))
-      - [x] Use the signed signup page query and the new browser session to complete the account-creation step ([test](../../../conformance/oauth-browser-login.mjs#L87))
+      - [x] Use the signed signup page query and the new browser session to complete the account-creation step ([test](../../../conformance/oauth-browser-login.mjs#L91))
       - [x] Resume the signed chooser with the selected browser account and preserve forced consent without repeating selection ([test](../../../conformance/oauth-account-selection.mjs#L44))
       - [x] Re-evaluate the account on a signed created continuation and exchange its code only after the host records completion ([test](../../../conformance/oauth-signup-policy.mjs#L79))
       - [x] Resume after the user activates a membership and distinguish an explicit continuation from a cookie reissued by an organization switch ([test](../../../conformance/oauth-post-login.mjs#L99))
@@ -824,8 +834,8 @@
     - [ ] `invalid_dpop_proof`
   - [ ] Rate limits
     - [ ] `token`
-    - [x] `authorize` ([test](../../../adapters/sqlstore/oauth_browser_authorization_test.go#L206))
-      - [x] Share the default 30-request allowance across GET and POST, apply a custom rule or inherit the host limit ([test](../../../adapters/sqlstore/oauth_browser_authorization_test.go#L206))
+    - [x] `authorize` ([test](../../../adapters/sqlstore/oauth_browser_authorization_test.go#L208))
+      - [x] Share the default 30-request allowance across GET and POST, apply a custom rule or inherit the host limit ([test](../../../adapters/sqlstore/oauth_browser_authorization_test.go#L208))
     - [x] `introspect` ([test](../../../adapters/sqlstore/oauth_introspection_test.go#L142))
       - [x] Enforce the default introspection limit, a route override or the host's global rule ([test](../../../adapters/sqlstore/oauth_introspection_test.go#L142))
       - [x] Apply a 100-request, one-minute default to the form endpoint ([test](../../../plugins/oauthprovider/machine_token_test.go#L62))
@@ -945,17 +955,19 @@
     - [x] Recheck live organization selection on continuation, require consent for each organization and redeem a token carrying its reference ([test](../../../conformance/oauth-post-login.mjs#L90))
     - [x] Validate a signed selector before updating the team and keep an outstanding approval in its original organization ([test](../../../adapters/sqlstore/oauth_post_login_test.go#L129))
   - [x] Continue endpoint ([test](../../../adapters/sqlstore/oauth_browser_login_test.go#L140))
-    - [x] Use the signed signup page query and the new browser session to complete the account-creation step ([test](../../../conformance/oauth-browser-login.mjs#L87))
+    - [x] Use the signed signup page query and the new browser session to complete the account-creation step ([test](../../../conformance/oauth-browser-login.mjs#L91))
     - [x] Resume the signed chooser with the selected browser account and preserve forced consent without repeating selection ([test](../../../conformance/oauth-account-selection.mjs#L44))
     - [x] Re-evaluate the account on a signed created continuation and exchange its code only after the host records completion ([test](../../../conformance/oauth-signup-policy.mjs#L79))
     - [x] Resume after the user activates a membership and distinguish an explicit continuation from a cookie reissued by an organization switch ([test](../../../conformance/oauth-post-login.mjs#L99))
     - [x] Refuse a continuation with created true and no signed query with 400 invalid_request, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_browser_login_test.go#L140))
     - [x] `POST /oauth2/continue` ([test](../../../adapters/sqlstore/oauth_browser_login_test.go#L128))
-      - [x] Use the signed signup page query and the new browser session to complete the account-creation step ([test](../../../conformance/oauth-browser-login.mjs#L87))
+      - [x] Use the signed signup page query and the new browser session to complete the account-creation step ([test](../../../conformance/oauth-browser-login.mjs#L91))
       - [x] Resume the signed chooser with the selected browser account and preserve forced consent without repeating selection ([test](../../../conformance/oauth-account-selection.mjs#L44))
       - [x] Re-evaluate the account on a signed created continuation and exchange its code only after the host records completion ([test](../../../conformance/oauth-signup-policy.mjs#L79))
       - [x] Resume after the user activates a membership and distinguish an explicit continuation from a cookie reissued by an organization switch ([test](../../../conformance/oauth-post-login.mjs#L99))
       - [x] Verify a present signed query first, then the continuation's body types with every mismatch listed, then the browser session with 401, then the completed step and signed query with 400, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_browser_login_test.go#L128))
+      - [x] Refuse a continuation without a true step flag with Missing parameters before its query, on both runtimes ([test](../../../conformance/oauth-browser-login.mjs#L88))
+      - [x] Pick the first true flag in the order selected, created and postLogin, accept only a query signed for that step's page, and resume a created step from the login page without prompt=create, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_browser_login_test.go#L157))
       - [x] Parameter `selected` (optional) ([test](../../../conformance/oauth-account-selection.mjs#L87))
         - [x] Continue the account choice with selected=true after an explicit prompt or a host policy, including a required second consent ([test](../../../conformance/oauth-account-selection.mjs#L87))
       - [x] Parameter `created` (optional) ([test](../../../adapters/sqlstore/oauth_browser_login_test.go#L117))
@@ -964,7 +976,7 @@
       - [x] Parameter `postLogin` (optional) ([test](../../../conformance/oauth-post-login.mjs#L126))
         - [x] Use the signed post-login query and active session to verify a choice before continuing, and require a new session to pass its own check ([test](../../../conformance/oauth-post-login.mjs#L126))
       - [x] Parameter `oauth_query` (optional) ([test](../../../conformance/oauth-account-selection.mjs#L58))
-        - [x] Use the signed signup page query and the new browser session to complete the account-creation step ([test](../../../conformance/oauth-browser-login.mjs#L87))
+        - [x] Use the signed signup page query and the new browser session to complete the account-creation step ([test](../../../conformance/oauth-browser-login.mjs#L91))
         - [x] Resume the signed chooser with the selected browser account and preserve forced consent without repeating selection ([test](../../../conformance/oauth-account-selection.mjs#L44))
         - [x] Resume after the user activates a membership and distinguish an explicit continuation from a cookie reissued by an organization switch ([test](../../../conformance/oauth-post-login.mjs#L99))
         - [x] Reject a continuation whose signed query was altered ([test](../../../conformance/oauth-account-selection.mjs#L58))

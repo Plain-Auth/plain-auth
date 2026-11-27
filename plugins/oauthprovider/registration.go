@@ -14,6 +14,7 @@ import (
 	"time"
 
 	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/internal/jsjson"
 )
 
 // RegistrationMetadata is the client-supplied portion of an RFC 7591 registration.
@@ -154,6 +155,9 @@ func New(opts Options) (auth.Plugin, error) {
 	opts = opts.clientManagementOptions()
 	if err := opts.Authorization.defaults(); err != nil {
 		return auth.Plugin{}, err
+	}
+	if opts.Authorization.RequireOpenID && !slices.Contains(opts.Scopes, "openid") {
+		return auth.Plugin{}, errors.New("oauthprovider: RequireOpenID requires openid in Scopes")
 	}
 	if err := opts.Metadata.prepare(opts.Scopes); err != nil {
 		return auth.Plugin{}, err
@@ -304,11 +308,12 @@ func distinct(xs []string) []string {
 }
 
 // promptValues splits a prompt parameter on single spaces, trims each value
-// and drops empty ones, so "login\tconsent" stays one unsupported value.
+// as JavaScript does and drops empty ones, so "login\tconsent" stays one
+// unsupported value.
 func promptValues(raw string) []string {
 	var values []string
 	for _, v := range strings.Split(raw, " ") {
-		if v = strings.TrimSpace(v); v != "" {
+		if v = jsjson.TrimSpace(v); v != "" {
 			values = append(values, v)
 		}
 	}

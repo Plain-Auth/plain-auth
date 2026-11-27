@@ -75,6 +75,29 @@ func TestRegistrationRedirectPolicy(t *testing.T) {
 	}
 }
 
+// The authorize-time HTTPS policy accepts every scheme but http, http on a
+// loopback host for a client that is not web or when the host approves it,
+// and never http with credentials.
+func TestRedirectTransportPolicy(t *testing.T) {
+	r := RegistrationOptions{AllowHTTPRedirect: func(u *url.URL) bool { return u.Hostname() == "intranet.example" }}
+	for _, tc := range []struct {
+		uri  string
+		web  bool
+		want bool
+	}{
+		{"https://app.example/cb", true, true}, {"https://localhost/cb", true, true}, {"https://127.0.0.1/cb", false, true},
+		{"myapp:callback", true, true}, {"com.example.app:/cb", false, true},
+		{"http://localhost:3000/cb", false, true}, {"http://tenant.localhost/cb", false, true}, {"http://127.0.0.2:9/cb", false, true},
+		{"http://localhost:3000/cb", true, false}, {"http://192.168.1.2/cb", false, false}, {"http://example.com/cb", true, false},
+		{"http://intranet.example/cb", true, true}, {"http://intranet.example/cb", false, true},
+		{"http://user@intranet.example/cb", true, false}, {"relative/cb", false, false}, {"", false, false},
+	} {
+		if got := r.redirectTransportAllowed(tc.uri, tc.web); got != tc.want {
+			t.Errorf("transport of %q (web %v) = %v", tc.uri, tc.web, got)
+		}
+	}
+}
+
 func TestRegistrationPublicKeys(t *testing.T) {
 	for _, tc := range []struct {
 		kty, curve string

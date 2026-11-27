@@ -64,6 +64,8 @@ func (opts Options) introspectRefresh(c auth.EndpointContext, req tokenAction, f
 	if !sessionLive && (record.SessionID != "" || record.AuthorizationCodeID != "") && !slices.Contains(record.Scopes, "offline_access") {
 		return map[string]bool{"active": false}, nil
 	}
+	// The published issuer, as for opaque access tokens; another runtime
+	// reports the configured spelling.
 	claims := map[string]any{"active": true, "client_id": current.ClientID, "iss": c.Auth.OAuthIssuer(),
 		"iat": record.IssuedAt.Unix(), "exp": record.ExpiresAt.Unix(), "token_type": "Bearer"}
 	if record.Scopes != nil {

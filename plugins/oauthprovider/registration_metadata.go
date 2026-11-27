@@ -171,12 +171,11 @@ func (o Options) prepareMetadata(host *auth.Auth, m *RegistrationMetadata, autho
 		}
 	}
 	for _, raw := range m.PostLogoutRedirectURIs {
-		u, err := redirectURL(raw)
-		if err != nil {
+		if _, err := redirectURL(raw); err != nil {
 			return err
 		}
-		if u.Scheme == "http" && !loopback(u.Hostname()) && !r.allowsHTTP(u) {
-			return fieldProblem("post_logout_redirect_uris", "Redirect URI must use HTTPS (HTTP allowed only for loopback hosts): "+raw)
+		if !r.redirectTransportAllowed(raw, false) {
+			return fieldProblem("post_logout_redirect_uris", insecureRedirectMessage+": "+raw)
 		}
 	}
 	if code && !slices.Contains(o.GrantTypes, "authorization_code") {
@@ -281,6 +280,26 @@ func loopback(name string) bool {
 }
 func (r RegistrationOptions) allowsHTTP(u *url.URL) bool {
 	return r.AllowHTTPRedirect != nil && r.AllowHTTPRedirect(u)
+}
+
+const insecureRedirectMessage = "Redirect URI must use HTTPS (HTTP allowed only for loopback hosts)"
+
+// redirectTransportAllowed applies the HTTPS policy alone, as another
+// runtime does at authorize and for post-logout URIs: any scheme but http
+// passes, and http passes on a loopback host for a client that is not web
+// or when AllowHTTPRedirect accepts it, never with credentials.
+func (r RegistrationOptions) redirectTransportAllowed(raw string, web bool) bool {
+	u, err := url.Parse(raw)
+	if err != nil || !u.IsAbs() {
+		return false
+	}
+	if u.Scheme != "http" {
+		return true
+	}
+	if !web && loopback(u.Hostname()) {
+		return true
+	}
+	return u.User == nil && r.allowsHTTP(u)
 }
 
 func (r RegistrationOptions) validateRedirect(raw, app string) error {

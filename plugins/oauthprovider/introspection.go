@@ -95,6 +95,8 @@ func (opts Options) introspect(c auth.EndpointContext) (any, error) {
 	if record != nil {
 		access = &OpaqueAccessTokenRecord{MachineTokenRecord: *record, ClientID: in.id}
 	}
+	// Opaque tokens report the published issuer, as the tokens this server
+	// signs do, where another runtime reports the configured spelling.
 	claims := opaqueAccessClaims(access, digest, c.Auth.OAuthIssuer(), userInfoURL)
 	if claims["active"] != true {
 		return claims, nil

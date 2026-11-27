@@ -1082,12 +1082,19 @@ func (a *Auth) oauthIssuerAccepted(iss string) bool {
 	return iss == a.OAuthIssuer() || iss == a.configuredOAuthIssuer()
 }
 
-// normalizeIssuer drops an absolute URL's query, fragment and one trailing
-// slash; a value that does not parse is returned unchanged.
+// normalizeIssuer serializes an absolute URL as a WHATWG URL is, with a
+// lowercase host, no default port and its dot segments resolved, then drops
+// its query, fragment and one trailing slash; a value that does not parse
+// is returned unchanged.
 func normalizeIssuer(raw string) string {
 	u, err := url.Parse(raw)
 	if err != nil || !u.IsAbs() {
 		return raw
+	}
+	u = u.ResolveReference(&url.URL{})
+	u.Host = strings.ToLower(u.Host)
+	if port := u.Port(); u.Scheme == "https" && port == "443" || u.Scheme == "http" && port == "80" {
+		u.Host = strings.TrimSuffix(u.Host, ":"+port)
 	}
 	u.RawQuery, u.ForceQuery, u.Fragment, u.RawFragment = "", false, "", ""
 	return strings.TrimSuffix(u.String(), "/")

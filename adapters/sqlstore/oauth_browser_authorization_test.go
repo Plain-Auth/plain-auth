@@ -179,7 +179,9 @@ func TestBrowserAuthorization(t *testing.T) {
 				t.Fatal("host-approved redirect did not receive the code")
 			}
 			check(call(h1, "app"), "invalid_redirect", true)
-			check(callWithURI(h1, "app", "https://user@example.test/cb"), "invalid_request", true)
+			// A callback with credentials passes the HTTPS policy but never
+			// reaches the validator, so it fails the match.
+			check(callWithURI(h1, "app", "https://user@example.test/cb"), "invalid_redirect", true)
 			redirectCheck = nil
 			// Operator-approved clients still need a browser session and valid PKCE.
 			write(`UPDATE "oauthClient" SET "skipConsent"=? WHERE "clientId"='other'`, true)

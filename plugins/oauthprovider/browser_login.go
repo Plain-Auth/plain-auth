@@ -236,16 +236,22 @@ func (opts Options) continueAccount(c auth.EndpointContext) (any, error) {
 	if _, err := requireBrowserOwner(c); err != nil {
 		return nil, err
 	}
-	selected, _ := c.Body["selected"].(bool)
-	created, _ := c.Body["created"].(bool)
-	postLogin, _ := c.Body["postLogin"].(bool)
-	markers, prompt := []string{"pa_login", "pa_signup"}, "create"
-	if selected {
+	// The first true flag, in the order selected, created and postLogin,
+	// picks the step. Each step accepts only a query signed for its own
+	// page, where another runtime resumes from any signed query: a query
+	// signed for a login or consent page cannot skip a chooser or a
+	// post-login gate that never ran.
+	var markers []string
+	var prompt string
+	switch {
+	case c.Body["selected"] == true:
 		markers, prompt = []string{"pa_select"}, "select_account"
-	} else if !created && postLogin && opts.Authorization.PostLogin != nil {
-		markers, prompt = []string{"pa_post", "pa_post_issuer"}, ""
-	} else if !created {
-		return nil, registrationProblem(400, "invalid_request", "an account step must be completed")
+	case c.Body["created"] == true:
+		markers, prompt = []string{"pa_login", "pa_signup"}, "create"
+	case c.Body["postLogin"] == true:
+		markers = []string{"pa_post", "pa_post_issuer"}
+	default:
+		return nil, registrationProblem(400, "invalid_request", "Missing parameters")
 	}
 	raw, _ := c.Body["oauth_query"].(string)
 	if raw == "" {
@@ -254,9 +260,6 @@ func (opts Options) continueAccount(c auth.EndpointContext) (any, error) {
 	q, err := signedAccountPage(c, raw, markers...)
 	if err != nil {
 		return nil, err
-	}
-	if prompt == "create" && !q.Has("pa_signup") && !slices.Contains(promptValues(q.Get("prompt")), "create") {
-		return nil, registrationProblem(400, "invalid_request", "account creation was not requested")
 	}
 	if prompt != "" {
 		withoutPrompt(q, prompt)

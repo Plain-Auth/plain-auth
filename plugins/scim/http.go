@@ -85,9 +85,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			route += "/:userId"
 		}
 	}
-	// The bearer token and its scopes are checked before the media type and
-	// body, where another runtime's request hook answers 415 or 400 first, so
-	// an unauthenticated caller learns nothing about how a body is read.
+	// The bearer token and its scopes are checked before the query, media
+	// type and body, where another runtime's query schema or request hook
+	// answers 400 or 415 first, so an unauthenticated caller learns nothing
+	// about how a request is read.
 	identity, err := h.authorize(r, scope, route)
 	if err != nil {
 		writeError(w, err)

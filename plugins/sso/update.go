@@ -29,10 +29,20 @@ type ProviderUpdateStore interface {
 // updateProvider changes a provider's issuer, domain or OIDC configuration.
 // A body with samlConfig replaces a SAML directory's metadata instead.
 func (o Options) updateProvider(c auth.EndpointContext, store Store, actor Actor) (any, error) {
+	// A missing or non-string providerId fails the body schema, as in
+	// another runtime; a string that names no provider answers 404 below.
+	raw, present := c.Body["providerId"]
+	id, ok := raw.(string)
+	if !ok {
+		received := "undefined"
+		if present {
+			received = jsjson.TypeName(raw)
+		}
+		return nil, &auth.APIError{Status: 400, Code: "VALIDATION_ERROR", Message: "[body.providerId] Invalid input: expected string, received " + received}
+	}
 	if metadataOnlyUpdate(c.Body) && o.SAML != nil {
 		return o.updateSAMLMetadata(c, store, actor)
 	}
-	id, _ := c.Body["providerId"].(string)
 	if !MutableProviderID(id) || c.Auth.HasOAuthProvider(id) {
 		return nil, ErrMissing
 	}

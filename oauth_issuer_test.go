@@ -11,6 +11,11 @@ func TestOAuthIssuerSpellings(t *testing.T) {
 		"https://idp.example.test/base/?x=1#f": "https://idp.example.test/base",
 		"https://idp.example.test/base":        "https://idp.example.test/base",
 		"https://idp.example.test/base//":      "https://idp.example.test/base/",
+		// Serialized as a WHATWG URL: lowercase host, no default port and
+		// resolved dot segments.
+		"https://IdP.Example.test:443/a/../tenant/": "https://idp.example.test/tenant",
+		"http://idp.example.test:80/x/./y":          "http://idp.example.test/x/y",
+		"https://idp.example.test:8443/x":           "https://idp.example.test:8443/x",
 	} {
 		a := &Auth{serviceJWT: &JWTOptions{Issuer: configured}}
 		if got := a.OAuthIssuer(); got != published {

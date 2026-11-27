@@ -48,12 +48,20 @@ func (opts Options) browserGrant(client BrowserClient, q url.Values) (browserAut
 	}
 	scopes := allowed
 	if q.Has("scope") {
-		scopes = distinct(strings.Split(q.Get("scope"), " "))
-		for _, s := range scopes {
-			if !slices.Contains(allowed, s) {
-				return fail("invalid_scope", "The following scope is invalid: "+s)
+		// Every unknown scope is named in request order, as in another runtime.
+		var invalid []string
+		for _, s := range strings.Split(q.Get("scope"), " ") {
+			if s != "" && !slices.Contains(allowed, s) {
+				invalid = append(invalid, s)
 			}
 		}
+		if len(invalid) > 0 {
+			return fail("invalid_scope", "The following scopes are invalid: "+strings.Join(invalid, ", "))
+		}
+		scopes = distinct(strings.Split(q.Get("scope"), " "))
+	}
+	if opts.Authorization.RequireOpenID && (!q.Has("scope") || !slices.Contains(scopes, "openid")) {
+		return fail("invalid_scope", "the openid scope is required")
 	}
 	request := browserAuthorizationRequest{BrowserCodeIssue: BrowserCodeIssue{Client: client, Scopes: scopes, Lifetime: opts.Authorization.CodeLifetime}}
 	request.Query = map[string]string{"redirect_uri": q.Get("redirect_uri")}

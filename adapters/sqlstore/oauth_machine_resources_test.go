@@ -51,7 +51,9 @@ func TestMachineResourceIssuance(t *testing.T) {
 				must(err)
 			}
 			const id, resource, origin = "Machine", "urn:Reports", "https://issuer.example.test"
-			const issuer = origin + "/custom"
+			// The issuer is configured with a trailing slash; signed tokens
+			// name the published issuer without it.
+			const issuer, published = origin + "/custom/", origin + "/custom"
 			write(`INSERT INTO "oauthClient" ("id","clientId","clientSecret","tokenEndpointAuthMethod","grantTypes","clientCredentialsScopes","redirectUris") VALUES ('one',?,'secret','client_secret_post',?,?,'[]')`, id, `["client_credentials"]`, `["read","write"]`)
 			write(`INSERT INTO "oauthResource" ("id","identifier","name","allowedScopes") VALUES ('r',?,'Reports',?)`, resource, `["read"]`)
 			jwt, err := auth.NewJWT(auth.JWTOptions{Issuer: issuer, AdditionalAlgorithms: []string{"ES256"}})
@@ -122,7 +124,7 @@ func TestMachineResourceIssuance(t *testing.T) {
 			request(signed, res, 400, "invalid_request")
 			keys.beforeSigning = nil
 			response := request(signed, res, 200, "")
-			claims, err := signed.VerifyJWT(ctx, response["access_token"].(string), auth.JWTVerifyOptions{Issuer: issuer, Audience: resource, Subject: id})
+			claims, err := signed.VerifyJWT(ctx, response["access_token"].(string), auth.JWTVerifyOptions{Issuer: published, Audience: resource, Subject: id})
 			must(err)
 			if claims["scope"] != "read" || response["expires_in"] != float64(8) {
 				t.Fatal("unexpected signed grant", claims)
@@ -131,9 +133,9 @@ func TestMachineResourceIssuance(t *testing.T) {
 			request(signed, res, 500, "")
 			implicit := origin + "/auth/oauth2/userinfo"
 			response = request(signed, []string{implicit}, 200, "")
-			_, err = signed.VerifyJWT(ctx, response["access_token"].(string), auth.JWTVerifyOptions{Issuer: issuer, Audience: implicit, Subject: id})
+			_, err = signed.VerifyJWT(ctx, response["access_token"].(string), auth.JWTVerifyOptions{Issuer: published, Audience: implicit, Subject: id})
 			must(err)
-			request(signed, []string{issuer + "/oauth2/userinfo"}, 400, "invalid_target")
+			request(signed, []string{published + "/oauth2/userinfo"}, 400, "invalid_target")
 			var count int
 			must(peer.db.QueryRowContext(ctx, peer.bind(`SELECT COUNT(*) FROM "oauthAccessToken" WHERE "clientId"=?`), id).Scan(&count))
 			if count != 1 {

@@ -129,9 +129,11 @@
       - [x] Give a code exchange the configured access token lifetime, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_authorization_code_test.go#L114))
     - [x] `mcpOauthOptionsType.idTokenExpiresIn` ([test](../../../conformance/oauth-id-tokens.mjs#L77))
       - [x] Apply the ten-hour default or configured whole-second lifetime to signed ID tokens on code and refresh exchanges ([test](../../../conformance/oauth-id-tokens.mjs#L77))
-    - [x] `mcpOauthOptionsType.refreshTokenExpiresIn` ([test](../../../conformance/oauth-authorization-code.mjs#L109))
+    - [ ] `mcpOauthOptionsType.refreshTokenExpiresIn`
       - [x] Default the refresh token lifetime to thirty days ([test](../../../plugins/oauthprovider/machine_token_test.go#L111))
       - [x] Give an offline code exchange a thirty-day refresh token by default, on both runtimes ([test](../../../conformance/oauth-authorization-code.mjs#L109))
+      - [x] Apply a configured refresh token lifetime to an offline grant, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_offline_code_test.go#L148))
+      - [x] Apply a configured refresh token lifetime to each rotated refresh token, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_refresh_grant_test.go#L172))
     - [ ] `mcpOauthOptionsType.refreshTokenReuseInterval`
     - [ ] `mcpOauthOptionsType.codeExpiresIn`
       - [x] Default the authorization code lifetime to ten minutes ([test](../../../plugins/oauthprovider/machine_token_test.go#L111))

@@ -46,10 +46,15 @@ type BrowserAuthorizationOptions struct {
 	CodeLifetime time.Duration
 	// ConsentReference identifies a host tenant's approval. An empty value selects personal consent.
 	ConsentReference func(context.Context, RegistrationAccess, []string) (string, error)
-	// ValidateRedirectURI may override the registration match after syntax
-	// and transport checks. Returning an error rejects the redirect.
+	// ValidateRedirectURI may override the registered match after the HTTPS
+	// policy, for a callback without credentials, a fragment or a script
+	// scheme. Returning an error rejects the redirect.
 	ValidateRedirectURI func(ctx context.Context, requested string, registered []string, defaultMatch bool) (bool, error)
 	RateLimit           *auth.RateLimitRule
+	// RequireOpenID refuses an authorization request whose scope parameter
+	// omits openid with invalid_scope; the client's default scopes do not
+	// count. Scopes must include openid.
+	RequireOpenID bool
 }
 
 func (o *BrowserAuthorizationOptions) defaults() error {
@@ -183,13 +188,19 @@ func (opts Options) runBrowserAuthorization(c auth.EndpointContext, q url.Values
 	if len(client.GrantTypes) > 0 && !slices.Contains(client.GrantTypes, "authorization_code") {
 		return serverError("unauthorized_client", "client is not authorized to use the authorization_code grant")
 	}
+	// As in another runtime, only the HTTPS policy is checked here; the
+	// registered match, or the host's ValidateRedirectURI for a callback
+	// whose syntax is safe, decides the rest and fails closed.
 	callback := q.Get("redirect_uri")
-	if err := opts.Registration.validateRedirect(callback, client.ApplicationType); err != nil {
-		return serverError("invalid_request", "invalid redirect uri transport or syntax")
+	if callback != "" && !opts.Registration.redirectTransportAllowed(callback, client.ApplicationType == "web") {
+		return serverError("invalid_request", insecureRedirectMessage)
 	}
-	match := client.matchesCallback(callback)
+	match := callback != "" && client.matchesCallback(callback)
 	if validate := opts.Authorization.ValidateRedirectURI; validate != nil {
-		match, err = validate(ctx, callback, slices.Clone(client.RedirectURIs), match)
+		match = false
+		if _, unsafe := redirectURL(callback); unsafe == nil {
+			match, err = validate(ctx, callback, slices.Clone(client.RedirectURIs), client.matchesCallback(callback))
+		}
 	}
 	if !match || err != nil {
 		return serverError("invalid_redirect", "invalid redirect uri")

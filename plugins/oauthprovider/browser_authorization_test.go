@@ -39,7 +39,7 @@ func TestBrowserAuthorizationRules(t *testing.T) {
 		{"request", "signed", "request_not_supported"}, {"request_uri", "urn:entry", "request_uri_not_supported"},
 		{"response_type", "token", "unsupported_response_type"}, {"response_mode", "form_post", "invalid_request"},
 		{"scope", "write", "invalid_scope"}, {"prompt", "none consent", "invalid_request"}, {"prompt", "unknown", "invalid_request"},
-		{"prompt", "login\tconsent", "invalid_request"},
+		{"prompt", "login\tconsent", "invalid_request"}, {"prompt", "consent\u0085", "invalid_request"},
 		{"max_age", "-1", "invalid_request"}, {"code_challenge_method", "plain", "invalid_request"}, {"claims", "{}", "invalid_request"},
 		{"resource", "urn:api", "invalid_target"}, {"dpop_jkt", "binding", "invalid_request"},
 	} {
@@ -57,7 +57,7 @@ func TestBrowserAuthorizationRules(t *testing.T) {
 			t.Fatal("a supported prompt was refused", prompt, err)
 		}
 	}
-	if request, err := opts.browserGrant(base, url.Values{"response_type": {"code"}, "code_challenge": {"digest"}, "code_challenge_method": {"S256"}, "prompt": {"login  consent login\t"}}); err != nil || !slices.Equal(request.prompts, []string{"login", "consent"}) {
+	if request, err := opts.browserGrant(base, url.Values{"response_type": {"code"}, "code_challenge": {"digest"}, "code_challenge_method": {"S256"}, "prompt": {"login  consent login\t \ufefflogin"}}); err != nil || !slices.Equal(request.prompts, []string{"login", "consent"}) {
 		t.Fatal("a prompt list kept its repeats", request.prompts, err)
 	}
 	q := url.Values{"response_type": {"code"}, "code_challenge": {"digest"}, "code_challenge_method": {"S256"}}
@@ -118,3 +118,33 @@ func TestBrowserRedirectKeepsDeepLinks(t *testing.T) {
 		t.Errorf("fragment response = %v", got)
 	}
 }
+
+// RequireOpenID refuses a request whose scope parameter omits openid, and
+// the default scopes do not satisfy it; every unknown scope is named.
+func TestRequireOpenIDAtAuthorization(t *testing.T) {
+	if _, err := New(Options{Scopes: []string{"read"}, Authorization: BrowserAuthorizationOptions{RequireOpenID: true}}); err == nil {
+		t.Fatal("RequireOpenID was accepted without openid in Scopes")
+	}
+	strict := Options{Scopes: []string{"openid", "read"}, Authorization: BrowserAuthorizationOptions{RequireOpenID: true}}
+	client := BrowserClient{AuthMethod: "none"}
+	request := func(scope *string) url.Values {
+		q := url.Values{"response_type": {"code"}, "code_challenge": {"digest"}, "code_challenge_method": {"S256"}}
+		if scope != nil {
+			q.Set("scope", *scope)
+		}
+		return q
+	}
+	for _, scope := range []*string{nil, new(string), ptr("read")} {
+		if _, err := strict.browserGrant(client, request(scope)); err == nil || err.Code != "invalid_scope" || err.Description != "the openid scope is required" {
+			t.Errorf("a request without openid was not refused: %v", err)
+		}
+	}
+	if got, err := strict.browserGrant(client, request(ptr("read openid"))); err != nil || !slices.Equal(got.Scopes, []string{"read", "openid"}) {
+		t.Fatal("a request with openid was refused", got.Scopes, err)
+	}
+	if _, err := strict.browserGrant(client, request(ptr("write read extra"))); err == nil || err.Description != "The following scopes are invalid: write, extra" {
+		t.Fatal("unknown scopes were not all named", err)
+	}
+}
+
+func ptr(s string) *string { return &s }
