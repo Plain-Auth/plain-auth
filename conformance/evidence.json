@@ -465,6 +465,16 @@
       "label": "Keep the latest provider state when same-second subscription events race across replicas",
       "test": "adapters/sqlstore/stripe_lifecycle_test.go",
       "marker": "delayed same-second provider response regressed row"
+    },
+    {
+      "label": "Accept an early signed subscription creation for a pending Checkout, reconcile repeated Checkout completions from the retrieved subscription and call the general event callback after each, on both runtimes",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "export async function checkoutCompletionObserver("
+    },
+    {
+      "label": "Create a subscription from a signed creation outside Checkout, apply signed updates and its deletion, and call the general event callback after each, on both runtimes",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "export async function subscriptionLifecycleCallbacks("
     }
   ],
   "docs/content/docs/adapters/sqlite.mdx#L72": [
@@ -51269,6 +51279,91 @@
       "label": "Answer the billing routes' error codes with another runtime's statuses and messages, including UNABLE_TO_CREATE_CUSTOMER for a personal or organization customer Stripe fails to find or create, before any Checkout and retryably",
       "test": "adapters/sqlstore/stripe_errors_test.go",
       "marker": "func TestStripeErrorCodes("
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L143": [
+    {
+      "label": "Switch, schedule, list, cancel and restore an existing subscription, open the billing portal and apply signed subscription updates through the browser client on both runtimes",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "export async function billingLifecycle("
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L171": [
+    {
+      "label": "Change, schedule, cancel, restore and list an owner's existing subscription through the browser client on both runtimes",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "export async function billingLifecycle("
+    },
+    {
+      "label": "Create a personal or organization subscription through Checkout with the browser client and record it from its signed completion on both runtimes",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "const purchase = checked(await client.subscription.upgrade({ ...selection, plan: \"basic\", seats: 3, disableRedirect: true }));"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L592/`customer.subscription.updated`": [
+    {
+      "label": "Apply a signed update's plan, price, interval, seat count, billing period, period-end and dated cancellation and schedule to the local subscription on both runtimes",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "await signedUpdate(server, provider, \"evt_renew\", ownerSub);"
+    },
+    {
+      "label": "Store a signed update's past_due status and drop it from the active list on both runtimes",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "get(subscription.id).status, \"past_due\");"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L593/`customer.subscription.deleted`": [
+    {
+      "label": "Mark a signed deletion canceled and keep it canceled after a later update on three SQL engines",
+      "test": "adapters/sqlstore/stripe_lifecycle_test.go",
+      "marker": "t.Fatal(\"terminal lifecycle state regressed\", row)"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L780/`stripeSubscriptionTableFields.endedAt`": [
+    {
+      "label": "Keep the end time from a signed deletion when a later update arrives on three SQL engines",
+      "test": "adapters/sqlstore/stripe_lifecycle_test.go",
+      "marker": "row.EndedAt.Unix() != 5000"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L861/`authorizeReference`": [
+    {
+      "label": "Pass the current member role and action for organization checkout, listing and billing portal to the host's billing policy, outside any store transaction, and refuse disallowed roles, including after a role change during Stripe's reply, on three SQL engines",
+      "test": "adapters/sqlstore/stripe_organization_test.go",
+      "marker": "Organization: &billing.OrganizationOptions{AuthorizeReference: func(policy billing.ReferenceAuthorization) bool {"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L902/`enabled`": [
+    {
+      "label": "Refuse organization billing on every billing route before contacting Stripe when it is not enabled, matching the other runtime",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "\"ORGANIZATION_SUBSCRIPTION_NOT_ENABLED\", \"Organization subscription is not enabled\"]"
+    },
+    {
+      "label": "Create the organization's own Stripe customer, named after it, once organization billing is enabled, on both runtimes",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "assert.equal(remote.state.customer.name, group.name);"
+    }
+  ],
+  "plugin-symbol/stripe/CustomerType": [
+    {
+      "label": "Reject customer types other than user and organization on every billing route and refuse organizations when organization billing is off, matching the other runtime",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "const invalidType = "
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L239/Parameter `referenceId` (optional)": [
+    {
+      "label": "Refuse an organization the caller cannot manage before contacting Stripe and default a purchase to the active organization, on both runtimes",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "const denied = await peer.subscription.upgrade({ ...explicit, plan: \"basic\" });"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L251/Parameter `customerType` (optional)": [
+    {
+      "label": "Bill the organization's own Stripe customer, named after it, when customerType is organization, on both runtimes",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "const purchase = checked(await owner.subscription.upgrade("
     }
   ]
 }
