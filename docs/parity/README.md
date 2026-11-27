@@ -2,16 +2,16 @@
 
 ## Verification progress
 
-**2,884 of 6,419 inventory entries are fully verified (44.9%).**
+**2,888 of 6,419 inventory entries are fully verified (45.0%).**
 
 | Inventory status | Entries |
 | --- | ---: |
-| Fully verified | 2,884 |
-| Partially verified | 1,447 |
-| No linked test evidence | 2,088 |
+| Fully verified | 2,888 |
+| Partially verified | 1,445 |
+| No linked test evidence | 2,086 |
 | Not applicable to a Go server | 606 |
 
-The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 7,602 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
+The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 7,606 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
 
 Entries that exist only for JavaScript clients, frameworks or runtimes are listed as not applicable, with the reason, and are left out of the totals. Backlog entries stay open on the roadmap but are not scheduled.
 
@@ -109,10 +109,10 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [JSON Web Tokens](plugins/jwt.md) | 132 | 42 | 2 |
 | [Last login method](plugins/last-login-method.md) | 100 | 18 | 2 |
 | [Magic link](plugins/magic-link.md) | 108 | 5 | 0 |
-| [Model Context Protocol](plugins/mcp.md) | 20 | 99 | 0 |
+| [Model Context Protocol](plugins/mcp.md) | 24 | 97 | 0 |
 | [Multi session](plugins/multi-session.md) | 64 | 2 | 0 |
 | [OAuth popup](plugins/oauth-popup.md) | 56 | 5 | 0 |
-| [OAuth provider](plugins/oauth-provider.md) | 758 | 300 | 0 |
+| [OAuth provider](plugins/oauth-provider.md) | 762 | 298 | 0 |
 | [OAuth proxy](plugins/oauth-proxy.md) | 27 | 5 | 1 |
 | [One tap](plugins/one-tap.md) | 78 | 9 | 0 |
 | [One time token](plugins/one-time-token.md) | 76 | 0 | 0 |

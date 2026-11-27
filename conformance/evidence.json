@@ -16842,6 +16842,12 @@
       "label": "Apply the host registration ceiling even when a client requests a narrower subset",
       "test": "conformance/oauth-registration.mjs",
       "marker": "assert.equal(app.scope,"
+    },
+    {
+      "label": "Give a registration without scope options the issuer's scopes, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_registration_defaults_test.go",
+      "marker": "t.Fatal(\"a default registration did not take the issuer's scopes and 32-letter credentials\", app.ClientID, app.Scope, scopes)",
+      "complete": true
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/clientRegistrationAllowedScopes": [
@@ -48047,6 +48053,12 @@
       "label": "Generate a default client ID of 32 ASCII letters",
       "test": "plugins/oauthprovider/machine_token_test.go",
       "marker": "t.Fatal(\"a default client credential is not 32 letters\", id, err)"
+    },
+    {
+      "label": "Register a client with a 32-letter client ID by default, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_registration_defaults_test.go",
+      "marker": "t.Fatal(\"a default registration did not take the issuer's scopes and 32-letter credentials\", app.ClientID, app.Scope, scopes)",
+      "complete": true
     }
   ],
   "plugin-symbol/mcp/McpOptions/generateOpaqueAccessToken": [
@@ -48261,6 +48273,22 @@
       "label": "Return email and email_verified for the email scope at UserInfo",
       "test": "adapters/sqlstore/oauth_userinfo_test.go",
       "marker": "t.Fatal(\"profile and email\", result)",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/InitialAccessTokenAuthorization": [
+    {
+      "label": "Register a client without an owner when the initial access token's authorization names nobody, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_registration_defaults_test.go",
+      "marker": "t.Fatal(\"an initial access token naming nobody registered an owned client\", ownerless.UserID, ownerless.ReferenceID)",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/mcp/McpOptions/generateClientSecret": [
+    {
+      "label": "Issue a 32-letter client secret by default and rotate through a configured secret generator, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_registration_defaults_test.go",
+      "marker": "t.Fatal(\"rotation did not use the configured secret generator\", rotated.ClientSecret, err)",
       "complete": true
     }
   ]

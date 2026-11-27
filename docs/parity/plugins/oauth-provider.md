@@ -265,7 +265,8 @@
   - [ ] `OAuthClaimExtensionInput`
   - [ ] `OAuthUserInfoExtensionInput`
   - [ ] `OAuthProviderExtension`
-  - [ ] `InitialAccessTokenAuthorization`
+  - [x] `InitialAccessTokenAuthorization` ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L72))
+    - [x] Register a client without an owner when the initial access token's authorization names nobody, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L72))
   - [ ] `OAuthOptions`
     - [ ] `schema`
     - [x] `scopes` ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L234))
@@ -338,8 +339,9 @@
     - [x] `validateInitialAccessToken` ([test](../../../conformance/oauth-registration.mjs#L166))
       - [x] Check initial bearer tokens, preserve session precedence and return challenges or callback failures ([test](../../../conformance/oauth-registration.mjs#L166))
     - [ ] `extensions`
-    - [ ] `clientRegistrationDefaultScopes`
+    - [x] `clientRegistrationDefaultScopes` ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L65))
       - [x] Apply the host registration ceiling even when a client requests a narrower subset ([test](../../../conformance/oauth-registration.mjs#L220))
+      - [x] Give a registration without scope options the issuer's scopes, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L65))
     - [x] `clientRegistrationAllowedScopes` ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L245))
       - [x] Persist the allowed registration scopes and reject a scope outside that set ([test](../../../conformance/oauth-registration.mjs#L246))
       - [x] Refuse a registration scope outside the configured scopes when the plugin is built ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L245))

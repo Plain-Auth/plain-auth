@@ -71,9 +71,11 @@
     - [ ] `customTokenResponseFields`
     - [ ] `advertisedMetadata`
     - [ ] `prefix`
-    - [ ] `generateClientId`
+    - [x] `generateClientId` ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L65))
       - [x] Generate a default client ID of 32 ASCII letters ([test](../../../plugins/oauthprovider/machine_token_test.go#L120))
-    - [ ] `generateClientSecret`
+      - [x] Register a client with a 32-letter client ID by default, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L65))
+    - [x] `generateClientSecret` ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L80))
+      - [x] Issue a 32-letter client secret by default and rotate through a configured secret generator, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_registration_defaults_test.go#L80))
     - [x] `generateOpaqueAccessToken` ([test](../../../plugins/oauthprovider/machine_token_test.go#L147))
       - [x] Generate a default opaque access token of 32 letters and use a configured generator instead ([test](../../../plugins/oauthprovider/machine_token_test.go#L147))
     - [ ] `generateRefreshToken`
