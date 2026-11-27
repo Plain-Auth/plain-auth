@@ -52,9 +52,10 @@ type ClientCredentialsScopeStore interface {
 
 // ClientManager provides server-only operations on OAuth registrations.
 type ClientManager struct {
-	auth  *auth.Auth
-	store ClientCredentialsScopeStore
-	opts  Options
+	auth      *auth.Auth
+	store     ClientCredentialsScopeStore
+	opts      Options
+	resources *ResourceManager
 }
 
 // NewClientManager uses the same options as the mounted OAuth plugin. Its
@@ -130,12 +131,18 @@ func (m *ClientManager) SetClientCredentialsScopes(ctx context.Context, headers 
 }
 
 func normalizeMachineScopes(scopes []string) ([]string, error) {
+	return normalizeScopeField("body.update.client_credentials_scopes", scopes)
+}
+
+// normalizeScopeField trims machine scope names and drops repeats, naming
+// each empty one under field in another runtime's validation form.
+func normalizeScopeField(field string, scopes []string) ([]string, error) {
 	normalized := make([]string, len(scopes))
 	var issues []string
 	for i, name := range scopes {
 		normalized[i] = jsjson.TrimSpace(name)
 		if normalized[i] == "" {
-			issues = append(issues, fmt.Sprintf("[body.update.client_credentials_scopes.%d] Too small: expected string to have >=1 characters", i))
+			issues = append(issues, fmt.Sprintf("[%s.%d] Too small: expected string to have >=1 characters", field, i))
 		}
 	}
 	if len(issues) > 0 {

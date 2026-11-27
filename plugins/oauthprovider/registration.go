@@ -75,6 +75,11 @@ type ClientRegistrationRecord struct {
 	Scopes                                          []string
 	RequirePKCE                                     *bool
 	CreatedAt                                       time.Time
+	// The settings below are set only by ClientManager.CreateClient.
+	SkipConsent, EnableEndSession *bool
+	ClientCredentialsScopes       []string
+	// Extensions is the client's metadata object.
+	Extensions map[string]json.RawMessage
 }
 
 type RegistrationStore interface {
@@ -192,6 +197,16 @@ func (opts Options) clientManagementOptions() Options {
 	opts.ImmutableClientIDs = distinct(opts.ImmutableClientIDs)
 	if opts.ClientReference == nil {
 		opts.ClientReference = opts.Registration.ClientReference
+	}
+	// Defaults a ClientManager shares with the mounted plugin.
+	if opts.GrantTypes == nil {
+		opts.GrantTypes = []string{"authorization_code", "client_credentials", "refresh_token"}
+	}
+	if opts.Registration.GenerateClientID == nil {
+		opts.Registration.GenerateClientID = randomClientCredential
+	}
+	if opts.Registration.GenerateClientSecret == nil {
+		opts.Registration.GenerateClientSecret = randomClientCredential
 	}
 	return opts
 }
@@ -491,7 +506,6 @@ func (opts Options) register(c auth.EndpointContext) (any, error) {
 // persistClient issues a client's ID and secret and stores it. A dynamic
 // registration applies the registration PKCE setting and secret lifetime.
 func (opts Options) persistClient(c auth.EndpointContext, m RegistrationMetadata, owner, reference string, scopes []string, dynamic bool) (RegisteredClient, error) {
-	r := opts.Registration
 	// The resources a client links to must exist, so an unfinished seed of
 	// the declared ones is retried first.
 	if len(m.Resources) > 0 {
@@ -499,7 +513,18 @@ func (opts Options) persistClient(c auth.EndpointContext, m RegistrationMetadata
 			return RegisteredClient{}, err
 		}
 	}
-	ctx := c.Request.Context()
+	store, ok := c.Store().(RegistrationStore)
+	if !ok {
+		return RegisteredClient{}, &auth.APIError{Status: 501, Code: "OAUTH_CLIENT_CREATION_UNAVAILABLE", Message: "The configured store does not support OAuth client creation"}
+	}
+	row := ClientRegistrationRecord{UserID: owner, ReferenceID: reference, Scopes: scopes, Metadata: m}
+	return opts.storeClient(c.Request.Context(), c.Auth, store, row, dynamic)
+}
+
+// storeClient issues the client ID and secret for row and stores it.
+func (opts Options) storeClient(ctx context.Context, a *auth.Auth, store RegistrationStore, row ClientRegistrationRecord, dynamic bool) (RegisteredClient, error) {
+	r := opts.Registration
+	m, owner, reference := row.Metadata, row.UserID, row.ReferenceID
 	id, err := r.GenerateClientID()
 	if err != nil {
 		return RegisteredClient{}, err
@@ -507,14 +532,17 @@ func (opts Options) persistClient(c auth.EndpointContext, m RegistrationMetadata
 	if id == "" {
 		return RegisteredClient{}, errors.New("oauthprovider: empty generated client ID")
 	}
-	row := ClientRegistrationRecord{ID: rand.Text(), ClientID: id, UserID: owner, ReferenceID: reference, Scopes: scopes, Metadata: m, CreatedAt: time.Now().UTC().Truncate(time.Second)}
+	row.ID, row.ClientID, row.CreatedAt = rand.Text(), id, time.Now().UTC().Truncate(time.Second)
 	result := RegisteredClient{RegistrationMetadata: m, ClientID: id, UserID: owner, ReferenceID: reference, IssuedAt: row.CreatedAt.Unix()}
+	if row.RequirePKCE != nil {
+		result.RequirePKCE = row.RequirePKCE
+	}
 	if dynamic && r.RequirePKCE != nil && !*r.RequirePKCE && m.TokenEndpointAuthMethod != "none" {
 		row.RequirePKCE = r.RequirePKCE
 		result.RequirePKCE = r.RequirePKCE
 	}
 	if m.TokenEndpointAuthMethod == "client_secret_basic" || m.TokenEndpointAuthMethod == "client_secret_post" {
-		result.ClientSecret, row.StoredSecret, err = r.issueSecret(ctx, c.Auth, id)
+		result.ClientSecret, row.StoredSecret, err = r.issueSecret(ctx, a, id)
 		if err != nil {
 			return RegisteredClient{}, err
 		}
@@ -526,10 +554,6 @@ func (opts Options) persistClient(c auth.EndpointContext, m RegistrationMetadata
 			expires = result.IssuedAt + int64(r.SecretLifetime/time.Second)
 		}
 		result.SecretExpiresAt = &expires
-	}
-	store, ok := c.Store().(RegistrationStore)
-	if !ok {
-		return RegisteredClient{}, &auth.APIError{Status: 501, Code: "OAUTH_CLIENT_CREATION_UNAVAILABLE", Message: "The configured store does not support OAuth client creation"}
 	}
 	if err = store.CreateRegisteredClient(ctx, row); err != nil {
 		return RegisteredClient{}, err

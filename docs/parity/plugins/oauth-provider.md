@@ -170,6 +170,7 @@
     - [x] Stop new token exchanges at an independent issuer after deleting a previously working machine client ([test](../../../conformance/oauth-registration.mjs#L498))
     - [x] Refuse to delete a client without an owner with 401 and keep it, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_deletion_test.go#L102))
   - [ ] `adminCreateOAuthClient`
+    - [x] Create a client from server code with consent skipping, end session, PKCE, machine scopes and metadata, approve machine scopes and requested resource links separately, link default resources and always return the machine scopes, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_admin_test.go#L24))
   - [ ] `createOAuthClient`
     - [x] Create a client for a signed-in owner with dynamic registration disabled, bound by the issuer's grants and scopes, without the registration ceiling or PKCE setting, dropping owner-only fields and refusing anonymous or denied callers, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_creation_test.go#L24))
   - [x] `getOAuthClient` ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L233))
@@ -260,6 +261,7 @@
   - [x] `OAuthClientRegistrationResponse` ([test](../../../conformance/oauth-registration.mjs#L211))
     - [x] Name no resources in a registration response for a client without linked resources, on both runtimes ([test](../../../conformance/oauth-registration.mjs#L211))
   - [ ] `OAuthClientAdministrativeResponse`
+    - [x] Create a client from server code with consent skipping, end session, PKCE, machine scopes and metadata, approve machine scopes and requested resource links separately, link default resources and always return the machine scopes, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_admin_test.go#L24))
   - [ ] `Prompt`
   - [ ] `AuthorizePrompt`
   - [ ] `ClientMetadataResourceFetch`
@@ -618,9 +620,12 @@
       - [ ] `skip_consent`
       - [ ] `enable_end_session`
       - [ ] `require_pkce`
+        - [x] Create a client from server code with consent skipping, end session, PKCE, machine scopes and metadata, approve machine scopes and requested resource links separately, link default resources and always return the machine scopes, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_admin_test.go#L24))
       - [ ] `client_credentials_scopes`
         - [x] Grant, narrow and revoke machine access from server code and verify the changed scope ceiling at an independent issuer ([test](../../../conformance/oauth-registration.mjs#L407))
+        - [x] Create a client from server code with consent skipping, end session, PKCE, machine scopes and metadata, approve machine scopes and requested resource links separately, link default resources and always return the machine scopes, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_admin_test.go#L24))
       - [ ] `resources`
+        - [x] Create a client from server code with consent skipping, end session, PKCE, machine scopes and metadata, approve machine scopes and requested resource links separately, link default resources and always return the machine scopes, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_admin_test.go#L24))
       - [ ] `disabled`
       - [ ] `metadata`
     - [ ] Client credentials scopes

@@ -17438,6 +17438,11 @@
       "label": "Grant, narrow and revoke machine access from server code and verify the changed scope ceiling at an independent issuer",
       "test": "conformance/oauth-registration.mjs",
       "marker": "assert.equal((await implicit.json()).scope, \"extra\");"
+    },
+    {
+      "label": "Create a client from server code with consent skipping, end session, PKCE, machine scopes and metadata, approve machine scopes and requested resource links separately, link default resources and always return the machine scopes, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_client_admin_test.go",
+      "marker": "func TestAdminClientCreation("
     }
   ],
   "docs/content/docs/plugins/oauth-provider/clients.mdx#L110": [
@@ -48862,6 +48867,34 @@
       "label": "Create a client through /oauth2/create-client with this field, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_client_creation_test.go",
       "marker": "func TestOAuthClientCreation("
+    }
+  ],
+  "plugin-symbol/oauth-provider/adminCreateOAuthClient": [
+    {
+      "label": "Create a client from server code with consent skipping, end session, PKCE, machine scopes and metadata, approve machine scopes and requested resource links separately, link default resources and always return the machine scopes, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_client_admin_test.go",
+      "marker": "func TestAdminClientCreation("
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthClientAdministrativeResponse": [
+    {
+      "label": "Create a client from server code with consent skipping, end session, PKCE, machine scopes and metadata, approve machine scopes and requested resource links separately, link default resources and always return the machine scopes, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_client_admin_test.go",
+      "marker": "func TestAdminClientCreation("
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/clients.mdx#L79/`require_pkce`": [
+    {
+      "label": "Create a client from server code with consent skipping, end session, PKCE, machine scopes and metadata, approve machine scopes and requested resource links separately, link default resources and always return the machine scopes, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_client_admin_test.go",
+      "marker": "func TestAdminClientCreation("
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/clients.mdx#L81/`resources`": [
+    {
+      "label": "Create a client from server code with consent skipping, end session, PKCE, machine scopes and metadata, approve machine scopes and requested resource links separately, link default resources and always return the machine scopes, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_client_admin_test.go",
+      "marker": "func TestAdminClientCreation("
     }
   ]
 }

@@ -70,7 +70,7 @@ func (s *Store) CreateRegisteredClient(ctx context.Context, r op.ClientRegistrat
 		val []string
 	}{
 		{"redirectUris", m.RedirectURIs}, {"postLogoutRedirectUris", m.PostLogoutRedirectURIs}, {"contacts", m.Contacts},
-		{"grantTypes", m.GrantTypes}, {"responseTypes", m.ResponseTypes}, {"scopes", r.Scopes}, {"clientCredentialsScopes", []string{}},
+		{"grantTypes", m.GrantTypes}, {"responseTypes", m.ResponseTypes}, {"scopes", r.Scopes}, {"clientCredentialsScopes", append([]string{}, r.ClientCredentialsScopes...)},
 	} {
 		if f.val != nil {
 			raw, err := json.Marshal(f.val)
@@ -91,6 +91,19 @@ func (s *Store) CreateRegisteredClient(ctx context.Context, r op.ClientRegistrat
 	}
 	if r.RequirePKCE != nil {
 		put("requirePKCE", *r.RequirePKCE)
+	}
+	if r.SkipConsent != nil {
+		put("skipConsent", *r.SkipConsent)
+	}
+	if r.EnableEndSession != nil {
+		put("enableEndSession", *r.EnableEndSession)
+	}
+	if len(r.Extensions) > 0 {
+		raw, err := json.Marshal(r.Extensions)
+		if err != nil {
+			return err
+		}
+		put("metadata", string(raw))
 	}
 	q := `INSERT INTO "oauthClient" (` + strings.Join(cols, ",") + ") VALUES (?" + strings.Repeat(",?", len(cols)-1) + ")"
 	if _, err = tx.ExecContext(ctx, s.bind(q), args...); err != nil {
