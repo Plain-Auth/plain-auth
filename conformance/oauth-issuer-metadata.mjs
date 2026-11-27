@@ -59,7 +59,9 @@ export async function compareIssuerMetadata(t, { reference, goFixture }) {
         introspection_endpoint: "/oauth2/introspect", revocation_endpoint: "/oauth2/revoke", jwks_uri: keyPath,
       })) assert.equal(doc[key], mount + path);
       const common = Object.fromEntries(Object.entries(doc).filter(([k]) =>
-        k.includes("endpoint_auth_") || ["grant_types_supported", "response_types_supported", "scopes_supported", "dpop_signing_alg_values_supported"].includes(k)));
+        k.includes("endpoint_auth_") || ["grant_types_supported", "response_types_supported", "scopes_supported", "dpop_signing_alg_values_supported",
+          "backchannel_logout_supported", "backchannel_logout_session_supported"].includes(k)));
+      assert.equal(common.backchannel_logout_supported, true);
       if (runtime === "reference") expected = common;
       else {
         assert.deepEqual(common, expected);

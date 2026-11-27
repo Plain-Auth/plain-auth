@@ -179,6 +179,14 @@ func registrationFixtureOptions() op.Options {
 				"code_challenge": {"E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM"}, "code_challenge_method": {"S256"}}, nil
 		}
 	}
+	if target := os.Getenv("CONFORMANCE_BACKCHANNEL_TARGET"); target != "" {
+		// Logout tokens reach the local receiver conformance/oauth-backchannel-logout.mjs runs.
+		receiver, err := url.Parse(target)
+		if err != nil {
+			log.Fatal(err)
+		}
+		opts.BackchannelTransport = receiverTransport{receiver}
+	}
 	if mode == "resources" {
 		opts.Resources = []op.ResourceDefinition{{Identifier: "urn:reports"}, {Identifier: "urn:billing"}, {Identifier: "urn:disabled"}, {Identifier: "urn:missing"}}
 		opts.Registration.DefaultResources = []string{"urn:reports"}
@@ -207,4 +215,14 @@ func configurePostLoginFixture(opts *op.Options, store organization.Store) {
 		}
 		return *a.Session.ActiveOrganizationID, nil
 	}
+}
+
+// receiverTransport sends every request to one local receiver, keeping the
+// path, as a client's back-channel logout endpoint.
+type receiverTransport struct{ target *url.URL }
+
+func (t receiverTransport) RoundTrip(r *http.Request) (*http.Response, error) {
+	r = r.Clone(r.Context())
+	r.URL.Scheme, r.URL.Host, r.Host = t.target.Scheme, t.target.Host, t.target.Host
+	return http.DefaultTransport.RoundTrip(r)
 }

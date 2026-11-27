@@ -1911,6 +1911,11 @@ test("machine clients obtain signed and opaque access tokens for their registere
   await compareResourceMachineTokens(t, { reference, goFixture });
 });
 
+test("ending a session sends a back-channel logout token to the client that held its tokens", async t => {
+  const { compareBackchannelLogout } = await import("./oauth-backchannel-logout.mjs");
+  await compareBackchannelLogout(t, { reference, goFixture });
+});
+
 test("a provider extension adds discovery fields without replacing the provider's", async t => {
   const { compareExtensionMetadata } = await import("./oauth-extensions.mjs");
   await compareExtensionMetadata(t, { reference, goFixture });

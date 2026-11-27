@@ -158,6 +158,10 @@ type Options struct {
 	// DPoP controls sender proofs at the token endpoint. The host SQL store
 	// shares reservations automatically when ReplayStore is omitted.
 	DPoP DPoPOptions
+	// BackchannelTransport sends back-channel logout tokens. The default
+	// dials only public addresses, checking every address a logout host
+	// resolves to.
+	BackchannelTransport http.RoundTripper
 	// Extensions add capabilities to the provider, such as discovery fields.
 	Extensions []Extension
 	// DisableJWTPlugin signs ID tokens with HS256 keyed by the client secret
@@ -356,6 +360,7 @@ func New(opts Options) (auth.Plugin, error) {
 	limit := tokenRouteLimit(r.RateLimit, 5)
 	p := ConsentManagement(ConsentOptions{Scopes: opts.Scopes})
 	p.WellKnown = opts.issuerDocuments
+	p.OnSessionsEnded = opts.sessionsEnded
 	validateConsent := p.ValidateStore
 	p.ValidateStore = func(s auth.Store) error {
 		if _, ok := s.(ClientKeyRotationStore); opts.Assertions.AllowKeyRotation && !ok {

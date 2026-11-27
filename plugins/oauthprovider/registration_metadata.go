@@ -261,7 +261,7 @@ func (o Options) prepareMetadata(host *auth.Auth, m *RegistrationMetadata, kind 
 	}
 	if m.BackchannelLogoutURI != nil {
 		// Logout tokens are signed by the jwt plugin, as in another runtime.
-		if o.DisableJWTPlugin {
+		if host.JWTSigningAlgorithm() == "" {
 			return metadataProblem("backchannel_logout_uri requires the jwt plugin (disableJwtPlugin must be false)")
 		}
 		if err := validateServerURI("backchannel_logout_uri", *m.BackchannelLogoutURI, host); err != nil {

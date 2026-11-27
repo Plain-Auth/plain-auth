@@ -302,7 +302,7 @@ func TestExtensionMetadata(t *testing.T) {
 	first := op.Extension{Metadata: func(in op.MetadataInput) map[string]any {
 		seen = append(seen, in)
 		return map[string]any{"credential_issuer": base + "/" + in.Type, "issuer": "forged", "token_endpoint": "forged", "registration_endpoint": "forged", "shared": "first",
-			"end_session_endpoint": "forged", "backchannel_logout_supported": true}
+			"end_session_endpoint": "forged", "backchannel_logout_supported": "forged"}
 	}}
 	second := op.Extension{Metadata: func(op.MetadataInput) map[string]any { return map[string]any{"shared": "second"} }}
 	var logs strings.Builder
@@ -335,10 +335,13 @@ func TestExtensionMetadata(t *testing.T) {
 		if doc["credential_issuer"] != base+"/"+kind || doc["issuer"] != base+"/api/auth" || doc["token_endpoint"] != base+"/api/auth/oauth2/token" || doc["shared"] != "first" {
 			t.Fatal("an extension field was missing or replaced a provider field", path, doc)
 		}
-		for _, name := range []string{"registration_endpoint", "end_session_endpoint", "backchannel_logout_supported"} {
+		for _, name := range []string{"registration_endpoint", "end_session_endpoint"} {
 			if _, ok := doc[name]; ok {
 				t.Fatal("an extension added a field the provider owns", path, name)
 			}
+		}
+		if doc["backchannel_logout_supported"] != true || doc["backchannel_logout_session_supported"] != true {
+			t.Fatal("an extension replaced the back-channel logout flags", path, doc)
 		}
 	}
 	if len(seen) != 1 || seen[0].Type != op.MetadataOpenIDConfiguration || seen[0].OpenID == nil || seen[0].Server.Issuer != base+"/api/auth" {
@@ -356,7 +359,7 @@ func TestExtensionMetadata(t *testing.T) {
 	}
 	// That document does not declare an end-session endpoint, so an
 	// extension may add one, as in another runtime, but not the logout flags.
-	if !strings.Contains(string(raw), `"end_session_endpoint":"forged"`) || strings.Contains(string(raw), "backchannel_logout_supported") || strings.Contains(string(raw), `"registration_endpoint"`) {
+	if !strings.Contains(string(raw), `"end_session_endpoint":"forged"`) || !strings.Contains(string(raw), `"backchannel_logout_supported":true`) || strings.Contains(string(raw), `"registration_endpoint"`) {
 		t.Fatal("the authorization-server document took the wrong extension fields", string(raw))
 	}
 	if !strings.Contains(logs.String(), "OAuth provider extensions supplied the same discovery field") || !strings.Contains(logs.String(), "field=shared") {

@@ -102,6 +102,7 @@ Each guide explains one capability and links to the tests that prove it. New to 
 | Inspect a delegated opaque token using an application or resource server credential | [Delegated token introspection](machine-tokens.md#inspect-a-delegated-token-as-a-resource-server) |
 | Check signed OAuth access tokens against current client, session and resource state | [Signed token introspection](machine-tokens.md#inspect-a-signed-access-token) |
 | Revoke an OAuth token or invalidate a replayed refresh-token family | [Token revocation](oauth-token-revocation.md) |
+| Notify OAuth clients with a signed logout token when a user's session ends | [Back-channel logout](oauth-logout.md#back-channel-logout) |
 | Issue signed service tokens and publish verification keys | [JWT and JWKS](jwt.md) |
 
 ## Billing

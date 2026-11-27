@@ -25,12 +25,13 @@
   - [ ] `OAuthDeviceAuthorizationOptions`
   - [ ] `oauthDeviceAuthorization`
   - [ ] `extendOAuthProvider`
-  - [ ] `authServerMetadata`
-    - [x] Discover endpoints and capabilities for the machine grant, then register a client, verify a signed token and revoke an opaque token ([test](../../../conformance/oauth-issuer-metadata.mjs#L95))
+  - [x] `authServerMetadata` ([test](../../../conformance/oauth-issuer-metadata.mjs#L67))
+    - [x] Discover endpoints and capabilities for the machine grant, then register a client, verify a signed token and revoke an opaque token ([test](../../../conformance/oauth-issuer-metadata.mjs#L97))
+    - [x] Publish the same grant, response type, scope, authentication method, DPoP and back-channel logout fields as another runtime ([test](../../../conformance/oauth-issuer-metadata.mjs#L67))
   - [x] `metadataResponse` ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L35))
     - [x] Serialize the value once, preserve independent multi-value headers, honor custom cache rules and serve JSON ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L35))
   - [ ] `oauthAuthorizationServerMetadata`
-    - [x] Discover endpoints and capabilities for the machine grant, then register a client, verify a signed token and revoke an opaque token ([test](../../../conformance/oauth-issuer-metadata.mjs#L95))
+    - [x] Discover endpoints and capabilities for the machine grant, then register a client, verify a signed token and revoke an opaque token ([test](../../../conformance/oauth-issuer-metadata.mjs#L97))
   - [x] `oauthProviderAuthServerMetadata` ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L267))
     - [x] Mount both issuer discovery paths through ServeMux, chi, Gorilla Mux, Gin, Echo and Fiber and read them with GET and HEAD ([test](../../../integrations/routers/routers_test.go#L169))
     - [x] Retrieve the native issuer document, preserve escaped issuer paths and omit disabled endpoints and unavailable store capabilities ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L66))
@@ -63,7 +64,7 @@
     - [x] Run the code's verification create hooks after the client, session and consent checks; a declined code redirects with a code that redeems nothing ([test](../../../adapters/sqlstore/oauth_code_hooks_test.go#L318))
     - [x] A visit that opens the consent page runs no code hooks ([test](../../../adapters/sqlstore/oauth_code_hooks_test.go#L259))
   - [ ] `GET /.well-known/oauth-authorization-server` (server API only)
-    - [x] Discover endpoints and capabilities for the machine grant, then register a client, verify a signed token and revoke an opaque token ([test](../../../conformance/oauth-issuer-metadata.mjs#L95))
+    - [x] Discover endpoints and capabilities for the machine grant, then register a client, verify a signed token and revoke an opaque token ([test](../../../conformance/oauth-issuer-metadata.mjs#L97))
     - [x] Mount both issuer discovery paths through ServeMux, chi, Gorilla Mux, Gin, Echo and Fiber and read them with GET and HEAD ([test](../../../integrations/routers/routers_test.go#L169))
   - [ ] `GET /.well-known/openid-configuration` (server API only)
     - [x] Start from a custom issuer URL, discover the endpoints, complete PKCE sign-in and verify the ID token, access-token hash and UserInfo subject using an independent Go client ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L23))
@@ -441,7 +442,7 @@
     - [x] `customTokenResponseFields` ([test](../../../adapters/sqlstore/oauth_token_response_test.go#L27))
       - [x] Merge host fields under the standard fields of code, refresh and client_credentials responses, pass the account, client metadata and code value, run outside the grant transaction even without a refresh token, and leave the code or refresh token usable when it fails, on SQLite, PostgreSQL and MySQL; the scope recheck and the usable code are documented deviations ([test](../../../adapters/sqlstore/oauth_token_response_test.go#L27))
     - [ ] `advertisedMetadata`
-      - [x] Preserve configured discovery scope and authentication method order independently of introspection and revocation ([test](../../../conformance/oauth-issuer-metadata.mjs#L65))
+      - [x] Preserve configured discovery scope and authentication method order independently of introspection and revocation ([test](../../../conformance/oauth-issuer-metadata.mjs#L67))
       - [x] Reject unknown scopes, unsupported machine authentication, duplicate methods and an explicitly empty method list ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L19))
       - [x] Explicitly advertise pre-provisioned public clients, preserve protected introspection and publish only supported delegated grants ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L158))
       - [x] Advertise exactly the configured UserInfo claims ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L237))
@@ -500,7 +501,7 @@
     - [x] Compare every resource metadata field, including identity, algorithms, scopes, localized names and boolean overrides ([test](../../../conformance/resource-discovery.mjs#L28))
   - [ ] `AuthMethod`
   - [ ] `AuthServerMetadata`
-    - [x] Discover endpoints and capabilities for the machine grant, then register a client, verify a signed token and revoke an opaque token ([test](../../../conformance/oauth-issuer-metadata.mjs#L95))
+    - [x] Discover endpoints and capabilities for the machine grant, then register a client, verify a signed token and revoke an opaque token ([test](../../../conformance/oauth-issuer-metadata.mjs#L97))
   - [ ] `BearerMethodsSupported`
   - [ ] `Confirmation`
   - [ ] `GrantType`
@@ -762,9 +763,11 @@
     - [x] Inspect an independently issued delegated access token as the issuer and as a linked resource server with the issuing sector’s pairwise subject ([test](../../../conformance/oauth-opaque-introspection.mjs#L26))
     - [x] Use the same pairwise subject for ID tokens and UserInfo across code and refresh exchanges, including offline use ([test](../../../conformance/oauth-id-tokens.mjs#L146))
   - [ ] RP-initiated logout
-  - [ ] Back-channel logout
+  - [x] Back-channel logout ([test](../../../adapters/sqlstore/oauth_backchannel_logout_test.go#L98))
     - [x] Revoke session-bound stored grants atomically across bulk deletion, rollback and concurrent issuance on three SQL engines ([test](../../../adapters/sqlstore/session_deletion_test.go#L12))
     - [x] Remove an issuing browser session through the HTTP API and preserve only its offline refresh grant ([test](../../../conformance/oauth-refresh-introspection.mjs#L62))
+    - [x] Send one logout token per enabled client with a back-channel logout URI that held stored tokens on an ended session, signed with the session's sid and the client's public or pairwise subject, posted as a form with a 5-second deadline and no redirects, logged on refusal, through the background runner, and advertised only with the jwt plugin, on SQLite, PostgreSQL and MySQL; dialing only public addresses and covering every session end through the store's report are documented deviations ([test](../../../adapters/sqlstore/oauth_backchannel_logout_test.go#L98))
+    - [x] Register a client with a back-channel logout URI, complete a code flow, sign out and receive the same form, header and claim set from both runtimes ([test](../../../conformance/oauth-backchannel-logout.mjs#L93))
 
 ## OAuth Provider reference
 
@@ -778,9 +781,10 @@
     - [ ] Storage and generation
     - [ ] Other
   - [ ] Endpoints
-    - [ ] `GET /.well-known/oauth-authorization-server` (server API only)
-      - [x] Discover endpoints and capabilities for the machine grant, then register a client, verify a signed token and revoke an opaque token ([test](../../../conformance/oauth-issuer-metadata.mjs#L95))
+    - [x] `GET /.well-known/oauth-authorization-server` (server API only) ([test](../../../conformance/oauth-issuer-metadata.mjs#L67))
+      - [x] Discover endpoints and capabilities for the machine grant, then register a client, verify a signed token and revoke an opaque token ([test](../../../conformance/oauth-issuer-metadata.mjs#L97))
       - [x] Retrieve the native issuer document, preserve escaped issuer paths and omit disabled endpoints and unavailable store capabilities ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L66))
+      - [x] Publish the same grant, response type, scope, authentication method, DPoP and back-channel logout fields as another runtime ([test](../../../conformance/oauth-issuer-metadata.mjs#L67))
     - [ ] `GET /.well-known/openid-configuration` (server API only)
       - [x] Start from a custom issuer URL, discover the endpoints, complete PKCE sign-in and verify the ID token, access-token hash and UserInfo subject using an independent Go client ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L23))
     - [ ] `GET / POST /oauth2/authorize`

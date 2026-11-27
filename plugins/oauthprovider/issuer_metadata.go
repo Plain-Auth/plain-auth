@@ -70,6 +70,9 @@ type AuthorizationServerMetadata struct {
 	RevocationEndpointAuthMethods              []string `json:"revocation_endpoint_auth_methods_supported,omitempty"`
 	RevocationEndpointAuthSigningAlgorithms    []string `json:"revocation_endpoint_auth_signing_alg_values_supported,omitempty"`
 	DPoPSigningAlgorithms                      []string `json:"dpop_signing_alg_values_supported,omitzero"`
+	// The back-channel logout flags are always published, false included.
+	BackchannelLogoutSupported        bool `json:"backchannel_logout_supported"`
+	BackchannelLogoutSessionSupported bool `json:"backchannel_logout_session_supported"`
 }
 
 // Public discovery requires HTTPS. Loopback HTTP supports local development.
@@ -235,6 +238,8 @@ func (opts Options) issuerDocuments(a *auth.Auth, store auth.Store) (map[string]
 			doc.DPoPSigningAlgorithms = append(doc.DPoPSigningAlgorithms, string(alg))
 		}
 	}
+	doc.BackchannelLogoutSupported = backchannelSupported(a, store)
+	doc.BackchannelLogoutSessionSupported = doc.BackchannelLogoutSupported
 	var metadata any = doc
 	input := MetadataInput{Type: MetadataAuthorizationServer, Server: doc}
 	if openid {

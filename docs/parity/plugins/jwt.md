@@ -104,8 +104,8 @@
     - [ ] Custom JWKS Path
       - [x] Serve the key set at a configured path to anonymous callers ([test](../../../adapters/sqlstore/jwt_test.go#L93))
       - [x] Serve the key set at the default /jwks path to the Go client ([test](../../../client/jwt_test.go#L46))
-      - [x] Server Configuration: ([test](../../../conformance/oauth-issuer-metadata.mjs#L94))
-        - [x] Advertise a configured key path in discovery and verify issued tokens with keys fetched from it ([test](../../../conformance/oauth-issuer-metadata.mjs#L94))
+      - [x] Server Configuration: ([test](../../../conformance/oauth-issuer-metadata.mjs#L96))
+        - [x] Advertise a configured key path in discovery and verify issued tokens with keys fetched from it ([test](../../../conformance/oauth-issuer-metadata.mjs#L96))
       - [x] Client Configuration: ([test](../../../conformance/core.test.mjs#L467))
         - [x] Read one public key through the published client configured with the server's custom key path on both servers, and get 404 from a client left on the default path ([test](../../../conformance/core.test.mjs#L467))
         - [x] The Go client reads the key set at the server's custom path and gets 404 at the default path ([test](../../../client/jwt_test.go#L99))

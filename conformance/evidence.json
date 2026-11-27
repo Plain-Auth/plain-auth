@@ -18219,6 +18219,17 @@
       "label": "Remove an issuing browser session through the HTTP API and preserve only its offline refresh grant",
       "test": "conformance/oauth-refresh-introspection.mjs",
       "marker": "const endSession = await server.send("
+    },
+    {
+      "label": "Send one logout token per enabled client with a back-channel logout URI that held stored tokens on an ended session, signed with the session's sid and the client's public or pairwise subject, posted as a form with a 5-second deadline and no redirects, logged on refusal, through the background runner, and advertised only with the jwt plugin, on SQLite, PostgreSQL and MySQL; dialing only public addresses and covering every session end through the store's report are documented deviations",
+      "test": "adapters/sqlstore/oauth_backchannel_logout_test.go",
+      "marker": "func TestBackchannelLogout(",
+      "complete": true
+    },
+    {
+      "label": "Register a client with a back-channel logout URI, complete a code flow, sign out and receive the same form, header and claim set from both runtimes",
+      "test": "conformance/oauth-backchannel-logout.mjs",
+      "marker": "assert.deepEqual(shapes.Go, shapes.reference);"
     }
   ],
   "docs/content/docs/plugins/oauth-provider/openid-connect.mdx#L121": [
@@ -18435,6 +18446,12 @@
       "label": "Retrieve the native issuer document, preserve escaped issuer paths and omit disabled endpoints and unavailable store capabilities",
       "test": "plugins/oauthprovider/issuer_metadata_test.go",
       "marker": "func TestIssuerDiscoveryMounts("
+    },
+    {
+      "label": "Publish the same grant, response type, scope, authentication method, DPoP and back-channel logout fields as another runtime",
+      "test": "conformance/oauth-issuer-metadata.mjs",
+      "marker": "assert.deepEqual(common, expected);",
+      "complete": true
     }
   ],
   "plugin-symbol/oauth-provider/authServerMetadata": [
@@ -18442,6 +18459,12 @@
       "label": "Discover endpoints and capabilities for the machine grant, then register a client, verify a signed token and revoke an opaque token",
       "test": "conformance/oauth-issuer-metadata.mjs",
       "marker": "const { payload } = await jwtVerify(signed, keys,"
+    },
+    {
+      "label": "Publish the same grant, response type, scope, authentication method, DPoP and back-channel logout fields as another runtime",
+      "test": "conformance/oauth-issuer-metadata.mjs",
+      "marker": "assert.deepEqual(common, expected);",
+      "complete": true
     }
   ],
   "plugin-symbol/oauth-provider/oauthAuthorizationServerMetadata": [

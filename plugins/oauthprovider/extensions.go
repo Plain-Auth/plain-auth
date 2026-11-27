@@ -86,9 +86,6 @@ func metadataFields(t reflect.Type) map[string]bool {
 		}
 	}
 	collect(t)
-	// Another runtime always publishes the back-channel logout flags, which
-	// these types do not declare yet.
-	fields["backchannel_logout_supported"], fields["backchannel_logout_session_supported"] = true, true
 	return fields
 }
 
