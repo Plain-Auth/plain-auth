@@ -49,6 +49,10 @@ type Options struct {
 	Webhooks *WebhookOptions
 	// Usage enables GET /usage/meters/list, the signed-in customer's meters.
 	Usage *UsageOptions
+	// Organization accepts an organization referenceId on checkout and on
+	// the subscription list. It needs Checkout or Portal and the
+	// organization schema.
+	Organization *OrganizationOptions
 }
 
 // CheckoutOptions enables personal hosted checkout.
@@ -101,8 +105,18 @@ func NewService(opts Options) (*Service, error) {
 	if opts.Client == nil || !canonicalID(opts.OrganizationID) {
 		return nil, errors.New("polar: configure a client and the merchant organization UUID")
 	}
-	if (opts.Checkout != nil || opts.Portal != nil || opts.Webhooks != nil || opts.Usage != nil) && opts.Ledger == nil {
+	if (opts.Checkout != nil || opts.Portal != nil || opts.Webhooks != nil || opts.Usage != nil || opts.Organization != nil) && opts.Ledger == nil {
 		return nil, errors.New("polar: checkout, portal, webhooks and usage need a ledger")
+	}
+	if opts.Organization != nil {
+		if opts.Organization.AuthorizeReference == nil {
+			return nil, errors.New("polar: organization references need AuthorizeReference")
+		}
+		if opts.Checkout == nil && opts.Portal == nil {
+			return nil, errors.New("polar: organization references need the checkout or portal section")
+		}
+		organization := *opts.Organization
+		opts.Organization = &organization
 	}
 	s := &Service{opts: opts, products: map[string]bool{}}
 	if opts.Checkout != nil {
@@ -179,6 +193,14 @@ func (s *Service) Plugin() auth.Plugin {
 		endpoints = append(endpoints, auth.Endpoint{Method: "GET", Path: "/usage/meters/list", Handler: s.customerMeters})
 	}
 	plugin := auth.Plugin{ID: "polar", Endpoints: endpoints}
+	if s.opts.Organization != nil {
+		plugin.ValidateStore = func(auth.Store) error {
+			if err := s.opts.Ledger.checkMemberTable(context.Background()); err != nil {
+				return errors.New("polar: organization references need the organization schema")
+			}
+			return nil
+		}
+	}
 	if s.opts.SignUpCustomer != nil {
 		plugin.DatabaseHooks.User.Create.After = s.customerOnSignUp
 	}
@@ -225,7 +247,7 @@ const maxCheckoutProducts = 10
 // to ten distinct configured product IDs in order, or a slug. When both are
 // sent, as another runtime's client examples send them, the slug decides
 // the purchase and products must still be valid.
-func (s *Service) selection(body map[string]any) (products []string, redirect bool, err error) {
+func (s *Service) selection(body map[string]any) (products []string, reference string, redirect bool, err error) {
 	bad := failure(400, "POLAR_INVALID_PRODUCT", "Select configured products by slug or ID")
 	redirect = true
 	var slugged string
@@ -234,7 +256,7 @@ func (s *Service) selection(body map[string]any) (products []string, redirect bo
 		case "slug":
 			slug, _ := v.(string)
 			if s.opts.Checkout.Products[slug] == "" {
-				return nil, false, bad
+				return nil, "", false, bad
 			}
 			slugged = s.opts.Checkout.Products[slug]
 		case "products":
@@ -249,31 +271,40 @@ func (s *Service) selection(body map[string]any) (products []string, redirect bo
 				}
 			}
 			if len(listed) == 0 || len(listed) > maxCheckoutProducts {
-				return nil, false, bad
+				return nil, "", false, bad
 			}
 			for i, id := range listed {
 				if !s.products[id] || slices.Contains(listed[:i], id) {
-					return nil, false, bad
+					return nil, "", false, bad
 				}
 			}
 			products = listed
+		case "referenceId":
+			if s.opts.Organization == nil {
+				return nil, "", false, failure(400, "POLAR_INVALID_FIELD", "Unsupported checkout field")
+			}
+			ref, ok := v.(string)
+			if !ok || !validReference(ref) {
+				return nil, "", false, failure(400, "POLAR_INVALID_REFERENCE", "referenceId must be an organization ID")
+			}
+			reference = ref
 		case "redirect":
 			var ok bool
 			redirect, ok = v.(bool)
 			if !ok {
-				return nil, false, bad
+				return nil, "", false, bad
 			}
 		default:
-			return nil, false, failure(400, "POLAR_INVALID_FIELD", "Unsupported checkout field")
+			return nil, "", false, failure(400, "POLAR_INVALID_FIELD", "Unsupported checkout field")
 		}
 	}
 	if slugged != "" {
 		products = []string{slugged}
 	}
 	if len(products) == 0 {
-		return nil, false, bad
+		return nil, "", false, bad
 	}
-	return products, redirect, nil
+	return products, reference, redirect, nil
 }
 
 func (s *Service) checkout(c auth.EndpointContext) (any, error) {
@@ -282,9 +313,16 @@ func (s *Service) checkout(c auth.EndpointContext) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	products, redirect, err := s.selection(c.Body)
+	products, reference, redirect, err := s.selection(c.Body)
 	if err != nil {
 		return nil, err
+	}
+	// A purchase for an organization needs the caller's membership and the
+	// host's approval, before the provider is asked and again after.
+	if reference != "" {
+		if err := s.authorizeReference(c, session, reference, "checkout"); err != nil {
+			return nil, err
+		}
 	}
 	success, err := c.CallbackURL(s.opts.Checkout.SuccessURL)
 	if err != nil {
@@ -302,6 +340,9 @@ func (s *Service) checkout(c auth.EndpointContext) (any, error) {
 		return nil, failure(400, "POLAR_INVALID_REQUEST_KEY", "Invalid Idempotency-Key")
 	}
 	key := "default:" + strings.Join(products, ",")
+	if reference != "" {
+		key += "\x00reference:" + reference
+	}
 	if len(keys) == 1 {
 		key = "explicit:" + keys[0]
 	}
@@ -311,7 +352,7 @@ func (s *Service) checkout(c auth.EndpointContext) (any, error) {
 	req := reservation{
 		Slot: hex.EncodeToString(slot[:]), Attempt: uuid.NewString(),
 		Owner: session.User.ID, ContactHash: hex.EncodeToString(contact[:]),
-		Product: products[0], Products: products, Merchant: s.opts.OrganizationID, Success: success, Return: back,
+		Product: products[0], Products: products, Reference: reference, Merchant: s.opts.OrganizationID, Success: success, Return: back,
 	}
 	row, send, err := s.opts.Ledger.reserve(ctx, req)
 	if err != nil {
@@ -340,6 +381,11 @@ func (s *Service) checkout(c auth.EndpointContext) (any, error) {
 	if current.Session.ID != session.Session.ID || current.User.ID != row.Owner || current.User.Email != session.User.Email {
 		return nil, conflict()
 	}
+	if reference != "" {
+		if err := s.authorizeReference(c, current, reference, "checkout"); err != nil {
+			return nil, err
+		}
+	}
 	if !s.hosted(row.URL) {
 		return nil, conflict()
 	}
@@ -352,6 +398,9 @@ func (s *Service) createRemote(ctx context.Context, req reservation, email strin
 		SuccessURL: &req.Success, Metadata: map[string]components.CheckoutCreateMetadata{
 			attemptMetadata: components.CreateCheckoutCreateMetadataStr(req.Attempt),
 		},
+	}
+	if req.Reference != "" {
+		payload.Metadata[referenceMetadata] = components.CreateCheckoutCreateMetadataStr(req.Reference)
 	}
 	if req.Return != "" {
 		payload.ReturnURL = &req.Return

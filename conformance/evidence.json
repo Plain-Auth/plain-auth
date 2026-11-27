@@ -52427,5 +52427,30 @@
       "test": "integrations/polar/customer_lists_test.go",
       "marker": "// Meters list the customer's consumption and balance."
     }
+  ],
+  "docs/content/docs/plugins/polar.mdx#L205": [
+    {
+      "label": "A member the host approves checks out for an organization with referenceId sent in the checkout metadata and stored with the reservation",
+      "test": "integrations/polar/organization_test.go",
+      "marker": "organization checkout did not record referenceId",
+      "complete": true
+    },
+    {
+      "label": "Non-members, denied members and near-miss organization IDs are refused before Polar",
+      "test": "integrations/polar/organization_test.go",
+      "marker": "a reference was billed without membership and approval"
+    }
+  ],
+  "docs/content/docs/plugins/polar.mdx#L22/Reference System to associate purchases with organizations": [
+    {
+      "label": "A verified checkout delivery reports the organization the purchase bills",
+      "test": "integrations/polar/organization_test.go",
+      "marker": "the purchase did not report its organization"
+    },
+    {
+      "label": "Customer state names the organization each active subscription bills",
+      "test": "integrations/polar/organization_test.go",
+      "marker": "customer state did not name the organizations"
+    }
   ]
 }

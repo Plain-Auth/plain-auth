@@ -117,17 +117,19 @@ type reservation struct {
 	// several products were offered; Products lists every one in order.
 	Product, Merchant string
 	Products          []string
-	Success, Return   string
-	ID, URL, Status   string
-	Expires, Changed  int64
+	// Reference is the organization the purchase bills, or "" for the buyer.
+	Reference        string
+	Success, Return  string
+	ID, URL, Status  string
+	Expires, Changed int64
 }
 
-const columns = "slot,attempt,owner_id,contact_hash,product,products,merchant,success_url,return_url,COALESCE(checkout_id,''),hosted_url,status,expires_ms,changed_us"
+const columns = "slot,attempt,owner_id,contact_hash,product,products,reference_id,merchant,success_url,return_url,COALESCE(checkout_id,''),hosted_url,status,expires_ms,changed_us"
 
 func scan(r *sql.Row) (reservation, error) {
 	var v reservation
 	var products string
-	err := r.Scan(&v.Slot, &v.Attempt, &v.Owner, &v.ContactHash, &v.Product, &products, &v.Merchant, &v.Success, &v.Return, &v.ID, &v.URL, &v.Status, &v.Expires, &v.Changed)
+	err := r.Scan(&v.Slot, &v.Attempt, &v.Owner, &v.ContactHash, &v.Product, &products, &v.Reference, &v.Merchant, &v.Success, &v.Return, &v.ID, &v.URL, &v.Status, &v.Expires, &v.Changed)
 	v.Products = strings.Split(products, ",")
 	if products == "" {
 		v.Products = []string{v.Product}
@@ -165,7 +167,7 @@ func (l *Ledger) read(ctx context.Context, slot string) (reservation, error) {
 }
 
 func (l *Ledger) reserve(ctx context.Context, v reservation) (reservation, bool, error) {
-	q := `INSERT INTO plainauth_polar_checkout (slot,attempt,owner_id,contact_hash,product,products,merchant,success_url,return_url,hosted_url,status,expires_ms,changed_us) VALUES (?,?,?,?,?,?,?,?,?,'','pending',0,0)`
+	q := `INSERT INTO plainauth_polar_checkout (slot,attempt,owner_id,contact_hash,product,products,reference_id,merchant,success_url,return_url,hosted_url,status,expires_ms,changed_us) VALUES (?,?,?,?,?,?,?,?,?,?,'','pending',0,0)`
 	// A reservation offering several products stores the nil UUID as its
 	// single product, which no request can name, so a node on an earlier
 	// release, which compares only that column, refuses to reuse it.
@@ -173,12 +175,12 @@ func (l *Ledger) reserve(ctx context.Context, v reservation) (reservation, bool,
 	if len(v.Products) > 1 {
 		single = uuid.Nil.String()
 	}
-	_, err := l.db.ExecContext(ctx, l.bind(q+l.ignore("slot")), v.Slot, v.Attempt, v.Owner, v.ContactHash, single, strings.Join(v.Products, ","), v.Merchant, v.Success, v.Return)
+	_, err := l.db.ExecContext(ctx, l.bind(q+l.ignore("slot")), v.Slot, v.Attempt, v.Owner, v.ContactHash, single, strings.Join(v.Products, ","), v.Reference, v.Merchant, v.Success, v.Return)
 	if err != nil {
 		return v, false, err
 	}
 	row, err := l.read(ctx, v.Slot)
-	if err == nil && (row.Owner != v.Owner || row.ContactHash != v.ContactHash || !slices.Equal(row.Products, v.Products) || row.Merchant != v.Merchant || row.Success != v.Success || row.Return != v.Return) {
+	if err == nil && (row.Owner != v.Owner || row.ContactHash != v.ContactHash || !slices.Equal(row.Products, v.Products) || row.Reference != v.Reference || row.Merchant != v.Merchant || row.Success != v.Success || row.Return != v.Return) {
 		return v, false, conflict()
 	}
 	return row, err == nil && row.Attempt == v.Attempt, err

@@ -65,6 +65,9 @@ type Purchase struct {
 	// the checkout offered, in request order.
 	CheckoutID, OwnerID, ProductID, Status string
 	ProductIDs                             []string
+	// ReferenceID is the organization the purchase bills, or "" when the
+	// buyer bought for themself.
+	ReferenceID string
 	// Changed orders the checkout's states: Polar's modified_at, or
 	// created_at for a checkout Polar has not modified. Purchases can arrive
 	// out of order: apply one only when Changed is newer than the one you
@@ -93,6 +96,10 @@ type checkoutSnapshot struct {
 	Modified time.Time                  `json:"modified_at"`
 	Metadata map[string]json.RawMessage `json:"metadata"`
 	Attempt  string                     `json:"-"`
+	// Reference is the organization the checkout bills. badReference marks
+	// a referenceId that is not a valid string, which matches no purchase.
+	Reference    string `json:"-"`
+	badReference bool
 }
 
 func fromSDK(cs *components.Checkout) checkoutSnapshot {
@@ -105,6 +112,10 @@ func fromSDK(cs *components.Checkout) checkoutSnapshot {
 		v.Modified = *cs.ModifiedAt
 	}
 	v.Attempt = val(cs.Metadata[attemptMetadata].Str)
+	if ref, ok := cs.Metadata[referenceMetadata]; ok {
+		v.Reference = val(ref.Str)
+		v.badReference = !validReference(v.Reference)
+	}
 	for _, p := range cs.Products {
 		v.Products = append(v.Products, productRef{ID: p.ID})
 	}
@@ -256,6 +267,9 @@ func (s *Service) checkoutDelivery(ctx context.Context, id, kind, version string
 	if json.Unmarshal(tag, &v.Attempt) != nil || !canonicalID(v.Attempt) || kind == "checkout.expired" && v.Status != "expired" {
 		return nil, conflict()
 	}
+	if ref, ok := v.Metadata[referenceMetadata]; ok {
+		v.badReference = json.Unmarshal(ref, &v.Reference) != nil || !validReference(v.Reference)
+	}
 	key := sha256.Sum256([]byte(s.opts.OrganizationID + "\x00" + id))
 	hash := sha256.Sum256(raw)
 	row, current, err := s.applyRow(ctx, v, &delivery{key: hex.EncodeToString(key[:]), hash: hex.EncodeToString(hash[:])})
@@ -266,7 +280,7 @@ func (s *Service) checkoutDelivery(ctx context.Context, id, kind, version string
 	if selected == "" && len(row.Products) == 1 {
 		selected = row.Products[0]
 	}
-	return &Purchase{CheckoutID: v.ID, OwnerID: v.Owner, ProductID: selected, ProductIDs: slices.Clone(row.Products), Status: v.Status, Changed: v.changed()}, nil
+	return &Purchase{CheckoutID: v.ID, OwnerID: v.Owner, ProductID: selected, ProductIDs: slices.Clone(row.Products), ReferenceID: row.Reference, Status: v.Status, Changed: v.changed()}, nil
 }
 
 // changed is the ledger's ordering key for a snapshot.
@@ -336,7 +350,7 @@ func (s *Service) applyRow(ctx context.Context, v checkoutSnapshot, d *delivery)
 	// Polar may list the offered products in another order. A paid
 	// checkout that offered several must name the one bought, so
 	// fulfilment always knows it.
-	if row.Owner != v.Owner || row.Merchant != v.Merchant || !sameProducts(row.Products, offered) || v.Product != "" && !slices.Contains(row.Products, v.Product) ||
+	if row.Owner != v.Owner || row.Merchant != v.Merchant || v.badReference || row.Reference != v.Reference || !sameProducts(row.Products, offered) || v.Product != "" && !slices.Contains(row.Products, v.Product) ||
 		len(row.Products) > 1 && v.Product == "" && (v.Status == "confirmed" || v.Status == "succeeded") ||
 		!successMatches(row.Success, v.Success, v.ID) || row.Return != v.Return || row.ID != "" && (row.ID != v.ID || row.URL != v.URL) {
 		return none, false, conflict()

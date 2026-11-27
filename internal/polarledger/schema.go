@@ -29,6 +29,8 @@ func Tables(dialect string) []Table {
 			// Every offered product, comma-joined; '' on rows written before
 			// several products were offered, which read as product alone.
 			"products varchar(400) not null default ''",
+			// The organization a purchase bills, or '' for the buyer.
+			"reference_id varchar(255) not null default ''",
 		}},
 		{"plainauth_polar_delivery", []string{
 			"event_key char(64) primary key", "body_hash char(64) not null", "claim char(36) not null",

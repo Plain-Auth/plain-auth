@@ -1,6 +1,7 @@
 package polar
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/polarsource/polar-go/models/components"
@@ -26,6 +27,9 @@ type ActiveSubscription struct {
 	Status            string    `json:"status"`
 	CurrentPeriodEnd  time.Time `json:"current_period_end"`
 	CancelAtPeriodEnd bool      `json:"cancel_at_period_end"`
+	// ReferenceID is the organization the subscription bills, from its
+	// referenceId metadata, or "" for the customer.
+	ReferenceID string `json:"reference_id,omitempty"`
 }
 
 // BenefitGrant describes a benefit currently granted to the individual customer.
@@ -56,7 +60,7 @@ func publicState(customer *components.CustomerStateIndividual) CustomerState {
 	for _, sub := range customer.ActiveSubscriptions {
 		result.ActiveSubscriptions = append(result.ActiveSubscriptions, ActiveSubscription{
 			ID: sub.ID, ProductID: sub.ProductID, Status: string(sub.Status),
-			CurrentPeriodEnd: sub.CurrentPeriodEnd, CancelAtPeriodEnd: sub.CancelAtPeriodEnd,
+			CurrentPeriodEnd: sub.CurrentPeriodEnd, CancelAtPeriodEnd: sub.CancelAtPeriodEnd, ReferenceID: metadataText(sub.Metadata[referenceMetadata]),
 		})
 	}
 	for _, grant := range customer.GrantedBenefits {
@@ -71,4 +75,21 @@ func publicState(customer *components.CustomerStateIndividual) CustomerState {
 		})
 	}
 	return result
+}
+
+// metadataText is a metadata value as text: a string as itself, another
+// type in its text form, and an absent key as "". A purchase for an
+// organization therefore never reads as personal.
+func metadataText(m components.MetadataOutputType) string {
+	switch {
+	case m.Str != nil:
+		return *m.Str
+	case m.Integer != nil:
+		return strconv.FormatInt(*m.Integer, 10)
+	case m.Number != nil:
+		return strconv.FormatFloat(*m.Number, 'g', -1, 64)
+	case m.Boolean != nil:
+		return strconv.FormatBool(*m.Boolean)
+	}
+	return ""
 }

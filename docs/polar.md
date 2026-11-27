@@ -105,6 +105,24 @@ Plain Auth commits the reservation before asking Polar to create a checkout. Onl
 
 A checkout that offered several products records the one bought: Polar may list the offered products in another order, a confirmed or succeeded event that offered several must name the product bought or it answers 409 so Polar retries, and `Purchase.ProductID` is that product, or the only one, while `Purchase.ProductIDs` lists every offered product in request order. The ledger keeps the list in a `products` column; `OpenLedger` adds it, with its default, to a table that already holds rows, and a row written before reads as its single product. Run `authctl migrate --plugins polar` or let the first upgraded node add it; nodes on an earlier release refuse a several-product delivery with 409 until they are upgraded, and Polar retries. [Several product tests](../integrations/polar/products_test.go)
 
+## Bill an organization
+
+Set `Organization` to let a member buy for an organization: send `referenceId` with the organization ID beside the product, as another runtime does. The checkout customer stays the signed-in member, with their own external ID and email, and the checkout metadata carries `referenceId`, as another runtime records it.
+
+```go
+Organization: &polar.OrganizationOptions{
+	AuthorizeReference: func(r polar.ReferenceAuthorization) bool {
+		return r.Action == "checkout" && slices.Contains(strings.Split(r.Role, ","), "owner")
+	},
+},
+```
+
+The integration reads the caller's row in the organization plugin's `member` table and requires exactly one whose organization and user IDs match byte for byte, so MySQL's case-insensitive comparison never matches another organization. It then asks `AuthorizeReference` with the user, organization, session, role and the action `"checkout"`. Another runtime records any reference the caller sends; here a missing membership or a refusal answers 403 `POLAR_REFERENCE_FORBIDDEN` before Polar is asked. The check runs again once Polar answers, so a membership removed meanwhile withholds the checkout URL. Both checks run outside any database transaction, where the Stripe plugin asks inside its store transaction, so keep the callback local and quick. A `referenceId` that is not 1 to 255 bytes of text without control characters answers 400 `POLAR_INVALID_REFERENCE`; without `Organization` the field answers 400 `POLAR_INVALID_FIELD`, and a signed-out request answers 401. `Organization` needs `AuthorizeReference`, the `Checkout` or `Portal` section and the organization schema: `auth.New` fails without the `member` table.
+
+The reservation stores the reference in a `reference_id` column, which `OpenLedger` adds like `products`. A checkout for an organization has its own reservation, so a member's personal checkout of the same product is another purchase, and one `Idempotency-Key` cannot change its reference: that answers 409. Every checkout event must carry the stored reference, so a missing, changed or non-string `referenceId` answers 409. `Purchase.ReferenceID` names the organization, or is empty for a personal purchase, and the customer state shows each active subscription's `reference_id`, so an organization's purchase never reads as the member's own.
+
+Upgrade every node before enabling `Organization`: a node on an earlier release ignores the reference and would report an organization's purchase as personal. [Organization checkout tests](../integrations/polar/organization_test.go)
+
 ## Receive verified deliveries
 
 Configure a Polar webhook endpoint at `/api/auth/polar/webhooks` with raw JSON, API version `2026-10`, and checkout created, updated and expired events. Use the dashboard secret as supplied. For secrets created before September 8, 2026 at 00:00 UTC, set `LegacySecret: true` on `polar.WebhookOptions`. The default uses the Standard Webhooks key format. Verification covers the raw body, delivery ID and timestamp, with five minutes of clock tolerance. [Polar webhook delivery](https://polar.sh/docs/integrate/webhooks/delivery) · [Standard Webhooks](https://github.com/standard-webhooks/standard-webhooks)
@@ -190,7 +208,7 @@ Set `Usage` to mount `GET /api/auth/usage/meters/list`, which lists the signed-i
 
 | Field | Available properties |
 | --- | --- |
-| `active_subscriptions` | Subscription ID, product ID, status, current period end and cancellation at period end |
+| `active_subscriptions` | Subscription ID, product ID, status, current period end, cancellation at period end and `reference_id`, the organization it bills or empty |
 | `granted_benefits` | Grant ID, benefit ID, benefit type and grant timestamp |
 | `active_meters` | Meter entry ID, meter ID, consumed units, credited units and balance |
 
