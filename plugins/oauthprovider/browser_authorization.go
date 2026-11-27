@@ -301,21 +301,21 @@ func (opts Options) runBrowserAuthorization(c auth.EndpointContext, q url.Values
 	if slices.Contains(issue.Scopes, "openid") && !opts.canIssueIDToken(c) {
 		return reject("invalid_request", "ID token issuance is unavailable")
 	}
-	// Requested resources must pass their policy before any page is shown,
-	// as in another runtime; the token endpoint checks them again. After
-	// consent, the policy is checked on the approved scopes, as another
-	// runtime authorizes again with them.
-	if len(issue.Resources) > 0 {
-		checked := issue
-		if decision != nil && decision.scopes != nil {
-			checked.Scopes = decision.scopes
+	// refuseResources checks the requested resources' policy for the
+	// issue's scopes. It returns a callback refusal, or nothing.
+	refuseResources := func() (any, error) {
+		err := opts.checkAuthorizationResources(c, issue)
+		var problem *auth.OAuthError
+		if errors.As(err, &problem) && problem.Status < 500 {
+			return reject(problem.Code, problem.Description)
 		}
-		if err := opts.checkAuthorizationResources(c, checked); err != nil {
-			var problem *auth.OAuthError
-			if errors.As(err, &problem) && problem.Status < 500 {
-				return reject(problem.Code, problem.Description)
-			}
-			return nil, err
+		return nil, err
+	}
+	// Requested resources must pass their policy before any page is shown,
+	// as in another runtime; the token endpoint checks them again.
+	if len(issue.Resources) > 0 && decision == nil {
+		if out, err := refuseResources(); out != nil || err != nil {
+			return out, err
 		}
 	}
 	var session *auth.SessionResult
@@ -426,6 +426,27 @@ func (opts Options) runBrowserAuthorization(c auth.EndpointContext, q url.Values
 	}
 	if decision != nil {
 		decision.request.Binding = consentBinding(c.Auth.OAuthIssuer(), tokenDigest(client.RowID), issue)
+		// After consent, the policy is checked on the approved scopes, as
+		// another runtime authorizes again with them. A refusal spends the
+		// prompt and records no approval, where another runtime records
+		// the narrowed consent first: an approval is kept only with a code
+		// (safety).
+		if len(issue.Resources) > 0 {
+			out, err := refuseResources()
+			if err != nil {
+				return nil, err
+			}
+			if out != nil {
+				err = decision.store.FinishBrowserConsent(ctx, issue, decision.request, false)
+				if errors.Is(err, ErrAuthorizationSessionExpired) {
+					return nil, registrationProblem(401, "unauthorized", "browser session required")
+				}
+				if err != nil {
+					return nil, consentDecisionError(err)
+				}
+				return out, nil
+			}
+		}
 	}
 	var code string
 	if deferredRedirect != nil {

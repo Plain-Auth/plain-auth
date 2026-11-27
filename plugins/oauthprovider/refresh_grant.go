@@ -110,12 +110,12 @@ func (opts Options) exchangeRefreshGrant(c auth.EndpointContext, in tokenRequest
 		return result, err
 	}
 	ctx := c.Request.Context()
-	// A DPoP proof is verified before the grant is read, and its key binds
-	// the replacements, which keep the family's key.
-	thumb, err := opts.machineThumbprint(c, in, false)
-	if err != nil {
-		return result, err
-	}
+	// A DPoP proof is verified before the grant is read, so its jti is
+	// spent outside the store's transaction, and its key binds the
+	// replacements, which keep the family's key. A failed proof is the
+	// answer only once reuse detection has run, as in another runtime,
+	// which checks the proof when it issues.
+	thumb, proofErr := opts.machineThumbprint(c, in, false)
 	digest, err := opts.Tokens.storedTokenDigest(ctx, form.Get("refresh_token"), StoredRefreshToken)
 	if err != nil {
 		return result, err
@@ -149,11 +149,15 @@ func (opts Options) exchangeRefreshGrant(c auth.EndpointContext, in tokenRequest
 		if err != nil {
 			return DelegatedAccessRecord{}, err
 		}
-		// Reuse outside the interval ends the family before the binding and
-		// the resources' policy are checked, as in another runtime; a grant
-		// whose session ended is refused first and keeps the family.
+		// Reuse outside the interval ends the family before the proof, the
+		// binding and the resources' policy are checked, as in another
+		// runtime; a grant whose session ended, judged by the family's own
+		// scopes, is refused first and keeps the family.
 		if grant.Replayed {
-			return DelegatedAccessRecord{}, grant.sessionBound(scopes)
+			return DelegatedAccessRecord{}, grant.sessionBound(grant.Scopes)
+		}
+		if proofErr != nil {
+			return DelegatedAccessRecord{}, proofErr
 		}
 		if err := grant.checkBinding(client, in.proof, thumb); err != nil {
 			return DelegatedAccessRecord{}, err

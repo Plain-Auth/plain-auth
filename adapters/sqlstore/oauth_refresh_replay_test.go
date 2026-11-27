@@ -21,7 +21,8 @@ import (
 // presented again with the same scopes, resources and DPoP key gets the same
 // response, ID token and host fields included, with expires_in counted from
 // now; any other reuse is refused and keeps the family; after the interval,
-// or without one, reuse ends the family.
+// or without one, reuse ends the family, even with a failed DPoP proof or,
+// for an offline family, scopes narrowed after its session ended.
 func TestRefreshReuseInterval(t *testing.T) {
 	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
 		t.Run(dialect, func(t *testing.T) {
@@ -153,6 +154,44 @@ func TestRefreshReuseInterval(t *testing.T) {
 			}
 			if status, body := refresh(first["refresh_token"].(string), "", ""); status != 400 {
 				t.Fatal("reuse without an interval kept the family", status, body)
+			}
+			// A failed DPoP proof on a live token is refused and keeps it.
+			parent = grant("")
+			if status, body := refresh(parent, "", "not-a-proof"); status != 400 || body["error"] != "invalid_dpop_proof" {
+				t.Fatal("a failed proof was not refused", status, body)
+			}
+			if status, body := refresh(parent, "", ""); status != 200 {
+				t.Fatal("a failed proof spent the refresh token", status, body)
+			}
+			// Reuse with a failed DPoP proof still ends the family.
+			parent = grant(key.proof(t, tokenURL))
+			status, first = refresh(parent, "", key.proof(t, tokenURL))
+			if status != 200 {
+				t.Fatal("the bound rotation failed", status, first)
+			}
+			if status, body := refresh(parent, "", "not-a-proof"); status != 400 || body["error"] != "invalid_grant" {
+				t.Fatal("reuse with a failed proof was not refused as reuse", status, body)
+			}
+			if status, body := refresh(first["refresh_token"].(string), "", key.proof(t, tokenURL)); status != 400 || body["error"] != "invalid_grant" {
+				t.Fatal("reuse with a failed proof kept the family", status, body)
+			}
+			// An unknown token answers invalid_grant whatever its proof.
+			if status, body := refresh("unknown", "", "not-a-proof"); status != 400 || body["error"] != "invalid_grant" {
+				t.Fatal("an unknown token with a failed proof was not invalid_grant", status, body)
+			}
+			// Reuse after the session ended, with scopes narrowed past
+			// offline_access, still ends an offline family.
+			parent = grant("")
+			status, first = refresh(parent, "", "")
+			if status != 200 {
+				t.Fatal("the rotation failed", status, first)
+			}
+			write(`UPDATE "session" SET "expiresAt"=? WHERE "id"='sid'`, s.date(now.Add(-time.Minute)))
+			if status, body := refresh(parent, "reports", ""); status != 400 || body["error"] != "invalid_grant" {
+				t.Fatal("narrowed reuse after the session ended was not refused", status, body)
+			}
+			if status, body := refresh(first["refresh_token"].(string), "", ""); status != 400 {
+				t.Fatal("narrowed reuse after the session ended kept the family", status, body)
 			}
 		})
 	}

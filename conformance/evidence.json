@@ -17614,10 +17614,9 @@
       "marker": "export async function exerciseRefreshGrant("
     },
     {
-      "label": "Exchange codes and refresh tokens for resources, with DPoP binding and a refresh reuse interval, on SQLite, PostgreSQL and MySQL",
+      "label": "Exchange codes and refresh tokens with DPoP binding and a refresh reuse interval, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_refresh_replay_test.go",
-      "marker": "func TestRefreshReuseInterval(",
-      "complete": true
+      "marker": "func TestRefreshReuseInterval("
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/m2mAccessTokenExpiresIn": [
@@ -18768,8 +18767,7 @@
     {
       "label": "Accept resource indicators checked against the registry and a dpop_jkt at authorize, carried into the code, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_browser_resources_test.go",
-      "marker": "func TestBrowserAuthorizationResources(",
-      "complete": true
+      "marker": "func TestBrowserAuthorizationResources("
     }
   ],
   "docs/content/docs/plugins/oauth-provider/reference.mdx#L318/`GET / POST /oauth2/authorize`": [
@@ -18811,8 +18809,7 @@
     {
       "label": "Accept resource indicators checked against the registry and a dpop_jkt at authorize, carried into the code, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_browser_resources_test.go",
-      "marker": "func TestBrowserAuthorizationResources(",
-      "complete": true
+      "marker": "func TestBrowserAuthorizationResources("
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/validateRedirectUri": [
@@ -18929,6 +18926,11 @@
       "test": "adapters/sqlstore/oauth_browser_resources_test.go",
       "marker": "t.Fatal(\"accepted consent did not record the resources\", resources)",
       "complete": true
+    },
+    {
+      "label": "Spend a consent prompt the resource policy refuses after narrowing, recording no approval, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_browser_resources_test.go",
+      "marker": "t.Fatal(\"a refused consent prompt could be decided again\", out.Code, again)"
     }
   ],
   "docs/content/docs/plugins/oauth-provider/sign-in-flow.mdx#L95/`POST /oauth2/consent`": [
@@ -49259,8 +49261,7 @@
     {
       "label": "Accept resource indicators, up to 64 and without repeats, and a dpop_jkt in thumbprint form, refusing malformed ones with invalid_request",
       "test": "plugins/oauthprovider/browser_authorization_test.go",
-      "marker": "// A dpop_jkt in thumbprint form is kept for the exchange.",
-      "complete": true
+      "marker": "// A dpop_jkt in thumbprint form is kept for the exchange."
     }
   ],
   "plugin-symbol/oauth-provider/StoredAuthorizationQuery": [
@@ -49281,10 +49282,9 @@
   ],
   "docs/content/docs/plugins/oauth-provider/index.mdx#L26/Sender-constrained tokens": [
     {
-      "label": "Bind code, refresh and client credentials tokens to a DPoP key, on SQLite, PostgreSQL and MySQL",
+      "label": "Bind code and refresh tokens to a DPoP key, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_dpop_grants_test.go",
-      "marker": "func TestDPoPBoundDelegatedGrants(",
-      "complete": true
+      "marker": "func TestDPoPBoundDelegatedGrants("
     }
   ],
   "docs/content/docs/plugins/oauth-provider/reference.mdx#L384/`invalid_dpop_proof`": [
@@ -49297,7 +49297,7 @@
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/refreshTokenReuseInterval": [
     {
-      "label": "Replay a rotation's sealed response to an identical retry inside the interval, refuse other retries keeping the family, and end the family after the interval or without one, on SQLite, PostgreSQL and MySQL; storing the record with the rotation is a documented deviation",
+      "label": "Replay a rotation's sealed response to an identical retry inside the interval, refuse other retries keeping the family, and end the family after the interval or without one, even with a failed DPoP proof, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_refresh_replay_test.go",
       "marker": "func TestRefreshReuseInterval(",
       "complete": true
@@ -49305,18 +49305,16 @@
   ],
   "plugin-symbol/oauth-provider/OAuthRefreshToken": [
     {
-      "label": "Store a refresh token's resources, DPoP confirmation and sealed rotation response with its replay expiry, on SQLite, PostgreSQL and MySQL",
+      "label": "Replay a refresh token's sealed rotation response to an identical retry before its replay expiry, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_refresh_replay_test.go",
-      "marker": "t.Fatal(\"an identical retry did not get the same response\", status, again, first)",
-      "complete": true
+      "marker": "t.Fatal(\"an identical retry did not get the same response\", status, again, first)"
     }
   ],
   "docs/content/docs/plugins/oauth-provider/reference.mdx#L220": [
     {
-      "label": "Configure the refresh reuse interval, with the provider's lifetimes, DPoP, HS256 ID tokens and pushed requests covered by their tests, on SQLite, PostgreSQL and MySQL",
+      "label": "Configure the refresh reuse interval, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_refresh_replay_test.go",
-      "marker": "func TestRefreshReuseInterval(",
-      "complete": true
+      "marker": "func TestRefreshReuseInterval("
     }
   ],
   "plugin-symbol/oauth-provider/OAuthClientAuthenticationStrategy": [

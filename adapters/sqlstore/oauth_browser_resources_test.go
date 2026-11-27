@@ -20,7 +20,9 @@ import (
 // enabled and linked to the client, unless unlinked resources are allowed,
 // and leave at least one requested scope; failures go to the callback with
 // state and iss. Approved consent must cover every requested resource, an
-// accepted consent records them, and the code value carries them once each.
+// accepted consent records them, and the code value carries them once each,
+// with a dpop_jkt. A consent refused by the policy records nothing and
+// cannot be decided again.
 func TestBrowserAuthorizationResources(t *testing.T) {
 	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
 		t.Run(dialect, func(t *testing.T) {
@@ -122,6 +124,27 @@ func TestBrowserAuthorizationResources(t *testing.T) {
 			if got := codeValue(authorize("none", "urn:reports", "urn:reports")); !slices.Equal(got, []string{"urn:reports"}) {
 				t.Fatal("the code value did not carry the resource once", got)
 			}
+			// A dpop_jkt at authorize is carried into the code.
+			write(`DELETE FROM "verification"`)
+			jkt := strings.Repeat("k", 43)
+			q := url.Values{"client_id": {"app"}, "response_type": {"code"}, "redirect_uri": {"http://127.0.0.1:41234/cb"}, "scope": {"reports"}, "state": {"saved"},
+				"code_challenge": {challenge}, "code_challenge_method": {"S256"}, "prompt": {"none"}, "dpop_jkt": {jkt}}
+			req := httptest.NewRequest("GET", base+"/api/auth/oauth2/authorize?"+q.Encode(), nil)
+			req.AddCookie(h.SessionCookie("browser", true))
+			out := httptest.NewRecorder()
+			h.ServeHTTP(out, req)
+			if location, _ := url.Parse(out.Header().Get("Location")); out.Code != 302 || location.Query().Get("code") == "" {
+				t.Fatal("authorize with dpop_jkt did not issue a code", out.Code, out.Header())
+			}
+			var bound string
+			must(s.db.QueryRowContext(ctx, s.bind(`SELECT "value" FROM "verification" WHERE "identifier"<>'oauth-browser-consent'`)).Scan(&bound))
+			var boundValue struct {
+				Query map[string]any `json:"query"`
+			}
+			must(json.Unmarshal([]byte(bound), &boundValue))
+			if boundValue.Query["dpop_jkt"] != jkt {
+				t.Fatal("the code did not carry dpop_jkt", bound)
+			}
 			// Without a covering consent the consent page opens, signed with
 			// the resources, and accepting records them.
 			write(`DELETE FROM "verification"`)
@@ -130,11 +153,11 @@ func TestBrowserAuthorizationResources(t *testing.T) {
 				t.Fatal("the consent page did not carry the resource", page)
 			}
 			body, _ := json.Marshal(map[string]any{"accept": true, "oauth_query": page.RawQuery})
-			req := httptest.NewRequest("POST", base+"/api/auth/oauth2/consent", strings.NewReader(string(body)))
+			req = httptest.NewRequest("POST", base+"/api/auth/oauth2/consent", strings.NewReader(string(body)))
 			req.Header.Set("Content-Type", "application/json")
 			req.Header.Set("Origin", base)
 			req.AddCookie(h.SessionCookie("browser", true))
-			out := httptest.NewRecorder()
+			out = httptest.NewRecorder()
 			h.ServeHTTP(out, req)
 			var accepted struct {
 				URL string `json:"url"`
@@ -153,7 +176,7 @@ func TestBrowserAuthorizationResources(t *testing.T) {
 			// Consent that narrows the scopes is checked against the policy
 			// again: a resource that allows none of them is refused at the
 			// callback instead of getting a code that cannot be redeemed.
-			q := url.Values{"client_id": {"app"}, "response_type": {"code"}, "redirect_uri": {"http://127.0.0.1:41234/cb"}, "scope": {"reports billing"}, "state": {"saved"},
+			q = url.Values{"client_id": {"app"}, "response_type": {"code"}, "redirect_uri": {"http://127.0.0.1:41234/cb"}, "scope": {"reports billing"}, "state": {"saved"},
 				"code_challenge": {challenge}, "code_challenge_method": {"S256"}, "resource": {"urn:reports"}}
 			req = httptest.NewRequest("GET", base+"/api/auth/oauth2/authorize?"+q.Encode(), nil)
 			req.AddCookie(h.SessionCookie("browser", true))
@@ -178,6 +201,24 @@ func TestBrowserAuthorizationResources(t *testing.T) {
 			result, err := url.Parse(narrowed.URL)
 			must(err)
 			refused(result, "invalid_scope")
+			// The refusal records no approval and spends the prompt.
+			var scopes string
+			must(s.db.QueryRowContext(ctx, s.bind(`SELECT "scopes", "resources" FROM "oauthConsent" WHERE "id"='approval'`)).Scan(&scopes, &resources))
+			if !sameJSON(scopes, `["reports"]`) || !sameJSON(resources, `["urn:audit"]`) {
+				t.Fatal("a refused consent changed the approval", scopes, resources)
+			}
+			body, _ = json.Marshal(map[string]any{"accept": true, "scope": "reports", "oauth_query": narrowPage.RawQuery})
+			req = httptest.NewRequest("POST", base+"/api/auth/oauth2/consent", strings.NewReader(string(body)))
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("Origin", base)
+			req.AddCookie(h.SessionCookie("browser", true))
+			out = httptest.NewRecorder()
+			h.ServeHTTP(out, req)
+			var again map[string]any
+			must(json.Unmarshal(out.Body.Bytes(), &again))
+			if out.Code != 400 || again["error"] != "invalid_request" || again["error_description"] != "consent request expired, changed or already used" {
+				t.Fatal("a refused consent prompt could be decided again", out.Code, again)
+			}
 		})
 	}
 }
