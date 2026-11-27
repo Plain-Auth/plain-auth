@@ -722,11 +722,12 @@
     - [ ] `POST /oauth2/consent`
       - [x] Visit a host consent page, verify the signed query independently, deny a first request or exchange a code approved for fewer scopes ([test](../../../conformance/oauth-browser-authorization.mjs#L57))
       - [x] Consume a decision once across two servers, isolate sessions and tenants, and roll back consent when code storage fails ([test](../../../adapters/sqlstore/oauth_browser_consent_test.go#L25))
-    - [ ] `POST /oauth2/continue`
+    - [x] `POST /oauth2/continue` ([test](../../../adapters/sqlstore/oauth_browser_login_test.go#L132))
       - [x] Use the signed signup page query and the new browser session to complete the account-creation step ([test](../../../conformance/oauth-browser-login.mjs#L82))
       - [x] Resume the signed chooser with the selected browser account and preserve forced consent without repeating selection ([test](../../../conformance/oauth-account-selection.mjs#L44))
       - [x] Re-evaluate the account on a signed created continuation and exchange its code only after the host records completion ([test](../../../conformance/oauth-signup-policy.mjs#L79))
       - [x] Resume after the user activates a membership and distinguish an explicit continuation from a cookie reissued by an organization switch ([test](../../../conformance/oauth-post-login.mjs#L99))
+      - [x] Refuse a signed-in continuation without a completed step or a signed query with 400 invalid_request, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_browser_login_test.go#L132))
     - [ ] `POST /oauth2/token`
       - [x] Issue opaque bearer tokens with Basic or form authentication and verify their scope, expiry, introspection and revocation at an independent server ([test](../../../conformance/oauth-machine-tokens.mjs#L61))
       - [x] Issue signed or opaque machine tokens for several registered APIs and verify them with an independent issuer ([test](../../../conformance/oauth-resource-machine-tokens.mjs#L28))
@@ -929,16 +930,18 @@
   - [x] Post-login screen ([test](../../../conformance/oauth-post-login.mjs#L90))
     - [x] Recheck live organization selection on continuation, require consent for each organization and redeem a token carrying its reference ([test](../../../conformance/oauth-post-login.mjs#L90))
     - [x] Validate a signed selector before updating the team and keep an outstanding approval in its original organization ([test](../../../adapters/sqlstore/oauth_post_login_test.go#L129))
-  - [ ] Continue endpoint
+  - [x] Continue endpoint ([test](../../../adapters/sqlstore/oauth_browser_login_test.go#L132))
     - [x] Use the signed signup page query and the new browser session to complete the account-creation step ([test](../../../conformance/oauth-browser-login.mjs#L82))
     - [x] Resume the signed chooser with the selected browser account and preserve forced consent without repeating selection ([test](../../../conformance/oauth-account-selection.mjs#L44))
     - [x] Re-evaluate the account on a signed created continuation and exchange its code only after the host records completion ([test](../../../conformance/oauth-signup-policy.mjs#L79))
     - [x] Resume after the user activates a membership and distinguish an explicit continuation from a cookie reissued by an organization switch ([test](../../../conformance/oauth-post-login.mjs#L99))
-    - [ ] `POST /oauth2/continue`
+    - [x] Refuse a continuation with created true and no signed query with 400 invalid_request, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_browser_login_test.go#L132))
+    - [x] `POST /oauth2/continue` ([test](../../../adapters/sqlstore/oauth_browser_login_test.go#L124))
       - [x] Use the signed signup page query and the new browser session to complete the account-creation step ([test](../../../conformance/oauth-browser-login.mjs#L82))
       - [x] Resume the signed chooser with the selected browser account and preserve forced consent without repeating selection ([test](../../../conformance/oauth-account-selection.mjs#L44))
       - [x] Re-evaluate the account on a signed created continuation and exchange its code only after the host records completion ([test](../../../conformance/oauth-signup-policy.mjs#L79))
       - [x] Resume after the user activates a membership and distinguish an explicit continuation from a cookie reissued by an organization switch ([test](../../../conformance/oauth-post-login.mjs#L99))
+      - [x] Check the continuation's body types first, then the browser session with 401, then the completed step and signed query with 400, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_browser_login_test.go#L124))
       - [x] Parameter `selected` (optional) ([test](../../../conformance/oauth-account-selection.mjs#L87))
         - [x] Continue the account choice with selected=true after an explicit prompt or a host policy, including a required second consent ([test](../../../conformance/oauth-account-selection.mjs#L87))
       - [x] Parameter `created` (optional) ([test](../../../adapters/sqlstore/oauth_browser_login_test.go#L117))

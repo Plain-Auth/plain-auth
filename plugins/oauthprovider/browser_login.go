@@ -2,6 +2,7 @@ package oauthprovider
 
 import (
 	"context"
+	"github.com/Plain-Org/plain-auth/internal/jsjson"
 	"net/http"
 	"net/url"
 	"slices"
@@ -174,6 +175,24 @@ func (opts Options) prepareLogin(c auth.EndpointContext, raw string) (auth.OAuth
 }
 
 func (opts Options) continueAccount(c auth.EndpointContext) (any, error) {
+	// As in another runtime, the body's types are checked first, then the
+	// session, then the account step and its signed query.
+	for _, name := range []string{"selected", "created", "postLogin", "oauth_query"} {
+		raw, ok := c.Body[name]
+		if !ok {
+			continue
+		}
+		want := "boolean"
+		if name == "oauth_query" {
+			want = "string"
+		}
+		if received := jsjson.TypeName(raw); received != want {
+			return nil, &auth.APIError{Status: 400, Code: "VALIDATION_ERROR", Message: "[body." + name + "] Invalid input: expected " + want + ", received " + received}
+		}
+	}
+	if _, err := requireBrowserOwner(c); err != nil {
+		return nil, err
+	}
 	selected, _ := c.Body["selected"].(bool)
 	created, _ := c.Body["created"].(bool)
 	postLogin, _ := c.Body["postLogin"].(bool)
@@ -195,9 +214,6 @@ func (opts Options) continueAccount(c auth.EndpointContext) (any, error) {
 	}
 	if prompt == "create" && !q.Has("pa_signup") && !slices.Contains(strings.Fields(q.Get("prompt")), "create") {
 		return nil, registrationProblem(400, "invalid_request", "account creation was not requested")
-	}
-	if _, err := requireBrowserOwner(c); err != nil {
-		return nil, err
 	}
 	if prompt != "" {
 		withoutPrompt(q, prompt)

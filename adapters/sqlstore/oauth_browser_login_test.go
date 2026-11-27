@@ -118,8 +118,19 @@ func TestBrowserLoginContinuation(t *testing.T) {
 			if w := post(h, "oauth2/continue", map[string]any{"created": true, "oauth_query": signupQuery}, nil, nil); w.Code != 401 {
 				t.Fatal("account creation continued without a browser session", w.Code)
 			}
-			if w := post(h, "oauth2/continue", map[string]any{"created": false, "oauth_query": signupQuery}, nil, nil); w.Code != 400 {
-				t.Fatal("account creation accepted an unfinished step", w.Code)
+			// As in another runtime, the body's types come first, then the
+			// session, then the account step and its signed query.
+			if w := post(h, "oauth2/continue", map[string]any{"created": false, "oauth_query": signupQuery}, nil, nil); w.Code != 401 {
+				t.Fatal("a sessionless continuation was not refused with 401", w.Code)
+			}
+			if w := post(h, "oauth2/continue", map[string]any{"selected": "yes"}, nil, nil); w.Code != 400 || !strings.Contains(w.Body.String(), "VALIDATION_ERROR") {
+				t.Fatal("a mistyped continuation was not refused in the body validation form", w.Code, w.Body.String())
+			}
+			signedIn := http.Header{"Cookie": {h.SessionCookie(who.Session.Token, true).String()}}
+			for _, body := range []map[string]any{{"created": false, "oauth_query": signupQuery}, {"selected": true}, {}, {"created": true}} {
+				if w := post(h, "oauth2/continue", body, signedIn, nil); w.Code != 400 || !strings.Contains(w.Body.String(), "invalid_request") {
+					t.Fatal("account creation accepted an unfinished step or no signed query", body, w.Code, w.Body.String())
+				}
 			}
 			location, err := browser.ContinueOAuthSignup(ctx, signupQuery)
 			must(err)

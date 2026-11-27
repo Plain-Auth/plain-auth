@@ -18989,6 +18989,12 @@
       "label": "Resume after the user activates a membership and distinguish an explicit continuation from a cookie reissued by an organization switch",
       "test": "conformance/oauth-post-login.mjs",
       "marker": "const picked = await destination("
+    },
+    {
+      "label": "Refuse a signed-in continuation without a completed step or a signed query with 400 invalid_request, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_browser_login_test.go",
+      "marker": "t.Fatal(\"account creation accepted an unfinished step or no signed query\", body, w.Code, w.Body.String())",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/oauth-provider/sign-in-flow.mdx#L205": [
@@ -19011,6 +19017,12 @@
       "label": "Resume after the user activates a membership and distinguish an explicit continuation from a cookie reissued by an organization switch",
       "test": "conformance/oauth-post-login.mjs",
       "marker": "const picked = await destination("
+    },
+    {
+      "label": "Refuse a continuation with created true and no signed query with 400 invalid_request, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_browser_login_test.go",
+      "marker": "t.Fatal(\"account creation accepted an unfinished step or no signed query\", body, w.Code, w.Body.String())",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/oauth-provider/sign-in-flow.mdx#L211/`POST /oauth2/continue`": [
@@ -19033,6 +19045,12 @@
       "label": "Resume after the user activates a membership and distinguish an explicit continuation from a cookie reissued by an organization switch",
       "test": "conformance/oauth-post-login.mjs",
       "marker": "const picked = await destination("
+    },
+    {
+      "label": "Check the continuation's body types first, then the browser session with 401, then the completed step and signed query with 400, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_browser_login_test.go",
+      "marker": "t.Fatal(\"a sessionless continuation was not refused with 401\", w.Code)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/oauth-provider/sign-in-flow.mdx#L229/Parameter `oauth_query` (optional)": [
