@@ -48351,5 +48351,13 @@
       "marker": "const plain = await start();",
       "complete": true
     }
+  ],
+  "docs/content/docs/plugins/oauth-provider/tokens.mdx#L14/`client_secret_basic`": [
+    {
+      "label": "Default a confidential registration without a method to client_secret_basic and authenticate it with a Basic header, refusing a wrong secret with a Basic challenge, on both runtimes",
+      "test": "conformance/oauth-machine-tokens.mjs",
+      "marker": "assert.equal(defaulted.token_endpoint_auth_method, \"client_secret_basic\");",
+      "complete": true
+    }
   ]
 }

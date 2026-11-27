@@ -77,7 +77,7 @@
     - [x] Re-evaluate the account on a signed created continuation and exchange its code only after the host records completion ([test](../../../conformance/oauth-signup-policy.mjs#L79))
     - [x] Resume after the user activates a membership and distinguish an explicit continuation from a cookie reissued by an organization switch ([test](../../../conformance/oauth-post-login.mjs#L99))
   - [ ] `POST /oauth2/token`
-    - [x] Issue opaque bearer tokens with Basic or form authentication and verify their scope, expiry, introspection and revocation at an independent server ([test](../../../conformance/oauth-machine-tokens.mjs#L61))
+    - [x] Issue opaque bearer tokens with Basic or form authentication and verify their scope, expiry, introspection and revocation at an independent server ([test](../../../conformance/oauth-machine-tokens.mjs#L64))
     - [x] Recheck credential rotation, registered scopes, sender constraints and client deletion during issuance on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_machine_token_test.go#L154))
     - [x] Authenticate issuance, introspection and revocation with independently signed assertions and reject replay across issuers ([test](../../../conformance/oauth-client-assertions.mjs#L5))
     - [x] Issue a sender-bound machine token, enforce its key on an independent resource verifier, introspect it and revoke it ([test](../../../conformance/dpop-machine-tokens.mjs#L43))
@@ -306,7 +306,7 @@
       - [x] Apply the configured delegated lifetime for a successful headless public-client exchange on all SQL engines ([test](../../../adapters/sqlstore/oauth_authorization_code_test.go#L114))
       - [x] Default the access token lifetime to an hour ([test](../../../plugins/oauthprovider/machine_token_test.go#L109))
     - [x] `m2mAccessTokenExpiresIn` ([test](../../../conformance/oauth-resource-machine-tokens.mjs#L89))
-      - [x] Apply the machine token lifetime and shortest applicable scope lifetime to the response and persisted expiry ([test](../../../conformance/oauth-machine-tokens.mjs#L65))
+      - [x] Apply the machine token lifetime and shortest applicable scope lifetime to the response and persisted expiry ([test](../../../conformance/oauth-machine-tokens.mjs#L68))
       - [x] Default to a one-hour machine lifetime and 20 token requests per minute ([test](../../../plugins/oauthprovider/machine_token_test.go#L29))
       - [x] Apply the machine grant lifetime together with scope and resource ceilings for signed and opaque grants ([test](../../../conformance/oauth-resource-machine-tokens.mjs#L89))
     - [x] `idTokenExpiresIn` ([test](../../../conformance/oauth-id-tokens.mjs#L77))
@@ -322,7 +322,7 @@
       - [x] The code's verification record expires with the stored code ([test](../../../adapters/sqlstore/oauth_code_hooks_test.go#L31))
       - [x] Default authorization codes to a ten-minute lifetime in both runtimes ([test](../../../conformance/oauth-browser-authorization.mjs#L117))
     - [ ] `scopeExpirations`
-      - [x] Apply the machine token lifetime and shortest applicable scope lifetime to the response and persisted expiry ([test](../../../conformance/oauth-machine-tokens.mjs#L65))
+      - [x] Apply the machine token lifetime and shortest applicable scope lifetime to the response and persisted expiry ([test](../../../conformance/oauth-machine-tokens.mjs#L68))
       - [x] Apply the shortest lifetime from the original machine scopes and every requested API, including scopes dropped at issuance ([test](../../../conformance/oauth-resource-machine-tokens.mjs#L89))
       - [x] Limit an opaque delegated token to its approved scope's lifetime ([test](../../../conformance/oauth-authorization-code.mjs#L26))
     - [x] `assertionMaxLifetime` ([test](../../../plugins/oauthprovider/client_assertion_test.go#L25))
@@ -415,9 +415,9 @@
       - [x] Issue the generated secret and store its digest on all SQL engines ([test](../../../adapters/sqlstore/oauth_registration_test.go#L96))
       - [x] Reuse the configured generator for rotation and reject an ineffective repeated digest ([test](../../../adapters/sqlstore/oauth_secret_rotation_test.go#L122))
       - [x] Default to 32-letter client secrets in both runtimes ([test](../../../conformance/oauth-registration.mjs#L239))
-    - [x] `generateOpaqueAccessToken` ([test](../../../conformance/oauth-machine-tokens.mjs#L52))
+    - [x] `generateOpaqueAccessToken` ([test](../../../conformance/oauth-machine-tokens.mjs#L55))
       - [x] Use a host token generator, credential verifier and digest function without storing cleartext tokens ([test](../../../adapters/sqlstore/oauth_machine_token_test.go#L121))
-      - [x] Default to 32-letter opaque access tokens in both runtimes ([test](../../../conformance/oauth-machine-tokens.mjs#L52))
+      - [x] Default to 32-letter opaque access tokens in both runtimes ([test](../../../conformance/oauth-machine-tokens.mjs#L55))
     - [x] `generateRefreshToken` ([test](../../../conformance/oauth-authorization-code.mjs#L82))
       - [x] Generate and hash the raw refresh token, encode it for its session, then apply the public prefix ([test](../../../adapters/sqlstore/oauth_offline_code_test.go#L139))
       - [x] Default to 32-letter refresh tokens in both runtimes ([test](../../../conformance/oauth-authorization-code.mjs#L82))
@@ -496,8 +496,8 @@
   - [x] `getStoredToken` ([test](../../../plugins/oauthprovider/machine_token_test.go#L136))
     - [x] Derive the same digest for lookup as for storage, by default and through each kind's hash function ([test](../../../plugins/oauthprovider/machine_token_test.go#L136))
   - [ ] `ClientAuthenticationField`
-  - [x] `normalizeClientAuthenticationParameters` ([test](../../../conformance/oauth-machine-tokens.mjs#L95))
-    - [x] Refuse a secret with an assertion, in the body or with a Basic header, as two client authentication methods, on both runtimes ([test](../../../conformance/oauth-machine-tokens.mjs#L95))
+  - [x] `normalizeClientAuthenticationParameters` ([test](../../../conformance/oauth-machine-tokens.mjs#L98))
+    - [x] Refuse a secret with an assertion, in the body or with a Basic header, as two client authentication methods, on both runtimes ([test](../../../conformance/oauth-machine-tokens.mjs#L98))
   - [ ] `challengeHeaders`
   - [ ] `clientAllowsGrant`
   - [ ] `validateClientScopes`
@@ -730,7 +730,7 @@
       - [x] Resume after the user activates a membership and distinguish an explicit continuation from a cookie reissued by an organization switch ([test](../../../conformance/oauth-post-login.mjs#L99))
       - [x] Refuse a signed-in continuation without a completed step or a signed query with 400 invalid_request, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_browser_login_test.go#L132))
     - [ ] `POST /oauth2/token`
-      - [x] Issue opaque bearer tokens with Basic or form authentication and verify their scope, expiry, introspection and revocation at an independent server ([test](../../../conformance/oauth-machine-tokens.mjs#L61))
+      - [x] Issue opaque bearer tokens with Basic or form authentication and verify their scope, expiry, introspection and revocation at an independent server ([test](../../../conformance/oauth-machine-tokens.mjs#L64))
       - [x] Issue signed or opaque machine tokens for several registered APIs and verify them with an independent issuer ([test](../../../conformance/oauth-resource-machine-tokens.mjs#L28))
       - [x] Require links to every machine-token audience and recheck concurrent unlink, scope, binding and signing policy changes on three engines ([test](../../../adapters/sqlstore/oauth_machine_resources_test.go#L30))
       - [x] Exchange a browser-issued S256 code, verify the delegated access token with an independent issuer and isolate replay cleanup to that code ([test](../../../conformance/oauth-authorization-code.mjs#L5))
@@ -975,9 +975,10 @@
     - [x] Roll back failed token inserts and serialize simultaneous redemptions across independent SQL connections on all three databases ([test](../../../adapters/sqlstore/oauth_authorization_code_test.go#L22))
     - [x] Issue an offline token pair, rotate the refresh token at an independent issuer after session expiry and remove the rotated tokens on code replay ([test](../../../conformance/oauth-authorization-code.mjs#L67))
     - [x] Rotate an independently issued refresh token, narrow its scopes, renew offline access after session expiry and invalidate reused grants ([test](../../../conformance/oauth-refresh-grant.mjs#L5))
-    - [ ] `client_secret_basic`
-    - [x] `client_secret_post` ([test](../../../conformance/oauth-machine-tokens.mjs#L84))
-      - [x] Authenticate a client_secret_post client from body credentials and reject a wrong body secret ([test](../../../conformance/oauth-machine-tokens.mjs#L84))
+    - [x] `client_secret_basic` ([test](../../../conformance/oauth-machine-tokens.mjs#L10))
+      - [x] Default a confidential registration without a method to client_secret_basic and authenticate it with a Basic header, refusing a wrong secret with a Basic challenge, on both runtimes ([test](../../../conformance/oauth-machine-tokens.mjs#L10))
+    - [x] `client_secret_post` ([test](../../../conformance/oauth-machine-tokens.mjs#L87))
+      - [x] Authenticate a client_secret_post client from body credentials and reject a wrong body secret ([test](../../../conformance/oauth-machine-tokens.mjs#L87))
     - [x] `private_key_jwt` ([test](../../../conformance/oauth-client-assertions.mjs#L5))
       - [x] Authenticate issuance, introspection and revocation with independently signed assertions and reject replay across issuers ([test](../../../conformance/oauth-client-assertions.mjs#L5))
       - [x] Verify signatures with all ten asymmetric signing algorithms and enforce registered key restrictions ([test](../../../plugins/oauthprovider/client_assertion_test.go#L80))
@@ -1048,8 +1049,8 @@
   - [ ] Lifetimes
     - [x] `accessTokenExpiresIn` ([test](../../../plugins/oauthprovider/machine_token_test.go#L109))
       - [x] Default the access token lifetime to an hour ([test](../../../plugins/oauthprovider/machine_token_test.go#L109))
-    - [x] `m2mAccessTokenExpiresIn` ([test](../../../conformance/oauth-machine-tokens.mjs#L65))
-      - [x] Apply the machine token lifetime and shortest applicable scope lifetime to the response and persisted expiry ([test](../../../conformance/oauth-machine-tokens.mjs#L65))
+    - [x] `m2mAccessTokenExpiresIn` ([test](../../../conformance/oauth-machine-tokens.mjs#L68))
+      - [x] Apply the machine token lifetime and shortest applicable scope lifetime to the response and persisted expiry ([test](../../../conformance/oauth-machine-tokens.mjs#L68))
       - [x] Default to a one-hour machine lifetime and 20 token requests per minute ([test](../../../plugins/oauthprovider/machine_token_test.go#L29))
     - [x] `idTokenExpiresIn` ([test](../../../conformance/oauth-id-tokens.mjs#L77))
       - [x] Apply the ten-hour default or configured whole-second lifetime to signed ID tokens on code and refresh exchanges ([test](../../../conformance/oauth-id-tokens.mjs#L77))

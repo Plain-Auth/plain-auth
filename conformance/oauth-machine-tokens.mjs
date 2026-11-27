@@ -5,6 +5,9 @@ export async function exerciseMachineTokens({ server, issuer, db, credentials, c
   const grant = { grant_type: "client_credentials" };
   const bodyClient = { client_id: credentials.client_id, client_secret: credentials.client_secret };
   const basicClient = await created({ grant_types: ["client_credentials"], token_endpoint_auth_method: "client_secret_basic" }, { cookie });
+  // A confidential registration without a method defaults to client_secret_basic.
+  const defaulted = await created({ grant_types: ["client_credentials"] }, { cookie });
+  assert.equal(defaulted.token_endpoint_auth_method, "client_secret_basic");
   await setMachineScopes(basicClient.client_id, ["extra", "reports"]);
   function basic(id, secret) {
     const encode = s => new URLSearchParams({ v: s }).toString().slice(2);
