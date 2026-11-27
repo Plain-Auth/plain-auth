@@ -166,7 +166,7 @@ type PublicSAMLConfig struct {
 	IDPInitiatedCallbackURL string `json:"idpInitiatedCallbackUrl,omitempty"`
 	Audience                string `json:"audience,omitempty"`
 	WantAssertionsSigned    *bool  `json:"wantAssertionsSigned,omitempty"`
-	AuthnRequestsSigned     bool   `json:"authnRequestsSigned,omitempty"`
+	AuthnRequestsSigned     *bool  `json:"authnRequestsSigned,omitempty"`
 	IdentifierFormat        string `json:"identifierFormat,omitempty"`
 	SignatureAlgorithm      string `json:"signatureAlgorithm,omitempty"`
 	DigestAlgorithm         string `json:"digestAlgorithm,omitempty"`
@@ -208,6 +208,12 @@ var (
 	ErrNotMember       = apiError(400, "You are not a member of the organization")
 	ErrOrgRole         = apiError(403, "You must be an organization owner or admin to register SSO providers")
 	ErrMissing         = apiError(404, "Provider not found")
+	// ErrNoSelector answers a sign-in whose organizationSlug names no
+	// organization and that names no provider or domain either.
+	ErrNoSelector = apiError(400, "providerId, orgId or domain is required")
+	// errNoProvider answers a sign-in that finds no provider, with another
+	// runtime's message.
+	errNoProvider = apiError(404, "No provider found for the issuer")
 )
 
 func apiError(status int, text string) *auth.APIError {

@@ -51,6 +51,8 @@ func checkEndpoint(trusted func(string) bool, raw string) error {
 	}
 
 	if isLocal {
+		// This library's own message, which does not echo the URL; another
+		// runtime names the field, URL and host.
 		return discoveryError(400, "discovery_private_host", "An internal identity provider endpoint needs an explicitly trusted origin")
 	}
 	return nil
@@ -256,6 +258,9 @@ func fetchDiscovery(ctx context.Context, client *http.Client, endpoint string) (
 	if e == nil && len(data) <= bound && (len(strings.TrimSpace(string(data))) == 0 || strings.TrimSpace(string(data)) == "null") {
 		return doc, discoveryError(400, "discovery_invalid_json", "OIDC discovery returned invalid data: Discovery endpoint returned an empty response")
 	}
+	// The document is decoded into typed fields, so a field of the wrong
+	// type, such as a numeric issuer, answers invalid JSON; another runtime
+	// reads it leniently and fails a later check instead.
 	if e != nil || len(data) > bound || json.Unmarshal(data, &doc) != nil {
 		return doc, discoveryError(400, "discovery_invalid_json", "OIDC discovery returned invalid data: Discovery endpoint returned invalid JSON")
 	}
@@ -273,11 +278,15 @@ func untrustedDiscovery(raw string) error {
 }
 
 // whatwgURL writes an absolute URL as another runtime's URL parser does:
-// lowercase scheme and host, no default port and "/" for an empty path.
+// lowercase scheme and host, no default port, no dot segments and "/" for
+// an empty path.
 func whatwgURL(raw string) string {
 	u, err := url.Parse(raw)
 	if err != nil || !u.IsAbs() {
 		return raw
+	}
+	if u.Opaque == "" {
+		u = u.ResolveReference(&url.URL{})
 	}
 	u.Scheme = strings.ToLower(u.Scheme)
 	host, port := strings.ToLower(u.Hostname()), u.Port()

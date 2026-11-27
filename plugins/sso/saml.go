@@ -224,7 +224,7 @@ type SAMLConfig struct {
 	IDPMetadata             SAMLIDPMetadata `json:"idpMetadata"`
 	Audience                string          `json:"audience,omitempty"`
 	WantAssertionsSigned    *bool           `json:"wantAssertionsSigned,omitempty"`
-	AuthnRequestsSigned     bool            `json:"authnRequestsSigned,omitempty"`
+	AuthnRequestsSigned     *bool           `json:"authnRequestsSigned,omitempty"`
 	IdentifierFormat        string          `json:"identifierFormat,omitempty"`
 	Mapping                 SAMLMapping     `json:"mapping,omitempty"`
 	// SignatureAlgorithm and DigestAlgorithm record the directory's XML
@@ -376,7 +376,7 @@ func (o Options) samlSP(c auth.EndpointContext, p Provider) (*saml.ServiceProvid
 		sp.EncryptionCertificate = o.SAML.Encryption.Certificate
 		sp.RequireSignedResponseForCBC = true
 	}
-	if cfg.AuthnRequestsSigned || authority.signedRequests {
+	if cfg.AuthnRequestsSigned != nil && *cfg.AuthnRequestsSigned || authority.signedRequests {
 		if o.SAML.RequestSigner == nil {
 			return nil, apiError(400, "SAML request signing is not configured")
 		}

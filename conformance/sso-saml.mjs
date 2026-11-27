@@ -199,12 +199,15 @@ export async function compareEnterpriseSAML(t, {goFixture,instrument,privateDepl
       }
     }
     const samlConfig={entryPoint:inline ? "https://manual.example.test/unused" : entryPoint,
-      ...(inline ? {} : {cert}),...(portal && {idpInitiatedCallbackUrl:encrypted ? "https://unused.invalid/landing" : "/staff-portal",callbackUrl:"/fallback"}),idpMetadata,spMetadata,wantAssertionsSigned:true};
+      ...(inline ? {} : {cert}),...(portal && {idpInitiatedCallbackUrl:encrypted ? "https://unused.invalid/landing" : "/staff-portal",callbackUrl:"/fallback"}),idpMetadata,spMetadata,wantAssertionsSigned:true,authnRequestsSigned:false};
     const registration = ok(await admin.sso.register({providerId:"work",domain:"enterprise.example",issuer,samlConfig}));
     assert.equal(registration.redirectURI,runtime.baseURL+mount+"/sso/callback/work");
     if (inline) assert.equal(registration.samlConfig.idpMetadata.metadata,inlineIdP([cert]));
     else assert.equal(registration.samlConfig.cert,cert);
     assert.equal(registration.samlConfig.issuer,issuer);
+    // An explicit false is kept and returned, on both runtimes.
+    assert.equal(registration.samlConfig.authnRequestsSigned,false);
+    assert.equal(ok(await admin.sso.getProvider({query:{providerId:"work"}})).samlConfig.authnRequestsSigned,false);
     const metadata=await runtime.send(new Request(runtime.baseURL+mount+"/sso/saml2/sp/metadata?providerId=work"));
     if (privateDeployment) {
       assert.equal(metadata.status,404);

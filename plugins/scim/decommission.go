@@ -3,6 +3,7 @@ package scim
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 )
 
@@ -45,16 +46,18 @@ type ManagedRetirementStore interface {
 // connection is bound to; a connection never bound then answers
 // ErrNoBinding, as in another runtime.
 func (h *Handler) Decommission(ctx context.Context, d Directory) (Retirement, error) {
+	// Only an omitted domain is left out; a blank one is refused.
+	omitted := d.ProvisioningDomainID == ""
 	d = trimmedDirectory(d)
 	_, okID := apiText(d.ID, 1)
 	_, okDomain := apiText(d.ProvisioningDomainID, 1)
-	if !okID || d.ProvisioningDomainID != "" && !okDomain {
+	if !okID || !omitted && !okDomain {
 		return Retirement{}, invalid("invalidValue", "Expected a directory and provisioning domain")
 	}
 	// A managed connection is retired only through its catalog, which ends
 	// its credentials too; another runtime retires its binding here and
 	// leaves the catalog row active.
-	if managedDirectory(d) {
+	if strings.HasPrefix(d.ID, managedConnectionPrefix) {
 		return Retirement{}, invalid("invalidValue", "Retire a managed connection through its credential catalog")
 	}
 	// A configured connection is retired only in its configured domain, so a
@@ -72,8 +75,9 @@ func (h *Handler) Decommission(ctx context.Context, d Directory) (Retirement, er
 
 // Decommission permanently retires a managed connection and all its active credentials.
 func (c *Catalog) Decommission(ctx context.Context, d Directory, actor string) (ManagedRetirement, error) {
-	if d = trimmedDirectory(d); !managedDirectory(d) {
-		return ManagedRetirement{}, ErrManagedNotFound
+	d, err := managedDirectory(d)
+	if err != nil {
+		return ManagedRetirement{}, err
 	}
 	actor, ok := apiText(actor, 1)
 	if !ok {

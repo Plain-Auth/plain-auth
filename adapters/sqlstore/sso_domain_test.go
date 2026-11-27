@@ -500,6 +500,16 @@ func TestEnterpriseDomainVerification(t *testing.T) {
 			if n != 0 {
 				t.Fatal("deleted provider retained DNS material")
 			}
+			// A provider deleted during the lookup is a changed provider.
+			last, e := one.RequestSSODomainVerification(ctx, "authority")
+			must(e)
+			dns.put(authLabel+".authority.example.", last)
+			entered, release = dns.barrier()
+			go func() { errs <- two.VerifySSODomain(ctx, "authority") }()
+			<-entered
+			exec(`DELETE FROM "ssoProvider" WHERE "id"=?`, directory.ID)
+			dns.resume(release)
+			status(<-errs, 409, "SSO_PROVIDER_CHANGED")
 		})
 	}
 }

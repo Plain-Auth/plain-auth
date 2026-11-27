@@ -345,7 +345,7 @@ func TestDiscoveryHydratedConfiguration(t *testing.T) {
 // An untrusted discovery URL is written as another runtime's URL parser
 // writes it.
 func TestUntrustedDiscoveryURL(t *testing.T) {
-	for raw, want := range map[string]string{"https://IDP.Example.test:443": "https://idp.example.test/", "HTTP://idp.test:80/x": "http://idp.test/x", "https://idp.test:8443/a?b=c": "https://idp.test:8443/a?b=c", "https://[2001:DB8::1]:443/": "https://[2001:db8::1]/"} {
+	for raw, want := range map[string]string{"https://IDP.Example.test:443": "https://idp.example.test/", "HTTP://idp.test:80/x": "http://idp.test/x", "https://idp.test:8443/a?b=c": "https://idp.test:8443/a?b=c", "https://[2001:DB8::1]:443/": "https://[2001:db8::1]/", "https://idp.test/a/./b/../c?d=e": "https://idp.test/a/c?d=e"} {
 		if got := whatwgURL(raw); got != want {
 			t.Fatal("an untrusted URL was not normalized", raw, got, want)
 		}
@@ -418,7 +418,7 @@ func TestDiscoveryHydrationKeepsConfiguredValues(t *testing.T) {
 	saved := docIssuer
 	docIssuer = issuer + "/"
 	client.Transport = transportFunc(func(r *http.Request) (*http.Response, error) {
-		doc := `{"issuer":"` + docIssuer + `","authorization_endpoint":"//authorize","token_endpoint":"https://LOGIN.example.test:443/token","jwks_uri":"keys/"}`
+		doc := `{"issuer":"` + docIssuer + `","authorization_endpoint":"//authorize","token_endpoint":"https://LOGIN.example.test:443/oauth/../token","jwks_uri":"keys/"}`
 		return &http.Response{Request: r, StatusCode: 200, Body: io.NopCloser(strings.NewReader(doc)), Header: http.Header{}}, nil
 	})
 	if cfg = hydrated(Config{Issuer: issuer + "/"}); cfg.AuthorizationEndpoint != issuer+"/authorize" || cfg.TokenEndpoint != "https://login.example.test/token" || cfg.JWKSEndpoint != issuer+"/keys/" {

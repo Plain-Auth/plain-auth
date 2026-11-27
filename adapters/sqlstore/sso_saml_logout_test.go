@@ -226,6 +226,19 @@ func testSAMLLogout(t *testing.T, first, second *Store, idp *saml.IdentityProvid
 	if status, _ = code(h, target); status != 400 {
 		t.Fatal("replayed browser return accepted", status)
 	}
+	// Without a callbackURL the browser returns to the auth base URL, as in
+	// another runtime.
+	login(t, h, "employee", nil)
+	plain, e := sdk(h).StartSAMLLogout(ctx, "work", "")
+	must(e)
+	plainRequest, e := http.NewRequest("GET", plain, nil)
+	must(e)
+	plainLogout, e := saml.NewIdpLogoutRequest(idp, plainRequest)
+	must(e)
+	must(plainLogout.Validate())
+	if status, location := code(h, reply(plainLogout, saml.StatusSuccess, nil)); status != 302 || location != api {
+		t.Fatal("a logout without a callbackURL did not return to the auth base URL", status, location, api)
+	}
 	// Both replicas hold the same pending return; only one may consume it.
 	req, _ = start(another)
 	target = reply(req, saml.StatusSuccess, nil)
@@ -278,7 +291,8 @@ func testSAMLLogout(t *testing.T, first, second *Store, idp *saml.IdentityProvid
 	for _, handler := range []http.Handler{node, peer} {
 		go func() {
 			<-launch
-			r := httptest.NewRequest("POST", startURL.String(), strings.NewReader(`{"callbackURL":"/done"}`))
+			// Other body keys and the query are ignored, as in another runtime.
+			r := httptest.NewRequest("POST", startURL.String()+"?ignored=1", strings.NewReader(`{"callbackURL":"/done","ignored":true}`))
 			r.Header.Set("Content-Type", "application/json")
 			r.Header.Set("Origin", application)
 			for _, cookie := range launchCookies {

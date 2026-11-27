@@ -156,7 +156,7 @@ func runEnterpriseSAMLBrowser(t *testing.T, encrypted, logout bool) {
 			if status != 200 {
 				t.Fatal(status, string(data))
 			}
-			cfg := sso.SAMLConfig{IDPInitiatedCallbackURL: "/company-portal", CallbackURL: "/fallback-portal", SPMetadata: &sso.SAMLSPMetadata{EntityID: app.URL + "/sp"}, EntryPoint: entry, IDPMetadata: sso.SAMLIDPMetadata{EntityID: idpEntity, IsAssertionEncrypted: encrypted}, Certificates: sso.Certificates{idpPEM}, AuthnRequestsSigned: true, Mapping: sso.SAMLMapping{EmailVerified: "verified"}}
+			cfg := sso.SAMLConfig{IDPInitiatedCallbackURL: "/company-portal", CallbackURL: "/fallback-portal", SPMetadata: &sso.SAMLSPMetadata{EntityID: app.URL + "/sp"}, EntryPoint: entry, IDPMetadata: sso.SAMLIDPMetadata{EntityID: idpEntity, IsAssertionEncrypted: encrypted}, Certificates: sso.Certificates{idpPEM}, AuthnRequestsSigned: new(true), Mapping: sso.SAMLMapping{EmailVerified: "verified"}}
 			if logout {
 				cfg.IDPMetadata.SingleLogoutService = []sso.SAMLService{{Binding: saml.HTTPRedirectBinding, Location: idpBase + "/logout"}}
 			}
@@ -620,6 +620,23 @@ func runEnterpriseSAMLBrowser(t *testing.T, encrypted, logout bool) {
 			// A response naming a request nobody sent is unknown, as in
 			// another runtime, and a browser-bound response without
 			// InResponseTo is unsolicited.
+			// Without an error callback a failure goes to the error page, as in
+			// another runtime.
+			t.Run("no error callback", func(t *testing.T) {
+				h := newBrowser()
+				out, e := sdk(h).SignInSSO(ctx, client.SSOSignInRequest{ProviderID: "work", ProviderType: "saml", CallbackURL: "/home"})
+				must(e)
+				r, e := http.NewRequest("GET", out.URL, nil)
+				must(e)
+				pending, e := saml.NewIdpAuthnRequest(idp, r)
+				must(e)
+				must(pending.Validate())
+				pending.Request.ID = "_neverSent"
+				status, hd, _ := post(h, form(pending, "no-error-callback", "no-error-callback@staff.example", nil), acs)
+				if status != 302 || !strings.Contains(hd.Get("Location"), "/error?error=invalid_saml_response&error_description=Unknown+or+expired+request+ID") {
+					t.Fatal("a SAML failure without an error callback did not reach the error page", status, hd.Get("Location"))
+				}
+			})
 			t.Run("unsent request", func(t *testing.T) {
 				h := newBrowser()
 				r, e := start(h)

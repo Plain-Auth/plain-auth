@@ -85,6 +85,8 @@ export async function compareSSODomains(t, {goFixture,instrument}) {
     assert.equal(ok(await api.sso.requestDomainVerification({providerId})).domainVerificationToken,token);
     const req=seen.at(-1);assert.equal(req[1],201);
     assert.equal((await api.signIn.sso({providerId,callbackURL:"/home"})).error.status,401);
+    const absent=(await api.signIn.sso({providerId:"absent-"+index,callbackURL:"/home"})).error;
+    assert.equal(absent.status,404);assert.equal(absent.message,"No provider found for the issuer");
     const names=domain.split(",").map(d=>label+"."+d);
     records.set(names[0],[["unrelated"],["  "+token.slice(0,10),token.slice(10)+"  "]]);
     assert.equal((await api.sso.verifyDomain({providerId})).error.code,"DOMAIN_VERIFICATION_FAILED");

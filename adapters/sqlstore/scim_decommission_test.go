@@ -122,6 +122,12 @@ func TestSCIMDirectoryRetirement(t *testing.T) {
 			if got := bindingStatus(); got != "active" {
 				t.Fatal("a populated managed connection's binding is not active", got)
 			}
+			// The static retirement refuses a managed connection even when the
+			// domain is left to the binding.
+			var refused *scim.Error
+			if _, e := one.Decommission(ctx, scim.Directory{ID: d.ID}); !errors.As(e, &refused) || refused.Status != 400 || refused.Type != "invalidValue" || bindingStatus() != "active" {
+				t.Fatal("a managed connection was retired outside its catalog", e)
+			}
 			_, e = one.Catalog().Decommission(ctx, d, "first-admin")
 			var typed *scim.Error
 			if !errors.As(e, &typed) || typed.Status != 409 {
@@ -281,6 +287,10 @@ func TestSCIMStaticDecommission(t *testing.T) {
 			}
 			if got := status(); got != "active" {
 				t.Fatal("a provisioned connection's binding is not active", got)
+			}
+			var blank *scim.Error
+			if _, err := h.Decommission(ctx, scim.Directory{ID: "static", ProvisioningDomainID: "   "}); !errors.As(err, &blank) || blank.Type != "invalidValue" || status() != "active" {
+				t.Fatal("a blank provisioning domain was not refused", err)
 			}
 			r, err := h.Decommission(ctx, scim.Directory{ID: " static ", ProvisioningDomainID: "static"})
 			if err != nil || r.Status != "complete" || r.ReconciledUsers != 1 || r.Batches != 1 {

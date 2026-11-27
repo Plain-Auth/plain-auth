@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 	"unicode/utf16"
+	"unicode/utf8"
 )
 
 // ManagedOptions enables the server-only directory credential catalog.
@@ -150,11 +151,21 @@ func (c *Catalog) verify(ctx context.Context, token string) (*Principal, error) 
 	return c.store.SCIMVerifyCredential(ctx, m[1], c.digest(token), c.interval)
 }
 
-// managedDirectory reports a trimmed managed connection in a domain.
-func managedDirectory(d Directory) bool {
-	_, domain := apiText(d.ProvisioningDomainID, 1)
-	_, id := apiText(d.ID, 1)
-	return domain && id && strings.HasPrefix(d.ID, managedConnectionPrefix)
+// managedID reads a managed connection or credential ID as another
+// runtime's request schema does: untrimmed, with its prefix and at most 255
+// code points, so a padded ID finds nothing.
+func managedID(id, prefix string) bool {
+	return strings.HasPrefix(id, prefix) && utf8.RuneCountInString(id) <= 255
+}
+
+// managedDirectory reads a managed connection named to the catalog: the
+// domain is trimmed and the ID is not. Anything else answers 400.
+func managedDirectory(d Directory) (Directory, error) {
+	domain, ok := apiText(d.ProvisioningDomainID, 1)
+	if !ok || !managedID(d.ID, managedConnectionPrefix) {
+		return d, invalid("invalidValue", "Expected a managed connection ID and provisioning domain")
+	}
+	return Directory{ID: d.ID, ProvisioningDomainID: domain}, nil
 }
 func (c *Catalog) Create(ctx context.Context, domain, requestID, actor string, policy CredentialPolicy) (IssuedCredential, error) {
 	domain, okDomain := apiText(domain, 1)
@@ -166,8 +177,9 @@ func (c *Catalog) Create(ctx context.Context, domain, requestID, actor string, p
 	return c.issue(ctx, d, requestID, actor, policy)
 }
 func (c *Catalog) Rotate(ctx context.Context, d Directory, actor string, policy CredentialPolicy) (IssuedCredential, error) {
-	if d = trimmedDirectory(d); !managedDirectory(d) {
-		return IssuedCredential{}, ErrManagedNotFound
+	d, err := managedDirectory(d)
+	if err != nil {
+		return IssuedCredential{}, err
 	}
 	return c.issue(ctx, d, "", actor, policy)
 }
@@ -196,16 +208,19 @@ func (c *Catalog) List(ctx context.Context, domain string) ([]ManagedConnection,
 	return c.store.SCIMManagedConnections(ctx, domain)
 }
 func (c *Catalog) Get(ctx context.Context, d Directory) (ManagedState, error) {
-	if d = trimmedDirectory(d); !managedDirectory(d) {
-		return ManagedState{}, ErrManagedNotFound
+	d, err := managedDirectory(d)
+	if err != nil {
+		return ManagedState{}, err
 	}
 	return c.store.SCIMManagedState(ctx, d)
 }
 func (c *Catalog) Revoke(ctx context.Context, d Directory, id, actor string) (ManagedState, error) {
-	d = trimmedDirectory(d)
-	id, okID := apiText(id, 1)
-	if !managedDirectory(d) || !okID || !strings.HasPrefix(id, managedCredentialPrefix) {
-		return ManagedState{}, ErrManagedNotFound
+	d, err := managedDirectory(d)
+	if err != nil {
+		return ManagedState{}, err
+	}
+	if !managedID(id, managedCredentialPrefix) {
+		return ManagedState{}, invalid("invalidValue", "Expected a managed credential ID")
 	}
 	actor, okActor := apiText(actor, 1)
 	if !okActor {
@@ -214,8 +229,9 @@ func (c *Catalog) Revoke(ctx context.Context, d Directory, id, actor string) (Ma
 	return c.store.SCIMRevokeCredential(ctx, d, id, actor)
 }
 func (c *Catalog) Events(ctx context.Context, d Directory, q EventQuery) (ManagedEvents, error) {
-	if d = trimmedDirectory(d); !managedDirectory(d) {
-		return ManagedEvents{}, ErrManagedNotFound
+	d, err := managedDirectory(d)
+	if err != nil {
+		return ManagedEvents{}, err
 	}
 	if q.Limit == 0 {
 		q.Limit = 100

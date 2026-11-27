@@ -246,7 +246,9 @@ func TestEnterpriseOIDCBrowser(t *testing.T) {
 				t.Helper()
 				body := map[string]any{"callbackURL": "/home", "newUserCallbackURL": "/welcome", "errorCallbackURL": "/retry", "loginHint": "employee", "additionalParams": map[string]any{"prompt": "login"}}
 				for k, v := range selector {
-					body[k] = v
+					if body[k] = v; v == nil {
+						delete(body, k)
+					}
 				}
 				w := call(a, "POST", "sign-in/sso", "", body)
 				if w.Code != 200 {
@@ -315,6 +317,13 @@ func TestEnterpriseOIDCBrowser(t *testing.T) {
 			}
 			exec(`UPDATE "member" SET "role"='admin' WHERE "userId"=?`, session.User.ID)
 			target(finish(one, start(two, "acme", "employee@example.test", "employee", "client_secret_basic", "", map[string]any{"organizationSlug": "company"})), "/home")
+			// A slug naming no organization counts as none, as in another
+			// runtime: the email still selects the provider, and a request
+			// naming nothing else is refused.
+			target(finish(one, start(two, "acme", "employee@example.test", "employee", "client_secret_basic", "", map[string]any{"organizationSlug": "missing", "email": "hello@sub.acme.example"})), "/home")
+			if w := call(one, "POST", "sign-in/sso", "", map[string]any{"organizationSlug": "missing", "callbackURL": "/home"}); w.Code != 400 || !strings.Contains(w.Body.String(), "providerId, orgId or domain is required") {
+				t.Fatal("a sign-in naming only an unknown organization was not refused", w.Code, w.Body.String())
+			}
 			if count(`SELECT COUNT(*) FROM "member" WHERE "userId"=? AND "role"='admin'`, session.User.ID) != 1 {
 				t.Fatal("existing role changed")
 			}
@@ -341,6 +350,9 @@ func TestEnterpriseOIDCBrowser(t *testing.T) {
 			for _, settings := range []struct{ disable, implicit bool }{{true, false}, {false, true}} {
 				a := host(other, false, settings.disable, settings.implicit)
 				target(finish(a, start(a, "acme", "disabled@example.test", "disabled", "client_secret_basic", "", withID)), "/retry?error=signup+disabled")
+				// Without an error callback the failure goes to the error page,
+				// as in another runtime.
+				target(finish(a, start(a, "acme", "disabled@example.test", "disabled", "client_secret_basic", "", map[string]any{"providerId": "acme", "errorCallbackURL": nil})), "/identity/error?error=signup+disabled")
 			}
 			implicit := host(other, false, false, true)
 			target(finish(implicit, start(implicit, "acme", "explicit@example.test", "explicit", "client_secret_basic", "", map[string]any{"providerId": "acme", "requestSignUp": true})), "/welcome")
@@ -514,6 +526,9 @@ func TestEnterpriseOIDCBrowser(t *testing.T) {
 			denial := pendingLogin
 			denial.path += "&error=access_denied"
 			target(finish(peer, denial), "/retry?error=access_denied&error_description=access_denied")
+			bare := start(issuing, "staff", "member@enterprise.test", "issuer-member", "client_secret_post", "", map[string]any{"providerId": "staff", "errorCallbackURL": nil})
+			bare.path += "&error=access_denied"
+			target(finish(peer, bare), "/identity/error?error=access_denied&error_description=access_denied")
 			target(finish(peer, pendingLogin), "/identity/error?error=state_mismatch")
 			for _, c := range []struct{ query, want string }{
 				{"&error=consent_required&error_description=Ask+an+administrator", "/retry?error=consent_required&error_description=Ask+an+administrator"},

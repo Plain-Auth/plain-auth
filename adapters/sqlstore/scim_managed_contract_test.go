@@ -118,6 +118,24 @@ func TestSCIMManagedContract(t *testing.T) {
 			if _, e := catalog.Revoke(ctx, d, "ba_scim_credential_unknown", "admin"); !errors.Is(e, scim.ErrManagedNotFound) {
 				t.Fatal("an unknown credential was revoked", e)
 			}
+			// Connection and credential IDs are not trimmed, as in another
+			// runtime: a leading space misses the prefix and a trailing one
+			// finds nothing. The domain is trimmed.
+			if _, e := catalog.Get(ctx, scim.Directory{ID: " " + d.ID, ProvisioningDomainID: "Domain"}); !invalid(e) {
+				t.Fatal("a connection ID with a leading space was not refused", e)
+			}
+			if _, e := catalog.Get(ctx, scim.Directory{ID: d.ID + " ", ProvisioningDomainID: "Domain"}); !errors.Is(e, scim.ErrManagedNotFound) {
+				t.Fatal("a connection ID with a trailing space was found", e)
+			}
+			if _, e := catalog.Revoke(ctx, d, issued.Credential.CredentialID+" ", "admin"); !errors.Is(e, scim.ErrManagedNotFound) {
+				t.Fatal("a credential ID with a trailing space was revoked", e)
+			}
+			if _, e := catalog.Revoke(ctx, d, "credential", "admin"); !invalid(e) {
+				t.Fatal("a credential ID without its prefix was not refused", e)
+			}
+			if _, e := catalog.Get(ctx, scim.Directory{ID: d.ID, ProvisioningDomainID: " Domain "}); e != nil {
+				t.Fatal("a padded provisioning domain was not trimmed", e)
+			}
 			state, e := catalog.Revoke(ctx, d, issued.Credential.CredentialID, "admin")
 			must(e)
 			for _, c := range state.Credentials {
@@ -136,7 +154,7 @@ func TestSCIMManagedContract(t *testing.T) {
 			if _, e := catalog.Decommission(ctx, d, ""); !invalid(e) {
 				t.Fatal("a managed retirement without an actor was accepted", e)
 			}
-			if _, e := catalog.Decommission(ctx, scim.Directory{ID: "code", ProvisioningDomainID: "code"}, "admin"); !errors.Is(e, scim.ErrManagedNotFound) {
+			if _, e := catalog.Decommission(ctx, scim.Directory{ID: "code", ProvisioningDomainID: "code"}, "admin"); !invalid(e) {
 				t.Fatal("a code-defined connection was retired through the catalog", e)
 			}
 			_, e = catalog.Decommission(ctx, d, "admin")

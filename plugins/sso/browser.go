@@ -90,6 +90,10 @@ func (o Options) start(c auth.EndpointContext) (any, error) {
 		if err != nil || strings.Contains(sel.Domain, ",") {
 			return nil, apiError(400, "Invalid provider domain")
 		}
+	} else if d, err := domains(sel.Domain); sel.Domain != "" && err == nil && !strings.Contains(d, ",") {
+		// The store falls back to the domain when organizationSlug names no
+		// organization, as another runtime does.
+		sel.Domain = d
 	}
 	signup, ok := body["requestSignUp"].(bool)
 	if _, found := body["requestSignUp"]; found && !ok {
@@ -112,11 +116,14 @@ func (o Options) start(c auth.EndpointContext) (any, error) {
 			return nil, apiError(400, "OIDC provider is not configured")
 		}
 	}
+	if errors.Is(err, ErrMissing) {
+		return nil, errNoProvider
+	}
 	if err != nil {
 		return nil, err
 	}
 	if !available(c, p) {
-		return nil, ErrMissing
+		return nil, errNoProvider
 	}
 	proof, err := o.domainGate(c, p)
 	if err != nil {
@@ -446,10 +453,22 @@ func profileFailure(c auth.EndpointContext, flow auth.OAuthFlow, err error) (any
 }
 
 func enterpriseFailure(c auth.EndpointContext, flow auth.OAuthFlow, code, description string) (any, error) {
+	// Without an error callback the failure goes to the error page, as in
+	// another runtime.
 	target := flow.ErrorCallbackURL
 	if target == "" {
-		target = flow.CallbackURL
+		page, err := c.ErrorPageURL()
+		if err != nil {
+			return nil, err
+		}
+		target = page
 	}
+	return enterpriseRedirect(c, target, code, description)
+}
+
+// enterpriseRedirect sends the browser to target with the error code and
+// description.
+func enterpriseRedirect(c auth.EndpointContext, target, code, description string) (any, error) {
 	if _, err := c.CallbackURL(target); err != nil {
 		// The provider's callback request no longer trusts the stored target.
 		target, _ = c.ErrorPageURL()

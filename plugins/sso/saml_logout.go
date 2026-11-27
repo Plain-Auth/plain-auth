@@ -178,13 +178,16 @@ func (o Options) startLogout(c auth.EndpointContext, _ Store, actor Actor) (any,
 			return nil, apiError(400, "Invalid callbackURL")
 		}
 	}
+	// Without a callbackURL the browser returns to the auth base URL, as in
+	// another runtime. Other body keys and the query are ignored.
+	if callback == "" {
+		if callback, err = c.PublicURL(); err != nil {
+			return nil, err
+		}
+	}
 	callback, err = c.CallbackURL(callback)
 	if err != nil {
 		return nil, err
-	}
-	_, hasCallback := c.Body["callbackURL"]
-	if c.Request.URL.RawQuery != "" || len(c.Body) > 1 || (len(c.Body) == 1 && !hasCallback) {
-		return nil, apiError(400, "Invalid SAML logout parameters")
 	}
 	callback = samlLanding(c, sp.SloURL.String(), callback)
 	now := time.Now().UTC()

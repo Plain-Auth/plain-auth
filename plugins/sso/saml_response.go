@@ -446,12 +446,10 @@ func (o Options) samlFinish(c auth.EndpointContext) (any, error) {
 	// A refused sign-in result goes to the success callback, as another
 	// runtime sends it; other failures go to the error callback.
 	toCallback := func(code string) (any, error) {
-		f := flow
-		f.ErrorCallbackURL = ""
 		// A portal refusal without a configured landing page goes to the
 		// application origin, a page, where another runtime sends it to the
 		// auth base URL.
-		return enterpriseFailure(c, f, code, "")
+		return enterpriseRedirect(c, flow.CallbackURL, code, "")
 	}
 	if unsolicited {
 		flow.CallbackURL = samlLanding(c, flow.RedirectURI, p.SAML.IDPInitiatedCallbackURL, o.SAML.IDPInitiatedCallbackURL, p.SAML.CallbackURL)

@@ -120,7 +120,7 @@ func TestEnterpriseOIDCRequestOrigins(t *testing.T) {
 		t.Fatal("an untrusted enterprise failure went to", got)
 	}
 	// A failure keeps the "//" of an app deep link.
-	if got, _ := signInTo(map[string]any{"callbackURL": "myapp://"}, ""); got != "myapp://?error=sso_blocked&error_description=Not+allowed" {
+	if got, _ := signInTo(map[string]any{"callbackURL": "myapp://", "errorCallbackURL": "myapp://"}, ""); got != "myapp://?error=sso_blocked&error_description=Not+allowed" {
 		t.Fatal("an enterprise failure for a deep link went to", got)
 	}
 }

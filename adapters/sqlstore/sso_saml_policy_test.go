@@ -609,7 +609,7 @@ func TestEnterpriseSAMLResponsePolicy(t *testing.T) {
 					c.Certificates = sso.Certificates{p.idpPEM}
 					c.IDPMetadata.Certificates = sso.Certificates{otherPEM}
 				})
-				p.directory("signed", func(c *sso.SAMLConfig) { c.AuthnRequestsSigned = true })
+				p.directory("signed", func(c *sso.SAMLConfig) { c.AuthnRequestsSigned = new(true) })
 				h := p.host(sso.SAMLOptions{}, nil)
 				run := func(id string) (*url.URL, bool) {
 					t.Helper()

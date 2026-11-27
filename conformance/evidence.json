@@ -11458,6 +11458,11 @@
       "test": "adapters/sqlstore/sso_saml_defaults_test.go",
       "marker": "t.Fatal(\"the SAML summary lacks its callback URLs or certificate details\"",
       "complete": true
+    },
+    {
+      "label": "Return an explicit authnRequestsSigned false for a SAML provider on both runtimes",
+      "test": "conformance/sso-saml.mjs",
+      "marker": "assert.equal(ok(await admin.sso.getProvider({query:{providerId:\"work\"}})).samlConfig.authnRequestsSigned,false);"
     }
   ],
   "plugin-symbol/sso/SSOOptions/providersLimit": [
@@ -11730,6 +11735,16 @@
       "label": "Name the missing protocol for a providerType an unverified provider lacks, by domain and by email",
       "test": "adapters/sqlstore/sso_domain_test.go",
       "marker": "t.Fatal(\"a providerType an unverified provider lacks did not name the protocol\", selector, w.Code, w.Body.String())"
+    },
+    {
+      "label": "Treat an organizationSlug that names no organization as none, selecting the provider by email and otherwise answering 400 providerId, orgId or domain is required, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_browser_test.go",
+      "marker": "t.Fatal(\"a sign-in naming only an unknown organization was not refused\", w.Code, w.Body.String())"
+    },
+    {
+      "label": "Answer 404 No provider found for the issuer for an unknown providerId on both runtimes",
+      "test": "conformance/sso-domains.mjs",
+      "marker": "assert.equal(absent.status,404);assert.equal(absent.message,\"No provider found for the issuer\");"
     }
   ],
   "plugin/sso/ /sso/callback/:providerId": [
@@ -11803,6 +11818,11 @@
       "label": "Report a callback discovery failure with another runtime's raw discovery message",
       "test": "plugins/sso/discovery_test.go",
       "marker": "t.Fatal(\"the callback discovery message differs from the raw one\", c.code, got)"
+    },
+    {
+      "label": "Redirect an identity provider's denial and a refused sign-up to the error page when the sign-in named no error callback, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_browser_test.go",
+      "marker": "target(finish(peer, bare), \"/identity/error?error=access_denied&error_description=access_denied\")"
     }
   ],
   "plugin/sso/ /sso/callback": [
@@ -12125,7 +12145,8 @@
     {
       "label": "Answer 404 for an unknown provider and refuse a foreign caller with 403 before any DNS lookup",
       "test": "adapters/sqlstore/sso_domain_test.go",
-      "marker": "t.Fatal(\"a foreign domain verification queried DNS\")"
+      "marker": "t.Fatal(\"a foreign domain verification queried DNS\")",
+      "complete": true
     }
   ],
   "plugin-symbol/sso/SSOOptions/domainVerification": [
@@ -13094,6 +13115,11 @@
       "label": "Read JSON SAML responses by exact key, so a lowercased SAMLResponse is not taken for an unsolicited response",
       "test": "adapters/sqlstore/sso_saml_defaults_test.go",
       "marker": "t.Fatal(\"a JSON SAML response with lowercased keys was read\", w.Code, w.Body.String())"
+    },
+    {
+      "label": "Redirect a SAML failure to the error page when the sign-in named no error callback, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "t.Fatal(\"a SAML failure without an error callback did not reach the error page\", status, hd.Get(\"Location\"))"
     }
   ],
   "docs/content/docs/plugins/polar.mdx#L17/Checkout Integration": [
@@ -13869,6 +13895,16 @@
       "test": "adapters/sqlstore/sso_saml_defaults_test.go",
       "marker": "t.Fatal(\"a logout route did not answer SINGLE_LOGOUT_NOT_ENABLED with single logout off\", w.Code, w.Body.String())",
       "complete": true
+    },
+    {
+      "label": "Return the browser to the auth base URL after a logout started without a callbackURL, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_logout_test.go",
+      "marker": "t.Fatal(\"a logout without a callbackURL did not return to the auth base URL\", status, location, api)"
+    },
+    {
+      "label": "Ignore other body keys and the query when starting a logout, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_logout_test.go",
+      "marker": "r := httptest.NewRequest(\"POST\", startURL.String()+\"?ignored=1\""
     }
   ],
   "plugin/sso/GET / POST /sso/saml2/sp/slo/:providerId": [
@@ -42261,7 +42297,7 @@
     {
       "label": "Register a directory with wantAssertionsSigned true and sign in with a signed assertion on both runtimes",
       "test": "conformance/sso-saml.mjs",
-      "marker": "wantAssertionsSigned:true};"
+      "marker": "wantAssertionsSigned:true,authnRequestsSigned:false};"
     },
     {
       "label": "Refuse an encrypted response whose assertion is unsigned, a plaintext assertion and one encrypted for another recipient",
@@ -42460,7 +42496,8 @@
     {
       "label": "Keep the provider reference across a client secret rotation and change it with the scopes, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/sso_update_test.go",
-      "marker": "t.Fatal(\"a client secret rotation changed the provider reference\")"
+      "marker": "t.Fatal(\"a client secret rotation changed the provider reference\")",
+      "complete": true
     }
   ],
   "plugin-symbol/sso/AuthnRequestRecord": [
@@ -42587,6 +42624,12 @@
       "label": "Answer 409 SSO_PROVIDER_CHANGED when the provider's domains change during the DNS lookup",
       "test": "adapters/sqlstore/sso_domain_test.go",
       "marker": "exec(`UPDATE \"ssoProvider\" SET \"domain\"=? WHERE \"id\"=?`, \"new.example\", reg.ID)"
+    },
+    {
+      "label": "Answer 409 SSO_PROVIDER_CHANGED when the provider is deleted during the DNS lookup, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_domain_test.go",
+      "marker": "exec(`DELETE FROM \"ssoProvider\" WHERE \"id\"=?`, directory.ID)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/sso/index.mdx#L18/OIDC discovery of provider endpoints": [
@@ -47271,6 +47314,11 @@
       "test": "adapters/sqlstore/scim_managed_contract_test.go",
       "marker": "t.Fatal(\"retirement did not end the active credentials only\", c)",
       "complete": true
+    },
+    {
+      "label": "Report revoked, expired and active credentials, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_managed_test.go",
+      "marker": "if statuses[i.Credential.CredentialID] != \"revoked\" || statuses[fast.Credential.CredentialID] != \"expired\""
     }
   ],
   "plugin-symbol/scim/SCIMManagedConnectionEventType": [
@@ -47279,6 +47327,11 @@
       "test": "adapters/sqlstore/scim_managed_contract_test.go",
       "marker": "t.Fatal(\"retirement did not end the audit trail with its two events\", final.Events)",
       "complete": true
+    },
+    {
+      "label": "Record connection.created, credential.issued, credential.rotated and credential.revoked in order, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_managed_test.go",
+      "marker": "if !slices.Equal(types, []string{\"connection.created\", \"credential.issued\", \"credential.rotated\", \"credential.revoked\", \"credential.rotated\", \"credential.rotated\"}) {"
     }
   ],
   "plugin-symbol/scim/SCIMManagedConnectionStatus": [
@@ -47287,6 +47340,16 @@
       "test": "adapters/sqlstore/scim_managed_contract_test.go",
       "marker": "t.Fatal(\"the issued connection lacks its creation record\", c)",
       "complete": true
+    },
+    {
+      "label": "Report decommissioning while a retirement is pending, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_decommission_test.go",
+      "marker": "if openState.Connection.Status != \"decommissioning\" || openState.Credentials[0].Status != \"decommissioned\" {"
+    },
+    {
+      "label": "Report decommissioned once the retirement completes, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_decommission_test.go",
+      "marker": "if done.Connection.Status != \"decommissioned\" || *done.Connection.DecommissionStartedBy != \"first-admin\""
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L16/`managedConnections`": [

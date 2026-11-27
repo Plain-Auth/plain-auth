@@ -98,12 +98,24 @@ func (s *Store) findBrowserProvider(ctx context.Context, sel sso.Selector, requi
 		query += ` AND ` + s.scimExact(`p."providerId"`) + `=?`
 		args = append(args, sel.ProviderID)
 	case sel.OrganizationSlug != "":
+		// A slug that names no organization counts as no slug, as in another
+		// runtime: the domain selects the provider, if there is one.
 		exists, err := s.hasKeyOwnerTable(ctx, s.db, "organization")
 		if err != nil {
 			return found, err
 		}
-		if !exists {
-			return found, sso.ErrMissing
+		n := 0
+		if exists {
+			if err = s.db.QueryRowContext(ctx, s.bind(`SELECT COUNT(*) FROM "organization" WHERE `+s.scimExact(`"slug"`)+`=?`), sel.OrganizationSlug).Scan(&n); err != nil {
+				return found, err
+			}
+		}
+		if n == 0 {
+			if sel.Domain == "" {
+				return found, sso.ErrNoSelector
+			}
+			sel.OrganizationSlug = ""
+			break
 		}
 		query += ` AND p."organizationId" IN (SELECT "id" FROM "organization" WHERE ` + s.scimExact(`"slug"`) + `=?)`
 		args = append(args, sel.OrganizationSlug)
