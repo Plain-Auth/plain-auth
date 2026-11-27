@@ -144,6 +144,9 @@ func TestSecretSignedIDTokens(t *testing.T) {
 			if !strings.HasPrefix(storedSecret, "authn.v1.") || strings.Contains(storedSecret, confidential.ClientSecret) {
 				t.Fatal("the client secret was not stored encrypted", storedSecret)
 			}
+			// The client may end sessions, so its ID tokens carry sid.
+			_, err = s.db.ExecContext(ctx, s.bind(`UPDATE "oauthClient" SET "enableEndSession"=? WHERE "clientId"=?`), true, confidential.ClientID)
+			must(err)
 			// Logout tokens need the jwt plugin.
 			logoutURI := "https://app.example.test/logout"
 			if _, err := owner.RegisterOAuthClient(ctx, op.RegistrationMetadata{RedirectURIs: []string{"https://app.example.test/cb"}, BackchannelLogoutURI: &logoutURI}); err == nil {
@@ -169,6 +172,31 @@ func TestSecretSignedIDTokens(t *testing.T) {
 			public := register("none")
 			if body := exchange(url.Values{"grant_type": {"authorization_code"}, "client_id": {public.ClientID}, "code": {code(public.ClientID)}, "code_verifier": {verifier}}); body["access_token"] == nil || body["id_token"] != nil {
 				t.Fatal("a public client received a secret-signed ID token", body)
+			}
+			// A secret-signed ID token is a logout hint, checked with the
+			// client's stored secret; a forged signature is refused.
+			endSession := func(hint string) (int, string) {
+				t.Helper()
+				req := httptest.NewRequest("POST", origin+"/api/auth/oauth2/end-session", strings.NewReader(`{"id_token_hint":"`+hint+`"}`))
+				req.Header.Set("Content-Type", "application/json")
+				req.Header.Set("Accept", "application/json")
+				req.Header.Set("Origin", origin)
+				out := httptest.NewRecorder()
+				h.ServeHTTP(out, req)
+				return out.Code, strings.TrimSpace(out.Body.String())
+			}
+			hint := first["id_token"].(string)
+			forged := hint[:strings.LastIndex(hint, ".")+1] + base64.RawURLEncoding.EncodeToString(make([]byte, 32))
+			if code, body := endSession(forged); code != 401 || !strings.Contains(body, "The id_token_hint is invalid") {
+				t.Fatal("a forged secret-signed hint was accepted", code, body)
+			}
+			var live int
+			if code, body := endSession(hint); code != 200 || body != "null" {
+				t.Fatal("a secret-signed hint did not end the session", code, body)
+			}
+			must(s.db.QueryRowContext(ctx, s.bind(`SELECT COUNT(*) FROM "session" WHERE "id"=?`), sid).Scan(&live))
+			if live != 0 {
+				t.Fatal("the hinted session survived")
 			}
 		})
 	}
