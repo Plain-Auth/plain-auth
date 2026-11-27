@@ -127,9 +127,10 @@
   - [ ] `oauthProvider`
   - [ ] `POST /admin/oauth2/create-client` (server API only)
   - [ ] `POST /oauth2/create-client`
-  - [ ] `GET /oauth2/get-client`
+  - [x] `GET /oauth2/get-client` ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L170))
     - [x] Read locally registered owner metadata and omit internal fields and the shared secret ([test](../../../conformance/oauth-client-directory.mjs#L117))
     - [x] Enforce account-owner sessions, exact tenant IDs and current ownership on three SQL engines ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L20))
+    - [x] Refuse every user a client without an owner with 401, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L170))
   - [ ] `GET /oauth2/public-client`
     - [x] Expose only display metadata for an enabled local registration to a signed-in user ([test](../../../conformance/oauth-client-directory.mjs#L131))
   - [ ] `POST /oauth2/public-client-prelogin`
@@ -141,22 +142,25 @@
     - [x] Require separate update and machine-scope privileges and reject user-delegated scopes, public clients and impersonation sessions on three SQL engines ([test](../../../adapters/sqlstore/oauth_client_scopes_test.go#L132))
     - [x] Reject an ownership or authentication-method change during authorization without overwriting the existing grant ([test](../../../adapters/sqlstore/oauth_client_scopes_test.go#L157))
   - [ ] `POST /oauth2/update-client`
-  - [ ] `POST /oauth2/client/rotate-secret`
+  - [x] `POST /oauth2/client/rotate-secret` ([test](../../../adapters/sqlstore/oauth_secret_rotation_test.go#L171))
     - [x] Replace a shared secret for its owner and immediately authenticate only the replacement at an independent issuer ([test](../../../conformance/oauth-registration.mjs#L484))
-    - [x] Recheck the owner and credential type after host callbacks and roll back when the updated record cannot be returned ([test](../../../adapters/sqlstore/oauth_secret_rotation_test.go#L169))
-    - [x] Serialize rotations by two application instances and persist exactly one of the issued credentials ([test](../../../adapters/sqlstore/oauth_secret_rotation_test.go#L214))
+    - [x] Recheck the owner and credential type after host callbacks and roll back when the updated record cannot be returned ([test](../../../adapters/sqlstore/oauth_secret_rotation_test.go#L178))
+    - [x] Serialize rotations by two application instances and persist exactly one of the issued credentials ([test](../../../adapters/sqlstore/oauth_secret_rotation_test.go#L223))
+    - [x] Refuse to rotate a client without an owner with 401 and keep its secret, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_secret_rotation_test.go#L171))
   - [x] `POST /oauth2/client/rotate-keys` ([test](../../../conformance/oauth-key-rotation.mjs#L5))
     - [x] Rotate without a user session, overlap old and new keys, and confirm their acceptance and retirement at an independent issuer ([test](../../../conformance/oauth-key-rotation.mjs#L5))
     - [x] Serialize competing replacements, roll back the replay identifier on write failure, and allow an unchanged signed retry on three SQL engines ([test](../../../adapters/sqlstore/oauth_key_rotation_test.go#L43))
-  - [ ] `POST /oauth2/delete-client`
+  - [x] `POST /oauth2/delete-client` ([test](../../../adapters/sqlstore/oauth_client_deletion_test.go#L102))
     - [x] Delete personally owned or tenant-owned registrations with an empty success response and enforce the session, privilege and immutable-client rules ([test](../../../conformance/oauth-client-directory.mjs#L188))
     - [x] Remove the client’s stored tokens, consents and resource links atomically across three SQL engines and preserve other applications ([test](../../../adapters/sqlstore/oauth_client_deletion_test.go#L88))
-    - [x] Recheck current ownership after tenant resolution and serialize deletion across independent database connections ([test](../../../adapters/sqlstore/oauth_client_deletion_test.go#L118))
+    - [x] Recheck current ownership after tenant resolution and serialize deletion across independent database connections ([test](../../../adapters/sqlstore/oauth_client_deletion_test.go#L126))
     - [x] Stop new token exchanges at an independent issuer after deleting a previously working machine client ([test](../../../conformance/oauth-registration.mjs#L496))
+    - [x] Refuse to delete a client without an owner with 401 and keep it, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_deletion_test.go#L102))
   - [ ] `adminCreateOAuthClient`
   - [ ] `createOAuthClient`
-  - [ ] `getOAuthClient`
+  - [x] `getOAuthClient` ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L170))
     - [x] Read locally registered owner metadata and omit internal fields and the shared secret ([test](../../../conformance/oauth-client-directory.mjs#L117))
+    - [x] Refuse every user a client without an owner with 401, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L170))
   - [ ] `getOAuthClientPublic`
     - [x] Expose only display metadata for an enabled local registration to a signed-in user ([test](../../../conformance/oauth-client-directory.mjs#L131))
   - [ ] `getOAuthClientPublicPrelogin`
@@ -166,14 +170,16 @@
     - [x] Grant, narrow and revoke machine access from server code and verify the changed scope ceiling at an independent issuer ([test](../../../conformance/oauth-registration.mjs#L405))
     - [x] Require separate update and machine-scope privileges and reject user-delegated scopes, public clients and impersonation sessions on three SQL engines ([test](../../../adapters/sqlstore/oauth_client_scopes_test.go#L132))
   - [ ] `updateOAuthClient`
-  - [ ] `rotateClientSecret`
+  - [x] `rotateClientSecret` ([test](../../../adapters/sqlstore/oauth_secret_rotation_test.go#L171))
     - [x] Replace a shared secret for its owner and immediately authenticate only the replacement at an independent issuer ([test](../../../conformance/oauth-registration.mjs#L484))
+    - [x] Refuse to rotate a client without an owner with 401 and keep its secret, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_secret_rotation_test.go#L171))
   - [x] `rotateClientKeys` ([test](../../../conformance/oauth-key-rotation.mjs#L5))
     - [x] Rotate without a user session, overlap old and new keys, and confirm their acceptance and retirement at an independent issuer ([test](../../../conformance/oauth-key-rotation.mjs#L5))
     - [x] Serialize competing replacements, roll back the replay identifier on write failure, and allow an unchanged signed retry on three SQL engines ([test](../../../adapters/sqlstore/oauth_key_rotation_test.go#L43))
-  - [ ] `deleteOAuthClient`
+  - [x] `deleteOAuthClient` ([test](../../../adapters/sqlstore/oauth_client_deletion_test.go#L102))
     - [x] Delete personally owned or tenant-owned registrations with an empty success response and enforce the session, privilege and immutable-client rules ([test](../../../conformance/oauth-client-directory.mjs#L188))
     - [x] Stop new token exchanges at an independent issuer after deleting a previously working machine client ([test](../../../conformance/oauth-registration.mjs#L496))
+    - [x] Refuse to delete a client without an owner with 401 and keep it, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_deletion_test.go#L102))
   - [x] `GET /oauth2/get-consent` ([test](../../../conformance/oauth-consent.mjs#L55))
     - [x] Read a single grant through an authenticated session and retain the resource and claim lists ([test](../../../conformance/oauth-consent.mjs#L55))
   - [x] `GET /oauth2/get-consents` ([test](../../../conformance/oauth-consent.mjs#L56))
@@ -288,8 +294,9 @@
       - [x] Provide the session, caller, action, headers and target to the Go privilege callback ([test](../../../adapters/sqlstore/oauth_resources_test.go#L195))
     - [ ] `cachedTrustedClients`
       - [x] Keep an operator-managed credential immutable from the owner endpoint ([test](../../../conformance/oauth-registration.mjs#L463))
-    - [ ] `accessTokenExpiresIn`
+    - [x] `accessTokenExpiresIn` ([test](../../../plugins/oauthprovider/machine_token_test.go#L106))
       - [x] Apply the configured delegated lifetime for a successful headless public-client exchange on all SQL engines ([test](../../../adapters/sqlstore/oauth_authorization_code_test.go#L114))
+      - [x] Default the access token lifetime to an hour ([test](../../../plugins/oauthprovider/machine_token_test.go#L106))
     - [x] `m2mAccessTokenExpiresIn` ([test](../../../conformance/oauth-resource-machine-tokens.mjs#L89))
       - [x] Apply the machine token lifetime and shortest applicable scope lifetime to the response and persisted expiry ([test](../../../conformance/oauth-machine-tokens.mjs#L65))
       - [x] Default to a one-hour machine lifetime and 20 token requests per minute ([test](../../../plugins/oauthprovider/machine_token_test.go#L26))
@@ -979,7 +986,8 @@
       - [x] `adminUnlinkClientResource` ([test](../../../conformance/resource-registry.mjs#L89))
         - [x] Remove an existing client grant and permit a subsequent fresh link ([test](../../../conformance/resource-registry.mjs#L89))
   - [ ] Lifetimes
-    - [ ] `accessTokenExpiresIn`
+    - [x] `accessTokenExpiresIn` ([test](../../../plugins/oauthprovider/machine_token_test.go#L106))
+      - [x] Default the access token lifetime to an hour ([test](../../../plugins/oauthprovider/machine_token_test.go#L106))
     - [x] `m2mAccessTokenExpiresIn` ([test](../../../conformance/oauth-machine-tokens.mjs#L65))
       - [x] Apply the machine token lifetime and shortest applicable scope lifetime to the response and persisted expiry ([test](../../../conformance/oauth-machine-tokens.mjs#L65))
       - [x] Default to a one-hour machine lifetime and 20 token requests per minute ([test](../../../plugins/oauthprovider/machine_token_test.go#L26))

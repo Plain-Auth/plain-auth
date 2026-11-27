@@ -90,3 +90,19 @@ func testTokenActionEndpoint(t *testing.T, path string, max int) {
 	}
 	t.Fatal(path, "endpoint missing")
 }
+
+// Unset lifetimes take another runtime's defaults: an hour for access
+// tokens, thirty days for refresh tokens and ten minutes for codes.
+func TestTokenLifetimeDefaults(t *testing.T) {
+	var tokens TokenOptions
+	if err := tokens.defaults(); err != nil {
+		t.Fatal(err)
+	}
+	var browser BrowserAuthorizationOptions
+	if err := browser.defaults(); err != nil {
+		t.Fatal(err)
+	}
+	if tokens.AccessLifetime != time.Hour || tokens.MachineLifetime != time.Hour || tokens.RefreshLifetime != 30*24*time.Hour || tokens.IDTokenLifetime != 10*time.Hour || browser.CodeLifetime != 10*time.Minute {
+		t.Fatal("an unset lifetime did not take its default", tokens.AccessLifetime, tokens.MachineLifetime, tokens.RefreshLifetime, tokens.IDTokenLifetime, browser.CodeLifetime)
+	}
+}

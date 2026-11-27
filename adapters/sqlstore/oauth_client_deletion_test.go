@@ -93,6 +93,14 @@ func TestOAuthClientDeletion(t *testing.T) {
 			if resourceName != "Reports" {
 				t.Fatal("client deletion changed the underlying resource")
 			}
+			// A client without an owner cannot be deleted by any user.
+			write(`INSERT INTO "oauthClient" ("id","clientId","redirectUris") VALUES ('orphan','orphan-app','[]')`)
+			wantStatus(sdk.DeleteOAuthClient(ctx, "orphan-app"), 401)
+			var orphans int
+			must(peer.db.QueryRowContext(ctx, peer.bind(`SELECT COUNT(*) FROM "oauthClient" WHERE "clientId"=?`), "orphan-app").Scan(&orphans))
+			if orphans != 1 {
+				t.Fatal("an ownerless client was deleted by a user")
+			}
 			write(`INSERT INTO "oauthClient" ("id","clientId","referenceId","redirectUris") VALUES ('tenant','team-app','Team','[]')`)
 			transferDuringLookup = true
 			wantStatus(sdk.DeleteOAuthClient(ctx, "team-app"), 401)

@@ -110,9 +110,12 @@
     - [x] `mcpOauthOptionsType.scopes` ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L234))
       - [x] Advertise the four default scopes when none are configured ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L234))
     - [ ] `mcpOauthOptionsType.resources`
-    - [ ] `mcpOauthOptionsType.accessTokenExpiresIn`
+    - [x] `mcpOauthOptionsType.accessTokenExpiresIn` ([test](../../../plugins/oauthprovider/machine_token_test.go#L106))
+      - [x] Default the access token lifetime to an hour ([test](../../../plugins/oauthprovider/machine_token_test.go#L106))
     - [ ] `mcpOauthOptionsType.idTokenExpiresIn`
-    - [ ] `mcpOauthOptionsType.refreshTokenExpiresIn`
+    - [x] `mcpOauthOptionsType.refreshTokenExpiresIn` ([test](../../../plugins/oauthprovider/machine_token_test.go#L106))
+      - [x] Default the refresh token lifetime to thirty days ([test](../../../plugins/oauthprovider/machine_token_test.go#L106))
     - [ ] `mcpOauthOptionsType.refreshTokenReuseInterval`
-    - [ ] `mcpOauthOptionsType.codeExpiresIn`
+    - [x] `mcpOauthOptionsType.codeExpiresIn` ([test](../../../plugins/oauthprovider/machine_token_test.go#L106))
+      - [x] Default the authorization code lifetime to ten minutes ([test](../../../plugins/oauthprovider/machine_token_test.go#L106))
   - [ ] Remote MCP Server

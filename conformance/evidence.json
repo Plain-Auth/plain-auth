@@ -16997,6 +16997,12 @@
       "label": "Enforce account-owner sessions, exact tenant IDs and current ownership on three SQL engines",
       "test": "adapters/sqlstore/oauth_client_directory_test.go",
       "marker": "func TestOAuthClientDirectory("
+    },
+    {
+      "label": "Refuse every user a client without an owner with 401, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_client_directory_test.go",
+      "marker": "t.Fatal(\"an ownerless client was readable or not refused with 401\", err)",
+      "complete": true
     }
   ],
   "plugin-symbol/oauth-provider/getOAuthClient": [
@@ -17004,6 +17010,12 @@
       "label": "Read locally registered owner metadata and omit internal fields and the shared secret",
       "test": "conformance/oauth-client-directory.mjs",
       "marker": "assert.deepEqual(privateView, expected);"
+    },
+    {
+      "label": "Refuse every user a client without an owner with 401, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_client_directory_test.go",
+      "marker": "t.Fatal(\"an ownerless client was readable or not refused with 401\", err)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/oauth-provider/clients.mdx#L58/`getOAuthClient`": [
@@ -17114,6 +17126,12 @@
       "label": "Serialize rotations by two application instances and persist exactly one of the issued credentials",
       "test": "adapters/sqlstore/oauth_secret_rotation_test.go",
       "marker": "concurrent rotation left an unissued or superseded credential"
+    },
+    {
+      "label": "Refuse to rotate a client without an owner with 401 and keep its secret, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_secret_rotation_test.go",
+      "marker": "t.Fatal(\"an ownerless client's secret was rotated or not refused with 401\", err)",
+      "complete": true
     }
   ],
   "plugin-symbol/oauth-provider/rotateClientSecret": [
@@ -17121,6 +17139,12 @@
       "label": "Replace a shared secret for its owner and immediately authenticate only the replacement at an independent issuer",
       "test": "conformance/oauth-registration.mjs",
       "marker": "assert.ok((await issuedAfterRotation.json()).access_token);"
+    },
+    {
+      "label": "Refuse to rotate a client without an owner with 401 and keep its secret, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_secret_rotation_test.go",
+      "marker": "t.Fatal(\"an ownerless client's secret was rotated or not refused with 401\", err)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/oauth-provider/reference.mdx#L336/`POST /oauth2/client/rotate-secret`": [
@@ -17158,6 +17182,12 @@
       "label": "Stop new token exchanges at an independent issuer after deleting a previously working machine client",
       "test": "conformance/oauth-registration.mjs",
       "marker": "await t.test(\"deleting a machine client ends further token exchanges\""
+    },
+    {
+      "label": "Refuse to delete a client without an owner with 401 and keep it, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_client_deletion_test.go",
+      "marker": "t.Fatal(\"an ownerless client was deleted by a user\")",
+      "complete": true
     }
   ],
   "plugin-symbol/oauth-provider/deleteOAuthClient": [
@@ -17170,6 +17200,12 @@
       "label": "Stop new token exchanges at an independent issuer after deleting a previously working machine client",
       "test": "conformance/oauth-registration.mjs",
       "marker": "await t.test(\"deleting a machine client ends further token exchanges\""
+    },
+    {
+      "label": "Refuse to delete a client without an owner with 401 and keep it, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_client_deletion_test.go",
+      "marker": "t.Fatal(\"an ownerless client was deleted by a user\")",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/oauth-provider/clients.mdx#L65/`deleteOAuthClient`": [
@@ -18295,6 +18331,12 @@
       "label": "Apply the configured delegated lifetime for a successful headless public-client exchange on all SQL engines",
       "test": "adapters/sqlstore/oauth_authorization_code_test.go",
       "marker": "reply.ExpiresIn != 120"
+    },
+    {
+      "label": "Default the access token lifetime to an hour",
+      "test": "plugins/oauthprovider/machine_token_test.go",
+      "marker": "t.Fatal(\"an unset lifetime did not take its default\"",
+      "complete": true
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/refreshTokenExpiresIn": [
@@ -47751,6 +47793,38 @@
       "label": "Accept the none, login, consent, select_account and create prompts with the query response mode",
       "test": "plugins/oauthprovider/browser_authorization_test.go",
       "marker": "t.Fatal(\"a supported prompt was refused\", prompt, err)"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/tokens.mdx#L124/`accessTokenExpiresIn`": [
+    {
+      "label": "Default the access token lifetime to an hour",
+      "test": "plugins/oauthprovider/machine_token_test.go",
+      "marker": "t.Fatal(\"an unset lifetime did not take its default\"",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/mcp.mdx#L320/`mcpOauthOptionsType.accessTokenExpiresIn`": [
+    {
+      "label": "Default the access token lifetime to an hour",
+      "test": "plugins/oauthprovider/machine_token_test.go",
+      "marker": "t.Fatal(\"an unset lifetime did not take its default\"",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/mcp.mdx#L330/`mcpOauthOptionsType.refreshTokenExpiresIn`": [
+    {
+      "label": "Default the refresh token lifetime to thirty days",
+      "test": "plugins/oauthprovider/machine_token_test.go",
+      "marker": "t.Fatal(\"an unset lifetime did not take its default\"",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/mcp.mdx#L340/`mcpOauthOptionsType.codeExpiresIn`": [
+    {
+      "label": "Default the authorization code lifetime to ten minutes",
+      "test": "plugins/oauthprovider/machine_token_test.go",
+      "marker": "t.Fatal(\"an unset lifetime did not take its default\"",
+      "complete": true
     }
   ]
 }

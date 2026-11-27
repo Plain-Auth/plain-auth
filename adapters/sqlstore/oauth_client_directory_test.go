@@ -162,6 +162,13 @@ func TestOAuthClientDirectory(t *testing.T) {
 			_, err = member.OAuthClients(ctx)
 			wantError(err, 500, "INTERNAL_SERVER_ERROR")
 			rejectReference = false
+			// A client without an owner is visible to no user.
+			exec(`INSERT INTO "oauthClient" ("id","clientId","redirectUris") VALUES ('orphan','orphan-app','[]')`)
+			_, err = personal.OAuthClient(ctx, "orphan-app")
+			var orphan *auth.APIError
+			if !errors.As(err, &orphan) || orphan.Status != 401 {
+				t.Fatal("an ownerless client was readable or not refused with 401", err)
+			}
 			key, err := personal.CreateAPIKey(ctx, client.CreateAPIKeyRequest{Name: "integration"})
 			must(err)
 			for _, path := range []string{"get-client?client_id=" + owned.ClientID, "get-clients"} {

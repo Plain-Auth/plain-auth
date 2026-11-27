@@ -161,6 +161,15 @@ func TestOAuthClientSecretRotation(t *testing.T) {
 			exec(`INSERT INTO "oauthClient" ("id","clientId","redirectUris","clientSecret","userId") VALUES (?,?,?,?,?)`, "protected-row", "operator", "[]", active, ownerID)
 			_, err = owner.RotateOAuthClientSecret(ctx, "operator")
 			failed(err, 400, "invalid_client")
+			// A client without an owner cannot be rotated by any user.
+			exec(`INSERT INTO "oauthClient" ("id","clientId","redirectUris","clientSecret") VALUES (?,?,?,?)`, "orphan-row", "orphan", "[]", active)
+			_, err = owner.RotateOAuthClientSecret(ctx, "orphan")
+			var orphan *auth.APIError
+			var orphanSecret string
+			must(s.db.QueryRowContext(ctx, s.bind(`SELECT "clientSecret" FROM "oauthClient" WHERE "clientId"=?`), "orphan").Scan(&orphanSecret))
+			if !errors.As(err, &orphan) || orphan.Status != 401 || orphanSecret != active {
+				t.Fatal("an ownerless client's secret was rotated or not refused with 401", err)
+			}
 			err = blockedRotation(func() {
 				exec(`UPDATE "oauthClient" SET "metadata"=? WHERE "clientId"=?`, `"invalid metadata envelope"`, app.ClientID)
 			})
