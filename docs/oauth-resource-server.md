@@ -19,7 +19,19 @@ Build one verifier per API and share it across routes; it caches the issuer's ke
 
 `VerifyBearer` returns the token's claims, with `azp` copied to `client_id`, as another runtime's `verifyBearerToken` does. A token must be a JWS signed with an asymmetric algorithm by a key in the issuer's set; carry a `typ` header of `at+jwt`, compared as a media type, or the `Type` you set; and have `iss` equal to `Issuer`, an `aud` naming one of `Audience`, every `RequiredClaims` name and a numeric `exp`. `nbf`, when present, must have passed, and `iat` must be a number. An expired token answers `token expired`, any other failure `invalid access token`, both as a `*ResourceFailure` with status 401 and code `invalid_token`. A value that is not a JWS, such as an opaque token, answers `no token payload`, and an empty token 401 `missing authorization header` without a code.
 
-`typ` defaults to `at+jwt` and `exp` is required, where another runtime checks the type only when asked and accepts a token without `exp`: otherwise a session JWT signed with the same key would pass whenever its `iss` and `aud` match. `RequiredClaims: []string{"azp"}` additionally rejects any JWT not issued to an OAuth client. A DPoP-bound token, one whose `cnf` names a `jkt`, is refused with `invalid_token`, since only the request can prove the client holds the key.
+`typ` defaults to `at+jwt` and `exp` is required, where another runtime checks the type only when asked and accepts a token without `exp`: otherwise a session JWT signed with the same key would pass whenever its `iss` and `aud` match. `RequiredClaims: []string{"azp"}` additionally rejects any JWT not issued to an OAuth client. A DPoP-bound token, one whose `cnf` names a `jkt`, is refused with `invalid_token`, since only the request can prove the client holds the key: use `VerifyRequest`.
+
+## Verify a request
+
+`VerifyRequest` checks a request rather than a raw token, as another runtime's `verifyAccessTokenRequest` does, and is the entry point to use when clients may send DPoP-bound tokens:
+
+```go
+claims, err := verifier.VerifyRequest(r.Context(), oauthprovider.ResourceRequestFrom(r, "https://api.example.com"), "read:post")
+```
+
+`ResourceRequestFrom` reads the first `Authorization` and `DPoP` headers and the method, and joins your API's public origin with the request URI, so a proxy in front of the API does not change the URL a proof must name. The `Authorization` scheme is `Bearer` or `DPoP`, matched without regard to case; an empty header answers 401 `missing authorization header` without a code, and any other scheme, or a token without one, `invalid_token` "authorization scheme must be Bearer or DPoP".
+
+The token is then checked as `VerifyBearer` checks it, scopes included, so a missing scope is answered before the binding. A token whose `cnf` names a key must be sent with the `DPoP` scheme and a `DPoP` proof signed by that key for this method, URL and token, each proof spent once; a token without one must not use the `DPoP` scheme. A refused binding is 401 `invalid_token` or `invalid_dpop_proof` with the same descriptions as another runtime, and a replay store failure is a server error. `DPoP` in the options sets the proof age, the signing algorithms and the replay store, which defaults to memory for this verifier; pass the SQL store or a Redis store so every instance of the API spends a proof only once. [Request tests](../plugins/oauthprovider/access_token_verifier_test.go) · [Shared replay test](../adapters/sqlstore/oauth_resource_verifier_test.go)
 
 ## Scopes
 

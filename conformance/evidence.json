@@ -16134,6 +16134,17 @@
       "label": "Refuse a wrong typ, issuer or audience, a missing claim, an expired or not yet valid token, symmetric and unsigned tokens, malformed scope claims and DPoP-bound tokens, and report every missing scope at once",
       "test": "plugins/oauthprovider/access_token_verifier_test.go",
       "marker": "func TestAccessTokenVerifier("
+    },
+    {
+      "label": "Verify bearer and DPoP-bound access token requests, scopes, schemes, proofs and replays with the same answers as the other runtime, each runtime with its own replay store",
+      "test": "conformance/resource-verifier.mjs",
+      "marker": "// Requests: both runtimes check the scheme and the sender binding alike,",
+      "complete": true
+    },
+    {
+      "label": "Spend a DPoP proof once across two verifiers sharing the SQL store, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_resource_verifier_test.go",
+      "marker": "func TestResourceVerifierSharedReplay("
     }
   ],
   "plugin-symbol/oauth-provider/adminCreateOAuthResource": [

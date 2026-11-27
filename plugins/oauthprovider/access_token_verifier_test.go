@@ -1,11 +1,14 @@
 package oauthprovider
 
 import (
+	"crypto"
+	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/rsa"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"net/http/httptest"
 	"slices"
 	"strings"
 	"testing"
@@ -182,5 +185,121 @@ func TestAccessTokenVerifier(t *testing.T) {
 	}
 	if _, err := NewAccessTokenVerifier(AccessTokenVerifierOptions{Issuer: iss, Audience: []string{"a"}, JWKSURL: "http://127.0.0.1:8080/jwks"}); err != nil {
 		t.Fatal("a loopback HTTP JWKS URL was refused", err)
+	}
+}
+
+// VerifyRequest reads Bearer and DPoP schemes case-insensitively and
+// refuses others; checks a DPoP-bound token's proof for the request's
+// method, URL and token, once; refuses a bound token sent as Bearer and an
+// unbound one sent as DPoP; answers a missing scope before a bad proof; and
+// returns a replay store failure as a server error.
+func TestAccessTokenVerifierRequests(t *testing.T) {
+	ctx := t.Context()
+	issuer := newIssuerKeys(t)
+	signer := issuer.publish("ec")["ec"]
+	const iss, aud = "https://issuer.example.test/api/auth", "https://api.example.test"
+	v, err := NewAccessTokenVerifier(AccessTokenVerifierOptions{Issuer: iss, Audience: []string{aud}, JWKSURL: issuer.server.URL, Transport: issuer.server.Client().Transport})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, proofKey, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	public := (&jose.JSONWebKey{Key: proofKey}).Public()
+	thumb, _ := public.Thumbprint(crypto.SHA256)
+	jkt := base64.RawURLEncoding.EncodeToString(thumb)
+	now := time.Now().Unix()
+	token := func(extra map[string]any) string {
+		claims := map[string]any{"iss": iss, "aud": aud, "sub": "user", "exp": now + 60, "scope": "read"}
+		for k, value := range extra {
+			claims[k] = value
+		}
+		signerOpts := new(jose.SignerOptions).WithHeader("kid", "ec").WithType("at+jwt")
+		s, _ := jose.NewSigner(jose.SigningKey{Algorithm: jose.ES256, Key: signer}, signerOpts)
+		payload, _ := json.Marshal(claims)
+		object, _ := s.Sign(payload)
+		compact, _ := object.CompactSerialize()
+		return compact
+	}
+	bearer, bound := token(nil), token(map[string]any{"cnf": map[string]any{"jkt": jkt}})
+	const target = aud + "/posts"
+	proof := func(access, method, url string, key any, jwk any) string {
+		return signDPoP(t, jose.EdDSA, key, "dpop+jwt", jwk, map[string]any{"htm": method, "htu": url, "iat": time.Now().Unix(), "jti": rand.Text(), "ath": tokenDigest(access)})
+	}
+	request := func(authorization, dpop string) ResourceRequest {
+		return ResourceRequest{Authorization: authorization, DPoP: dpop, Method: "GET", URL: target}
+	}
+	// Accepted requests.
+	for name, req := range map[string]ResourceRequest{
+		"bearer":       request("Bearer "+bearer, ""),
+		"lower bearer": request("  bearer   "+bearer+" ", ""),
+		"dpop":         request("DPoP "+bound, proof(bound, "GET", target, proofKey, public)),
+		"mixed dpop":   request("dPoP "+bound, proof(bound, "GET", target, proofKey, public)),
+	} {
+		if claims, err := v.VerifyRequest(ctx, req, "read"); err != nil || claims["sub"] != "user" {
+			t.Error("a valid request was refused", name, err)
+		}
+	}
+	// Refused requests.
+	_, other, _ := ed25519.GenerateKey(rand.Reader)
+	otherPublic := (&jose.JSONWebKey{Key: other}).Public()
+	_, err = v.VerifyRequest(ctx, request("", ""))
+	if f := (*ResourceFailure)(nil); !errors.As(err, &f) || f.Status != 401 || f.Code != "" || f.Message != "missing authorization header" {
+		t.Fatal("a missing header was not refused", err)
+	}
+	for name, c := range map[string]struct {
+		req               ResourceRequest
+		code, description string
+	}{
+		"basic":        {request("Basic "+base64.StdEncoding.EncodeToString([]byte("a:b")), ""), "invalid_token", "authorization scheme must be Bearer or DPoP"},
+		"no scheme":    {request(bearer, ""), "invalid_token", "authorization scheme must be Bearer or DPoP"},
+		"unbound dpop": {request("DPoP "+bearer, ""), "invalid_token", "DPoP authorization requires a DPoP-bound access token"},
+		"bound bearer": {request("Bearer "+bound, proof(bound, "GET", target, proofKey, public)), "invalid_token", "DPoP-bound access token requires the DPoP authorization scheme"},
+		"no proof":     {request("DPoP "+bound, ""), "invalid_dpop_proof", "DPoP proof header is required"},
+		"wrong token":  {request("DPoP "+bound, proof(bearer, "GET", target, proofKey, public)), "invalid_dpop_proof", ""},
+		"wrong method": {request("DPoP "+bound, proof(bound, "POST", target, proofKey, public)), "invalid_dpop_proof", ""},
+		"wrong URL":    {request("DPoP "+bound, proof(bound, "GET", aud+"/other", proofKey, public)), "invalid_dpop_proof", ""},
+		"wrong key":    {request("DPoP "+bound, proof(bound, "GET", target, other, otherPublic)), "invalid_dpop_proof", ""},
+	} {
+		_, err := v.VerifyRequest(ctx, c.req)
+		var f *ResourceFailure
+		if !errors.As(err, &f) || f.Status != 401 || f.Code != c.code || c.description != "" && f.Description != c.description {
+			t.Error("a request was not refused", name, err)
+		}
+	}
+	// A proof is spent once.
+	once := proof(bound, "GET", target, proofKey, public)
+	if _, err := v.VerifyRequest(ctx, request("DPoP "+bound, once)); err != nil {
+		t.Fatal(err)
+	}
+	_, err = v.VerifyRequest(ctx, request("DPoP "+bound, once))
+	var replay *ResourceFailure
+	if !errors.As(err, &replay) || replay.Code != "invalid_dpop_proof" {
+		t.Fatal("a replayed proof was accepted", err)
+	}
+	// A missing scope is answered before a bad proof.
+	if _, err := v.VerifyRequest(ctx, request("DPoP "+bound, ""), "admin"); !errors.As(err, new(*ResourceFailure)) || err.(*ResourceFailure).Status != 403 {
+		t.Fatal("a missing scope was not answered first", err)
+	}
+	// A replay store failure is a server error.
+	broken, err := NewAccessTokenVerifier(AccessTokenVerifierOptions{Issuer: iss, Audience: []string{aud}, JWKSURL: issuer.server.URL, Transport: issuer.server.Client().Transport,
+		DPoP: DPoPOptions{ReplayStore: unavailableProofStore{errors.New("store down")}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := broken.VerifyRequest(ctx, request("DPoP "+bound, proof(bound, "GET", target, proofKey, public))); err == nil || errors.As(err, new(*ResourceFailure)) {
+		t.Fatal("a replay store failure was not a server error", err)
+	}
+}
+
+// ResourceRequestFrom reads the request with the API's public origin.
+func TestResourceRequestFrom(t *testing.T) {
+	r := httptest.NewRequest("POST", "http://internal:8080/v1/posts?id=7", nil)
+	r.Header.Set("Authorization", "DPoP token")
+	r.Header.Set("DPoP", "proof")
+	got := ResourceRequestFrom(r, "https://api.example.test/")
+	if got != (ResourceRequest{Authorization: "DPoP token", DPoP: "proof", Method: "POST", URL: "https://api.example.test/v1/posts?id=7"}) {
+		t.Fatal("the resource request was read wrong", got)
 	}
 }

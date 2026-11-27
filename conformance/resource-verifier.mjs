@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { once } from "node:events";
-import { verifyBearerToken } from "@better-auth/core/oauth2";
-import { exportJWK, generateKeyPair, SignJWT } from "jose";
+import { createHash, randomUUID } from "node:crypto";
+import { verifyAccessTokenRequest, verifyBearerToken } from "@better-auth/core/oauth2";
+import { calculateJwkThumbprint, exportJWK, generateKeyPair, SignJWT } from "jose";
 
 // Both runtimes verify the same bearer tokens against a JWKS served on
 // loopback and answer the same status, error, description and scopes. A
@@ -67,6 +68,64 @@ export async function compareResourceVerifier(t, goFixture) {
     // The bound-token text names request verification instead of a function.
     if (name !== "bound") assert.equal(got.error_description, want.error_description, name);
   }
+  // Requests: both runtimes check the scheme and the sender binding alike,
+  // each with its own replay store.
+  const proofKeys = await generateKeyPair("ES256");
+  const proofJwk = await exportJWK(proofKeys.publicKey);
+  const jkt = await calculateJwkThumbprint(proofJwk);
+  const bearer = await sign({}), bound = await sign({ cnf: { jkt } });
+  const target = server.baseURL + "/__fixture/verified-resource";
+  const proof = (token, { method = "GET", url = target, ath = createHash("sha256").update(token).digest("base64url") } = {}) =>
+    new SignJWT({ htm: method, htu: url, jti: randomUUID(), ath }).setIssuedAt()
+      .setProtectedHeader({ alg: "ES256", typ: "dpop+jwt", jwk: proofJwk }).sign(proofKeys.privateKey);
+  const requests = [
+    ["bearer", "Bearer " + bearer],
+    ["bound", "DPoP " + bound, () => proof(bound)],
+    ["bound as bearer", "Bearer " + bound, () => proof(bound)],
+    ["unbound as DPoP", "DPoP " + bearer],
+    ["no proof", "DPoP " + bound],
+    ["wrong method", "DPoP " + bound, () => proof(bound, { method: "POST" })],
+    ["wrong token", "DPoP " + bound, () => proof(bound, { ath: createHash("sha256").update("other").digest("base64url") })],
+    ["basic", "Basic " + Buffer.from("a:b").toString("base64")],
+    ["missing", ""],
+  ];
+  const referenceRequest = async (authorizationHeader, dpopProofJwt) => {
+    try {
+      const payload = await verifyAccessTokenRequest({ authorizationHeader, dpopProofJwt, method: "GET", url: target }, { jwksUrl, verifyOptions: { issuer, audience, typ: "at+jwt" } });
+      return { status: 200, payload };
+    } catch (error) {
+      if (!error.statusCode) throw error;
+      return { status: error.statusCode, error: error.body?.error, error_description: error.body?.error_description, message: error.body?.message };
+    }
+  };
+  const goRequest = async (authorization, dpop) => {
+    const headers = {};
+    if (authorization) headers.authorization = authorization;
+    if (dpop) headers.dpop = dpop;
+    return (await server.send(new Request(target, { headers }))).json();
+  };
+  for (const [name, authorization, makeProof] of requests) {
+    const want = await referenceRequest(authorization, makeProof ? await makeProof() : undefined);
+    const got = await goRequest(authorization, makeProof ? await makeProof() : undefined);
+    assert.equal(got.status, want.status, name + " " + JSON.stringify([want, got]));
+    if (want.status === 200) {
+      assert.equal(got.payload.sub, want.payload.sub, name);
+      continue;
+    }
+    assert.equal(got.error || undefined, want.error, name);
+    assert.equal(got.error_description || undefined, want.error_description, name);
+    assert.equal(got.message, want.message, name);
+  }
+  // A proof is spent once on each runtime.
+  const spent = await proof(bound);
+  assert.equal((await referenceRequest("DPoP " + bound, spent)).status, 200);
+  const replayed = await referenceRequest("DPoP " + bound, spent);
+  assert.equal((await goRequest("DPoP " + bound, spent)).status, 200);
+  const goReplayed = await goRequest("DPoP " + bound, spent);
+  assert.equal(goReplayed.status, replayed.status);
+  assert.equal(goReplayed.error, replayed.error);
+  assert.equal(goReplayed.error_description, replayed.error_description);
+
   // A token without exp passes the other runtime but not this one.
   const endless = await sign({ exp: undefined });
   assert.equal((await reference(endless, [])).status, 200);

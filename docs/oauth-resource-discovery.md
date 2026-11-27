@@ -93,6 +93,8 @@ For an opaque identifier such as `urn:example:reports`, supply its public HTTPS 
 
 ## Verify a sender-bound access token on a protected route
 
+For signed access tokens, [`AccessTokenVerifier.VerifyRequest`](oauth-resource-server.md#verify-a-request) checks the token and its DPoP binding together. The lower-level `DPoPVerifier.CheckBinding` below suits tokens your API authenticates some other way.
+
 First authenticate the access token using your issuer and check the audience, expiry and scopes required by this route. Read the sender key thumbprint from the authenticated token’s `cnf.jkt` claim or from the active introspection response. The client sends the literal access token in `Authorization: DPoP <access_token>` and a separate signed JWT in the `DPoP` header. [Proof verification in RFC 9449](https://www.rfc-editor.org/rfc/rfc9449.html#section-7)
 
 Construct one verifier at startup. For multiple instances, use the same SQL database or the same Redis or Valkey namespace on every instance. The SQL adapter uses the core verification table and supports SQLite, PostgreSQL and MySQL. A single-process service can omit `ReplayStore` to keep reservations in memory for the verifier’s lifetime.

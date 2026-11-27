@@ -9,10 +9,13 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"regexp"
 	"slices"
 	"strings"
 	"time"
 
+	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/internal/jsjson"
 	jose "github.com/go-jose/go-jose/v4"
 )
 
@@ -34,15 +37,20 @@ type AccessTokenVerifierOptions struct {
 	ScopeSatisfied func(required string, granted map[string]bool) bool
 	// Transport fetches the keys; http.DefaultTransport by default.
 	Transport http.RoundTripper
+	// DPoP checks the proofs of DPoP-bound tokens at VerifyRequest. Its
+	// replay store defaults to memory for this verifier; share a SQL or
+	// Redis store across the API's instances.
+	DPoP DPoPOptions
 }
 
 // AccessTokenVerifier checks access tokens for a resource server, as
 // another runtime's verifyBearerToken does. One verifier caches the
 // issuer's keys for every route.
 type AccessTokenVerifier struct {
-	opts AccessTokenVerifierOptions
-	keys *resourceKeys
-	now  func() time.Time
+	opts   AccessTokenVerifierOptions
+	keys   *resourceKeys
+	proofs *DPoPVerifier
+	now    func() time.Time
 }
 
 // NewAccessTokenVerifier checks the options once. Type defaults to at+jwt
@@ -68,7 +76,11 @@ func NewAccessTokenVerifier(opts AccessTokenVerifierOptions) (*AccessTokenVerifi
 		return nil, errors.New("oauthprovider: required claim names must not be empty")
 	}
 	opts.RequiredClaims = slices.Clone(opts.RequiredClaims)
-	return &AccessTokenVerifier{opts: opts, keys: newResourceKeys(opts.JWKSURL, nil, opts.Transport), now: time.Now}, nil
+	proofs, err := NewDPoPVerifier(opts.DPoP)
+	if err != nil {
+		return nil, err
+	}
+	return &AccessTokenVerifier{opts: opts, keys: newResourceKeys(opts.JWKSURL, nil, opts.Transport), proofs: proofs, now: time.Now}, nil
 }
 
 // Error returns the failure's description, or else its message.
@@ -102,12 +114,93 @@ func (v *AccessTokenVerifier) VerifyBearer(ctx context.Context, token string, re
 	return claims, nil
 }
 
+// ResourceRequest is what a resource server reads from a request to check
+// its access token.
+type ResourceRequest struct {
+	Authorization, DPoP, Method string
+	// URL is the request's public absolute URL.
+	URL string
+}
+
+// ResourceRequestFrom reads a request's first Authorization and DPoP
+// headers and its method, with origin, the API's public origin, before the
+// request URI.
+func ResourceRequestFrom(r *http.Request, origin string) ResourceRequest {
+	return ResourceRequest{Authorization: r.Header.Get("Authorization"), DPoP: r.Header.Get("DPoP"), Method: r.Method, URL: strings.TrimRight(origin, "/") + r.URL.RequestURI()}
+}
+
+// authorizationScheme matches an Authorization header's scheme and value.
+var authorizationScheme = regexp.MustCompile("^([A-Za-z][A-Za-z0-9!#$%&'*+.^_`|~-]*)\\s+(.+)$")
+
+// parseAuthorization reads a Bearer or DPoP access token, as another
+// runtime does; any other scheme is "Unknown" with the whole value.
+func parseAuthorization(header string) (scheme, token string) {
+	value := jsjson.TrimSpace(header)
+	if value == "" {
+		return "", ""
+	}
+	match := authorizationScheme.FindStringSubmatch(value)
+	if match == nil {
+		return "Unknown", value
+	}
+	// The value is trimmed and the separator greedy, so the token is too.
+	switch strings.ToLower(match[1]) {
+	case "bearer":
+		return "Bearer", match[2]
+	case "dpop":
+		return "DPoP", match[2]
+	}
+	return "Unknown", value
+}
+
+// VerifyRequest checks a request's access token as VerifyBearer does,
+// scopes included, then its sender binding, as another runtime's
+// verifyAccessTokenRequest does: a DPoP-bound token needs the DPoP scheme
+// and a proof by its key for this method and URL, which is spent once, and
+// a bearer token must not use the DPoP scheme. Failures are 401
+// invalid_token or invalid_dpop_proof; a replay store error is a server
+// error.
+func (v *AccessTokenVerifier) VerifyRequest(ctx context.Context, req ResourceRequest, requiredScopes ...string) (map[string]any, error) {
+	if err := checkRequiredScopes(requiredScopes); err != nil {
+		return nil, err
+	}
+	// An empty header is refused by verify as a missing one.
+	scheme, token := parseAuthorization(req.Authorization)
+	if scheme == "Unknown" {
+		return nil, invalidToken("authorization scheme must be Bearer or DPoP")
+	}
+	claims, err := v.verify(ctx, token, requiredScopes)
+	if err != nil {
+		return nil, err
+	}
+	var jkt string
+	if cnf, ok := claims["cnf"].(map[string]any); ok {
+		jkt, _ = cnf["jkt"].(string)
+	}
+	err = v.proofs.CheckBinding(ctx, scheme, req.DPoP, DPoPProofRequest{Method: req.Method, URL: req.URL, AccessToken: token, ExpectedThumbprint: jkt})
+	var problem *auth.OAuthError
+	if errors.As(err, &problem) {
+		return nil, &ResourceFailure{Status: 401, Code: problem.Code, Message: problem.Description, Description: problem.Description}
+	}
+	if err != nil {
+		return nil, err
+	}
+	return claims, nil
+}
+
+func checkRequiredScopes(scopes []string) error {
+	for _, scope := range scopes {
+		if !validScope(scope) {
+			return fmt.Errorf("oauthprovider: invalid required scope %q", scope)
+		}
+	}
+	return nil
+}
+
 // verify checks the token and its scopes.
 func (v *AccessTokenVerifier) verify(ctx context.Context, token string, requiredScopes []string) (map[string]any, error) {
-	for _, scope := range requiredScopes {
-		if !validScope(scope) {
-			return nil, fmt.Errorf("oauthprovider: invalid required scope %q", scope)
-		}
+	if err := checkRequiredScopes(requiredScopes); err != nil {
+		return nil, err
 	}
 	if token == "" {
 		return nil, &ResourceFailure{Status: 401, Message: "missing authorization header"}

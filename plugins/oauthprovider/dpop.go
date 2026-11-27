@@ -205,7 +205,7 @@ func (v *DPoPVerifier) Verify(ctx context.Context, compact string, request DPoPP
 		return nil, err
 	}
 	if !reserved {
-		return nil, proofError("DPoP proof has already been used")
+		return nil, proofError("DPoP proof jti has already been used")
 	}
 	return &DPoPProof{PublicKey: rawKey, Thumbprint: jkt, ID: id, Method: method, URL: target, AccessTokenHash: hash, ReplayKey: replayKey, IssuedAt: issued, ExpiresAt: expires}, nil
 }
