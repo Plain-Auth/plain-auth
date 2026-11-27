@@ -183,6 +183,27 @@ func TestSCIMIdentityResolution(t *testing.T) {
 			if account, err := store.FindAccountUser(ctx, "explicit@example.test"); w.Code != 201 || err != nil || owner(explicit["id"]) != account.ID {
 				t.Fatal("an explicit create decision did not create an account for the source", w.Code, err)
 			}
+			// The resolver receives the whole canonical User, and a read returns it.
+			rich := map[string]any{"schemas": []string{scim.UserSchema}, "userName": "rich", "externalId": "rich-1", "displayName": "Rich Person", "name": map[string]any{"formatted": "Dr Rich Person", "givenName": "Rich"},
+				"emails": []any{map[string]any{"value": "rich@example.test", "primary": true}}, "title": "Engineer", "userType": "Employee", "preferredLanguage": "en-GB", "locale": "en-GB", "timezone": "Europe/London"}
+			created := scimRequest(h, "POST", "Users", "writer", rich)
+			var richOut map[string]any
+			must(json.Unmarshal(created.Body.Bytes(), &richOut))
+			mu.Lock()
+			richIn := inputs[len(inputs)-1]
+			mu.Unlock()
+			richName, _ := richIn.Resource.Attributes["name"].(map[string]any)
+			if created.Code != 201 || richIn.Resource.DisplayName != "Rich Person" || richIn.Resource.PrimaryEmail != "rich@example.test" || richName["formatted"] != "Dr Rich Person" {
+				t.Fatal("the SCIM resolver did not receive the canonical User's names and email", created.Code, richIn.Resource)
+			}
+			read := scimRequest(h, "GET", "Users/"+richOut["id"].(string), "writer", nil)
+			var readBack map[string]any
+			must(json.Unmarshal(read.Body.Bytes(), &readBack))
+			for _, attr := range []string{"title", "userType", "preferredLanguage", "locale", "timezone"} {
+				if richIn.Resource.Attributes[attr] != rich[attr] || readBack[attr] != rich[attr] {
+					t.Fatal("a canonical User attribute did not reach the resolver and the read", attr, richIn.Resource.Attributes[attr], readBack[attr])
+				}
+			}
 			// The created account follows its source's profile.
 			if w := patch(explicit["id"], map[string]any{"op": "replace", "path": "displayName", "value": "Explicit Renamed"}, map[string]any{"op": "replace", "path": "emails", "value": []any{map[string]any{"value": "renamed@example.test", "primary": true}}}); w.Code != 200 {
 				t.Fatal("the explicitly created source could not be patched", w.Code, w.Body.String())

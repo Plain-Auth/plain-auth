@@ -10777,7 +10777,7 @@
     {
       "label": "Answer 401 when the verifier's result is expired, names an unknown directory, both names and supplies one, or has an invalid credential ID or scopes",
       "test": "adapters/sqlstore/scim_dynamic_test.go",
-      "marker": "for _, token := range []string{\"stale\", \"collision\", \"reserved\", \"unknown-conn\", \"bad-domain\", \"ambiguous\", \"bad-id\", \"duplicate\", \"bad-scope\", \"absent-scopes\", \"unknown\", \"padded-conn\", \"long-conn\"} {"
+      "marker": "for _, token := range []string{\"stale\", \"collision\", \"reserved\", \"unknown-conn\", \"bad-domain\", \"ambiguous\", \"bad-id\", \"duplicate\", \"bad-scope\", \"absent-scopes\", \"unknown\", \"padded-conn\", \"long-conn\", \"padded-domain\", \"long-domain\"} {"
     }
   ],
   "plugin-symbol/scim/SCIMResolvedConnectionVerificationResult": [
@@ -10785,6 +10785,12 @@
       "label": "Persist the first application-resolved directory domain and isolate case-sensitive connection IDs",
       "test": "adapters/sqlstore/scim_dynamic_test.go",
       "marker": "func TestSCIMDynamicBearer("
+    },
+    {
+      "label": "Refuse a resolved directory whose connection or domain ID is empty, padded or over 255 characters, and accept one without an expiry, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_dynamic_test.go",
+      "marker": "t.Fatal(\"a resolved directory without an expiry was refused or given one\", p)",
+      "complete": true
     }
   ],
   "plugin-symbol/scim/SCIMBearerTokenVerificationInput": [
@@ -44044,7 +44050,7 @@
     {
       "label": "Answer 401 when the verifier's result is expired, names an unknown directory, both names and supplies one, or has an invalid credential ID or scopes",
       "test": "adapters/sqlstore/scim_dynamic_test.go",
-      "marker": "for _, token := range []string{\"stale\", \"collision\", \"reserved\", \"unknown-conn\", \"bad-domain\", \"ambiguous\", \"bad-id\", \"duplicate\", \"bad-scope\", \"absent-scopes\", \"unknown\", \"padded-conn\", \"long-conn\"} {",
+      "marker": "for _, token := range []string{\"stale\", \"collision\", \"reserved\", \"unknown-conn\", \"bad-domain\", \"ambiguous\", \"bad-id\", \"duplicate\", \"bad-scope\", \"absent-scopes\", \"unknown\", \"padded-conn\", \"long-conn\", \"padded-domain\", \"long-domain\"} {",
       "complete": true
     },
     {
@@ -44107,6 +44113,12 @@
       "label": "Bound the serialized size on parsed values, ignoring unknown subattributes and surrounding spaces, and refuse a User over the bound",
       "test": "plugins/scim/http_test.go",
       "marker": "func TestSCIMSerializedSizeCountsParsedValues("
+    },
+    {
+      "label": "Hand the resolver the canonical User's display name, name, primary email and scalar attributes, and return them on read, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_identity_test.go",
+      "marker": "t.Fatal(\"a canonical User attribute did not reach the resolver and the read\", attr, richIn.Resource.Attributes[attr], readBack[attr])",
+      "complete": true
     }
   ],
   "plugin-symbol/scim/SCIMCompatibilityOptions/microsoftEntra": [
@@ -44379,7 +44391,7 @@
     {
       "label": "Refuse a verifier result naming a padded or over-long connection ID with 401, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/scim_dynamic_test.go",
-      "marker": "for _, token := range []string{\"stale\", \"collision\", \"reserved\", \"unknown-conn\", \"bad-domain\", \"ambiguous\", \"bad-id\", \"duplicate\", \"bad-scope\", \"absent-scopes\", \"unknown\", \"padded-conn\", \"long-conn\"} {",
+      "marker": "for _, token := range []string{\"stale\", \"collision\", \"reserved\", \"unknown-conn\", \"bad-domain\", \"ambiguous\", \"bad-id\", \"duplicate\", \"bad-scope\", \"absent-scopes\", \"unknown\", \"padded-conn\", \"long-conn\", \"padded-domain\", \"long-domain\"} {",
       "complete": true
     }
   ],

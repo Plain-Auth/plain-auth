@@ -97,6 +97,11 @@ func TestSCIMDynamicBearer(t *testing.T) {
 			storeClaims("padded-conn", claims(" runtime", "tenant", scim.UsersRead))
 			storeClaims("long-conn", claims(strings.Repeat("r", 256), "tenant", scim.UsersRead))
 			storeClaims("rotated-out", claims("rotated", "tenant", scim.UsersRead))
+			storeClaims("padded-domain", claims("padded-tenant", " tenant", scim.UsersRead))
+			storeClaims("long-domain", claims("long-tenant", strings.Repeat("d", 256), scim.UsersRead))
+			lasting := claims("lasting", "tenant", scim.UsersRead)
+			lasting.ExpiresAt = time.Time{}
+			storeClaims("no-expiry", lasting)
 			var calls atomic.Int64
 			var itemPath atomic.Bool
 			principals := make(chan scim.Principal, 12)
@@ -152,7 +157,7 @@ func TestSCIMDynamicBearer(t *testing.T) {
 			if n := calls.Load(); n != 0 {
 				t.Fatal("called verifier for static or reserved token", n)
 			}
-			for _, token := range []string{"stale", "collision", "reserved", "unknown-conn", "bad-domain", "ambiguous", "bad-id", "duplicate", "bad-scope", "absent-scopes", "unknown", "padded-conn", "long-conn"} {
+			for _, token := range []string{"stale", "collision", "reserved", "unknown-conn", "bad-domain", "ambiguous", "bad-id", "duplicate", "bad-scope", "absent-scopes", "unknown", "padded-conn", "long-conn", "padded-domain", "long-domain"} {
 				call(a, "GET", "Users", token, nil, 401)
 			}
 			call(a, "GET", "Users", "outage", nil, 500)
@@ -192,6 +197,11 @@ func TestSCIMDynamicBearer(t *testing.T) {
 			call(a, "GET", "Users/absent", "rotated-out", nil, 404)
 			if p = <-principals; p.Kind != "oauth-bearer" || p.ID != "rotated" {
 				t.Fatal("an expired static credential's token did not reach the verifier", p)
+			}
+			// A resolved directory without an expiry authenticates with none.
+			call(a, "GET", "Users/absent", "no-expiry", nil, 404)
+			if p = <-principals; p.Kind != "oauth-bearer" || p.ID != "lasting" || p.ProvisioningDomainID != "tenant" || !p.ExpiresAt.IsZero() {
+				t.Fatal("a resolved directory without an expiry was refused or given one", p)
 			}
 			start := make(chan struct{})
 			statuses := make(chan *httptest.ResponseRecorder, 2)
