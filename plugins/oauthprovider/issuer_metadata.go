@@ -247,7 +247,11 @@ func (opts Options) issuerDocuments(a *auth.Auth, store auth.Store) (map[string]
 		if _, ok := store.(UserInfoStore); ok {
 			userInfoURL = endpoint(http.MethodGet, "/oauth2/userinfo")
 		}
-		openIDDoc := opts.openIDMetadata(a, doc, userInfoURL, endpoint(http.MethodPost, "/oauth2/consent") != "")
+		var endSessionURL string
+		if _, ok := store.(EndSessionStore); ok {
+			endSessionURL = endpoint(http.MethodGet, endSessionPath)
+		}
+		openIDDoc := opts.openIDMetadata(a, doc, userInfoURL, endSessionURL, endpoint(http.MethodPost, "/oauth2/consent") != "")
 		metadata, input.OpenID = openIDDoc, &openIDDoc
 		// Every path serves the OpenID document, so extensions see its
 		// type on all of them, as another runtime passes it.

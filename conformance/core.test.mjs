@@ -1911,6 +1911,11 @@ test("machine clients obtain signed and opaque access tokens for their registere
   await compareResourceMachineTokens(t, { reference, goFixture });
 });
 
+test("a client ends the user's session with an ID token hint or the user's confirmation", async t => {
+  const { compareEndSession } = await import("./oauth-end-session.mjs");
+  await compareEndSession(t, { reference, goFixture });
+});
+
 test("ending a session sends a back-channel logout token to the client that held its tokens", async t => {
   const { compareBackchannelLogout } = await import("./oauth-backchannel-logout.mjs");
   await compareBackchannelLogout(t, { reference, goFixture });

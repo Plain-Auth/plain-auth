@@ -426,6 +426,10 @@ func New(opts Options) (auth.Plugin, error) {
 	p.Endpoints = append(p.Endpoints, auth.Endpoint{Method: http.MethodPost, Path: keyRotationPath, Handler: opts.rotateClientKeys,
 		RateLimit: tokenRouteLimit(opts.Assertions.KeyRotationRateLimit, 5), OpenAPI: json.RawMessage(keyRotationOperation)})
 	p.Endpoints = append(p.Endpoints, auth.Endpoint{Method: http.MethodPost, Path: "/oauth2/delete-client", Handler: opts.deleteClient})
+	p.Endpoints = append(p.Endpoints,
+		auth.Endpoint{Method: http.MethodGet, Path: endSessionPath, Handler: opts.endSession, OpenAPI: json.RawMessage(endSessionOperation(http.MethodGet))},
+		auth.Endpoint{Method: http.MethodPost, Path: endSessionPath, RawBody: true, Handler: opts.endSession, OpenAPI: json.RawMessage(endSessionOperation(http.MethodPost))},
+		auth.Endpoint{Method: http.MethodPost, Path: endSessionConfirmPath, RawBody: true, Handler: opts.confirmEndSession, OpenAPI: json.RawMessage(endSessionConfirmOperation)})
 	p.Endpoints = append(p.Endpoints, auth.Endpoint{Method: http.MethodPost, Path: "/oauth2/token", RawBody: true, OpenAPI: json.RawMessage(machineTokenOperation), RateLimit: opts.Tokens.RateLimit, Handler: opts.token})
 	if slices.Contains(opts.GrantTypes, "authorization_code") {
 		if opts.Authorization.LoginPage != "" || opts.Authorization.SignupPage != "" {

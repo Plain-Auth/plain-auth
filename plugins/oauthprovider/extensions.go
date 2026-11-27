@@ -63,11 +63,7 @@ var serverMetadataFields = sync.OnceValue(func() map[string]bool {
 })
 
 var openIDMetadataFields = sync.OnceValue(func() map[string]bool {
-	fields := metadataFields(reflect.TypeFor[OpenIDProviderMetadata]())
-	// Another runtime always publishes this in the OpenID document, which
-	// does not declare it yet.
-	fields["end_session_endpoint"] = true
-	return fields
+	return metadataFields(reflect.TypeFor[OpenIDProviderMetadata]())
 })
 
 func metadataFields(t reflect.Type) map[string]bool {

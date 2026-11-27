@@ -335,10 +335,11 @@ func TestExtensionMetadata(t *testing.T) {
 		if doc["credential_issuer"] != base+"/"+kind || doc["issuer"] != base+"/api/auth" || doc["token_endpoint"] != base+"/api/auth/oauth2/token" || doc["shared"] != "first" {
 			t.Fatal("an extension field was missing or replaced a provider field", path, doc)
 		}
-		for _, name := range []string{"registration_endpoint", "end_session_endpoint"} {
-			if _, ok := doc[name]; ok {
-				t.Fatal("an extension added a field the provider owns", path, name)
-			}
+		if _, ok := doc["registration_endpoint"]; ok {
+			t.Fatal("an extension added an endpoint the provider does not serve", path)
+		}
+		if doc["end_session_endpoint"] != base+"/api/auth/oauth2/end-session" {
+			t.Fatal("an extension replaced the provider's end-session endpoint", path, doc["end_session_endpoint"])
 		}
 		if doc["backchannel_logout_supported"] != true || doc["backchannel_logout_session_supported"] != true {
 			t.Fatal("an extension replaced the back-channel logout flags", path, doc)

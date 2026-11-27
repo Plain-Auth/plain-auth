@@ -39,8 +39,9 @@
   - [x] `oauthProviderOpenIdConfigMetadata` ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L286))
     - [x] Read the mounted OpenID provider document from Go, including host page capabilities and the configured claim list ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L75))
     - [x] Serve the OpenID document as JSON with the default cache rule, or with the configured headers ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L286))
-  - [ ] `oidcServerMetadata`
+  - [x] `oidcServerMetadata` ([test](../../../adapters/sqlstore/oauth_end_session_test.go#L173))
     - [x] Start from a custom issuer URL, discover the endpoints, complete PKCE sign-in and verify the ID token, access-token hash and UserInfo subject using an independent Go client ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L23))
+    - [x] Publish end_session_endpoint, with the always-present back-channel logout flags, completing the OpenID document; listing the endpoint only for a store that can read the hinted session is a documented deviation ([test](../../../adapters/sqlstore/oauth_end_session_test.go#L173))
   - [x] `publicSessionMiddleware` ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L171))
     - [x] Serve a client's public fields without a session for a signed query naming it, verify a present query first, refuse without the option, without a query or for another client, hide a disabled client and never cache or set a cookie, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L171))
     - [x] Read the client's public fields from the login page's signed query and refuse another client, an altered query and a missing one, on both runtimes ([test](../../../conformance/oauth-browser-login.mjs#L52))
@@ -51,7 +52,7 @@
   - [ ] `OAuthFieldErrorCodeMap`
   - [ ] `OAuthRedirectOnError`
   - [ ] `GET / POST /oauth2/authorize`
-    - [x] Complete separate provider and client PKCE exchanges and bind the issued token to the social login session ([test](../../../conformance/oauth-social-authorization.mjs#L156))
+    - [x] Complete separate provider and client PKCE exchanges and bind the issued token to the social login session ([test](../../../conformance/oauth-social-authorization.mjs#L162))
     - [x] Sign in and register a public client, then obtain a code by GET or form POST and redeem it at either issuer with S256 PKCE ([test](../../../conformance/oauth-browser-authorization.mjs#L5))
     - [x] Recheck the registered callback, owner session and scoped consent in the issuing transaction on all three databases ([test](../../../adapters/sqlstore/oauth_browser_authorization_test.go#L20))
     - [x] Visit a host consent page, verify the signed query independently, deny a first request or exchange a code approved for fewer scopes ([test](../../../conformance/oauth-browser-authorization.mjs#L57))
@@ -66,9 +67,10 @@
   - [ ] `GET /.well-known/oauth-authorization-server` (server API only)
     - [x] Discover endpoints and capabilities for the machine grant, then register a client, verify a signed token and revoke an opaque token ([test](../../../conformance/oauth-issuer-metadata.mjs#L97))
     - [x] Mount both issuer discovery paths through ServeMux, chi, Gorilla Mux, Gin, Echo and Fiber and read them with GET and HEAD ([test](../../../integrations/routers/routers_test.go#L169))
-  - [ ] `GET /.well-known/openid-configuration` (server API only)
+  - [x] `GET /.well-known/openid-configuration` (server API only) ([test](../../../adapters/sqlstore/oauth_end_session_test.go#L173))
     - [x] Start from a custom issuer URL, discover the endpoints, complete PKCE sign-in and verify the ID token, access-token hash and UserInfo subject using an independent Go client ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L23))
     - [x] Serve the public provider document through ServeMux, chi, Gorilla Mux, Gin, Echo and Fiber and honor HEAD ([test](../../../integrations/routers/routers_test.go#L172))
+    - [x] Publish end_session_endpoint, with the always-present back-channel logout flags, completing the OpenID document; listing the endpoint only for a store that can read the hinted session is a documented deviation ([test](../../../adapters/sqlstore/oauth_end_session_test.go#L173))
   - [ ] `POST /oauth2/consent`
     - [x] Visit a host consent page, verify the signed query independently, deny a first request or exchange a code approved for fewer scopes ([test](../../../conformance/oauth-browser-authorization.mjs#L57))
     - [x] Consume a decision once across two servers, isolate sessions and tenants, and roll back consent when code storage fails ([test](../../../adapters/sqlstore/oauth_browser_consent_test.go#L25))
@@ -126,8 +128,12 @@
   - [x] `GET / POST /oauth2/userinfo` ([test](../../../conformance/oauth-userinfo.mjs#L40))
     - [x] Read scoped profile claims over GET and form POST and match the subject of an independently issued ID token for signed and opaque grants ([test](../../../conformance/oauth-userinfo.mjs#L40))
     - [x] Apply standard, extension and operator claim precedence, preserve the pairwise subject and propagate hook failures on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_userinfo_test.go#L21))
-  - [ ] `GET / POST /oauth2/end-session`
-  - [ ] `POST /oauth2/end-session/confirm`
+  - [x] `GET / POST /oauth2/end-session` ([test](../../../adapters/sqlstore/oauth_end_session_test.go#L62))
+    - [x] End the hinted session for a valid hint, expired or not, with or without the browser's cookies, through GET, a form or JSON POST and the Go client; follow only an exact registered post-logout URI with state; refuse missing, disabled and not-enabled clients, invalid hints and insecure redirects; resolve the client from aud or azp with at most one lookup; and ask for confirmation otherwise, on SQLite, PostgreSQL and MySQL; omitting end_session_endpoint for a store that cannot read the hinted session is a documented deviation ([test](../../../adapters/sqlstore/oauth_end_session_test.go#L62))
+    - [x] Compare discovery, JSON refusals, the confirmation page and cookie, confirmation and a hinted redirect with another runtime ([test](../../../conformance/oauth-end-session.mjs#L70))
+  - [x] `POST /oauth2/end-session/confirm` ([test](../../../adapters/sqlstore/oauth_end_session_test.go#L307))
+    - [x] Show a browser the confirmation page with a signed five-minute cookie scoped to the confirm route, and confirm only with that cookie, unexpired, bound to the current session, from the same origin, rechecking the redirect's client and HTTPS rule, then clear both cookies and notify clients, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_end_session_test.go#L307))
+    - [x] Compare the confirmation page, its cookie attributes and confirming with another runtime ([test](../../../conformance/oauth-end-session.mjs#L70))
   - [ ] `POST /oauth2/register`
     - [x] Register public and confidential clients and exchange both a shared secret and an ES256 assertion at an independent issuer ([test](../../../conformance/oauth-registration.mjs#L442))
     - [x] Commit the client and its resource links atomically across concurrent registrations on three SQL engines ([test](../../../adapters/sqlstore/oauth_registration_test.go#L23))
@@ -505,8 +511,9 @@
   - [ ] `BearerMethodsSupported`
   - [ ] `Confirmation`
   - [ ] `GrantType`
-  - [ ] `OIDCMetadata`
+  - [x] `OIDCMetadata` ([test](../../../adapters/sqlstore/oauth_end_session_test.go#L173))
     - [x] Read identical OpenID and OAuth aliases, discover signing keys and validate claims and subjects for each supported signing algorithm ([test](../../../conformance/oauth-id-tokens.mjs#L33))
+    - [x] Publish end_session_endpoint, with the always-present back-channel logout flags, completing the OpenID document; listing the endpoint only for a store that can read the hinted session is a documented deviation ([test](../../../adapters/sqlstore/oauth_end_session_test.go#L173))
   - [ ] `TokenEndpointAuthMethod`
   - [ ] `TokenType`
   - [ ] `OAuthClientMetadata`
@@ -624,7 +631,8 @@
     - [ ] Restricted fields
       - [ ] `skip_consent`
         - [x] Update a client from server code: change owner fields, consent skipping and metadata, disable and enable it with tokens refused meanwhile, and clear machine scopes through the scopes-only path, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_admin_test.go#L155))
-      - [ ] `enable_end_session`
+      - [x] `enable_end_session` ([test](../../../adapters/sqlstore/oauth_end_session_test.go#L62))
+        - [x] Create and update a client's end-session setting from server code, and refuse logout for a client without it, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_end_session_test.go#L62))
       - [ ] `require_pkce`
         - [x] Create a client from server code with consent skipping, end session, PKCE, machine scopes and metadata, approve machine scopes and requested resource links separately, link default resources and always return the machine scopes, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_client_admin_test.go#L25))
       - [ ] `client_credentials_scopes`
@@ -667,7 +675,10 @@
         - [x] Accept a custom scheme with a host and path for a native client and refuse it for a web client ([test](../../../plugins/oauthprovider/registration_test.go#L35))
   - [ ] Custom redirect URI validation
     - [x] Match a web callback exactly and a native loopback callback on any port of the same host name, check only the HTTPS policy before the host callback, and send refusals to the error page, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_redirect_transport_test.go#L23))
-  - [ ] HTTP redirect URIs
+  - [x] HTTP redirect URIs ([test](../../../adapters/sqlstore/oauth_end_session_test.go#L252))
+    - [x] Check post-logout URIs at end-session and again at confirmation with the HTTPS rule and AllowHTTPRedirect, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_end_session_test.go#L252))
+    - [x] Refuse HTTP redirect and post-logout URIs at registration unless they are loopback for a non-web client or AllowHTTPRedirect accepts them ([test](../../../plugins/oauthprovider/registration_test.go#L16))
+    - [x] Apply the same HTTPS rule alone at authorize, with AllowHTTPRedirect ([test](../../../plugins/oauthprovider/registration_test.go#L127))
   - [ ] Private key JWT
     - [x] Authenticate issuance, introspection and revocation with independently signed assertions and reject replay across issuers ([test](../../../conformance/oauth-client-assertions.mjs#L5))
     - [x] Verify signatures with all ten asymmetric signing algorithms and enforce registered key restrictions ([test](../../../plugins/oauthprovider/client_assertion_test.go#L80))
@@ -722,7 +733,9 @@
     - [ ] Consent
     - [x] OpenID Connect ([test](../../../conformance/oauth-id-tokens.mjs#L93))
       - [x] Issue verified ID tokens, answer UserInfo, apply the claims parameter and derive pairwise subjects ([test](../../../conformance/oauth-id-tokens.mjs#L93))
-    - [ ] Logout
+    - [x] Logout ([test](../../../adapters/sqlstore/oauth_end_session_test.go#L62))
+      - [x] RP-Initiated Logout with confirmation and exact post-logout redirects, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_end_session_test.go#L62))
+      - [x] Back-channel logout tokens for every client holding tokens on an ended session, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_backchannel_logout_test.go#L99))
   - [x] Login and consent pages ([test](../../../conformance/oauth-browser-login.mjs#L38))
     - [x] Send a browser without a session or prompt to the login page with a verified signed query, on both runtimes ([test](../../../conformance/oauth-browser-login.mjs#L38))
   - [ ] Run your first flow
@@ -762,11 +775,13 @@
   - [ ] Pairwise subject identifiers
     - [x] Inspect an independently issued delegated access token as the issuer and as a linked resource server with the issuing sector’s pairwise subject ([test](../../../conformance/oauth-opaque-introspection.mjs#L26))
     - [x] Use the same pairwise subject for ID tokens and UserInfo across code and refresh exchanges, including offline use ([test](../../../conformance/oauth-id-tokens.mjs#L146))
-  - [ ] RP-initiated logout
-  - [x] Back-channel logout ([test](../../../adapters/sqlstore/oauth_backchannel_logout_test.go#L98))
+  - [x] RP-initiated logout ([test](../../../adapters/sqlstore/oauth_end_session_test.go#L62))
+    - [x] Let a client with end session enabled end the user's session through RP-Initiated Logout, with confirmation pages, exact post-logout redirects and the documented refusals, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_end_session_test.go#L62))
+    - [x] Compare RP-Initiated Logout with another runtime ([test](../../../conformance/oauth-end-session.mjs#L70))
+  - [x] Back-channel logout ([test](../../../adapters/sqlstore/oauth_backchannel_logout_test.go#L99))
     - [x] Revoke session-bound stored grants atomically across bulk deletion, rollback and concurrent issuance on three SQL engines ([test](../../../adapters/sqlstore/session_deletion_test.go#L12))
     - [x] Remove an issuing browser session through the HTTP API and preserve only its offline refresh grant ([test](../../../conformance/oauth-refresh-introspection.mjs#L62))
-    - [x] Send one logout token per enabled client with a back-channel logout URI that held stored tokens on an ended session, signed with the session's sid and the client's public or pairwise subject, posted as a form with a 5-second deadline and no redirects, logged on refusal, through the background runner, and advertised only with the jwt plugin, on SQLite, PostgreSQL and MySQL; dialing only public addresses and covering every session end through the store's report are documented deviations ([test](../../../adapters/sqlstore/oauth_backchannel_logout_test.go#L98))
+    - [x] Send one logout token per enabled client with a back-channel logout URI that held stored tokens on an ended session, signed with the session's sid and the client's public or pairwise subject, posted as a form with a 5-second deadline and no redirects, logged on refusal, through the background runner, and advertised only with the jwt plugin, on SQLite, PostgreSQL and MySQL; dialing only public addresses and covering every session end through the store's report are documented deviations ([test](../../../adapters/sqlstore/oauth_backchannel_logout_test.go#L99))
     - [x] Register a client with a back-channel logout URI, complete a code flow, sign out and receive the same form, header and claim set from both runtimes ([test](../../../conformance/oauth-backchannel-logout.mjs#L93))
 
 ## OAuth Provider reference
@@ -785,8 +800,9 @@
       - [x] Discover endpoints and capabilities for the machine grant, then register a client, verify a signed token and revoke an opaque token ([test](../../../conformance/oauth-issuer-metadata.mjs#L97))
       - [x] Retrieve the native issuer document, preserve escaped issuer paths and omit disabled endpoints and unavailable store capabilities ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L66))
       - [x] Publish the same grant, response type, scope, authentication method, DPoP and back-channel logout fields as another runtime ([test](../../../conformance/oauth-issuer-metadata.mjs#L67))
-    - [ ] `GET /.well-known/openid-configuration` (server API only)
+    - [x] `GET /.well-known/openid-configuration` (server API only) ([test](../../../adapters/sqlstore/oauth_end_session_test.go#L173))
       - [x] Start from a custom issuer URL, discover the endpoints, complete PKCE sign-in and verify the ID token, access-token hash and UserInfo subject using an independent Go client ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L23))
+      - [x] Publish end_session_endpoint, with the always-present back-channel logout flags, completing the OpenID document; listing the endpoint only for a store that can read the hinted session is a documented deviation ([test](../../../adapters/sqlstore/oauth_end_session_test.go#L173))
     - [ ] `GET / POST /oauth2/authorize`
       - [x] Sign in and register a public client, then obtain a code by GET or form POST and redeem it at either issuer with S256 PKCE ([test](../../../conformance/oauth-browser-authorization.mjs#L5))
       - [x] Recheck the registered callback, owner session and scoped consent in the issuing transaction on all three databases ([test](../../../adapters/sqlstore/oauth_browser_authorization_test.go#L20))
@@ -825,8 +841,11 @@
       - [x] Revoke owned opaque and refresh tokens, refuse signed access tokens and reject missing tokens and failed client authentication ([test](../../../conformance/oauth-revocation.mjs#L5))
     - [x] `GET / POST /oauth2/userinfo` ([test](../../../conformance/oauth-userinfo.mjs#L40))
       - [x] Read scoped profile claims over GET and form POST and match the subject of an independently issued ID token for signed and opaque grants ([test](../../../conformance/oauth-userinfo.mjs#L40))
-    - [ ] `GET / POST /oauth2/end-session`
-    - [ ] `POST /oauth2/end-session/confirm`
+    - [x] `GET / POST /oauth2/end-session` ([test](../../../adapters/sqlstore/oauth_end_session_test.go#L62))
+      - [x] End the hinted session for a valid hint, expired or not, with or without the browser's cookies, follow only an exact registered post-logout URI, refuse invalid clients and hints and ask for confirmation otherwise, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_end_session_test.go#L62))
+      - [x] Compare discovery, JSON refusals, the confirmation page and cookie, confirmation and a hinted redirect with another runtime ([test](../../../conformance/oauth-end-session.mjs#L70))
+    - [x] `POST /oauth2/end-session/confirm` ([test](../../../adapters/sqlstore/oauth_end_session_test.go#L358))
+      - [x] Confirm a browser logout only with its signed, unexpired, session-bound cookie from the same origin, rechecking the redirect, then clear both cookies, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_end_session_test.go#L358))
     - [ ] `POST /oauth2/register`
       - [x] Register public and confidential clients and exchange both a shared secret and an ES256 assertion at an independent issuer ([test](../../../conformance/oauth-registration.mjs#L442))
     - [ ] `POST /admin/oauth2/create-client` (server API only)
@@ -984,7 +1003,7 @@
     - [x] Return an interaction error for silent onboarding and wait for the host’s stored update before exposing consent ([test](../../../conformance/oauth-signup-policy.mjs#L45))
     - [x] Return a silent interaction error, ignore a supplied clearance on a new request and sign only a completed session’s consent page ([test](../../../conformance/oauth-post-login.mjs#L87))
   - [ ] Login page
-    - [x] Continue from the external provider by browser redirect or JSON and enforce consent for the original request ([test](../../../conformance/oauth-social-authorization.mjs#L116))
+    - [x] Continue from the external provider by browser redirect or JSON and enforce consent for the original request ([test](../../../conformance/oauth-social-authorization.mjs#L122))
     - [x] Take a signed-out user through local login, consent and PKCE redemption and require fresh credentials when requested ([test](../../../conformance/oauth-browser-login.mjs#L41))
     - [x] Wait for the second factor before resuming, replace the prior browser account and enforce host authorization rules ([test](../../../adapters/sqlstore/oauth_browser_login_test.go#L22))
     - [x] Resume the original client authorization with the enterprise employee’s new session and redeem the code after consent ([test](../../../conformance/oauth-enterprise-authorization.mjs#L43))

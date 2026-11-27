@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash, randomUUID } from "node:crypto";
-import { get } from "node:http";
+import { request } from "node:http";
 import { DatabaseSync } from "node:sqlite";
 import { jwt } from "better-auth/plugins";
 import { genericOAuth } from "better-auth/plugins/generic-oauth";
@@ -58,14 +58,20 @@ export function issuerBrowser(runtime, server) {
     let response;
     if (runtime === "Go" && headers.get("sec-fetch-mode") === "navigate") {
       // fetch supplies its own CORS mode on the wire. Send the headers of a
-      // top-level browser GET for the navigation case.
+      // top-level browser navigation, a GET or a form POST.
       response = await new Promise((resolve, reject) => {
-        get(url, {headers: Object.fromEntries(headers)}, res => {
-          res.resume();
-          const reply = new Headers();
-          for (let i = 0; i < res.rawHeaders.length; i += 2) reply.append(res.rawHeaders[i], res.rawHeaders[i + 1]);
-          resolve(new Response(null, {status: res.statusCode, headers: reply}));
-        }).on("error", reject);
+        const req = request(url, {method: options.method ?? "GET", headers: Object.fromEntries(headers)}, res => {
+          const chunks = [];
+          res.on("data", chunk => chunks.push(chunk));
+          res.on("end", () => {
+            const reply = new Headers();
+            for (let i = 0; i < res.rawHeaders.length; i += 2) reply.append(res.rawHeaders[i], res.rawHeaders[i + 1]);
+            const body = Buffer.concat(chunks);
+            resolve(new Response([101, 103, 204, 205, 304].includes(res.statusCode) ? null : body, {status: res.statusCode, headers: reply}));
+          });
+        });
+        req.on("error", reject);
+        req.end(options.body);
       });
     } else {
       response = await server.send(new Request(url, {...options, headers, redirect: "manual"}));

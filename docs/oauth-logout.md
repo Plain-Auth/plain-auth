@@ -1,6 +1,34 @@
 # OAuth logout
 
-When a user's session ends, the OAuth provider tells the clients that hold tokens for it.
+A client can ask the OAuth provider to end the user's session, and when a session ends, the provider tells the clients that hold tokens for it.
+
+## RP-initiated logout
+
+To let a client end the user's session, give it `EnableEndSession` from server code. `/oauth2/end-session` then implements [RP-Initiated Logout](https://openid.net/specs/openid-connect-rpinitiated-1_0.html#RPLogout) for it, and discovery publishes it as `end_session_endpoint`:
+
+```go
+end := true
+created, err := manager.CreateClient(ctx, r.Header, oauthprovider.ClientCreation{
+    RegistrationMetadata: oauthprovider.RegistrationMetadata{
+        RedirectURIs:           []string{"https://app.example.com/callback"},
+        PostLogoutRedirectURIs: []string{"https://app.example.com/logout"},
+    },
+    EnableEndSession: &end,
+})
+```
+
+`ClientManager.UpdateClient` changes the setting later. Owners cannot set it through `/oauth2/register`, `/oauth2/create-client` or `/oauth2/update-client`.
+
+- **Requests** use `GET` query parameters or a `POST` body as a form or JSON, with `id_token_hint`, `client_id`, `post_logout_redirect_uri` and `state`; body fields win over query fields. A repeated or non-string field answers 400 `invalid_request`. The Go client sends one with `client.EndOAuthSession`.
+- **A valid hint** ends the session it names: the browser's own session, or the hinted one when the request carries no session cookie. The hint must be an ID token this issuer signed for the client, with `sid` and `sub`; an expired one is accepted. The client comes from `client_id`, or else from the hint's `aud` or `azp`; at most one client is looked up before the signature is checked. With `DisableJWTPlugin`, the hint is checked with the client's secret, read back from its encrypted storage.
+- **Confirmation** is needed without a hint, with a hint for another session than the browser's, or, from a browser with a session, with a hint that fails. A browser gets a "Confirm logout" page whose form posts `action=confirm` to `/oauth2/end-session/confirm`, with a signed cookie named after the session cookie plus `.oauth_logout_confirmation`, `HttpOnly`, `SameSite=Lax`, scoped to that path and valid for five minutes. Other callers get 400 `invalid_request`: "User confirmation is required to complete logout", or "No active session is available for logout". Confirming ends the browser's current session; a missing, tampered or expired cookie, or one bound to another session, answers 400 "The logout confirmation is invalid or expired", and the core origin check refuses a cross-origin form.
+- **Redirects** go only to a `post_logout_redirect_uri` that exactly matches one of the client's registered URIs, with `state` added. A browser is redirected with 302; a fetch or JSON caller gets `{"redirect":true,"url":...}`. Without a match, a browser sees a "Logged out." page, noting an unregistered redirect when one was asked for, and other callers get JSON `null`. After confirmation, the redirect is checked again: the client must still be enabled, allowed to end sessions and list the URI, and the URI must still pass the HTTPS rule. A URI that fails the HTTPS rule, as at authorize, answers 400 `invalid_request` before anything else.
+- **Refusals:** a missing client answers 400 `invalid_client` "The logout client does not exist", a disabled one 400 "The logout client is disabled", and one without `EnableEndSession` 401 "The client is not allowed to initiate logout", before the hint is checked; a hint that fails answers 401 `invalid_token`. A browser gets these as an error page. Pages are sent with `Content-Security-Policy: default-src 'none'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'`, and every answer with `Cache-Control: no-store` and `Pragma: no-cache`.
+- **Ending the session** runs the session delete hooks, as sign-out does, and so sends back-channel logout tokens. A failure answers 500 `server_error` and keeps the session.
+
+The store must implement `oauthprovider.EndSessionStore`, as the SQL adapter does, to read the session a hint names; without it, the endpoint answers 501 and discovery leaves `end_session_endpoint` out, where another runtime always lists it.
+
+[Three-database tests](../adapters/sqlstore/oauth_end_session_test.go) · [Cross-runtime test](../conformance/oauth-end-session.mjs)
 
 ## Back-channel logout
 

@@ -19487,6 +19487,12 @@
       "label": "Serve the public provider document through ServeMux, chi, Gorilla Mux, Gin, Echo and Fiber and honor HEAD",
       "test": "integrations/routers/routers_test.go",
       "marker": "router lost OpenID provider metadata"
+    },
+    {
+      "label": "Publish end_session_endpoint, with the always-present back-channel logout flags, completing the OpenID document; listing the endpoint only for a store that can read the hinted session is a documented deviation",
+      "test": "adapters/sqlstore/oauth_end_session_test.go",
+      "marker": "doc.EndSessionEndpoint != mount",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/oauth-provider/reference.mdx#L317/`GET /.well-known/openid-configuration`": [
@@ -19494,6 +19500,12 @@
       "label": "Start from a custom issuer URL, discover the endpoints, complete PKCE sign-in and verify the ID token, access-token hash and UserInfo subject using an independent Go client",
       "test": "plugins/oauthprovider/openid_metadata_test.go",
       "marker": "func TestRelyingPartyDiscoversOpenIDIssuer("
+    },
+    {
+      "label": "Publish end_session_endpoint, with the always-present back-channel logout flags, completing the OpenID document; listing the endpoint only for a store that can read the hinted session is a documented deviation",
+      "test": "adapters/sqlstore/oauth_end_session_test.go",
+      "marker": "doc.EndSessionEndpoint != mount",
+      "complete": true
     }
   ],
   "plugin-symbol/oauth-provider/oidcServerMetadata": [
@@ -19501,6 +19513,12 @@
       "label": "Start from a custom issuer URL, discover the endpoints, complete PKCE sign-in and verify the ID token, access-token hash and UserInfo subject using an independent Go client",
       "test": "plugins/oauthprovider/openid_metadata_test.go",
       "marker": "func TestRelyingPartyDiscoversOpenIDIssuer("
+    },
+    {
+      "label": "Publish end_session_endpoint, with the always-present back-channel logout flags, completing the OpenID document; listing the endpoint only for a store that can read the hinted session is a documented deviation",
+      "test": "adapters/sqlstore/oauth_end_session_test.go",
+      "marker": "doc.EndSessionEndpoint != mount",
+      "complete": true
     }
   ],
   "plugin-symbol/oauth-provider/oauthProviderOpenIdConfigMetadata": [
@@ -19521,6 +19539,12 @@
       "label": "Read identical OpenID and OAuth aliases, discover signing keys and validate claims and subjects for each supported signing algorithm",
       "test": "conformance/oauth-id-tokens.mjs",
       "marker": "assert.deepEqual(metadata.id_token_signing_alg_values_supported, [alg]);"
+    },
+    {
+      "label": "Publish end_session_endpoint, with the always-present back-channel logout flags, completing the OpenID document; listing the endpoint only for a store that can read the hinted session is a documented deviation",
+      "test": "adapters/sqlstore/oauth_end_session_test.go",
+      "marker": "doc.EndSessionEndpoint != mount",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/oauth-provider/openid-connect.mdx#L20": [
@@ -48988,6 +49012,105 @@
       "label": "Never list an ownerless client and refuse owner reads and updates of it, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_client_privileges_test.go",
       "marker": "t.Fatal(\"an ownerless client was listed\", list)"
+    }
+  ],
+  "plugin/oauth-provider/GET / POST /oauth2/end-session": [
+    {
+      "label": "End the hinted session for a valid hint, expired or not, with or without the browser's cookies, through GET, a form or JSON POST and the Go client; follow only an exact registered post-logout URI with state; refuse missing, disabled and not-enabled clients, invalid hints and insecure redirects; resolve the client from aud or azp with at most one lookup; and ask for confirmation otherwise, on SQLite, PostgreSQL and MySQL; omitting end_session_endpoint for a store that cannot read the hinted session is a documented deviation",
+      "test": "adapters/sqlstore/oauth_end_session_test.go",
+      "marker": "func TestEndSession(",
+      "complete": true
+    },
+    {
+      "label": "Compare discovery, JSON refusals, the confirmation page and cookie, confirmation and a hinted redirect with another runtime",
+      "test": "conformance/oauth-end-session.mjs",
+      "marker": "assert.deepEqual(results.Go, results.reference);"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L325/`GET / POST /oauth2/end-session`": [
+    {
+      "label": "End the hinted session for a valid hint, expired or not, with or without the browser's cookies, follow only an exact registered post-logout URI, refuse invalid clients and hints and ask for confirmation otherwise, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_end_session_test.go",
+      "marker": "func TestEndSession(",
+      "complete": true
+    },
+    {
+      "label": "Compare discovery, JSON refusals, the confirmation page and cookie, confirmation and a hinted redirect with another runtime",
+      "test": "conformance/oauth-end-session.mjs",
+      "marker": "assert.deepEqual(results.Go, results.reference);"
+    }
+  ],
+  "plugin/oauth-provider/POST /oauth2/end-session/confirm": [
+    {
+      "label": "Show a browser the confirmation page with a signed five-minute cookie scoped to the confirm route, and confirm only with that cookie, unexpired, bound to the current session, from the same origin, rechecking the redirect's client and HTTPS rule, then clear both cookies and notify clients, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_end_session_test.go",
+      "marker": "// A browser gets the confirmation page and its cookie.",
+      "complete": true
+    },
+    {
+      "label": "Compare the confirmation page, its cookie attributes and confirming with another runtime",
+      "test": "conformance/oauth-end-session.mjs",
+      "marker": "assert.deepEqual(results.Go, results.reference);"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L326/`POST /oauth2/end-session/confirm`": [
+    {
+      "label": "Confirm a browser logout only with its signed, unexpired, session-bound cookie from the same origin, rechecking the redirect, then clear both cookies, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_end_session_test.go",
+      "marker": "// Confirming ends the session, clears both cookies and notifies.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/openid-connect.mdx#L146": [
+    {
+      "label": "Let a client with end session enabled end the user's session through RP-Initiated Logout, with confirmation pages, exact post-logout redirects and the documented refusals, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_end_session_test.go",
+      "marker": "func TestEndSession(",
+      "complete": true
+    },
+    {
+      "label": "Compare RP-Initiated Logout with another runtime",
+      "test": "conformance/oauth-end-session.mjs",
+      "marker": "assert.deepEqual(results.Go, results.reference);"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/clients.mdx#L78/`enable_end_session`": [
+    {
+      "label": "Create and update a client's end-session setting from server code, and refuse logout for a client without it, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_end_session_test.go",
+      "marker": "func TestEndSession(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/index.mdx#L31/Logout": [
+    {
+      "label": "RP-Initiated Logout with confirmation and exact post-logout redirects, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_end_session_test.go",
+      "marker": "func TestEndSession(",
+      "complete": true
+    },
+    {
+      "label": "Back-channel logout tokens for every client holding tokens on an ended session, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_backchannel_logout_test.go",
+      "marker": "func TestBackchannelLogout("
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/clients.mdx#L231": [
+    {
+      "label": "Check post-logout URIs at end-session and again at confirmation with the HTTPS rule and AllowHTTPRedirect, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_end_session_test.go",
+      "marker": "// The transport check runs first, with AllowHTTPRedirect.",
+      "complete": true
+    },
+    {
+      "label": "Refuse HTTP redirect and post-logout URIs at registration unless they are loopback for a non-web client or AllowHTTPRedirect accepts them",
+      "test": "plugins/oauthprovider/registration_test.go",
+      "marker": "func TestRegistrationRedirectPolicy("
+    },
+    {
+      "label": "Apply the same HTTPS rule alone at authorize, with AllowHTTPRedirect",
+      "test": "plugins/oauthprovider/registration_test.go",
+      "marker": "func TestRedirectTransportPolicy("
     }
   ]
 }

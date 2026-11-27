@@ -280,6 +280,19 @@ func (r RegistrationOptions) checkSecret(ctx context.Context, a *auth.Auth, clie
 	return subtle.ConstantTimeCompare([]byte(expected), []byte(stored)) == 1, nil
 }
 
+// storedSecret reads a client secret back from its stored form, to verify
+// an HS256 ID token hint; a hashed secret cannot be read back.
+func (r RegistrationOptions) storedSecret(ctx context.Context, a *auth.Auth, clientID, stored string) (string, error) {
+	switch {
+	case r.DecryptSecret != nil:
+		return r.DecryptSecret(ctx, stored)
+	case r.SecretStorage == "encrypted":
+		plain, err := a.DecryptRecord(clientSecretPurpose+clientID, stored)
+		return string(plain), err
+	}
+	return "", nil
+}
+
 func (in tokenRequest) checkMethod(client MachineClient) error {
 	if client.ClientID != in.id {
 		return invalidClient("client not found")

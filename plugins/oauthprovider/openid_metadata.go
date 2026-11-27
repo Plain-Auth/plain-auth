@@ -11,7 +11,10 @@ import (
 // OpenIDProviderMetadata describes the issuer document available to relying parties.
 type OpenIDProviderMetadata struct {
 	AuthorizationServerMetadata
-	UserInfoEndpoint             string   `json:"userinfo_endpoint,omitempty"`
+	UserInfoEndpoint string `json:"userinfo_endpoint,omitempty"`
+	// EndSessionEndpoint is RP-Initiated Logout, published when the store
+	// can end the session a hint names.
+	EndSessionEndpoint           string   `json:"end_session_endpoint,omitempty"`
 	ClaimsSupported              []string `json:"claims_supported,omitzero"`
 	ClaimsParameterSupported     bool     `json:"claims_parameter_supported"`
 	SubjectTypesSupported        []string `json:"subject_types_supported"`
@@ -44,10 +47,11 @@ func GetOpenIDConfig(a *auth.Auth) (OpenIDProviderMetadata, error) {
 	return doc, err
 }
 
-func (opts Options) openIDMetadata(a *auth.Auth, server AuthorizationServerMetadata, userInfo string, interactiveConsent bool) OpenIDProviderMetadata {
+func (opts Options) openIDMetadata(a *auth.Auth, server AuthorizationServerMetadata, userInfo, endSession string, interactiveConsent bool) OpenIDProviderMetadata {
 	doc := OpenIDProviderMetadata{
 		AuthorizationServerMetadata: server,
 		UserInfoEndpoint:            userInfo,
+		EndSessionEndpoint:          endSession,
 		ClaimsSupported:             opts.supportedUserInfoClaims(), ClaimsParameterSupported: true,
 		SubjectTypesSupported: []string{"public"}, ACRValuesSupported: []string{"0"},
 		IDTokenSigningAlgorithms: []string{opts.idTokenAlgorithm(a)},
