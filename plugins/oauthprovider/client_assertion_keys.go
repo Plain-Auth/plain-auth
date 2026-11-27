@@ -225,12 +225,23 @@ func (cache *clientKeyCache) refresh(ctx context.Context, uri string, f *keyFetc
 }
 
 func (cache *clientKeyCache) fetch(ctx context.Context, uri string) (assertionKeys, bool, error) {
+	raw, transient, err := fetchKeySet(ctx, cache.http, uri)
+	if err != nil {
+		return nil, transient, err
+	}
+	keys, err := decodeAssertionKeys(raw)
+	return keys, false, err
+}
+
+// fetchKeySet reads a JWKS document: status 200, a JSON media type and at
+// most 64 KiB. It reports whether a failure may pass on retry.
+func fetchKeySet(ctx context.Context, client *http.Client, uri string) ([]byte, bool, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, uri, nil)
 	if err != nil {
 		return nil, false, errFetchKeys
 	}
 	req.Header.Set("Accept", "application/jwk-set+json, application/json")
-	res, err := cache.http.Do(req)
+	res, err := client.Do(req)
 	if err != nil {
 		var netErr net.Error
 		transient := errors.As(err, &netErr) && netErr.Timeout()
@@ -254,6 +265,5 @@ func (cache *clientKeyCache) fetch(ctx context.Context, uri string) (assertionKe
 	if len(raw) > maxClientKeyBytes {
 		return nil, false, errFetchKeys
 	}
-	keys, err := decodeAssertionKeys(raw)
-	return keys, false, err
+	return raw, false, nil
 }
