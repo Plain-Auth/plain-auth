@@ -51400,6 +51400,12 @@
       "label": "Create the selected organization's own Stripe customer and bill its checkout to it through the browser client on both runtimes",
       "test": "conformance/stripe-organization-fixture.mjs",
       "marker": "assert.deepEqual(remote.state.customer.metadata, { organizationId: group.id, customerType: \"organization\" });"
+    },
+    {
+      "label": "With organization customers enabled, create the organization's customer on its first purchase, copy its rename to that customer and refuse deleting it while Stripe reports a billing subscription, through the browser client on both runtimes",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "export async function organizationCustomerSync(t, { reference, goFixture, instrument }) {",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L859/`plans`": [
@@ -51561,6 +51567,12 @@
       "label": "Create the organization's own Stripe customer, named after it, once organization billing is enabled, on both runtimes",
       "test": "conformance/stripe-organization-fixture.mjs",
       "marker": "assert.equal(remote.state.customer.name, group.name);"
+    },
+    {
+      "label": "With organization customers enabled, create the organization's customer on its first purchase, copy its rename to that customer and refuse deleting it while Stripe reports a billing subscription, through the browser client on both runtimes",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "export async function organizationCustomerSync(t, { reference, goFixture, instrument }) {",
+      "complete": true
     }
   ],
   "plugin-symbol/stripe/CustomerType": [
@@ -51843,6 +51855,11 @@
       "label": "Refuse sign-up customer options without a client or the user's customer column at startup, and call Stripe for nothing when sign-up creation is off",
       "test": "adapters/sqlstore/stripe_signup_customer_test.go",
       "marker": "func TestUserCustomerOptions(t *testing.T) {"
+    },
+    {
+      "label": "Create the user's customer once at sign-up with the user's email, name and metadata, and reuse it for a personal purchase, through the browser client on both runtimes",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "assert.equal(remote.state.checkout.customer, \"cus_user\", \"the sign-up customer pays for the purchase\");"
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L846/`createCustomerOnSignUp`": [
@@ -51859,6 +51876,11 @@
       "test": "adapters/sqlstore/stripe_signup_customer_test.go",
       "marker": "func TestSignUpStripeCustomer(t *testing.T) {",
       "complete": true
+    },
+    {
+      "label": "Create the user's customer once at sign-up with the user's email, name and metadata, and reuse it for a personal purchase, through the browser client on both runtimes",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "assert.equal(remote.state.checkout.customer, \"cus_user\", \"the sign-up customer pays for the purchase\");"
     }
   ],
   "plugin-symbol/stripe/StripeOptions/onCustomerCreate": [
@@ -51920,6 +51942,26 @@
       "label": "Create an organization's Stripe customer on its first purchase and report it once, on three SQL engines",
       "test": "adapters/sqlstore/stripe_organization_customer_test.go",
       "marker": "func TestOrganizationCustomerCallbacks(t *testing.T) {"
+    },
+    {
+      "label": "Create an organization's customer on its first purchase, copy its rename to that customer and refuse deleting it while Stripe reports a billing subscription, through the browser client on both runtimes",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "export async function organizationCustomerSync(t, { reference, goFixture, instrument }) {"
+    }
+  ],
+  "plugin-symbol/stripe/StripeOptions/organization": [
+    {
+      "label": "With organization customers enabled, create the organization's customer on its first purchase, copy its rename to that customer and refuse deleting it while Stripe reports a billing subscription, through the browser client on both runtimes",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "export async function organizationCustomerSync(t, { reference, goFixture, instrument }) {",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/stripe/stripe": [
+    {
+      "label": "Create a user's customer at sign-up and keep an organization's customer in step with renames and deletion through the browser client on both runtimes",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "export async function organizationCustomerSync(t, { reference, goFixture, instrument }) {"
     }
   ]
 }

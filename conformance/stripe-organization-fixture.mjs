@@ -20,7 +20,7 @@ async function provider(t, meteredIDs = []) {
       interval: intervalOf(id), interval_count: 1, usage_type: meteredIDs.includes(id) ? "metered" : "licensed",
     } };
   }
-  const state = { calls: [], customer: null, checkout: null, subscription: null, seatUpdates: [] };
+  const state = { calls: [], customer: null, checkout: null, subscription: null, seatUpdates: [], creates: [], customerUpdates: [], listSubscriptions: false };
   const server = createServer(async (req, res) => {
     const url = new URL(req.url, "http://127.0.0.1");
     const chunks = [];
@@ -34,10 +34,23 @@ async function provider(t, meteredIDs = []) {
     if (url.pathname === "/v1/customers" && req.method === "POST") {
       const metadata = fields("metadata[");
       result = { id: metadata.customerType === "organization" ? "cus_org" : "cus_user", object: "customer", name: form.get("name"), email: form.get("email"), metadata };
+      state.creates.push(result);
       if (result.id === "cus_org") state.customer = result;
       else state.userCustomer = result;
     }
-    if (url.pathname === "/v1/subscriptions" && req.method === "GET") result = { object: "list", has_more: false, data: [] };
+    const known = { "/v1/customers/cus_org": "customer", "/v1/customers/cus_user": "userCustomer" }[url.pathname];
+    if (known && state[known] && req.method === "GET") result = state[known];
+    if (known && state[known] && req.method === "POST") {
+      for (const field of ["name", "email"]) if (form.has(field)) {
+        state[known][field] = form.get(field);
+        state.customerUpdates.push([state[known].id, field, form.get(field)]);
+      }
+      result = state[known];
+    }
+    if (url.pathname === "/v1/subscriptions" && req.method === "GET") {
+      const listed = state.listSubscriptions && state.subscription?.customer === url.searchParams.get("customer") ? [state.subscription] : [];
+      result = { object: "list", has_more: false, data: listed };
+    }
     if (url.pathname.startsWith("/v1/prices/")) {
       const id = url.pathname.split("/").at(-1);
       result = price(id);
@@ -480,5 +493,44 @@ export async function trialCallbacks(t, { reference, goFixture, instrument }, ta
       await deliver("evt_trial_change", "customer.subscription.updated", remote.state.subscription, "update", "expired");
     }
     await deliver("evt_trial_change", "customer.subscription.updated", remote.state.subscription, "update");
+  });
+}
+
+// A sign-up creates the user's customer once, which a personal purchase
+// reuses; an organization rename reaches its customer; and an organization
+// whose customer still has a billing subscription cannot be deleted.
+export async function organizationCustomerSync(t, { reference, goFixture, instrument }) {
+  for (const runtime of ["reference", "Go"]) await t.test(runtime, async t => {
+    const remote = await provider(t);
+    const server = runtime === "Go"
+      ? await goFixture(t, ["organization", "stripe-organization"], { CONFORMANCE_STRIPE_URL: remote.url, CONFORMANCE_STRIPE_SIGNUP_CUSTOMERS: "1", CONFORMANCE_STRIPE_ORG_HOOKS: "1" })
+      : await reference(t, [organization(), stripe({
+        stripeClient: remote.api, stripeWebhookSecret: secret, createCustomerOnSignUp: true, organization: { enabled: true },
+        subscription: { enabled: true, plans: [{ name: "basic", priceId: "price_basic" }], authorizeReference: organizationBillingPolicy },
+      })]);
+    const owner = instrument(server, [organizationClient(), stripeClient({ subscription: true })]).client;
+    const account = checked(await owner.signUp.email({ email: "signup-buyer@example.test", name: "Signup Buyer", password: "test-password-123" }));
+    assert.deepEqual(remote.state.creates.map(c => [c.email, c.name, c.metadata]), [["signup-buyer@example.test", "Signup Buyer", { userId: account.user.id, customerType: "user" }]]);
+    checked(await owner.subscription.upgrade({ plan: "basic", disableRedirect: true }));
+    assert.equal(remote.state.checkout.customer, "cus_user", "the sign-up customer pays for the purchase");
+    assert.equal(remote.state.creates.length, 1);
+    const group = checked(await owner.organization.create({ name: "Synced Group", slug: "synced-group" }));
+    checked(await owner.subscription.upgrade({ customerType: "organization", referenceId: group.id, plan: "basic", disableRedirect: true }));
+    assert.equal(remote.state.checkout.customer, "cus_org");
+    assert.deepEqual(remote.state.customerUpdates, []);
+    const payload = JSON.stringify({ id: "evt_sync_checkout", type: "checkout.session.completed", object: "event", api_version: Stripe.API_VERSION, created: Math.floor(Date.now() / 1000), livemode: false, data: { object: remote.state.checkout } });
+    const signature = remote.api.webhooks.generateTestHeaderString({ payload, secret });
+    const delivered = await server.send(new Request(server.baseURL + "/api/auth/stripe/webhook", { method: "POST", headers: { "content-type": "application/json", "stripe-signature": signature }, body: payload }));
+    assert.equal(delivered.status, 200, await delivered.text());
+    checked(await owner.organization.update({ organizationId: group.id, data: { name: "Renamed Group" } }));
+    assert.deepEqual(remote.state.customerUpdates, [["cus_org", "name", "Renamed Group"]]);
+    checked(await owner.organization.update({ organizationId: group.id, data: { slug: "renamed-group" } }));
+    assert.equal(remote.state.customerUpdates.length, 1);
+    remote.state.listSubscriptions = true;
+    const refused = await owner.organization.delete({ organizationId: group.id });
+    assert.equal(refused.error?.status, 400);
+    assert.equal(refused.error?.code, "ORGANIZATION_HAS_ACTIVE_SUBSCRIPTION");
+    remote.state.subscription.status = "canceled";
+    checked(await owner.organization.delete({ organizationId: group.id }));
   });
 }

@@ -339,6 +339,9 @@ func main() {
 			if os.Getenv("CONFORMANCE_ORG_PROFILE_HOOKS") == "1" {
 				configureOrganizationProfileHooks(&options, os.Args[1]+".org-profile-events")
 			}
+			if err := fixtureOrganizationHooks(&options, store); err != nil {
+				log.Fatal(err)
+			}
 			if id == "organization-teams" {
 				options.Teams = fixtureTeamOptions()
 			}

@@ -1035,6 +1035,11 @@ test("organization billing selects the authorized customer and reconciles its re
   await organizationBilling(t, { reference, goFixture, instrument });
 });
 
+test("sign-up and organization Stripe customers stay in step with their accounts on both runtimes", async t => {
+  const { organizationCustomerSync } = await import("./stripe-organization-fixture.mjs");
+  await organizationCustomerSync(t, { reference, goFixture, instrument });
+});
+
 test("SCIM dynamic bearer verification matches the pinned callback and tenant isolation contract", async t => {
   const { dynamicContract } = await import("./scim-contract.mjs");
   await dynamicContract(t, goFixture);

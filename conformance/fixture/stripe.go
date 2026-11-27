@@ -12,14 +12,16 @@ import (
 
 	"github.com/Plain-Org/plain-auth"
 	"github.com/Plain-Org/plain-auth/adapters/sqlstore"
+	"github.com/Plain-Org/plain-auth/plugins/organization"
 	billing "github.com/Plain-Org/plain-auth/plugins/stripe"
 	sdk "github.com/stripe/stripe-go/v87"
 )
 
-func fixtureStripe(ctx context.Context, store *sqlstore.Store, endpoint string, organizations, managedSeats bool) (plainauth.Plugin, error) {
+// fixtureStripeClient calls the local Stripe fixture at endpoint.
+func fixtureStripeClient(endpoint string) (*sdk.Client, error) {
 	u, err := url.Parse(endpoint)
 	if err != nil || u.Scheme != "http" || u.Hostname() != "127.0.0.1" || u.Port() == "" || u.User != nil || u.Path != "" || u.RawQuery != "" || u.Fragment != "" {
-		return plainauth.Plugin{}, errors.New("Stripe fixture requires a loopback HTTP origin")
+		return nil, errors.New("Stripe fixture requires a loopback HTTP origin")
 	}
 	client := &http.Client{
 		Transport: &http.Transport{}, Timeout: 5 * time.Second,
@@ -28,7 +30,29 @@ func fixtureStripe(ctx context.Context, store *sqlstore.Store, endpoint string, 
 	backends := sdk.NewBackendsWithConfig(&sdk.BackendConfig{
 		URL: sdk.String(endpoint), HTTPClient: client, MaxNetworkRetries: sdk.Int64(0),
 	})
-	provider := sdk.NewClient("sk_test_offline_fixture", sdk.WithBackends(backends))
+	return sdk.NewClient("sk_test_offline_fixture", sdk.WithBackends(backends)), nil
+}
+
+// fixtureOrganizationHooks keeps organization customers in step when
+// CONFORMANCE_STRIPE_ORG_HOOKS is set.
+func fixtureOrganizationHooks(options *organization.Options, store *sqlstore.Store) error {
+	if os.Getenv("CONFORMANCE_STRIPE_ORG_HOOKS") != "1" {
+		return nil
+	}
+	provider, err := fixtureStripeClient(os.Getenv("CONFORMANCE_STRIPE_URL"))
+	if err != nil {
+		return err
+	}
+	hooks := billing.OrganizationHooks{Client: provider, Store: store}
+	options.AfterUpdateOrganization, options.BeforeDeleteOrganization = hooks.AfterUpdateOrganization, hooks.BeforeDeleteOrganization
+	return nil
+}
+
+func fixtureStripe(ctx context.Context, store *sqlstore.Store, endpoint string, organizations, managedSeats bool) (plainauth.Plugin, error) {
+	provider, err := fixtureStripeClient(endpoint)
+	if err != nil {
+		return plainauth.Plugin{}, err
+	}
 	var org *billing.OrganizationOptions
 	if organizations {
 		org = &billing.OrganizationOptions{AuthorizeReference: func(v billing.ReferenceAuthorization) bool { return v.Role == "owner" || v.Role == "admin" }}
@@ -66,6 +90,9 @@ func fixtureStripe(ctx context.Context, store *sqlstore.Store, endpoint string, 
 	}
 	opts := billing.Options{Organization: org, WebhookSecret: "whsec_offline_fixture",
 		Portal: &billing.PortalOptions{Client: provider, Customers: store}, Subscriptions: subscriptions,
+	}
+	if os.Getenv("CONFORMANCE_STRIPE_SIGNUP_CUSTOMERS") == "1" {
+		opts.UserCustomers = &billing.UserCustomerOptions{Client: provider, CreateCustomerOnSignUp: true}
 	}
 	trialCallbacks := os.Getenv("CONFORMANCE_STRIPE_TRIAL_CALLBACKS")
 	trials := trialCallbacks == "1" || trialCallbacks == "solo"

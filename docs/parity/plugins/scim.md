@@ -192,7 +192,7 @@
     - [x] Give a static credential's principal its directory, default provisioning domain, all scopes and no expiry, and carry a scoped, expiring credential's values, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L190))
   - [ ] `SCIMTransactionContext`
   - [x] `decommissionSCIMConnection (server API only)` ([test](../../../adapters/sqlstore/scim_decommission_test.go#L298))
-    - [x] Persist a terminal binding before first use and read its completion timestamp from either implementation ([test](../../../conformance/core.test.mjs#L1063))
+    - [x] Persist a terminal binding before first use and read its completion timestamp from either implementation ([test](../../../conformance/core.test.mjs#L1068))
     - [x] Retire a code-defined connection in one batch, shut out its token, keep its rows, and refuse a managed connection with 400 invalidValue, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_decommission_test.go#L298))
   - [x] `GET /scim/v2/ServiceProviderConfig` ([test](../../../plugins/scim/http_test.go#L214))
     - [x] Discover filter, patch and pagination capabilities without a directory credential ([test](../../../conformance/scim-contract.mjs#L45))
@@ -283,7 +283,7 @@
     - [x] Read the other implementation’s ordered audit events and total with pagination ([test](../../../conformance/scim-managed.mjs#L13))
     - [x] Return the latest hundred events oldest first by default and refuse a limit over 100, a negative offset or an unknown direction with 400 invalidValue, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_managed_test.go#L282))
   - [x] `decommissionSCIMManagedConnection (server API only)` ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L166))
-    - [x] Retire a provisioned directory from either implementation, invalidate its credentials and revoke the last source’s sessions ([test](../../../conformance/core.test.mjs#L1063))
+    - [x] Retire a provisioned directory from either implementation, invalidate its credentials and revoke the last source’s sessions ([test](../../../conformance/core.test.mjs#L1068))
     - [x] Resume failed and expired leases across instances, retain independently sourced sessions and record one completion ([test](../../../adapters/sqlstore/scim_decommission_test.go#L17))
     - [x] Refuse a retirement without an actor or of a code-defined connection, and end the active credentials, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L166))
   - [x] `SCIMManagedConnection` ([test](../../../adapters/sqlstore/scim_managed_contract_test.go#L58))
