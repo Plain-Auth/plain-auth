@@ -602,3 +602,165 @@ func TestExtensionGrantUserTokens(t *testing.T) {
 		})
 	}
 }
+
+// ValidateAccessToken, inside an extension grant, sees an opaque or signed
+// access token as the issuer does without a client, and as a client does at
+// introspection with one: the issuer and a client linked to the token's
+// resource see it active, another client inactive. A refresh token and an
+// unknown token are inactive; RequireActiveAccessToken refuses inactive
+// tokens with 401 invalid_token and a Bearer challenge. A pairwise client's
+// subject is presented pairwise, and a DPoP token's key is returned
+// without a proof.
+func TestExtensionGrantValidateTokens(t *testing.T) {
+	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
+		t.Run(dialect, func(t *testing.T) {
+			ctx := t.Context()
+			must := func(err error) {
+				t.Helper()
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			s, err := OpenWithOptions(ctx, dialect, organizationTestDSN(t, dialect), []string{"oauth-provider", "jwt"}, schema.Options{})
+			must(err)
+			t.Cleanup(func() { s.Close() })
+			write := func(q string, args ...any) {
+				t.Helper()
+				_, err := s.db.ExecContext(ctx, s.bind(q), args...)
+				must(err)
+			}
+			now := time.Now().UTC().Truncate(time.Second)
+			write(`INSERT INTO "user" ("id","name","email","emailVerified","createdAt","updatedAt") VALUES ('owner','Owner','owner@example.test',?,?,?)`, true, s.date(now), s.date(now))
+			write(`INSERT INTO "session" ("id","userId","token","createdAt","updatedAt","expiresAt") VALUES ('sid','owner','a',?,?,?)`, s.date(now), s.date(now), s.date(now.Add(time.Hour)))
+			const mintGrant, checkGrant = "urn:test:mint", "urn:test:check"
+			secret := "validate-secret"
+			digest := sha256.Sum256([]byte(secret))
+			for _, id := range []string{"app", "linked", "stranger", "pairwise"} {
+				subject := "public"
+				if id == "pairwise" {
+					subject = "pairwise"
+				}
+				write(`INSERT INTO "oauthClient" ("id","clientId","clientSecret","tokenEndpointAuthMethod","redirectUris","grantTypes","subjectType") VALUES (?,?,?,'client_secret_post',?,?,?)`,
+					id, id, base64.RawURLEncoding.EncodeToString(digest[:]), `["https://`+id+`.example.test/cb"]`, `["`+mintGrant+`","refresh_token"]`, subject)
+			}
+			write(`INSERT INTO "oauthResource" ("id","identifier","name") VALUES ('api','urn:api','API')`)
+			for _, id := range []string{"app", "linked", "pairwise"} {
+				write(`INSERT INTO "oauthClientResource" ("id","resourceId","clientId") VALUES (?,'urn:api',?)`, "link-"+id, id)
+			}
+			mint := func(in op.GrantInput) (op.TokenResponse, error) {
+				client, err := in.Provider.AuthenticateClient(op.ClientAuthenticationRequest{})
+				if err != nil {
+					return op.TokenResponse{}, err
+				}
+				return in.Provider.IssueTokens(op.TokenIssueParams{ClientID: client.ClientID, UserID: "owner", SessionID: "sid", Scopes: strings.Fields(in.Form.Get("scope")), Resources: in.Form["resource"]})
+			}
+			check := func(in op.GrantInput) (op.TokenResponse, error) {
+				validate := in.Provider.ValidateAccessToken
+				if in.Form.Get("require") == "yes" {
+					validate = in.Provider.RequireActiveAccessToken
+				}
+				payload, err := validate(in.Form.Get("token"), in.Form.Get("caller"))
+				if err != nil {
+					return op.TokenResponse{}, err
+				}
+				return op.TokenResponse{AccessToken: "checked", TokenType: "Bearer", Fields: map[string]any{"payload": payload}}, nil
+			}
+			p, err := op.New(op.Options{Scopes: []string{"reports", "offline_access"}, PairwiseSecret: strings.Repeat("p", 32),
+				Extensions: []op.Extension{{Grants: map[string]op.GrantHandler{mintGrant: mint, checkGrant: check}}}})
+			must(err)
+			signing, err := auth.NewJWT(auth.JWTOptions{})
+			must(err)
+			const origin = "https://validate.example.test"
+			off := false
+			h, err := auth.New(auth.Options{BaseURL: origin, Secret: strings.Repeat("v", 40), Store: s, Plugins: []auth.Plugin{p, signing}, RateLimit: &off})
+			must(err)
+			tokenURL := origin + "/api/auth/oauth2/token"
+			post := func(form url.Values, proof string) (int, map[string]any, http.Header) {
+				t.Helper()
+				req := httptest.NewRequest("POST", tokenURL, strings.NewReader(form.Encode()))
+				req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+				if proof != "" {
+					req.Header.Set("DPoP", proof)
+				}
+				out := httptest.NewRecorder()
+				h.ServeHTTP(out, req)
+				var body map[string]any
+				_ = json.Unmarshal(out.Body.Bytes(), &body)
+				return out.Code, body, out.Header()
+			}
+			issue := func(client string, extra url.Values, proof string) map[string]any {
+				t.Helper()
+				form := url.Values{"grant_type": {mintGrant}, "client_id": {client}, "client_secret": {secret}}
+				for k, v := range extra {
+					form[k] = v
+				}
+				status, body, _ := post(form, proof)
+				if status != 200 {
+					t.Fatal("minting failed", status, body)
+				}
+				return body
+			}
+			validate := func(token, caller string) map[string]any {
+				t.Helper()
+				status, body, _ := post(url.Values{"grant_type": {checkGrant}, "token": {token}, "caller": {caller}}, "")
+				if status != 200 {
+					t.Fatal("validation failed", status, body)
+				}
+				return body["payload"].(map[string]any)
+			}
+			opaque := issue("app", url.Values{"scope": {"reports offline_access"}}, "")
+			signed := issue("app", url.Values{"scope": {"reports"}, "resource": {"urn:api"}}, "")
+			for _, c := range []struct {
+				token, caller string
+				active        bool
+			}{
+				{opaque["access_token"].(string), "", true},
+				{opaque["access_token"].(string), "app", true},
+				{opaque["access_token"].(string), "stranger", false},
+				{signed["access_token"].(string), "", true},
+				{signed["access_token"].(string), "linked", true},
+				{signed["access_token"].(string), "stranger", false},
+				{opaque["refresh_token"].(string), "", false},
+				{opaque["refresh_token"].(string), "app", false},
+				{"unknown", "", false},
+			} {
+				payload := validate(c.token, c.caller)
+				if payload["active"] != c.active || c.active && (payload["sub"] != "owner" || payload["client_id"] != "app" || payload["sid"] != "sid") {
+					t.Fatal("the token validated wrong", c.caller, c.active, payload)
+				}
+			}
+			// A pairwise client's subject is presented pairwise, to the
+			// issuer's view and to the client's, opaque or signed.
+			pairwiseOpaque := issue("pairwise", url.Values{"scope": {"reports"}}, "")["access_token"].(string)
+			pairwiseSigned := issue("pairwise", url.Values{"scope": {"reports"}, "resource": {"urn:api"}}, "")["access_token"].(string)
+			for _, c := range [][2]string{{pairwiseOpaque, ""}, {pairwiseOpaque, "pairwise"}, {pairwiseSigned, ""}, {pairwiseSigned, "pairwise"}} {
+				if payload := validate(c[0], c[1]); payload["active"] != true || payload["sub"] == "owner" || payload["sub"] == nil {
+					t.Fatal("the pairwise subject was not presented", c[1], payload)
+				}
+			}
+			// A DPoP token's key is returned without a proof.
+			key := newDPoPKey(t)
+			bound := issue("app", url.Values{"scope": {"reports"}}, key.proof(t, tokenURL))
+			if payload := validate(bound["access_token"].(string), "app"); payload["token_type"] != "DPoP" || !reflect.DeepEqual(payload["cnf"], map[string]any{"jkt": key.thumb}) {
+				t.Fatal("the DPoP key was not returned", payload)
+			}
+			// RequireActiveAccessToken refuses inactive tokens with a challenge.
+			stored := sha256.Sum256([]byte(opaque["access_token"].(string)))
+			write(`UPDATE "oauthAccessToken" SET "expiresAt"=? WHERE "token"=?`, s.date(now.Add(-time.Minute)), base64.RawURLEncoding.EncodeToString(stored[:]))
+			for _, token := range []string{opaque["access_token"].(string), "unknown"} {
+				status, body, header := post(url.Values{"grant_type": {checkGrant}, "token": {token}, "require": {"yes"}}, "")
+				if status != 401 || body["error"] != "invalid_token" || body["error_description"] != "Invalid access token" ||
+					header.Get("WWW-Authenticate") != `Bearer error="invalid_token", error_description="Invalid access token"` {
+					t.Fatal("an inactive token was not refused", status, body, header)
+				}
+			}
+			if status, body, _ := post(url.Values{"grant_type": {checkGrant}, "token": {signed["access_token"].(string)}, "require": {"yes"}}, ""); status != 200 || body["payload"].(map[string]any)["active"] != true {
+				t.Fatal("an active token was refused", status, body)
+			}
+			// An unknown caller is refused.
+			if status, body, _ := post(url.Values{"grant_type": {checkGrant}, "token": {signed["access_token"].(string)}, "caller": {"missing"}}, ""); status != 400 || body["error"] != "invalid_client" {
+				t.Fatal("an unknown caller was accepted", status, body)
+			}
+		})
+	}
+}

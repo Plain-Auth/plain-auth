@@ -288,11 +288,13 @@
   - [x] `OAuthTokenResponse` ([test](../../../plugins/oauthprovider/extension_auth_test.go#L81))
     - [x] Return exactly access_token, expires_at, expires_in, refresh_token, scope and token_type for an offline code exchange, with expires_at matching expires_in, on both runtimes ([test](../../../conformance/oauth-authorization-code.mjs#L84))
     - [x] Write the standard token response members, keeping them over added fields and leaving out an empty refresh or ID token ([test](../../../plugins/oauthprovider/extension_auth_test.go#L81))
-  - [ ] `ActiveAccessTokenPayload`
+  - [x] `ActiveAccessTokenPayload` ([test](../../../adapters/sqlstore/oauth_extension_grant_test.go#L754))
+    - [x] Return an active token's introspection payload from RequireActiveAccessToken and refuse an inactive or unknown one with 401 invalid_token and a Bearer challenge, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_extension_grant_test.go#L754))
   - [ ] `OAuthProviderApi`
     - [x] Authenticate clients, look clients up and hash tokens through the provider API inside an extension grant, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_extension_grant_test.go#L130))
     - [x] Issue an extension grant's client token through the provider with the client credentials lifetime, introspecting like one, on both runtimes ([test](../../../conformance/oauth-extensions.mjs#L47))
     - [x] Issue a user's tokens through the provider inside an extension grant, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_extension_grant_test.go#L520))
+    - [x] Validate access tokens as the issuer or an introspecting client, and require active ones, through the provider API inside an extension grant, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_extension_grant_test.go#L614))
   - [x] `OAuthExtensionGrantHandlerInput` ([test](../../../adapters/sqlstore/oauth_extension_grant_test.go#L50))
     - [x] Give an extension grant handler the endpoint, the parsed form, its grant type and the provider API bound to it, on SQLite, PostgreSQL and MySQL; the handler closes over its options as a documented deviation ([test](../../../adapters/sqlstore/oauth_extension_grant_test.go#L50))
   - [x] `OAuthExtensionGrantHandler` ([test](../../../adapters/sqlstore/oauth_extension_grant_test.go#L31))

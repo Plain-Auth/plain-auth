@@ -49428,6 +49428,11 @@
       "label": "Issue a user's tokens through the provider inside an extension grant, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_extension_grant_test.go",
       "marker": "t.Fatal(\"the user grant was wrong\", status, body)"
+    },
+    {
+      "label": "Validate access tokens as the issuer or an introspecting client, and require active ones, through the provider API inside an extension grant, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_extension_grant_test.go",
+      "marker": "func TestExtensionGrantValidateTokens("
     }
   ],
   "plugin-symbol/oauth-provider/getOAuthProviderApi": [
@@ -49475,6 +49480,14 @@
       "label": "Add an extension grant's per-issuance ID token claims above the extensions' where the token has none, never setting nonce or email, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_extension_grant_test.go",
       "marker": "t.Fatal(\"the ID token's claims were wrong\", id)"
+    }
+  ],
+  "plugin-symbol/oauth-provider/ActiveAccessTokenPayload": [
+    {
+      "label": "Return an active token's introspection payload from RequireActiveAccessToken and refuse an inactive or unknown one with 401 invalid_token and a Bearer challenge, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_extension_grant_test.go",
+      "marker": "t.Fatal(\"an inactive token was not refused\", status, body, header)",
+      "complete": true
     }
   ]
 }
