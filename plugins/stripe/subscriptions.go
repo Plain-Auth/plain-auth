@@ -82,6 +82,7 @@ func jsonLimits(in map[string]any) (map[string]any, error) {
 // installed plan.
 func (p Plan) clone() Plan {
 	p.MeteredPriceIDs = slices.Clone(p.MeteredPriceIDs)
+	p.RetiredPriceIDs = slices.Clone(p.RetiredPriceIDs)
 	if p.FreeTrial != nil {
 		trial := *p.FreeTrial
 		p.FreeTrial = &trial

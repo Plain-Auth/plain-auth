@@ -12210,9 +12210,14 @@
       "marker": "func TestMembershipPriceConfiguration("
     },
     {
-      "label": "Validate the proration behavior of licensed, metered add-on and membership plans at startup, defaulting to create_prorations",
+      "label": "Refuse an unknown proration behavior on licensed, metered add-on and membership plans at startup",
       "test": "plugins/stripe/plans_test.go",
       "marker": "func TestPlanProrationBehavior(t *testing.T) {"
+    },
+    {
+      "label": "Report the configured proration behavior of licensed, metered add-on and membership plans, or create_prorations when unset",
+      "test": "plugins/stripe/plans_internal_test.go",
+      "marker": "func TestPlanProrationDefaults(t *testing.T) {"
     }
   ],
   "plugin/sso/POST /sso/delete-provider": [

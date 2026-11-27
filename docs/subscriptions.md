@@ -63,7 +63,7 @@ A checkout expires after 23 hours. Its signed expiration event releases the rese
 
 ### Name plans and their prices
 
-Plan names are trimmed and stored in lowercase, and a request names a plan in any case. Every plan needs a monthly `PriceID`; `AnnualPriceID` is optional, and an annual purchase of a plan without one answers 400 "Price ID not found for the selected plan" before Stripe is called, as in another runtime. Each price names exactly one plan and interval, and a duplicate name or a malformed price ID stops startup. `PriceID` must be a monthly price and `AnnualPriceID` a yearly price, each with an interval count of one, where another runtime accepts any recurring price: a plan models a month and a year, and that interval drives the list, plan changes and Checkout. Another price answers 409 `UNSUPPORTED_SUBSCRIPTION_ITEM` before any purchase is reserved. A yearly subscription of a plan without an annual price lists the monthly price ID, as in another runtime. [Plan rule tests](../plugins/stripe/plans_test.go) · [Price rule tests](../adapters/sqlstore/stripe_plan_rules_test.go)
+Plan names are trimmed and stored in lowercase, and a request names a plan in any case. Every plan needs a monthly `PriceID`; `AnnualPriceID` is optional, and an annual purchase of a plan without one answers 400 "Price ID not found for the selected plan", as in another runtime, but before any Stripe call, where another runtime first finds or creates the customer and lists its subscriptions. Each price names exactly one plan and interval, and a duplicate name or a malformed price ID stops startup. `PriceID` must be a monthly price and `AnnualPriceID` a yearly price, each with an interval count of one, where another runtime accepts any recurring price: a plan models a month and a year, and that interval drives the list, plan changes and Checkout. Another price answers 409 `UNSUPPORTED_SUBSCRIPTION_ITEM` before any purchase is reserved. A yearly subscription of a plan without an annual price lists the monthly price ID, as in another runtime. [Plan rule tests](../plugins/stripe/plans_test.go) · [Price rule tests](../adapters/sqlstore/stripe_plan_rules_test.go)
 
 ## Customize the Checkout Session
 
@@ -284,7 +284,7 @@ Plan changes support one configured monthly or yearly licensed item. To change o
 
 ### Choose a proration behavior
 
-Set `ProrationBehavior` on a plan to `create_prorations`, the default, `always_invoice` or `none` for the plugin's own updates to that plan's subscriptions, such as membership seat changes. Every plan's value is checked at startup, and another value stops it, where another runtime sends any value to Stripe when it is used. Callbacks report the effective value, so an unset one reads `create_prorations`. A plan change confirmed on Stripe's portal follows the portal configuration's proration instead. [Proration tests](../plugins/stripe/plans_test.go)
+Set `ProrationBehavior` on a plan to `create_prorations`, the default, `always_invoice` or `none` for the plugin's own updates to that plan's subscriptions, such as membership seat changes. Every plan's value is checked at startup, and another value stops it, where another runtime sends any value to Stripe when it is used. Callbacks report the effective value, so an unset one reads `create_prorations`. A plan change confirmed on Stripe's portal follows the portal configuration's proration instead. [Proration tests](../plugins/stripe/plans_test.go) · [Default tests](../plugins/stripe/plans_internal_test.go)
 
 ## Schedule a change for the next billing period
 
