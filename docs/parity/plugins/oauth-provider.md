@@ -486,6 +486,7 @@
   - [ ] `toResourceList`
   - [ ] `toAudienceClaim`
   - [ ] `assertNotTrustedClient`
+    - [x] Refuse deletion, secret rotation and a scope update of an operator-managed client with 400 invalid_client and keep it unchanged, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_immutable_clients_test.go#L50))
   - [ ] `getClient`
   - [ ] `mergeDiscoveryMetadata`
   - [ ] `decryptStoredClientSecret`

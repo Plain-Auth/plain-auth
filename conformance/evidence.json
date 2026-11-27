@@ -48304,5 +48304,12 @@
       "marker": "t.Fatal(\"a route lacks its default rate limit\", path, rule)",
       "complete": true
     }
+  ],
+  "plugin-symbol/oauth-provider/assertNotTrustedClient": [
+    {
+      "label": "Refuse deletion, secret rotation and a scope update of an operator-managed client with 400 invalid_client and keep it unchanged, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_immutable_clients_test.go",
+      "marker": "t.Fatal(\"an operator-managed client was not refused with invalid_client\", what, err)"
+    }
   ]
 }
