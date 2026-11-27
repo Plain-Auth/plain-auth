@@ -174,6 +174,12 @@ Polar selects the customer using the immutable external ID of the signed-in acco
 
 The hosted portal covers that customer’s purchases across this Polar merchant. The checkout product allowlist controls new purchases initiated by Plain Auth. Organization customers and caller-supplied customer or merchant selectors are unsupported.
 
+## List the customer's benefits, orders and subscriptions
+
+With `Portal`, three authenticated GET routes list the signed-in customer's records through Polar's customer portal, as another runtime's `customer.benefits.list`, `customer.orders.list` and `customer.subscriptions.list` do: `/api/auth/customer/benefits/list`, `/api/auth/customer/orders/list` and `/api/auth/customer/subscriptions/list`. Each accepts `page` and `limit` (1 to 100); the orders list also accepts `productBillingType` (`one_time` or `recurring`), and the subscriptions list `active` (`true` or `false`). Any other key, a repeated key or an invalid value answers 400 `POLAR_INVALID_QUERY` before Polar is called.
+
+Each opens a short customer session for the account's external ID on the server, reads one page with it, and checks that every item belongs to that customer, answering 502 `POLAR_CUSTOMER_MISMATCH` otherwise. The response is `{"items": [...], "pagination": {"total_count", "max_page"}}` with each item a documented subset of Polar's object, where another runtime returns the object whole: benefit grant properties such as license keys, benefit metadata, billing names and addresses, cancellation comments, prices and meters stay at Polar. The benefits list keeps only granted benefits, as another runtime does, so a page can hold fewer items than Polar counts. Subscriptions an organization bought for its members are not listed. [Customer list tests](../integrations/polar/customer_lists_test.go)
+
 ## Read the customer’s billing summary
 
 `GET /api/auth/customer/state` returns the same customer’s merchant-wide `polar.CustomerState`. Its JSON uses Polar's snake-case field names. It includes the customer ID, external ID, merchant organization ID, display name and email. The response also contains three arrays.
@@ -186,4 +192,4 @@ The hosted portal covers that customer’s purchases across this Polar merchant.
 
 Applications can match a subscription’s `product_id` when granting product-specific access. A grant or meter may span products. The public summary omits customer metadata, subscription custom fields, grant properties, tax details and payment instrument data. A missing Polar customer returns 404 when the provider reports it. Provider failures or a conflicting customer, merchant or session produce a redacted 502. Portal credentials and state responses use `Cache-Control: no-store`. [Customer state](https://polar.sh/docs/integrate/customer-state)
 
-Local tests exercise the official Go SDK with an in-process HTTP transport on SQLite, PostgreSQL and MySQL. End-to-end use of a live merchant dashboard and real payments requires merchant-side verification. Fulfillment of paid orders, refunds, subscription management or listing endpoints, organization billing, event ingestion, paginated meter reads and embedded checkout remain open.
+Local tests exercise the official Go SDK with an in-process HTTP transport on SQLite, PostgreSQL and MySQL. End-to-end use of a live merchant dashboard and real payments requires merchant-side verification. Fulfillment of paid orders, refunds, subscription management, organization billing, event ingestion, paginated meter reads and embedded checkout remain open.

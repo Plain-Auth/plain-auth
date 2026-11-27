@@ -13536,6 +13536,11 @@
       "label": "Open the merchant’s personal customer portal with an expiring, customer-bound link",
       "test": "integrations/polar/portal_test.go",
       "marker": "invalid private portal handoff"
+    },
+    {
+      "label": "List the signed-in customer's benefits, orders and subscriptions through Polar's customer portal, on three SQL engines",
+      "test": "integrations/polar/customer_lists_test.go",
+      "marker": "func TestCustomerPortalLists(t *testing.T) {"
     }
   ],
   "docs/content/docs/plugins/polar.mdx#L245": [
@@ -52367,6 +52372,38 @@
       "label": "Accept configured line items with optional fixed quantities and refuse duplicates, shared prices, out-of-range quantities and membership plans at startup",
       "test": "plugins/stripe/plans_test.go",
       "marker": "func TestPlanLineItemConfiguration(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/plugins/polar.mdx#L279": [
+    {
+      "label": "List the signed-in customer's granted benefits with paging, as subsets that keep grant secrets at Polar, on three SQL engines",
+      "test": "integrations/polar/customer_lists_test.go",
+      "marker": "// Benefits list only granted grants, without their secrets.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/polar.mdx#L292": [
+    {
+      "label": "List the signed-in customer's orders with paging and a billing type filter, as subsets that keep billing details at Polar, on three SQL engines",
+      "test": "integrations/polar/customer_lists_test.go",
+      "marker": "// Orders filter by billing type and leave billing details out.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/polar.mdx#L306": [
+    {
+      "label": "List the signed-in customer's own subscriptions with paging and an active filter, on three SQL engines",
+      "test": "integrations/polar/customer_lists_test.go",
+      "marker": "// Subscriptions filter by active and leave comments out.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/polar.mdx#L273": [
+    {
+      "label": "List the signed-in customer's benefits, orders and subscriptions through Polar's customer portal, refusing other query keys and another customer's page, on three SQL engines",
+      "test": "integrations/polar/customer_lists_test.go",
+      "marker": "func TestCustomerPortalLists(t *testing.T) {",
+      "complete": true
     }
   ]
 }

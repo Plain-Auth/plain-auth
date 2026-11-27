@@ -11,6 +11,7 @@
       - [x] Open a checkout that offers several configured products in request order, on three SQL engines ([test](../../../integrations/polar/products_test.go#L85))
     - [ ] Customer Portal
       - [x] Open the merchant’s personal customer portal with an expiring, customer-bound link ([test](../../../integrations/polar/portal_test.go#L248))
+      - [x] List the signed-in customer's benefits, orders and subscriptions through Polar's customer portal, on three SQL engines ([test](../../../integrations/polar/customer_lists_test.go#L95))
     - [x] Automatic Customer creation on signup ([test](../../../integrations/polar/customer_test.go#L27))
       - [x] Create a verified new account's Polar customer, identified by its account ID, from HTTP and Go sign-ups without ever failing the sign-up ([test](../../../integrations/polar/customer_test.go#L27))
     - [ ] Event Ingestion & Customer Meters for flexible Usage Based Billing
@@ -59,9 +60,13 @@
       - [x] Reject customer selectors and delegated, unverified or guest sessions before calling the provider ([test](../../../integrations/polar/portal_test.go#L224))
       - [x] Return the signed-in customer's state with subscriptions, granted benefits and meter balances while withholding merchant metadata ([test](../../../integrations/polar/portal_test.go#L266))
     - [ ] Benefits, Orders & Subscriptions
-      - [ ] Benefits
-      - [ ] Orders
+      - [x] List the signed-in customer's benefits, orders and subscriptions through Polar's customer portal, refusing other query keys and another customer's page, on three SQL engines ([test](../../../integrations/polar/customer_lists_test.go#L95))
+      - [x] Benefits ([test](../../../integrations/polar/customer_lists_test.go#L142))
+        - [x] List the signed-in customer's granted benefits with paging, as subsets that keep grant secrets at Polar, on three SQL engines ([test](../../../integrations/polar/customer_lists_test.go#L142))
+      - [x] Orders ([test](../../../integrations/polar/customer_lists_test.go#L152))
+        - [x] List the signed-in customer's orders with paging and a billing type filter, as subsets that keep billing details at Polar, on three SQL engines ([test](../../../integrations/polar/customer_lists_test.go#L152))
       - [ ] Subscriptions
+        - [x] List the signed-in customer's own subscriptions with paging and an active filter, on three SQL engines ([test](../../../integrations/polar/customer_lists_test.go#L160))
         - [ ] Important
   - [ ] Usage Plugin
     - [ ] Event Ingestion

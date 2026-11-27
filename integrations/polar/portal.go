@@ -110,28 +110,17 @@ func (s *Service) portal(c auth.EndpointContext) (any, error) {
 		redirect = v
 	}
 	cfg := s.opts.Portal
-	req := components.CustomerSessionCustomerExternalIDCreate{ExternalCustomerID: session.User.ID}
+	var back *string
 	if cfg.ReturnURL != "" {
-		back, err := c.CallbackURL(cfg.ReturnURL)
+		resolved, err := c.CallbackURL(cfg.ReturnURL)
 		if err != nil {
 			return nil, err
 		}
-		req.ReturnURL = &back
+		back = &resolved
 	}
-	reply, err := s.opts.Client.CustomerSessions.Create(c.Request.Context(),
-		operations.CreateCustomerSessionsCreateCustomerSessionCreateCustomerSessionCustomerExternalIDCreate(req),
-		operations.WithSetHeaders(map[string]string{"Polar-Version": apiVersion}),
-		operations.WithRetries(retry.Config{Strategy: "none"}),
-	)
+	p, err := s.customerSession(c, session, back)
 	if err != nil {
-		return nil, customerProviderError(err)
-	}
-	p := reply.GetCustomerSession()
-	person := p.GetCustomerIndividual()
-	if p == nil || person == nil || person.DeletedAt != nil || !canonicalID(person.ID) || !canonicalID(p.ID) ||
-		p.CustomerID != person.ID || val(person.ExternalID) != session.User.ID || person.OrganizationID != s.opts.OrganizationID ||
-		!p.ExpiresAt.After(time.Now()) || val(p.ReturnURL) != val(req.ReturnURL) {
-		return nil, customerMismatch()
+		return nil, err
 	}
 	link, err := cfg.customerURL(p)
 	if err != nil {
@@ -141,6 +130,33 @@ func (s *Service) portal(c auth.EndpointContext) (any, error) {
 		return nil, err
 	}
 	return map[string]any{"url": link, "redirect": redirect}, nil
+}
+
+// versioned pins a Polar call to the API version the integration was built against.
+func versioned() operations.Option {
+	return operations.WithSetHeaders(map[string]string{"Polar-Version": apiVersion})
+}
+
+// customerSession asks Polar for a session bound to the signed-in account's
+// external ID, and checks that it belongs to this merchant's live individual
+// customer, has not expired, carries a token and has back as its return URL.
+func (s *Service) customerSession(c auth.EndpointContext, session *auth.SessionResult, back *string) (*components.CustomerSession, error) {
+	req := components.CustomerSessionCustomerExternalIDCreate{ExternalCustomerID: session.User.ID, ReturnURL: back}
+	reply, err := s.opts.Client.CustomerSessions.Create(c.Request.Context(),
+		operations.CreateCustomerSessionsCreateCustomerSessionCreateCustomerSessionCustomerExternalIDCreate(req),
+		versioned(), operations.WithRetries(retry.Config{Strategy: "none"}),
+	)
+	if err != nil {
+		return nil, customerProviderError(err)
+	}
+	p := reply.GetCustomerSession()
+	person := p.GetCustomerIndividual()
+	if p == nil || person == nil || person.DeletedAt != nil || !canonicalID(person.ID) || !canonicalID(p.ID) || p.Token == "" ||
+		p.CustomerID != person.ID || val(person.ExternalID) != session.User.ID || person.OrganizationID != s.opts.OrganizationID ||
+		!p.ExpiresAt.After(time.Now()) || val(p.ReturnURL) != val(back) {
+		return nil, customerMismatch()
+	}
+	return p, nil
 }
 
 func (o PortalOptions) customerURL(session *components.CustomerSession) (string, error) {

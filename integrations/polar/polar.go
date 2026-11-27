@@ -168,6 +168,9 @@ func (s *Service) Plugin() auth.Plugin {
 			auth.Endpoint{Method: "GET", Path: "/customer/portal", Handler: s.portal},
 			auth.Endpoint{Method: "POST", Path: "/customer/portal", Handler: s.portal},
 			auth.Endpoint{Method: "GET", Path: "/customer/state", Handler: s.customerState},
+			auth.Endpoint{Method: "GET", Path: "/customer/benefits/list", Handler: s.customerBenefits},
+			auth.Endpoint{Method: "GET", Path: "/customer/orders/list", Handler: s.customerOrders},
+			auth.Endpoint{Method: "GET", Path: "/customer/subscriptions/list", Handler: s.customerSubscriptions},
 		)
 	}
 	plugin := auth.Plugin{ID: "polar", Endpoints: endpoints}
