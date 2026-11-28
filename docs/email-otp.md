@@ -30,7 +30,7 @@ Import `plugins/emailotp` from this module. Each HTTP route accepts JSON under t
 
 A sign-in code can create a verified account. Set `DisableSignUp` in the plugin to restrict sign-in to existing users. Recovery and verification return the same successful request response for unknown addresses and skip delivery. Over HTTP a failed delivery is logged and gets that same response, including `/send-verification-email` with `OverrideDefaultEmailVerification`; a direct `SendEmailOTP` call returns the sender's error. Signing in to a previously unverified account removes credentials and sessions created before the mailbox owner proved control.
 
-Set `SendVerificationOnSignUp` in the plugin to send a code when registering a password account. `OverrideDefaultEmailVerification` routes the host's address-verification mail through this plugin, including verification-gated sign-up. An application that also enables the core email-change workflow can keep its existing mail-link sender for that workflow.
+Set `SendVerificationOnSignUp` in the plugin to send a code when registering a password account. `OverrideDefaultEmailVerification` routes the host's address-verification mail through this plugin, including verification-gated sign-up. With both set, the sign-up code is that verification mail, sent once; another runtime ignores the plugin option then and sends nothing unless its core option asks. Setting the core `SendVerificationOnSignUp` to false as well stops `New` with an error, since the two disagree. [Override tests](../conformance/goapi/emailotp_signup_test.go) An application that also enables the core email-change workflow can keep its existing mail-link sender for that workflow.
 
 ## Registration profile fields
 

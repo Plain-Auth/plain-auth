@@ -828,7 +828,7 @@ Owners and admins manage teams and membership. An organization member can list t
 | POST | `/organization/remove-team` | Send `teamId` and optional `organizationId`. Select another team or clear the active team before deleting it. |
 | POST | `/organization/set-active-team` | Send a `teamId` belonging to the active organization, or `null` to clear the selection. Returns the selected team or `null`. |
 | GET | `/organization/list-user-teams` | Use optional `userId` and `organizationId` query parameters. With neither, returns the caller's teams across organizations. |
-| GET | `/organization/list-team-members` | Use an optional `teamId` query parameter, which defaults to the current session’s active team. |
+| GET | `/organization/list-team-members` | Use an optional `teamId` query parameter, which defaults to the current session’s active team. A caller outside the team answers 403 `USER_IS_NOT_A_MEMBER_OF_THE_TEAM`, as `set-active-team` does, where another runtime answers 400 here. |
 | POST | `/organization/add-team-member` | Send `teamId`, `userId` and optional `organizationId`. The target must already belong to that organization. Repeated adds return the same membership. |
 | POST | `/organization/remove-team-member` | Send the same fields as add. Removal clears that user's active selections for the team. |
 

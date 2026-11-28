@@ -28,7 +28,7 @@ AUTH_DSN='auth_user:example@tcp(127.0.0.1:3306)/auth_dev' \
 
 `generate --output FILE` writes the schema to a file instead, creating missing parent directories; when the path is an existing directory, the file inside it is named after the current UTC time, such as `2026-11-25T08-30-00.000Z.sql`. An existing file is replaced only with `-y` or `--yes`. `migrate` applies the schema without asking and accepts `-y` and `--yes` for scripts that pass them. `init`, `check`, `generate`, `migrate` and `create-admin` accept `-c DIR` or `--cwd DIR` to run in another directory, so relative field files, `--output` and a relative SQLite `AUTH_DSN` resolve there. [Command option tests](../cmd/authctl/cli_options_test.go)
 
-Use the deployment's TLS settings for remote databases. The PostgreSQL adapter accepts pgx connection strings. The MySQL adapter accepts go-sql-driver/mysql DSNs and enables timestamp parsing. SQLite uses go-sqlite3 with foreign keys enabled and requires CGO.
+Use the deployment's TLS settings for remote databases. The PostgreSQL adapter accepts pgx connection strings. The MySQL adapter accepts go-sql-driver/mysql DSNs and enables timestamp parsing. SQLite uses go-sqlite3 with foreign keys enabled and requires cgo. An application on PostgreSQL or MySQL builds with `CGO_ENABLED=0` and needs no C compiler; SQLite then refuses to open.
 
 ## Check a deployed schema
 

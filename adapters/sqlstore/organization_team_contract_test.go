@@ -139,8 +139,9 @@ func TestOrganizationTeamContract(t *testing.T) {
 			if !slices.Equal(ids, []string{"Builder", "Editor"}) {
 				t.Fatal("list-team-members did not read the active team", ids)
 			}
+			// An outsider is refused as on set-active-team.
 			_, err = builder.ListTeamMembers(ctx, support.ID)
-			code(err, 400, "USER_IS_NOT_A_MEMBER_OF_THE_TEAM")
+			code(err, 403, "USER_IS_NOT_A_MEMBER_OF_THE_TEAM")
 			others, err := remover.ListTeamMembers(ctx, support.ID)
 			must(err)
 			if len(others) != 1 || others[0].UserID != "Remover" {

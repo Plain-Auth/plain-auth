@@ -306,7 +306,7 @@ func TestStripeOrganizationOptions(t *testing.T) {
 					t.Error("an organization request without a policy was not refused", req.path, status, out)
 				}
 			}
-			if status, _ := call("GET", "/subscription/success?"+url.Values{"callbackURL": {"/"}, "checkoutSessionId": {"cs_fixture"}, "organizationId": {"org_fixture"}}.Encode(), nil); status != 401 {
+			if status, _ := call("GET", "/subscription/success?"+url.Values{"callbackURL": {"/"}, "checkoutSessionId": {"cs_fixture"}, "organizationId": {"org_fixture"}}.Encode(), nil); status != 403 {
 				t.Error("an organization return without a policy was not refused", status)
 			}
 			var rows int

@@ -151,7 +151,7 @@ func TestStripeErrorCodes(t *testing.T) {
 			status, out = call(full, "/subscription/upgrade", checkout(map[string]any{"referenceId": other}), ownerCookie, nil)
 			expect("foreign reference", 400, "REFERENCE_ID_NOT_ALLOWED", "Reference id is not allowed", status, out)
 			status, out = call(full, "/subscription/upgrade", checkout(map[string]any{"customerType": "organization", "referenceId": "org_missing"}), ownerCookie, nil)
-			expect("unknown organization", 401, "UNAUTHORIZED", "Unauthorized access", status, out)
+			expect("unknown organization", 403, "UNAUTHORIZED", "Unauthorized access", status, out)
 			status, out = call(full, "/subscription/upgrade", checkout(map[string]any{"customerType": "organization"}), otherCookie, nil)
 			expect("no organization", 400, "ORGANIZATION_REFERENCE_ID_REQUIRED", "Reference ID is required. Provide referenceId or set activeOrganizationId in session", status, out)
 			status, out = call(personal, "/subscription/upgrade", checkout(map[string]any{"customerType": "organization", "referenceId": created.ID}), ownerCookie, nil)

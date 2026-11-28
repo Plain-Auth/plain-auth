@@ -371,6 +371,18 @@ func New(opts Options) (*Auth, error) {
 				}
 			}
 			a.emailOTP = p.emailOTP
+			// With the override, the sign-up code is the verification email,
+			// so the plugin's SendVerificationOnSignUp turns it on. Another
+			// runtime ignores the plugin option then, which sends nothing
+			// unless the core option asks; a core option that refuses it
+			// conflicts.
+			if p.emailOTP.OverrideDefaultEmailVerification && p.emailOTP.SendVerificationOnSignUp {
+				if a.opts.SendVerificationOnSignUp != nil && !*a.opts.SendVerificationOnSignUp {
+					return nil, errors.New("auth: email OTP SendVerificationOnSignUp conflicts with SendVerificationOnSignUp set to false when OverrideDefaultEmailVerification is on")
+				}
+				on := true
+				a.opts.SendVerificationOnSignUp = &on
+			}
 			if p.emailOTP.OverrideDefaultEmailVerification {
 				original := a.opts.SendVerificationEmail
 				a.opts.SendVerificationEmail = func(ctx context.Context, message MailLink) error {

@@ -470,7 +470,8 @@ export async function organizationManagement(t, { reference, goFixture, instrume
       () => peer.subscription.upgrade({ ...options, plan: "team", scheduleAtPeriodEnd: true }),
     ]) {
       const result = await denied();
-      assert.equal(result.error.status, 401);
+      // Go answers a refused signed-in member 403, the other runtime 401.
+      assert.equal(result.error.status, runtime === "Go" ? 403 : 401);
       assert.equal(result.error.code, "UNAUTHORIZED");
     }
     assert.equal(remote.calls.length, 0);

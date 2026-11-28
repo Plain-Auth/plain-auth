@@ -443,7 +443,7 @@ func TestOrganizationCheckoutReturn(t *testing.T) {
 			}
 			f.duringSubscriptionGet = func() { exec(`UPDATE "member" SET "role"='member' WHERE "userId"=?`, deputy.User.ID) }
 			reads := f.getSub
-			if w := back(a, f.a.SessionCookie(deputy.Token, true)); w.Code != 401 || w.Header().Get("Location") != "" || state() != "incomplete" || f.getSub == reads {
+			if w := back(a, f.a.SessionCookie(deputy.Token, true)); w.Code != 403 || w.Header().Get("Location") != "" || state() != "incomplete" || f.getSub == reads {
 				t.Fatal("a member demoted during Stripe's reply committed the return", w.Code, state(), f.getSub-reads)
 			}
 			f.duringSubscriptionGet = nil

@@ -91,6 +91,7 @@ Inside your own handlers, `auth.GetSession(r.Context(), r.Header)` returns the s
 
 - [Documentation](docs/README.md): every guide, grouped by task
 - [Roadmap](docs/parity/README.md): the feature checklist and its test evidence
+- [Backlog](docs/backlog.md): wanted work that is not scheduled yet
 - [Contributing](CONTRIBUTING.md): local setup, source layout and checks
 - [Security](SECURITY.md): report a vulnerability privately
 - [MIT license](LICENSE), maintained by Nabil Abu-Hadba

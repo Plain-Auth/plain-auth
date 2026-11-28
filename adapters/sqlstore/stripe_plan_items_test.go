@@ -794,7 +794,7 @@ func TestOrganizationDirectPlanChange(t *testing.T) {
 				}
 			}
 			change := map[string]any{"plan": "addb", "subscriptionId": "sub_items", "referenceId": group, "customerType": "organization", "successUrl": "/done", "cancelUrl": "/cancel", "returnUrl": "/account", "disableRedirect": true}
-			if status, out := post("/subscription/upgrade", peer, change); status != 401 || remote.calls != 0 {
+			if status, out := post("/subscription/upgrade", peer, change); status != 403 || remote.calls != 0 {
 				t.Fatal("a non-member reached the organization's subscription", status, out, remote.calls)
 			}
 			status, out := post("/subscription/upgrade", admin, change)

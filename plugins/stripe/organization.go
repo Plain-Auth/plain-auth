@@ -80,7 +80,11 @@ type OrganizationBillingStore interface {
 	StripeCustomerOrganization(ctx context.Context, customer string) (string, error)
 }
 
-var ErrOrganizationBillingAccess = billingError(401, "UNAUTHORIZED", "Unauthorized access")
+// ErrOrganizationBillingAccess refuses a signed-in member the billing
+// policy or membership does not allow, with 403 so a client does not read it
+// as signed out. Another runtime answers 401; the code and message are its.
+// A revoked session still answers 401 through ErrCheckoutSession.
+var ErrOrganizationBillingAccess = billingError(403, "UNAUTHORIZED", "Unauthorized access")
 var errOrganizationReference = billingError(400, "ORGANIZATION_REFERENCE_ID_REQUIRED", "Reference ID is required. Provide referenceId or set activeOrganizationId in session")
 
 type billingSelection struct {

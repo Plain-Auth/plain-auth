@@ -12,7 +12,6 @@ import (
 	pk "github.com/Plain-Org/plain-auth/plugins/passkey"
 	"github.com/go-sql-driver/mysql"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/mattn/go-sqlite3"
 )
 
 var (
@@ -140,8 +139,7 @@ func (s *Store) LookupPasskey(ctx context.Context, id string) (pk.Record, error)
 func duplicateConstraint(err error) bool {
 	var my *mysql.MySQLError
 	var pg *pgconn.PgError
-	var lite sqlite3.Error
-	return (errors.As(err, &my) && my.Number == 1062) || (errors.As(err, &pg) && pg.Code == "23505") || (errors.As(err, &lite) && (lite.ExtendedCode == sqlite3.ErrConstraintPrimaryKey || lite.ExtendedCode == sqlite3.ErrConstraintUnique))
+	return (errors.As(err, &my) && my.Number == 1062) || (errors.As(err, &pg) && pg.Code == "23505") || sqliteDuplicate(err)
 }
 func (s *Store) CreatePasskey(ctx context.Context, r pk.Record, source string, now time.Time) error {
 	if source == "" {

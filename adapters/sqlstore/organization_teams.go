@@ -441,11 +441,13 @@ func (s *Store) ListTeamMembers(ctx context.Context, a org.TeamActor, teamID str
 		if err != nil {
 			return err
 		}
-		if _, _, err = t.organizationMember(group, org.ErrTeamMember); err != nil {
+		// A caller outside the team is refused with 403, as setting it
+		// active is; another runtime answers 400 here.
+		if _, _, err = t.organizationMember(group, org.ErrTeamSelect); err != nil {
 			return err
 		}
 		if _, err = s.readTeamMember(ctx, t.tx, id, a.UserID); errors.Is(err, sql.ErrNoRows) {
-			return org.ErrTeamMember
+			return org.ErrTeamSelect
 		} else if err != nil {
 			return err
 		}

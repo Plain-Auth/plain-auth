@@ -99,13 +99,13 @@ func TestOrganizationSubscriptionManagement(t *testing.T) {
 			deferred := change
 			deferred.ScheduleAtPeriodEnd = true
 			_, err = delegate.Cancel(ctx, cancel)
-			mustCode(err, 401, "UNAUTHORIZED")
+			mustCode(err, 403, "UNAUTHORIZED")
 			_, err = delegate.RestoreOrganization(ctx, group.ID, "sub_owner")
-			mustCode(err, 401, "UNAUTHORIZED")
+			mustCode(err, 403, "UNAUTHORIZED")
 			_, err = delegate.Upgrade(ctx, change)
-			mustCode(err, 401, "UNAUTHORIZED")
+			mustCode(err, 403, "UNAUTHORIZED")
 			_, err = delegate.Upgrade(ctx, deferred)
-			mustCode(err, 401, "UNAUTHORIZED")
+			mustCode(err, 403, "UNAUTHORIZED")
 			outside := cancel
 			outside.SubscriptionID = "sub_personal"
 			_, err = buyer.Cancel(ctx, outside)
@@ -115,7 +115,7 @@ func TestOrganizationSubscriptionManagement(t *testing.T) {
 			}
 			p.onPortal = func() { role(bid, "reader") }
 			page, err := buyer.Cancel(ctx, cancel)
-			mustCode(err, 401, "UNAUTHORIZED")
+			mustCode(err, 403, "UNAUTHORIZED")
 			if page.URL != "" {
 				t.Fatal("revoked manager received a cancellation page")
 			}
@@ -157,11 +157,11 @@ func TestOrganizationSubscriptionManagement(t *testing.T) {
 			}
 			role(did, "change-only")
 			_, err = delegate.RestoreOrganization(ctx, group.ID, "sub_owner")
-			mustCode(err, 401, "UNAUTHORIZED")
+			mustCode(err, 403, "UNAUTHORIZED")
 			p.onPriceRead = func() { role(did, "reader") }
 			before := p.portals
 			page, err = delegate.Upgrade(ctx, change)
-			mustCode(err, 401, "UNAUTHORIZED")
+			mustCode(err, 403, "UNAUTHORIZED")
 			if page.URL != "" || p.portals != before {
 				t.Fatal("revoked plan permission opened a confirmation")
 			}
@@ -178,7 +178,7 @@ func TestOrganizationSubscriptionManagement(t *testing.T) {
 			}
 			p.onScheduleRead = func() { role(did, "reader") }
 			page, err = delegate.Upgrade(ctx, deferred)
-			mustCode(err, 401, "UNAUTHORIZED")
+			mustCode(err, 403, "UNAUTHORIZED")
 			if page.URL != "" || p.updated != 0 {
 				t.Fatal("role downgrade during schedule read changed a future price")
 			}
@@ -199,7 +199,7 @@ func TestOrganizationSubscriptionManagement(t *testing.T) {
 			role(did, "restore-only")
 			p.onScheduleRead = func() { role(did, "reader") }
 			_, err = delegate.RestoreOrganization(ctx, group.ID, "sub_owner")
-			mustCode(err, 401, "UNAUTHORIZED")
+			mustCode(err, 403, "UNAUTHORIZED")
 			if p.released != 0 {
 				t.Fatal("revoked restore permission released the schedule")
 			}

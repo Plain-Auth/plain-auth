@@ -204,14 +204,14 @@ func TestOrganizationBillingIsolation(t *testing.T) {
 			exec(`INSERT INTO "member" ("id","organizationId","userId","role","createdAt") VALUES(?,?,?,?,?)`, "restricted_owner", protectedOrganization, actor, "owner", store.date(time.Now()))
 			for _, reference := range []string{protectedOrganization, strings.ToLower(protectedOrganization)} {
 				page, err := buyer.BillingPortal(ctx, stripeclient.Portal{CustomerType: "organization", ReferenceID: reference})
-				code(err, 401, "UNAUTHORIZED")
+				code(err, 403, "UNAUTHORIZED")
 				if page.URL != "" {
 					t.Fatal("protected organization returned a billing portal URL")
 				}
 				checkout := want
 				checkout.ReferenceID = reference
 				page, err = buyer.Upgrade(ctx, checkout)
-				code(err, 401, "UNAUTHORIZED")
+				code(err, 403, "UNAUTHORIZED")
 				if page.URL != "" || calls != 0 {
 					t.Fatal("protected organization reached Stripe")
 				}
@@ -223,9 +223,9 @@ func TestOrganizationBillingIsolation(t *testing.T) {
 			withID := want
 			withID.ReferenceID = group
 			_, err = outsider.Upgrade(ctx, withID)
-			code(err, 401, "UNAUTHORIZED")
+			code(err, 403, "UNAUTHORIZED")
 			_, err = deputy.Upgrade(ctx, withID)
-			code(err, 401, "UNAUTHORIZED")
+			code(err, 403, "UNAUTHORIZED")
 			if _, err = deputy.ListOrganization(ctx, group); err != nil {
 				t.Fatal(err)
 			}
@@ -254,7 +254,7 @@ func TestOrganizationBillingIsolation(t *testing.T) {
 			exec(`DELETE FROM "subscription" WHERE "id"='org_row'`)
 			beforeCheckout = func() { exec(`UPDATE "member" SET "role"='member' WHERE "userId"=?`, actor) }
 			page, err := buyer.Upgrade(ctx, want)
-			code(err, 401, "UNAUTHORIZED")
+			code(err, 403, "UNAUTHORIZED")
 			if page.URL != "" {
 				t.Fatal("downgraded purchaser saw a hosted checkout")
 			}
@@ -275,14 +275,14 @@ func TestOrganizationBillingIsolation(t *testing.T) {
 			demote = did
 			policyMu.Unlock()
 			page, err = deputy.BillingPortal(ctx, portal)
-			code(err, 401, "UNAUTHORIZED")
+			code(err, 403, "UNAUTHORIZED")
 			if page.URL != "" || calls != before {
 				t.Fatal("a role changed after the policy reached Stripe", calls-before)
 			}
 			exec(`UPDATE "member" SET "role"='admin' WHERE "userId"=?`, did)
 			beforePortal = func() { exec(`UPDATE "member" SET "role"='finance' WHERE "userId"=?`, did) }
 			page, err = deputy.BillingPortal(ctx, portal)
-			code(err, 401, "UNAUTHORIZED")
+			code(err, 403, "UNAUTHORIZED")
 			if page.URL != "" {
 				t.Fatal("changed billing role received a portal link")
 			}
@@ -292,7 +292,7 @@ func TestOrganizationBillingIsolation(t *testing.T) {
 			}
 			beforePortal = func() { exec(`UPDATE "session" SET "activeOrganizationId"=NULL WHERE "userId"=?`, did) }
 			page, err = deputy.BillingPortal(ctx, stripeclient.Portal{CustomerType: "organization"})
-			code(err, 401, "UNAUTHORIZED")
+			code(err, 403, "UNAUTHORIZED")
 			if page.URL != "" {
 				t.Fatal("a changed implicit organization received a portal link")
 			}
@@ -306,10 +306,10 @@ func TestOrganizationBillingIsolation(t *testing.T) {
 				auth.ServeHTTP(w, r)
 				return w.Code
 			}
-			if got := returnStatus(outToken); got != 401 {
+			if got := returnStatus(outToken); got != 403 {
 				t.Fatal("foreign checkout return", got)
 			}
-			if got := returnStatus(buyerToken); got != 401 {
+			if got := returnStatus(buyerToken); got != 403 {
 				t.Fatal("downgraded checkout return", got)
 			}
 			signed := func(id, typ string, object any) int {
